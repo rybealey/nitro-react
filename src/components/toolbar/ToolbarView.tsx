@@ -103,7 +103,6 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                         { ((iconState === MessengerIconState.SHOW) || (iconState === MessengerIconState.UNREAD)) &&
                             <Base pointer className={ `navigation-item icon icon-message ${ (iconState === MessengerIconState.UNREAD) && 'is-unseen' }` } onClick={ event => OpenMessengerChat() } /> }
                     </Flex>
-                    <Base id="toolbar-friend-bar-container" className="d-none d-lg-block" />
                 </Flex>
             </Flex>
         </>

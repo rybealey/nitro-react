@@ -1,19 +1,18 @@
 import { FC } from 'react';
-import { createPortal } from 'react-dom';
 import { useFriends } from '../../hooks';
-import { FriendBarView } from './views/friends-bar/FriendsBarView';
 import { FriendsListView } from './views/friends-list/FriendsListView';
 import { FriendsMessengerView } from './views/messenger/FriendsMessengerView';
 
 export const FriendsView: FC<{}> = props =>
 {
-    const { settings = null, onlineFriends = [] } = useFriends();
+    const { settings = null } = useFriends();
 
     if(!settings) return null;
 
+    // pixelrp: the toolbar "Find new friends" friend bar is intentionally not
+    // rendered (see the removed #toolbar-friend-bar-container in ToolbarView).
     return (
         <>
-            { createPortal(<FriendBarView onlineFriends={ onlineFriends } />, document.getElementById('toolbar-friend-bar-container')) }
             <FriendsListView />
             <FriendsMessengerView />
         </>
