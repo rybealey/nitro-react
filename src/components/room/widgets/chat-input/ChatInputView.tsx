@@ -1,9 +1,10 @@
 import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
+import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent } from '../../../../hooks';
+import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
 
 export const ChatInputView: FC<{}> = props =>
@@ -116,8 +117,15 @@ export const ChatInputView: FC<{}> = props =>
             setIsIdle(true);
         }
 
-        setChatValue(value);
+        setChatValue(ReplaceEmojiShortcodes(value));
     }, [ setIsTyping, setIsIdle ]);
+
+    const addEmoji = useCallback((emoji: string) =>
+    {
+        setChatValue(prevValue => (prevValue + emoji));
+
+        if(inputRef.current) inputRef.current.focus();
+    }, []);
 
     const onKeyDownEvent = useCallback((event: KeyboardEvent) =>
     {
@@ -243,6 +251,7 @@ export const ChatInputView: FC<{}> = props =>
                     <Text variant="danger">{ LocalizeText('chat.input.alert.flood', [ 'time' ], [ floodBlockedSeconds.toString() ]) } </Text> }
                 </div>
                 <ChatInputStyleSelectorView chatStyleId={ chatStyleId } chatStyleIds={ chatStyleIds } selectChatStyleId={ updateChatStyleId } />
+                <ChatInputEmojiSelectorView addEmoji={ addEmoji } />
             </div>, document.getElementById('toolbar-chat-input-container'))
     );
 }
