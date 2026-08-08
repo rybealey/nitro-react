@@ -1,7 +1,8 @@
-import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSprite, NitroTexture, RoomBackgroundColorEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomGeometry, RoomId, RoomObjectCategory, RoomObjectHSLColorEnabledEvent, RoomObjectOperationType, RoomSessionEvent, RoomVariableEnum, Vector3d } from '@nitrots/nitro-renderer';
+import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSprite, NitroTexture, RoomBackgroundColorEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomGeometry, RoomId, RoomObjectCategory, RoomObjectHSLColorEnabledEvent, RoomObjectOperationType, RoomSessionEvent, RoomUnitWalkComposer, RoomVariableEnum, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
-import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SetActiveRoomId, StartRoomSession } from '../../api';
+import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer, SetActiveRoomId, StartRoomSession } from '../../api';
+import { ClickthroughState } from './clickthroughState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../events';
 
 const useRoomState = () =>
@@ -134,6 +135,18 @@ const useRoomState = () =>
         switch(event.type)
         {
             case RoomEngineObjectEvent.SELECTED:
+                // Clickthrough (:ct): clicking another user walks you to the tile
+                // directly behind them (one step further from the camera, x-1/y-1 in
+                // Habbo's fixed isometric view) instead of opening their context menu.
+                if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT) && (event.objectId !== GetRoomSession()?.ownRoomIndex))
+                {
+                    const clickedUnit = GetRoomEngine().getRoomObject(event.roomId, event.objectId, RoomObjectCategory.UNIT);
+                    const location = clickedUnit?.getLocation();
+
+                    if(location) SendMessageComposer(new RoomUnitWalkComposer(Math.trunc(location.x) - 1, Math.trunc(location.y) - 1));
+
+                    break;
+                }
                 if(!IsFurnitureSelectionDisabled(event)) updateEvent = new RoomWidgetUpdateRoomObjectEvent(RoomWidgetUpdateRoomObjectEvent.OBJECT_SELECTED, event.objectId, event.category, event.roomId);
                 break;
             case RoomEngineObjectEvent.DESELECTED:

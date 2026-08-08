@@ -1,6 +1,7 @@
 import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, InfoRetrieveMessageComposer, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils, UserInfoEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetConfiguration, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
+import { ClickthroughState } from '../clickthroughState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useNotification } from '../../notification';
 import { useObjectSelectedEvent } from '../engine';
@@ -94,6 +95,17 @@ const useChatInputWidgetState = () =>
                     roomSession.sendExpressionMessage(AvatarExpressionEnum.IDLE.ordinal);
 
                     return null;
+                case ':ct': {
+                    // Toggle clickthrough: when on, clicking another user walks you to
+                    // the tile behind them instead of opening their context menu.
+                    ClickthroughState.enabled = !ClickthroughState.enabled;
+
+                    const status = ClickthroughState.enabled ? 'enabled' : 'disabled';
+
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Clickthrough ${ status }`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+
+                    return null;
+                }
                 case ':ping': {
                     // Measure the real round-trip to the game server by timing an
                     // existing request/response over the same socket (InfoRetrieve ->
