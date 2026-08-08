@@ -4,7 +4,7 @@
     align-items: center;
     // Centered to the viewport (the toolbar is the positioned ancestor and spans
     // full width), floating out of the toolbar's left group; vertical position
-    // unchanged. ~70% wider than the previous content-sized width.
+    // unchanged.
     position: absolute;
     left: 50%;
     top: 50%;
@@ -13,7 +13,7 @@
     border-radius: 8px;
     border: 2px solid rgb(0, 0, 0);
     background: #EDEDED;
-    width: 360px;
+    width: 470px;
     overflow: hidden;
 
     @include media-breakpoint-down(sm) {
