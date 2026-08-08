@@ -5,9 +5,8 @@
     .nitro-purse {
         background-color: rgba($dark, 0.95);
         box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
-        // size to content (right-aligned via the container), not the full column
-        width: fit-content;
-        min-width: 150px;
+        // match the right-side column width (same as the notification bubbles below)
+        width: 200px;
     
         .nitro-purse-subscription {
             background-color: rgba($light, 0.1);
