@@ -1,0 +1,6 @@
+.nitro-room-title {
+    pointer-events: all;
+    font-size: $font-size-sm;
+    background-color: rgba($dark, 0.95);
+    box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
+}
