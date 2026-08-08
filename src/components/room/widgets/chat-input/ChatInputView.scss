@@ -1,19 +1,26 @@
 .nitro-chat-input-container {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
-    position: relative;
+    // Centered to the viewport (the toolbar is the positioned ancestor and spans
+    // full width), floating out of the toolbar's left group; vertical position
+    // unchanged. ~70% wider than the previous content-sized width.
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     height: 40px;
     border-radius: 8px;
     border: 2px solid rgb(0, 0, 0);
     background: #EDEDED;
-    padding-right: 10px;
-    width: 100%;
+    width: 360px;
     overflow: hidden;
 
     @include media-breakpoint-down(sm) {
         display: flex;
         position: absolute;
+        top: auto;
+        transform: none;
         bottom: 70px;
         left: calc(100% / 3);
         width: 200px;
@@ -32,18 +39,23 @@
         z-index: 1;
     }
 
+    // Fill the full container width, left-aligned (the auto-grow column becomes a
+    // single full-width 1fr track).
     .input-sizer {
         display: inline-grid;
+        grid-template-columns: 1fr;
+        flex: 1 1 auto;
+        min-width: 0;
         vertical-align: top;
         height: 100%;
         padding: 0 10px;
-        
+
         &::after,
         input,
         textarea {
             width: auto;
             min-width: 1em;
-            grid-area: 1 / 2;
+            grid-area: 1 / 1;
             margin: 0;
             resize: none;
             background: none;
@@ -51,12 +63,17 @@
             border: none;
             outline: none;
         }
-        
+
         &::after {
             content: attr(data-value) '  ';
             visibility: hidden;
             white-space: pre-wrap;
         }
+    }
+
+    // The chat-style selector button is non-essential; hidden from the bar.
+    .chatstyles-icon {
+        display: none;
     }
 
     .bubble-container {
