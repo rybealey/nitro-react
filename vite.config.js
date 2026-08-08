@@ -15,7 +15,13 @@ export default defineConfig({
         assetsInlineLimit: 102400,
         rollupOptions: {
             output: {
-                assetFileNames: 'src/assets/[name].[ext]',
+                // Content-hash bundled assets (CSS, fonts, images) so a changed
+                // file gets a new URL. nginx serves /nitro-assets/ with
+                // max-age=604800, and the login SSO query busts index.html each
+                // load - but a stable asset name (the old '[name].[ext]') left the
+                // CSS cached for a week, so CSS-only changes never reached players.
+                // The hash makes them cache-bust exactly like the already-hashed JS.
+                assetFileNames: 'src/assets/[name]-[hash].[ext]',
                 manualChunks: id =>
                 {
                     if(id.includes('node_modules'))
