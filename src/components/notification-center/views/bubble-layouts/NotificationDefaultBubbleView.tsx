@@ -15,11 +15,11 @@ export const NotificationDefaultBubbleView: FC<NotificationDefaultBubbleViewProp
 
     return (
         <LayoutNotificationBubbleView onClose={ onClose } gap={ 2 } alignItems="center" onClick={ event => (item.linkUrl && item.linkUrl.length && OpenUrl(item.linkUrl)) } { ...rest }>
-            <Flex center className="bubble-image-container">
-                { (item.iconUrl && item.iconUrl.length) &&
-                    <img className="no-select" src={ item.iconUrl } alt="" /> }
-            </Flex>
-            <Text wrap variant="white" dangerouslySetInnerHTML={ { __html: htmlText } } />
+            { (item.iconUrl && item.iconUrl.length) &&
+                <Flex center className="bubble-image-container">
+                    <img className="no-select" src={ item.iconUrl } alt="" />
+                </Flex> }
+            <Text wrap fullWidth variant="white" dangerouslySetInnerHTML={ { __html: htmlText } } />
         </LayoutNotificationBubbleView>
     );
 }
