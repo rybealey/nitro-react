@@ -76,23 +76,21 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                             <LayoutAvatarImageView figure={ userFigure } direction={ 2 } position="absolute" />
                         </Flex>
                         <Base pointer title="Menu" className="navigation-item icon icon-pixelrp" onClick={ event => setMenuExpanded(!isMenuExpanded) } />
-                        <TransitionAnimation type={ TransitionAnimationTypes.FADE_IN } inProp={ isMenuExpanded } timeout={ 300 }>
-                            <Flex alignItems="center" gap={ 2 }>
-                                { isMod &&
-                                    <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } /> }
-                                { isMod &&
-                                    <Base pointer className="navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } /> }
-                                { isMod &&
-                                    <Base pointer className="navigation-item icon icon-inventory" onClick={ event => CreateLinkEvent('inventory/toggle') }>
-                                        { (getFullCount > 0) &&
-                                            <LayoutItemCountView count={ getFullCount } /> }
-                                    </Base> }
-                                { (isInRoom && isMod) &&
-                                    <Base pointer className="navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } /> }
-                                { isMod &&
-                                    <Base pointer className="navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } /> }
-                            </Flex>
-                        </TransitionAnimation>
+                        <Flex alignItems="center" gap={ 2 } className={ 'toolbar-menu-items' + (isMenuExpanded ? ' expanded' : '') }>
+                            { isMod &&
+                                <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } /> }
+                            { isMod &&
+                                <Base pointer className="navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } /> }
+                            { isMod &&
+                                <Base pointer className="navigation-item icon icon-inventory" onClick={ event => CreateLinkEvent('inventory/toggle') }>
+                                    { (getFullCount > 0) &&
+                                        <LayoutItemCountView count={ getFullCount } /> }
+                                </Base> }
+                            { (isInRoom && isMod) &&
+                                <Base pointer className="navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } /> }
+                            { isMod &&
+                                <Base pointer className="navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } /> }
+                        </Flex>
                     </Flex>
                     <Flex alignItems="center" id="toolbar-chat-input-container" />
                 </Flex>

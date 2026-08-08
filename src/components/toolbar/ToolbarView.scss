@@ -42,6 +42,29 @@
         }
     }
 
+    // menu items grow out from behind the PixelRP emblem
+    .toolbar-menu-items {
+        flex-wrap: nowrap;
+        overflow: hidden;
+        max-width: 0;
+        opacity: 0;
+        // cancel the parent flex gap while collapsed so the emblem has no ghost spacing
+        margin-left: -0.5rem;
+        pointer-events: none;
+        transition: max-width .3s ease, opacity .25s ease, margin-left .3s ease;
+
+        > * {
+            flex-shrink: 0;
+        }
+
+        &.expanded {
+            max-width: 320px;
+            opacity: 1;
+            margin-left: 0;
+            pointer-events: all;
+        }
+    }
+
     #toolbar-chat-input-container {
 
         @include media-breakpoint-down(sm) {
