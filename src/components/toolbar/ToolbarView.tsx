@@ -1,6 +1,6 @@
 import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
-import { CreateLinkEvent, GetConfiguration, GetSessionDataManager, MessengerIconState, OpenMessengerChat, VisitDesktop } from '../../api';
+import { CreateLinkEvent, GetConfiguration, GetSessionDataManager, MessengerIconState, OpenMessengerChat } from '../../api';
 import { Base, Flex, LayoutAvatarImageView, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useFriends, useInventoryUnseenTracker, useMessageEvent, useMessenger, useRoomEngineEvent, useSessionInfo } from '../../hooks';
 import { ToolbarMeView } from './ToolbarMeView';
@@ -71,13 +71,11 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
             <Flex alignItems="center" justifyContent="between" gap={ 2 } className="nitro-toolbar py-1 px-3">
                 <Flex gap={ 2 } alignItems="center">
                     <Flex alignItems="center" gap={ 2 }>
-                        <Flex center pointer className={ 'navigation-item item-avatar ' + (isMeExpanded ? 'active ' : '') } onClick={ event => setMeExpanded(!isMeExpanded) }>
+                        <Flex center className="navigation-item item-avatar">
                             <LayoutAvatarImageView figure={ userFigure } direction={ 2 } position="absolute" />
-                            { (getTotalUnseen > 0) &&
-                                <LayoutItemCountView count={ getTotalUnseen } /> }
                         </Flex>
                         { isInRoom &&
-                            <Base pointer className="navigation-item icon icon-habbo" onClick={ event => VisitDesktop() } /> }
+                            <Base className="navigation-item icon icon-pixelrp" /> }
                         { !isInRoom &&
                             <Base pointer className="navigation-item icon icon-house" onClick={ event => CreateLinkEvent('navigator/goto/home') } /> }
                         { isMod &&

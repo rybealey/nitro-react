@@ -1,70 +1,23 @@
 .nitro-loading {
     position: relative;
-    background: $primary;
+    background: #1a0e14 url('@/assets/images/loading/loading-bg.webp') no-repeat center center;
+    background-size: cover;
     z-index: 100;
 
-    .connecting-duck {
+    .loading-panels {
         position: absolute;
         top: 0;
         bottom: 0;
-        margin: auto;
-        right: 0;
         left: 0;
-        background: url('@/assets/images/loading/connecting-duck-spritesheet.png') no-repeat top left;
-        width: 235px;
-        height: 127px;
-        animation: 1.5s connecting-duck infinite step-end;
-        transform: scale(0.5);
-    }
-
-    .nitro-logo {
-        width: 47px;
-        height: 65px;
-        background: transparent url('https://assets.nitrodev.co/logos/react-loader.png') no-repeat center;
+        right: 0;
+        margin: auto;
+        width: 553px;
+        height: 383px;
+        max-width: 90%;
+        max-height: 60%;
+        background: url('@/assets/images/loading/loading-panels.png') no-repeat center;
+        background-size: contain;
         z-index: 1;
-    }
-}
-
-@keyframes connecting-duck {
-    0% {
-        background-position: 0 0;
-        width: 235px;
-        height: 127px;
-    }
-
-    15% {
-        background-position: 0 -132px;
-        width: 280px;
-        height: 151px;
-    }
-
-    30% {
-        background-position: 0 -288px;
-        width: 326px;
-        height: 174px;
-    }
-
-    45% {
-        background-position: 0 -467px;
-        width: 235px;
-        height: 127px;
-    }
-
-    60% {
-        background-position: 0 -599px;
-        width: 280px;
-        height: 151px;
-    }
-
-    75% {
-        background-position: 0 -755px;
-        width: 326px;
-        height: 174px;
-    }
-
-    90% {
-        background-position: 0 -934px;
-        width: 190px;
-        height: 104px;
+        pointer-events: none;
     }
 }

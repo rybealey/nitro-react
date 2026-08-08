@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+    // The deployed client is served from /nitro-assets/client/, not the site
+    // root — without this, built asset URLs 404 behind the nginx prefix. The
+    // dev server keeps base '/' so `yarn start` still serves at the root.
+    base: (command === 'build') ? '/nitro-assets/client/' : '/',
     plugins: [ react() ],
     resolve: {
         alias: {
@@ -34,4 +38,4 @@ export default defineConfig({
             }
         }
     }
-})
+}))
