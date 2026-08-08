@@ -2,7 +2,6 @@ import { FriendlyTime, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useMemo } from 'react';
 import { CreateLinkEvent, GetConfiguration, LocalizeText } from '../../api';
 import { Column, Flex, LayoutCurrencyIcon, Text } from '../../common';
-import { RoomTitleView } from '../room-title/RoomTitleView';
 import { usePurse } from '../../hooks';
 import { CurrencyView } from './views/CurrencyView';
 import { SeasonalView } from './views/SeasonalView';
@@ -64,9 +63,7 @@ export const PurseView: FC<{}> = props =>
 
     return (
         <Column alignItems="end" className="nitro-purse-container" gap={ 1 }>
-            <Flex gap={ 1 } alignItems="center" className="nitro-purse-row">
-                <RoomTitleView />
-                <Flex gap={ 1 } className="nitro-purse rounded-bottom p-1">
+            <Flex gap={ 1 } className="nitro-purse rounded-bottom p-1">
                 <Column justifyContent="center" gap={ 0 } className="flex-grow-1">
                     <CurrencyView type={ -1 } amount={ purse.credits } short={ currencyDisplayNumberShort } />
                     { getCurrencyElements(0, 2) }
@@ -84,7 +81,6 @@ export const PurseView: FC<{}> = props =>
                         <i className="icon icon-cog"/>
                     </Flex>
                 </Column>
-                </Flex>
             </Flex>
             { getCurrencyElements(2, -1, true) }
         </Column>

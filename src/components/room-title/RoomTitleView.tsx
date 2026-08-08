@@ -16,7 +16,7 @@ export const RoomTitleView: FC<{}> = props =>
     const title = (GetSessionDataManager().isModerator && roomId) ? `#${ roomId } – ${ roomName }` : roomName;
 
     return (
-        <Flex justifyContent="end" className="nitro-room-title rounded p-1 px-2">
+        <Flex justifyContent="end" className="nitro-room-title rounded-bottom p-1 px-2">
             <Text wrap variant="white" className="text-end">{ title }</Text>
         </Flex>
     );

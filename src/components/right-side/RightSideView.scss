@@ -8,3 +8,10 @@
     z-index: $rightside-zindex;
     pointer-events: none;
 }
+
+// title card + purse side by side; right-anchored, growing leftward past the column
+.purse-title-row {
+    align-self: flex-end;
+    width: max-content;
+    max-width: none;
+}
