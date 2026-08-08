@@ -24,9 +24,9 @@
     }
 
     &.icon-catalog {
-        background-image: url('@/assets/images/toolbar/icons/catalog.png');
-        width: 37px;
-        height: 36px;
+        background-image: url('@/assets/images/toolbar/icons/pixelrp-catalog.png');
+        width: 40px;
+        height: 35px;
     }
 
     &.icon-game {
@@ -36,8 +36,8 @@
     }
 
     &.icon-rooms {
-        background-image: url('@/assets/images/toolbar/icons/rooms.png');
-        width: 44px;
+        background-image: url('@/assets/images/toolbar/icons/pixelrp-navigator.png');
+        width: 28px;
         height: 30px;
     }
 
@@ -52,9 +52,9 @@
     }
 
     &.icon-inventory {
-        background-image: url('@/assets/images/toolbar/icons/inventory.png');
-        height: 41px;
-        width: 44px;
+        background-image: url('@/assets/images/toolbar/icons/pixelrp-inventory.png');
+        width: 50px;
+        height: 50px;
     }
 
     &.icon-modtools {
@@ -64,9 +64,9 @@
     }
 
     &.icon-friendall {
-        background-image: url('@/assets/images/toolbar/icons/friend_all.png');
-        height: 33px;
-        width: 32px;
+        background-image: url('@/assets/images/toolbar/icons/pixelrp-friends.png');
+        width: 40px;
+        height: 40px;
     }
 
     &.icon-friendsearch {
