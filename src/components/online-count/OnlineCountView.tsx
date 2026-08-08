@@ -1,7 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { Flex, Text } from '../../common';
 
-const POLL_INTERVAL_MS = 30000;
+const POLL_INTERVAL_MS = 10000;
 
 export const OnlineCountView: FC<{}> = props =>
 {
