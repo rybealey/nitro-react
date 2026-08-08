@@ -32,7 +32,10 @@ const useFurnitureExternalImageWidgetState = () =>
 
         roomTotalImages.forEach(object =>
         {
-            if (object.type !== 'external_image_wallitem_poster_small') return null;
+            // Match every external-image wall item (poster, poster_small, and
+            // our camera photo `external_image_wallitem_photo`), not just one
+            // exact classname — otherwise purchased photos never populate.
+            if (object.type.indexOf('external_image_wallitem') !== 0) return null;
 
             const data = object.model.getValue<string>(RoomObjectVariable.FURNITURE_DATA);
             const jsonData: IPhotoData = JSON.parse(data);
