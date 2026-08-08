@@ -12,8 +12,8 @@ export const RoomTitleView: FC<{}> = props =>
     if(!roomSession || !roomName || !roomName.length) return null;
 
     return (
-        <Flex justifyContent="center" className="nitro-room-title rounded p-1 px-2">
-            <Text wrap variant="white" className="text-center">{ roomName }</Text>
+        <Flex justifyContent="end" className="nitro-room-title rounded p-1 px-2">
+            <Text wrap variant="white" className="text-end">{ roomName }</Text>
         </Flex>
     );
 }
