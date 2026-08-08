@@ -3,4 +3,8 @@
     font-size: $font-size-sm;
     background-color: rgba($dark, 0.95);
     box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
+    // size to content, hugging the right edge like the purse above
+    width: fit-content;
+    align-self: flex-end;
+    max-width: 100%;
 }

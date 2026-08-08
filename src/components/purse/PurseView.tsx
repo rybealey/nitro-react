@@ -1,7 +1,7 @@
 import { FriendlyTime, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useMemo } from 'react';
 import { CreateLinkEvent, GetConfiguration, LocalizeText } from '../../api';
-import { Column, Flex, Grid, LayoutCurrencyIcon, Text } from '../../common';
+import { Column, Flex, LayoutCurrencyIcon, Text } from '../../common';
 import { usePurse } from '../../hooks';
 import { CurrencyView } from './views/CurrencyView';
 import { SeasonalView } from './views/SeasonalView';
@@ -63,26 +63,24 @@ export const PurseView: FC<{}> = props =>
 
     return (
         <Column alignItems="end" className="nitro-purse-container" gap={ 1 }>
-            <Flex className="nitro-purse rounded-bottom p-1">
-                <Grid fullWidth gap={ 1 }>
-                    <Column justifyContent="center" size={ hcDisabled ? 10 : 6 } gap={ 0 }>
-                        <CurrencyView type={ -1 } amount={ purse.credits } short={ currencyDisplayNumberShort } />
-                        { getCurrencyElements(0, 2) }
-                    </Column>
-                    { !hcDisabled &&
-                        <Column center pointer size={ 4 } gap={ 1 } className="nitro-purse-subscription rounded" onClick={ event => CreateLinkEvent('habboUI/open/hccenter') }>
-                            <LayoutCurrencyIcon type="hc" />
-                            <Text variant="white">{ getClubText }</Text>
-                        </Column> }
-                    <Column justifyContent="center" size={ 2 } gap={ 0 }>
-                        <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('help/show') }>
-                            <i className="icon icon-help"/>
-                        </Flex>
-                        <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('user-settings/toggle') } >
-                            <i className="icon icon-cog"/>
-                        </Flex>
-                    </Column>
-                </Grid>
+            <Flex gap={ 1 } className="nitro-purse rounded-bottom p-1">
+                <Column justifyContent="center" gap={ 0 } className="flex-grow-1">
+                    <CurrencyView type={ -1 } amount={ purse.credits } short={ currencyDisplayNumberShort } />
+                    { getCurrencyElements(0, 2) }
+                </Column>
+                { !hcDisabled &&
+                    <Column center pointer gap={ 1 } className="nitro-purse-subscription rounded px-2" onClick={ event => CreateLinkEvent('habboUI/open/hccenter') }>
+                        <LayoutCurrencyIcon type="hc" />
+                        <Text variant="white">{ getClubText }</Text>
+                    </Column> }
+                <Column justifyContent="center" gap={ 0 }>
+                    <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('help/show') }>
+                        <i className="icon icon-help"/>
+                    </Flex>
+                    <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('user-settings/toggle') } >
+                        <i className="icon icon-cog"/>
+                    </Flex>
+                </Column>
             </Flex>
             { getCurrencyElements(2, -1, true) }
         </Column>
