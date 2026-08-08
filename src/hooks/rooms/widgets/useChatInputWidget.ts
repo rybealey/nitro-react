@@ -1,6 +1,6 @@
-import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils } from '@nitrots/nitro-renderer';
+import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, InfoRetrieveMessageComposer, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils, UserInfoEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
-import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetConfiguration, GetRoomEngine, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
+import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetConfiguration, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useNotification } from '../../notification';
 import { useObjectSelectedEvent } from '../engine';
@@ -94,6 +94,33 @@ const useChatInputWidgetState = () =>
                     roomSession.sendExpressionMessage(AvatarExpressionEnum.IDLE.ordinal);
 
                     return null;
+                case ':ping': {
+                    // Measure the real round-trip to the game server by timing an
+                    // existing request/response over the same socket (InfoRetrieve ->
+                    // UserObject), then show the result as an ephemeral whisper bubble
+                    // over the player. Nothing is sent as chat or persisted
+                    // server-side - the bubble is generated locally.
+                    const startTime = performance.now();
+                    const communication = GetCommunication();
+
+                    const pingEvent = new UserInfoEvent(() =>
+                    {
+                        const ping = Math.round(performance.now() - startTime);
+
+                        communication.removeMessageEvent(pingEvent);
+
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Pong! Your ping is ${ ping } ms`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                    });
+
+                    communication.registerMessageEvent(pingEvent);
+
+                    // Clean up the one-shot listener if the server never answers.
+                    setTimeout(() => communication.removeMessageEvent(pingEvent), 5000);
+
+                    SendMessageComposer(new InfoRetrieveMessageComposer());
+
+                    return null;
+                }
                 case '_b':
                     roomSession.sendExpressionMessage(AvatarExpressionEnum.RESPECT.ordinal);
 
