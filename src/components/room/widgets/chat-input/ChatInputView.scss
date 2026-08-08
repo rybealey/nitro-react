@@ -104,10 +104,17 @@
     font-size: 20px;
     line-height: 1;
     margin: 0 8px 0 4px;
-    animation: emoji-pop .18s ease;
 
     &:hover {
         filter: brightness(1.1);
+    }
+
+    // the inner span remounts per roll to replay the pop; the listener stays
+    // on the stable parent so a remount can't re-fire mouseenter (Safari
+    // cycled emoji forever while hovered)
+    .chat-emoji-button-face {
+        display: inline-block;
+        animation: emoji-pop .18s ease;
     }
 }
 

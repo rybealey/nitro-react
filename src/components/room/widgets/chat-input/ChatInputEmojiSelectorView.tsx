@@ -45,7 +45,9 @@ export const ChatInputEmojiSelectorView: FC<ChatInputEmojiSelectorViewProps> = p
 
     return (
         <>
-            <Base pointer key={ buttonEmoji } className="chat-emoji-button no-select" onMouseEnter={ rollEmoji } onClick={ toggleSelector }>{ buttonEmoji }</Base>
+            <Base pointer className="chat-emoji-button no-select" onMouseEnter={ rollEmoji } onClick={ toggleSelector }>
+                <span key={ buttonEmoji } className="chat-emoji-button-face">{ buttonEmoji }</span>
+            </Base>
             <Overlay show={ selectorVisible } target={ target } placement="top" rootClose onHide={ () => setSelectorVisible(false) }>
                 <Popover className="nitro-chat-emoji-selector-container">
                     <Column gap={ 0 } className="emoji-drawer" overflow="auto">
