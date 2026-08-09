@@ -109,9 +109,9 @@
         filter: brightness(1.1);
     }
 
-    // the inner span remounts per roll to replay the pop; the listener stays
-    // on the stable parent so a remount can't re-fire mouseenter (Safari
-    // cycled emoji forever while hovered)
+    // the pop replays via an animation restart (style.animation reset + reflow
+    // in rollEmoji) — never by remounting the span: replacing the hovered node
+    // re-fires React's synthetic mouseenter in Safari, cycling emoji forever
     .chat-emoji-button-face {
         display: inline-block;
         animation: emoji-pop .18s ease;

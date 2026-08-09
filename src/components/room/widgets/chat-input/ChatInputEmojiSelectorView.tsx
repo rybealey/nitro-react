@@ -1,4 +1,4 @@
-import { FC, MouseEvent, useEffect, useState } from 'react';
+import { FC, MouseEvent, useEffect, useRef, useState } from 'react';
 import { Overlay, Popover } from 'react-bootstrap';
 import { GetEmojiCategories, GetRandomEmoji } from '../../../../api';
 import { Base, Column, Text } from '../../../../common';
@@ -14,8 +14,25 @@ export const ChatInputEmojiSelectorView: FC<ChatInputEmojiSelectorViewProps> = p
     const [ buttonEmoji, setButtonEmoji ] = useState<string>(GetRandomEmoji);
     const [ target, setTarget ] = useState<(EventTarget & HTMLElement)>(null);
     const [ selectorVisible, setSelectorVisible ] = useState(false);
+    const faceRef = useRef<HTMLSpanElement>(null);
 
-    const rollEmoji = () => setButtonEmoji(GetRandomEmoji());
+    const rollEmoji = () =>
+    {
+        setButtonEmoji(GetRandomEmoji());
+
+        // Replay the pop by restarting the CSS animation in place. The span must
+        // NOT remount (no key): replacing the hovered node fires new mouseover
+        // boundary events, which Safari attributes as a fresh parent enter —
+        // React's synthetic onMouseEnter then re-rolls forever while hovered.
+        const face = faceRef.current;
+
+        if(face)
+        {
+            face.style.animation = 'none';
+            void face.offsetWidth;
+            face.style.animation = '';
+        }
+    }
 
     const toggleSelector = (event: MouseEvent<HTMLElement>) =>
     {
@@ -46,7 +63,7 @@ export const ChatInputEmojiSelectorView: FC<ChatInputEmojiSelectorViewProps> = p
     return (
         <>
             <Base pointer className="chat-emoji-button no-select" onMouseEnter={ rollEmoji } onClick={ toggleSelector }>
-                <span key={ buttonEmoji } className="chat-emoji-button-face">{ buttonEmoji }</span>
+                <span ref={ faceRef } className="chat-emoji-button-face">{ buttonEmoji }</span>
             </Base>
             <Overlay show={ selectorVisible } target={ target } placement="top" rootClose onHide={ () => setSelectorVisible(false) }>
                 <Popover className="nitro-chat-emoji-selector-container">
