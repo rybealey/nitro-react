@@ -90,3 +90,12 @@
         border-color: rgba(mix($danger, $white, 40%), .45);
     }
 }
+
+.nitro-notification-bubble.platform.information {
+    background-color: rgba(mix($info, $dark, 25%), .95);
+
+    .platform-badge {
+        color: rgba(mix($info, $white, 40%), .9);
+        border-color: rgba(mix($info, $white, 40%), .45);
+    }
+}

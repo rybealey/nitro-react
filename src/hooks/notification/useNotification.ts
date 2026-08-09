@@ -105,6 +105,11 @@ const useNotificationState = () =>
                 // single-user moderation alerts: same layout, red skin, no image
                 showSingleBubble(LocalizeText(message), NotificationBubbleType.MODERATION);
             }
+            else if(type === 'room.alert')
+            {
+                // room-wide moderation info: same layout, blue skin, no image
+                showSingleBubble(LocalizeText(message), NotificationBubbleType.INFORMATION);
+            }
             else
             {
                 showSingleBubble(LocalizeText(message), NotificationBubbleType.INFO, image, linkUrl);

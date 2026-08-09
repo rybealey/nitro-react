@@ -17,6 +17,8 @@ export const GetBubbleLayout = (item: NotificationBubbleItem, onClose: () => voi
             return <NotificationPlatformBubbleView { ...props } />
         case NotificationBubbleType.MODERATION:
             return <NotificationPlatformBubbleView { ...props } />
+        case NotificationBubbleType.INFORMATION:
+            return <NotificationPlatformBubbleView { ...props } />
         default:
             return <NotificationDefaultBubbleView { ...props } />
     }
