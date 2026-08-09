@@ -1,6 +1,7 @@
 import { NotificationBubbleItem, NotificationBubbleType } from '../../../../api';
 import { NotificationClubGiftBubbleView } from './NotificationClubGiftBubbleView';
 import { NotificationDefaultBubbleView } from './NotificationDefaultBubbleView';
+import { NotificationPlatformBubbleView } from './NotificationPlatformBubbleView';
 
 export const GetBubbleLayout = (item: NotificationBubbleItem, onClose: () => void) =>
 {
@@ -12,6 +13,8 @@ export const GetBubbleLayout = (item: NotificationBubbleItem, onClose: () => voi
     {
         case NotificationBubbleType.CLUBGIFT:
             return <NotificationClubGiftBubbleView { ...props } />
+        case NotificationBubbleType.PLATFORM:
+            return <NotificationPlatformBubbleView { ...props } />
         default:
             return <NotificationDefaultBubbleView { ...props } />
     }

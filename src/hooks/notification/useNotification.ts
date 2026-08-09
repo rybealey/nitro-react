@@ -94,7 +94,16 @@ const useNotificationState = () =>
 
         if(options.get('display') === 'BUBBLE')
         {
-            showSingleBubble(LocalizeText(message), NotificationBubbleType.INFO, image, linkUrl);
+            if(type === 'hotel.alert')
+            {
+                // platform announcements: dedicated layout, never an image (the
+                // generic path synthesizes …/hotel_alert.png which 404s)
+                showSingleBubble(LocalizeText(message), NotificationBubbleType.PLATFORM);
+            }
+            else
+            {
+                showSingleBubble(LocalizeText(message), NotificationBubbleType.INFO, image, linkUrl);
+            }
         }
         else
         {

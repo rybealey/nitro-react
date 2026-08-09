@@ -57,3 +57,27 @@
         height: 50px;
     }
 }
+
+.nitro-notification-bubble.platform {
+    .platform-badge {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: rgba($white, .75);
+        border: 1px solid rgba($white, .35);
+        border-radius: 3px;
+        padding: 1px 5px;
+    }
+
+    .platform-close {
+        color: rgba($white, .5);
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 2px;
+
+        &:hover {
+            color: $white;
+        }
+    }
+}
