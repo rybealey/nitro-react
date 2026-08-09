@@ -1,0 +1,308 @@
+// Update-deploying screen — surgically mirrors the Claude Design
+// "Game update deployment screen" project and its pixelrp design-system
+// tokens (docs/superpowers/specs/2026-08-09-update-deploying-screen-design.md).
+
+@keyframes deploy-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+.nitro-deployment {
+    // pixelrp design-system tokens
+    --ink: #1a0a14;
+    --pink-300: #ff7ba9;
+    --pink-400: #f8558c;
+    --magenta-500: #d62a86;
+    --magenta-600: #b81e74;
+    --plum-900: #4a0b3d;
+    --orange-200: #f8d8a8;
+    --orange-500: #e87332;
+    --mauve-300: #d8aab2;
+    --cream: #fff3e0;
+    --success: #3fbf5a;
+    --warning: #f5c542;
+    --danger: #e03131;
+    --info: #3f8fbf;
+    --surface-card: #ffffff;
+    --text-body: var(--ink);
+    --grad-cta: linear-gradient(180deg, var(--pink-400) 0%, var(--magenta-600) 100%);
+    --shadow-pixel: 4px 4px 0 var(--ink);
+    --shadow-pixel-sm: 2px 2px 0 var(--ink);
+    --shadow-pixel-brand: 4px 4px 0 var(--plum-900);
+    --bevel-raised: inset 0 2px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 0 rgba(0, 0, 0, 0.28);
+    --bevel-sunken: inset 0 2px 0 rgba(0, 0, 0, 0.28), inset 0 -2px 0 rgba(255, 255, 255, 0.35);
+    --font-display: 'Press Start 2P', monospace;
+    --font-pixel: 'Silkscreen', monospace;
+    --font-body: 'Barlow', system-ui, sans-serif;
+    --tracking-pixel: 0.5px;
+    --leading-body: 1.5;
+
+    position: fixed;
+    inset: 0;
+    z-index: $deployment-zindex;
+    overflow-y: auto;
+    box-sizing: border-box;
+    background: linear-gradient(rgba(26, 10, 20, 0.45), rgba(26, 10, 20, 0.78)),
+        var(--ink) url('@/assets/images/deployment/scene-terrace.webp') center / cover no-repeat;
+    image-rendering: pixelated;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 16px 44px;
+
+    .deploy-content {
+        width: 100%;
+        max-width: 430px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .deploy-logo {
+        width: min(230px, 62%);
+        align-self: center;
+        image-rendering: pixelated;
+    }
+
+    .deploy-status-card {
+        background: rgba(26, 10, 20, 0.9);
+        border: 2px solid var(--ink);
+        box-shadow: var(--shadow-pixel-brand);
+        padding: 16px 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .deploy-status-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        span:last-child {
+            font-family: var(--font-pixel);
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: var(--tracking-pixel);
+            text-transform: uppercase;
+            color: var(--cream);
+        }
+    }
+
+    .deploy-status-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--warning);
+        border: 2px solid var(--ink);
+        animation: deploy-blink 1.1s steps(1) infinite;
+    }
+
+    .deploy-progress {
+        font-family: var(--font-pixel);
+        color: var(--cream);
+    }
+
+    .deploy-progress-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .deploy-progress-track {
+        display: flex;
+        gap: 2px;
+        border: 2px solid var(--ink);
+        background: var(--plum-900);
+        box-shadow: var(--bevel-sunken);
+        padding: 3px;
+        height: 24px;
+        box-sizing: content-box;
+
+        span {
+            flex: 1;
+            background: transparent;
+
+            &.is-filled {
+                background: var(--grad-cta);
+                box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4);
+            }
+        }
+    }
+
+    .deploy-step-row {
+        font-family: var(--font-body);
+        font-size: 14px;
+        color: var(--orange-200);
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .deploy-step-eta {
+        font-family: var(--font-pixel);
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--mauve-300);
+        white-space: nowrap;
+    }
+
+    .deploy-done-row {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        padding-top: 2px;
+
+        span {
+            font-family: var(--font-body);
+            font-size: 14px;
+            color: var(--orange-200);
+        }
+    }
+
+    // The design system's primary/lg Button.
+    .deploy-reconnect {
+        all: unset;
+        box-sizing: border-box;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-pixel);
+        font-weight: 700;
+        font-size: 16px;
+        letter-spacing: var(--tracking-pixel);
+        text-transform: uppercase;
+        padding: 16px 30px;
+        border: 2px solid var(--ink);
+        background: var(--grad-cta);
+        color: #fff;
+        box-shadow: var(--shadow-pixel), var(--bevel-raised);
+        transition: transform 80ms steps(2, end), box-shadow 80ms steps(2, end);
+
+        &:hover {
+            filter: brightness(1.12);
+        }
+
+        &:active {
+            transform: translate(2px, 2px);
+            box-shadow: var(--bevel-raised);
+        }
+    }
+
+    .deploy-notes-card {
+        background: var(--surface-card);
+        border: 2px solid var(--ink);
+        box-shadow: var(--shadow-pixel);
+    }
+
+    .deploy-notes-header {
+        background: var(--grad-cta);
+        border-bottom: 2px solid var(--ink);
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .deploy-notes-title {
+        font-family: var(--font-display);
+        font-size: 13px;
+        color: #fff;
+        text-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .deploy-notes-version {
+        font-family: var(--font-pixel);
+        font-weight: 700;
+        font-size: 12px;
+        color: var(--cream);
+        text-transform: uppercase;
+    }
+
+    .deploy-notes-body {
+        max-height: min(42vh, 380px);
+        max-height: min(42dvh, 380px);
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        font-family: var(--font-body);
+        color: var(--text-body);
+    }
+
+    .deploy-notes-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .deploy-badge {
+        display: inline-block;
+        color: #fff;
+        font-family: var(--font-pixel);
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 3px 8px;
+        border: 2px solid var(--ink);
+        box-shadow: var(--shadow-pixel-sm);
+
+        &--success { background: var(--success); }
+        &--info { background: var(--info); }
+        &--danger { background: var(--danger); }
+
+        &--warning {
+            background: var(--warning);
+            color: var(--ink);
+        }
+    }
+
+    .deploy-notes-entry {
+        display: flex;
+        gap: 8px;
+    }
+
+    .deploy-notes-marker {
+        font-family: var(--font-pixel);
+        font-size: 10px;
+        color: var(--magenta-500);
+        margin-top: 4px;
+    }
+
+    .deploy-notes-text {
+        font-size: 14.5px;
+        line-height: var(--leading-body);
+
+        code {
+            font-size: 13px;
+            color: inherit;
+            background: rgba(26, 10, 20, 0.08);
+            padding: 0 3px;
+        }
+    }
+
+    .deploy-footer {
+        text-align: center;
+        font-family: var(--font-body);
+        font-size: 13px;
+        color: var(--mauve-300);
+    }
+
+    .deploy-bottom-strip {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 8px;
+        background: var(--orange-500);
+        border-top: 2px solid var(--ink);
+    }
+}

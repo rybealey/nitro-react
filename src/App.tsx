@@ -1,7 +1,8 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useState } from 'react';
-import { GetCommunication, GetConfiguration, GetNitroInstance, GetUIVersion } from './api';
+import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
+import { DeploymentView } from './components/deployment/DeploymentView';
 import { LoadingView } from './components/loading/LoadingView';
 import { MainView } from './components/main/MainView';
 import { useConfigurationEvent, useLocalizationEvent, useMainEvent, useRoomEngineEvent } from './hooks';
@@ -15,6 +16,7 @@ export const App: FC<{}> = props =>
     const [ message, setMessage ] = useState('Getting Ready');
     const [ percent, setPercent ] = useState(0);
     const [ imageRendering, setImageRendering ] = useState<boolean>(true);
+    const [ isDeploying, setIsDeploying ] = useState(false);
 
     if(!GetNitroInstance())
     {
@@ -23,6 +25,38 @@ export const App: FC<{}> = props =>
 
         Nitro.bootstrap();
     }
+
+    // When the hotel goes down for a tracked deployment, the deployment
+    // screen replaces the standard disconnect handling entirely.
+    const checkForDeployment = useCallback(async (fallback: () => void) =>
+    {
+        let status = await GetDeployStatus();
+
+        if(!status || ((status.status !== 'deploying') && (status.status !== 'done')))
+        {
+            // The status endpoint caches briefly server-side — a deploy that
+            // just dropped us can lag by a few seconds, so look twice.
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            status = await GetDeployStatus();
+        }
+
+        if(status && ((status.status === 'deploying') || (status.status === 'done')))
+        {
+            setIsDeploying(true);
+
+            return;
+        }
+
+        fallback();
+    }, []);
+
+    const exitDeployment = useCallback(() =>
+    {
+        setIsDeploying(false);
+
+        HabboWebTools.send(-1, 'client.init.handshake.fail');
+    }, []);
 
     const handler = useCallback(async (event: NitroEvent) =>
     {
@@ -50,8 +84,11 @@ export const App: FC<{}> = props =>
                 setPercent(prevValue => (prevValue + 20));
                 return;
             case NitroCommunicationDemoEvent.CONNECTION_HANDSHAKE_FAILED:
-                setIsError(true);
-                setMessage('Handshake Failed');
+                checkForDeployment(() =>
+                {
+                    setIsError(true);
+                    setMessage('Handshake Failed');
+                });
                 return;
             case NitroCommunicationDemoEvent.CONNECTION_AUTHENTICATED:
                 setPercent(prevValue => (prevValue + 20));
@@ -61,15 +98,21 @@ export const App: FC<{}> = props =>
                 if(LegacyExternalInterface.available) LegacyExternalInterface.call('legacyTrack', 'authentication', 'authok', []);
                 return;
             case NitroCommunicationDemoEvent.CONNECTION_ERROR:
-                setIsError(true);
-                setMessage('Connection Error');
+                checkForDeployment(() =>
+                {
+                    setIsError(true);
+                    setMessage('Connection Error');
+                });
                 return;
             case NitroCommunicationDemoEvent.CONNECTION_CLOSED:
                 //if(GetNitroInstance().roomEngine) GetNitroInstance().roomEngine.dispose();
                 //setIsError(true);
-                setMessage('Connection Error');
+                checkForDeployment(() =>
+                {
+                    setMessage('Connection Error');
 
-                HabboWebTools.send(-1, 'client.init.handshake.fail');
+                    HabboWebTools.send(-1, 'client.init.handshake.fail');
+                });
                 return;
             case RoomEngineEvent.ENGINE_INITIALIZED:
                 setPercent(prevValue => (prevValue + 20));
@@ -98,7 +141,7 @@ export const App: FC<{}> = props =>
                 return;
             }
         }
-    }, []);
+    }, [ checkForDeployment ]);
 
     useMainEvent(Nitro.WEBGL_UNAVAILABLE, handler);
     useMainEvent(Nitro.WEBGL_CONTEXT_LOST, handler);
@@ -115,7 +158,10 @@ export const App: FC<{}> = props =>
     useEffect(() =>
     {
         GetNitroInstance().core.configuration.init();
-    
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if((import.meta as any).env?.DEV && new URLSearchParams(window.location.search).has('deploy-preview')) setIsDeploying(true);
+
         const resize = (event: UIEvent) => setImageRendering(!(window.devicePixelRatio % 1));
 
         window.addEventListener('resize', resize);
@@ -135,6 +181,8 @@ export const App: FC<{}> = props =>
             <TransitionAnimation type={ TransitionAnimationTypes.FADE_IN } inProp={ (isReady) }>
                 <MainView />
             </TransitionAnimation>
+            { isDeploying &&
+                <DeploymentView onFallback={ exitDeployment } /> }
             <Base id="draggable-windows-container" />
         </Base>
     );
