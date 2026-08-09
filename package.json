@@ -3,6 +3,7 @@
   "version": "2.1.1",
   "homepage": ".",
   "private": true,
+  "packageManager": "yarn@4.13.0",
   "scripts": {
     "start": "vite",
     "build": "vite build",
