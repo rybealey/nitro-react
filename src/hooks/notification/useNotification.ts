@@ -100,6 +100,11 @@ const useNotificationState = () =>
                 // generic path synthesizes …/hotel_alert.png which 404s)
                 showSingleBubble(LocalizeText(message), NotificationBubbleType.PLATFORM);
             }
+            else if(type === 'mod.alert')
+            {
+                // single-user moderation alerts: same layout, red skin, no image
+                showSingleBubble(LocalizeText(message), NotificationBubbleType.MODERATION);
+            }
             else
             {
                 showSingleBubble(LocalizeText(message), NotificationBubbleType.INFO, image, linkUrl);

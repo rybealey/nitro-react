@@ -8,6 +8,7 @@ export class NotificationBubbleType
     public static BADGE_RECEIVED: string = 'badge_received';
     public static INFO: string = 'info';
     public static PLATFORM: string = 'platform';
+    public static MODERATION: string = 'moderation';
     public static RECYCLEROK: string = 'recyclerok';
     public static RESPECT: string = 'respect';
     public static CLUB: string = 'club';
