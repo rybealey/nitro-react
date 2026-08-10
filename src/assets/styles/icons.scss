@@ -25,8 +25,7 @@
 
     &.icon-catalog {
         background-image: url('@/assets/images/toolbar/icons/pixelrp-catalog.png');
-        background-size: contain;
-        width: 34px;
+        width: 23px;
         height: 30px;
     }
 
@@ -54,15 +53,13 @@
 
     &.icon-inventory {
         background-image: url('@/assets/images/toolbar/icons/pixelrp-inventory.png');
-        background-size: contain;
         width: 30px;
-        height: 30px;
+        height: 29px;
     }
 
     &.icon-modtools {
         background-image: url('@/assets/images/toolbar/icons/modtools.png');
-        background-size: contain;
-        width: 26px;
+        width: 31px;
         height: 30px;
     }
 
@@ -165,7 +162,6 @@
 
     &.icon-camera {
         background-image: url('@/assets/images/toolbar/icons/pixelrp-camera.png');
-        background-size: contain;
         width: 29px;
         height: 30px;
     }
