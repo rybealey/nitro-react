@@ -45,17 +45,25 @@ export const RoomToolsWidgetView: FC<{}> = props =>
         }
     }
 
-    if(!isMod) return null;
-
     return (
-        <Flex className="nitro-room-tools-container" gap={ 2 }>
-            <Column center className="nitro-room-tools p-2">
-                <Base pointer title={ LocalizeText('room.settings.button.text') } className="icon icon-cog" onClick={ () => handleToolClick('settings') } />
-                <Base pointer title={ LocalizeText('room.zoom.button.text') } onClick={ () => handleToolClick('zoom') } className={ classNames('icon', (!isZoomedIn && 'icon-zoom-less'), (isZoomedIn && 'icon-zoom-more')) } />
-                <Base pointer title={ LocalizeText('room.chathistory.button.text') } onClick={ () => handleToolClick('chat_history') } className="icon icon-chat-history" />
-                { navigatorData.canRate &&
-                    <Base pointer title={ LocalizeText('room.like.button.text') } onClick={ () => handleToolClick('like_room') } className="icon icon-like-room" /> }
-            </Column>
-        </Flex>
+        <>
+            { /* Zoom and chat logs stay reachable for every player, staff or not. */ }
+            <Flex gap={ 2 } className="nitro-room-quick-tools">
+                <Flex center className="nitro-room-quick-tool">
+                    <Base pointer title={ LocalizeText('room.zoom.button.text') } onClick={ () => handleToolClick('zoom') } className={ classNames('icon', (!isZoomedIn && 'icon-zoom-less'), (isZoomedIn && 'icon-zoom-more')) } />
+                </Flex>
+                <Flex center className="nitro-room-quick-tool">
+                    <Base pointer title={ LocalizeText('room.chathistory.button.text') } onClick={ () => handleToolClick('chat_history') } className="icon icon-chat-history" />
+                </Flex>
+            </Flex>
+            { isMod &&
+                <Flex className="nitro-room-tools-container" gap={ 2 }>
+                    <Column center className="nitro-room-tools p-2">
+                        <Base pointer title={ LocalizeText('room.settings.button.text') } className="icon icon-cog" onClick={ () => handleToolClick('settings') } />
+                        { navigatorData.canRate &&
+                            <Base pointer title={ LocalizeText('room.like.button.text') } onClick={ () => handleToolClick('like_room') } className="icon icon-like-room" /> }
+                    </Column>
+                </Flex> }
+        </>
     );
 }

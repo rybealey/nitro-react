@@ -1,3 +1,23 @@
+// Always-visible room tools (zoom, chat logs): below the room title row,
+// just left of the purse block (right: 10px + 200px purse + 10px gap).
+// Each icon sits in its own button pill.
+.nitro-room-quick-tools {
+    position: absolute;
+    top: 40px;
+    right: 220px;
+    z-index: 2;
+
+    .nitro-room-quick-tool {
+        // Fixed square pills — uniform size regardless of icon width.
+        width: 36px;
+        height: 36px;
+        background: rgba($dark, .95);
+        box-shadow: inset 0px 5px lighten(rgba($dark, .6), 2.5), inset 0 -4px darken(rgba($dark, .6), 4);
+        border-radius: $border-radius;
+        transition: all .2s ease;
+    }
+}
+
 .nitro-room-tools-container {
     position: absolute;
     bottom: $toolbar-height + 65px;
