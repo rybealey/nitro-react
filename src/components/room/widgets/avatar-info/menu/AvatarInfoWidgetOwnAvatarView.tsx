@@ -1,7 +1,7 @@
 import { AvatarAction, AvatarExpressionEnum, RoomControllerLevel, RoomObjectCategory, RoomUnitDropHandItemComposer } from '@nitrots/nitro-renderer';
 import { Dispatch, FC, SetStateAction, useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetCanStandUp, GetCanUseExpression, GetOwnPosture, GetUserProfile, HasHabboClub, HasHabboVip, IsRidingHorse, LocalizeText, PostureTypeEnum, SendMessageComposer } from '../../../../../api';
+import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetCanStandUp, GetCanUseExpression, GetOwnPosture, GetSessionDataManager, GetUserProfile, HasHabboClub, HasHabboVip, IsRidingHorse, LocalizeText, PostureTypeEnum, SendMessageComposer } from '../../../../../api';
 import { Flex, LayoutCurrencyIcon } from '../../../../../common';
 import { HelpNameChangeEvent } from '../../../../../events';
 import { useRoom } from '../../../../../hooks';
@@ -150,10 +150,11 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
                         <FaChevronRight className="right fa-icon" />
                         { LocalizeText('infostand.link.expressions') }
                     </ContextMenuListItemView>
-                    <ContextMenuListItemView onClick={ event => processAction('signs') }>
-                        <FaChevronRight className="right fa-icon" />
-                        { LocalizeText('infostand.show.signs') }
-                    </ContextMenuListItemView>
+                    { GetSessionDataManager().isModerator &&
+                        <ContextMenuListItemView onClick={ event => processAction('signs') }>
+                            <FaChevronRight className="right fa-icon" />
+                            { LocalizeText('infostand.show.signs') }
+                        </ContextMenuListItemView> }
                     { (avatarInfo.carryItem > 0) &&
                         <ContextMenuListItemView onClick={ event => processAction('drop_carry_item') }>
                             { LocalizeText('avatar.widget.drop_hand_item') }
