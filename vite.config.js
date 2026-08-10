@@ -8,6 +8,15 @@ export default defineConfig(({ command }) => ({
     // root — without this, built asset URLs 404 behind the nginx prefix. The
     // dev server keeps base '/' so `yarn start` still serves at the root.
     base: (command === 'build') ? '/nitro-assets/client/' : '/',
+    // Dev serves assets and the CMS API same-origin via the docker web
+    // container - public/renderer-config.json uses relative URLs, so asset
+    // requests never leave :5173 and CORS/stale-cache issues can't bite.
+    server: {
+        proxy: {
+            '/nitro-assets': 'http://localhost:8080',
+            '/api': 'http://localhost:8080'
+        }
+    },
     plugins: [ react() ],
     resolve: {
         alias: {
