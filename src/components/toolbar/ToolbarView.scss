@@ -57,12 +57,6 @@
             flex-shrink: 0;
         }
 
-        // uniform slots: equal-width boxes with the art centered, so icon
-        // centers are equidistant despite differing native art widths
-        > .navigation-item.icon {
-            width: 34px;
-        }
-
         &.expanded {
             max-width: 320px;
             opacity: 1;
