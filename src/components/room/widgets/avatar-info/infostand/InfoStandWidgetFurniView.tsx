@@ -1,9 +1,10 @@
 import { CrackableDataType, GroupInformationComposer, GroupInformationEvent, NowPlayingEvent, RoomControllerLevel, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable, RoomWidgetEnumItemExtradataParameter, RoomWidgetFurniInfoUsagePolicyEnum, SetObjectDataMessageComposer, SongInfoReceivedEvent, StringDataType } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Base, Button, Column, Flex, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
 import { useMessageEvent, useRoom, useSoundEvent } from '../../../../../hooks';
+import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 
 interface InfoStandWidgetFurniViewProps
 {
@@ -14,6 +15,12 @@ interface InfoStandWidgetFurniViewProps
 const PICKUP_MODE_NONE: number = 0;
 const PICKUP_MODE_EJECT: number = 1;
 const PICKUP_MODE_FULL: number = 2;
+
+const BRANDING_OFFSET_MODEL_KEYS: { [key: string]: string } = {
+    offsetX: RoomObjectVariable.FURNITURE_BRANDING_OFFSET_X,
+    offsetY: RoomObjectVariable.FURNITURE_BRANDING_OFFSET_Y,
+    offsetZ: RoomObjectVariable.FURNITURE_BRANDING_OFFSET_Z
+};
 
 export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props =>
 {
@@ -39,6 +46,9 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     const [ songId, setSongId ] = useState<number>(-1);
     const [ songName, setSongName ] = useState<string>('');
     const [ songCreator, setSongCreator ] = useState<string>('');
+    // Baseline for the branding offset preview: the last saved (or initial)
+    // model values, restored when the editor closes with unsaved tweaks.
+    const brandingOffsetBaseline = useRef<{ roomId: number, objectId: number, category: number, values: { [key: string]: number } }>(null);
 
     useSoundEvent<NowPlayingEvent>(NowPlayingEvent.NPE_SONG_CHANGED, event =>
     {
@@ -163,6 +173,15 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                         customValuess.push((furnitureData[customVariable]) || '');
                     }
                 }
+
+                if(furniKeyss.some(key => (key in BRANDING_OFFSET_MODEL_KEYS)))
+                {
+                    const values: { [key: string]: number } = {};
+
+                    for(const key in BRANDING_OFFSET_MODEL_KEYS) values[key] = (roomObject.model.getValue<number>(BRANDING_OFFSET_MODEL_KEYS[key]) || 0);
+
+                    brandingOffsetBaseline.current = { roomId: roomSession.roomId, objectId: avatarInfo.id, category: ((avatarInfo.isWallItem) ? RoomObjectCategory.WALL : RoomObjectCategory.FLOOR), values };
+                }
             }
         }
 
@@ -212,6 +231,27 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         setSongCreator(songInfo?.creator ?? '');
     }, [ songId ]);
 
+    // Restore the last saved offsets if the editor closes (or switches item)
+    // with unsaved preview tweaks — the local model must not keep lying about
+    // the room's real state.
+    useEffect(() =>
+    {
+        return () =>
+        {
+            const baseline = brandingOffsetBaseline.current;
+
+            brandingOffsetBaseline.current = null;
+
+            if(!baseline) return;
+
+            const roomObject = GetRoomEngine().getRoomObject(baseline.roomId, baseline.objectId, baseline.category);
+
+            if(!roomObject) return;
+
+            for(const key in baseline.values) roomObject.model.setValue(BRANDING_OFFSET_MODEL_KEYS[key], baseline.values[key]);
+        };
+    }, [ avatarInfo.id ]);
+
     const onFurniSettingChange = useCallback((index: number, value: string) =>
     {
         const clone = Array.from(furniValues);
@@ -219,7 +259,21 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         clone[index] = value;
 
         setFurniValues(clone);
-    }, [ furniValues ]);
+
+        const modelVariable = BRANDING_OFFSET_MODEL_KEYS[furniKeys[index]];
+
+        if(modelVariable)
+        {
+            const roomObject = GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, ((avatarInfo.isWallItem) ? RoomObjectCategory.WALL : RoomObjectCategory.FLOOR));
+
+            if(roomObject)
+            {
+                const parsed = parseInt(value);
+
+                roomObject.model.setValue(modelVariable, (isNaN(parsed) ? 0 : parsed));
+            }
+        }
+    }, [ furniValues, furniKeys, roomSession, avatarInfo ]);
 
     const onCustomVariableChange = useCallback((index: number, value: string) =>
     {
@@ -296,6 +350,18 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                 }
 
                 GetRoomEngine().modifyRoomObjectDataWithMap(avatarInfo.id, avatarInfo.category, RoomObjectOperationType.OBJECT_SAVE_STUFF_DATA, mapData);
+
+                // The saved values are the new baseline — closing after a save
+                // must not roll the preview back to the pre-edit state.
+                if(brandingOffsetBaseline.current)
+                {
+                    for(const key in BRANDING_OFFSET_MODEL_KEYS)
+                    {
+                        const parsed = parseInt(mapData.get(key));
+
+                        brandingOffsetBaseline.current.values[key] = (isNaN(parsed) ? 0 : parsed);
+                    }
+                }
                 break;
             }
             case 'save_custom_variables': {
@@ -416,6 +482,11 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                                         <Column gap={ 1 }>
                                             { furniKeys.map((key, index) =>
                                             {
+                                                if(key in BRANDING_OFFSET_MODEL_KEYS)
+                                                {
+                                                    return <FurniSettingScrubberInput key={ index } label={ key } value={ furniValues[index] } onChange={ value => onFurniSettingChange(index, value) } />;
+                                                }
+
                                                 return (
                                                     <Flex key={ index } alignItems="center" gap={ 1 }>
                                                         <Text small wrap align="end" variant="white" className="col-4">{ key }</Text>
