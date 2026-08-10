@@ -25,6 +25,7 @@ const BRANDING_OFFSET_MODEL_KEYS: { [key: string]: string } = {
 // Display names only — the map keys stay on the wire (SetObjectData).
 const BRANDING_SETTING_LABELS: { [key: string]: string } = {
     imageUrl: 'Image',
+    clickUrl: 'Website',
     offsetX: 'X',
     offsetY: 'Y',
     offsetZ: 'Z'
