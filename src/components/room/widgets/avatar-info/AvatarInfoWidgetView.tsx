@@ -106,9 +106,12 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
             case AvatarInfoFurni.FURNI: {
                 const furniInfo = (avatarInfo as AvatarInfoFurni);
 
-                // Rights-gated: no infostand without rights in this room. No staff
-                // bypass — the server drives controllerLevel via the :rights toggle.
-                if(!(furniInfo.isOwner || furniInfo.isRoomOwner || (furniInfo.roomControllerLevel >= RoomControllerLevel.GUEST))) return null;
+                // Rights-gated: no infostand without rights in this room. No staff bypass —
+                // the server drives controllerLevel via the :rights toggle. isRoomOwner is
+                // deliberately NOT consulted: the client never receives an "owner cleared"
+                // packet, so it goes stale after :rights off; real owners always hold
+                // controller level 4+ anyway.
+                if(!(furniInfo.isOwner || (furniInfo.roomControllerLevel >= RoomControllerLevel.GUEST))) return null;
 
                 return <InfoStandWidgetFurniView avatarInfo={ furniInfo } onClose={ () => setAvatarInfo(null) } />;
             }
