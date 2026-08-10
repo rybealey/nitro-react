@@ -32,4 +32,4 @@ public/ui-config*
 
 # Local Yarn Berry artifacts (repo builds use the committed yarn.lock)
 .yarn/
-.yarnrc.yml
+# .yarnrc.yml is tracked: it pins nodeLinker so CI installs match local builds
