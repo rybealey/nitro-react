@@ -14,13 +14,19 @@
     align-self: flex-end;
     width: max-content;
     max-width: none;
+    // anchor for the absolutely-positioned quick tools below
+    position: relative;
 }
 
-// Zoom + chat-history quick tools: flex sibling of the title and purse,
-// bottom edge flush with the purse regardless of its height. Same square
-// pill treatment as the purse block so the cluster reads as one family.
+// Zoom + chat-history quick tools: overlaid on the purse-title row (NOT in
+// its flex flow, which would push the title/online-count leftward), anchored
+// to the purse's left edge and bottom-flush with it. Same square pill
+// treatment as the purse block so the cluster reads as one family.
 .nitro-room-quick-tools {
-    align-self: flex-end;
+    position: absolute;
+    // 200px purse width + the row's gap-1 (.25rem)
+    right: calc(200px + .25rem);
+    bottom: 0;
     pointer-events: all;
 
     .nitro-room-quick-tool {
