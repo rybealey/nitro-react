@@ -15,3 +15,21 @@
     width: max-content;
     max-width: none;
 }
+
+// Zoom + chat-history quick tools: flex sibling of the title and purse,
+// bottom edge flush with the purse regardless of its height. Same square
+// pill treatment as the purse block so the cluster reads as one family.
+.nitro-room-quick-tools {
+    align-self: flex-end;
+    pointer-events: all;
+
+    .nitro-room-quick-tool {
+        // Fixed square pills — uniform size regardless of icon width.
+        width: 36px;
+        height: 36px;
+        background: rgba($dark, .95);
+        box-shadow: inset 0px 5px lighten(rgba($dark, .6), 2.5), inset 0 -4px darken(rgba($dark, .6), 4);
+        border-radius: $border-radius;
+        transition: all .2s ease;
+    }
+}

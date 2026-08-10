@@ -8,6 +8,7 @@ import { PurseView } from '../purse/PurseView';
 import { RoomTitleView } from '../room-title/RoomTitleView';
 import { MysteryBoxExtensionView } from '../room/widgets/mysterybox/MysteryBoxExtensionView';
 import { RoomPromotesWidgetView } from '../room/widgets/room-promotes/RoomPromotesWidgetView';
+import { RoomQuickToolsView } from '../room/widgets/room-tools/RoomQuickToolsView';
 
 export const RightSideView: FC<{}> = props =>
 {
@@ -17,6 +18,7 @@ export const RightSideView: FC<{}> = props =>
                 <Flex gap={ 1 } alignItems="start" className="purse-title-row">
                     <OnlineCountView />
                     <RoomTitleView />
+                    <RoomQuickToolsView />
                     <PurseView />
                 </Flex>
                 <GroupRoomInformationView />
