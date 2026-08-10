@@ -1,6 +1,6 @@
 import { RateFlatMessageComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
-import { CreateLinkEvent, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../api';
+import { CreateLinkEvent, GetRoomEngine, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../../api';
 import { Base, classNames, Column, Flex } from '../../../../common';
 import { useNavigator, useRoom } from '../../../../hooks';
 
@@ -9,6 +9,9 @@ export const RoomToolsWidgetView: FC<{}> = props =>
     const [ isZoomedIn, setIsZoomedIn ] = useState<boolean>(false);
     const { navigatorData = null } = useNavigator();
     const { roomSession = null } = useRoom();
+    // Staff-only, like the toolbar's navigator/catalog/inventory/camera
+    // entries — regular players get no room tools in the RP hotel.
+    const isMod = GetSessionDataManager().isModerator;
 
     const handleToolClick = (action: string, value?: string) =>
     {
@@ -41,6 +44,8 @@ export const RoomToolsWidgetView: FC<{}> = props =>
                 return;
         }
     }
+
+    if(!isMod) return null;
 
     return (
         <Flex className="nitro-room-tools-container" gap={ 2 }>
