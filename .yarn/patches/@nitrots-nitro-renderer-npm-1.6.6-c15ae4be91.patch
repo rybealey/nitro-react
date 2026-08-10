@@ -1,0 +1,22 @@
+diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef383152ec 100644
+--- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
++++ b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+@@ -345,7 +345,16 @@ export class RoomVisualization extends RoomObjectSpriteVisualization implements
+         const wallVisibility = (model.getValue<number>(RoomObjectVariable.ROOM_WALL_VISIBILITY) === 1);
+         const landscapeVisibility = (model.getValue<number>(RoomObjectVariable.ROOM_LANDSCAPE_VISIBILITY) === 1);
+ 
+-        return (this.updatePlaneTypes(floorType, wallType, landscapeType) || this.updatePlaneVisibility(floorVisibility, wallVisibility, landscapeVisibility));
++        // No short-circuit: on the first update after room load the plane
++        // types always change (null -> real wallpaper), and with || that
++        // skipped updatePlaneVisibility for the same model-counter window —
++        // swallowing a hide-walls packet that arrived during load. The
++        // counter gate above then blocked any re-read, so walls stayed
++        // visible until the setting was re-toggled live.
++        const updatedPlaneTypes = this.updatePlaneTypes(floorType, wallType, landscapeType);
++        const updatedPlaneVisibility = this.updatePlaneVisibility(floorVisibility, wallVisibility, landscapeVisibility);
++
++        return (updatedPlaneTypes || updatedPlaneVisibility);
+     }
+ 
+     private clearPlanes(): void

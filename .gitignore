@@ -31,5 +31,8 @@ public/renderer-config*
 public/ui-config*
 
 # Local Yarn Berry artifacts (repo builds use the committed yarn.lock)
-.yarn/
+# (.yarn/* not .yarn/ — git cannot re-include files under an ignored directory)
+.yarn/*
+# Package patches must be tracked or installs can't resolve patch: protocol deps
+!.yarn/patches/
 # .yarnrc.yml is tracked: it pins nodeLinker so CI installs match local builds
