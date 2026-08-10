@@ -1,6 +1,10 @@
-import { FC } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { NotificationBubbleItem, NotificationBubbleType } from '../../../../api';
 import { Base, Flex, LayoutNotificationBubbleView, LayoutNotificationBubbleViewProps, Text } from '../../../../common';
+
+// Server-sent countdown token, e.g. "restarting in… %countdown:15% seconds."
+// — the number ticks down locally once per second.
+const COUNTDOWN_TOKEN = /%countdown:(\d+)%/;
 
 interface ToastVariant
 {
@@ -23,9 +27,31 @@ export interface NotificationPlatformBubbleViewProps extends LayoutNotificationB
 export const NotificationPlatformBubbleView: FC<NotificationPlatformBubbleViewProps> = props =>
 {
     const { item = null, onClose = null, ...rest } = props;
+    const countdownMatch = item.message.match(COUNTDOWN_TOKEN);
+    const [ countdown, setCountdown ] = useState<number>(countdownMatch ? parseInt(countdownMatch[1]) : null);
+
+    useEffect(() =>
+    {
+        if(countdown === null) return;
+
+        const interval = setInterval(() => setCountdown(prev => ((prev > 0) ? (prev - 1) : 0)), 1000);
+
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const variant = (TOAST_VARIANTS[item.notificationType] || TOAST_VARIANTS[NotificationBubbleType.PLATFORM]);
-    const htmlText = item.message.replace(/\r\n|\r|\n/g, '<br />');
+
+    let messageText = item.message;
+
+    if(countdownMatch)
+    {
+        messageText = messageText.replace(COUNTDOWN_TOKEN, String(countdown));
+
+        if(countdown === 1) messageText = messageText.replace(/\bseconds\b/, 'second');
+    }
+
+    const htmlText = messageText.replace(/\r\n|\r|\n/g, '<br />');
 
     return (
         <LayoutNotificationBubbleView onClose={ onClose } fadesOut={ !variant.persistent } timeoutMs={ 45000 } column gap={ 1 } classNames={ variant.classNames } onClick={ null } { ...rest }>
