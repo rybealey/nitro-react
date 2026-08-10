@@ -89,7 +89,7 @@ export const FurniSettingScrubberInput: FC<FurniSettingScrubberInputProps> = pro
 
     return (
         <Flex alignItems="center" gap={ 1 }>
-            <Text small wrap align="end" variant="white" className="col-4" style={ { cursor: 'ew-resize', userSelect: 'none' } } onMouseDown={ startScrub }>{ label }</Text>
+            <Text small wrap variant="white" className="col-4" style={ { cursor: 'ew-resize', userSelect: 'none' } } onMouseDown={ startScrub }>{ label }</Text>
             <button type="button" className="btn btn-sm btn-dark px-1 py-0" onMouseDown={ event => startHold(-1, event.shiftKey) } onMouseUp={ stopHold } onMouseLeave={ stopHold }>-</button>
             <input type="text" className="form-control form-control-sm" value={ value } onChange={ event => onChange(event.target.value) } />
             <button type="button" className="btn btn-sm btn-dark px-1 py-0" onMouseDown={ event => startHold(1, event.shiftKey) } onMouseUp={ stopHold } onMouseLeave={ stopHold }>+</button>

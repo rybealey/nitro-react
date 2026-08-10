@@ -22,6 +22,14 @@ const BRANDING_OFFSET_MODEL_KEYS: { [key: string]: string } = {
     offsetZ: RoomObjectVariable.FURNITURE_BRANDING_OFFSET_Z
 };
 
+// Display names only — the map keys stay on the wire (SetObjectData).
+const BRANDING_SETTING_LABELS: { [key: string]: string } = {
+    imageUrl: 'Image',
+    offsetX: 'X',
+    offsetY: 'Y',
+    offsetZ: 'Z'
+};
+
 export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props =>
 {
     const { avatarInfo = null, onClose = null } = props;
@@ -484,12 +492,12 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                                             {
                                                 if(key in BRANDING_OFFSET_MODEL_KEYS)
                                                 {
-                                                    return <FurniSettingScrubberInput key={ index } label={ key } value={ furniValues[index] } onChange={ value => onFurniSettingChange(index, value) } />;
+                                                    return <FurniSettingScrubberInput key={ index } label={ BRANDING_SETTING_LABELS[key] || key } value={ furniValues[index] } onChange={ value => onFurniSettingChange(index, value) } />;
                                                 }
 
                                                 return (
                                                     <Flex key={ index } alignItems="center" gap={ 1 }>
-                                                        <Text small wrap align="end" variant="white" className="col-4">{ key }</Text>
+                                                        <Text small wrap variant="white" className="col-4">{ BRANDING_SETTING_LABELS[key] || key }</Text>
                                                         <input type="text" className="form-control form-control-sm" value={ furniValues[index] } onChange={ event => onFurniSettingChange(index, event.target.value) }/>
                                                     </Flex>);
                                             }) }
