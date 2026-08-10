@@ -84,6 +84,29 @@ const renderEntry = (text: string): ReactNode[] =>
     });
 }
 
+// The client runs in an iframe whose URL carries a single-use SSO ticket —
+// the emulator consumes it at login, so reloading the iframe replays a dead
+// ticket, fails the handshake, and lands right back on this screen. Reload
+// the outer CMS page instead: it mints a fresh ticket on every render.
+const reconnect = () =>
+{
+    try
+    {
+        if(window.top && (window.top !== window.self))
+        {
+            window.top.location.reload();
+
+            return;
+        }
+    }
+    catch
+    {
+        // Cross-origin parent we cannot reach — a plain reload is all we have.
+    }
+
+    window.location.reload();
+}
+
 interface DeploymentViewProps
 {
     onFallback: () => void;
@@ -177,7 +200,7 @@ export const DeploymentView: FC<DeploymentViewProps> = props =>
                     { isDone &&
                         <div className="deploy-done-row">
                             <span>All districts back online. See you in the city!</span>
-                            <button className="deploy-reconnect" onClick={ () => window.location.reload() }>▶ Reconnect</button>
+                            <button className="deploy-reconnect" onClick={ reconnect }>▶ Reconnect</button>
                         </div> }
                 </div>
                 { changelog &&
