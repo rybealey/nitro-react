@@ -1,4 +1,4 @@
-import { RoomControllerLevel, RoomEngineEvent, RoomEnterEffect, RoomSessionDanceEvent } from '@nitrots/nitro-renderer';
+import { RoomEngineEvent, RoomEnterEffect, RoomSessionDanceEvent } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { AvatarInfoFurni, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, GetConfiguration, GetSessionDataManager, RoomWidgetUpdateRentableBotChatEvent } from '../../../../api';
 import { Column } from '../../../../common';
@@ -103,18 +103,8 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
 
         switch(avatarInfo.type)
         {
-            case AvatarInfoFurni.FURNI: {
-                const furniInfo = (avatarInfo as AvatarInfoFurni);
-
-                // Rights-gated: no infostand without rights in this room. No staff bypass —
-                // the server drives controllerLevel via the :rights toggle. isRoomOwner is
-                // deliberately NOT consulted: the client never receives an "owner cleared"
-                // packet, so it goes stale after :rights off; real owners always hold
-                // controller level 4+ anyway.
-                if(!(furniInfo.isOwner || (furniInfo.roomControllerLevel >= RoomControllerLevel.GUEST))) return null;
-
-                return <InfoStandWidgetFurniView avatarInfo={ furniInfo } onClose={ () => setAvatarInfo(null) } />;
-            }
+            case AvatarInfoFurni.FURNI:
+                return <InfoStandWidgetFurniView avatarInfo={ (avatarInfo as AvatarInfoFurni) } onClose={ () => setAvatarInfo(null) } />;
             case AvatarInfoUser.OWN_USER:
             case AvatarInfoUser.PEER:
                 return <InfoStandWidgetUserView avatarInfo={ (avatarInfo as AvatarInfoUser) } setAvatarInfo={ setAvatarInfo } onClose={ () => setAvatarInfo(null) } />;
@@ -127,16 +117,14 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
         }
     }
 
-    const infostandView = getInfostandView();
-
     return (
         <>
             { isDecorating &&
                 <AvatarInfoWidgetDecorateView userId={ GetSessionDataManager().userId } userName={ GetSessionDataManager().userName } roomIndex={ roomSession.ownRoomIndex } setIsDecorating={ setIsDecorating } /> }
             { getMenuView() }
-            { infostandView &&
+            { avatarInfo &&
                 <Column alignItems="end" className="nitro-infostand-container">
-                    { infostandView }
+                    { getInfostandView() }
                 </Column> }
             { (nameBubbles.length > 0) && nameBubbles.map((name, index) => <AvatarInfoWidgetNameView key={ index } nameInfo={ name } onClose={ () => removeNameBubble(index) } />) }
             { (productBubbles.length > 0) && productBubbles.map((item, index) =>
