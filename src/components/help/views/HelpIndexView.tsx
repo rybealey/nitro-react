@@ -11,12 +11,26 @@ export const HelpIndexView: FC<{}> = props =>
 
     const onReportClick = () =>
     {
-        setActiveReport(prevValue =>
-        {
-            const currentStep = ReportState.SELECT_USER;
-            const reportType = ReportType.BULLY;
-
-            return { ...prevValue, currentStep, reportType };
+        // Build the whole report, not a partial one. Spreading the (null) previous
+        // value left roomId undefined, and EvaWireFormat encodes undefined as a
+        // 2-byte short instead of a 4-byte int — every field after it in
+        // CallForHelpMessageComposer shifted, so the server read a garbage chat
+        // count and threw before the ticket was ever created.
+        setActiveReport({
+            reportType: ReportType.BULLY,
+            reportedUserId: -1,
+            reportedChats: [],
+            cfhCategory: -1,
+            cfhTopic: -1,
+            roomId: -1,
+            roomName: '',
+            messageId: -1,
+            threadId: -1,
+            groupId: -1,
+            extraData: '',
+            roomObjectId: -1,
+            message: '',
+            currentStep: ReportState.SELECT_USER
         });
     }
 
