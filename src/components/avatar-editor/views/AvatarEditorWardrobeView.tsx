@@ -60,9 +60,9 @@ export const AvatarEditorWardrobeView: FC<AvatarEditorWardrobeViewProps> = props
                     <Base className="avatar-shadow" />
                     { !hcDisabled && (clubLevel > 0) && <LayoutCurrencyIcon className="position-absolute top-1 start-1" type="hc" /> }
                     <Flex gap={ 1 } className="button-container">
-                        <Button variant="link" fullWidth onClick={ event => saveFigureAtWardrobeIndex(index) }>{ LocalizeText('avatareditor.wardrobe.save') }</Button>
+                        <Button variant="link" onClick={ event => saveFigureAtWardrobeIndex(index) }>{ LocalizeText('avatareditor.wardrobe.save') }</Button>
                         { figureContainer &&
-                        <Button variant="link" fullWidth onClick={ event => wearFigureAtIndex(index) } disabled={ (clubLevel > GetClubMemberLevel()) }>{ LocalizeText('avatareditor.wardrobe.wear') }</Button> }
+                        <Button variant="link" onClick={ event => wearFigureAtIndex(index) } disabled={ (clubLevel > GetClubMemberLevel()) }>{ LocalizeText('avatareditor.wardrobe.wear') }</Button> }
                     </Flex>
                 </LayoutGridItem>
             );
