@@ -53,6 +53,90 @@
     }
 }
 
+// Center-left edge drawer — same panel treatment as .nitro-room-tools, anchored
+// to the vertical middle of the left edge. Collapsed by default (chevron tab);
+// expanding slides the button stack out.
+.nitro-side-drawer-container {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    z-index: 2;
+
+    .nitro-side-drawer {
+        background: rgba($dark, .95);
+        box-shadow: inset 0px 5px lighten(rgba($dark, .6), 2.5), inset 0 -4px darken(rgba($dark, .6), 4);
+        border-top-right-radius: $border-radius;
+        border-bottom-right-radius: $border-radius;
+        transition: all .2s ease;
+        // Collapsed default: a slim pull-tab. Padding widens when expanded.
+        padding: 7px 3px;
+    }
+
+    // Collapsed, the buttons must not contribute WIDTH (or the tab is as wide as
+    // a button) — width and height both collapse to zero; overflow clips them.
+    .side-drawer-items {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+        width: 0;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height .2s ease, opacity .15s ease, margin-bottom .2s ease;
+    }
+
+    &.is-expanded {
+        .nitro-side-drawer { padding: 8px; }
+
+        .side-drawer-items {
+            width: auto;
+            max-height: 280px;
+            opacity: 1;
+            margin-bottom: 6px;
+        }
+    }
+
+    // Icons normalised to a uniform box; hover matches the toolbar buttons.
+    .side-drawer-item {
+        width: 36px;
+        height: 36px;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        image-rendering: pixelated;
+        transition: transform .1s ease, filter .1s ease;
+
+        &:hover {
+            -webkit-transform: translate(-1px, -1px);
+            transform: translate(-1px, -1px);
+            filter: drop-shadow(2px 2px 0 rgba($black, 0.8));
+        }
+
+        &.backpack { background-image: url('@/assets/images/drawer/backpack.png'); }
+        &.gang { background-image: url('@/assets/images/drawer/gang.png'); }
+        &.wanted { background-image: url('@/assets/images/drawer/wanted.png'); }
+        &.tickets { background-image: url('@/assets/images/drawer/tickets.png'); }
+    }
+
+    .side-drawer-toggle {
+        color: rgba($white, .55);
+        font-family: sans-serif;
+        font-style: normal;
+        font-weight: 700;
+        font-size: 13px;
+        line-height: 1;
+        text-align: center;
+        user-select: none;
+        transition: color .1s ease;
+
+        &:hover {
+            color: $white;
+        }
+    }
+}
+
 .wordquiz-question {
     position: absolute;
     top: 10px;

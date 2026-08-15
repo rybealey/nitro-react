@@ -14,6 +14,7 @@ import { PetPackageWidgetView } from './pet-package/PetPackageWidgetView';
 import { RoomFilterWordsWidgetView } from './room-filter-words/RoomFilterWordsWidgetView';
 import { RoomThumbnailWidgetView } from './room-thumbnail/RoomThumbnailWidgetView';
 import { RoomToolsWidgetView } from './room-tools/RoomToolsWidgetView';
+import { SideDrawerWidgetView } from './side-drawer/SideDrawerWidgetView';
 import { WordQuizWidgetView } from './word-quiz/WordQuizWidgetView';
 
 export const RoomWidgetsView: FC<{}> = props =>
@@ -160,6 +161,7 @@ export const RoomWidgetsView: FC<{}> = props =>
             <DoorbellWidgetView />
             <FurnitureWidgetsView />
             <RoomToolsWidgetView />
+            <SideDrawerWidgetView />
             <RoomFilterWordsWidgetView />
             <RoomThumbnailWidgetView />
             <FurniChooserWidgetView />
