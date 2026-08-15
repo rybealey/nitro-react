@@ -253,7 +253,17 @@
     .button-container {
         position: absolute;
         bottom: 0;
+        left: 0;
+        right: 0;
+        justify-content: center;
         z-index: 5;
+
+        // Keep Save/Wear content-width and centred so they sit close together
+        // instead of each filling half the cell (which pushed the labels apart).
+        .btn {
+            width: auto;
+            flex: 0 0 auto;
+        }
     }
 }
 
