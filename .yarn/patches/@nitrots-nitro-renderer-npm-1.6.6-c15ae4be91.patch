@@ -39,7 +39,7 @@ index a632ab79209fddad4e2673d8a1bedcb18d2903bd..9ba1f450c97b109f657e7a365d9f2649
      {
          const frameNumber = (k % this._frames.length);
 diff --git a/src/nitro/avatar/cache/AvatarImageCache.ts b/src/nitro/avatar/cache/AvatarImageCache.ts
-index beb4a06196a800d842a1e3bbe48226d2ec3eea98..49b3cec88cb6866e7a9b141cd440e4df87044914 100644
+index beb4a06196a800d842a1e3bbe48226d2ec3eea98..582243d4581bfa5b3615ab44b36d70ce3e5c0100 100644
 --- a/src/nitro/avatar/cache/AvatarImageCache.ts
 +++ b/src/nitro/avatar/cache/AvatarImageCache.ts
 @@ -16,6 +16,9 @@ import { ImageData } from './ImageData';
@@ -77,7 +77,7 @@ index beb4a06196a800d842a1e3bbe48226d2ec3eea98..49b3cec88cb6866e7a9b141cd440e4df
 +                    if(partContainer.frameCount > 1) continue;
 +                    if(AvatarImageCache.ANIMATED_SET_DENYLIST.indexOf(partContainer.partId) > -1) continue;
 +
-+                    const frameCount = this.getFigurePartFrameCount(assetPartDefinition, partContainer.partType, partContainer.partId, _local_5);
++                    const frameCount = this.getFigurePartFrameCount(assetPartDefinition, partContainer.partType, partContainer.flippedPartType, partContainer.partId, _local_5);
 +
 +                    if(frameCount > 1)
 +                    {
@@ -102,31 +102,49 @@ index beb4a06196a800d842a1e3bbe48226d2ec3eea98..49b3cec88cb6866e7a9b141cd440e4df
      public getBodyPartCache(k: string): AvatarImageBodyPartCache
      {
          let existing = this._cache.get(k);
-@@ -314,6 +344,29 @@ export class AvatarImageCache
+@@ -314,6 +344,47 @@ export class AvatarImageCache
          return existing;
      }
  
-+    private getFigurePartFrameCount(assetPartDefinition: string, partType: string, partId: string, direction: number): number
++    private getFigurePartFrameCount(assetPartDefinition: string, partType: string, flippedPartType: string, partId: string, direction: number): number
 +    {
-+        // Mirror renderBodyPart's flipped-direction remap so we probe the same asset names.
-+        let assetDirection = direction;
++        // renderBodyPart may resolve a mirrored direction (4/5/6) using the flipped
++        // part type at the remapped direction. Probe every candidate and take the max
++        // so L/R-paired animated parts (coat sleeves, legs) are detected in all directions.
++        const candidates: [string, number][] = [[partType, direction]];
 +
-+        if(direction === 4) assetDirection = 2;
-+        else if(direction === 5) assetDirection = 1;
-+        else if(direction === 6) assetDirection = 0;
++        let flippedDirection = direction;
 +
-+        let count = 0;
++        if(direction === 4) flippedDirection = 2;
++        else if(direction === 5) flippedDirection = 1;
++        else if(direction === 6) flippedDirection = 0;
 +
-+        while(count < AvatarImageCache.MAX_FIGURE_FRAMES)
++        if(flippedDirection !== direction)
 +        {
-+            const assetName = (this._scale + '_' + assetPartDefinition + '_' + partType + '_' + partId + '_' + assetDirection + '_' + count);
++            candidates.push([partType, flippedDirection]);
 +
-+            if(!this._assets.getAsset(assetName)) break;
-+
-+            count++;
++            if(flippedPartType && (flippedPartType !== partType)) candidates.push([flippedPartType, flippedDirection]);
 +        }
 +
-+        return count;
++        let best = 0;
++
++        for(const candidate of candidates)
++        {
++            let count = 0;
++
++            while(count < AvatarImageCache.MAX_FIGURE_FRAMES)
++            {
++                const assetName = (this._scale + '_' + assetPartDefinition + '_' + candidate[0] + '_' + partId + '_' + candidate[1] + '_' + count);
++
++                if(!this._assets.getAsset(assetName)) break;
++
++                count++;
++            }
++
++            if(count > best) best = count;
++        }
++
++        return best;
 +    }
 +
      private renderBodyPart(direction: number, containers: AvatarImagePartContainer[], frameCount: number, _arg_4: IActiveActionData, renderServerData: boolean = false): AvatarImageBodyPartContainer
