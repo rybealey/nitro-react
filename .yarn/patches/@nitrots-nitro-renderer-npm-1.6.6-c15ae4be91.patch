@@ -1,3 +1,137 @@
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 30f15f49a4ac8e0520fb46dcc6d53c4434d928ab..d12b3b0e4be8fc851aa03305fd355ffef9718636 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -807,7 +807,7 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+ 
+     public isAnimating(): boolean
+     {
+-        return (this._isAnimating) || (this._animationFrameCount > 1);
++        return (this._isAnimating) || (this._animationFrameCount > 1) || (this._cache && this._cache.isAnimatedFigure());
+     }
+ 
+     private resetActions(): boolean
+diff --git a/src/nitro/avatar/AvatarImagePartContainer.ts b/src/nitro/avatar/AvatarImagePartContainer.ts
+index a632ab79209fddad4e2673d8a1bedcb18d2903bd..9ba1f450c97b109f657e7a365d9f26494d35d77a 100644
+--- a/src/nitro/avatar/AvatarImagePartContainer.ts
++++ b/src/nitro/avatar/AvatarImagePartContainer.ts
+@@ -47,6 +47,22 @@ export class AvatarImagePartContainer
+         return frameNumber;
+     }
+ 
++    public get frameCount(): number
++    {
++        return (this._frames ? this._frames.length : 0);
++    }
++
++    public setAnimationFrames(count: number): void
++    {
++        if(count <= 1) return;
++
++        const frames: any[] = [];
++
++        for(let i = 0; i < count; i++) frames.push(i);
++
++        this._frames = frames;
++    }
++
+     public getFrameDefinition(k: number): AvatarAnimationFrame
+     {
+         const frameNumber = (k % this._frames.length);
+diff --git a/src/nitro/avatar/cache/AvatarImageCache.ts b/src/nitro/avatar/cache/AvatarImageCache.ts
+index beb4a06196a800d842a1e3bbe48226d2ec3eea98..49b3cec88cb6866e7a9b141cd440e4df87044914 100644
+--- a/src/nitro/avatar/cache/AvatarImageCache.ts
++++ b/src/nitro/avatar/cache/AvatarImageCache.ts
+@@ -16,6 +16,9 @@ import { ImageData } from './ImageData';
+ export class AvatarImageCache
+ {
+     private static DEFAULT_MAX_CACHE_STORAGE_TIME_MS: number = 60000;
++    private static IDLE_ANIMATED_ACTIONS: string[] = ['std', 'sit', 'lay'];
++    private static ANIMATED_SET_DENYLIST: string[] = []; // partIds to force-disable, e.g. '1234'
++    private static MAX_FIGURE_FRAMES: number = 64;       // safety cap on the probe
+ 
+     private _structure: AvatarStructure;
+     private _avatar: IAvatarImage;
+@@ -28,6 +31,7 @@ export class AvatarImageCache
+     private _unionImages: ImageData[];
+     private _matrix: Matrix;
+     private _serverRenderData: RoomObjectSpriteData[];
++    private _animatedFigure: boolean = false;
+ 
+     constructor(k: AvatarStructure, _arg_2: IAvatarImage, _arg_3: AssetAliasCollection, _arg_4: string)
+     {
+@@ -258,8 +262,29 @@ export class AvatarImageCache
+ 
+         if(!_local_13 || _arg_3)
+         {
++            if(_arg_3) this._animatedFigure = false;
++
+             const _local_19 = this._structure.getParts(k, this._avatar.getFigure(), _local_8, this._geometryType, _local_5, _local_9, this._avatar, _local_10);
+ 
++            const assetPartDefinition = (_local_8 && _local_8.definition) ? _local_8.definition.assetPartDefinition : null;
++
++            if(assetPartDefinition && (AvatarImageCache.IDLE_ANIMATED_ACTIONS.indexOf(assetPartDefinition) > -1))
++            {
++                for(const partContainer of _local_19)
++                {
++                    if(partContainer.frameCount > 1) continue;
++                    if(AvatarImageCache.ANIMATED_SET_DENYLIST.indexOf(partContainer.partId) > -1) continue;
++
++                    const frameCount = this.getFigurePartFrameCount(assetPartDefinition, partContainer.partType, partContainer.partId, _local_5);
++
++                    if(frameCount > 1)
++                    {
++                        partContainer.setAnimationFrames(frameCount);
++                        this._animatedFigure = true;
++                    }
++                }
++            }
++
+             _local_13 = new AvatarImageDirectionCache(_local_19);
+ 
+             _local_12.updateDirectionCache(_local_5, _local_13);
+@@ -300,6 +325,11 @@ export class AvatarImageCache
+         return this._serverRenderData;
+     }
+ 
++    public isAnimatedFigure(): boolean
++    {
++        return this._animatedFigure;
++    }
++
+     public getBodyPartCache(k: string): AvatarImageBodyPartCache
+     {
+         let existing = this._cache.get(k);
+@@ -314,6 +344,29 @@ export class AvatarImageCache
+         return existing;
+     }
+ 
++    private getFigurePartFrameCount(assetPartDefinition: string, partType: string, partId: string, direction: number): number
++    {
++        // Mirror renderBodyPart's flipped-direction remap so we probe the same asset names.
++        let assetDirection = direction;
++
++        if(direction === 4) assetDirection = 2;
++        else if(direction === 5) assetDirection = 1;
++        else if(direction === 6) assetDirection = 0;
++
++        let count = 0;
++
++        while(count < AvatarImageCache.MAX_FIGURE_FRAMES)
++        {
++            const assetName = (this._scale + '_' + assetPartDefinition + '_' + partType + '_' + partId + '_' + assetDirection + '_' + count);
++
++            if(!this._assets.getAsset(assetName)) break;
++
++            count++;
++        }
++
++        return count;
++    }
++
+     private renderBodyPart(direction: number, containers: AvatarImagePartContainer[], frameCount: number, _arg_4: IActiveActionData, renderServerData: boolean = false): AvatarImageBodyPartContainer
+     {
+         if(!containers || !containers.length) return null;
 diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
 index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef383152ec 100644
 --- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
