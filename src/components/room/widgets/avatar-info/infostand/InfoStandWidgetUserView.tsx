@@ -189,18 +189,12 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                     </Flex>
                     <hr className="m-0" />
                 </Column>
-                <Column gap={ 1 }>
-                    <Text variant="white" small wrap>
-                        { LocalizeText('infostand.text.achievement_score') + ' ' + avatarInfo.achievementScore }
-                    </Text>
-                    { (avatarInfo.carryItem > 0) &&
-                        <>
-                            <hr className="m-0" />
-                            <Text variant="white" small wrap>
-                                { LocalizeText('infostand.text.handitem', [ 'item' ], [ LocalizeText('handitem' + avatarInfo.carryItem) ]) }
-                            </Text>
-                        </> }
-                </Column>
+                { (avatarInfo.carryItem > 0) &&
+                    <Column gap={ 1 }>
+                        <Text variant="white" small wrap>
+                            { LocalizeText('infostand.text.handitem', [ 'item' ], [ LocalizeText('handitem' + avatarInfo.carryItem) ]) }
+                        </Text>
+                    </Column> }
                 <Column gap={ 1 }>
                     <InfoStandWidgetUserRelationshipsView relationships={ relationships } />
                 </Column>
