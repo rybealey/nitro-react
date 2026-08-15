@@ -23,6 +23,9 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
     const [ mode, setMode ] = useState(MODE_NORMAL);
     const [ newName, setNewName ] = useState('');
     const [ newMotto, setNewMotto ] = useState('');
+    // Current walk state, fetched when the menu opens, so the toggle can be
+    // labelled "Relax" (free-roaming) vs "Walk Around" (relaxing).
+    const [ isFreeroaming, setIsFreeroaming ] = useState(false);
 
     useMessageEvent<BotCommandConfigurationEvent>(BotCommandConfigurationEvent, event =>
     {
@@ -39,6 +42,10 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
             case BotSkillsEnum.CHANGE_BOT_MOTTO:
                 setNewMotto(parser.data);
                 setMode(MODE_CHANGE_MOTTO);
+                return;
+            case BotSkillsEnum.RANDOM_WALK:
+                // Response carries the bot's current walk mode; label only.
+                setIsFreeroaming((parser.data || '').toLowerCase() === 'freeroam');
                 return;
             case BotSkillsEnum.SETUP_CHAT: {
                 const data = parser.data;
@@ -100,6 +107,8 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                     break;
                 case 'random_walk':
                     SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, BotSkillsEnum.RANDOM_WALK, ''));
+                    // Server toggles freeroam <-> stand; keep our label in sync.
+                    setIsFreeroaming(value => !value);
                     break;
                 case 'setup_chat':
                     requestBotCommandConfiguration(BotSkillsEnum.SETUP_CHAT);
@@ -126,6 +135,11 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
     useEffect(() =>
     {
         setMode(MODE_NORMAL);
+
+        // Fetch the bot's current walk mode when the menu opens so the toggle
+        // shows the right label.
+        if(avatarInfo && (avatarInfo.amIOwner || avatarInfo.amIAnyRoomController) && (avatarInfo.botSkills.indexOf(BotSkillsEnum.RANDOM_WALK) >= 0))
+            requestBotCommandConfiguration(BotSkillsEnum.RANDOM_WALK);
     }, [ avatarInfo ]);
 
     const canControl = (avatarInfo.amIOwner || avatarInfo.amIAnyRoomController);
@@ -159,7 +173,7 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                         </ContextMenuListItemView> }
                     { (avatarInfo.botSkills.indexOf(BotSkillsEnum.RANDOM_WALK) >= 0) &&
                         <ContextMenuListItemView onClick={ event => processAction('random_walk') }>
-                            { LocalizeText('avatar.widget.random_walk') }
+                            { isFreeroaming ? LocalizeText('avatar.widget.random_walk') : 'Walk around' }
                         </ContextMenuListItemView> }
                     { (avatarInfo.botSkills.indexOf(BotSkillsEnum.SETUP_CHAT) >= 0) &&
                         <ContextMenuListItemView onClick={ event => processAction('setup_chat') }>
