@@ -31,7 +31,7 @@ export const NotificationDefaultAlertView: FC<NotificationDefaultAlertViewProps>
     if(isCommandList)
     {
         return (
-            <LayoutNotificationAlertView title={ title } onClose={ onClose } { ...rest } classNames={ [ 'nitro-alert-commands' ] } type={ item.alertType }>
+            <LayoutNotificationAlertView title="Chat Commands" onClose={ onClose } { ...rest } classNames={ [ 'nitro-alert-commands' ] } type={ item.alertType }>
                 <NotificationCommandListView text={ messageText } />
                 <Column alignItems="center" center gap={ 0 }>
                     <hr className="my-2 w-100" />
