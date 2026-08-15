@@ -36,16 +36,16 @@ export const ChatInputEmojiSelectorView: FC<ChatInputEmojiSelectorViewProps> = p
 
     const toggleSelector = (event: MouseEvent<HTMLElement>) =>
     {
-        let visible = false;
+        // Capture the target synchronously and derive the next state from the
+        // current render's value, setting both together. The previous version
+        // read a variable mutated inside the setSelectorVisible updater, which
+        // React 18 runs AFTER this handler — so `target` was usually left null
+        // and the popover needed several clicks before it finally opened.
+        const element = (event.currentTarget as (EventTarget & HTMLElement));
+        const next = !selectorVisible;
 
-        setSelectorVisible(prevValue =>
-        {
-            visible = !prevValue;
-
-            return visible;
-        });
-
-        if(visible) setTarget((event.currentTarget as (EventTarget & HTMLElement)));
+        setSelectorVisible(next);
+        setTarget(next ? element : null);
     }
 
     const selectEmoji = (emoji: string) =>
