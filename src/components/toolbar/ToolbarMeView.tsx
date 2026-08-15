@@ -1,7 +1,7 @@
 import { MouseEventType, RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { Dispatch, FC, PropsWithChildren, SetStateAction, useEffect, useRef } from 'react';
 import { CreateLinkEvent, DispatchUiEvent, GetConfiguration, GetRoomEngine, GetRoomSession, GetSessionDataManager, GetUserProfile } from '../../api';
-import { Base, Flex, LayoutItemCountView } from '../../common';
+import { Base, Flex } from '../../common';
 import { GuideToolEvent } from '../../events';
 
 interface ToolbarMeViewProps
@@ -38,10 +38,7 @@ export const ToolbarMeView: FC<PropsWithChildren<ToolbarMeViewProps>> = props =>
         <Flex innerRef={ elementRef } alignItems="center" className="nitro-toolbar-me p-2" gap={ 2 }>
             { (GetConfiguration('guides.enabled') && useGuideTool) &&
                 <Base pointer className="navigation-item icon icon-me-helper-tool" onClick={ event => DispatchUiEvent(new GuideToolEvent(GuideToolEvent.TOGGLE_GUIDE_TOOL)) } /> }
-            <Base pointer className="navigation-item icon icon-me-achievements" onClick={ event => CreateLinkEvent('achievements/toggle') }>
-                { (unseenAchievementCount > 0) &&
-                    <LayoutItemCountView count={ unseenAchievementCount } /> }
-            </Base>
+            { /* Achievements are disabled hotel-wide; the Me-menu entry is removed. */ }
             <Base pointer className="navigation-item icon icon-me-profile" onClick={ event => GetUserProfile(GetSessionDataManager().userId) } />
             <Base pointer className="navigation-item icon icon-me-rooms" onClick={ event => CreateLinkEvent('navigator/search/myworld_view') } />
             <Base pointer className="navigation-item icon icon-me-settings" onClick={ event => CreateLinkEvent('user-settings/toggle') } />
