@@ -45,6 +45,91 @@
     }
 }
 
+// The `:commands` table variant — wider, taller, with a filter + grouped,
+// zebra-striped table. Applied alongside .nitro-alert-motd, so it must come
+// after that rule to win the equal-specificity width override.
+.nitro-alert.nitro-alert-commands {
+    width: 560px;
+    max-height: 460px;
+
+    .command-list {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .command-list-filter {
+        flex-shrink: 0;
+    }
+
+    .command-list-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .command-list-empty {
+        padding: 12px;
+        text-align: center;
+        opacity: 0.7;
+    }
+
+    .command-table {
+        border-collapse: collapse;
+        font-size: $font-size-sm;
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            text-align: left;
+            padding: 3px 6px;
+            background-color: rgba($dark, 0.10);
+            border-bottom: 2px solid rgba($dark, 0.25);
+            font-weight: 700;
+        }
+
+        .tier-row td {
+            padding: 4px 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.04em;
+            background-color: rgba($dark, 0.16);
+            border-top: 1px solid rgba($dark, 0.2);
+        }
+
+        .command-row {
+            td {
+                padding: 2px 6px;
+                vertical-align: top;
+            }
+
+            &:nth-child(even) {
+                background-color: rgba($dark, 0.05);
+            }
+
+            &:hover {
+                background-color: rgba($primary, 0.12);
+            }
+        }
+
+        .command-cell {
+            font-family: monospace;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .params-cell {
+            font-family: monospace;
+            opacity: 0.75;
+            white-space: nowrap;
+        }
+
+        .desc-cell {
+            width: 100%;
+        }
+    }
+}
+
 .nitro-notification-bubble {
     pointer-events: all;
     padding: 10px 12px;
