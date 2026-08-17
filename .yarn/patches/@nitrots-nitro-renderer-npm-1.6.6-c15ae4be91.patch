@@ -150,6 +150,27 @@ index beb4a06196a800d842a1e3bbe48226d2ec3eea98..582243d4581bfa5b3615ab44b36d70ce
      private renderBodyPart(direction: number, containers: AvatarImagePartContainer[], frameCount: number, _arg_4: IActiveActionData, renderServerData: boolean = false): AvatarImageBodyPartContainer
      {
          if(!containers || !containers.length) return null;
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index d912d445e557d13117b0a72df899cfa795d9977f..a9b94a1100fcc8e122603d13ee8b5c8f20775b21 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -2545,7 +2545,15 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+ 
+             if(instanceData)
+             {
+-                if(instanceData.addButtonMouseCursorOwner((category + '_' + objectId))) this._mouseCursorUpdate = true;
++                // PixelRP: while clickthrough (:ct) is on, don't register the hover
++                // pointer over players — clicking a user walks you onto them rather
++                // than opening a menu, so the pointer cursor is misleading.
++                const clickthrough = (globalThis as any).__pixelrpClickthrough;
++
++                if(!(clickthrough && clickthrough.enabled && (category === RoomObjectCategory.UNIT)))
++                {
++                    if(instanceData.addButtonMouseCursorOwner((category + '_' + objectId))) this._mouseCursorUpdate = true;
++                }
+             }
+         }
+     }
 diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
 index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef383152ec 100644
 --- a/src/nitro/room/object/visualization/room/RoomVisualization.ts

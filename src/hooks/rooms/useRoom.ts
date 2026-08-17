@@ -136,15 +136,13 @@ const useRoomState = () =>
         {
             case RoomEngineObjectEvent.SELECTED:
                 // Clickthrough (:ct): clicking a user (including yourself) walks you
-                // to the tile directly behind them (one step further from the camera,
-                // x-1/y-1 in Habbo's fixed isometric view) instead of opening the
-                // context menu.
+                // onto their exact tile instead of opening the context menu.
                 if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT))
                 {
                     const clickedUnit = GetRoomEngine().getRoomObject(event.roomId, event.objectId, RoomObjectCategory.UNIT);
                     const location = clickedUnit?.getLocation();
 
-                    if(location) SendMessageComposer(new RoomUnitWalkComposer(Math.trunc(location.x) - 1, Math.trunc(location.y) - 1));
+                    if(location) SendMessageComposer(new RoomUnitWalkComposer(Math.trunc(location.x), Math.trunc(location.y)));
 
                     break;
                 }
