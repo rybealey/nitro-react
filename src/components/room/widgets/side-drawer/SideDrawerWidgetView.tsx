@@ -1,9 +1,11 @@
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { Base, Column, Flex } from '../../../../common';
+import { useLocalStorage } from '../../../../hooks';
 
-// Center-left edge drawer. Collapsed by default (just the chevron tab);
-// expanding slides out the button stack. The buttons are placeholders for now
-// and intentionally do nothing yet — behaviour comes later.
+// Center-left edge drawer. Expanded by default; the open/collapsed state is
+// persisted per-browser in localStorage so it stays consistent for each player
+// across sessions. The buttons are placeholders for now and intentionally do
+// nothing yet — behaviour comes later.
 const DRAWER_BUTTONS: { key: string; title: string }[] = [
     { key: 'backpack', title: 'Backpack' },
     { key: 'gang', title: 'Gang' },
@@ -13,7 +15,7 @@ const DRAWER_BUTTONS: { key: string; title: string }[] = [
 
 export const SideDrawerWidgetView: FC<{}> = props =>
 {
-    const [ isExpanded, setIsExpanded ] = useState(false);
+    const [ isExpanded, setIsExpanded ] = useLocalStorage('pixelrp.side-drawer.expanded', true);
 
     return (
         <Flex alignItems="center" className={ `nitro-side-drawer-container ${ isExpanded ? 'is-expanded' : '' }` }>
