@@ -61,13 +61,12 @@ const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored 
 
     return (
         <div className={ `hud-bars ${ mirrored ? 'mirrored' : '' }` }>
-            { rows.map(row =>
-            {
-                const bar = <div key="bar" className="hud-bar"><div className={ `hud-bar-fill ${ row.cls }` } style={ { width: `${ row.pct }%` } } /></div>;
-                const text = <span key="text" className="hud-bar-text">{ row.text }</span>;
-
-                return <div key={ row.key } className="hud-bar-row">{ mirrored ? [ text, bar ] : [ bar, text ] }</div>;
-            }) }
+            { rows.map(row => (
+                <div key={ row.key } className="hud-bar">
+                    <div className={ `hud-bar-fill ${ row.cls }` } style={ { width: `${ row.pct }%` } } />
+                    <span className="hud-bar-value">{ row.text }</span>
+                </div>
+            )) }
             { stats.aggressive &&
                 <div className="hud-bar aggro"><div className="hud-bar-fill agg" style={ { width: `${ stats.aggro }%` } } /></div> }
         </div>

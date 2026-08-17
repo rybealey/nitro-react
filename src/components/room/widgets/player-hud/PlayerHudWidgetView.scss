@@ -81,8 +81,9 @@
     }
 
     .hud-name {
-        font-family: var(--hud-display);
-        font-size: 10px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
         line-height: 1;
         color: var(--hud-cream);
         white-space: nowrap;
@@ -110,30 +111,14 @@
         &.mirrored {
             align-items: flex-end;
 
-            .hud-bar-text { text-align: right; }
             .hud-bar-fill { left: auto; right: 0; }
         }
-    }
-
-    .hud-bar-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .hud-bar-text {
-        font-family: var(--hud-pixel);
-        font-size: 8px;
-        letter-spacing: 0.5px;
-        color: var(--hud-cream);
-        text-shadow: 1px 1px 0 var(--hud-ink);
-        min-width: 48px;
     }
 
     .hud-bar {
         position: relative;
         width: 150px;
-        height: 10px;
+        height: 14px;
         border: 2px solid var(--hud-ink);
         background: var(--hud-plum);
         overflow: hidden;
@@ -143,6 +128,23 @@
             height: 5px;
             border-top: none;
         }
+    }
+
+    // health / energy readout centred inside its bar
+    .hud-bar-value {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--hud-pixel);
+        font-size: 8px;
+        letter-spacing: 0.5px;
+        color: var(--hud-cream);
+        // ink outline so the numbers read over both the fill and the empty track
+        text-shadow: 1px 1px 0 var(--hud-ink), -1px 1px 0 var(--hud-ink), 1px -1px 0 var(--hud-ink), -1px -1px 0 var(--hud-ink);
+        pointer-events: none;
     }
 
     .hud-bar-fill {
