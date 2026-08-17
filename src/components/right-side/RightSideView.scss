@@ -24,8 +24,9 @@
 // treatment as the purse block so the cluster reads as one family.
 .nitro-room-quick-tools {
     position: absolute;
-    // 200px purse width + the row's gap-1 (.25rem)
-    right: calc(200px + .25rem);
+    // track the purse's actual (dynamic) width + the row's gap-1 (.25rem);
+    // --purse-width is measured and set on .purse-title-row by PurseView
+    right: calc(var(--purse-width, 200px) + .25rem);
     bottom: 0;
     pointer-events: all;
 

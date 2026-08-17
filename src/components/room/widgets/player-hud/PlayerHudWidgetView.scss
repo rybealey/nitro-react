@@ -16,8 +16,8 @@
     --hud-display: 'Press Start 2P', monospace;
 
     position: absolute;
-    top: 24px;
-    left: 24px;
+    top: 12px;
+    left: 12px;
     z-index: 25;
     // don't block room interaction; interactive controls opt back in below
     pointer-events: none;
@@ -33,8 +33,8 @@
     // circular avatar mask — the 90x130 avatar-image is cropped to head + shoulders
     .hud-avatar {
         position: relative;
-        width: 48px;
-        height: 48px;
+        width: 56px;
+        height: 56px;
         border-radius: 50%;
         border: 2px solid var(--hud-ink);
         box-shadow: 2px 2px 0 var(--hud-ink);
@@ -43,12 +43,15 @@
         &.self { background: var(--hud-orange); }
         &.target { background: var(--hud-magenta); }
 
+        // The 90x130 full-body avatar is scaled down and top-anchored so the
+        // circle frames head + shoulders + chest (not just the hair). Tune the
+        // `scale` to show more/less of the body and `top` to raise/lower it.
         .avatar-image {
             position: absolute;
             left: 50%;
-            top: 4px;
-            transform: translateX(-50%);
-            // `top` frames the face — nudge if the crop sits too high/low
+            top: 0;
+            transform: translateX(-50%) scale(0.72);
+            transform-origin: top center;
         }
     }
 

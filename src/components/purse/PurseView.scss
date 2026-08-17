@@ -5,16 +5,22 @@
     .nitro-purse {
         background-color: rgba($dark, 0.95);
         box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
-        // match the right-side column width (same as the notification bubbles below)
-        width: 200px;
-    
+        // baseline width matches the right-side column, but grows leftward to
+        // fit longer / more currency values instead of truncating them
+        min-width: 200px;
+
         .nitro-purse-subscription {
             background-color: rgba($light, 0.1);
         }
-    
+
         .nitro-purse-button {
             padding: 3px 2px;
-    
+
+            // let a long currency value expand the purse rather than clip
+            .text-truncate {
+                overflow: visible;
+            }
+
             &:hover {
                 background-color: rgba($light, 0.1);
             }

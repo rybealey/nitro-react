@@ -74,11 +74,11 @@ const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored 
     );
 }
 
-const HudAvatar: FC<{ figure: string, gender?: string, variant: 'self' | 'target' }> = ({ figure, gender = 'M', variant }) =>
+const HudAvatar: FC<{ figure: string, gender?: string, variant: 'self' | 'target', direction?: number }> = ({ figure, gender = 'M', variant, direction = 2 }) =>
 {
     return (
         <div className={ `hud-avatar ${ variant }` }>
-            <LayoutAvatarImageView figure={ figure } gender={ gender } direction={ 2 } />
+            <LayoutAvatarImageView figure={ figure } gender={ gender } direction={ direction } />
         </div>
     );
 }
@@ -138,7 +138,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const targetStats = target ? mockStatsFor(target.name) : null;
 
     return (
-        <Flex alignItems="end" gap={ 5 } className="nitro-player-hud-bar">
+        <Flex alignItems="end" gap={ 2 } className="nitro-player-hud-bar">
             <Flex alignItems="center" gap={ 2 } className="hud-plate">
                 <div className="hud-portrait">
                     <HudAvatar figure={ ownFigure } gender={ selfGender } variant="self" />
@@ -167,7 +167,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ () => setLocked(value => !value) }>
                             { locked ? <FaLock /> : <FaLockOpen /> }
                         </span>
-                        <HudAvatar figure={ target.figure } variant="target" />
+                        <HudAvatar figure={ target.figure } variant="target" direction={ 4 } />
                         <HudStars wanted={ targetStats.wanted } />
                     </div>
                 </Flex> }

@@ -1,5 +1,5 @@
 import { FriendlyTime, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useRef } from 'react';
 import { CreateLinkEvent, GetConfiguration, LocalizeText } from '../../api';
 import { Column, Flex, LayoutCurrencyIcon, Text } from '../../common';
 import { usePurse } from '../../hooks';
@@ -9,9 +9,33 @@ import { SeasonalView } from './views/SeasonalView';
 export const PurseView: FC<{}> = props =>
 {
     const { purse = null, hcDisabled = false } = usePurse();
+    const purseRef = useRef<HTMLDivElement>(null);
 
     const displayedCurrencies = useMemo(() => GetConfiguration<number[]>('system.currency.types', []), []);
     const currencyDisplayNumberShort = useMemo(() => GetConfiguration<boolean>('currency.display.number.short', false), []);
+
+    // Publish the purse's actual (dynamic) width to .purse-title-row so the
+    // quick-tools pinned to its left edge track it as currency values grow.
+    useEffect(() =>
+    {
+        const element = purseRef.current;
+
+        if(!element) return;
+
+        const row = element.closest('.purse-title-row') as HTMLElement;
+
+        if(!row) return;
+
+        const update = () => row.style.setProperty('--purse-width', `${ element.offsetWidth }px`);
+
+        update();
+
+        const observer = new ResizeObserver(update);
+
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [ purse ]);
 
     const getClubText = (() =>
     {
@@ -63,7 +87,7 @@ export const PurseView: FC<{}> = props =>
 
     return (
         <Column alignItems="end" className="nitro-purse-container" gap={ 1 }>
-            <Flex gap={ 1 } className="nitro-purse rounded-bottom p-1">
+            <Flex innerRef={ purseRef } gap={ 1 } className="nitro-purse rounded-bottom p-1">
                 <Column justifyContent="center" gap={ 0 } className="flex-grow-1">
                     <CurrencyView type={ -1 } amount={ purse.credits } short={ currencyDisplayNumberShort } />
                     { getCurrencyElements(0, 2) }
