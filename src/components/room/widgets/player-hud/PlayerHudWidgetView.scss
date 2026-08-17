@@ -49,7 +49,7 @@
         .avatar-image {
             position: absolute;
             left: 50%;
-            top: 0;
+            top: -5px;
             transform: translateX(-50%) scale(0.85);
             transform-origin: top center;
         }
