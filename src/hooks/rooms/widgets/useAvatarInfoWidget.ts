@@ -4,6 +4,7 @@ import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, 
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
 import { useFriends } from '../../friends';
 import { useWired } from '../../wired';
+import { ClickthroughState } from '../clickthroughState';
 import { useObjectDeselectedEvent, useObjectRollOutEvent, useObjectRollOverEvent, useObjectSelectedEvent } from '../engine';
 import { useRoom } from '../useRoom';
 
@@ -278,6 +279,10 @@ const useAvatarInfoWidgetState = () =>
     useObjectRollOverEvent(event =>
     {
         if(avatarInfo || (event.category !== RoomObjectCategory.UNIT)) return;
+
+        // Clickthrough (:ct): hovering another user shouldn't pop their name tag,
+        // to match the pass-through walk behaviour (no pointer, no menu, no name).
+        if(ClickthroughState.enabled) return;
 
         getObjectName(event.id, event.category);
     });
