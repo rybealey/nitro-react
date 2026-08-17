@@ -43,15 +43,25 @@
         &.self { background: var(--hud-orange); }
         &.target { background: var(--hud-magenta); }
 
-        // The 90x130 full-body avatar is scaled down and top-anchored so the
-        // circle frames head + shoulders + chest (not just the hair). Tune the
-        // `scale` to show more/less of the body and `top` to raise/lower it.
+        // Render the avatar at a FIXED on-screen size via background-size so the
+        // portrait frames identically on every display, DPI and browser zoom. The
+        // source sprite's pixel dimensions can vary with the renderer resolution;
+        // pinning background-size (CSS px) makes the crop deterministic instead of
+        // depending on the raw PNG size. Tune `background-size` for zoom (bigger =
+        // closer) and the 2nd value of `background-position` to raise (-) / lower
+        // (+) the avatar inside the circle.
         .avatar-image {
             position: absolute;
-            left: 50%;
-            top: -18px;
-            transform: translateX(-50%) scale(0.85);
-            transform-origin: top center;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: none;
+            // 64px is the avatar's native body width at LARGE scale; ~54px keeps
+            // the size the design already settled on (was scale(0.85)). Bump this
+            // up for a tighter, more zoomed-in portrait.
+            background-size: 54px auto;
+            background-position: center 4px;
+            background-repeat: no-repeat;
         }
     }
 
