@@ -1,7 +1,7 @@
-import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSprite, NitroTexture, RoomBackgroundColorEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomGeometry, RoomId, RoomObjectCategory, RoomObjectHSLColorEnabledEvent, RoomObjectOperationType, RoomSessionEvent, RoomUnitWalkComposer, RoomVariableEnum, Vector3d } from '@nitrots/nitro-renderer';
+import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSprite, NitroTexture, RoomBackgroundColorEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomGeometry, RoomId, RoomObjectCategory, RoomObjectHSLColorEnabledEvent, RoomObjectOperationType, RoomSessionEvent, RoomVariableEnum, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
-import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer, SetActiveRoomId, StartRoomSession } from '../../api';
+import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SetActiveRoomId, StartRoomSession } from '../../api';
 import { ClickthroughState } from './clickthroughState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../events';
 
@@ -135,17 +135,11 @@ const useRoomState = () =>
         switch(event.type)
         {
             case RoomEngineObjectEvent.SELECTED:
-                // Clickthrough (:ct): clicking a user (including yourself) walks you
-                // onto their exact tile instead of opening the context menu.
-                if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT))
-                {
-                    const clickedUnit = GetRoomEngine().getRoomObject(event.roomId, event.objectId, RoomObjectCategory.UNIT);
-                    const location = clickedUnit?.getLocation();
-
-                    if(location) SendMessageComposer(new RoomUnitWalkComposer(Math.trunc(location.x), Math.trunc(location.y)));
-
-                    break;
-                }
+                // Clickthrough (:ct): clicking a user shouldn't open their context
+                // menu. The walk itself is handled in the renderer — with clickthrough
+                // on, the avatar click no longer claims the room click, so the floor
+                // plane under the cursor fires its own walk to the exact clicked tile.
+                if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT)) break;
                 if(!IsFurnitureSelectionDisabled(event)) updateEvent = new RoomWidgetUpdateRoomObjectEvent(RoomWidgetUpdateRoomObjectEvent.OBJECT_SELECTED, event.objectId, event.category, event.roomId);
                 break;
             case RoomEngineObjectEvent.DESELECTED:

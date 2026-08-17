@@ -12,8 +12,8 @@
     --hud-success: #3fbf5a;
     --hud-warning: #f5c542;
     --hud-mauve: #a06e80;
-    --hud-pixel: 'Silkscreen', monospace;
-    --hud-display: 'Press Start 2P', monospace;
+    --hud-pixel: 'Ubuntu', sans-serif;
+    --hud-display: 'Ubuntu', sans-serif;
 
     position: absolute;
     top: 12px;
@@ -49,7 +49,7 @@
         .avatar-image {
             position: absolute;
             left: 50%;
-            top: -5px;
+            top: -18px;
             transform: translateX(-50%) scale(0.85);
             transform-origin: top center;
         }

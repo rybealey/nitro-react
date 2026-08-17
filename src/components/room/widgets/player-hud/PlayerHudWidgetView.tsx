@@ -132,7 +132,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         setLocked(false);
     }
 
-    const selfName = (GetSessionDataManager().userName ?? '').toUpperCase();
+    const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
     const targetStats = target ? mockStatsFor(target.name) : null;
 
@@ -157,7 +157,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                     <div className="hud-info mirrored">
                         <div className="hud-name-row">
                             <span className={ `hud-state ${ targetStats.aggressive ? 'aggressive' : 'passive' }` }>{ targetStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span>
-                            <span className="hud-name">{ target.name.toUpperCase() }</span>
+                            <span className="hud-name">{ target.name }</span>
                         </div>
                         <HudBars stats={ targetStats } mirrored />
                     </div>
