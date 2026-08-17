@@ -1,8 +1,21 @@
 diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
-index 30f15f49a4ac8e0520fb46dcc6d53c4434d928ab..d12b3b0e4be8fc851aa03305fd355ffef9718636 100644
+index 30f15f49a4ac8e0520fb46dcc6d53c4434d928ab..3a24517344a79e0370d72bcf1744e6c1e2c9bd9b 100644
 --- a/src/nitro/avatar/AvatarImage.ts
 +++ b/src/nitro/avatar/AvatarImage.ts
-@@ -807,7 +807,7 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+@@ -606,6 +606,12 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+ 
+         const image = TextureUtils.generateImage(texture);
+ 
++        // PixelRP: generateImage() copies the pixels into a self-contained
++        // HTMLImageElement, so the render texture is no longer needed. Destroy it
++        // to avoid leaking one GPU texture per call — important now that the
++        // avatar-editor preview re-crops on every animation frame.
++        texture.destroy(true);
++
+         if(!image) return null;
+ 
+         return image;
+@@ -807,7 +813,7 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
  
      public isAnimating(): boolean
      {
