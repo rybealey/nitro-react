@@ -1,0 +1,189 @@
+// PixelRP player + target HUD. Tokens mirror the PixelRP design system
+// (ink #1a0a14, sunset orange, magenta, hard 2px outlines + offset shadows,
+// Press Start 2P / Silkscreen pixel fonts loaded in index.html).
+.nitro-player-hud-bar {
+    --hud-ink: #1a0a14;
+    --hud-cream: #fff3e0;
+    --hud-orange: #e87332;
+    --hud-magenta: #d62a86;
+    --hud-plum: #4a0b3d;
+    --hud-danger: #e03131;
+    --hud-info: #3f8fbf;
+    --hud-success: #3fbf5a;
+    --hud-warning: #f5c542;
+    --hud-mauve: #a06e80;
+    --hud-pixel: 'Silkscreen', monospace;
+    --hud-display: 'Press Start 2P', monospace;
+
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 25;
+    // don't block room interaction; interactive controls opt back in below
+    pointer-events: none;
+
+    .hud-portrait {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    // circular avatar mask — the 90x130 avatar-image is cropped to head + shoulders
+    .hud-avatar {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 2px solid var(--hud-ink);
+        box-shadow: 2px 2px 0 var(--hud-ink);
+        overflow: hidden;
+
+        &.self { background: var(--hud-orange); }
+        &.target { background: var(--hud-magenta); }
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            top: 4px;
+            transform: translateX(-50%);
+            // `top` frames the face — nudge if the crop sits too high/low
+        }
+    }
+
+    .hud-stars {
+        display: flex;
+        gap: 1px;
+        font-size: 10px;
+        line-height: 1;
+        filter: drop-shadow(1px 1px 0 var(--hud-ink));
+
+        .on { color: var(--hud-warning); }
+        .off { color: var(--hud-mauve); }
+    }
+
+    .hud-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        &.mirrored { align-items: flex-end; }
+    }
+
+    .hud-name-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .hud-name {
+        font-family: var(--hud-display);
+        font-size: 10px;
+        line-height: 1;
+        color: var(--hud-cream);
+        white-space: nowrap;
+        text-shadow: 1.5px 1.5px 0 var(--hud-ink), -1.5px 1.5px 0 var(--hud-ink), 1.5px -1.5px 0 var(--hud-ink), -1.5px -1.5px 0 var(--hud-ink);
+    }
+
+    .hud-state {
+        font-family: var(--hud-pixel);
+        font-size: 8px;
+        letter-spacing: 0.5px;
+        color: var(--hud-ink);
+        border: 1px solid var(--hud-ink);
+        padding: 2px 5px;
+        white-space: nowrap;
+
+        &.passive { background: var(--hud-success); }
+        &.aggressive { background: var(--hud-danger); color: var(--hud-cream); }
+    }
+
+    .hud-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        &.mirrored {
+            align-items: flex-end;
+
+            .hud-bar-text { text-align: right; }
+            .hud-bar-fill { left: auto; right: 0; }
+        }
+    }
+
+    .hud-bar-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .hud-bar-text {
+        font-family: var(--hud-pixel);
+        font-size: 8px;
+        letter-spacing: 0.5px;
+        color: var(--hud-cream);
+        text-shadow: 1px 1px 0 var(--hud-ink);
+        min-width: 48px;
+    }
+
+    .hud-bar {
+        position: relative;
+        width: 150px;
+        height: 10px;
+        border: 2px solid var(--hud-ink);
+        background: var(--hud-plum);
+        overflow: hidden;
+        flex-shrink: 0;
+
+        &.aggro {
+            height: 5px;
+            border-top: none;
+        }
+    }
+
+    .hud-bar-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, .3);
+        transition: width 200ms steps(6, end);
+
+        &.hp { background: var(--hud-danger); }
+        &.en { background: var(--hud-info); }
+        &.agg { background: var(--hud-magenta); box-shadow: none; }
+    }
+
+    .hud-close,
+    .hud-lock {
+        position: absolute;
+        right: -22px;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid var(--hud-ink);
+        box-shadow: 2px 2px 0 var(--hud-ink);
+        cursor: pointer;
+        pointer-events: auto;
+        color: var(--hud-cream);
+        font-family: var(--hud-pixel);
+        font-size: 9px;
+
+        svg { width: 9px; height: 9px; }
+    }
+
+    .hud-close {
+        top: 0;
+        background: var(--hud-danger);
+    }
+
+    .hud-lock {
+        top: 22px;
+        background: var(--hud-mauve);
+
+        &.locked { background: var(--hud-success); }
+    }
+}
