@@ -43,26 +43,24 @@
         &.self { background: var(--hud-orange); }
         &.target { background: var(--hud-magenta); }
 
-        // Render the avatar at a FIXED on-screen size via background-size so the
-        // portrait frames identically on every display, DPI and browser zoom. The
-        // source sprite's pixel dimensions can vary with the renderer resolution;
-        // pinning background-size (CSS px) makes the crop deterministic instead of
-        // depending on the raw PNG size. Tune `background-size` for zoom (bigger =
-        // closer) and the 2nd value of `background-position` to raise (-) / lower
-        // (+) the avatar inside the circle.
+        // Render the avatar sprite exactly as the room engine does: at its native
+        // pixel size (no scaling) with nearest-neighbour filtering, so it stays
+        // crisp on low-res / integer-DPI displays instead of being smoothly
+        // downscaled and blurred. nitro itself uses SCALE_MODES.NEAREST on
+        // integer-DPR displays, so `image-rendering: pixelated` matches in-game.
+        // `background-size: auto` = the sprite's native 90x130; the 2nd value of
+        // `background-position` frames the crop (more negative raises the avatar).
         .avatar-image {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             transform: none;
-            // The native LARGE avatar sprite is 90x130; 76px ≈ the size the design
-            // settled on (was scale(0.85) of the 90px sprite). Bump this up for a
-            // tighter, more zoomed-in portrait, down for a smaller one.
-            background-size: 76px auto;
-            // 2nd value frames the crop: more negative raises the avatar (clips the
-            // transparent top); less negative / positive pushes it down.
-            background-position: center -22px;
+            background-size: auto;
+            background-position: center -26px;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
             background-repeat: no-repeat;
         }
     }
