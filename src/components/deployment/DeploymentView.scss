@@ -131,6 +131,11 @@
                 box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4);
             }
         }
+
+        // Fully deployed: the bar flips green the moment it hits 100%.
+        &.is-complete span.is-filled {
+            background: var(--success);
+        }
     }
 
     .deploy-step-row {

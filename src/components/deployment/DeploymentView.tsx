@@ -64,7 +64,7 @@ const DeployProgressBar: FC<{ label: string, value: number }> = props =>
                 <span>{ label }</span>
                 <span>{ Math.round(pct) }%</span>
             </div>
-            <div className="deploy-progress-track">
+            <div className={ `deploy-progress-track ${ (pct >= 100) ? 'is-complete' : '' }` }>
                 { Array.from({ length: 20 }, (_, i) => <span key={ i } className={ (i < cells) ? 'is-filled' : '' } />) }
             </div>
         </div>
