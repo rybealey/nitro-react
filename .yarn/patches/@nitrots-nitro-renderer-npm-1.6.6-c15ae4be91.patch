@@ -249,10 +249,10 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..b99e3521745b3af29e2bb31d385645779f3ea248 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..2406f0376cdcf85089253873f031f6a9399700da 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,16 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -262,10 +262,42 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..b99e3521745b3af29e2bb31d38564577
 +    // layer into this engine-level class.
 +    private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
 +
++    // TEMP DEBUG (pixelrp z-flip investigation) — remove before commit.
++    private static _dbgLastOrder: string = '';
++    private static _dbgComponents: Map<number, string> = new Map();
++
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -468,6 +474,16 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -375,6 +385,27 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+         this._sortableSprites.sort((a, b) => (b.z - a.z));
+ 
++        // TEMP DEBUG (pixelrp z-flip investigation) — log avatar-body order flips
++        // with each unit's depth-component snapshot. Remove before commit.
++        {
++            const avatarBodies = [];
++            for(let i = 0; i < spriteCount; i++)
++            {
++                const s = this._sortableSprites[i];
++                if(s && s.sprite && ((s.sprite.spriteType === RoomObjectSpriteType.AVATAR) || (s.sprite.spriteType === RoomObjectSpriteType.AVATAR_OWN)) && (s.sprite.name === 'avatar')) avatarBodies.push(s);
++            }
++            if(avatarBodies.length >= 2)
++            {
++                const order = avatarBodies.map(s => s.sprite.libraryAssetName).join(' > ');
++                if(order !== RoomSpriteCanvas._dbgLastOrder)
++                {
++                    console.log(`[zflip] order now: ${ order }`);
++                    for(const s of avatarBodies) console.log(`[zflip]   ${ s.sprite.libraryAssetName } finalZ=${ s.z.toFixed(9) } relDepth=${ s.sprite.relativeDepth.toFixed(9) } | ${ RoomSpriteCanvas._dbgComponents.get(parseInt(s.name)) ?? 'no components' }`);
++                    RoomSpriteCanvas._dbgLastOrder = order;
++                }
++            }
++        }
++
+         if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
+ 
+         let iterator = 0;
+@@ -468,6 +499,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(x > 0) z = (z + (x * 1.2E-7));
          else z = (z + (-(x) * 1.2E-7));
  
@@ -277,7 +309,13 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..b99e3521745b3af29e2bb31d38564577
 +        // flickering who renders in front. A fixed per-object bias (max ~4e-4,
 +        // well below the 0.001 granularity of intentional layer offsets) makes
 +        // the order deterministic: the same pair always stacks the same way.
-+        if(RoomSpriteCanvas.UNIT_TYPE_KEYS.indexOf(object.type) >= 0) z = (z + ((object.instanceId % 199) * 2E-6));
++        if(RoomSpriteCanvas.UNIT_TYPE_KEYS.indexOf(object.type) >= 0)
++        {
++            z = (z + ((object.instanceId % 199) * 2E-6));
++
++            // TEMP DEBUG — component snapshot per unit, dumped on order flips.
++            RoomSpriteCanvas._dbgComponents.set(object.instanceId, `id=${ object.instanceId } type=${ object.type } locZ(rounded)=${ vector.z.toFixed(9) } xTerm=${ ((x > 0) ? (x * 1.2E-7) : (-(x) * 1.2E-7)).toFixed(9) } idBias=${ ((object.instanceId % 199) * 2E-6).toFixed(9) } screenX=${ vector.x.toFixed(2) } rawLoc=${ object.getLocation().x.toFixed(3) },${ object.getLocation().y.toFixed(3) }`);
++        }
 +
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
