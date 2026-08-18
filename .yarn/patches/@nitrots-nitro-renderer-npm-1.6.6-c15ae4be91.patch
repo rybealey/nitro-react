@@ -249,7 +249,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..2406f0376cdcf85089253873f031f6a9399700da 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..67ff5a1caace9758eb3b4a65fe2498242dc41b85 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,16 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -269,27 +269,37 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2406f0376cdcf85089253873f031f6a9
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -375,6 +385,27 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -375,6 +385,37 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
          this._sortableSprites.sort((a, b) => (b.z - a.z));
  
-+        // TEMP DEBUG (pixelrp z-flip investigation) — log avatar-body order flips
-+        // with each unit's depth-component snapshot. Remove before commit.
++        // TEMP DEBUG (pixelrp z-flip investigation) — track how the units' sprite
++        // stacks interleave in the sorted list (run-length by owning object) and
++        // log the full depth breakdown whenever the pattern changes. Catches both
++        // whole-body order swaps AND partial layer interleaving. Remove before
++        // closing the investigation.
 +        {
-+            const avatarBodies = [];
++            const runs = [];
++            const bodies = [];
++            let lastId = null;
 +            for(let i = 0; i < spriteCount; i++)
 +            {
 +                const s = this._sortableSprites[i];
-+                if(s && s.sprite && ((s.sprite.spriteType === RoomObjectSpriteType.AVATAR) || (s.sprite.spriteType === RoomObjectSpriteType.AVATAR_OWN)) && (s.sprite.name === 'avatar')) avatarBodies.push(s);
++                if(!s || !s.sprite) continue;
++                const ownerId = parseInt(s.name);
++                if(!RoomSpriteCanvas._dbgComponents.has(ownerId)) continue; // not a unit's sprite
++                if((s.sprite.spriteType === RoomObjectSpriteType.AVATAR) || (s.sprite.spriteType === RoomObjectSpriteType.AVATAR_OWN)) bodies.push(s);
++                if(ownerId === lastId) runs[runs.length - 1].n++;
++                else { runs.push({ id: ownerId, n: 1 }); lastId = ownerId; }
 +            }
-+            if(avatarBodies.length >= 2)
++            if(runs.length >= 2)
 +            {
-+                const order = avatarBodies.map(s => s.sprite.libraryAssetName).join(' > ');
-+                if(order !== RoomSpriteCanvas._dbgLastOrder)
++                const pattern = runs.map(r => `${ r.id }x${ r.n }`).join(' | ');
++                if(pattern !== RoomSpriteCanvas._dbgLastOrder)
 +                {
-+                    console.log(`[zflip] order now: ${ order }`);
-+                    for(const s of avatarBodies) console.log(`[zflip]   ${ s.sprite.libraryAssetName } finalZ=${ s.z.toFixed(9) } relDepth=${ s.sprite.relativeDepth.toFixed(9) } | ${ RoomSpriteCanvas._dbgComponents.get(parseInt(s.name)) ?? 'no components' }`);
-+                    RoomSpriteCanvas._dbgLastOrder = order;
++                    console.log(`[zflip] pattern: ${ pattern }`);
++                    for(const s of bodies) console.log(`[zflip]   body ${ s.sprite.libraryAssetName } finalZ=${ s.z.toFixed(9) } relDepth=${ s.sprite.relativeDepth.toFixed(9) } | ${ RoomSpriteCanvas._dbgComponents.get(parseInt(s.name)) ?? 'no components' }`);
++                    RoomSpriteCanvas._dbgLastOrder = pattern;
 +                }
 +            }
 +        }
@@ -297,7 +307,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2406f0376cdcf85089253873f031f6a9
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
          let iterator = 0;
-@@ -468,6 +499,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -468,6 +509,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(x > 0) z = (z + (x * 1.2E-7));
          else z = (z + (-(x) * 1.2E-7));
  
