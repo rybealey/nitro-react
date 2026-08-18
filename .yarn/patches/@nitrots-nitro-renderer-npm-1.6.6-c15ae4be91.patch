@@ -208,7 +208,7 @@ index 5731eba205f6fb2d951d183cec28d5758118564d..5965e22d24a18de9c7cfb820052b580f
                          else
                          {
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907bc0a99a7adf0fb46d52675a770400abaf9..ae0710cd02d84312d1fc0a9f41400896e85a6db1 100644
+index ac3907bc0a99a7adf0fb46d52675a770400abaf9..bcef42672894fa4300e92b5c186a8b1542a5001f 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -4,7 +4,13 @@ import { ObjectMoveUpdateMessage } from '../../messages';
@@ -226,6 +226,31 @@ index ac3907bc0a99a7adf0fb46d52675a770400abaf9..ae0710cd02d84312d1fc0a9f41400896
      private static TEMP_VECTOR: Vector3d = new Vector3d();
  
      private _liftAmount: number;
+@@ -122,6 +128,24 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+     {
+         if(!message || !this.object || !message.location) return;
+ 
++        // TEMP DEBUG (pixelrp stall investigation): measure wall-clock gaps
++        // between successive movement updates per object. The server emits walk
++        // steps on a strict 500ms metronome; any spread seen here is transport
++        // (Cloudflare edge) or client jitter. Remove after diagnosis.
++        {
++            const nowMs = Date.now();
++            const store = ((globalThis as any).__pixelrpMoveGaps ??= new Map());
++            const last = store.get(this.object.instanceId);
++            if(last !== undefined)
++            {
++                const gap = (nowMs - last);
++                // steps arriving while a walk is in progress should be ~500ms apart;
++                // log everything so the distribution is visible, flag outliers.
++                console.log(`[gap] unit=${ this.object.instanceId } dt=${ gap }ms${ ((gap < 400) || (gap > 620)) ? '  <-- OUTLIER' : '' }`);
++            }
++            store.set(this.object.instanceId, nowMs);
++        }
++
+         this._changeTime = this._lastUpdateTime;
+ 
+         this._locationDelta.assign(message.targetLocation);
 diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
 index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef383152ec 100644
 --- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
