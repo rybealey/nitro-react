@@ -249,10 +249,10 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..0bb349a69c55b416bcbd7f3e2ec365f8d1d61e26 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..7a2aa76fa02cc2a472d36fdbd2ffd6f406d77606 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,16 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -262,81 +262,35 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..0bb349a69c55b416bcbd7f3e2ec365f8
 +    // layer into this engine-level class.
 +    private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
 +
-+    // TEMP DEBUG (pixelrp z-flip investigation) — remove before commit.
-+    private static _dbgLastOrder: string = '';
-+    private static _dbgComponents: Map<number, string> = new Map();
-+
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -375,6 +385,47 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +471,26 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         let y = vector.y;
+         let z = vector.z;
  
-         this._sortableSprites.sort((a, b) => (b.z - a.z));
- 
-+        // TEMP DEBUG (pixelrp z-flip investigation) — track how the units' sprite
-+        // stacks interleave in the sorted list (run-length by owning object) and
-+        // log the full depth breakdown whenever the pattern changes. Catches both
-+        // whole-body order swaps AND partial layer interleaving. Remove before
-+        // closing the investigation.
-+        {
-+            const runs = [];
-+            const bodies = [];
-+            let lastId = null;
-+            for(let i = 0; i < spriteCount; i++)
-+            {
-+                const s = this._sortableSprites[i];
-+                if(!s || !s.sprite) continue;
-+                const ownerId = parseInt(s.name);
-+                if(!RoomSpriteCanvas._dbgComponents.has(ownerId)) continue; // not a unit's sprite
-+                if((s.sprite.spriteType === RoomObjectSpriteType.AVATAR) || (s.sprite.spriteType === RoomObjectSpriteType.AVATAR_OWN)) bodies.push(s);
-+                if(ownerId === lastId) runs[runs.length - 1].n++;
-+                else { runs.push({ id: ownerId, n: 1 }); lastId = ownerId; }
-+            }
-+            if(runs.length >= 2)
-+            {
-+                const pattern = runs.map(r => `${ r.id }x${ r.n }`).join(' | ');
-+                if(pattern !== RoomSpriteCanvas._dbgLastOrder)
-+                {
-+                    console.log(`[zflip] pattern: ${ pattern }`);
-+                    // Every unit sprite in draw order, with identity — so a sprite
-+                    // that pops in/out (count toggles) names itself.
-+                    for(let i = 0; i < spriteCount; i++)
-+                    {
-+                        const s = this._sortableSprites[i];
-+                        if(!s || !s.sprite) continue;
-+                        const ownerId = parseInt(s.name);
-+                        if(!RoomSpriteCanvas._dbgComponents.has(ownerId)) continue;
-+                        console.log(`[zflip]   unit ${ ownerId } sprite name='${ s.sprite.name }' lib='${ s.sprite.libraryAssetName }' type=${ s.sprite.spriteType } z=${ s.z.toFixed(9) } relDepth=${ s.sprite.relativeDepth.toFixed(9) }`);
-+                    }
-+                    for(const s of bodies) console.log(`[zflip]   BODY ${ s.sprite.libraryAssetName } | ${ RoomSpriteCanvas._dbgComponents.get(parseInt(s.name)) ?? 'no components' }`);
-+                    RoomSpriteCanvas._dbgLastOrder = pattern;
-+                }
-+            }
-+        }
-+
-         if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
- 
-         let iterator = 0;
-@@ -468,6 +519,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
-         if(x > 0) z = (z + (x * 1.2E-7));
-         else z = (z + (-(x) * 1.2E-7));
- 
-+        // PixelRP: persistent stacking for units sharing a tile. A unit's depth
-+        // is quantized to its rounded tile (RoomObjectLocationCacheItem), so two
-+        // units on one tile tie at exactly equal depth and the winner fell to
-+        // the tiny sprite-count bias added below — which drifts with sprite
-+        // caching and any animated object earlier in the frame's iteration,
-+        // flickering who renders in front. A fixed per-object bias (max ~4e-4,
-+        // well below the 0.001 granularity of intentional layer offsets) makes
-+        // the order deterministic: the same pair always stacks the same way.
+-        if(x > 0) z = (z + (x * 1.2E-7));
+-        else z = (z + (-(x) * 1.2E-7));
++        // PixelRP: persistent stacking for units. A unit's depth is quantized to
++        // its rounded tile (RoomObjectLocationCacheItem), so units on the same
++        // tile — or the same isometric depth row (diagonal follows!) — tie at
++        // exactly equal base depth. Vanilla breaks such ties with |screenX| *
++        // 1.2e-7, which CHANGES every frame while a unit walks, so tied pairs
++        // flip who renders in front frame after frame (the layering flicker).
++        // Units therefore skip the screen-x term entirely and get a fixed
++        // per-object bias instead (max ~4e-4, below the 0.001 granularity of
++        // intentional layer offsets): the same pair always stacks the same way,
++        // and the own avatar's -0.001 body adjust still wins every tie in the
++        // player's own view. Non-units keep vanilla behavior.
 +        if(RoomSpriteCanvas.UNIT_TYPE_KEYS.indexOf(object.type) >= 0)
 +        {
 +            z = (z + ((object.instanceId % 199) * 2E-6));
-+
-+            // TEMP DEBUG — component snapshot per unit, dumped on order flips.
-+            RoomSpriteCanvas._dbgComponents.set(object.instanceId, `id=${ object.instanceId } type=${ object.type } locZ(rounded)=${ vector.z.toFixed(9) } xTerm=${ ((x > 0) ? (x * 1.2E-7) : (-(x) * 1.2E-7)).toFixed(9) } idBias=${ ((object.instanceId % 199) * 2E-6).toFixed(9) } screenX=${ vector.x.toFixed(2) } rawLoc=${ object.getLocation().x.toFixed(3) },${ object.getLocation().y.toFixed(3) }`);
 +        }
-+
++        else
++        {
++            if(x > 0) z = (z + (x * 1.2E-7));
++            else z = (z + (-(x) * 1.2E-7));
++        }
+ 
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
- 
