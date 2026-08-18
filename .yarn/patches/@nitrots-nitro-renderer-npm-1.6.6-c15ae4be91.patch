@@ -274,7 +274,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..7a2aa76fa02cc2a472d36fdbd2ffd6f406d77606 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..4378c0823ee66f0dcd9afcb9709fa181cdcc7492 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -290,7 +290,41 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..7a2aa76fa02cc2a472d36fdbd2ffd6f4
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -465,8 +471,26 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +379,32 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+             }
+         }
+ 
+-        this._sortableSprites.sort((a, b) => (b.z - a.z));
++        // PixelRP: depth sort with one explicit POV rule — when two avatar
++        // bodies effectively share a depth (same tile / same iso row; genuine
++        // per-tile differences are ~2.0, real ties differ by <0.002), the local
++        // player's avatar sorts later = renders on top in this client's view.
++        // The static biases already produce this outcome (own body carries the
++        // -0.001 AVATAR_OWN_DEPTH_ADJUST vs unit id biases <= 4e-4); the
++        // comparator states the rule explicitly so it survives any future
++        // re-tuning of the numeric biases.
++        this._sortableSprites.sort((a, b) =>
++        {
++            const aType = (a.sprite ? a.sprite.spriteType : null);
++            const bType = (b.sprite ? b.sprite.spriteType : null);
++            const aAvatar = ((aType === RoomObjectSpriteType.AVATAR) || (aType === RoomObjectSpriteType.AVATAR_OWN));
++            const bAvatar = ((bType === RoomObjectSpriteType.AVATAR) || (bType === RoomObjectSpriteType.AVATAR_OWN));
++
++            if(aAvatar && bAvatar && (Math.abs(a.z - b.z) < 0.01))
++            {
++                const aOwn = (aType === RoomObjectSpriteType.AVATAR_OWN);
++                const bOwn = (bType === RoomObjectSpriteType.AVATAR_OWN);
++
++                if(aOwn && !bOwn) return 1;
++                if(!aOwn && bOwn) return -1;
++            }
++
++            return (b.z - a.z);
++        });
+ 
+         if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
+ 
+@@ -465,8 +496,26 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
