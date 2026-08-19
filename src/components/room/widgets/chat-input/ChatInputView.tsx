@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent } from '../../../../hooks';
+import { TargetState } from '../../../../hooks/rooms/targetState';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
 
@@ -85,6 +86,16 @@ export const ChatInputView: FC<{}> = props =>
         }
 
         text = parts.join(' ');
+
+        // Target mention: with a HUD target selected, "@x" anywhere in the
+        // message expands to "@<target>" and the message always goes out as a
+        // shout — the server delivers it to the target with bubble style 25
+        // (mention alert). Whispers are left untouched.
+        if(TargetState.name && (chatType !== ChatMessageTypeEnum.CHAT_WHISPER) && /@x\b/i.test(text))
+        {
+            text = text.replace(/@x\b/gi, `@${ TargetState.name }`);
+            chatType = ChatMessageTypeEnum.CHAT_SHOUT;
+        }
 
         setIsTyping(false);
         setIsIdle(false);

@@ -1,6 +1,7 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, GetGuestRoomResultEvent, NitroPoint, PetFigureData, RoomChatSettings, RoomChatSettingsEvent, RoomDragEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionChatEvent, RoomUserData, SystemChatStyleEnum, TextureUtils, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, IRoomChatSettings, LocalizeText, PlaySound, RoomChatFormatter } from '../../../api';
+import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, GetSessionDataManager, IRoomChatSettings, LocalizeText, PlaySound, RoomChatFormatter } from '../../../api';
+import MentionSound from '../../../assets/sounds/mention.mp3';
 import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
@@ -133,6 +134,20 @@ const useChatWidgetState = () =>
 
             avatarColor = avatarColorCache.get(figure);
             username = userData.name;
+        }
+
+        // Target mention (pixelrp): the server delivers a shout that @mentions
+        // you with bubble style 25 — play the mention alert so being addressed
+        // is unmissable. The own-name check keeps players who legitimately chose
+        // bubble 25 as their chat style from ringing the whole room.
+        if((styleId === 25) && userData && (userData.webID !== GetSessionDataManager().userId))
+        {
+            const ownName = GetSessionDataManager().userName;
+
+            if(ownName && new RegExp(`@${ ownName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }\\b`, 'i').test(text))
+            {
+                new Audio(MentionSound).play().catch(() => {});
+            }
         }
 
         switch(chatType)

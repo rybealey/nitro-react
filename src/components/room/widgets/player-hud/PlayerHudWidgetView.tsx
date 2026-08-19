@@ -1,9 +1,10 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent } from '@nitrots/nitro-renderer';
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { FaLock, FaLockOpen } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
+import { TargetState } from '../../../../hooks/rooms/targetState';
 
 // The stat values (health, energy, aggression, wanted level, passive/aggressive)
 // are MOCKED — there's no live RP data source wired up yet. Only the avatar
@@ -131,6 +132,18 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         setTarget(null);
         setLocked(false);
     }
+
+    // Mirror the selected target for non-React consumers — the chat input reads
+    // this when expanding the "@x" target-mention shorthand into a shout.
+    useEffect(() =>
+    {
+        TargetState.name = (target ? target.name : null);
+
+        return () =>
+        {
+            TargetState.name = null;
+        }
+    }, [ target ]);
 
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
