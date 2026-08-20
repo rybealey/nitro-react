@@ -274,7 +274,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..65af7b97479555ef9c73339b5a7d3f2049c23727 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..c2701f5b3fb82a776b37ab25f539ba7811d4eff1 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -290,29 +290,34 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..65af7b97479555ef9c73339b5a7d3f20
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -373,7 +379,34 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +379,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
 -        this._sortableSprites.sort((a, b) => (b.z - a.z));
 +        // PixelRP: depth sort with POV-atomic unit stacking. When two units
-+        // effectively share a base depth (same tile / same iso row — genuine
-+        // per-tile differences are ~2.0, tied bases differ by <5e-4), each
-+        // unit's ABOVE-GROUND stack (body + effect overlays + bubbles, i.e.
-+        // relativeDepth < 0.5) renders as one atomic layer: the local player's
-+        // stack always wins, otherwise higher instance id sits behind (matching
-+        // the numeric id bias). This stops a stacked neighbour's effect/bubble
-+        // sprites (relativeDepth -0.014 / -0.02) slicing through your avatar's
-+        // body. Shadows (relativeDepth 1) are ground decals and keep pure
-+        // numeric depth so they stay under every body. Within one unit — and
-+        // for everything else in the room — the plain numeric sort applies.
++        // OVERLAP IN ROOM COORDINATES — raw (lerped) positions within one tile
++        // of each other, i.e. sharing a tile or moving onto/through each
++        // other's tile — each unit's ABOVE-GROUND stack (body + effect
++        // overlays + bubbles, relativeDepth < 0.5) renders as one atomic
++        // layer: the local player's stack always wins, otherwise higher
++        // instance id sits behind (matching the numeric id bias). The trigger
++        // deliberately IGNORES the sprites' z values: while walking, the
++        // tile-quantized depths pass through transient windows a full tile
++        // quantum apart (each unit's rounding flips at its own lerp midpoint),
++        // so any z-closeness test lets the order follow the transient z and
++        // flip every step — the walking flicker. Overlap is a property of
++        // positions, not depths. Shadows (relativeDepth 1) are ground decals
++        // and keep pure numeric depth so they stay under every body. Within
++        // one unit — and for everything else — the plain numeric sort applies.
 +        this._sortableSprites.sort((a, b) =>
 +        {
 +            const aUnit = (a as any).__pixelrpUnit;
 +            const bUnit = (b as any).__pixelrpUnit;
 +
 +            if(aUnit && bUnit && (aUnit.id !== bUnit.id)
-+                && (Math.abs(aUnit.z - bUnit.z) < 0.01)
++                && (Math.abs(aUnit.tx - bUnit.tx) < 1)
++                && (Math.abs(aUnit.ty - bUnit.ty) < 1)
 +                && a.sprite && (a.sprite.relativeDepth < 0.5)
 +                && b.sprite && (b.sprite.relativeDepth < 0.5))
 +            {
@@ -326,7 +331,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..65af7b97479555ef9c73339b5a7d3f20
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +498,33 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +503,38 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -343,16 +348,21 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..65af7b97479555ef9c73339b5a7d3f20
 +        // intentional layer offsets): the same pair always stacks the same way,
 +        // and the own avatar's -0.001 body adjust still wins every tie in the
 +        // player's own view. Non-units keep vanilla behavior.
-+        let unitInfo: { id: number, z: number, own: boolean } = null;
++        let unitInfo: { id: number, own: boolean, tx: number, ty: number } = null;
 +
 +        if(RoomSpriteCanvas.UNIT_TYPE_KEYS.indexOf(object.type) >= 0)
 +        {
 +            z = (z + ((object.instanceId % 199) * 2E-6));
 +
 +            // Grouping identity for the POV-atomic sort: every sprite of a unit
-+            // carries its owner's id, base depth and own-user flag ('own_user' =
-+            // RoomObjectVariable.OWN_USER, set by the engine on the local player).
-+            unitInfo = { id: object.instanceId, z: z, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false) };
++            // carries its owner's id, own-user flag ('own_user' =
++            // RoomObjectVariable.OWN_USER, set by the engine on the local player)
++            // and RAW room position (the lerped tile coordinates, so overlap is
++            // judged from where units actually are — not from their quantized
++            // depth, which jumps by a full tile mid-step while walking).
++            const roomLocation = object.getLocation();
++
++            unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y };
 +        }
 +        else
 +        {
@@ -362,7 +372,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..65af7b97479555ef9c73339b5a7d3f20
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +585,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +595,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
