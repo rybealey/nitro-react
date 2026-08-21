@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { Base, Column, Flex } from '../../../../common';
 import { useLocalStorage } from '../../../../hooks';
 
@@ -24,7 +25,9 @@ export const SideDrawerWidgetView: FC<{}> = props =>
             <Column center gap={ 0 } className="nitro-side-drawer">
                 <Base className="side-drawer-items">
                     { DRAWER_BUTTONS.map(button => (
-                        <Base key={ button.key } pointer title={ button.title } className={ `side-drawer-item ${ button.key }` } />
+                        <OverlayTrigger key={ button.key } placement="right" overlay={ <Tooltip id={ `side-drawer-tooltip-${ button.key }` }>{ button.title }</Tooltip> }>
+                            <Base pointer className={ `side-drawer-item ${ button.key }` } />
+                        </OverlayTrigger>
                     )) }
                 </Base>
                 <Base pointer className="side-drawer-toggle" title={ isExpanded ? 'Collapse' : 'Expand' } onClick={ () => setIsExpanded(value => !value) }>

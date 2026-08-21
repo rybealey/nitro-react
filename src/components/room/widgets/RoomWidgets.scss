@@ -79,7 +79,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 4px;
         overflow: hidden;
         width: 0;
         max-height: 0;
@@ -92,7 +92,7 @@
 
         .side-drawer-items {
             width: auto;
-            max-height: 360px;
+            max-height: 300px;
             opacity: 1;
             margin-bottom: 6px;
         }
@@ -109,13 +109,6 @@
         background-position: center;
         background-size: auto;
         image-rendering: pixelated;
-        transition: transform .1s ease, filter .1s ease;
-
-        &:hover {
-            -webkit-transform: translate(-1px, -1px);
-            transform: translate(-1px, -1px);
-            filter: drop-shadow(2px 2px 0 rgba($black, 0.8));
-        }
 
         &.inventory { background-image: url('@/assets/images/drawer/inventory.png'); }
         &.gangs { background-image: url('@/assets/images/drawer/gangs.png'); }
