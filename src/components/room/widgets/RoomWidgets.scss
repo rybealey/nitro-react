@@ -92,7 +92,7 @@
 
         .side-drawer-items {
             width: auto;
-            max-height: 280px;
+            max-height: 360px;
             opacity: 1;
             margin-bottom: 6px;
         }
@@ -117,10 +117,12 @@
             filter: drop-shadow(2px 2px 0 rgba($black, 0.8));
         }
 
-        &.backpack { background-image: url('@/assets/images/drawer/backpack.png'); }
-        &.gang { background-image: url('@/assets/images/drawer/gang.png'); }
+        &.inventory { background-image: url('@/assets/images/drawer/inventory.png'); }
+        &.gangs { background-image: url('@/assets/images/drawer/gangs.png'); }
+        &.corporations { background-image: url('@/assets/images/drawer/corporations.png'); }
         &.wanted { background-image: url('@/assets/images/drawer/wanted.png'); }
-        &.tickets { background-image: url('@/assets/images/drawer/tickets.png'); }
+        &.support { background-image: url('@/assets/images/drawer/support.png'); }
+        &.settings { background-image: url('@/assets/images/drawer/settings.png'); }
     }
 
     .side-drawer-toggle {

@@ -7,10 +7,12 @@ import { useLocalStorage } from '../../../../hooks';
 // across sessions. The buttons are placeholders for now and intentionally do
 // nothing yet — behaviour comes later.
 const DRAWER_BUTTONS: { key: string; title: string }[] = [
-    { key: 'backpack', title: 'Backpack' },
-    { key: 'gang', title: 'Gang' },
-    { key: 'wanted', title: 'Wanted List' },
-    { key: 'tickets', title: 'Tickets' },
+    { key: 'inventory', title: 'Inventory' },
+    { key: 'gangs', title: 'Gangs' },
+    { key: 'corporations', title: 'Corporations' },
+    { key: 'wanted', title: 'Wanted' },
+    { key: 'support', title: 'Support' },
+    { key: 'settings', title: 'Settings' },
 ];
 
 export const SideDrawerWidgetView: FC<{}> = props =>
