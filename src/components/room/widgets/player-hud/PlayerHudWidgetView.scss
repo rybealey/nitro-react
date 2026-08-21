@@ -1,19 +1,15 @@
-// PixelRP player + target HUD. Tokens mirror the PixelRP design system
-// (ink #1a0a14, sunset orange, magenta, hard 2px outlines + offset shadows,
-// Press Start 2P / Silkscreen pixel fonts loaded in index.html).
+// PixelRP player + target HUD, skinned to match the right-side chrome
+// (purse / room title / quick tools): rgba($dark,.95) chips with the same
+// inset bevel, $border-radius corners, white Ubuntu text, rgba($light,.1)
+// inner surfaces. Stat colors stay from the design system.
 .nitro-player-hud-bar {
-    --hud-ink: #1a0a14;
-    --hud-cream: #fff3e0;
-    --hud-orange: #e87332;
-    --hud-magenta: #d62a86;
-    --hud-plum: #4a0b3d;
     --hud-danger: #e03131;
     --hud-info: #3f8fbf;
     --hud-success: #3fbf5a;
     --hud-warning: #f5c542;
     --hud-mauve: #a06e80;
-    --hud-pixel: 'Ubuntu', sans-serif;
-    --hud-display: 'Ubuntu', sans-serif;
+    --hud-orange: #e87332;
+    --hud-magenta: #d62a86;
 
     position: absolute;
     top: 12px;
@@ -22,12 +18,20 @@
     // don't block room interaction; interactive controls opt back in below
     pointer-events: none;
 
+    // Each panel (self + target) is a chip in the right-side language.
+    .hud-plate {
+        background: rgba($dark, .95);
+        box-shadow: inset 0px 5px lighten(rgba($dark, .6), 2.5), inset 0 -4px darken(rgba($dark, .6), 4);
+        border-radius: $border-radius;
+        padding: 8px 10px;
+    }
+
     .hud-portrait {
         position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 2px;
+        gap: 3px;
     }
 
     // circular avatar mask — the 90x130 avatar-image is cropped to head + shoulders
@@ -36,7 +40,6 @@
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        border: 2px solid var(--hud-ink);
         overflow: hidden;
 
         &.self { background: var(--hud-orange); }
@@ -45,10 +48,9 @@
         // Render the avatar sprite exactly as the room engine does: at its native
         // pixel size (no scaling) with nearest-neighbour filtering, so it stays
         // crisp on low-res / integer-DPI displays instead of being smoothly
-        // downscaled and blurred. nitro itself uses SCALE_MODES.NEAREST on
-        // integer-DPR displays, so `image-rendering: pixelated` matches in-game.
-        // `background-size: auto` = the sprite's native 90x130; the 2nd value of
-        // `background-position` frames the crop (more negative raises the avatar).
+        // downscaled and blurred. `background-size: auto` = the sprite's native
+        // 90x130; the 2nd value of `background-position` frames the crop (more
+        // negative raises the avatar).
         .avatar-image {
             position: absolute;
             inset: 0;
@@ -68,20 +70,17 @@
         display: flex;
         gap: 1px;
         line-height: 1;
-        filter: drop-shadow(1px 1px 0 var(--hud-ink));
 
         span { display: flex; align-items: center; }
         svg { width: 9px; height: 9px; }
 
         .on { color: var(--hud-warning); }
-        .off { color: var(--hud-mauve); }
+        .off { color: rgba($light, .25); }
     }
 
     .hud-info {
         display: flex;
         flex-direction: column;
-        // tightened (was 4px) to give the taller bars room without the name
-        // drifting down
         gap: 3px;
 
         &.mirrored { align-items: flex-end; }
@@ -98,22 +97,22 @@
         font-weight: 700;
         font-size: 13px;
         line-height: 1;
-        color: var(--hud-cream);
+        color: $white;
         white-space: nowrap;
-        text-shadow: 1.5px 1.5px 0 var(--hud-ink), -1.5px 1.5px 0 var(--hud-ink), 1.5px -1.5px 0 var(--hud-ink), -1.5px -1.5px 0 var(--hud-ink);
     }
 
     .hud-state {
-        font-family: var(--hud-pixel);
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
         font-size: 8px;
         letter-spacing: 0.5px;
-        color: var(--hud-ink);
-        border: 1px solid var(--hud-ink);
-        padding: 2px 5px;
+        border-radius: $border-radius;
+        padding: 2px 6px;
         white-space: nowrap;
+        color: $white;
 
-        &.passive { background: var(--hud-success); }
-        &.aggressive { background: var(--hud-danger); color: var(--hud-cream); }
+        &.passive { background: rgba($light, .1); color: var(--hud-success); }
+        &.aggressive { background: var(--hud-danger); }
     }
 
     .hud-bars {
@@ -125,7 +124,7 @@
             align-items: flex-end;
 
             .hud-bar-fill { left: auto; right: 0; }
-            .hud-bar-icon { left: auto; right: 4px; }
+            .hud-bar-icon { left: auto; right: 5px; }
         }
     }
 
@@ -133,12 +132,17 @@
         position: relative;
         width: 150px;
         height: 20px;
-        background: var(--hud-plum);
+        background: rgba($light, .1);
+        border-radius: $border-radius;
         overflow: hidden;
         flex-shrink: 0;
 
+        // stack the rounded bars with a hairline of chip showing through
+        + .hud-bar-aggro-slot { margin-top: 2px; }
+
         &.aggro {
             height: 5px;
+            border-radius: 2px;
             // Hidden behind the energy bar until aggression turns on, then
             // slides down into the slot (and back up when it clears).
             transform: translateY(-100%);
@@ -147,6 +151,8 @@
             &.is-active { transform: translateY(0); }
         }
     }
+
+    .hud-bar + .hud-bar { margin-top: 2px; }
 
     // Fixed 5px slot below the energy bar: always occupies space so the
     // slide never shifts the other bars; overflow clips the strip so it
@@ -160,14 +166,14 @@
     // stat icon pinned to the bar's leading edge (heart = health, bolt = energy)
     .hud-bar-icon {
         position: absolute;
-        left: 4px;
+        left: 5px;
         top: 50%;
         transform: translateY(-50%);
         z-index: 1;
         display: flex;
         align-items: center;
-        color: var(--hud-cream);
-        filter: drop-shadow(1px 1px 0 var(--hud-ink));
+        color: $white;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5));
         pointer-events: none;
 
         svg { width: 9px; height: 9px; }
@@ -181,12 +187,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: var(--hud-pixel);
+        font-family: 'Ubuntu', sans-serif;
         font-size: 11px;
         letter-spacing: 0.5px;
-        color: var(--hud-cream);
-        // ink outline so the numbers read over both the fill and the empty track
-        text-shadow: 1px 1px 0 var(--hud-ink), -1px 1px 0 var(--hud-ink), 1px -1px 0 var(--hud-ink), -1px -1px 0 var(--hud-ink);
+        color: $white;
+        // soft shade so the numbers read over both the fill and the track
+        text-shadow: 0 1px 1px rgba(0, 0, 0, .5);
         pointer-events: none;
     }
 
@@ -195,43 +201,47 @@
         top: 0;
         left: 0;
         bottom: 0;
-        box-shadow: inset 0 2px 0 rgba(255, 255, 255, .3);
+        border-radius: $border-radius;
         transition: width 200ms steps(6, end);
 
         &.hp { background: var(--hud-danger); }
         &.en { background: var(--hud-info); }
-        &.agg { background: var(--hud-magenta); box-shadow: none; }
+        &.agg { background: var(--hud-magenta); border-radius: 2px; }
     }
 
     .hud-close,
     .hud-lock {
         position: absolute;
-        right: -22px;
-        width: 16px;
-        height: 16px;
+        right: -24px;
+        width: 18px;
+        height: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 2px solid var(--hud-ink);
-        box-shadow: 2px 2px 0 var(--hud-ink);
+        background: rgba($dark, .95);
+        box-shadow: inset 0px 3px lighten(rgba($dark, .6), 2.5), inset 0 -2px darken(rgba($dark, .6), 4);
+        border-radius: $border-radius;
         cursor: pointer;
         pointer-events: auto;
-        color: var(--hud-cream);
-        font-family: var(--hud-pixel);
+        color: $white;
+        font-family: 'Ubuntu', sans-serif;
         font-size: 9px;
+        transition: background .1s ease;
+
+        &:hover { background: lighten(rgba($dark, .95), 6); }
 
         svg { width: 9px; height: 9px; }
     }
 
     .hud-close {
         top: 0;
-        background: var(--hud-danger);
+
+        &:hover { color: var(--hud-danger); }
     }
 
     .hud-lock {
         top: 22px;
-        background: var(--hud-mauve);
 
-        &.locked { background: var(--hud-success); }
+        &.locked { color: var(--hud-success); }
     }
 }
