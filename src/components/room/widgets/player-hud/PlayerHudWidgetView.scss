@@ -68,10 +68,11 @@
     .hud-stars {
         display: flex;
         gap: 1px;
-        font-size: 10px;
-        font-style: normal;
         line-height: 1;
         filter: drop-shadow(1px 1px 0 var(--hud-ink));
+
+        span { display: flex; align-items: center; }
+        svg { width: 9px; height: 9px; }
 
         .on { color: var(--hud-warning); }
         .off { color: var(--hud-mauve); }
@@ -123,7 +124,6 @@
         gap: 0;
 
         .hud-bar + .hud-bar { margin-top: -2px; }
-        .hud-bar.aggro { margin-top: 0; }
 
         &.mirrored {
             align-items: flex-end;
@@ -142,13 +142,25 @@
         overflow: hidden;
         flex-shrink: 0;
 
-        // Fixed slot below the energy bar: always rendered (empty when the
-        // unit isn't aggressive) so toggling aggression never shifts the
-        // other bars.
         &.aggro {
             height: 5px;
             border-top: none;
+            // Hidden behind the energy bar until aggression turns on, then
+            // slides down into the slot (and back up when it clears).
+            transform: translateY(-100%);
+            transition: transform .25s ease;
+
+            &.is-active { transform: translateY(0); }
         }
+    }
+
+    // Fixed 5px slot below the energy bar: always occupies space so the
+    // slide never shifts the other bars; overflow clips the strip so it
+    // emerges from the seam under the energy bar.
+    .hud-bar-aggro-slot {
+        height: 5px;
+        overflow: hidden;
+        flex-shrink: 0;
     }
 
     // stat icon pinned to the bar's leading edge (heart = health, bolt = energy)

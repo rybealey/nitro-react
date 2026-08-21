@@ -1,6 +1,6 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { FaBolt, FaHeart, FaLock, FaLockOpen } from 'react-icons/fa';
+import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
@@ -62,7 +62,9 @@ const HudStars: FC<{ wanted: number }> = ({ wanted }) =>
 {
     return (
         <div className="hud-stars">
-            { [ 0, 1, 2, 3, 4 ].map(index => <span key={ index } className={ (index < wanted) ? 'on' : 'off' }>{ (index < wanted) ? '★' : '☆' }</span>) }
+            { /* SVG stars, not font glyphs — ★/☆ aren't in Ubuntu, so the
+                 fallback font rendered them slanted on some systems */ }
+            { [ 0, 1, 2, 3, 4 ].map(index => <span key={ index } className={ (index < wanted) ? 'on' : 'off' }>{ (index < wanted) ? <FaStar /> : <FaRegStar /> }</span>) }
         </div>
     );
 }
@@ -83,8 +85,12 @@ const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored 
                     <span className="hud-bar-value">{ row.text }</span>
                 </div>
             )) }
-            { /* fixed slot: always present so toggling aggression never shifts the bars */ }
-            <div className="hud-bar aggro"><div className="hud-bar-fill agg" style={ { width: `${ stats.aggressive ? stats.aggro : 0 }%` } } /></div>
+            { /* fixed slot (never shifts the bars); the strip slides out from
+                 behind the energy bar when aggression turns on, and back under
+                 it when it clears */ }
+            <div className="hud-bar-aggro-slot">
+                <div className={ `hud-bar aggro ${ stats.aggressive ? 'is-active' : '' }` }><div className="hud-bar-fill agg" style={ { width: `${ stats.aggro }%` } } /></div>
+            </div>
         </div>
     );
 }
