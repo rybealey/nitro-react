@@ -119,12 +119,17 @@
     .hud-bars {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        // flush bars: adjacent 2px ink borders overlap into one shared divider
+        gap: 0;
+
+        .hud-bar + .hud-bar { margin-top: -2px; }
+        .hud-bar.aggro { margin-top: 0; }
 
         &.mirrored {
             align-items: flex-end;
 
             .hud-bar-fill { left: auto; right: 0; }
+            .hud-bar-icon { left: auto; right: 4px; }
         }
     }
 
@@ -144,6 +149,22 @@
             height: 5px;
             border-top: none;
         }
+    }
+
+    // stat icon pinned to the bar's leading edge (heart = health, bolt = energy)
+    .hud-bar-icon {
+        position: absolute;
+        left: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        color: var(--hud-cream);
+        filter: drop-shadow(1px 1px 0 var(--hud-ink));
+        pointer-events: none;
+
+        svg { width: 9px; height: 9px; }
     }
 
     // health / energy readout centred inside its bar

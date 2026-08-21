@@ -1,6 +1,6 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { FaLock, FaLockOpen } from 'react-icons/fa';
+import { FaBolt, FaHeart, FaLock, FaLockOpen } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
@@ -70,8 +70,8 @@ const HudStars: FC<{ wanted: number }> = ({ wanted }) =>
 const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored = false }) =>
 {
     const rows = [
-        { key: 'hp', cls: 'hp', pct: Math.round((stats.hp / stats.hpMax) * 100), text: `${ stats.hp } / ${ stats.hpMax }` },
-        { key: 'en', cls: 'en', pct: Math.round((stats.energy / stats.energyMax) * 100), text: `${ stats.energy } / ${ stats.energyMax }` }
+        { key: 'hp', cls: 'hp', pct: Math.round((stats.hp / stats.hpMax) * 100), text: `${ stats.hp } / ${ stats.hpMax }`, icon: <FaHeart /> },
+        { key: 'en', cls: 'en', pct: Math.round((stats.energy / stats.energyMax) * 100), text: `${ stats.energy } / ${ stats.energyMax }`, icon: <FaBolt /> }
     ];
 
     return (
@@ -79,6 +79,7 @@ const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored 
             { rows.map(row => (
                 <div key={ row.key } className="hud-bar">
                     <div className={ `hud-bar-fill ${ row.cls }` } style={ { width: `${ row.pct }%` } } />
+                    <span className="hud-bar-icon">{ row.icon }</span>
                     <span className="hud-bar-value">{ row.text }</span>
                 </div>
             )) }
