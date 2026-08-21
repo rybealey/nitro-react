@@ -197,10 +197,10 @@ index ae6f19e099940b5caea88b89466e784bff8ee2e3..21f4e7d87ccda913420e185208987486
  }
 diff --git a/src/nitro/communication/messages/incoming/RpStatsEvent.ts b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..6d45f10c3b4d01ff011251f45b0b8b2c6405c690
+index 0000000000000000000000000000000000000000..423985ca59c827adbb15bf3bbc5c1bc784793591
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,84 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -214,6 +214,7 @@ index 0000000000000000000000000000000000000000..6d45f10c3b4d01ff011251f45b0b8b2c
 +    private _healthMax: number;
 +    private _energy: number;
 +    private _energyMax: number;
++    private _aggression: number;
 +
 +    public flush(): boolean
 +    {
@@ -222,6 +223,7 @@ index 0000000000000000000000000000000000000000..6d45f10c3b4d01ff011251f45b0b8b2c
 +        this._healthMax = 0;
 +        this._energy = 0;
 +        this._energyMax = 0;
++        this._aggression = 0;
 +
 +        return true;
 +    }
@@ -235,6 +237,7 @@ index 0000000000000000000000000000000000000000..6d45f10c3b4d01ff011251f45b0b8b2c
 +        this._healthMax = wrapper.readInt();
 +        this._energy = wrapper.readInt();
 +        this._energyMax = wrapper.readInt();
++        this._aggression = wrapper.readInt();
 +
 +        return true;
 +    }
@@ -262,6 +265,11 @@ index 0000000000000000000000000000000000000000..6d45f10c3b4d01ff011251f45b0b8b2c
 +    public get energyMax(): number
 +    {
 +        return this._energyMax;
++    }
++
++    public get aggression(): number
++    {
++        return this._aggression;
 +    }
 +}
 +

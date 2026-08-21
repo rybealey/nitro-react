@@ -6,9 +6,10 @@ import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetState } from '../../../../hooks/rooms/targetState';
 
-// Health and energy are REAL — pushed by the emulator per room unit
-// (RpStatsEvent, keyed by roomIndex; see user_rp_stats + :sethp/:seten).
-// Aggression and wanted level remain MOCKED until their systems exist.
+// Health, energy and aggression are REAL — pushed by the emulator per room
+// unit (RpStatsEvent, keyed by roomIndex; user_rp_stats + :sethp/:seten/
+// :setagg; aggression drains server-side over 45s). Only the wanted level
+// remains MOCKED until its system exists.
 interface HudStats
 {
     hp: number;
@@ -20,31 +21,29 @@ interface HudStats
     aggressive: boolean;
 }
 
-const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 100, aggro: 45, wanted: 0, aggressive: false };
+const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 100, aggro: 0, wanted: 0, aggressive: false };
 
 // Live RP stats per room unit, keyed by roomIndex. Filled by RpStatsEvent
 // (sent on room entry and on every change); cleared when the room changes.
-const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number }> = new Map();
+const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number, aggro: number }> = new Map();
 
-// Deterministic pseudo-values for the still-mocked fields (aggression, wanted
-// level) — stable per name. Health/energy defaults here are overridden by the
-// live values whenever the server has sent them.
+// Deterministic pseudo-values for the still-mocked wanted level — stable per
+// name. Everything else is overridden by live values once the server has
+// sent them.
 const mockStatsFor = (name: string): HudStats =>
 {
     let hash = 0;
 
     for(let i = 0; i < name.length; i++) hash = (((hash * 31) + name.charCodeAt(i)) >>> 0);
 
-    const aggressive = ((hash % 3) === 0);
-
     return {
         hp: 100,
         hpMax: 100,
         energy: 100,
         energyMax: 100,
-        aggro: aggressive ? (55 + (hash % 45)) : 0,
+        aggro: 0,
         wanted: (hash % 6),
-        aggressive
+        aggressive: false
     };
 };
 
@@ -55,7 +54,7 @@ const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
 
     if(!live) return base;
 
-    return { ...base, hp: live.hp, hpMax: live.hpMax, energy: live.energy, energyMax: live.energyMax };
+    return { ...base, hp: live.hp, hpMax: live.hpMax, energy: live.energy, energyMax: live.energyMax, aggro: live.aggro, aggressive: (live.aggro > 0) };
 };
 
 const HudStars: FC<{ wanted: number }> = ({ wanted }) =>
@@ -117,7 +116,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     {
         const parser = event.getParser();
 
-        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax });
+        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression });
 
         setStatsVersion(value => (value + 1));
     });
