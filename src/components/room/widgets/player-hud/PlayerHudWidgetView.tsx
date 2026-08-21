@@ -1,15 +1,14 @@
-import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent } from '@nitrots/nitro-renderer';
+import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaLock, FaLockOpen } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
-import { useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
+import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetState } from '../../../../hooks/rooms/targetState';
 
-// The stat values (health, energy, aggression, wanted level, passive/aggressive)
-// are MOCKED — there's no live RP data source wired up yet. Only the avatar
-// figures and names are real. Swap PLAYER_STATS / mockStatsFor for real data
-// once the backend exists.
+// Health and energy are REAL — pushed by the emulator per room unit
+// (RpStatsEvent, keyed by roomIndex; see user_rp_stats + :sethp/:seten).
+// Aggression and wanted level remain MOCKED until their systems exist.
 interface HudStats
 {
     hp: number;
@@ -21,10 +20,15 @@ interface HudStats
     aggressive: boolean;
 }
 
-const PLAYER_STATS: HudStats = { hp: 100, hpMax: 120, energy: 99, energyMax: 100, aggro: 45, wanted: 0, aggressive: false };
+const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 100, aggro: 45, wanted: 0, aggressive: false };
 
-// Deterministic pseudo-stats derived from the name, so each target reads as
-// distinct but stays stable for the same user.
+// Live RP stats per room unit, keyed by roomIndex. Filled by RpStatsEvent
+// (sent on room entry and on every change); cleared when the room changes.
+const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number }> = new Map();
+
+// Deterministic pseudo-values for the still-mocked fields (aggression, wanted
+// level) — stable per name. Health/energy defaults here are overridden by the
+// live values whenever the server has sent them.
 const mockStatsFor = (name: string): HudStats =>
 {
     let hash = 0;
@@ -34,14 +38,24 @@ const mockStatsFor = (name: string): HudStats =>
     const aggressive = ((hash % 3) === 0);
 
     return {
-        hp: (45 + (hash % 55)),
+        hp: 100,
         hpMax: 100,
-        energy: (30 + ((hash >> 3) % 70)),
+        energy: 100,
         energyMax: 100,
         aggro: aggressive ? (55 + (hash % 45)) : 0,
         wanted: (hash % 6),
         aggressive
     };
+};
+
+// Merge the live server stats (when known) over the base values.
+const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
+{
+    const live = rpStatsStore.get(roomIndex);
+
+    if(!live) return base;
+
+    return { ...base, hp: live.hp, hpMax: live.hpMax, energy: live.energy, energyMax: live.energyMax };
 };
 
 const HudStars: FC<{ wanted: number }> = ({ wanted }) =>
@@ -68,8 +82,8 @@ const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored 
                     <span className="hud-bar-value">{ row.text }</span>
                 </div>
             )) }
-            { stats.aggressive &&
-                <div className="hud-bar aggro"><div className="hud-bar-fill agg" style={ { width: `${ stats.aggro }%` } } /></div> }
+            { /* fixed slot: always present so toggling aggression never shifts the bars */ }
+            <div className="hud-bar aggro"><div className="hud-bar-fill agg" style={ { width: `${ stats.aggressive ? stats.aggro : 0 }%` } } /></div>
         </div>
     );
 }
@@ -88,7 +102,24 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const [ ownFigure, setOwnFigure ] = useState<string>(() => GetSessionDataManager().figure);
     const [ target, setTarget ] = useState<AvatarInfoUser>(null);
     const [ locked, setLocked ] = useState<boolean>(false);
+    const [ , setStatsVersion ] = useState<number>(0);
     const { roomSession } = useRoom();
+
+    // Live RP stats: store by roomIndex and bump a version so the HUD re-renders.
+    useMessageEvent<RpStatsEvent>(RpStatsEvent, event =>
+    {
+        const parser = event.getParser();
+
+        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax });
+
+        setStatsVersion(value => (value + 1));
+    });
+
+    // Room changed: roomIndexes reset, stale stats must not bleed across rooms.
+    useEffect(() =>
+    {
+        rpStatsStore.clear();
+    }, [ roomSession ]);
 
     // Keep the player's own portrait current when they change clothes.
     useRoomSessionManagerEvent<RoomSessionUserFigureUpdateEvent>(RoomSessionUserFigureUpdateEvent.USER_FIGURE, event =>
@@ -147,21 +178,22 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
-    const targetStats = target ? mockStatsFor(target.name) : null;
+    const playerStats = withLiveStats(roomSession?.ownRoomIndex ?? -1, DEFAULT_STATS);
+    const targetStats = target ? withLiveStats(target.roomIndex, mockStatsFor(target.name)) : null;
 
     return (
         <Flex alignItems="end" gap={ 2 } className="nitro-player-hud-bar">
             <Flex alignItems="center" gap={ 2 } className="hud-plate">
                 <div className="hud-portrait">
                     <HudAvatar figure={ ownFigure } gender={ selfGender } variant="self" />
-                    <HudStars wanted={ PLAYER_STATS.wanted } />
+                    <HudStars wanted={ playerStats.wanted } />
                 </div>
                 <div className="hud-info">
                     <div className="hud-name-row">
                         <span className="hud-name">{ selfName }</span>
-                        <span className={ `hud-state ${ PLAYER_STATS.aggressive ? 'aggressive' : 'passive' }` }>{ PLAYER_STATS.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span>
+                        <span className={ `hud-state ${ playerStats.aggressive ? 'aggressive' : 'passive' }` }>{ playerStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span>
                     </div>
-                    <HudBars stats={ PLAYER_STATS } />
+                    <HudBars stats={ playerStats } />
                 </div>
             </Flex>
 

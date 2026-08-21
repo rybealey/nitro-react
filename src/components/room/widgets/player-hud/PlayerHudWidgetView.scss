@@ -69,6 +69,7 @@
         display: flex;
         gap: 1px;
         font-size: 10px;
+        font-style: normal;
         line-height: 1;
         filter: drop-shadow(1px 1px 0 var(--hud-ink));
 
@@ -79,7 +80,9 @@
     .hud-info {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        // tightened (was 4px) to give the taller bars room without the name
+        // drifting down
+        gap: 3px;
 
         &.mirrored { align-items: flex-end; }
     }
@@ -128,12 +131,15 @@
     .hud-bar {
         position: relative;
         width: 150px;
-        height: 14px;
+        height: 20px;
         border: 2px solid var(--hud-ink);
         background: var(--hud-plum);
         overflow: hidden;
         flex-shrink: 0;
 
+        // Fixed slot below the energy bar: always rendered (empty when the
+        // unit isn't aggressive) so toggling aggression never shifts the
+        // other bars.
         &.aggro {
             height: 5px;
             border-top: none;
@@ -149,7 +155,8 @@
         align-items: center;
         justify-content: center;
         font-family: var(--hud-pixel);
-        font-size: 8px;
+        font-size: 11px;
+        font-weight: 700;
         letter-spacing: 0.5px;
         color: var(--hud-cream);
         // ink outline so the numbers read over both the fill and the empty track
