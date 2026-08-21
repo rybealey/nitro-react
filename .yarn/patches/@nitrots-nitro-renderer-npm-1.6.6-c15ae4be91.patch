@@ -408,7 +408,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..c2701f5b3fb82a776b37ab25f539ba7811d4eff1 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..995a6027897a8b10590e7dafb073f29f1d879fe9 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -424,7 +424,22 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..c2701f5b3fb82a776b37ab25f539ba78
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -373,7 +379,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +57,14 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+     private _SafeStr_4507: boolean = false;
+     private _rotation: number = 0;
++
++    // PixelRP moving-vs-moving alignment: the own avatar's RAW room position
++    // and pre-offset screen anchor, refreshed every frame it renders. Read by
++    // other units to magnet-blend their visual anchor onto the own avatar's
++    // while both are mid-step on/crossing the same tile (see renderObject).
++    // At most one frame stale when a remote renders first in a frame — that
++    // shifts the blend WEIGHT by ≤0.03 tile of input, not the drawn position.
++    private _pixelrpOwnAnchor: { tx: number, ty: number, sx: number, sy: number } = null;
+     private _rotationOrigin: Vector3d = null;
+     private _rotationRodLength: number = 0;
+     private _effectDirection: Vector3d;
+@@ -373,7 +387,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -465,7 +480,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..c2701f5b3fb82a776b37ab25f539ba78
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +503,38 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +511,74 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -497,6 +512,42 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..c2701f5b3fb82a776b37ab25f539ba78
 +            const roomLocation = object.getLocation();
 +
 +            unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y };
++
++            // PixelRP moving-vs-moving alignment (VISUAL-ONLY: adjusts the
++            // local screen x/y for this frame's sprites — never the object's
++            // location, the depth z, or the unitInfo the POV sort reads, all
++            // of which stay raw). Two independently-lerped walkers crossing a
++            // tile are genuinely at different raw positions mid-step, so
++            // their anchors can't match; when BOTH the own avatar and this
++            // unit are mid-step (fractional coordinates) and within half a
++            // tile, pull THIS unit's rendered anchor toward the own avatar's
++            // by a continuous weight: smoothstep of closeness × how far each
++            // is from a resting tile. The weight is 0 at every boundary —
++            // distance reaching the radius, either party arriving/stopping —
++            // so engagement and disengagement are jump-free by construction
++            // (a hard shared anchor would teleport the sprite at the edges).
++            // At true coincidence the weight is 1: anchors align exactly.
++            // Step boundaries dip the weight to 0, but there both units sit
++            // at whole tiles where raw positions are already correct. The own
++            // avatar is never moved — the player feels own-motion warping the
++            // most. Stationary pairs (either side) keep vanilla positions.
++            if(unitInfo.own)
++            {
++                this._pixelrpOwnAnchor = { tx: roomLocation.x, ty: roomLocation.y, sx: x, sy: y };
++            }
++            else if(this._pixelrpOwnAnchor)
++            {
++                const anchor = this._pixelrpOwnAnchor;
++                const stepFrac = (px: number, py: number) => Math.min(1, 4 * Math.max(Math.abs(px - Math.round(px)), Math.abs(py - Math.round(py))));
++                const closeness = Math.max(0, 1 - (Math.max(Math.abs(roomLocation.x - anchor.tx), Math.abs(roomLocation.y - anchor.ty)) / 0.5));
++                const weight = (closeness * closeness * (3 - (2 * closeness))) * stepFrac(roomLocation.x, roomLocation.y) * stepFrac(anchor.tx, anchor.ty);
++
++                if(weight > 0)
++                {
++                    x = Math.round(x + ((anchor.sx - x) * weight));
++                    y = Math.round(y + ((anchor.sy - y) * weight));
++                }
++            }
 +        }
 +        else
 +        {
@@ -506,7 +557,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..c2701f5b3fb82a776b37ab25f539ba78
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +595,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +639,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
