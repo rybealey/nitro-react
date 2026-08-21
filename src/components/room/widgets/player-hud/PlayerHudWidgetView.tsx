@@ -1,6 +1,6 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar } from 'react-icons/fa';
+import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
@@ -213,7 +213,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         <HudBars stats={ targetStats } mirrored />
                     </div>
                     <div className="hud-portrait">
-                        <span className="hud-close" title="Clear target" onClick={ closeTarget }>✕</span>
+                        <span className="hud-close" title="Clear target" onClick={ closeTarget }><FaTimes /></span>
                         <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ () => setLocked(value => !value) }>
                             { locked ? <FaLock /> : <FaLockOpen /> }
                         </span>
