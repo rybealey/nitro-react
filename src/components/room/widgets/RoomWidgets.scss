@@ -98,13 +98,16 @@
         }
     }
 
-    // Icons normalised to a uniform box; hover matches the toolbar buttons.
+    // Icons render at their NATIVE pixel size (background-size: auto — no
+    // scaling), centered in a uniform box sized to the largest icon (45px);
+    // hover matches the toolbar buttons. Keep new icons <= 45px or bump the
+    // box, otherwise they clip.
     .side-drawer-item {
-        width: 36px;
-        height: 36px;
+        width: 45px;
+        height: 45px;
         background-repeat: no-repeat;
         background-position: center;
-        background-size: contain;
+        background-size: auto;
         image-rendering: pixelated;
         transition: transform .1s ease, filter .1s ease;
 
