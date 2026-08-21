@@ -209,28 +209,33 @@
         &.agg { background: var(--hud-magenta); border-radius: 2px; }
     }
 
+    // Floating action chips that deliberately overlap whatever sits behind
+    // the plate (room, chat bubbles): slightly translucent like the plate,
+    // but with a hairline edge + soft drop shadow so they read as their own
+    // layer over any backdrop instead of washing into it.
     .hud-close,
     .hud-lock {
         position: absolute;
-        right: -24px;
-        width: 18px;
-        height: 18px;
+        right: -25px;
+        width: 20px;
+        height: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba($dark, .95);
-        box-shadow: inset 0px 3px lighten(rgba($dark, .6), 2.5), inset 0 -2px darken(rgba($dark, .6), 4);
+        background: rgba($dark, .92);
+        border: 1px solid rgba(0, 0, 0, .45);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .45), inset 0px 3px lighten(rgba($dark, .6), 2.5), inset 0 -2px darken(rgba($dark, .6), 4);
         border-radius: $border-radius;
         cursor: pointer;
         pointer-events: auto;
         color: $white;
         font-family: 'Ubuntu', sans-serif;
-        font-size: 9px;
+        font-size: 10px;
         transition: background .1s ease;
 
         &:hover { background: lighten(rgba($dark, .95), 6); }
 
-        svg { width: 9px; height: 9px; }
+        svg { width: 10px; height: 10px; }
     }
 
     .hud-close {
@@ -240,7 +245,7 @@
     }
 
     .hud-lock {
-        top: 22px;
+        top: 24px;
 
         &.locked { color: var(--hud-success); }
     }
