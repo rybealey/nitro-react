@@ -11,7 +11,7 @@ const DRAWER_BUTTONS: { key: string; title: string }[] = [
     { key: 'inventory', title: 'Inventory' },
     { key: 'gangs', title: 'Gangs' },
     { key: 'corporations', title: 'Corporations' },
-    { key: 'wanted', title: 'Wanted' },
+    { key: 'wanted', title: 'Wanted List' },
     { key: 'support', title: 'Support' },
     { key: 'settings', title: 'Settings' },
 ];
@@ -24,9 +24,11 @@ export const SideDrawerWidgetView: FC<{}> = props =>
         <Flex alignItems="center" className={ `nitro-side-drawer-container ${ isExpanded ? 'is-expanded' : '' }` }>
             <Column center gap={ 0 } className="nitro-side-drawer">
                 <Base className="side-drawer-items">
+                    { /* plain divs, not <Base>: OverlayTrigger anchors via an
+                         injected ref, which Base drops (it only wires innerRef) */ }
                     { DRAWER_BUTTONS.map(button => (
                         <OverlayTrigger key={ button.key } placement="right" overlay={ <Tooltip id={ `side-drawer-tooltip-${ button.key }` }>{ button.title }</Tooltip> }>
-                            <Base pointer className={ `side-drawer-item ${ button.key }` } />
+                            <div className={ `cursor-pointer side-drawer-item ${ button.key }` } />
                         </OverlayTrigger>
                     )) }
                 </Base>
