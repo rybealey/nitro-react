@@ -17,8 +17,10 @@
 		top:0;
 		height: 100%;
 		width: 100%;
-		background-position: left;
-		background-repeat: repeat-y;
+		// PixelRP: single full-scene backdrop (pixel city) — fill the view.
+		background-position: center;
+		background-repeat: no-repeat;
+		background-size: cover;
 	}
 
 	.drape {
