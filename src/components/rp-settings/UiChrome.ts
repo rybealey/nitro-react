@@ -81,4 +81,18 @@ export const ApplyUiChrome = (color: string): void =>
     style.setProperty('--prp-chrome-hi', hsla(h, s, (l + 2.5), 0.6));
     style.setProperty('--prp-chrome-lo', hsla(h, s, (l - 4), 0.6));
     style.setProperty('--prp-chrome-hover', hsla(h, s, (l + 6), 0.95));
+
+    // Drawer icon tint: the drawer PNGs are grayscale; each icon carries a
+    // masked overlay pseudo-element painted with this color and blended
+    // with mix-blend-mode: color — exact hue, original shading preserved
+    // (unlike hue-rotate, whose matrix approximation drifts badly on large
+    // rotations). Transparent on the default scheme = neutral gray art.
+    if(base === DEFAULT_CHROME_COLOR)
+    {
+        style.setProperty('--prp-chrome-icon-tint', 'transparent');
+    }
+    else
+    {
+        style.setProperty('--prp-chrome-icon-tint', hsla(h, 45, 55, 1));
+    }
 }

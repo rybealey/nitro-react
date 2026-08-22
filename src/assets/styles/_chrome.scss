@@ -10,4 +10,5 @@
     --prp-chrome-hi: #{lighten(rgba($dark, 0.6), 2.5)};
     --prp-chrome-lo: #{darken(rgba($dark, 0.6), 4)};
     --prp-chrome-hover: #{lighten(rgba($dark, 0.95), 6)};
+    --prp-chrome-icon-tint: transparent;
 }

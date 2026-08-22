@@ -109,13 +109,32 @@
         background-position: center;
         background-size: auto;
         image-rendering: pixelated;
+        // Scheme tint (UiChrome.ts): the ::after overlay is masked to the
+        // icon's alpha and blended with mix-blend-mode: color, colorizing
+        // the grayscale art to the exact scheme hue while keeping its
+        // shading. isolation keeps the blend off the drawer plate behind.
+        position: relative;
+        isolation: isolate;
 
-        &.inventory { background-image: url('@/assets/images/drawer/inventory.png'); }
-        &.gangs { background-image: url('@/assets/images/drawer/gangs.png'); }
-        &.corporations { background-image: url('@/assets/images/drawer/corporations.png'); }
-        &.wanted { background-image: url('@/assets/images/drawer/wanted.png'); }
-        &.support { background-image: url('@/assets/images/drawer/support.png'); }
-        &.settings { background-image: url('@/assets/images/drawer/settings.png'); }
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--prp-chrome-icon-tint, transparent);
+            mix-blend-mode: color;
+            mask-repeat: no-repeat;
+            mask-position: center;
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            pointer-events: none;
+        }
+
+        &.inventory { background-image: url('@/assets/images/drawer/inventory.png'); &::after { mask-image: url('@/assets/images/drawer/inventory.png'); -webkit-mask-image: url('@/assets/images/drawer/inventory.png'); } }
+        &.gangs { background-image: url('@/assets/images/drawer/gangs.png'); &::after { mask-image: url('@/assets/images/drawer/gangs.png'); -webkit-mask-image: url('@/assets/images/drawer/gangs.png'); } }
+        &.corporations { background-image: url('@/assets/images/drawer/corporations.png'); &::after { mask-image: url('@/assets/images/drawer/corporations.png'); -webkit-mask-image: url('@/assets/images/drawer/corporations.png'); } }
+        &.wanted { background-image: url('@/assets/images/drawer/wanted.png'); &::after { mask-image: url('@/assets/images/drawer/wanted.png'); -webkit-mask-image: url('@/assets/images/drawer/wanted.png'); } }
+        &.support { background-image: url('@/assets/images/drawer/support.png'); &::after { mask-image: url('@/assets/images/drawer/support.png'); -webkit-mask-image: url('@/assets/images/drawer/support.png'); } }
+        &.settings { background-image: url('@/assets/images/drawer/settings.png'); &::after { mask-image: url('@/assets/images/drawer/settings.png'); -webkit-mask-image: url('@/assets/images/drawer/settings.png'); } }
     }
 
     .side-drawer-toggle {
