@@ -6,7 +6,7 @@ import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemVie
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Multi-tab shell — the tabs and
 // their contents are placeholders to be filled out as settings are decided.
-const TABS: string[] = [ 'General', 'Chat', 'Audio', 'Notifications' ];
+const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' ];
 
 export const RpSettingsView: FC<{}> = props =>
 {
