@@ -267,6 +267,11 @@ const useAvatarInfoWidgetState = () =>
 
     useObjectSelectedEvent(event =>
     {
+        // Clickthrough (:ct): clicking a user must not open their context
+        // menu — but the selection event itself still flows (the player HUD
+        // sets its target from it). Furniture selection is unaffected.
+        if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT)) return;
+
         getObjectInfo(event.id, event.category);
     });
 

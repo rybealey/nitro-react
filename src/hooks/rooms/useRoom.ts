@@ -2,7 +2,6 @@ import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSp
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
 import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SetActiveRoomId, StartRoomSession } from '../../api';
-import { ClickthroughState } from './clickthroughState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../events';
 
 const useRoomState = () =>
@@ -135,11 +134,12 @@ const useRoomState = () =>
         switch(event.type)
         {
             case RoomEngineObjectEvent.SELECTED:
-                // Clickthrough (:ct): clicking a user shouldn't open their context
-                // menu. The walk itself is handled in the renderer — with clickthrough
-                // on, the avatar click no longer claims the room click, so the floor
-                // plane under the cursor fires its own walk to the exact clicked tile.
-                if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT)) break;
+                // Clickthrough (:ct): selection flows even with clickthrough on —
+                // the HUD target must still be settable by clicking a user. The
+                // context MENU suppression lives at its consumer instead
+                // (useAvatarInfoWidget), and the walk stays handled in the
+                // renderer: the avatar click doesn't claim the room click, so the
+                // floor plane under the cursor walks to the exact clicked tile.
                 if(!IsFurnitureSelectionDisabled(event)) updateEvent = new RoomWidgetUpdateRoomObjectEvent(RoomWidgetUpdateRoomObjectEvent.OBJECT_SELECTED, event.objectId, event.category, event.roomId);
                 break;
             case RoomEngineObjectEvent.DESELECTED:
