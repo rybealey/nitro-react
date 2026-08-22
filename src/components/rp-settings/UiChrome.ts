@@ -113,6 +113,7 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     style.setProperty('--prp-chrome-hover', hsla(h, s, (l + 6), a(0.95)));
     // pre-blended bevel bands at the SAME alpha as the base surface — the
     // plate/chip gradient vars compose from these (see _chrome.scss)
+    style.setProperty('--prp-chrome-solid', hsla(h, s, l, 1));
     style.setProperty('--prp-chrome-band-hi', hsla(h, s, (l + 1.5), a(0.95)));
     style.setProperty('--prp-chrome-band-lo', hsla(h, s, (l - 2.4), a(0.95)));
 

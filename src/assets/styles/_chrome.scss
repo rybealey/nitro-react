@@ -15,6 +15,9 @@
        .95 base) at the SAME alpha as the base — used in single-layer plate
        gradients so translucent surfaces don't get more-opaque "bars" where
        inset shadows would stack alpha on top of the background. */
+    /* Full-alpha scheme color for outlines/accents that must stay crisp
+       regardless of the surface-opacity setting. */
+    --prp-chrome-solid: #{rgba($dark, 1)};
     --prp-chrome-band-hi: #{lighten(rgba($dark, 0.95), 1.5)};
     --prp-chrome-band-lo: #{darken(rgba($dark, 0.95), 2.4)};
     --prp-chrome-plate: linear-gradient(var(--prp-chrome-band-hi) 0, var(--prp-chrome-band-hi) 5px, var(--prp-chrome-95) 5px, var(--prp-chrome-95) calc(100% - 4px), var(--prp-chrome-band-lo) calc(100% - 4px));
