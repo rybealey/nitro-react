@@ -534,7 +534,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..ce356e0dd1384098481d4a4281dc332c7ebe3cec 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..8541fcd7964f65d1ac28a84c6b8d7bf9b7758044 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -550,29 +550,36 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..ce356e0dd1384098481d4a4281dc332c
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +57,21 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +57,28 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
 +
-+    // PixelRP moving-vs-moving alignment: the own avatar's RAW room position,
-+    // pre-offset screen anchor and current STEP-TARGET tile (gx/gy, -1 at
-+    // rest), refreshed every frame it renders. Read by other units (see
-+    // renderObject): a remote genuinely co-stepping with the own avatar
-+    // FOLLOWS the own anchor exactly (after a short engage ramp), a remote
-+    // merely crossing gets the magnet blend. The own avatar is never moved.
-+    // At most one frame stale when a remote renders first in a frame.
-+    private _pixelrpOwnAnchor: { tx: number, ty: number, sx: number, sy: number, gx: number, gy: number } = null;
++    // PixelRP moving-vs-moving alignment (v3: master/joiner merge).
++    // Per-unit anchor history — RAW pre-adjustment screen anchor, velocity
++    // (px/ms), raw room position, current step-goal tile and the time this
++    // unit's current continuous walk began — refreshed every frame the unit
++    // renders. Lookups tolerate one frame of staleness.
++    private _pixelrpAnchors: Map<number, { x: number, y: number, vx: number, vy: number, t: number, tx: number, ty: number, gx: number, gy: number, walkSince: number }> = new Map();
++    private _pixelrpOwnId: number = -1;
 +
-+    // Per-remote follower ramp state (instanceId → weight + clock). The
-+    // weight rises to 1 over ~250ms when the same-path condition engages
-+    // (no pop onto the anchor) and falls back over ~250ms on release (no
-+    // pop off it); at 1 the remote tracks the own anchor exactly.
-+    private _pixelrpFollow: Map<number, { w: number, last: number }> = new Map();
++    // Single active master/joiner merge (own-avatar pairs only), created
++    // ONCE when the same-path condition engages and kept across frames —
++    // never restarted while the condition holds. Roles come from walk-start
++    // times: whichever unit was already walking is the MASTER (rendered
++    // untouched, own avatar or not); the later arrival is the JOINER, which
++    // Hermite-merges onto the master's LIVE track over ~150ms preserving its
++    // apparent velocity (phase 0), then follows the master exactly (phase 1).
++    // Release (phase 2) decays the residual visual offset over ~150ms.
++    // badSince ignores sub-120ms same-path dropouts: the step-goal reading
++    // blips to -1 for a few frames at every step boundary while the next
++    // move packet re-arms the lerp, and releasing/re-engaging on each blip
++    // would restart the merge every tile.
++    private _pixelrpMerge: { masterId: number, joinerId: number, phase: number, t0: number, p0x: number, p0y: number, v0x: number, v0y: number, lastX: number, lastY: number, relX: number, relY: number, relT: number, badSince: number } = null;
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +394,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +401,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -613,7 +620,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..ce356e0dd1384098481d4a4281dc332c
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +518,136 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +525,250 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -680,67 +687,181 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..ce356e0dd1384098481d4a4281dc332c
 +                stepGoalY = Math.round(stepStart.y + stepDelta.y);
 +            }
 +
++            // ---- per-unit anchor history (RAW values, before any adjust) ----
++            const nowMs = Date.now();
++            const anchors = this._pixelrpAnchors;
++            let hist = anchors.get(object.instanceId);
++
++            if(!hist)
++            {
++                hist = { x, y, vx: 0, vy: 0, t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, walkSince: ((stepGoalX >= 0) ? nowMs : -1) };
++                anchors.set(object.instanceId, hist);
++            }
++            else
++            {
++                const dtMs = (nowMs - hist.t);
++
++                if(dtMs > 0)
++                {
++                    hist.vx = ((x - hist.x) / dtMs);
++                    hist.vy = ((y - hist.y) / dtMs);
++                }
++
++                if((stepGoalX >= 0) && (hist.gx < 0)) hist.walkSince = nowMs;
++                if(stepGoalX < 0) hist.walkSince = -1;
++
++                hist.x = x; hist.y = y; hist.t = nowMs;
++                hist.tx = roomLocation.x; hist.ty = roomLocation.y;
++                hist.gx = stepGoalX; hist.gy = stepGoalY;
++            }
++
 +            if(unitInfo.own)
 +            {
-+                // The own avatar is the visual master: always rendered exactly
-+                // where Nitro's own interpolation puts it, never adjusted.
-+                this._pixelrpOwnAnchor = { tx: roomLocation.x, ty: roomLocation.y, sx: x, sy: y, gx: stepGoalX, gy: stepGoalY };
++                this._pixelrpOwnId = object.instanceId;
++
++                // housekeeping (rare): drop anchors of long-gone units, and a
++                // merge whose joiner stopped rendering (left the room).
++                if(anchors.size > 128)
++                {
++                    anchors.forEach((entry, key) => { if((nowMs - entry.t) > 5000) anchors.delete(key); });
++                }
++                if(this._pixelrpMerge)
++                {
++                    const joiner = anchors.get(this._pixelrpMerge.joinerId);
++
++                    if(!joiner || ((nowMs - joiner.t) > 1000)) this._pixelrpMerge = null;
++                }
 +            }
-+            else if(this._pixelrpOwnAnchor)
++
++            const own = ((this._pixelrpOwnId >= 0) ? anchors.get(this._pixelrpOwnId) : null);
++
++            // Same-path test against another unit's (≤1 frame stale) anchor:
++            // both mid-step toward the SAME tile (true movement data, not a
++            // distance heuristic) while already overlapping (<1 tile both
++            // axes — keeps opposite-side converging units from sticking
++            // before they truly overlap).
++            const samePathWith = (other: { tx: number, ty: number, gx: number, gy: number }) =>
++                ((other.gx >= 0) && (stepGoalX >= 0)
++                    && (other.gx === stepGoalX) && (other.gy === stepGoalY)
++                    && (Math.abs(roomLocation.x - other.tx) < 1)
++                    && (Math.abs(roomLocation.y - other.ty) < 1));
++
++            // ---- merge engage (evaluated on remote renders, one at a time) ----
++            if(!unitInfo.own && own && !this._pixelrpMerge && samePathWith(own))
 +            {
-+                const anchor = this._pixelrpOwnAnchor;
++                // Roles by establishment: whichever unit has been walking
++                // longer was already on the path → MASTER (own avatar or
++                // not); the later arrival is the JOINER and gets merged.
++                // Tie (or unknown) keeps the own avatar as master.
++                const remoteSince = ((hist.walkSince >= 0) ? hist.walkSince : nowMs);
++                const ownSince = ((own.walkSince >= 0) ? own.walkSince : nowMs);
++                const joinerIsOwn = (ownSince > remoteSince);
++                const joiner = (joinerIsOwn ? own : hist);
 +
-+                // Same-path follower: this remote is genuinely walking WITH
-+                // the own avatar — both mid-step toward the SAME tile (true
-+                // movement data, not a distance heuristic) while already
-+                // overlapping (<1 tile both axes; keeps opposite-side
-+                // converging units from sticking before they truly overlap).
-+                const samePath = ((anchor.gx >= 0) && (stepGoalX >= 0)
-+                    && (anchor.gx === stepGoalX) && (anchor.gy === stepGoalY)
-+                    && (Math.abs(roomLocation.x - anchor.tx) < 1)
-+                    && (Math.abs(roomLocation.y - anchor.ty) < 1));
++                this._pixelrpMerge = {
++                    masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
++                    joinerId: (joinerIsOwn ? this._pixelrpOwnId : object.instanceId),
++                    phase: 0, t0: nowMs,
++                    p0x: joiner.x, p0y: joiner.y, v0x: joiner.vx, v0y: joiner.vy,
++                    lastX: joiner.x, lastY: joiner.y, relX: 0, relY: 0, relT: 0, badSince: 0
++                };
++            }
 +
-+                // Follower weight ramps 0→1 over ~250ms on engage and back
-+                // down on release — the remote eases onto/off the own track
-+                // instead of popping, then tracks it EXACTLY at weight 1.
-+                let entry = this._pixelrpFollow.get(object.instanceId);
++            const merge = this._pixelrpMerge;
 +
-+                if(!entry && samePath)
++            if(merge && (merge.joinerId === object.instanceId))
++            {
++                // ---- this unit is the JOINER (may be the own avatar) ----
++                const MergeMs = 150;
++
++                if(merge.phase === 2)
 +                {
-+                    entry = { w: 0, last: Date.now() };
-+                    this._pixelrpFollow.set(object.instanceId, entry);
++                    // releasing: decay the captured visual offset — no pop.
++                    const f = (1 - ((nowMs - merge.relT) / MergeMs));
++
++                    if(f <= 0)
++                    {
++                        this._pixelrpMerge = null;
++                    }
++                    else
++                    {
++                        x = Math.round(x + (merge.relX * f));
++                        y = Math.round(y + (merge.relY * f));
++                    }
 +                }
-+
-+                let followWeight = 0;
-+
-+                if(entry)
++                else
 +                {
-+                    const now = Date.now();
-+                    const dt = Math.min(200, Math.max(0, (now - entry.last)));
++                    const master = anchors.get(merge.masterId);
++                    const masterStale = (!master || ((nowMs - master.t) > 400));
++                    const pathOk = (!masterStale && samePathWith(master));
 +
-+                    entry.last = now;
-+                    entry.w = Math.min(1, Math.max(0, (entry.w + ((samePath ? 1 : -1) * (dt / 250)))));
-+                    followWeight = entry.w;
++                    // Grace window: the step-goal reading blips to -1 for a
++                    // few frames at every step boundary; only a sustained
++                    // (>120ms) failure is a real divergence.
++                    if(pathOk) merge.badSince = 0;
++                    else if(merge.badSince === 0) merge.badSince = nowMs;
 +
-+                    if(!samePath && (entry.w <= 0)) this._pixelrpFollow.delete(object.instanceId);
++                    if(masterStale || (merge.badSince && ((nowMs - merge.badSince) > 120)))
++                    {
++                        merge.phase = 2;
++                        merge.relX = (merge.lastX - x);
++                        merge.relY = (merge.lastY - y);
++                        merge.relT = nowMs;
++                        x = Math.round(x + merge.relX);
++                        y = Math.round(y + merge.relY);
++                    }
++                    else
++                    {
++                        const t = Math.min(1, ((nowMs - merge.t0) / MergeMs));
++
++                        if(t >= 1) merge.phase = 1;
++
++                        let rx = master.x;
++                        let ry = master.y;
++
++                        if(merge.phase === 0)
++                        {
++                            // C1-continuous cubic Hermite: starts at the
++                            // joiner's captured position AND velocity, ends on
++                            // the master's LIVE position and velocity — the
++                            // joiner bends onto the track mid-stride with no
++                            // speed dip. State was captured once at engage;
++                            // only the endpoint refreshes per frame.
++                            const t2 = (t * t);
++                            const t3 = (t2 * t);
++                            const h00 = ((2 * t3) - (3 * t2) + 1);
++                            const h10 = (t3 - (2 * t2) + t);
++                            const h01 = (((-2) * t3) + (3 * t2));
++                            const h11 = (t3 - t2);
++
++                            rx = ((h00 * merge.p0x) + (h10 * (merge.v0x * MergeMs)) + (h01 * master.x) + (h11 * (master.vx * MergeMs)));
++                            ry = ((h00 * merge.p0y) + (h10 * (merge.v0y * MergeMs)) + (h01 * master.y) + (h11 * (master.vy * MergeMs)));
++                        }
++
++                        merge.lastX = rx;
++                        merge.lastY = ry;
++                        // Applied to the unit's anchor BEFORE the sprite loop,
++                        // so the ENTIRE stack (body, effects, bubbles, shadow)
++                        // moves coherently; depth/sort inputs stay raw.
++                        x = Math.round(rx);
++                        y = Math.round(ry);
++                    }
 +                }
-+
-+                // Magnet blend for plain crossings (unchanged); the effective
-+                // weight is whichever pull is stronger, so the magnet's
-+                // partial correction hands off smoothly to the follower ramp
-+                // and cushions its release.
++            }
++            else if(!unitInfo.own && own
++                && (!merge || ((merge.masterId !== object.instanceId) && (merge.joinerId !== object.instanceId))))
++            {
++                // ---- magnet blend for plain crossings (unchanged), skipped
++                // for merge participants: the joiner is handled above and the
++                // MASTER must stay untouched even when it's a remote.
 +                const stepFrac = (px: number, py: number) => Math.min(1, 4 * Math.max(Math.abs(px - Math.round(px)), Math.abs(py - Math.round(py))));
-+                const closeness = Math.max(0, 1 - (Math.max(Math.abs(roomLocation.x - anchor.tx), Math.abs(roomLocation.y - anchor.ty)) / 0.5));
-+                const magnetWeight = (closeness * closeness * (3 - (2 * closeness))) * stepFrac(roomLocation.x, roomLocation.y) * stepFrac(anchor.tx, anchor.ty);
-+                const weight = Math.max(followWeight, magnetWeight);
++                const closeness = Math.max(0, 1 - (Math.max(Math.abs(roomLocation.x - own.tx), Math.abs(roomLocation.y - own.ty)) / 0.5));
++                const weight = (closeness * closeness * (3 - (2 * closeness))) * stepFrac(roomLocation.x, roomLocation.y) * stepFrac(own.tx, own.ty);
 +
 +                if(weight > 0)
 +                {
-+                    // Applied to the unit's anchor BEFORE the sprite loop, so
-+                    // the ENTIRE stack (body, effects, bubbles, shadow) moves
-+                    // coherently; depth/sort inputs stay raw.
-+                    x = Math.round(x + ((anchor.sx - x) * weight));
-+                    y = Math.round(y + ((anchor.sy - y) * weight));
++                    x = Math.round(x + ((own.x - x) * weight));
++                    y = Math.round(y + ((own.y - y) * weight));
 +                }
 +            }
 +        }
@@ -752,7 +873,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..ce356e0dd1384098481d4a4281dc332c
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +708,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +829,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
