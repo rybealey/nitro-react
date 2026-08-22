@@ -16,7 +16,11 @@
     // .nitro-online-count) — small and unobtrusive instead of the vanilla
     // 18px bordered box. Friends keep their marker as a green name.
     &.name-only {
-        background: var(--prp-chrome-chip);
+        // Deliberately NOT on the --prp-chrome vars: hover name tags (and the
+        // green friend variant below) keep the fixed default chip look
+        // regardless of the player's UI color/opacity customization.
+        background-color: rgba($dark, 0.95);
+        box-shadow: inset 0px 3px lighten(rgba($dark, 0.6), 2.5), inset 0 -3px darken(rgba($dark, 0.6), 4);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         border: 0;
