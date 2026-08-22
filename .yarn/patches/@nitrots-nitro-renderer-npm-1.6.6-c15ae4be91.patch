@@ -526,7 +526,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..995a6027897a8b10590e7dafb073f29f1d879fe9 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..ce356e0dd1384098481d4a4281dc332c7ebe3cec 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -542,22 +542,29 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..995a6027897a8b10590e7dafb073f29f
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +57,14 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +57,21 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
 +
-+    // PixelRP moving-vs-moving alignment: the own avatar's RAW room position
-+    // and pre-offset screen anchor, refreshed every frame it renders. Read by
-+    // other units to magnet-blend their visual anchor onto the own avatar's
-+    // while both are mid-step on/crossing the same tile (see renderObject).
-+    // At most one frame stale when a remote renders first in a frame — that
-+    // shifts the blend WEIGHT by ≤0.03 tile of input, not the drawn position.
-+    private _pixelrpOwnAnchor: { tx: number, ty: number, sx: number, sy: number } = null;
++    // PixelRP moving-vs-moving alignment: the own avatar's RAW room position,
++    // pre-offset screen anchor and current STEP-TARGET tile (gx/gy, -1 at
++    // rest), refreshed every frame it renders. Read by other units (see
++    // renderObject): a remote genuinely co-stepping with the own avatar
++    // FOLLOWS the own anchor exactly (after a short engage ramp), a remote
++    // merely crossing gets the magnet blend. The own avatar is never moved.
++    // At most one frame stale when a remote renders first in a frame.
++    private _pixelrpOwnAnchor: { tx: number, ty: number, sx: number, sy: number, gx: number, gy: number } = null;
++
++    // Per-remote follower ramp state (instanceId → weight + clock). The
++    // weight rises to 1 over ~250ms when the same-path condition engages
++    // (no pop onto the anchor) and falls back over ~250ms on release (no
++    // pop off it); at 1 the remote tracks the own anchor exactly.
++    private _pixelrpFollow: Map<number, { w: number, last: number }> = new Map();
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +387,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +394,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -598,7 +605,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..995a6027897a8b10590e7dafb073f29f
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +511,74 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +518,136 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -649,19 +656,81 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..995a6027897a8b10590e7dafb073f29f
 +            // at whole tiles where raw positions are already correct. The own
 +            // avatar is never moved — the player feels own-motion warping the
 +            // most. Stationary pairs (either side) keep vanilla positions.
++            // Current step-target tile from the unit's MovingObjectLogic:
++            // _location is the server-authoritative step start, _locationDelta
++            // the vector to the step target (zeroed the moment a step's lerp
++            // completes) — so the goal is only set while genuinely mid-step.
++            let stepGoalX = -1;
++            let stepGoalY = -1;
++            const unitLogic = (object as any).logic;
++            const stepStart = (unitLogic ? (unitLogic as any)._location : null);
++            const stepDelta = (unitLogic ? (unitLogic as any)._locationDelta : null);
++
++            if(stepStart && stepDelta && ((stepDelta.x !== 0) || (stepDelta.y !== 0)))
++            {
++                stepGoalX = Math.round(stepStart.x + stepDelta.x);
++                stepGoalY = Math.round(stepStart.y + stepDelta.y);
++            }
++
 +            if(unitInfo.own)
 +            {
-+                this._pixelrpOwnAnchor = { tx: roomLocation.x, ty: roomLocation.y, sx: x, sy: y };
++                // The own avatar is the visual master: always rendered exactly
++                // where Nitro's own interpolation puts it, never adjusted.
++                this._pixelrpOwnAnchor = { tx: roomLocation.x, ty: roomLocation.y, sx: x, sy: y, gx: stepGoalX, gy: stepGoalY };
 +            }
 +            else if(this._pixelrpOwnAnchor)
 +            {
 +                const anchor = this._pixelrpOwnAnchor;
++
++                // Same-path follower: this remote is genuinely walking WITH
++                // the own avatar — both mid-step toward the SAME tile (true
++                // movement data, not a distance heuristic) while already
++                // overlapping (<1 tile both axes; keeps opposite-side
++                // converging units from sticking before they truly overlap).
++                const samePath = ((anchor.gx >= 0) && (stepGoalX >= 0)
++                    && (anchor.gx === stepGoalX) && (anchor.gy === stepGoalY)
++                    && (Math.abs(roomLocation.x - anchor.tx) < 1)
++                    && (Math.abs(roomLocation.y - anchor.ty) < 1));
++
++                // Follower weight ramps 0→1 over ~250ms on engage and back
++                // down on release — the remote eases onto/off the own track
++                // instead of popping, then tracks it EXACTLY at weight 1.
++                let entry = this._pixelrpFollow.get(object.instanceId);
++
++                if(!entry && samePath)
++                {
++                    entry = { w: 0, last: Date.now() };
++                    this._pixelrpFollow.set(object.instanceId, entry);
++                }
++
++                let followWeight = 0;
++
++                if(entry)
++                {
++                    const now = Date.now();
++                    const dt = Math.min(200, Math.max(0, (now - entry.last)));
++
++                    entry.last = now;
++                    entry.w = Math.min(1, Math.max(0, (entry.w + ((samePath ? 1 : -1) * (dt / 250)))));
++                    followWeight = entry.w;
++
++                    if(!samePath && (entry.w <= 0)) this._pixelrpFollow.delete(object.instanceId);
++                }
++
++                // Magnet blend for plain crossings (unchanged); the effective
++                // weight is whichever pull is stronger, so the magnet's
++                // partial correction hands off smoothly to the follower ramp
++                // and cushions its release.
 +                const stepFrac = (px: number, py: number) => Math.min(1, 4 * Math.max(Math.abs(px - Math.round(px)), Math.abs(py - Math.round(py))));
 +                const closeness = Math.max(0, 1 - (Math.max(Math.abs(roomLocation.x - anchor.tx), Math.abs(roomLocation.y - anchor.ty)) / 0.5));
-+                const weight = (closeness * closeness * (3 - (2 * closeness))) * stepFrac(roomLocation.x, roomLocation.y) * stepFrac(anchor.tx, anchor.ty);
++                const magnetWeight = (closeness * closeness * (3 - (2 * closeness))) * stepFrac(roomLocation.x, roomLocation.y) * stepFrac(anchor.tx, anchor.ty);
++                const weight = Math.max(followWeight, magnetWeight);
 +
 +                if(weight > 0)
 +                {
++                    // Applied to the unit's anchor BEFORE the sprite loop, so
++                    // the ENTIRE stack (body, effects, bubbles, shadow) moves
++                    // coherently; depth/sort inputs stay raw.
 +                    x = Math.round(x + ((anchor.sx - x) * weight));
 +                    y = Math.round(y + ((anchor.sy - y) * weight));
 +                }
@@ -675,7 +744,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..995a6027897a8b10590e7dafb073f29f
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +639,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +708,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
