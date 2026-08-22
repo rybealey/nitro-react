@@ -1,6 +1,7 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaPencilAlt } from 'react-icons/fa';
+import { GiBreastplate, GiCrossedSwords } from 'react-icons/gi';
 import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
 
@@ -53,11 +54,11 @@ export const RpInventoryView: FC<{}> = props =>
             <div className="rp-inventory-edit" title="Edit"><FaPencilAlt /></div>
             <NitroCardContentView className="text-black">
                 <div className="rp-inventory-gear">
-                    <div className="rp-inventory-slot rp-inventory-slot--gear">
-                        <Text className="rp-inventory-slot-label">Weapon</Text>
+                    <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
+                        <GiCrossedSwords className="rp-inventory-slot-icon" />
                     </div>
-                    <div className="rp-inventory-slot rp-inventory-slot--gear">
-                        <Text className="rp-inventory-slot-label">Armor</Text>
+                    <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
+                        <GiBreastplate className="rp-inventory-slot-icon" />
                     </div>
                 </div>
                 <div className="rp-inventory-grid">
