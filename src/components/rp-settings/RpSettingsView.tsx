@@ -15,6 +15,9 @@ const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' 
 // settings can be furnished one by one.
 const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Color', 'Tag', 'Messages' ];
 
+// Interface tab sub-pages (left rail).
+const INTERFACE_PAGES: string[] = [ 'Windows', 'UI' ];
+
 export const RpSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
@@ -23,6 +26,7 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
     const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
+    const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
 
     // Snap any stored value onto the nearest of the five slider stops.
     const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
@@ -114,44 +118,57 @@ export const RpSettingsView: FC<{}> = props =>
             </NitroCardTabsView>
             <NitroCardContentView className="text-black">
                 { (currentTab === 'Interface') &&
-                    <Column gap={ 2 }>
-                        <div className="rp-settings-section">
-                            <div className="rp-settings-section-info">
-                                <Text bold>Window Headers</Text>
-                                <Text small className="text-muted">The color of window title bars, in the classic two-tone style.</Text>
-                            </div>
-                            <div className="rp-settings-swatches rp-settings-swatches--headers">
-                                { HEADER_SCHEMES.map(scheme => (
-                                    <div key={ scheme.key } title={ scheme.name }
-                                        className={ `rp-settings-swatch ${ (headerKey === scheme.key) ? 'is-selected' : '' }` }
-                                        style={ { background: `linear-gradient(${ scheme.top } 50%, ${ scheme.bottom } 50%)` } }
-                                        onClick={ () => selectHeader(scheme.key) } />
-                                )) }
-                            </div>
-                        </div>
-                        <div className="rp-settings-section">
-                            <div className="rp-settings-section-info">
-                                <Text bold>UI Color</Text>
-                                <Text small className="text-muted">The color and opacity of your interface: the HUDs, drawer, purse and toolbars.</Text>
-                            </div>
-                            <div className="rp-settings-color-control">
-                                <div className="rp-settings-swatches">
-                                    { CHROME_SCHEMES.map(scheme => (
-                                        <div key={ scheme.key } title={ scheme.name }
-                                            className={ `rp-settings-swatch ${ (chromeColor === scheme.color) ? 'is-selected' : '' }` }
-                                            style={ { backgroundColor: scheme.color } }
-                                            onClick={ () => selectChrome(scheme.color) } />
-                                    )) }
+                    <div className="rp-settings-subnav-layout">
+                        <div className="rp-settings-subnav">
+                            { INTERFACE_PAGES.map(page => (
+                                <div key={ page }
+                                    className={ `rp-settings-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setInterfacePage(page) }>
+                                    { page }
                                 </div>
-                                <div className="rp-settings-opacity">
-                                    <input type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
-                                        value={ CHROME_OPACITY_STEPS.indexOf(chromeOpacity) }
-                                        onChange={ event => selectOpacity(parseInt(event.target.value)) } />
-                                    <Text small className="rp-settings-opacity-value">{ chromeOpacity }%</Text>
-                                </div>
-                            </div>
+                            )) }
                         </div>
-                    </Column> }
+                        <Column gap={ 2 } className="rp-settings-subpage">
+                            { (interfacePage === 'Windows') &&
+                                <div className="rp-settings-section">
+                                    <div className="rp-settings-section-info">
+                                        <Text bold>Header Style</Text>
+                                        <Text small className="text-muted">The color of window title bars, in the classic two-tone style.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--headers">
+                                        { HEADER_SCHEMES.map(scheme => (
+                                            <div key={ scheme.key } title={ scheme.name }
+                                                className={ `rp-settings-swatch ${ (headerKey === scheme.key) ? 'is-selected' : '' }` }
+                                                style={ { background: `linear-gradient(${ scheme.top } 50%, ${ scheme.bottom } 50%)` } }
+                                                onClick={ () => selectHeader(scheme.key) } />
+                                        )) }
+                                    </div>
+                                </div> }
+                            { (interfacePage === 'UI') &&
+                                <div className="rp-settings-section">
+                                    <div className="rp-settings-section-info">
+                                        <Text bold>Color</Text>
+                                        <Text small className="text-muted">The color and opacity of your interface: the HUDs, drawer, purse and toolbars.</Text>
+                                    </div>
+                                    <div className="rp-settings-color-control">
+                                        <div className="rp-settings-swatches">
+                                            { CHROME_SCHEMES.map(scheme => (
+                                                <div key={ scheme.key } title={ scheme.name }
+                                                    className={ `rp-settings-swatch ${ (chromeColor === scheme.color) ? 'is-selected' : '' }` }
+                                                    style={ { backgroundColor: scheme.color } }
+                                                    onClick={ () => selectChrome(scheme.color) } />
+                                            )) }
+                                        </div>
+                                        <div className="rp-settings-opacity">
+                                            <input type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
+                                                value={ CHROME_OPACITY_STEPS.indexOf(chromeOpacity) }
+                                                onChange={ event => selectOpacity(parseInt(event.target.value)) } />
+                                            <Text small className="rp-settings-opacity-value">{ chromeOpacity }%</Text>
+                                        </div>
+                                    </div>
+                                </div> }
+                        </Column>
+                    </div> }
                 { (currentTab === 'Roleplay') &&
                     <div className="rp-settings-subnav-layout">
                         <div className="rp-settings-subnav">
