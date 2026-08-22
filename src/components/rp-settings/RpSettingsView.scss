@@ -2,6 +2,50 @@
     width: 450px;
     height: 360px;
 
+    // Setting row: label + description on the left, control on the right.
+    .rp-settings-section {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 4px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .rp-settings-section-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        max-width: 210px;
+    }
+
+    // Color scheme swatches: 4-per-row grid of rounded chips; the selected
+    // one gets a white inner keyline + accent ring so it reads on any hue.
+    .rp-settings-swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 34px);
+        gap: 8px;
+    }
+
+    .rp-settings-swatch {
+        width: 34px;
+        height: 26px;
+        border-radius: $border-radius;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 2px rgba(255, 255, 255, 0.08), inset 0 -2px rgba(0, 0, 0, 0.25);
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+
+        &:hover {
+            transform: translateY(-1px);
+        }
+
+        &.is-selected {
+            border-color: $white;
+            box-shadow: 0 0 0 2px var(--prp-chrome-95), inset 0 2px rgba(255, 255, 255, 0.08), inset 0 -2px rgba(0, 0, 0, 0.25);
+        }
+    }
+
     // Tab strip in the HUD / right-side chrome language: dark bevelled plate,
     // Ubuntu type, quiet inactive tabs, rgba($light, .1) pill on the active
     // one (same surface as the HUD bars). Scoped here so every other
@@ -19,8 +63,8 @@
     // &.theme-primary-slim beats the theme's own 3-class tab-strip rule.
     &.theme-primary-slim .nitro-card-tabs,
     .nitro-card-tabs {
-        background: rgba($dark, 0.95);
-        box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
+        background: var(--prp-chrome-95);
+        box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-bottom: 0;
         padding: 6px 8px !important;
         min-height: 38px;

@@ -3,8 +3,8 @@
     pointer-events: all;
 
     .nitro-purse {
-        background-color: rgba($dark, 0.95);
-        box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
+        background-color: var(--prp-chrome-95);
+        box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         // baseline width matches the right-side column, but grows leftward to
         // fit longer / more currency values instead of truncating them
         min-width: 200px;
@@ -28,7 +28,7 @@
     }
 
     .nitro-purse-seasonal-currency {
-        background-color: rgba($dark, .95);
-        box-shadow: inset 0px 5px lighten(rgba($dark, .6),2.5), inset 0 -4px darken(rgba($dark, .6), 4);
+        background-color: var(--prp-chrome-95);
+        box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
     }
 }

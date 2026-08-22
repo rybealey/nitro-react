@@ -1,0 +1,13 @@
+// PixelRP UI chrome color system. Every dark "chrome" surface (purse, room
+// title, quick tools, room tools, side drawer, HUDs, name-tag chips, chat
+// bar, settings tabs, notification toasts) paints from these variables. The
+// defaults compile to EXACTLY the original $dark recipe; the Settings window
+// (Interface tab) overrides them at runtime via UiChrome.ts when the player
+// picks a color scheme (persisted server-side in user_ui_settings).
+:root {
+    --prp-chrome-95: #{rgba($dark, 0.95)};
+    --prp-chrome-92: #{rgba($dark, 0.92)};
+    --prp-chrome-hi: #{lighten(rgba($dark, 0.6), 2.5)};
+    --prp-chrome-lo: #{darken(rgba($dark, 0.6), 4)};
+    --prp-chrome-hover: #{lighten(rgba($dark, 0.95), 6)};
+}

@@ -1,5 +1,5 @@
 // PixelRP player + target HUD, skinned to match the right-side chrome
-// (purse / room title / quick tools): rgba($dark,.95) chips with the same
+// (purse / room title / quick tools): var(--prp-chrome-95) chips with the same
 // inset bevel, $border-radius corners, white Ubuntu text, rgba($light,.1)
 // inner surfaces. Stat colors stay from the design system.
 .nitro-player-hud-bar {
@@ -20,8 +20,8 @@
 
     // Each panel (self + target) is a chip in the right-side language.
     .hud-plate {
-        background: rgba($dark, .95);
-        box-shadow: inset 0px 5px lighten(rgba($dark, .6), 2.5), inset 0 -4px darken(rgba($dark, .6), 4);
+        background: var(--prp-chrome-95);
+        box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-radius: $border-radius;
         padding: 8px 10px;
     }
@@ -222,9 +222,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba($dark, .92);
+        background: var(--prp-chrome-92);
         border: 1px solid rgba(0, 0, 0, .45);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .45), inset 0px 3px lighten(rgba($dark, .6), 2.5), inset 0 -2px darken(rgba($dark, .6), 4);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .45), inset 0px 3px var(--prp-chrome-hi), inset 0 -2px var(--prp-chrome-lo);
         border-radius: $border-radius;
         cursor: pointer;
         pointer-events: auto;
@@ -233,7 +233,7 @@
         font-size: 10px;
         transition: background .1s ease;
 
-        &:hover { background: lighten(rgba($dark, .95), 6); }
+        &:hover { background: var(--prp-chrome-hover); }
 
         svg { width: 10px; height: 10px; }
     }

@@ -1,8 +1,8 @@
 .nitro-online-count {
     pointer-events: all;
     font-size: $font-size-sm;
-    background-color: rgba($dark, 0.95);
-    box-shadow: inset 0px 5px lighten(rgba($dark, 0.6), 2.5), inset 0 -4px darken(rgba($dark, 0.6), 4);
+    background-color: var(--prp-chrome-95);
+    box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
     width: fit-content;
     flex-shrink: 0;
 }

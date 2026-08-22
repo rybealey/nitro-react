@@ -16,8 +16,8 @@
     // .nitro-online-count) — small and unobtrusive instead of the vanilla
     // 18px bordered box. Friends keep their marker as a green name.
     &.name-only {
-        background-color: rgba($dark, 0.95);
-        box-shadow: inset 0px 3px lighten(rgba($dark, 0.6), 2.5), inset 0 -3px darken(rgba($dark, 0.6), 4);
+        background-color: var(--prp-chrome-95);
+        box-shadow: inset 0px 3px var(--prp-chrome-hi), inset 0 -3px var(--prp-chrome-lo);
         border: 0;
         padding: 2px 8px;
         width: unset;
