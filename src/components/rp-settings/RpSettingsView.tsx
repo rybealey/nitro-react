@@ -16,7 +16,7 @@ const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' 
 const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Color', 'Tag', 'Messages' ];
 
 // Interface tab sub-pages (left rail).
-const INTERFACE_PAGES: string[] = [ 'Windows', 'UI' ];
+const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
 
 export const RpSettingsView: FC<{}> = props =>
 {
@@ -144,7 +144,7 @@ export const RpSettingsView: FC<{}> = props =>
                                         )) }
                                     </div>
                                 </div> }
-                            { (interfacePage === 'UI') &&
+                            { (interfacePage === 'Components') &&
                                 <div className="rp-settings-section">
                                     <div className="rp-settings-section-info">
                                         <Text bold>Color</Text>
