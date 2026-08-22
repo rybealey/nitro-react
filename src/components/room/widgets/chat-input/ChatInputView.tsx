@@ -97,6 +97,20 @@ export const ChatInputView: FC<{}> = props =>
             chatType = ChatMessageTypeEnum.CHAT_SHOUT;
         }
 
+        // Command target shorthand: in ":command" arguments a standalone
+        // "x" (any case) expands to the HUD target's name, for every user
+        // and every command — ":restore x", ":sethp x 50". Token-wise so
+        // words merely containing an x are never touched.
+        if(TargetState.name && text.startsWith(':'))
+        {
+            const [ commandKey, ...args ] = text.split(' ');
+
+            if(args.some(arg => (arg.toLowerCase() === 'x')))
+            {
+                text = [ commandKey, ...args.map(arg => ((arg.toLowerCase() === 'x') ? TargetState.name : arg)) ].join(' ');
+            }
+        }
+
         setIsTyping(false);
         setIsIdle(false);
 
