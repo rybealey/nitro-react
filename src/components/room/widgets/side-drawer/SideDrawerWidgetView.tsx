@@ -1,19 +1,20 @@
 import { FC } from 'react';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { CreateLinkEvent } from '../../../../api';
 import { Base, Column, Flex } from '../../../../common';
 import { useLocalStorage } from '../../../../hooks';
 
 // Center-left edge drawer. Expanded by default; the open/collapsed state is
 // persisted per-browser in localStorage so it stays consistent for each player
-// across sessions. The buttons are placeholders for now and intentionally do
-// nothing yet — behaviour comes later.
-const DRAWER_BUTTONS: { key: string; title: string }[] = [
+// across sessions. Buttons without an onClick are placeholders — behaviour
+// comes later.
+const DRAWER_BUTTONS: { key: string; title: string; onClick?: () => void }[] = [
     { key: 'inventory', title: 'Inventory' },
     { key: 'gangs', title: 'Gangs' },
     { key: 'corporations', title: 'Corporations' },
     { key: 'wanted', title: 'Wanted List' },
     { key: 'support', title: 'Support' },
-    { key: 'settings', title: 'Settings' },
+    { key: 'settings', title: 'Settings', onClick: () => CreateLinkEvent('rp-settings/toggle') },
 ];
 
 export const SideDrawerWidgetView: FC<{}> = props =>
@@ -28,7 +29,7 @@ export const SideDrawerWidgetView: FC<{}> = props =>
                          injected ref, which Base drops (it only wires innerRef) */ }
                     { DRAWER_BUTTONS.map(button => (
                         <OverlayTrigger key={ button.key } placement="right" overlay={ <Tooltip id={ `side-drawer-tooltip-${ button.key }` }>{ button.title }</Tooltip> }>
-                            <div className={ `cursor-pointer side-drawer-item ${ button.key }` } />
+                            <div className={ `cursor-pointer side-drawer-item ${ button.key }` } onClick={ button.onClick } />
                         </OverlayTrigger>
                     )) }
                 </Base>
