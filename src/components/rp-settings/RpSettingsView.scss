@@ -8,6 +8,14 @@
     // NitroCard window keeps the stock bootstrap tabs. The !importants beat
     // the bootstrap utility classes baked into NitroCardTabsItemView
     // (rounded-top, border, pt-1).
+    // The slim theme separates header from body with a 2px border + a white
+    // box-shadow stripe — that's the visible gap above the tab strip. Drop
+    // both so the dark strip sits flush under the header.
+    &.theme-primary-slim .nitro-card-header {
+        border-bottom: 0;
+        box-shadow: none;
+    }
+
     // &.theme-primary-slim beats the theme's own 3-class tab-strip rule.
     &.theme-primary-slim .nitro-card-tabs,
     .nitro-card-tabs {
