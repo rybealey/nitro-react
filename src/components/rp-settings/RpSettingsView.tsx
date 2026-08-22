@@ -11,6 +11,10 @@ import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, DEFAULT_CHROME_COL
 // placeholders to be filled out as settings are decided.
 const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' ];
 
+// Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
+// settings can be furnished one by one.
+const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Color', 'Tag', 'Messages' ];
+
 export const RpSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
@@ -18,6 +22,7 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
+    const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
 
     // Snap any stored value onto the nearest of the five slider stops.
     const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
@@ -147,7 +152,23 @@ export const RpSettingsView: FC<{}> = props =>
                             </div>
                         </div>
                     </Column> }
-                { (currentTab !== 'Interface') &&
+                { (currentTab === 'Roleplay') &&
+                    <div className="rp-settings-subnav-layout">
+                        <div className="rp-settings-subnav">
+                            { ROLEPLAY_PAGES.map(page => (
+                                <div key={ page }
+                                    className={ `rp-settings-subnav-item ${ (roleplayPage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setRoleplayPage(page) }>
+                                    { page }
+                                </div>
+                            )) }
+                        </div>
+                        <Column center fullHeight gap={ 1 } className="rp-settings-placeholder rp-settings-subpage">
+                            <Text bold>{ roleplayPage }</Text>
+                            <Text className="text-muted">Nothing here yet.</Text>
+                        </Column>
+                    </div> }
+                { (currentTab !== 'Interface') && (currentTab !== 'Roleplay') &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>

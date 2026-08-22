@@ -2,6 +2,47 @@
     width: 450px;
     height: 360px;
 
+    // Sub-navigation layout (e.g. Roleplay tab): slim left rail of page
+    // links beside the page content. Active link is a chrome-colored pill —
+    // echoes the tab strip and follows the player's UI color scheme.
+    .rp-settings-subnav-layout {
+        display: flex;
+        height: 100%;
+        gap: 12px;
+    }
+
+    .rp-settings-subnav {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 92px;
+        padding-right: 10px;
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .rp-settings-subnav-item {
+        padding: 5px 10px;
+        border-radius: $border-radius;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(0, 0, 0, 0.45);
+        cursor: pointer;
+        transition: background 0.1s ease, color 0.1s ease;
+
+        &:hover {
+            color: rgba(0, 0, 0, 0.8);
+        }
+
+        &.is-active {
+            background: var(--prp-chrome-95);
+            color: $white;
+        }
+    }
+
+    .rp-settings-subpage {
+        flex: 1;
+    }
+
     // Setting row: label + description on the left, control on the right.
     .rp-settings-section {
         display: flex;
