@@ -12,15 +12,21 @@
         width: 250px;
     }
 
+    // PixelRP: hover name tag as a right-side-chrome chip (same language as
+    // .nitro-online-count) — small and unobtrusive instead of the vanilla
+    // 18px bordered box. Friends keep their marker as a green name.
     &.name-only {
-        background-color: rgba($black, 0.5);
-        padding: 1px 8px;
+        background-color: rgba($dark, 0.95);
+        box-shadow: inset 0px 3px lighten(rgba($dark, 0.6), 2.5), inset 0 -3px darken(rgba($dark, 0.6), 4);
+        border: 0;
+        padding: 2px 8px;
         width: unset;
         text-align: center;
-        font-size: 18px;
+        font-size: $font-size-sm;
+        color: $white;
 
         &.is-friend {
-            background-color: rgba($green, 0.5);
+            color: $green;
         }
     }
 
