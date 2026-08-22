@@ -1,14 +1,15 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { LuShield, LuSwords } from 'react-icons/lu';
+import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
-import { NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
+import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Inventory
 // button (CreateLinkEvent('rp-inventory/toggle')). Visual shell for now:
-// two gear slots (Weapon / Armor) in the accent frame, ten numbered
-// carry slots below. Item data wiring comes later.
-const CARRY_SLOTS: number[] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+// two gear slots (Weapon / Armor) up top, twelve carry slots below — the
+// last two locked by default (future unlocks). Item data wiring comes later.
+const CARRY_SLOTS: number[] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
+const UNLOCKED_SLOTS: number = 10;
 
 export const RpInventoryView: FC<{}> = props =>
 {
@@ -60,9 +61,13 @@ export const RpInventoryView: FC<{}> = props =>
                 </div>
                 <div className="rp-inventory-grid">
                     { CARRY_SLOTS.map(slot => (
-                        <div key={ slot } className="rp-inventory-slot">
-                            <Text className="rp-inventory-slot-label">{ slot }</Text>
-                        </div>
+                        (slot <= UNLOCKED_SLOTS)
+                            ? <div key={ slot } className="rp-inventory-slot">
+                                <span className="rp-inventory-slot-label">{ slot }</span>
+                            </div>
+                            : <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
+                                <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
+                            </div>
                     )) }
                 </div>
             </NitroCardContentView>
