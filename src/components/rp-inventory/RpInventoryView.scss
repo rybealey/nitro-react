@@ -1,0 +1,71 @@
+.nitro-card.rp-inventory-window {
+    width: 252px;
+
+    // Placeholder edit chip, sitting in the header row beside the close
+    // button (the header itself is the stock NitroCard header).
+    .rp-inventory-edit {
+        position: absolute;
+        top: 4px;
+        right: 32px;
+        z-index: 1;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: $border-radius;
+        background: rgba(0, 0, 0, 0.25);
+        color: $white;
+        cursor: pointer;
+        transition: background 0.1s ease;
+
+        svg { width: 10px; height: 10px; }
+
+        &:hover { background: rgba(0, 0, 0, 0.4); }
+    }
+
+    // Equipped-gear frame: the two special slots in an accent border.
+    .rp-inventory-gear {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 8px;
+        margin-bottom: 12px;
+        border: 4px solid #9c4038;
+        border-radius: 8px;
+
+        .rp-inventory-slot {
+            background: $white;
+        }
+    }
+
+    .rp-inventory-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 0 8px 8px;
+    }
+
+    .rp-inventory-slot {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: border-color 0.1s ease;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.25); }
+    }
+
+    .rp-inventory-slot-label {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.3);
+        user-select: none;
+    }
+}

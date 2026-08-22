@@ -9,7 +9,7 @@ import { useLocalStorage } from '../../../../hooks';
 // across sessions. Buttons without an onClick are placeholders — behaviour
 // comes later.
 const DRAWER_BUTTONS: { key: string; title: string; onClick?: () => void }[] = [
-    { key: 'inventory', title: 'Inventory' },
+    { key: 'inventory', title: 'Inventory', onClick: () => CreateLinkEvent('rp-inventory/toggle') },
     { key: 'gangs', title: 'Gangs' },
     { key: 'corporations', title: 'Corporations' },
     { key: 'wanted', title: 'Wanted List' },
