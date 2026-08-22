@@ -2,7 +2,9 @@
     display: block;
 	position: fixed;
 	width: 100%;
-	height: calc(100% - 55px);
+	// PixelRP: full height — the city backdrop runs beneath the (transparent)
+	// toolbar instead of leaving a black band behind it.
+	height: 100%;
 	background: rgba($black, 1);
 	color:#000;
 	
