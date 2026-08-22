@@ -1,7 +1,6 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { FaPencilAlt } from 'react-icons/fa';
-import { GiBreastplate, GiCrossedSwords } from 'react-icons/gi';
+import { LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
 
@@ -50,15 +49,13 @@ export const RpInventoryView: FC<{}> = props =>
     return (
         <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
-            { /* placeholder edit control, styled into the header row */ }
-            <div className="rp-inventory-edit" title="Edit"><FaPencilAlt /></div>
             <NitroCardContentView className="text-black">
                 <div className="rp-inventory-gear">
                     <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
-                        <GiCrossedSwords className="rp-inventory-slot-icon" />
+                        <LuSwords className="rp-inventory-slot-icon" />
                     </div>
                     <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
-                        <GiBreastplate className="rp-inventory-slot-icon" />
+                        <LuShield className="rp-inventory-slot-icon" />
                     </div>
                 </div>
                 <div className="rp-inventory-grid">

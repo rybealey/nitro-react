@@ -11,28 +11,6 @@
         padding-left: 6px;
     }
 
-    // Placeholder edit chip, sitting in the header row beside the close
-    // button (the header itself is the stock NitroCard header).
-    .rp-inventory-edit {
-        position: absolute;
-        top: 6px;
-        right: 24px;
-        z-index: 1;
-        width: 16px;
-        height: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: $border-radius;
-        background: rgba(0, 0, 0, 0.25);
-        color: $white;
-        cursor: pointer;
-        transition: background 0.1s ease;
-
-        svg { width: 8px; height: 8px; }
-
-        &:hover { background: rgba(0, 0, 0, 0.4); }
-    }
 
     // Equipped-gear frame: the two special slots in an accent border.
     .rp-inventory-gear {
