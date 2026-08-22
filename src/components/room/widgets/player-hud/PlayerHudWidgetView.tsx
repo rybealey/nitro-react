@@ -150,10 +150,9 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         setTarget(info);
     });
 
-    useUiEvent(RoomWidgetUpdateRoomObjectEvent.OBJECT_DESELECTED, () =>
-    {
-        if(!locked) setTarget(null);
-    });
+    // Deliberately NO OBJECT_DESELECTED handler: a target persists until a
+    // new one is selected, the target HUD's close button is used, or the
+    // target leaves the room — clicking the floor/furni never clears it.
 
     useUiEvent<RoomWidgetUpdateRoomObjectEvent>(RoomWidgetUpdateRoomObjectEvent.USER_REMOVED, event =>
     {
