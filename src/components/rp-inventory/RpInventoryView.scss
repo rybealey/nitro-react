@@ -12,23 +12,13 @@
     }
 
 
-    // Equipped-gear frame: the two special slots in an accent border.
+    // Equipped-gear row: same slot treatment as the carry grid — only the
+    // icons (and a hair of extra spacing below) distinguish gear.
     .rp-inventory-gear {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
-        padding: 5px;
-        margin-bottom: 8px;
-        // follows the player-selected UI color (full alpha)
-        border: 2px solid var(--prp-chrome-solid);
-        border-radius: 4px;
-
-        .rp-inventory-slot {
-            background: $white;
-            // compact label chips, not full squares
-            aspect-ratio: auto;
-            height: 30px;
-        }
+        gap: 4px;
+        margin-bottom: 6px;
     }
 
     .rp-inventory-grid {
