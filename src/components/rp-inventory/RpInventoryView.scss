@@ -1,15 +1,25 @@
 .nitro-card.rp-inventory-window {
-    width: 172px;
+    width: 104px;
+
+    // Narrow panel: shrink the stock header type so the title, edit chip
+    // and close button share the row like the reference.
+    // Left-align the title so it, the edit chip and the close button share
+    // the narrow header row without colliding (stock header centers it).
+    .nitro-card-header .nitro-card-header-text {
+        font-size: 12px !important;
+        margin-right: auto;
+        padding-left: 6px;
+    }
 
     // Placeholder edit chip, sitting in the header row beside the close
     // button (the header itself is the stock NitroCard header).
     .rp-inventory-edit {
         position: absolute;
-        top: 4px;
-        right: 32px;
+        top: 6px;
+        right: 24px;
         z-index: 1;
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -19,7 +29,7 @@
         cursor: pointer;
         transition: background 0.1s ease;
 
-        svg { width: 10px; height: 10px; }
+        svg { width: 8px; height: 8px; }
 
         &:hover { background: rgba(0, 0, 0, 0.4); }
     }
@@ -42,8 +52,8 @@
     .rp-inventory-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
-        padding: 0 5px 5px;
+        gap: 4px;
+        padding: 0;
     }
 
     .rp-inventory-slot {
@@ -61,9 +71,9 @@
     }
 
     .rp-inventory-slot-label {
-        font-size: 10px;
+        font-size: 8px;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.3);
         user-select: none;
