@@ -4,7 +4,7 @@ import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
-import { ApplyUiChrome, CHROME_SCHEMES, DEFAULT_CHROME_COLOR, IsValidChromeColor } from './UiChrome';
+import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, IsValidChromeColor } from './UiChrome';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -16,23 +16,43 @@ export const RpSettingsView: FC<{}> = props =>
     const [ isVisible, setIsVisible ] = useState(false);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
+    const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
+
+    // Snap any stored value onto the nearest of the five slider stops.
+    const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
 
     // Persisted UI settings arrive from the server at login; apply and track.
     useMessageEvent<RpUiSettingsEvent>(RpUiSettingsEvent, event =>
     {
-        const color = event.getParser().chromeColor;
-        const applied = (IsValidChromeColor(color) ? color : DEFAULT_CHROME_COLOR);
+        const parser = event.getParser();
+        const color = (IsValidChromeColor(parser.chromeColor) ? parser.chromeColor : DEFAULT_CHROME_COLOR);
+        const opacity = snapOpacity(parser.chromeOpacity);
 
-        setChromeColor(applied);
-        ApplyUiChrome(applied);
+        setChromeColor(color);
+        setChromeOpacity(opacity);
+        ApplyUiChrome(color, opacity);
     });
+
+    const saveChrome = (color: string, opacity: number) =>
+    {
+        // '' resets the server row's color to default; opacity always sent
+        SendMessageComposer(new RpSaveUiSettingsComposer((color === DEFAULT_CHROME_COLOR) ? '' : color, opacity));
+    }
 
     const selectChrome = (color: string) =>
     {
         setChromeColor(color);
-        ApplyUiChrome(color);
-        // '' resets the server row to default; send the actual color otherwise
-        SendMessageComposer(new RpSaveUiSettingsComposer((color === DEFAULT_CHROME_COLOR) ? '' : color));
+        ApplyUiChrome(color, chromeOpacity);
+        saveChrome(color, chromeOpacity);
+    }
+
+    const selectOpacity = (index: number) =>
+    {
+        const opacity = (CHROME_OPACITY_STEPS[index] ?? DEFAULT_CHROME_OPACITY);
+
+        setChromeOpacity(opacity);
+        ApplyUiChrome(chromeColor, opacity);
+        saveChrome(chromeColor, opacity);
     }
 
     useEffect(() =>
@@ -92,6 +112,18 @@ export const RpSettingsView: FC<{}> = props =>
                                         style={ { backgroundColor: scheme.color } }
                                         onClick={ () => selectChrome(scheme.color) } />
                                 )) }
+                            </div>
+                        </div>
+                        <div className="rp-settings-section">
+                            <div className="rp-settings-section-info">
+                                <Text bold>UI Opacity</Text>
+                                <Text small className="text-muted">How solid those surfaces are. Slide left to see more of the room through them.</Text>
+                            </div>
+                            <div className="rp-settings-opacity">
+                                <input type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
+                                    value={ CHROME_OPACITY_STEPS.indexOf(chromeOpacity) }
+                                    onChange={ event => selectOpacity(parseInt(event.target.value)) } />
+                                <Text small className="rp-settings-opacity-value">{ chromeOpacity }%</Text>
                             </div>
                         </div>
                     </Column> }

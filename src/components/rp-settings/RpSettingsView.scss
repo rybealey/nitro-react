@@ -27,6 +27,24 @@
         gap: 8px;
     }
 
+    // Opacity slider: five detents (native range with step), value readout.
+    .rp-settings-opacity {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        input[type='range'] {
+            width: 130px;
+            accent-color: var(--prp-chrome-95);
+            cursor: pointer;
+        }
+    }
+
+    .rp-settings-opacity-value {
+        min-width: 30px;
+        text-align: right;
+    }
+
     .rp-settings-swatch {
         width: 34px;
         height: 26px;

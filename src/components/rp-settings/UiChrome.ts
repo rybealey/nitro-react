@@ -29,6 +29,13 @@ export const CHROME_SCHEMES: ChromeScheme[] = [
 
 export const DEFAULT_CHROME_COLOR: string = CHROME_SCHEMES[0].color;
 
+// Five opacity stops for the chrome surfaces; 95 = the original look. The
+// stored value is the SURFACE alpha in percent — every derived alpha (HUD
+// chips, bevels, hover) scales by the same factor so the bevel language
+// keeps its contrast at any opacity.
+export const CHROME_OPACITY_STEPS: number[] = [ 55, 65, 75, 85, 95 ];
+export const DEFAULT_CHROME_OPACITY: number = 95;
+
 const hexToHsl = (hex: string): { h: number, s: number, l: number } =>
 {
     const r = (parseInt(hex.slice(1, 3), 16) / 255);
@@ -70,17 +77,20 @@ export const IsValidChromeColor = (color: string): boolean => /^#[0-9a-fA-F]{6}$
 // Apply a scheme ('' or invalid = default) by overriding the chrome CSS
 // variables on the document root. The SCSS fallbacks equal the default
 // scheme, so applying the default just re-states them.
-export const ApplyUiChrome = (color: string): void =>
+export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OPACITY): void =>
 {
     const base = (IsValidChromeColor(color) ? color : DEFAULT_CHROME_COLOR);
     const { h, s, l } = hexToHsl(base);
     const style = document.documentElement.style;
+    // scale every derived alpha by the chosen surface opacity (95 = stock)
+    const f = (Math.min(100, Math.max(40, opacity)) / 95);
+    const a = (v: number) => Math.min(1, v * f);
 
-    style.setProperty('--prp-chrome-95', hsla(h, s, l, 0.95));
-    style.setProperty('--prp-chrome-92', hsla(h, s, l, 0.92));
-    style.setProperty('--prp-chrome-hi', hsla(h, s, (l + 2.5), 0.6));
-    style.setProperty('--prp-chrome-lo', hsla(h, s, (l - 4), 0.6));
-    style.setProperty('--prp-chrome-hover', hsla(h, s, (l + 6), 0.95));
+    style.setProperty('--prp-chrome-95', hsla(h, s, l, a(0.95)));
+    style.setProperty('--prp-chrome-92', hsla(h, s, l, a(0.92)));
+    style.setProperty('--prp-chrome-hi', hsla(h, s, (l + 2.5), a(0.6)));
+    style.setProperty('--prp-chrome-lo', hsla(h, s, (l - 4), a(0.6)));
+    style.setProperty('--prp-chrome-hover', hsla(h, s, (l + 6), a(0.95)));
 
     // Drawer icon tint: the drawer PNGs are grayscale; each icon carries a
     // masked overlay pseudo-element painted with this color and blended

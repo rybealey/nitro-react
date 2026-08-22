@@ -299,10 +299,10 @@ index 0000000000000000000000000000000000000000..423985ca59c827adbb15bf3bbc5c1bc7
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..ad25dc4679d18f5b39daa6adfa910d80f46ea358
+index 0000000000000000000000000000000000000000..2c376cc5a3855f983b912a85fc3f528aaa27459f
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
-@@ -0,0 +1,43 @@
+@@ -0,0 +1,51 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -311,10 +311,12 @@ index 0000000000000000000000000000000000000000..ad25dc4679d18f5b39daa6adfa910d80
 +export class RpUiSettingsParser implements IMessageParser
 +{
 +    private _chromeColor: string;
++    private _chromeOpacity: number;
 +
 +    public flush(): boolean
 +    {
 +        this._chromeColor = '';
++        this._chromeOpacity = 95;
 +
 +        return true;
 +    }
@@ -324,6 +326,7 @@ index 0000000000000000000000000000000000000000..ad25dc4679d18f5b39daa6adfa910d80
 +        if(!wrapper) return false;
 +
 +        this._chromeColor = wrapper.readString();
++        this._chromeOpacity = wrapper.readInt();
 +
 +        return true;
 +    }
@@ -331,6 +334,11 @@ index 0000000000000000000000000000000000000000..ad25dc4679d18f5b39daa6adfa910d80
 +    public get chromeColor(): string
 +    {
 +        return this._chromeColor;
++    }
++
++    public get chromeOpacity(): number
++    {
++        return this._chromeOpacity;
 +    }
 +}
 +
@@ -368,7 +376,7 @@ index c303114f44e2fd89b1e683380e26ea412de500b8..88228581de6b431e5960d8748a4a67a3
  }
 diff --git a/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..24205b2d5cf991152d0cf723543acfcb321b5542
+index 0000000000000000000000000000000000000000..c9e14dd4619ca1ea18bc6669acc87c849cca9ff9
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 @@ -0,0 +1,23 @@
@@ -380,9 +388,9 @@ index 0000000000000000000000000000000000000000..24205b2d5cf991152d0cf723543acfcb
 +{
 +    private _data: ConstructorParameters<typeof RpSaveUiSettingsComposer>;
 +
-+    constructor(chromeColor: string)
++    constructor(chromeColor: string, chromeOpacity: number)
 +    {
-+        this._data = [chromeColor];
++        this._data = [chromeColor, chromeOpacity];
 +    }
 +
 +    public getMessageArray()
