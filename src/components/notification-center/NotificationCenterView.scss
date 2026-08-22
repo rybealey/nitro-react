@@ -134,6 +134,8 @@
     pointer-events: all;
     padding: 10px 12px;
     background-color: var(--prp-chrome-95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
     font-size: $font-size-sm;
 

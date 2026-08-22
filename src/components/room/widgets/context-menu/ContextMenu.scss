@@ -17,6 +17,8 @@
     // 18px bordered box. Friends keep their marker as a green name.
     &.name-only {
         background-color: var(--prp-chrome-95);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         box-shadow: inset 0px 3px var(--prp-chrome-hi), inset 0 -3px var(--prp-chrome-lo);
         border: 0;
         padding: 2px 8px;

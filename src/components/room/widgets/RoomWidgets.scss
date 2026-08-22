@@ -5,6 +5,8 @@
 
     .nitro-room-tools {
         background: var(--prp-chrome-95);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-top-right-radius: $border-radius;
         border-bottom-right-radius: $border-radius;
@@ -47,6 +49,8 @@
 
     .nitro-room-tools-info {
         background: var(--prp-chrome-95);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         transition: all .2s ease;
         max-width: 250px;
@@ -65,6 +69,8 @@
 
     .nitro-side-drawer {
         background: var(--prp-chrome-95);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-top-right-radius: $border-radius;
         border-bottom-right-radius: $border-radius;
@@ -161,6 +167,8 @@
     transform: translateX(-50%);
     font-size: large;
     background: var(--prp-chrome-95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
     border-radius: $border-radius;
     transition: all 0.2s ease;

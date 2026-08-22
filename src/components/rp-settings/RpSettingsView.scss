@@ -82,6 +82,8 @@
     &.theme-primary-slim .nitro-card-tabs,
     .nitro-card-tabs {
         background: var(--prp-chrome-95);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-bottom: 0;
         padding: 6px 8px !important;

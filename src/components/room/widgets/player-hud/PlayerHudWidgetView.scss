@@ -21,6 +21,8 @@
     // Each panel (self + target) is a chip in the right-side language.
     .hud-plate {
         background: var(--prp-chrome-95);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-radius: $border-radius;
         padding: 8px 10px;
@@ -223,6 +225,8 @@
         align-items: center;
         justify-content: center;
         background: var(--prp-chrome-92);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         border: 1px solid rgba(0, 0, 0, .45);
         box-shadow: 0 1px 3px rgba(0, 0, 0, .45), inset 0px 3px var(--prp-chrome-hi), inset 0 -2px var(--prp-chrome-lo);
         border-radius: $border-radius;

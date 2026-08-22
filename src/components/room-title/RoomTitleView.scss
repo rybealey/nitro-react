@@ -2,6 +2,8 @@
     pointer-events: all;
     font-size: $font-size-sm;
     background-color: var(--prp-chrome-95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
     // sits left of the purse in its row; sized to content, wrapping long titles
     width: fit-content;
