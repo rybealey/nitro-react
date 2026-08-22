@@ -4,7 +4,7 @@ import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
-import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -155,7 +155,7 @@ export const RpSettingsView: FC<{}> = props =>
                                             { CHROME_SCHEMES.map(scheme => (
                                                 <div key={ scheme.key } title={ scheme.name }
                                                     className={ `rp-settings-swatch ${ (chromeColor === scheme.color) ? 'is-selected' : '' }` }
-                                                    style={ { backgroundColor: scheme.color } }
+                                                    style={ { backgroundColor: ChromeSwatchColor(scheme.color) } }
                                                     onClick={ () => selectChrome(scheme.color) } />
                                             )) }
                                         </div>

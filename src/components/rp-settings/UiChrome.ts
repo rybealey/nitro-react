@@ -94,6 +94,19 @@ const hsla = (h: number, s: number, l: number, a: number): string =>
 
 export const IsValidChromeColor = (color: string): boolean => /^#[0-9a-fA-F]{6}$/.test(color);
 
+// Display color for a scheme's picker swatch: the same vibrant mid-tone the
+// drawer icons tint to (hue of the scheme at 45%/55%), so the picker shows
+// the hue you'll actually experience instead of eight near-black squares.
+// Charcoal (neutral, untinted icons) gets a plain gray.
+export const ChromeSwatchColor = (color: string): string =>
+{
+    if(color === DEFAULT_CHROME_COLOR) return 'hsl(220, 6%, 52%)';
+
+    const { h } = hexToHsl(color);
+
+    return hsla(h, 45, 55, 1);
+}
+
 // Apply a scheme ('' or invalid = default) by overriding the chrome CSS
 // variables on the document root. The SCSS fallbacks equal the default
 // scheme, so applying the default just re-states them.
