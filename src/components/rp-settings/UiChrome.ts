@@ -36,6 +36,26 @@ export const DEFAULT_CHROME_COLOR: string = CHROME_SCHEMES[0].color;
 export const CHROME_OPACITY_STEPS: number[] = [ 55, 65, 75, 85, 95 ];
 export const DEFAULT_CHROME_OPACITY: number = 95;
 
+// Window header duo-tones, from the CMS pixel design system ramps. The
+// header keeps Nitro's split two-tone style; only the hues change.
+export interface HeaderScheme
+{
+    key: string;
+    name: string;
+    top: string;
+    bottom: string;
+}
+
+export const HEADER_SCHEMES: HeaderScheme[] = [
+    { key: 'orange', name: 'Orange', top: '#f0954a', bottom: '#e87332' },
+    { key: 'pink', name: 'Pink', top: '#f8558c', bottom: '#e93a7d' },
+    { key: 'purple', name: 'Purple', top: '#6d1057', bottom: '#4a0b3d' },
+];
+
+export const DEFAULT_HEADER_KEY: string = 'orange';
+
+export const IsValidHeaderKey = (key: string): boolean => HEADER_SCHEMES.some(scheme => (scheme.key === key));
+
 const hexToHsl = (hex: string): { h: number, s: number, l: number } =>
 {
     const r = (parseInt(hex.slice(1, 3), 16) / 255);
@@ -77,7 +97,7 @@ export const IsValidChromeColor = (color: string): boolean => /^#[0-9a-fA-F]{6}$
 // Apply a scheme ('' or invalid = default) by overriding the chrome CSS
 // variables on the document root. The SCSS fallbacks equal the default
 // scheme, so applying the default just re-states them.
-export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OPACITY): void =>
+export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OPACITY, headerKey: string = DEFAULT_HEADER_KEY): void =>
 {
     const base = (IsValidChromeColor(color) ? color : DEFAULT_CHROME_COLOR);
     const { h, s, l } = hexToHsl(base);
@@ -91,6 +111,10 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     style.setProperty('--prp-chrome-hi', hsla(h, s, (l + 2.5), a(0.6)));
     style.setProperty('--prp-chrome-lo', hsla(h, s, (l - 4), a(0.6)));
     style.setProperty('--prp-chrome-hover', hsla(h, s, (l + 6), a(0.95)));
+    // pre-blended bevel bands at the SAME alpha as the base surface — the
+    // plate/chip gradient vars compose from these (see _chrome.scss)
+    style.setProperty('--prp-chrome-band-hi', hsla(h, s, (l + 1.5), a(0.95)));
+    style.setProperty('--prp-chrome-band-lo', hsla(h, s, (l - 2.4), a(0.95)));
 
     // Drawer icon tint: the drawer PNGs are grayscale; each icon carries a
     // masked overlay pseudo-element painted with this color and blended
@@ -105,4 +129,14 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     {
         style.setProperty('--prp-chrome-icon-tint', hsla(h, 45, 55, 1));
     }
+
+    // Window header duo-tone: set the two stops (+ a border 5% darker than
+    // the bottom stop, matching the slim theme's original derivation); the
+    // gradient var composes from these automatically.
+    const header = (HEADER_SCHEMES.find(scheme => (scheme.key === headerKey)) ?? HEADER_SCHEMES[0]);
+    const hb = hexToHsl(header.bottom);
+
+    style.setProperty('--prp-header-top', header.top);
+    style.setProperty('--prp-header-bottom', header.bottom);
+    style.setProperty('--prp-header-border', hsla(hb.h, hb.s, (hb.l - 5), 1));
 }

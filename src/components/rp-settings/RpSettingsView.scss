@@ -27,6 +27,19 @@
         gap: 8px;
     }
 
+    .rp-settings-swatches--headers {
+        grid-template-columns: repeat(3, 34px);
+    }
+
+    // Color swatches + opacity slider stacked as one control column: the
+    // slider sits under the swatch grid, spanning its width, so color and
+    // solidity read as facets of the same setting.
+    .rp-settings-color-control {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
     // Opacity slider: five detents (native range with step), value readout.
     .rp-settings-opacity {
         display: flex;
@@ -34,6 +47,8 @@
         gap: 8px;
 
         input[type='range'] {
+            flex: 1;
+            min-width: 0;
             width: 130px;
             accent-color: var(--prp-chrome-95);
             cursor: pointer;
@@ -81,10 +96,9 @@
     // &.theme-primary-slim beats the theme's own 3-class tab-strip rule.
     &.theme-primary-slim .nitro-card-tabs,
     .nitro-card-tabs {
-        background: var(--prp-chrome-95);
+        background: var(--prp-chrome-plate);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        box-shadow: inset 0px 5px var(--prp-chrome-hi), inset 0 -4px var(--prp-chrome-lo);
         border-bottom: 0;
         padding: 6px 8px !important;
         min-height: 38px;

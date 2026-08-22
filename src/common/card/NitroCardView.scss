@@ -15,7 +15,9 @@ $nitro-card-tabs-height: 33px;
         .nitro-card-header {
             min-height: 33px;
             max-height: 33px;
-            background: $primary;
+            // PixelRP: header duo-tone follows the player-selected header
+            // scheme (Settings > Interface); default = brand orange.
+            background: var(--prp-header-grad);
 
             .nitro-card-header-text {
                 color: $white;
@@ -118,8 +120,10 @@ $nitro-card-tabs-height: 33px;
             position: relative;
             min-height: 28px;
             max-height: 28px;
-            background: repeating-linear-gradient($tertiary, $tertiary 50%, $quaternary 50%, $quaternary 100%);
-            border-bottom: 2px solid darken($quaternary, 5);
+            // PixelRP: header duo-tone follows the player-selected header
+            // scheme (Settings > Interface); default = brand orange.
+            background: var(--prp-header-grad);
+            border-bottom: 2px solid var(--prp-header-border);
             box-shadow: 0 2px white;
             width: 100%;
             margin: 0;
