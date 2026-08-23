@@ -20,13 +20,14 @@ interface HudStats
     aggro: number;
     wanted: number;
     aggressive: boolean;
+    passive: boolean;
 }
 
-const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 100, aggro: 0, wanted: 0, aggressive: false };
+const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 100, aggro: 0, wanted: 0, aggressive: false, passive: false };
 
 // Live RP stats per room unit, keyed by roomIndex. Filled by RpStatsEvent
 // (sent on room entry and on every change); cleared when the room changes.
-const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number, aggro: number }> = new Map();
+const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number, aggro: number, passive: boolean }> = new Map();
 
 // Deterministic pseudo-values for the still-mocked wanted level — stable per
 // name. Everything else is overridden by live values once the server has
@@ -44,7 +45,8 @@ const mockStatsFor = (name: string): HudStats =>
         energyMax: 100,
         aggro: 0,
         wanted: (hash % 6),
-        aggressive: false
+        aggressive: false,
+        passive: false
     };
 };
 
@@ -55,7 +57,7 @@ const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
 
     if(!live) return base;
 
-    return { ...base, hp: live.hp, hpMax: live.hpMax, energy: live.energy, energyMax: live.energyMax, aggro: live.aggro, aggressive: (live.aggro > 0) };
+    return { ...base, hp: live.hp, hpMax: live.hpMax, energy: live.energy, energyMax: live.energyMax, aggro: live.aggro, aggressive: (live.aggro > 0), passive: live.passive };
 };
 
 const HudStars: FC<{ wanted: number }> = ({ wanted }) =>
@@ -117,7 +119,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     {
         const parser = event.getParser();
 
-        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression });
+        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression, passive: parser.passive });
 
         setStatsVersion(value => (value + 1));
     });
@@ -203,7 +205,8 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                 <div className="hud-info">
                     <div className="hud-name-row">
                         <span className="hud-name">{ selfName }</span>
-                        <span className={ `hud-state ${ playerStats.aggressive ? 'aggressive' : 'passive' }` }>{ playerStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span>
+                        { (playerStats.aggressive || playerStats.passive) &&
+                            <span className={ `hud-state ${ playerStats.aggressive ? 'aggressive' : 'passive' }` }>{ playerStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span> }
                     </div>
                     <HudBars stats={ playerStats } />
                 </div>
@@ -213,7 +216,8 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                 <Flex alignItems="center" gap={ 2 } className="hud-plate target">
                     <div className="hud-info mirrored">
                         <div className="hud-name-row">
-                            <span className={ `hud-state ${ targetStats.aggressive ? 'aggressive' : 'passive' }` }>{ targetStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span>
+                            { (targetStats.aggressive || targetStats.passive) &&
+                                <span className={ `hud-state ${ targetStats.aggressive ? 'aggressive' : 'passive' }` }>{ targetStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span> }
                             <span className="hud-name">{ target.name }</span>
                         </div>
                         <HudBars stats={ targetStats } mirrored />
