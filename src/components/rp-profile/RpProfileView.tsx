@@ -69,14 +69,13 @@ export const RpProfileView: FC<{}> = props =>
                 <div className="rp-profile-layout">
                     <div className="rp-profile-left">
                         <div className="rp-profile-card rp-profile-identity">
+                            { /* classic Habbo online badge, pinned top-right of this card */ }
+                            <i className="icon icon-pf-online rp-profile-online-badge" title="Online" />
                             <div className="rp-profile-avatar">
                                 <LayoutAvatarImageView figure={ RpProfileState.figure } direction={ 2 } />
                             </div>
                             <div className="rp-profile-identity-info">
-                                <div className="rp-profile-name">
-                                    <span className="rp-profile-online-dot" />
-                                    { RpProfileState.name || 'Unknown' }
-                                </div>
+                                <div className="rp-profile-name">{ RpProfileState.name || 'Unknown' }</div>
                                 <div className="rp-profile-motto">{ RpProfileState.motto || 'Welcome to my profile!' }</div>
                             </div>
                         </div>
@@ -95,7 +94,7 @@ export const RpProfileView: FC<{}> = props =>
                                 <LuBuilding2 className="rp-profile-org-icon" />
                                 <div className="rp-profile-org-info">
                                     <div className="rp-profile-org-name">Unemployed</div>
-                                    <div className="rp-profile-org-role">—</div>
+                                    <div className="rp-profile-org-role">&nbsp;</div>
                                 </div>
                                 <div className="rp-profile-org-status">Off-duty</div>
                             </div>
@@ -109,7 +108,7 @@ export const RpProfileView: FC<{}> = props =>
                                 <LuUsers className="rp-profile-org-icon" />
                                 <div className="rp-profile-org-info">
                                     <div className="rp-profile-org-name">No gang</div>
-                                    <div className="rp-profile-org-role">—</div>
+                                    <div className="rp-profile-org-role">&nbsp;</div>
                                 </div>
                                 <div className="rp-profile-view-gang">View gang</div>
                             </div>

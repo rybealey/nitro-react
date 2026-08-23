@@ -44,10 +44,18 @@
 
     // identity: avatar figure + name/motto
     .rp-profile-identity {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 6px;
         padding: 8px;
+    }
+
+    // classic Habbo online/offline badge, top-right of the identity card
+    .rp-profile-online-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
     }
 
     .rp-profile-avatar {
@@ -59,7 +67,8 @@
         .avatar-image {
             image-rendering: pixelated;
             background-repeat: no-repeat;
-            background-position: center top;
+            // -20px eats the sprite's empty headroom so the feet fit the box
+            background-position: center -20px;
         }
     }
 
@@ -71,19 +80,8 @@
     }
 
     .rp-profile-name {
-        display: flex;
-        align-items: center;
-        gap: 6px;
         font-size: 14px;
         font-weight: 700;
-    }
-
-    .rp-profile-online-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #3fbf5a;
-        flex-shrink: 0;
     }
 
     .rp-profile-motto {
