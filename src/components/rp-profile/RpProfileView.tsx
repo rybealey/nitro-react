@@ -110,7 +110,7 @@ export const RpProfileView: FC<{}> = props =>
                                     <div className="rp-profile-org-name">No gang</div>
                                     <div className="rp-profile-org-role">&nbsp;</div>
                                 </div>
-                                <div className="rp-profile-view-gang">View gang</div>
+                                <div className="rp-profile-view-gang">View</div>
                             </div>
                         </div>
                     </div>
