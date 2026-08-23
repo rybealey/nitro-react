@@ -12,7 +12,9 @@ export const CatalogSearchView: FC<{}> = props =>
 
     useEffect(() =>
     {
-        let search = searchValue?.toLocaleLowerCase().replace(' ', '');
+        // Strip ALL whitespace — the furniture side compares against a
+        // fully de-spaced haystack, so a query keeping any space never matches.
+        let search = searchValue?.toLocaleLowerCase().replace(/\s+/g, '');
 
         if(!search || !search.length)
         {

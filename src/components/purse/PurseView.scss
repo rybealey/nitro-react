@@ -12,24 +12,6 @@
 
         // Square Diamonds button in the purse's left slot. Pixel icon renders
         // at NATIVE size (43x40, no scaling) centered in the square.
-        .nitro-purse-diamonds {
-            // 1:1 square matching the purse's inner height (aspect-ratio
-            // doesn't transfer from a stretched cross axis in a flex row)
-            width: 60px;
-            flex-shrink: 0;
-            align-self: stretch;
-            border-radius: $border-radius;
-            background-color: rgba($light, 0.1);
-            background-image: url('@/assets/images/purse/diamonds.png');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: auto;
-            image-rendering: pixelated;
-
-            &:hover {
-                background-color: rgba($light, 0.18);
-            }
-        }
 
         .nitro-purse-subscription {
             background-color: rgba($light, 0.1);

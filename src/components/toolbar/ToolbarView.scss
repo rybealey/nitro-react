@@ -11,6 +11,15 @@
     .navigation-item {
         position: relative;
 
+        // Diamonds shortcut (moved from the purse): native-size 43x40
+        // pixel icon, no scaling.
+        &.icon-diamonds {
+            width: 43px;
+            height: 40px;
+            background: url('@/assets/images/purse/diamonds.png') no-repeat center;
+            image-rendering: pixelated;
+        }
+
         &.item-avatar {
             width: 50px;
             height: 45px;
