@@ -23,7 +23,6 @@ import { NitropediaView } from '../nitropedia/NitropediaView';
 import { RightSideView } from '../right-side/RightSideView';
 import { RoomView } from '../room/RoomView';
 import { ToolbarView } from '../toolbar/ToolbarView';
-import { UserProfileView } from '../user-profile/UserProfileView';
 import { RpInventoryView } from '../rp-inventory/RpInventoryView';
 import { RpProfileView } from '../rp-profile/RpProfileView';
 import { RpSettingsView } from '../rp-settings/RpSettingsView';
@@ -101,7 +100,6 @@ export const MainView: FC<{}> = props =>
             <RpSettingsView />
             <RpInventoryView />
             <RpProfileView />
-            <UserProfileView />
             <GroupsView />
             <CameraWidgetView />
             <HelpView />
