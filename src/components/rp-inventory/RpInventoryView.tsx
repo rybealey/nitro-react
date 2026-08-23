@@ -1,19 +1,38 @@
-import { ILinkEventTracker } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RpInventoryEvent, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
-import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { useMessageEvent } from '../../hooks';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Inventory
-// button (CreateLinkEvent('rp-inventory/toggle')). Visual shell for now:
-// two gear slots (Weapon / Armor) up top, twelve carry slots below — the
-// last two locked by default (future unlocks). Item data wiring comes later.
+// button (CreateLinkEvent('rp-inventory/toggle')). Two gear slots (Weapon /
+// Armor) up top, twelve carry slots below — the last two locked (future
+// unlocks). Carry contents are LIVE: RpInventoryEvent fills them (login +
+// every change) and clicking a consumable uses it (RpUseItemComposer).
 const CARRY_SLOTS: number[] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
 const UNLOCKED_SLOTS: number = 10;
+
+// item key -> display name + icon class (icons live in assets/images/rp-items)
+const ITEMS: Record<string, { name: string, cls: string }> = {
+    smoothie: { name: 'Passive Smoothie', cls: 'rp-item-smoothie' },
+};
 
 export const RpInventoryView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
+    const [ items, setItems ] = useState<Map<number, { item: string, count: number }>>(new Map());
+
+    // Live backpack contents — sent at login and after every change, so the
+    // map is always a full snapshot.
+    useMessageEvent<RpInventoryEvent>(RpInventoryEvent, event =>
+    {
+        const next = new Map<number, { item: string, count: number }>();
+
+        for(const entry of event.getParser().items) next.set(entry.slot, { item: entry.item, count: entry.count });
+
+        setItems(next);
+    });
 
     useEffect(() =>
     {
@@ -60,15 +79,35 @@ export const RpInventoryView: FC<{}> = props =>
                     </div>
                 </div>
                 <div className="rp-inventory-grid">
-                    { CARRY_SLOTS.map(slot => (
-                        (slot <= UNLOCKED_SLOTS)
-                            ? <div key={ slot } className="rp-inventory-slot">
+                    { CARRY_SLOTS.map(slot =>
+                    {
+                        if(slot > UNLOCKED_SLOTS)
+                        {
+                            return (
+                                <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
+                                    <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
+                                </div>);
+                        }
+
+                        const entry = items.get(slot);
+                        const meta = (entry ? ITEMS[entry.item] : null);
+
+                        if(entry && meta)
+                        {
+                            return (
+                                <div key={ slot } className="rp-inventory-slot has-item" title={ meta.name }
+                                    onClick={ () => SendMessageComposer(new RpUseItemComposer(slot)) }>
+                                    <div className={ `rp-inventory-item ${ meta.cls }` } />
+                                    { (entry.count > 1) &&
+                                        <span className="rp-inventory-count">{ entry.count }</span> }
+                                </div>);
+                        }
+
+                        return (
+                            <div key={ slot } className="rp-inventory-slot">
                                 <span className="rp-inventory-slot-label">{ slot }</span>
-                            </div>
-                            : <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
-                                <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
-                            </div>
-                    )) }
+                            </div>);
+                    }) }
                 </div>
             </NitroCardContentView>
         </NitroCardView>
