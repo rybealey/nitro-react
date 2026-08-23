@@ -1,22 +1,25 @@
 .nitro-loading {
     position: relative;
-    background: #1a0e14 url('@/assets/images/loading/loading-bg.webp') no-repeat center center;
+    // Same pixel-city scene as the hotel view (bundled webp copy of
+    // images/reception/pixelrp_city.png); backdrop colour matches its sky.
+    background: #444298 url('@/assets/images/loading/loading-city.webp') no-repeat center center;
     background-size: cover;
     z-index: 100;
 
-    .loading-panels {
+    // Animated PixelRP logo (same 201x99 gif the CMS uses), shown at an
+    // exact 2x integer scale so the pixel art stays crisp.
+    .loading-logo {
         position: absolute;
         top: 0;
         bottom: 0;
         left: 0;
         right: 0;
         margin: auto;
-        width: 553px;
-        height: 383px;
-        max-width: 90%;
-        max-height: 60%;
-        background: url('@/assets/images/loading/loading-panels.png') no-repeat center;
-        background-size: contain;
+        width: 402px;
+        height: 198px;
+        background: url('@/assets/images/loading/loading-logo.gif') no-repeat center;
+        background-size: 402px 198px;
+        image-rendering: pixelated;
         z-index: 1;
         pointer-events: none;
     }

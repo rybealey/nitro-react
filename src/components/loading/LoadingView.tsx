@@ -16,7 +16,7 @@ export const LoadingView: FC<LoadingViewProps> = props =>
         <Column fullHeight position="relative" className="nitro-loading">
             <Base fullHeight className="container h-100">
                 <Column fullHeight alignItems="center" justifyContent="end">
-                    <Base className="loading-panels" />
+                    <Base className="loading-logo" />
                     <Column size={ 6 } className="text-center py-4">
                         { isError && (message && message.length) ?
                             <Base className="fs-4 text-shadow">{ message }</Base>
