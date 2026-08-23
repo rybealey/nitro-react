@@ -67,8 +67,9 @@
         .avatar-image {
             image-rendering: pixelated;
             background-repeat: no-repeat;
-            // -20px eats the sprite's empty headroom so the feet fit the box
-            background-position: center -20px;
+            // x: -18px pulls the figure left of the sprite's centered slack;
+            // y: -17px eats the empty headroom so the feet fit the box
+            background-position: -18px -17px;
         }
     }
 
