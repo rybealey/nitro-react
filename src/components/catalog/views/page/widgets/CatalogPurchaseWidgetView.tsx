@@ -17,7 +17,7 @@ export const CatalogPurchaseWidgetView: FC<CatalogPurchaseWidgetViewProps> = pro
     const [ purchaseWillBeGift, setPurchaseWillBeGift ] = useState(false);
     const [ purchaseState, setPurchaseState ] = useState(CatalogPurchaseState.NONE);
     const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useLocalStorage(LocalStorageKeys.CATALOG_SKIP_PURCHASE_CONFIRMATION, false);
-    const { currentOffer = null, currentPage = null, purchaseOptions = null, setPurchaseOptions = null } = useCatalog();
+    const { currentOffer = null, currentPage = null, purchaseOptions = null, setPurchaseOptions = null, getNodesByOfferId = null } = useCatalog();
     const { getCurrencyAmount = null } = usePurse();
 
     const onCatalogEvent = useCallback((event: CatalogEvent) =>
@@ -60,6 +60,23 @@ export const CatalogPurchaseWidgetView: FC<CatalogPurchaseWidgetViewProps> = pro
         return false;
     }, [ currentOffer, purchaseOptions ]);
 
+    // The search results view is a synthetic page (pageId -1). The server
+    // validates the page id on purchase and silently drops -1, leaving the
+    // buy button spinning forever - resolve the offer's real page instead.
+    const resolvePageId = () =>
+    {
+        let pageId = currentOffer.page.pageId;
+
+        if(pageId === -1)
+        {
+            const nodes = getNodesByOfferId(currentOffer.offerId, true);
+
+            if(nodes && nodes.length) pageId = nodes[0].pageId;
+        }
+
+        return pageId;
+    }
+
     const purchase = (isGift: boolean = false) =>
     {
         if(!currentOffer) return;
@@ -73,7 +90,7 @@ export const CatalogPurchaseWidgetView: FC<CatalogPurchaseWidgetViewProps> = pro
 
         if(isGift)
         {
-            DispatchUiEvent(new CatalogInitGiftEvent(currentOffer.page.pageId, currentOffer.offerId, purchaseOptions.extraData));
+            DispatchUiEvent(new CatalogInitGiftEvent(resolvePageId(), currentOffer.offerId, purchaseOptions.extraData));
 
             return;
         }
@@ -87,16 +104,7 @@ export const CatalogPurchaseWidgetView: FC<CatalogPurchaseWidgetViewProps> = pro
             return;
         }
 
-        let pageId = currentOffer.page.pageId;
-
-        // if(pageId === -1)
-        // {
-        //     const nodes = getNodesByOfferId(currentOffer.offerId);
-
-        //     if(nodes) pageId = nodes[0].pageId;
-        // }
-
-        SendMessageComposer(new PurchaseFromCatalogComposer(pageId, currentOffer.offerId, purchaseOptions.extraData, purchaseOptions.quantity));
+        SendMessageComposer(new PurchaseFromCatalogComposer(resolvePageId(), currentOffer.offerId, purchaseOptions.extraData, purchaseOptions.quantity));
     }
 
     useEffect(() =>
