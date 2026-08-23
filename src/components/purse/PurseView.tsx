@@ -1,5 +1,6 @@
 import { FriendlyTime, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef } from 'react';
+import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { CreateLinkEvent, GetConfiguration, LocalizeText } from '../../api';
 import { Column, Flex, LayoutCurrencyIcon, Text } from '../../common';
 import { usePurse } from '../../hooks';
@@ -88,6 +89,11 @@ export const PurseView: FC<{}> = props =>
     return (
         <Column alignItems="end" className="nitro-purse-container" gap={ 1 }>
             <Flex innerRef={ purseRef } gap={ 1 } className="nitro-purse rounded-bottom p-1">
+                { /* plain div, not <Base>: OverlayTrigger anchors via an
+                     injected ref, which Base drops (it only wires innerRef) */ }
+                <OverlayTrigger placement="bottom" overlay={ <Tooltip id="purse-diamonds-tooltip">Diamonds</Tooltip> }>
+                    <div className="cursor-pointer nitro-purse-diamonds" />
+                </OverlayTrigger>
                 <Column justifyContent="center" gap={ 0 } className="flex-grow-1">
                     <CurrencyView type={ -1 } amount={ purse.credits } short={ currencyDisplayNumberShort } />
                     { getCurrencyElements(0, 2) }
