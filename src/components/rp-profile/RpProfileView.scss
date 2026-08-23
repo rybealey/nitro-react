@@ -1,0 +1,212 @@
+.nitro-card.rp-profile-window {
+    width: 480px;
+
+    // Placeholder edit chip beside the close button (stock header).
+    .rp-profile-edit {
+        position: absolute;
+        top: 4px;
+        right: 32px;
+        z-index: 1;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: $border-radius;
+        background: rgba(0, 0, 0, 0.25);
+        color: $white;
+        cursor: pointer;
+        transition: background 0.1s ease;
+
+        svg { width: 10px; height: 10px; }
+
+        &:hover { background: rgba(0, 0, 0, 0.4); }
+    }
+
+    .rp-profile-layout {
+        display: flex;
+        gap: 10px;
+    }
+
+    .rp-profile-left {
+        flex: 1.15;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .rp-profile-card {
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 6px;
+    }
+
+    // identity: avatar figure + name/motto
+    .rp-profile-identity {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px;
+    }
+
+    .rp-profile-avatar {
+        width: 70px;
+        height: 110px;
+        flex-shrink: 0;
+        overflow: hidden;
+
+        .avatar-image {
+            image-rendering: pixelated;
+            background-repeat: no-repeat;
+            background-position: center top;
+        }
+    }
+
+    .rp-profile-identity-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .rp-profile-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .rp-profile-online-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #3fbf5a;
+        flex-shrink: 0;
+    }
+
+    .rp-profile-motto {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.5);
+        overflow-wrap: break-word;
+    }
+
+    // level chips
+    .rp-profile-levels {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .rp-profile-level {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 9px;
+        font-size: 11px;
+    }
+
+    .rp-profile-level-value {
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    // job / gang cards
+    .rp-profile-org {
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .rp-profile-org-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .rp-profile-org-icon {
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+        color: rgba(0, 0, 0, 0.3);
+    }
+
+    .rp-profile-org-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rp-profile-org-name {
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .rp-profile-org-role {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    .rp-profile-org-status {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+        align-self: flex-start;
+    }
+
+    .rp-profile-org-pills {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .rp-profile-pill {
+        background: rgba(0, 0, 0, 0.06);
+        border-radius: 4px;
+        padding: 5px 0;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .rp-profile-view-gang {
+        background: var(--prp-chrome-solid);
+        color: $white;
+        border-radius: 4px;
+        padding: 5px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: filter 0.1s ease;
+
+        &:hover { filter: brightness(1.25); }
+    }
+
+    // right column: striped stat rows
+    .rp-profile-stats {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-self: flex-start;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 6px;
+        overflow: hidden;
+        background: $white;
+    }
+
+    .rp-profile-stat-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        font-size: 11px;
+
+        &:nth-child(even) { background: rgba(0, 0, 0, 0.04); }
+    }
+
+    .rp-profile-stat-value {
+        font-weight: 700;
+    }
+}

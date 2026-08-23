@@ -36,7 +36,10 @@
     }
 
     // circular avatar mask — the 90x130 avatar-image is cropped to head + shoulders
+    // (clickable: opens the player's profile — the HUD container is
+    // pointer-events: none, so the portrait opts back in)
     .hud-avatar {
+        pointer-events: auto;
         position: relative;
         width: 56px;
         height: 56px;

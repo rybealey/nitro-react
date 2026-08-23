@@ -1,10 +1,11 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
-import { AvatarInfoUser, AvatarInfoUtilities, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
+import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetState } from '../../../../hooks/rooms/targetState';
+import { RpProfileState } from '../../../rp-profile/RpProfileState';
 
 // Health, energy and aggression are REAL — pushed by the emulator per room
 // unit (RpStatsEvent, keyed by roomIndex; user_rp_stats + :sethp/:seten/
@@ -94,10 +95,10 @@ const HudBars: FC<{ stats: HudStats, mirrored?: boolean }> = ({ stats, mirrored 
     );
 }
 
-const HudAvatar: FC<{ figure: string, gender?: string, variant: 'self' | 'target', direction?: number }> = ({ figure, gender = 'M', variant, direction = 2 }) =>
+const HudAvatar: FC<{ figure: string, gender?: string, variant: 'self' | 'target', direction?: number, onClick?: () => void }> = ({ figure, gender = 'M', variant, direction = 2, onClick = null }) =>
 {
     return (
-        <div className={ `hud-avatar ${ variant }` }>
+        <div className={ `hud-avatar ${ variant } ${ onClick ? 'cursor-pointer' : '' }` } onClick={ onClick }>
             <LayoutAvatarImageView figure={ figure } gender={ gender } direction={ direction } />
         </div>
     );
@@ -190,7 +191,13 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         <Flex alignItems="end" gap={ 2 } className="nitro-player-hud-bar">
             <Flex alignItems="center" gap={ 2 } className="hud-plate">
                 <div className="hud-portrait">
-                    <HudAvatar figure={ ownFigure } gender={ selfGender } variant="self" />
+                    <HudAvatar figure={ ownFigure } gender={ selfGender } variant="self" onClick={ () =>
+                    {
+                        RpProfileState.name = selfName;
+                        RpProfileState.figure = ownFigure;
+                        RpProfileState.motto = (GetSessionDataManager().motto ?? '');
+                        CreateLinkEvent('rp-profile/show');
+                    } } />
                     <HudStars wanted={ playerStats.wanted } />
                 </div>
                 <div className="hud-info">
@@ -216,7 +223,13 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ () => setLocked(value => !value) }>
                             { locked ? <FaLock /> : <FaLockOpen /> }
                         </span>
-                        <HudAvatar figure={ target.figure } variant="target" direction={ 4 } />
+                        <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>
+                        {
+                            RpProfileState.name = target.name;
+                            RpProfileState.figure = target.figure;
+                            RpProfileState.motto = (target.motto ?? '');
+                            CreateLinkEvent('rp-profile/show');
+                        } } />
                         <HudStars wanted={ targetStats.wanted } />
                     </div>
                 </Flex> }
