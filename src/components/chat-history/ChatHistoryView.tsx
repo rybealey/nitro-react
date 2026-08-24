@@ -77,7 +77,7 @@ export const ChatHistoryView: FC<{}> = props =>
                                 <div className="user-image" style={ { backgroundImage: `url(${ row.imageUrl })` } } /> }
                                         </div>
                                         <div className="chat-content">
-                                            <b className="username mr-1" style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: `${ row.name }: ` } } />
+                                            <b className="username mr-1"><span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: row.name } } />{ ': ' }</b>
                                             <span className="message" dangerouslySetInnerHTML={ { __html: `${ row.message }` } } />
                                         </div>
                                     </div>
