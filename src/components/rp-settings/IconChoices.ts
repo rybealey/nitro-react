@@ -10,10 +10,12 @@ export interface IconChoice
     iconClass: string | null; // null = none (the X / clear state)
 }
 
+// Custom kit icons (family "fak" / class "fa-kit fa-<name>"), discovered from
+// kit 19221c1121. To add more: upload the custom icon in the FA kit dashboard,
+// then add one line here — { key, name, iconClass: 'fa-kit fa-<name>' }.
 export const USERNAME_ICONS: IconChoice[] = [
     { key: 'none', name: 'None', iconClass: null },
-    // Custom kit icons populated from the live kit (discovered on beta), e.g.:
-    // { key: 'star', name: 'Star', iconClass: 'fa-kit fa-kit-star' },
+    { key: 'microchip-sparkle', name: 'Microchip Sparkle', iconClass: 'fa-kit fa-microchip-sparkle' },
 ];
 
 export const DEFAULT_USERNAME_ICON: string = ''; // none / X selected
