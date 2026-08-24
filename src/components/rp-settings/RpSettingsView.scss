@@ -72,6 +72,35 @@
         grid-template-columns: repeat(3, 34px);
     }
 
+    // Icon + Icon Color sit side by side; each half stacks its label above a
+    // fixed 4-row swatch box that scrolls when there are more rows.
+    .rp-settings-username-row {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+
+        .rp-settings-section--half {
+            flex: 1;
+            min-width: 0;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            border-bottom: 0;
+        }
+
+        .rp-settings-section-info {
+            max-width: none;
+        }
+    }
+
+    .rp-settings-swatches--scroll {
+        // 4 rows of 26px swatches + 3 * 8px gaps, with a little breathing room
+        height: 132px;
+        overflow-y: auto;
+        align-content: start;
+        padding-right: 4px;
+    }
+
     // Color swatches + opacity slider stacked as one control column: the
     // slider sits under the swatch grid, spanning its width, so color and
     // solidity read as facets of the same setting.
