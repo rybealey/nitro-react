@@ -256,7 +256,7 @@ export const RpSettingsView: FC<{}> = props =>
                                     <div className="rp-settings-section rp-settings-section--half">
                                         <div className="rp-settings-section-info">
                                             <Text bold>Icon</Text>
-                                            <Text small className="text-muted">An icon before your name in chat. X means none.</Text>
+                                            <Text small className="text-muted">An icon before your name in chat.</Text>
                                         </div>
                                         <div className="rp-settings-swatches rp-settings-swatches--scroll">
                                             { USERNAME_ICONS.map(entry => (
