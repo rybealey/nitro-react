@@ -686,6 +686,33 @@
             }
         }
 
+        &.bubble-40 {
+            border-image-source: url('@/assets/images/chat/chatbubbles/bubble_40.png');
+
+            border-image-slice: 12 12 12 12 fill;
+            border-image-width: 12px 12px 12px 12px;
+            border-image-outset: 0px 0px 0px 0px;
+
+            .chat-content {
+                margin-left: 20px;
+            }
+
+            .username {
+                color: rgba($white, 1);
+            }
+
+            .message {
+                color: rgba($white, 1) !important;
+            }
+
+            .pointer {
+                background: url('@/assets/images/chat/chatbubbles/bubble_40_pointer.png');
+                width: 11px;
+                height: 7px;
+                bottom: -6px;
+            }
+        }
+
         .user-container {
             z-index: 3;
             display: flex;
