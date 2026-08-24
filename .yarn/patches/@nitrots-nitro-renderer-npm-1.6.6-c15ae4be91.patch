@@ -638,7 +638,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa88c583ceb 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..a01e0e8e16aaa15deeb22ab97f72f35723392363 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -654,7 +654,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +57,81 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +57,83 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -697,20 +697,22 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +        // one-beat segment skew (segmentsMatch briefly false) no longer
 +        // kicks the joiner back to its own PHASE_SHIFT timeline; MASTER_COPY
 +        // remains authoritative until a real RELEASE. Reset only by a fresh
-+        // ENGAGE (a new session object). releaseAnchor{X,Y,Z}/Set: the
-+        // joiner's last MASTER_COPY room position, captured once at the
-+        // instant LOCK ends, giving the first RELEASE frame positional
-+        // continuity. releaseHandoffT: ms elapsed since that capture — the
-+        // anchor is blended OUT (toward the joiner's own native/phase-shift
-+        // trajectory, i.e. its own route/direction, never MASTER's) over a
-+        // short fixed 100ms handoff, NOT the slower ~530ms s ramp — s
-+        // governs the separate session-lifetime decay (when the sync
-+        // object itself gets cleared), which was previously double-used as
-+        // the blend weight too, keeping the visual position dominated by
-+        // MASTER's old trajectory for up to 530ms after a genuine turn-away
-+        // (the reported "drag"). 100ms reuses the existing per-frame dt
-+        // clamp constant already in this function, not a new magic number.
-+        visualLocked: boolean, releaseAnchorSet: boolean, releaseAnchorX: number, releaseAnchorY: number, releaseAnchorZ: number, releaseHandoffT: number,
++        // ENGAGE (a new session object). releaseOffset{X,Y,Z}/releaseAnchorSet:
++        // for an established-lock release, JOINER's own NATIVE position is
++        // always the base trajectory (never MASTER-relative) — this is the
++        // constant positional OFFSET between the last MASTER_COPY position
++        // and JOINER's native position at that same instant, captured ONCE
++        // when release begins, so frame one still equals the last locked
++        // display exactly. releaseHandoffT: ms elapsed since that capture —
++        // the offset decays to zero over a short fixed 100ms handoff, NOT
++        // the slower ~530ms s ramp — s governs the separate session-lifetime
++        // decay (when the sync object itself gets cleared), which was
++        // previously double-used as the blend weight too, keeping the
++        // visual position dominated by MASTER's old trajectory/direction
++        // for up to 530ms after a genuine turn-away (the reported "drag").
++        // 100ms reuses the existing per-frame dt clamp constant already in
++        // this function, not a new magic number.
++        visualLocked: boolean, releaseAnchorSet: boolean, releaseOffsetX: number, releaseOffsetY: number, releaseOffsetZ: number, releaseHandoffT: number,
 +        // TEMP DEBUG (pixelrp master/joiner sync investigation) fields below —
 +        // remove alongside the rest of the TEMP DEBUG block once diagnosis is
 +        // confirmed with the user. buf: circular buffer of pre-formatted
@@ -736,7 +738,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +454,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +456,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -777,7 +779,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +578,672 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +580,782 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -913,9 +915,24 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +            {
 +                if(!((Math.abs(roomLocation.x - other.tx) < 1) && (Math.abs(roomLocation.y - other.ty) < 1))) return false;
 +
-+                const sameGoal = ((other.gx >= 0) && (stepGoalX >= 0) && (other.gx === stepGoalX) && (other.gy === stepGoalY));
-+                const behindOther = ((stepGoalX >= 0) && (other.sx >= 0) && (stepGoalX === other.sx) && (stepGoalY === other.sy));
-+                const aheadOfOther = ((other.gx >= 0) && (stepStartX >= 0) && (other.gx === stepStartX) && (other.gy === stepStartY));
++                // Direction compatibility: endpoint adjacency alone doesn't
++                // prove same-route travel — MASTER A->B and a candidate
++                // JOINER walking B->A also satisfies "other's goal is my
++                // step-start" (aheadOfOther) even though they're headed
++                // squarely at/away from each other, not forming a route.
++                // Requires both sides to have a real, currently-known
++                // direction (both mid-step); with no direction data for
++                // either side this can't be proven, so it correctly refuses
++                // to engage rather than guessing.
++                const thisDirX = ((stepGoalX >= 0) && (stepStartX >= 0) ? (stepGoalX - stepStartX) : NaN);
++                const thisDirY = ((stepGoalY >= 0) && (stepStartY >= 0) ? (stepGoalY - stepStartY) : NaN);
++                const otherDirX = ((other.gx >= 0) && (other.sx >= 0) ? (other.gx - other.sx) : NaN);
++                const otherDirY = ((other.gy >= 0) && (other.sy >= 0) ? (other.gy - other.sy) : NaN);
++                const sameDirection = (Number.isFinite(thisDirX) && Number.isFinite(otherDirX) && (thisDirX === otherDirX) && (thisDirY === otherDirY));
++
++                const sameGoal = (sameDirection && (other.gx >= 0) && (stepGoalX >= 0) && (other.gx === stepGoalX) && (other.gy === stepGoalY));
++                const behindOther = (sameDirection && (stepGoalX >= 0) && (other.sx >= 0) && (stepGoalX === other.sx) && (stepGoalY === other.sy));
++                const aheadOfOther = (sameDirection && (other.gx >= 0) && (stepStartX >= 0) && (other.gx === stepStartX) && (other.gy === stepStartY));
 +
 +                return (sameGoal || behindOther || aheadOfOther);
 +            };
@@ -934,7 +951,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                    masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
 +                    joinerId: (joinerIsOwn ? this._pixelrpOwnId : object.instanceId),
 +                    mode: 0, s: 0, last: nowMs, badSince: 0, rawPrev: NaN, phiPrev: 0,
-+                    visualLocked: false, releaseAnchorSet: false, releaseAnchorX: NaN, releaseAnchorY: NaN, releaseAnchorZ: NaN, releaseHandoffT: 0,
++                    visualLocked: false, releaseAnchorSet: false, releaseOffsetX: NaN, releaseOffsetY: NaN, releaseOffsetZ: NaN, releaseHandoffT: 0,
 +                    buf: [], postJump: 0,
 +                    lastVx: NaN, lastVy: NaN, lastMx: NaN, lastMy: NaN, lastPathOk: -1,
 +                    lastMSx: NaN, lastMSy: NaN, lastMGx: NaN, lastMGy: NaN,
@@ -1005,9 +1022,32 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                // fix targets. Sub-conditions named separately (rather than
 +                // inlined) purely so the TEMP DEBUG telemetry below can
 +                // report which one actually matched.
-+                const sameGoal = !!(j && m && (j.gxx === m.gxx) && (j.gyy === m.gyy));
-+                const joinerBehind = !!(j && m && (j.gxx === Math.round(m.sx)) && (j.gyy === Math.round(m.sy)));
-+                const joinerAhead = !!(j && m && (m.gxx === Math.round(j.sx)) && (m.gyy === Math.round(j.sy)));
++                //
++                // Direction compatibility: endpoint adjacency alone doesn't
++                // prove same-route travel. MASTER A->B / JOINER B->A
++                // satisfies BOTH joinerBehind and joinerAhead (each side's
++                // goal is the other's start) despite walking opposite ways
++                // — confirmed in captures continuing PHASE_SHIFT, and once
++                // locked, staying MASTER_COPY while actually diverging.
++                // sameGoal has the same gap: two units converging on one
++                // tile from different directions (a crossing, not a
++                // formation) would otherwise count as continuous. Requiring
++                // matching direction vectors on both mid-step segments
++                // rejects both — and for sameGoal specifically, "same goal
++                // AND same direction" is only possible with single-tile
++                // steps if the start tiles also match, i.e. it collapses
++                // sameGoal down to segmentsMatch whenever directions truly
++                // agree, which is exactly the desired behavior (a
++                // same-goal-different-approach pair is a crossing, not
++                // formation continuity).
++                const mDirX = (m ? (m.gxx - Math.round(m.sx)) : NaN);
++                const mDirY = (m ? (m.gyy - Math.round(m.sy)) : NaN);
++                const jDirX = (j ? (j.gxx - Math.round(j.sx)) : NaN);
++                const jDirY = (j ? (j.gyy - Math.round(j.sy)) : NaN);
++                const sameDirection = !!(m && j && (mDirX === jDirX) && (mDirY === jDirY));
++                const sameGoal = !!(j && m && sameDirection && (j.gxx === m.gxx) && (j.gyy === m.gyy));
++                const joinerBehind = !!(j && m && sameDirection && (j.gxx === Math.round(m.sx)) && (j.gyy === Math.round(m.sy)));
++                const joinerAhead = !!(j && m && sameDirection && (m.gxx === Math.round(j.sx)) && (m.gyy === Math.round(j.sy)));
 +                const routeContinuous = !!(j && m && (sameGoal || joinerBehind || joinerAhead));
 +                // Maintenance distance bound: an established pair one
 +                // legitimate segment apart (routeContinuous via
@@ -1120,6 +1160,14 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                    console.log(`[sync:PHASE_BRANCH] master=${ sync.masterId } joiner=${ sync.joinerId } branch=${ pixelrpBranch } raw=${ pixelrpRawPhase.toFixed(1) } rawPrevBefore=${ Number.isFinite(rawPrevBefore) ? rawPrevBefore.toFixed(1) : '?' } d=${ pixelrpD.toFixed(1) } wrappedD=${ pixelrpWrappedD.toFixed(1) } phiPrev=${ sync.phiPrev.toFixed(1) } rawMinusPhiPrev=${ (pixelrpRawPhase - sync.phiPrev).toFixed(1) } s=${ sync.s.toFixed(3) } mode=${ sync.mode }`);
 +                }
 +
++                // segmentsMatch: both sides literally on the identical
++                // segment (same start AND goal tile) — hoisted above the
++                // mode transition below so LOCK eligibility can require it
++                // (see that comment for why).
++                const segmentsMatch = !!(j && m
++                    && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
++                    && (j.gxx === m.gxx) && (j.gyy === m.gyy));
++
 +                const prevMode = sync.mode;
 +
 +                // Genuine divergence: routeContinuous false while BOTH
@@ -1142,10 +1190,16 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                // [sync:RELEASE_REASON] — fires once, the frame RELEASE
 +                // actually begins, so a genuine-divergence release can be
 +                // told apart from a grace-timeout/distance/moving-state one
-+                // in the captures.
++                // in the captures. releaseKind distinguishes the two
++                // release origins the render logic itself now treats
++                // differently: LOCK_HANDOFF (visual lock was genuinely
++                // established this session — gets the native+offset
++                // handoff) vs SYNC_ABORT (never visually locked — keeps
++                // the existing plain PHASE_SHIFT unwind, unchanged).
 +                if((prevMode !== 2) && (sync.mode === 2))
 +                {
 +                    let releaseReason = 'other';
++                    const releaseKind = (sync.visualLocked ? 'LOCK_HANDOFF' : 'SYNC_ABORT');
 +
 +                    if(!masterObject) releaseReason = 'master_missing';
 +                    else if(genuineDivergence) releaseReason = 'confirmed_divergence';
@@ -1153,7 +1207,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                    else if(mLoc && ((Math.abs(roomLocation.x - mLoc.x) > (1 + 1e-6)) || (Math.abs(roomLocation.y - mLoc.y) > (1 + 1e-6)))) releaseReason = 'distance';
 +                    else releaseReason = 'grace_timeout';
 +
-+                    console.log(`[sync:RELEASE_REASON] reason=${ releaseReason } master=${ sync.masterId } joiner=${ sync.joinerId } routeContinuous=${ routeContinuous } visualLocked=${ sync.visualLocked } badSinceMs=${ sync.badSince ? (nowMs - sync.badSince) : 0 }`);
++                    console.log(`[sync:RELEASE_REASON] reason=${ releaseReason } releaseKind=${ releaseKind } master=${ sync.masterId } joiner=${ sync.joinerId } routeContinuous=${ routeContinuous } visualLocked=${ sync.visualLocked } badSinceMs=${ sync.badSince ? (nowMs - sync.badSince) : 0 }`);
 +                }
 +
 +                if(sync.mode === 0)
@@ -1161,28 +1215,31 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                    sync.s = Math.min(1, (sync.s + (dt / 530)));
 +                    // LOCK eligibility requires the pair to actually be in
 +                    // a lockable relationship right now (pathOk: moving,
-+                    // routeContinuous, sane distance) — not merely that the
-+                    // convergence timer expired. Without this, `s` reaching
-+                    // 1 alone could flip mode to LOCK while the route was
-+                    // already invalid (confirmed in captures: mode=1 with
-+                    // pathOk=false, segmentsMatch=false, visualLocked=false,
-+                    // src=NATIVE/PHASE_SHIFT — a meaningless LOCK that
-+                    // immediately released again). If s caps at 1 while
-+                    // pathOk is transiently false, mode simply stays 0 and
-+                    // tries again next frame (s does not decay in mode 0);
-+                    // if the pair never becomes valid, the badSince/
-+                    // genuineDivergence paths above already carry it to
-+                    // RELEASE without ever passing through a fake LOCK.
-+                    if((sync.s >= 1) && pathOk) sync.mode = 1;
++                    // routeContinuous, sane distance) AND literally on the
++                    // same segment (segmentsMatch) — not merely that the
++                    // convergence timer expired. A visual LOCK means "the
++                    // pair occupy the same visual path position"; a pair
++                    // that only satisfies routeContinuous via behind/ahead
++                    // (adjacent, not identical, segments — a genuine
++                    // one-tile trailing formation) is walking a shared
++                    // route, not converging onto one point, so timer
++                    // expiry alone must not turn that into a LOCK either.
++                    // If s caps at 1 while not yet eligible, mode simply
++                    // stays 0 and tries again next frame (s does not decay
++                    // in mode 0) — for a pair that never achieves
++                    // segmentsMatch (a stable trailing formation), this
++                    // session just sits harmlessly in mode 0 forever with
++                    // no visual effect (see the segmentsMatch gate on the
++                    // PHASE_SHIFT branch below); if the pair never becomes
++                    // valid at all, the badSince/genuineDivergence paths
++                    // above already carry it to RELEASE without ever
++                    // passing through a fake LOCK.
++                    if((sync.s >= 1) && pathOk && segmentsMatch) sync.mode = 1;
 +                }
 +                else if(sync.mode === 2)
 +                {
 +                    sync.s = Math.max(0, (sync.s - (dt / 530)));
 +                }
-+
-+                const segmentsMatch = !!(j && m
-+                    && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
-+                    && (j.gxx === m.gxx) && (j.gyy === m.gyy));
 +
 +                // Safety rebase: whenever segments literally coincide, phi
 +                // MUST equal the literal raw difference for the phase-shift
@@ -1217,32 +1274,122 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                    this._pixelrpSync = null;
 +                    ended = true;
 +                }
++                else if((sync.mode === 1) && sync.visualLocked && !genuineDivergence && mLoc)
++                {
++                    // Established-lock hold: once visual lock has actually
++                    // been achieved this session and no genuine divergence
++                    // has been confirmed, MASTER_COPY stays authoritative
++                    // regardless of JOINER's own moment-to-moment moving/
++                    // segment state — this specifically covers the brief
++                    // `moving=false` endpoint window between packets
++                    // (JOINER has reached the end of its current segment
++                    // and the next movement message hasn't arrived yet).
++                    // Previously the entire correction block below was
++                    // gated on `j && j.moving`, so that window fell all the
++                    // way through to raw/NATIVE rendering — even though
++                    // nothing about the sync relationship had actually
++                    // changed — producing MASTER_COPY -> NATIVE ->
++                    // MASTER_COPY, the same-path flicker.
++                    vx = mLoc.x; vy = mLoc.y; vz = mLoc.z;
++                    apply = true;
++                    source = 'MASTER_COPY';
++                }
 +                else if(j && j.moving)
 +                {
-+                    if((sync.mode === 1) && (segmentsMatch || sync.visualLocked) && mLoc)
++                    if((sync.mode === 1) && segmentsMatch && mLoc)
 +                    {
-+                        // Locked on an identical segment: the master's phase
-+                        // on this segment IS the master's live position —
-+                        // exact, boundary-continuous following. Once this
-+                        // has fired at least once this session (visualLocked
-+                        // latches true below), it keeps firing through an
-+                        // ordinary one-beat segment-rollover skew even while
-+                        // segmentsMatch is transiently false — the pair is
-+                        // still the same established route relationship
-+                        // (routeContinuous/pathOk already prove that), and
-+                        // falling back to the joiner's own PHASE_SHIFT
-+                        // timeline every time segmentsMatch blipped false
-+                        // was the recurring tile-cadence micro-hitch.
++                        // First-time visual lock establishment this session
++                        // (segments literally coincide). Once this fires,
++                        // visualLocked latches true and the established-
++                        // lock hold above takes over on subsequent frames —
++                        // this branch only runs before that has happened
++                        // yet (e.g. LOCK was entered via a valid one-beat
++                        // "behind" relationship rather than an exact
++                        // segment match).
 +                        vx = mLoc.x; vy = mLoc.y; vz = mLoc.z;
 +                        apply = true;
 +                        source = 'MASTER_COPY';
 +                        sync.visualLocked = true;
 +                    }
-+                    else if(m)
++                    else if((sync.mode === 2) && sync.visualLocked)
 +                    {
-+                        // Phase shift on the joiner's OWN segment: advance
-+                        // (or retard) its interpolation clock by s·φ, using
-+                        // the unwrapped running phase computed above.
++                        // LOCK -> RELEASE (an established visual lock has
++                        // genuinely ended — never fires for an aborted
++                        // SYNC that never locked; see the plain PHASE_SHIFT
++                        // fallback below for that case). JOINER owns its
++                        // trajectory from here: the base position is its
++                        // own NATIVE interpolation (roomLocation — no
++                        // MASTER-relative φ correction at all), with a
++                        // small continuity OFFSET added on top and decayed
++                        // to zero over a short fixed window. The offset is
++                        // captured ONCE, the instant release begins, as
++                        // (last MASTER_COPY position − native position at
++                        // that same instant) — so frame one still equals
++                        // the last locked display exactly, but every frame
++                        // after that moves along JOINER's own direction,
++                        // just parallel-shifted by a shrinking amount.
++                        // Previously this reused the PHASE_SHIFT formula
++                        // (which still carries a MASTER-relative s·φ term)
++                        // as the release base and blended it toward a
++                        // frozen MASTER anchor — baking a MASTER-direction
++                        // pull into what was meant to be a clean handoff
++                        // (the reported drag/curve toward MASTER's route).
++                        // 100ms reuses the existing per-frame dt clamp
++                        // constant already used elsewhere in this function.
++                        if(!sync.releaseAnchorSet && mLoc)
++                        {
++                            sync.releaseOffsetX = (mLoc.x - roomLocation.x);
++                            sync.releaseOffsetY = (mLoc.y - roomLocation.y);
++                            sync.releaseOffsetZ = (mLoc.z - roomLocation.z);
++                            sync.releaseAnchorSet = true;
++                            sync.releaseHandoffT = 0;
++                        }
++
++                        if(sync.releaseAnchorSet)
++                        {
++                            const handoffWeight = Math.max(0, (1 - (sync.releaseHandoffT / 100)));
++
++                            if(handoffWeight > 0)
++                            {
++                                vx = (roomLocation.x + (sync.releaseOffsetX * handoffWeight));
++                                vy = (roomLocation.y + (sync.releaseOffsetY * handoffWeight));
++                                vz = (roomLocation.z + (sync.releaseOffsetZ * handoffWeight));
++                                apply = true;
++                                source = 'RELEASE_BLEND';
++                            }
++
++                            sync.releaseHandoffT += dt;
++                        }
++                    }
++                    else if(m && segmentsMatch)
++                    {
++                        // SYNC-path phase shift: still converging toward
++                        // LOCK (mode 0), or an aborted SYNC -> RELEASE that
++                        // never achieved visual lock this session at all.
++                        // Advances (or retards) the joiner's own
++                        // interpolation clock by s·φ, using the unwrapped
++                        // running phase computed above — this only makes
++                        // sense as a correction along a segment BOTH sides
++                        // actually share (segmentsMatch): φ/progress warps
++                        // how far along that one shared line the joiner
++                        // appears, which is meaningless (and harmful) when
++                        // applied to a merely-adjacent, different segment.
++                        // Confirmed in captures: a genuine one-tile
++                        // trailing formation (routeContinuous true via
++                        // behind/ahead, segmentsMatch false — MASTER on
++                        // B->C, JOINER still on its own A->B) had this
++                        // formula visibly accelerate the joiner's progress
++                        // along ITS OWN segment, collapsing a stable
++                        // ~0.9-1.0 tile native gap down to ~0 by the time
++                        // LOCK was reached — a real, intentional formation
++                        // gap being erased as if it were only timing
++                        // jitter on a shared segment. When routeContinuous
++                        // is true via behind/ahead but segmentsMatch is
++                        // false, and no established lock/release branch
++                        // above applies, this now falls through with
++                        // apply=false — native rendering, which already
++                        // correctly preserves the formation spacing since
++                        // nothing needs correcting.
 +                        const phi = sync.phiPrev;
 +                        const shifted = ((j.time - j.change) + (sync.s * phi));
 +                        const progress = Math.min(1, Math.max(0, (shifted / j.interval)));
@@ -1252,69 +1399,23 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                        vz = (j.sz + (j.dz * progress));
 +                        apply = true;
 +                        source = 'PHASE_SHIFT';
-+
-+                        // Release continuity: once a session has actually
-+                        // been visually locked, the first frame after LOCK
-+                        // ends must not jump straight from wherever
-+                        // MASTER_COPY was showing to a fresh (possibly
-+                        // distant) native/phase-shift position. Capture
-+                        // that last MASTER_COPY room position ONCE, the
-+                        // instant release begins, then blend it OUT over a
-+                        // short FIXED 100ms handoff toward `vx/vy/vz` as
-+                        // already computed above — the joiner's own native/
-+                        // phase-shift trajectory, i.e. its own route and
-+                        // direction, never MASTER's. Deliberately NOT
-+                        // weighted by `sync.s` (which decays over the full
-+                        // ~530ms session-lifetime ramp): reusing that slower
-+                        // ramp kept the visual position majority-anchored to
-+                        // MASTER's old trajectory for most of a release,
-+                        // which is exactly the reported "drag" when the
-+                        // joiner had already turned a different direction —
-+                        // native movement was racing ahead while the visual
-+                        // stayed pinned near the frozen anchor. 100ms is the
-+                        // existing per-frame dt clamp constant already used
-+                        // elsewhere in this function, not a new number.
-+                        if((sync.mode === 2) && sync.visualLocked)
-+                        {
-+                            if(!sync.releaseAnchorSet && mLoc)
-+                            {
-+                                sync.releaseAnchorX = mLoc.x; sync.releaseAnchorY = mLoc.y; sync.releaseAnchorZ = mLoc.z;
-+                                sync.releaseAnchorSet = true;
-+                                sync.releaseHandoffT = 0;
-+                            }
-+
-+                            if(sync.releaseAnchorSet)
-+                            {
-+                                const handoffWeight = Math.max(0, (1 - (sync.releaseHandoffT / 100)));
-+
-+                                if(handoffWeight > 0)
-+                                {
-+                                    vx = (vx + ((sync.releaseAnchorX - vx) * handoffWeight));
-+                                    vy = (vy + ((sync.releaseAnchorY - vy) * handoffWeight));
-+                                    vz = (vz + ((sync.releaseAnchorZ - vz) * handoffWeight));
-+                                    source = 'RELEASE_BLEND';
-+                                }
-+
-+                                sync.releaseHandoffT += dt;
-+                            }
-+                        }
 +                    }
++                }
 +
-+                    if(apply)
++                if(apply)
++                {
++                    // Convert the room-space adjustment to a screen
++                    // offset and apply it to the unit anchor BEFORE the
++                    // sprite loop — the ENTIRE stack (body, effects,
++                    // bubbles, shadow) moves coherently; depth/sort
++                    // inputs stay raw.
++                    const rawScreen = this._geometry.getScreenPosition(roomLocation);
++                    const visScreen = this._geometry.getScreenPosition(new Vector3d(vx, vy, vz));
++
++                    if(rawScreen && visScreen)
 +                    {
-+                        // Convert the room-space adjustment to a screen
-+                        // offset and apply it to the unit anchor BEFORE the
-+                        // sprite loop — the ENTIRE stack (body, effects,
-+                        // bubbles, shadow) moves coherently; depth/sort
-+                        // inputs stay raw.
-+                        const rawScreen = this._geometry.getScreenPosition(roomLocation);
-+                        const visScreen = this._geometry.getScreenPosition(new Vector3d(vx, vy, vz));
-+
-+                        if(rawScreen && visScreen)
-+                        {
-+                            x = Math.round(x + (visScreen.x - rawScreen.x));
-+                            y = Math.round(y + (visScreen.y - rawScreen.y));
-+                        }
++                        x = Math.round(x + (visScreen.x - rawScreen.x));
++                        y = Math.round(y + (visScreen.y - rawScreen.y));
 +                    }
 +                }
 +
@@ -1336,12 +1437,23 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
 +                    const anchorDx = (mLoc ? (roomLocation.x - mLoc.x) : NaN);
 +                    const anchorDy = (mLoc ? (roomLocation.y - mLoc.y) : NaN);
 +                    const anchorDist = (mLoc ? Math.hypot(anchorDx, anchorDy) : NaN);
++                    // formationType: which route category this pair is in
++                    // right now, purely for reading the captures — not used
++                    // by any logic branch. SAME_SEGMENT = converging on one
++                    // shared segment (PHASE_SHIFT/MASTER_COPY eligible).
++                    // ROLLOVER = already visualLocked, currently mid a
++                    // one-beat segment skew (MASTER_COPY held). TRAILING =
++                    // routeContinuous via behind/ahead but never locked
++                    // (genuine formation spacing, native rendering, no
++                    // correction). INVALID = not route-continuous at all.
++                    const formationType = segmentsMatch ? 'SAME_SEGMENT' : (sync.visualLocked ? 'ROLLOVER' : (routeContinuous ? 'TRAILING' : 'INVALID'));
 +
 +                    const line = `t=${ nowMs } dt=${ dt } master=${ sync.masterId } joiner=${ sync.joinerId } mode=${ sync.mode } s=${ sync.s.toFixed(3) } src=${ source } `
 +                        + `| M change=${ m ? m.change : '?' } time=${ m ? m.time.toFixed(0) : '?' } seg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) loc=(${ mLoc ? mLoc.x.toFixed(3) : '?' },${ mLoc ? mLoc.y.toFixed(3) : '?' }) moving=${ m ? m.moving : '?' } `
 +                        + `| J change=${ j ? j.change : '?' } time=${ j ? j.time.toFixed(0) : '?' } seg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) native=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) corrected=${ apply ? `(${ vx.toFixed(3) },${ vy.toFixed(3) })` : 'n/a' } moving=${ j ? j.moving : '?' } `
 +                        + `| PHASE raw=${ Number.isFinite(pixelrpRawPhase) ? pixelrpRawPhase.toFixed(1) : '?' } d=${ Number.isFinite(pixelrpD) ? pixelrpD.toFixed(1) : '?' } wrappedD=${ Number.isFinite(pixelrpWrappedD) ? pixelrpWrappedD.toFixed(1) : '?' } phiPrev=${ Number.isFinite(sync.phiPrev) ? sync.phiPrev.toFixed(1) : '?' } rawMinusPhiPrev=${ Number.isFinite(pixelrpRawPhase) ? (pixelrpRawPhase - sync.phiPrev).toFixed(1) : '?' } `
 +                        + `| ROUTE sameGoal=${ sameGoal } behind=${ joinerBehind } ahead=${ joinerAhead } routeContinuous=${ routeContinuous } pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } genuineDivergence=${ genuineDivergence } segmentsMatch=${ segmentsMatch } visualLocked=${ sync.visualLocked } releaseAnchorSet=${ sync.releaseAnchorSet } releaseHandoffT=${ sync.releaseHandoffT.toFixed(0) } `
++                        + `| DIR mDir=(${ Number.isFinite(mDirX) ? mDirX : '?' },${ Number.isFinite(mDirY) ? mDirY : '?' }) jDir=(${ Number.isFinite(jDirX) ? jDirX : '?' },${ Number.isFinite(jDirY) ? jDirY : '?' }) sameDirection=${ sameDirection } formationType=${ formationType } `
 +                        + `| ERR dx=${ Number.isFinite(anchorDx) ? anchorDx.toFixed(3) : '?' } dy=${ Number.isFinite(anchorDy) ? anchorDy.toFixed(3) : '?' } dist=${ Number.isFinite(anchorDist) ? anchorDist.toFixed(3) : '?' }`;
 +
 +                    // JUMP detection: the joiner's applied (room-space)
@@ -1452,7 +1564,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..2d665c7ff941573317942910fda80aa8
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +1304,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +1416,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
