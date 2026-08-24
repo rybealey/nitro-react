@@ -638,7 +638,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd73c947816 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..b30e14df074deec8f6684a51fb869d48e788eb37 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -654,7 +654,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +57,61 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +57,74 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -691,6 +691,19 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +    // blips (e.g. a masterObject lookup miss).
 +    private _pixelrpSync: {
 +        masterId: number, joinerId: number, mode: number, s: number, last: number, badSince: number, rawPrev: number, phiPrev: number,
++        // visualLocked: latches true the first frame LOCK actually renders
++        // MASTER_COPY (segments literally coincided at that instant), and
++        // then stays true — once genuinely established, a same-route
++        // one-beat segment skew (segmentsMatch briefly false) no longer
++        // kicks the joiner back to its own PHASE_SHIFT timeline; MASTER_COPY
++        // remains authoritative until a real RELEASE. Reset only by a fresh
++        // ENGAGE (a new session object). releaseAnchor{X,Y,Z}/Set: the
++        // joiner's last MASTER_COPY room position, captured once at the
++        // instant LOCK ends, so the first RELEASE frame blends FROM that
++        // point toward the native/phase-shift trajectory using the same s
++        // ramp that already governs release timing, instead of jumping
++        // straight to a possibly-distant native segment.
++        visualLocked: boolean, releaseAnchorSet: boolean, releaseAnchorX: number, releaseAnchorY: number, releaseAnchorZ: number,
 +        // TEMP DEBUG (pixelrp master/joiner sync investigation) fields below —
 +        // remove alongside the rest of the TEMP DEBUG block once diagnosis is
 +        // confirmed with the user. buf: circular buffer of pre-formatted
@@ -716,7 +729,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +434,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +447,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -757,7 +770,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +558,520 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +571,611 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -914,6 +927,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +                    masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
 +                    joinerId: (joinerIsOwn ? this._pixelrpOwnId : object.instanceId),
 +                    mode: 0, s: 0, last: nowMs, badSince: 0, rawPrev: NaN, phiPrev: 0,
++                    visualLocked: false, releaseAnchorSet: false, releaseAnchorX: NaN, releaseAnchorY: NaN, releaseAnchorZ: NaN,
 +                    buf: [], postJump: 0,
 +                    lastVx: NaN, lastVy: NaN, lastMx: NaN, lastMy: NaN, lastPathOk: -1,
 +                    lastMSx: NaN, lastMSy: NaN, lastMGx: NaN, lastMGy: NaN,
@@ -988,9 +1002,22 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +                const joinerBehind = !!(j && m && (j.gxx === Math.round(m.sx)) && (j.gyy === Math.round(m.sy)));
 +                const joinerAhead = !!(j && m && (m.gxx === Math.round(j.sx)) && (m.gyy === Math.round(j.sy)));
 +                const routeContinuous = !!(j && m && (sameGoal || joinerBehind || joinerAhead));
++                // Maintenance distance bound: an established pair one
++                // legitimate segment apart (routeContinuous via
++                // joinerBehind/joinerAhead) sits at up to EXACTLY 1 tile on
++                // an axis (Chebyshev distance between adjacent tiles) —
++                // MovingObjectLogic clamps progress at exactly 1.0, so it
++                // never overshoots past the target tile. The strict `< 1`
++                // here rejected that legitimate boundary case outright
++                // (confirmed in capture: dist=1.000, pathOk forced false,
++                // triggering an unwanted release) even though
++                // routeContinuous already logically proves the relationship
++                // — routeContinuous stays the primary proof; this is only a
++                // sanity bound against a genuinely corrupted pairing, so it
++                // must allow the boundary routeContinuous itself permits.
 +                const pathOk = !!(j && m && j.moving && m.moving && routeContinuous && mLoc
-+                    && (Math.abs(roomLocation.x - mLoc.x) < 1)
-+                    && (Math.abs(roomLocation.y - mLoc.y) < 1));
++                    && (Math.abs(roomLocation.x - mLoc.x) <= (1 + 1e-6))
++                    && (Math.abs(roomLocation.y - mLoc.y) <= (1 + 1e-6)));
 +
 +                // grace: goal readings blip at step boundaries; only a
 +                // sustained (>120ms) failure is a real divergence.
@@ -1038,13 +1065,28 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +
 +                    if(!Number.isFinite(sync.rawPrev))
 +                    {
-+                        // First frame of this session: a one-time absolute
-+                        // wrap is safe here because this runs before the
-+                        // s-ramp below, so s is still exactly its
-+                        // pre-session value (0) and no phase correction has
-+                        // been applied yet.
++                        // First frame of this session: seed phiPrev on the
++                        // LITERAL raw value, unwrapped. Proven from the
++                        // interpolation formula itself (shifted = (j.time -
++                        // j.change) + s*phi; at s=1 this must equal (time -
++                        // m.change) for the joiner's progress to match
++                        // MASTER's own — solving gives phi = j.change -
++                        // m.change EXACTLY, not raw ± 500n). The old
++                        // `raw - round(raw/500)*500` wrap picked the
++                        // nearest-to-zero branch, which is only the SAME
++                        // branch as the literal raw when |raw| < 250 — for
++                        // any join phase beyond that (confirmed in capture:
++                        // raw=454.5 wrapping to phiPrev=-45.5, a 500ms
++                        // branch error) it seeded a wrong branch that
++                        // survived all the way to LOCK, producing the
++                        // large single-frame hitch when the render source
++                        // switched to MASTER_COPY (which doesn't use phi at
++                        // all — the visible position had simply been wrong
++                        // the whole time). rawPrev/phiPrev still track
++                        // incrementally frame-to-frame afterward (unchanged
++                        // below) for rollover continuity.
 +                        sync.rawPrev = raw;
-+                        sync.phiPrev = (raw - (Math.round(raw / 500) * 500));
++                        sync.phiPrev = raw;
 +                    }
 +                    else
 +                    {
@@ -1089,6 +1131,27 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +                    && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
 +                    && (j.gxx === m.gxx) && (j.gyy === m.gyy));
 +
++                // Safety rebase: whenever segments literally coincide, phi
++                // MUST equal the literal raw difference for the phase-shift
++                // formula to reproduce MASTER's own progress (same proof as
++                // the seeding above) — this is the one moment the correct
++                // value is directly provable from current data, regardless
++                // of how phiPrev got here. Correcting it here is a no-op
++                // when tracking has stayed right (the normal case) and a
++                // free correction if it hasn't, before MASTER_COPY (which
++                // doesn't read phi) ever hides the discrepancy.
++                if(segmentsMatch && j && m && Number.isFinite(sync.phiPrev))
++                {
++                    const provenPhi = (j.change - m.change);
++
++                    if(Math.abs(sync.phiPrev - provenPhi) > 1)
++                    {
++                        console.log(`[sync:PHASE_REBASE] master=${ sync.masterId } joiner=${ sync.joinerId } phiPrev=${ sync.phiPrev.toFixed(1) } -> ${ provenPhi.toFixed(1) } mode=${ sync.mode } s=${ sync.s.toFixed(3) }`);
++                        sync.phiPrev = provenPhi;
++                        sync.rawPrev = provenPhi;
++                    }
++                }
++
 +                let vx = 0;
 +                let vy = 0;
 +                let vz = 0;
@@ -1103,14 +1166,24 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +                }
 +                else if(j && j.moving)
 +                {
-+                    if((sync.mode === 1) && segmentsMatch && mLoc)
++                    if((sync.mode === 1) && (segmentsMatch || sync.visualLocked) && mLoc)
 +                    {
 +                        // Locked on an identical segment: the master's phase
 +                        // on this segment IS the master's live position —
-+                        // exact, boundary-continuous following.
++                        // exact, boundary-continuous following. Once this
++                        // has fired at least once this session (visualLocked
++                        // latches true below), it keeps firing through an
++                        // ordinary one-beat segment-rollover skew even while
++                        // segmentsMatch is transiently false — the pair is
++                        // still the same established route relationship
++                        // (routeContinuous/pathOk already prove that), and
++                        // falling back to the joiner's own PHASE_SHIFT
++                        // timeline every time segmentsMatch blipped false
++                        // was the recurring tile-cadence micro-hitch.
 +                        vx = mLoc.x; vy = mLoc.y; vz = mLoc.z;
 +                        apply = true;
 +                        source = 'MASTER_COPY';
++                        sync.visualLocked = true;
 +                    }
 +                    else if(m)
 +                    {
@@ -1126,6 +1199,37 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +                        vz = (j.sz + (j.dz * progress));
 +                        apply = true;
 +                        source = 'PHASE_SHIFT';
++
++                        // Release continuity: once a session has actually
++                        // been visually locked, the first frames after LOCK
++                        // ends must not jump straight from wherever
++                        // MASTER_COPY was showing to a fresh (possibly
++                        // distant) native/phase-shift position. Capture
++                        // that last MASTER_COPY room position ONCE, the
++                        // instant release begins, and blend from it toward
++                        // this native trajectory using the SAME s ramp
++                        // already decaying over ~530ms during release — at
++                        // s≈1 (just released) output is ≈ the anchor; as s
++                        // ramps to 0 it converges to plain native, same as
++                        // before this fix. No new timing constant, no
++                        // continuously-retargeted attraction — a single
++                        // fixed anchor point, self-terminating.
++                        if((sync.mode === 2) && sync.visualLocked)
++                        {
++                            if(!sync.releaseAnchorSet && mLoc)
++                            {
++                                sync.releaseAnchorX = mLoc.x; sync.releaseAnchorY = mLoc.y; sync.releaseAnchorZ = mLoc.z;
++                                sync.releaseAnchorSet = true;
++                            }
++
++                            if(sync.releaseAnchorSet)
++                            {
++                                vx = (vx + ((sync.releaseAnchorX - vx) * sync.s));
++                                vy = (vy + ((sync.releaseAnchorY - vy) * sync.s));
++                                vz = (vz + ((sync.releaseAnchorZ - vz) * sync.s));
++                                source = 'RELEASE_BLEND';
++                            }
++                        }
 +                    }
 +
 +                    if(apply)
@@ -1169,7 +1273,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
 +                        + `| M change=${ m ? m.change : '?' } time=${ m ? m.time.toFixed(0) : '?' } seg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) loc=(${ mLoc ? mLoc.x.toFixed(3) : '?' },${ mLoc ? mLoc.y.toFixed(3) : '?' }) moving=${ m ? m.moving : '?' } `
 +                        + `| J change=${ j ? j.change : '?' } time=${ j ? j.time.toFixed(0) : '?' } seg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) native=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) corrected=${ apply ? `(${ vx.toFixed(3) },${ vy.toFixed(3) })` : 'n/a' } moving=${ j ? j.moving : '?' } `
 +                        + `| PHASE raw=${ Number.isFinite(pixelrpRawPhase) ? pixelrpRawPhase.toFixed(1) : '?' } d=${ Number.isFinite(pixelrpD) ? pixelrpD.toFixed(1) : '?' } wrappedD=${ Number.isFinite(pixelrpWrappedD) ? pixelrpWrappedD.toFixed(1) : '?' } phiPrev=${ Number.isFinite(sync.phiPrev) ? sync.phiPrev.toFixed(1) : '?' } rawMinusPhiPrev=${ Number.isFinite(pixelrpRawPhase) ? (pixelrpRawPhase - sync.phiPrev).toFixed(1) : '?' } `
-+                        + `| ROUTE sameGoal=${ sameGoal } behind=${ joinerBehind } ahead=${ joinerAhead } routeContinuous=${ routeContinuous } pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } segmentsMatch=${ segmentsMatch } `
++                        + `| ROUTE sameGoal=${ sameGoal } behind=${ joinerBehind } ahead=${ joinerAhead } routeContinuous=${ routeContinuous } pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } segmentsMatch=${ segmentsMatch } visualLocked=${ sync.visualLocked } releaseAnchorSet=${ sync.releaseAnchorSet } `
 +                        + `| ERR dx=${ Number.isFinite(anchorDx) ? anchorDx.toFixed(3) : '?' } dy=${ Number.isFinite(anchorDy) ? anchorDy.toFixed(3) : '?' } dist=${ Number.isFinite(anchorDist) ? anchorDist.toFixed(3) : '?' }`;
 +
 +                    // JUMP detection: the joiner's applied (room-space)
@@ -1280,7 +1384,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..370befc8f82936b495adb6fa03f95cd7
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +1132,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +1236,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
