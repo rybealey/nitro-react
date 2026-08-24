@@ -638,7 +638,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a4539676a 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..582d11df3186f149783d66627586057af7c2509d 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,12 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -654,7 +654,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +57,33 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +57,43 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -663,7 +663,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +    // Per-unit walk bookkeeping — raw room position, current step-goal tile
 +    // and the time this unit's current continuous walk began — refreshed
 +    // every frame the unit renders.
-+    private _pixelrpAnchors: Map<number, { t: number, tx: number, ty: number, gx: number, gy: number, walkSince: number }> = new Map();
++    private _pixelrpAnchors: Map<number, { t: number, tx: number, ty: number, gx: number, gy: number, sx: number, sy: number, walkSince: number }> = new Map();
 +    private _pixelrpOwnId: number = -1;
 +
 +    // Single active master/joiner sync (own-avatar pairs only), created ONCE
@@ -674,21 +674,31 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +    // converges. s ramps 0→1 over one real movement interval (~530ms, the
 +    // MovingObjectLogic step window), shifting the joiner's interpolation
 +    // clock by s·φ, where φ is the packet-phase offset between the two
-+    // units (normalized into ±half the server's 500ms step cadence, and
-+    // recomputed per frame so it tracks the server's own grid convergence).
-+    // The joiner keeps walking its REAL tile segment, just progressively
++    // units, tracked as a continuously UNWRAPPED running phase (rawPrev/
++    // phiPrev below) rather than re-derived from an absolute wrap every
++    // frame — a fresh wrap each frame flips branch (and sign) the instant
++    // the true offset crosses ±250ms, a real ~500ms jump in s·φ. The
++    // joiner keeps walking its REAL tile segment, just progressively
 +    // further along it — no lateral pull, no snap, only the phase catch-up
 +    // itself. mode 0 = syncing; 1 = locked (once the two segments also
 +    // coincide, master-phase-on-the-shared-segment IS the master's live
 +    // position, so the locked follow is boundary-continuous); 2 = releasing
 +    // (s ramps back down, returning the joiner to its native clock with no
-+    // snap). badSince ignores sub-120ms same-path dropouts so step-boundary
-+    // blips in the goal reading don't restart the sync every tile.
-+    private _pixelrpSync: { masterId: number, joinerId: number, mode: number, s: number, last: number, badSince: number } = null;
++    // snap). badSince ignores brief (<120ms) route-continuity failures —
++    // most ordinary step-boundary lag no longer counts as a failure at all
++    // now that the continuity test (see samePathWith/pathOk) tolerates one
++    // beat of skew; badSince is the backstop for the remaining transient
++    // blips (e.g. a masterObject lookup miss).
++    private _pixelrpSync: { masterId: number, joinerId: number, mode: number, s: number, last: number, badSince: number, rawPrev: number, phiPrev: number } = null;
++
++    // TEMP DEBUG (pixelrp master/joiner sync investigation): throttle for
++    // the periodic [sync] snapshot log below. Remove alongside the rest of
++    // the TEMP DEBUG block once diagnosis is confirmed with the user.
++    private _pixelrpSyncLogAt: number = 0;
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +406,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +416,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -729,7 +739,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -465,8 +530,288 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +540,407 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -784,6 +794,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +            // _location is the server-authoritative step start, _locationDelta
 +            // the vector to the step target (zeroed the moment a step's lerp
 +            // completes) — so the goal is only set while genuinely mid-step.
++            let stepStartX = -1;
++            let stepStartY = -1;
 +            let stepGoalX = -1;
 +            let stepGoalY = -1;
 +            const unitLogic = (object as any).logic;
@@ -792,6 +804,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +
 +            if(stepStart && stepDelta && ((stepDelta.x !== 0) || (stepDelta.y !== 0)))
 +            {
++                stepStartX = Math.round(stepStart.x);
++                stepStartY = Math.round(stepStart.y);
 +                stepGoalX = Math.round(stepStart.x + stepDelta.x);
 +                stepGoalY = Math.round(stepStart.y + stepDelta.y);
 +            }
@@ -803,7 +817,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +
 +            if(!hist)
 +            {
-+                hist = { t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, walkSince: ((stepGoalX >= 0) ? nowMs : -1) };
++                hist = { t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, sx: stepStartX, sy: stepStartY, walkSince: ((stepGoalX >= 0) ? nowMs : -1) };
 +                anchors.set(object.instanceId, hist);
 +            }
 +            else
@@ -814,6 +828,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                hist.t = nowMs;
 +                hist.tx = roomLocation.x; hist.ty = roomLocation.y;
 +                hist.gx = stepGoalX; hist.gy = stepGoalY;
++                hist.sx = stepStartX; hist.sy = stepStartY;
 +            }
 +
 +            if(unitInfo.own)
@@ -836,15 +851,36 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +
 +            const own = ((this._pixelrpOwnId >= 0) ? anchors.get(this._pixelrpOwnId) : null);
 +
-+            // Same-path test: both mid-step toward the SAME tile (true
-+            // movement data, not a distance heuristic) while already
-+            // overlapping (<1 tile both axes — keeps opposite-side
-+            // converging units from sticking before they truly overlap).
-+            const samePathWith = (other: { tx: number, ty: number, gx: number, gy: number }) =>
-+                ((other.gx >= 0) && (stepGoalX >= 0)
-+                    && (other.gx === stepGoalX) && (other.gy === stepGoalY)
-+                    && (Math.abs(roomLocation.x - other.tx) < 1)
-+                    && (Math.abs(roomLocation.y - other.ty) < 1));
++            // Same-path (route-continuity) test: both units are on the SAME
++            // walking route, tolerating up to one beat of step-boundary skew
++            // between them — not just a literal same-instant-same-goal
++            // check. A pair converging onto one path is legitimately
++            // misaligned by exactly one step for the entire time the later
++            // arrival is catching up (more so now that the server's
++            // formation-join phase-lock is gone — see RoomUserManager.cs),
++            // so requiring an identical goal tile every frame misreads an
++            // ordinary one-beat lag as route divergence and thrashes
++            // engage/release at every step boundary. Accepted as "same
++            // route": (a) both mid-step toward the identical goal tile,
++            // (b) this unit's goal is the other's current step-start tile
++            // (this unit one beat behind), or (c) the other's goal is this
++            // unit's current step-start tile (this unit one beat ahead) —
++            // all derived from already-tracked per-frame step data,
++            // symmetric so it doesn't matter which side ends up MASTER vs
++            // JOINER once roles are assigned below. Still gated on <1 tile
++            // overlap on both axes — keeps opposite-side converging units
++            // from sticking before they truly overlap; this proximity gate
++            // is the system's actual scope and is unchanged.
++            const samePathWith = (other: { tx: number, ty: number, gx: number, gy: number, sx: number, sy: number }) =>
++            {
++                if(!((Math.abs(roomLocation.x - other.tx) < 1) && (Math.abs(roomLocation.y - other.ty) < 1))) return false;
++
++                const sameGoal = ((other.gx >= 0) && (stepGoalX >= 0) && (other.gx === stepGoalX) && (other.gy === stepGoalY));
++                const behindOther = ((stepGoalX >= 0) && (other.sx >= 0) && (stepGoalX === other.sx) && (stepGoalY === other.sy));
++                const aheadOfOther = ((other.gx >= 0) && (stepStartX >= 0) && (other.gx === stepStartX) && (other.gy === stepStartY));
++
++                return (sameGoal || behindOther || aheadOfOther);
++            };
 +
 +            // ---- sync engage (evaluated on remote renders) ----
 +            if(!unitInfo.own && own && !this._pixelrpSync && samePathWith(own))
@@ -859,8 +895,14 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                this._pixelrpSync = {
 +                    masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
 +                    joinerId: (joinerIsOwn ? this._pixelrpOwnId : object.instanceId),
-+                    mode: 0, s: 0, last: nowMs, badSince: 0
++                    mode: 0, s: 0, last: nowMs, badSince: 0, rawPrev: NaN, phiPrev: 0
 +                };
++
++                // TEMP DEBUG (pixelrp master/joiner sync investigation): see
++                // the matching [sync] telemetry block inside the joiner-
++                // handling code below. Remove alongside it after diagnosis
++                // is confirmed with the user.
++                console.log(`[sync] CREATE master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) })`);
 +            }
 +
 +            const sync = this._pixelrpSync;
@@ -908,8 +950,21 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                const j = readMove(object);
 +                const m = readMove(masterObject);
 +                const mLoc = (masterObject ? masterObject.getLocation() : null);
-+                const pathOk = !!(j && m && j.moving && m.moving
-+                    && (j.gxx === m.gxx) && (j.gyy === m.gyy) && mLoc
++
++                // Route-continuity, maintain phase: same three-way test as
++                // samePathWith above (identical goal, joiner one beat
++                // behind, or one beat ahead) — a pair can legitimately run
++                // one step out of phase for the whole time one side is
++                // catching up, so requiring literal goal-tile equality
++                // every frame (the old pathOk) treats normal step-boundary
++                // lag as a route split and forces a release (mode 2) at
++                // almost every tile edge — the cadence-periodic hitch this
++                // fix targets.
++                const routeContinuous = !!(j && m
++                    && (((j.gxx === m.gxx) && (j.gyy === m.gyy))
++                        || ((j.gxx === Math.round(m.sx)) && (j.gyy === Math.round(m.sy)))
++                        || ((m.gxx === Math.round(j.sx)) && (m.gyy === Math.round(j.sy)))));
++                const pathOk = !!(j && m && j.moving && m.moving && routeContinuous && mLoc
 +                    && (Math.abs(roomLocation.x - mLoc.x) < 1)
 +                    && (Math.abs(roomLocation.y - mLoc.y) < 1));
 +
@@ -917,6 +972,53 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                // sustained (>120ms) failure is a real divergence.
 +                if(pathOk) sync.badSince = 0;
 +                else if(sync.badSince === 0) sync.badSince = nowMs;
++
++                // Phase tracking (φ): unwrap incrementally instead of
++                // re-deriving an absolute wrap every frame — a fresh wrap
++                // each frame flips branch (and sign) the instant the true
++                // offset crosses ±250ms, a real ~500ms jump in s·φ, visible
++                // as a sudden position snap right at the join-phase values
++                // (~half the step interval) where this system is otherwise
++                // most useful. Unwrapping only the small frame-to-frame
++                // DELTA keeps φ continuous: ordinary jitter deltas are near
++                // zero and pass through unchanged, while a genuine
++                // step-boundary re-anchor (both sides' _changeTime jumping
++                // by ~530ms) produces a delta near ±500ms that wraps back
++                // to ~0 — correctly read as "no real phase change, just a
++                // new step". Updated unconditionally here (not only inside
++                // the phase-shift branch below) so φ is always fresh
++                // whenever it's needed, including a session that starts on
++                // the direct segments-match branch and only later falls
++                // back to the phase-shift branch.
++                let pixelrpRawPhase = NaN;
++
++                if(j && m)
++                {
++                    const raw = (j.change - m.change);
++
++                    pixelrpRawPhase = raw;
++
++                    if(!Number.isFinite(sync.rawPrev))
++                    {
++                        // First frame of this session: a one-time absolute
++                        // wrap is safe here because this runs before the
++                        // s-ramp below, so s is still exactly its
++                        // pre-session value (0) and no phase correction has
++                        // been applied yet.
++                        sync.rawPrev = raw;
++                        sync.phiPrev = (raw - (Math.round(raw / 500) * 500));
++                    }
++                    else
++                    {
++                        let d = (raw - sync.rawPrev);
++
++                        d -= (Math.round(d / 500) * 500);
++                        sync.phiPrev += d;
++                        sync.rawPrev = raw;
++                    }
++                }
++
++                const prevMode = sync.mode;
 +
 +                if((sync.mode !== 2) && (!masterObject || (sync.badSince && ((nowMs - sync.badSince) > 120)))) sync.mode = 2;
 +
@@ -930,16 +1032,19 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                    sync.s = Math.max(0, (sync.s - (dt / 530)));
 +                }
 +
++                let vx = 0;
++                let vy = 0;
++                let vz = 0;
++                let apply = false;
++                let ended = false;
++
 +                if((sync.mode === 2) && (sync.s <= 0))
 +                {
 +                    this._pixelrpSync = null;
++                    ended = true;
 +                }
 +                else if(j && j.moving)
 +                {
-+                    let vx = 0;
-+                    let vy = 0;
-+                    let vz = 0;
-+                    let apply = false;
 +                    const segmentsMatch = !!(m
 +                        && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
 +                        && (j.gxx === m.gxx) && (j.gyy === m.gyy));
@@ -955,13 +1060,9 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                    else if(m)
 +                    {
 +                        // Phase shift on the joiner's OWN segment: advance
-+                        // (or retard) its interpolation clock by s·φ. φ is
-+                        // the packet-phase offset, normalized into ±half the
-+                        // server's 500ms step cadence.
-+                        let phi = (j.change - m.change);
-+
-+                        phi -= (Math.round(phi / 500) * 500);
-+
++                        // (or retard) its interpolation clock by s·φ, using
++                        // the unwrapped running phase computed above.
++                        const phi = sync.phiPrev;
 +                        const shifted = ((j.time - j.change) + (sync.s * phi));
 +                        const progress = Math.min(1, Math.max(0, (shifted / j.interval)));
 +
@@ -986,6 +1087,34 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
 +                            x = Math.round(x + (visScreen.x - rawScreen.x));
 +                            y = Math.round(y + (visScreen.y - rawScreen.y));
 +                        }
++                    }
++                }
++
++                // TEMP DEBUG (pixelrp master/joiner sync investigation):
++                // [sync] telemetry — logs on every mode transition (0→1
++                // LOCK, 0/1→2 RELEASE, session END) and a compact snapshot
++                // every ~250ms while a session stays in one mode, so a
++                // GOOD JOIN and a BAD JOIN run can be compared line-by-line
++                // in the console. Matches the [gap] TEMP DEBUG convention
++                // in MovingObjectLogic.ts. Remove this whole block (and the
++                // _pixelrpSyncLogAt field, and the CREATE log above) after
++                // diagnosis is confirmed with the user.
++                {
++                    const modeChanged = (ended || (sync.mode !== prevMode));
++
++                    if(modeChanged || ((nowMs - this._pixelrpSyncLogAt) > 250))
++                    {
++                        this._pixelrpSyncLogAt = nowMs;
++
++                        const modeName = ['SYNC', 'LOCK', 'RELEASE'];
++                        const reason = ended ? 'END' : (sync.mode !== prevMode) ? `${ modeName[prevMode] }->${ modeName[sync.mode] }` : 'snapshot';
++
++                        console.log(`[sync] ${ reason } master=${ sync.masterId } joiner=${ sync.joinerId } mode=${ sync.mode } s=${ sync.s.toFixed(3) } dt=${ dt } `
++                            + `pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } `
++                            + `| master moving=${ m ? m.moving : '?' } change=${ m ? m.change : '?' } seg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) loc=(${ mLoc ? mLoc.x.toFixed(2) : '?' },${ mLoc ? mLoc.y.toFixed(2) : '?' }) `
++                            + `| joiner moving=${ j ? j.moving : '?' } change=${ j ? j.change : '?' } seg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) nativeLoc=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) visualLoc=${ apply ? `(${ vx.toFixed(2) },${ vy.toFixed(2) })` : 'n/a' } `
++                            + `| phaseRaw=${ Number.isFinite(pixelrpRawPhase) ? pixelrpRawPhase : '?' } phaseUnwrapped=${ Number.isFinite(sync.phiPrev) ? sync.phiPrev.toFixed(1) : '?' } `
++                            + `| anchorDx=${ mLoc ? (roomLocation.x - mLoc.x).toFixed(3) : '?' } anchorDy=${ mLoc ? (roomLocation.y - mLoc.y).toFixed(3) : '?' }`);
 +                    }
 +                }
 +            }
@@ -1020,7 +1149,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..1661c1afd4b8cbf1667dafbdf3d1d18a
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +872,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +1001,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
