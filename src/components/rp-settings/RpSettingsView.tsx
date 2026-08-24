@@ -243,7 +243,7 @@ export const RpSettingsView: FC<{}> = props =>
                                         <Text bold>Color</Text>
                                         <Text small className="text-muted">The color of your username in your chat bubbles. Everyone in the room sees it.</Text>
                                     </div>
-                                    <div className="rp-settings-swatches">
+                                    <div className="rp-settings-swatches rp-settings-swatches--scroll">
                                         { USERNAME_COLORS.map(entry => (
                                             <div key={ entry.key } title={ entry.name }
                                                 className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }

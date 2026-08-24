@@ -1,6 +1,6 @@
 .nitro-card.rp-settings-window {
-    width: 450px;
-    height: 360px;
+    width: 560px;
+    height: 460px;
 
     // Sub-navigation layout (e.g. Roleplay tab): slim left rail of page
     // links beside the page content. Active link is a chrome-colored pill —
@@ -41,6 +41,11 @@
 
     .rp-settings-subpage {
         flex: 1;
+        min-width: 0;
+        // never scroll sideways; scroll vertically only if a page runs tall
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
     // Setting row: label + description on the left, control on the right.
