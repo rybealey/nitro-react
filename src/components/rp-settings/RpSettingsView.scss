@@ -120,6 +120,24 @@
         }
     }
 
+    // Icon swatches carry a glyph (not a background color): light plate, the
+    // icon centered in black. The "None" X reads as the familiar clear glyph.
+    .rp-settings-swatch--icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        font-size: 15px;
+
+        svg,
+        i {
+            width: 15px;
+            height: 15px;
+            line-height: 1;
+        }
+    }
+
     // Tab strip in the HUD / right-side chrome language: dark bevelled plate,
     // Ubuntu type, quiet inactive tabs, rgba($light, .1) pill on the active
     // one (same surface as the HUD bars). Scoped here so every other

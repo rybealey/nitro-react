@@ -6,6 +6,8 @@ import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemVie
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
+import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
+import { UsernameIconGlyph } from './UsernameIconGlyph';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -32,6 +34,8 @@ export const RpSettingsView: FC<{}> = props =>
     const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
     const [ socialPage, setSocialPage ] = useState<string>(SOCIAL_PAGES[0]);
     const [ usernameColor, setUsernameColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
+    const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
+    const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
 
     // Snap any stored value onto the nearest of the five slider stops.
@@ -45,29 +49,35 @@ export const RpSettingsView: FC<{}> = props =>
         const opacity = snapOpacity(parser.chromeOpacity);
         const header = (IsValidHeaderKey(parser.headerColor) ? parser.headerColor : DEFAULT_HEADER_KEY);
         const uname = (IsValidUsernameColor(parser.usernameColor) ? parser.usernameColor : DEFAULT_USERNAME_COLOR);
+        const uicon = (IsValidUsernameIcon(parser.icon) ? parser.icon : DEFAULT_USERNAME_ICON);
+        const uiconColor = (IsValidUsernameColor(parser.iconColor) ? parser.iconColor : DEFAULT_USERNAME_COLOR);
 
         setChromeColor(color);
         setChromeOpacity(opacity);
         setHeaderKey(header);
         setUsernameColor(uname);
+        setUsernameIcon(uicon);
+        setUsernameIconColor(uiconColor);
         ApplyUiChrome(color, opacity, header);
     });
 
-    const saveSettings = (color: string, opacity: number, header: string, uname: string) =>
+    const saveSettings = (color: string, opacity: number, header: string, uname: string, icon: string, iconColor: string) =>
     {
-        // '' resets the server row's color/header/username to default
+        // '' resets the server row's color/header/username/icon to default
         SendMessageComposer(new RpSaveUiSettingsComposer(
             (color === DEFAULT_CHROME_COLOR) ? '' : color,
             opacity,
             (header === DEFAULT_HEADER_KEY) ? '' : header,
-            (uname === DEFAULT_USERNAME_COLOR) ? '' : uname));
+            (uname === DEFAULT_USERNAME_COLOR) ? '' : uname,
+            icon,
+            (iconColor === DEFAULT_USERNAME_COLOR) ? '' : iconColor));
     }
 
     const selectChrome = (color: string) =>
     {
         setChromeColor(color);
         ApplyUiChrome(color, chromeOpacity, headerKey);
-        saveSettings(color, chromeOpacity, headerKey, usernameColor);
+        saveSettings(color, chromeOpacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
     }
 
     const selectOpacity = (index: number) =>
@@ -76,20 +86,32 @@ export const RpSettingsView: FC<{}> = props =>
 
         setChromeOpacity(opacity);
         ApplyUiChrome(chromeColor, opacity, headerKey);
-        saveSettings(chromeColor, opacity, headerKey, usernameColor);
+        saveSettings(chromeColor, opacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
     }
 
     const selectHeader = (key: string) =>
     {
         setHeaderKey(key);
         ApplyUiChrome(chromeColor, chromeOpacity, key);
-        saveSettings(chromeColor, chromeOpacity, key, usernameColor);
+        saveSettings(chromeColor, chromeOpacity, key, usernameColor, usernameIcon, usernameIconColor);
     }
 
     const selectUsernameColor = (color: string) =>
     {
         setUsernameColor(color);
-        saveSettings(chromeColor, chromeOpacity, headerKey, color);
+        saveSettings(chromeColor, chromeOpacity, headerKey, color, usernameIcon, usernameIconColor);
+    }
+
+    const selectUsernameIcon = (icon: string) =>
+    {
+        setUsernameIcon(icon);
+        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, icon, usernameIconColor);
+    }
+
+    const selectUsernameIconColor = (color: string) =>
+    {
+        setUsernameIconColor(color);
+        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, usernameIcon, color);
     }
 
     useEffect(() =>
@@ -215,7 +237,7 @@ export const RpSettingsView: FC<{}> = props =>
                             )) }
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
-                            { (socialPage === 'Username') &&
+                            { (socialPage === 'Username') && <>
                                 <div className="rp-settings-section">
                                     <div className="rp-settings-section-info">
                                         <Text bold>Color</Text>
@@ -229,7 +251,37 @@ export const RpSettingsView: FC<{}> = props =>
                                                 onClick={ () => selectUsernameColor(entry.color) } />
                                         )) }
                                     </div>
-                                </div> }
+                                </div>
+                                <div className="rp-settings-section">
+                                    <div className="rp-settings-section-info">
+                                        <Text bold>Icon</Text>
+                                        <Text small className="text-muted">An icon shown before your name in chat. Everyone in the room sees it. The X means none.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches">
+                                        { USERNAME_ICONS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
+                                                onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
+                                                <UsernameIconGlyph iconClass={ entry.iconClass } />
+                                            </div>
+                                        )) }
+                                    </div>
+                                </div>
+                                <div className="rp-settings-section">
+                                    <div className="rp-settings-section-info">
+                                        <Text bold>Icon Color</Text>
+                                        <Text small className="text-muted">The color of your chat icon.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches">
+                                        { USERNAME_COLORS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch ${ (usernameIconColor === entry.color) ? 'is-selected' : '' }` }
+                                                style={ { backgroundColor: entry.color } }
+                                                onClick={ () => selectUsernameIconColor(entry.color) } />
+                                        )) }
+                                    </div>
+                                </div>
+                            </> }
                         </Column>
                     </div> }
                 { (currentTab !== 'Interface') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&

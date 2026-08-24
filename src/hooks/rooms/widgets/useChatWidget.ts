@@ -211,6 +211,10 @@ const useChatWidgetState = () =>
         // pixelrp: the sender's chosen username color rides the chat packet.
         // '' / '#000000' both mean default — normalize to null so no override.
         const usernameColor = (event.usernameColor && (event.usernameColor !== '#000000')) ? event.usernameColor : null;
+        // pixelrp: the sender's chosen icon + icon color also ride the packet.
+        // '' icon = none (no prefix); '' / '#000000' icon color = default.
+        const usernameIcon = (event.icon && event.icon.length) ? event.icon : null;
+        const usernameIconColor = (event.iconColor && (event.iconColor !== '#000000')) ? event.iconColor : null;
 
         const chatMessage = new ChatBubbleMessage(
             userData.roomIndex,
@@ -224,10 +228,12 @@ const useChatWidgetState = () =>
             styleId,
             imageUrl,
             color,
-            usernameColor);
+            usernameColor,
+            usernameIcon,
+            usernameIconColor);
 
         setChatMessages(prevValue => [ ...prevValue, chatMessage ]);
-        addChatEntry({ id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor });
+        addChatEntry({ id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
