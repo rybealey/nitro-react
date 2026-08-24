@@ -208,6 +208,9 @@ const useChatWidgetState = () =>
 
         const formattedText = RoomChatFormatter(text);
         const color = (avatarColor && (('#' + (avatarColor.toString(16).padStart(6, '0'))) || null));
+        // pixelrp: the sender's chosen username color rides the chat packet.
+        // '' / '#000000' both mean default — normalize to null so no override.
+        const usernameColor = (event.usernameColor && (event.usernameColor !== '#000000')) ? event.usernameColor : null;
 
         const chatMessage = new ChatBubbleMessage(
             userData.roomIndex,
@@ -220,10 +223,11 @@ const useChatWidgetState = () =>
             chatType,
             styleId,
             imageUrl,
-            color);
+            color,
+            usernameColor);
 
         setChatMessages(prevValue => [ ...prevValue, chatMessage ]);
-        addChatEntry({ id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color });
+        addChatEntry({ id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
