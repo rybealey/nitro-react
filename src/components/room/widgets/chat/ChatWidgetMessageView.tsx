@@ -87,7 +87,7 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                 </div>
                 <div className="chat-content">
                     { chat.usernameIcon &&
-                        <b className="username mr-1">{ '[ ' }<UsernameIconGlyph iconClass={ chat.usernameIcon } color={ chat.usernameIconColor || undefined } />{ ' ]' }</b> }
+                        <b className="username mr-1">{ '[ ' }<UsernameIconGlyph iconClass={ chat.usernameIcon } color={ chat.usernameIconColor || undefined } />{ ' ] ' }</b> }
                     <b className="username mr-1"><span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ ': ' }</b>
                     <span className="message" dangerouslySetInnerHTML={ { __html: `${ chat.formattedText }` } } />
                 </div>
