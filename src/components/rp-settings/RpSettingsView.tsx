@@ -5,6 +5,7 @@ import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from
 import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -13,7 +14,10 @@ const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' 
 
 // Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
 // settings can be furnished one by one.
-const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Color', 'Tag', 'Messages' ];
+const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Messages' ];
+
+// Social tab sub-pages (left rail).
+const SOCIAL_PAGES: string[] = [ 'Username' ];
 
 // Interface tab sub-pages (left rail).
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
@@ -26,6 +30,8 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
     const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
+    const [ socialPage, setSocialPage ] = useState<string>(SOCIAL_PAGES[0]);
+    const [ usernameColor, setUsernameColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
 
     // Snap any stored value onto the nearest of the five slider stops.
@@ -38,24 +44,30 @@ export const RpSettingsView: FC<{}> = props =>
         const color = (IsValidChromeColor(parser.chromeColor) ? parser.chromeColor : DEFAULT_CHROME_COLOR);
         const opacity = snapOpacity(parser.chromeOpacity);
         const header = (IsValidHeaderKey(parser.headerColor) ? parser.headerColor : DEFAULT_HEADER_KEY);
+        const uname = (IsValidUsernameColor(parser.usernameColor) ? parser.usernameColor : DEFAULT_USERNAME_COLOR);
 
         setChromeColor(color);
         setChromeOpacity(opacity);
         setHeaderKey(header);
+        setUsernameColor(uname);
         ApplyUiChrome(color, opacity, header);
     });
 
-    const saveChrome = (color: string, opacity: number, header: string) =>
+    const saveSettings = (color: string, opacity: number, header: string, uname: string) =>
     {
-        // '' resets the server row's color/header to default
-        SendMessageComposer(new RpSaveUiSettingsComposer((color === DEFAULT_CHROME_COLOR) ? '' : color, opacity, (header === DEFAULT_HEADER_KEY) ? '' : header));
+        // '' resets the server row's color/header/username to default
+        SendMessageComposer(new RpSaveUiSettingsComposer(
+            (color === DEFAULT_CHROME_COLOR) ? '' : color,
+            opacity,
+            (header === DEFAULT_HEADER_KEY) ? '' : header,
+            (uname === DEFAULT_USERNAME_COLOR) ? '' : uname));
     }
 
     const selectChrome = (color: string) =>
     {
         setChromeColor(color);
         ApplyUiChrome(color, chromeOpacity, headerKey);
-        saveChrome(color, chromeOpacity, headerKey);
+        saveSettings(color, chromeOpacity, headerKey, usernameColor);
     }
 
     const selectOpacity = (index: number) =>
@@ -64,14 +76,20 @@ export const RpSettingsView: FC<{}> = props =>
 
         setChromeOpacity(opacity);
         ApplyUiChrome(chromeColor, opacity, headerKey);
-        saveChrome(chromeColor, opacity, headerKey);
+        saveSettings(chromeColor, opacity, headerKey, usernameColor);
     }
 
     const selectHeader = (key: string) =>
     {
         setHeaderKey(key);
         ApplyUiChrome(chromeColor, chromeOpacity, key);
-        saveChrome(chromeColor, chromeOpacity, key);
+        saveSettings(chromeColor, chromeOpacity, key, usernameColor);
+    }
+
+    const selectUsernameColor = (color: string) =>
+    {
+        setUsernameColor(color);
+        saveSettings(chromeColor, chromeOpacity, headerKey, color);
     }
 
     useEffect(() =>
@@ -185,7 +203,36 @@ export const RpSettingsView: FC<{}> = props =>
                             <Text className="text-muted">Nothing here yet.</Text>
                         </Column>
                     </div> }
-                { (currentTab !== 'Interface') && (currentTab !== 'Roleplay') &&
+                { (currentTab === 'Social') &&
+                    <div className="rp-settings-subnav-layout">
+                        <div className="rp-settings-subnav">
+                            { SOCIAL_PAGES.map(page => (
+                                <div key={ page }
+                                    className={ `rp-settings-subnav-item ${ (socialPage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setSocialPage(page) }>
+                                    { page }
+                                </div>
+                            )) }
+                        </div>
+                        <Column gap={ 2 } className="rp-settings-subpage">
+                            { (socialPage === 'Username') &&
+                                <div className="rp-settings-section">
+                                    <div className="rp-settings-section-info">
+                                        <Text bold>Color</Text>
+                                        <Text small className="text-muted">The color of your username in your chat bubbles. Everyone in the room sees it.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches">
+                                        { USERNAME_COLORS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
+                                                style={ { backgroundColor: entry.color } }
+                                                onClick={ () => selectUsernameColor(entry.color) } />
+                                        )) }
+                                    </div>
+                                </div> }
+                        </Column>
+                    </div> }
+                { (currentTab !== 'Interface') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>
