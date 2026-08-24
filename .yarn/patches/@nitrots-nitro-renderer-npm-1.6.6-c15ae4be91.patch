@@ -1,28 +1,42 @@
 diff --git a/src/events/session/RoomSessionChatEvent.ts b/src/events/session/RoomSessionChatEvent.ts
-index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..5077237c9ee46689060e131edc7dae0be68abbad 100644
+index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..11ad556b51eb593c23a6606382190d67cd6440d3 100644
 --- a/src/events/session/RoomSessionChatEvent.ts
 +++ b/src/events/session/RoomSessionChatEvent.ts
-@@ -24,8 +24,9 @@ export class RoomSessionChatEvent extends RoomSessionEvent
+@@ -24,8 +24,11 @@ export class RoomSessionChatEvent extends RoomSessionEvent
      private _links: string[];
      private _extraParam: number;
      private _style: number;
 +    private _usernameColor: string;
++    private _icon: string;
++    private _iconColor: string;
  
 -    constructor(type: string, session: IRoomSession, objectId: number, message: string, chatType: number, style: number = 0, links: string[] = null, extraParam: number = -1)
-+    constructor(type: string, session: IRoomSession, objectId: number, message: string, chatType: number, style: number = 0, links: string[] = null, extraParam: number = -1, usernameColor: string = '')
++    constructor(type: string, session: IRoomSession, objectId: number, message: string, chatType: number, style: number = 0, links: string[] = null, extraParam: number = -1, usernameColor: string = '', icon: string = '', iconColor: string = '')
      {
          super(type, session);
  
-@@ -35,6 +36,12 @@ export class RoomSessionChatEvent extends RoomSessionEvent
+@@ -35,6 +38,24 @@ export class RoomSessionChatEvent extends RoomSessionEvent
          this._links = links;
          this._extraParam = extraParam;
          this._style = style;
 +        this._usernameColor = usernameColor;
++        this._icon = icon;
++        this._iconColor = iconColor;
 +    }
 +
 +    public get usernameColor(): string
 +    {
 +        return this._usernameColor;
++    }
++
++    public get icon(): string
++    {
++        return this._icon;
++    }
++
++    public get iconColor(): string
++    {
++        return this._iconColor;
      }
  
      public get objectId(): number
@@ -400,10 +414,10 @@ index 0000000000000000000000000000000000000000..4c04d83aae423f0bb46293264a5cd432
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf195666a5dc61f
+index 0000000000000000000000000000000000000000..8701756a24caf4c130cd3d9d99807d79b7dbbdd8
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,83 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -415,6 +429,8 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +    private _chromeOpacity: number;
 +    private _headerColor: string;
 +    private _usernameColor: string;
++    private _icon: string;
++    private _iconColor: string;
 +
 +    public flush(): boolean
 +    {
@@ -422,6 +438,8 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +        this._chromeOpacity = 95;
 +        this._headerColor = '';
 +        this._usernameColor = '';
++        this._icon = '';
++        this._iconColor = '';
 +
 +        return true;
 +    }
@@ -434,6 +452,8 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +        this._chromeOpacity = wrapper.readInt();
 +        this._headerColor = wrapper.readString();
 +        this._usernameColor = wrapper.readString();
++        this._icon = wrapper.readString();
++        this._iconColor = wrapper.readString();
 +
 +        return true;
 +    }
@@ -456,6 +476,16 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +    public get usernameColor(): string
 +    {
 +        return this._usernameColor;
++    }
++
++    public get icon(): string
++    {
++        return this._icon;
++    }
++
++    public get iconColor(): string
++    {
++        return this._iconColor;
 +    }
 +}
 +
@@ -495,7 +525,7 @@ index c303114f44e2fd89b1e683380e26ea412de500b8..7f6d3ee98b8cbf2ef63a2fb5823c0bdc
  }
 diff --git a/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..02e97fa81356ff5996bdece0c9a4058270f4d3e7
+index 0000000000000000000000000000000000000000..aa43d5b28e3a1aa2d696e4403d0c23114747d896
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 @@ -0,0 +1,23 @@
@@ -507,9 +537,9 @@ index 0000000000000000000000000000000000000000..02e97fa81356ff5996bdece0c9a40582
 +{
 +    private _data: ConstructorParameters<typeof RpSaveUiSettingsComposer>;
 +
-+    constructor(chromeColor: string, chromeOpacity: number, headerColor: string, usernameColor: string)
++    constructor(chromeColor: string, chromeOpacity: number, headerColor: string, usernameColor: string, icon: string, iconColor: string)
 +    {
-+        this._data = [chromeColor, chromeOpacity, headerColor, usernameColor];
++        this._data = [chromeColor, chromeOpacity, headerColor, usernameColor, icon, iconColor];
 +    }
 +
 +    public getMessageArray()
@@ -561,34 +591,40 @@ index 794f8b373deda2aef70c54d9d8abdee1658d1add..9bc16bcea6253ef10192a766290b3102
 +export * from './RpSaveUiSettingsComposer';
 +export * from './RpUseItemComposer';
 diff --git a/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts b/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
-index f9538e5651165f760a3d2d6cd37490d6d4fb8971..09974c6b78a2485f4a386246c556c5f692641fc2 100644
+index f9538e5651165f760a3d2d6cd37490d6d4fb8971..5eece5a65a7e940bb3d352162de70365b79f9ed5 100644
 --- a/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
 +++ b/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
-@@ -8,6 +8,7 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -8,6 +8,9 @@ export class RoomUnitChatParser implements IMessageParser
      private _bubble: number;
      private _urls: string[];
      private _messageLength: number;
 +    private _usernameColor: string;
++    private _icon: string;
++    private _iconColor: string;
  
      public flush(): boolean
      {
-@@ -17,6 +18,7 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -17,6 +20,9 @@ export class RoomUnitChatParser implements IMessageParser
          this._bubble = 0;
          this._urls = [];
          this._messageLength = 0;
 +        this._usernameColor = '';
++        this._icon = '';
++        this._iconColor = '';
  
          return true;
      }
-@@ -33,6 +35,7 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -33,6 +39,9 @@ export class RoomUnitChatParser implements IMessageParser
          this.parseUrls(wrapper);
  
          this._messageLength = wrapper.readInt();
 +        this._usernameColor = wrapper.readString();
++        this._icon = wrapper.readString();
++        this._iconColor = wrapper.readString();
  
          return true;
      }
-@@ -84,4 +87,9 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -84,4 +93,19 @@ export class RoomUnitChatParser implements IMessageParser
      {
          return this._messageLength;
      }
@@ -596,6 +632,16 @@ index f9538e5651165f760a3d2d6cd37490d6d4fb8971..09974c6b78a2485f4a386246c556c5f6
 +    public get usernameColor(): string
 +    {
 +        return this._usernameColor;
++    }
++
++    public get icon(): string
++    {
++        return this._icon;
++    }
++
++    public get iconColor(): string
++    {
++        return this._iconColor;
 +    }
  }
 diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
@@ -712,7 +758,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/nitro/session/handler/RoomChatHandler.ts b/src/nitro/session/handler/RoomChatHandler.ts
-index 5f84504a3fc5d92d026b31913320682eb90cafd6..b16e3cf24ef1c6b3fcec0e52df161771ff145e98 100644
+index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf958d1445 100644
 --- a/src/nitro/session/handler/RoomChatHandler.ts
 +++ b/src/nitro/session/handler/RoomChatHandler.ts
 @@ -37,7 +37,7 @@ export class RoomChatHandler extends BaseHandler
@@ -720,7 +766,7 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..b16e3cf24ef1c6b3fcec0e52df161771
          else if(event instanceof RoomUnitChatWhisperEvent) chatType = RoomSessionChatEvent.CHAT_TYPE_WHISPER;
  
 -        const chatEvent = new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, session, parser.roomIndex, parser.message, chatType, parser.bubble);
-+        const chatEvent = new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, session, parser.roomIndex, parser.message, chatType, parser.bubble, null, -1, parser.usernameColor);
++        const chatEvent = new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, session, parser.roomIndex, parser.message, chatType, parser.bubble, null, -1, parser.usernameColor, parser.icon, parser.iconColor);
  
          this.listener.events.dispatchEvent(chatEvent);
      }
