@@ -1092,7 +1092,7 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da8..4ea7fd7 100644
+index 6a88da8..a291277 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,73 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -1169,7 +1169,7 @@ index 6a88da8..4ea7fd7 100644
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +118,189 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +118,223 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1315,6 +1315,40 @@ index 6a88da8..4ea7fd7 100644
 +        trailingBadSince: number, trailingPhaseStrength: number,
 +        trailingExitOffsetSet: boolean, trailingExitOffsetX: number, trailingExitOffsetY: number, trailingExitOffsetZ: number, trailingExitHandoffT: number,
 +        trailingLastSnapshotAt: number, trailingStretchLastLogAt: number, trailingCollapseLastLogAt: number,
++        // Rollover-continuity fix (Update 8 follow-up): replaces the old
++        // world-position FREEZE that used to render during a brief
++        // segment-tuple ambiguity at rollover (segmentsMatch/joinerBehind
++        // flipping for a frame or two because MASTER's and JOINER's
++        // packets rarely land on the exact same render frame) with a
++        // continuously-advancing extrapolation instead. trailingLatchSet:
++        // whether a confirmed trailing segment has ever been captured
++        // this session (guards the very first TRAILING frame landing
++        // mid-ambiguity, before any live sample exists to extrapolate
++        // from). trailingLatchJ{Sx,Sy,Sz,Dx,Dy,Dz}: JOINER's own trailing
++        // segment (start+delta) as of the LAST frame trailingRouteNow was
++        // confirmed true — refreshed every such frame, read (not
++        // refreshed) during ambiguity. trailingLatchInterval: the step
++        // interval (ms) to extrapolate the phase against, captured
++        // alongside. trailingLatchPhase: the phase value itself — sampled
++        // directly from MASTER live whenever trailingRouteNow holds,
++        // manually advanced by dt/trailingLatchInterval each frame it
++        // doesn't (this, not a frozen x/y, is what keeps JOINER moving
++        // through the ambiguity — same route-relative math as live
++        // TRAIL_PHASE, just fed a carried-forward phase instead of a
++        // freshly-sampled one for a few frames). trailingLatchM{Sx,Sy,Gx,
++        // Gy}: MASTER's confirmed segment tuple at the same latch moment
++        // — diagnostics only, not read by the target math. trailingRollover
++        // Active/trailingRolloverSince: edge-detection and elapsed-time
++        // for the TRAIL_ROLLOVER_ENTER/TRAIL_ROLLOVER/TRAIL_ROLLOVER_RESOLVE
++        // diagnostics. trailingRolloverFreezeFrames: consecutive-frame
++        // counter for the [sync:TRAIL_FREEZE_BUG] regression assertion —
++        // should never reach its threshold in the fixed version.
++        trailingLatchSet: boolean,
++        trailingLatchJSx: number, trailingLatchJSy: number, trailingLatchJSz: number,
++        trailingLatchJDx: number, trailingLatchJDy: number, trailingLatchJDz: number,
++        trailingLatchInterval: number, trailingLatchPhase: number,
++        trailingLatchMSx: number, trailingLatchMSy: number, trailingLatchMGx: number, trailingLatchMGy: number,
++        trailingRolloverActive: boolean, trailingRolloverSince: number, trailingRolloverFreezeFrames: number,
 +        // TEMP DEBUG (pixelrp master/joiner sync investigation) fields below —
 +        // remove alongside the rest of the TEMP DEBUG block once diagnosis is
 +        // confirmed with the user. buf: circular buffer of pre-formatted
@@ -1359,7 +1393,7 @@ index 6a88da8..4ea7fd7 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +623,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +657,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1400,7 +1434,7 @@ index 6a88da8..4ea7fd7 100644
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +706,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +740,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1416,7 +1450,7 @@ index 6a88da8..4ea7fd7 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +756,1449 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +790,1575 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1632,6 +1666,12 @@ index 6a88da8..4ea7fd7 100644
 +                    trailingBadSince: 0, trailingPhaseStrength: 0,
 +                    trailingExitOffsetSet: false, trailingExitOffsetX: NaN, trailingExitOffsetY: NaN, trailingExitOffsetZ: NaN, trailingExitHandoffT: 0,
 +                    trailingLastSnapshotAt: 0, trailingStretchLastLogAt: 0, trailingCollapseLastLogAt: 0,
++                    trailingLatchSet: false,
++                    trailingLatchJSx: NaN, trailingLatchJSy: NaN, trailingLatchJSz: NaN,
++                    trailingLatchJDx: NaN, trailingLatchJDy: NaN, trailingLatchJDz: NaN,
++                    trailingLatchInterval: 530, trailingLatchPhase: 0,
++                    trailingLatchMSx: NaN, trailingLatchMSy: NaN, trailingLatchMGx: NaN, trailingLatchMGy: NaN,
++                    trailingRolloverActive: false, trailingRolloverSince: 0, trailingRolloverFreezeFrames: 0,
 +                    buf: [], postJump: 0,
 +                    lastVx: NaN, lastVy: NaN, lastMx: NaN, lastMy: NaN, lastPathOk: -1,
 +                    lastMSx: NaN, lastMSy: NaN, lastMGx: NaN, lastMGy: NaN,
@@ -2225,6 +2265,38 @@ index 6a88da8..4ea7fd7 100644
 +                    const trailingStopReason = ((sync.mode === 2) ? 'released' : 'route_grace_expired');
 +
 +                    console.log(`[sync:TRAIL_PHASE_END] master=${ sync.masterId } joiner=${ sync.joinerId } reason=${ trailingStopReason } routeContinuous=${ routeContinuous } joinerBehind=${ joinerBehind } segmentsMatch=${ segmentsMatch } lastDisplayedJoiner=(${ baseX.toFixed(3) },${ baseY.toFixed(3) }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) continuityOffset=(${ sync.trailingExitOffsetX.toFixed(3) },${ sync.trailingExitOffsetY.toFixed(3) })`);
++
++                    // Rollover-continuity fix: this stop is a genuine end
++                    // (grace truly expired past TRAILING_PHASE_GRACE_MS, or
++                    // the session released), NOT an ordinary rollover
++                    // resolving back into trailing — that resolution is
++                    // logged from inside the LIVE TRACKING branch instead,
++                    // right where a fresh trailingRouteNow=true frame is
++                    // confirmed. If a rollover extrapolation happened to be
++                    // in flight right up to this stop, close it out here so
++                    // a LATER, unrelated trailing session doesn't inherit a
++                    // stale "active" flag.
++                    if(sync.trailingRolloverActive)
++                    {
++                        sync.trailingRolloverActive = false;
++
++                        console.log(`[sync:TRAIL_ROLLOVER_RESOLVE] master=${ sync.masterId } joiner=${ sync.joinerId } resolution=divergence elapsedMs=${ nowMs - sync.trailingRolloverSince } resultingSource=TRAIL_PHASE_EXIT displayedJoiner=(${ baseX.toFixed(3) },${ baseY.toFixed(3) }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) })`);
++                    }
++                }
++                else if((sync.trailingPhaseStrength > 0) && sync.trailingRolloverActive
++                    && (sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING))
++                {
++                    // The one case the capture block above deliberately
++                    // skips (promotion to CONVERGING — see its comment): a
++                    // rollover was in flight right as the pair's evidence
++                    // tipped over into genuine convergence. No offset
++                    // capture needed here (PHASE_SHIFT's own s=0 continuity
++                    // already covers that handoff), just close out the
++                    // rollover bookkeeping and log the resolution so the
++                    // captures aren't silently missing this transition.
++                    sync.trailingRolloverActive = false;
++
++                    console.log(`[sync:TRAIL_ROLLOVER_RESOLVE] master=${ sync.masterId } joiner=${ sync.joinerId } resolution=same_position elapsedMs=${ nowMs - sync.trailingRolloverSince } resultingSource=PHASE_SHIFT displayedJoiner=(${ Number.isFinite(sync.lastVx) ? sync.lastVx.toFixed(3) : '?' },${ Number.isFinite(sync.lastVy) ? sync.lastVy.toFixed(3) : '?' }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) })`);
 +                }
 +
 +                let vx = 0;
@@ -2480,6 +2552,34 @@ index 6a88da8..4ea7fd7 100644
 +                        apply = true;
 +                        source = 'TRAIL_PHASE';
 +
++                        // Rollover-continuity fix: refresh the latch every
++                        // confirmed live frame — this is what the
++                        // extrapolation branch below reads from the moment
++                        // trailingRouteNow next goes false, so it's always
++                        // as fresh as the last genuinely confirmed sample.
++                        sync.trailingLatchSet = true;
++                        sync.trailingLatchJSx = j.sx; sync.trailingLatchJSy = j.sy; sync.trailingLatchJSz = j.sz;
++                        sync.trailingLatchJDx = j.dx; sync.trailingLatchJDy = j.dy; sync.trailingLatchJDz = j.dz;
++                        sync.trailingLatchInterval = m.interval;
++                        sync.trailingLatchPhase = masterPhase;
++                        sync.trailingLatchMSx = Math.round(m.sx); sync.trailingLatchMSy = Math.round(m.sy);
++                        sync.trailingLatchMGx = m.gxx; sync.trailingLatchMGy = m.gyy;
++
++                        // [sync:TRAIL_ROLLOVER_RESOLVE] — a rollover
++                        // extrapolation was in flight and THIS frame just
++                        // re-confirmed a genuine one-edge-behind tuple:
++                        // resume normal live tracking seamlessly (the
++                        // target above was already computed from live data
++                        // exactly as any other TRAIL_PHASE frame would be —
++                        // nothing special needed to "hand back" control,
++                        // this log is purely observational).
++                        if(sync.trailingRolloverActive)
++                        {
++                            sync.trailingRolloverActive = false;
++
++                            console.log(`[sync:TRAIL_ROLLOVER_RESOLVE] master=${ sync.masterId } joiner=${ sync.joinerId } resolution=trailing elapsedMs=${ nowMs - sync.trailingRolloverSince } resultingSource=TRAIL_PHASE displayedJoiner=(${ vx.toFixed(3) },${ vy.toFixed(3) }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) continuityError=${ (Number.isFinite(sync.lastVx) ? Math.hypot((vx - sync.lastVx), (vy - sync.lastVy)) : 0).toFixed(3) }`);
++                        }
++
 +                        // [sync:TRAIL_STRETCH] — the key diagnostic this
 +                        // pass exists to make unnecessary: a confirmed
 +                        // one-segment-behind pair, still topologically
@@ -2518,26 +2618,86 @@ index 6a88da8..4ea7fd7 100644
 +                            console.log(`[sync:TRAIL_PHASE] master=${ sync.masterId } joiner=${ sync.joinerId } masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } appliedPhase=${ appliedPhase.toFixed(3) } phaseError=${ (masterPhase - jNativePhase).toFixed(3) } routeOffset=-1 worldGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } correction=${ correctionMag.toFixed(3) } strength=${ sync.trailingPhaseStrength.toFixed(3) }`);
 +                        }
 +                    }
-+                    else if(trailingEligibleNow)
++                    else if(trailingEligibleNow && sync.trailingLatchSet)
 +                    {
-+                        // GRACE HOLD: topology briefly ambiguous (typical
-+                        // one-beat rollover skew — see trailingRouteNow/
-+                        // trailingGraceOk above), still within the short
-+                        // grace window, session still alive. Freeze the
-+                        // displayed position exactly where it was rather
-+                        // than recomputing from momentarily-wrong topology
-+                        // or falling through to a raw NATIVE jump — both
-+                        // would produce the visible "backward/forward
-+                        // pulse" this grace exists to prevent. Resumes live
-+                        // tracking automatically, from the same strength
-+                        // (no re-ramp), once joinerBehind reads true again
-+                        // — normally within a frame or two.
-+                        if(Number.isFinite(sync.lastVx) && Number.isFinite(sync.lastVy))
++                        // ROLLOVER EXTRAPOLATION (replaces the old
++                        // world-position freeze). Topology briefly
++                        // ambiguous — typically MASTER's and JOINER's
++                        // independent packets not landing on the exact
++                        // same render frame, so for a beat either
++                        // segmentsMatch reads true (JOINER's packet rolled
++                        // first) or joinerBehind reads false against a
++                        // MASTER edge that's already moved on two segments
++                        // ahead of JOINER's still-unrolled one (MASTER's
++                        // packet rolled first) — still within the short
++                        // grace window, session still alive. Rather than
++                        // trusting either side's momentarily-inconsistent
++                        // LIVE tuple, this keeps using the last CONFIRMED
++                        // trailing segment (the latch, refreshed every
++                        // frame trailingRouteNow held true — see that
++                        // branch above) and keeps ADVANCING its phase by
++                        // real elapsed time (dt), rather than re-sampling
++                        // it from data that briefly doesn't describe a
++                        // clean one-edge-behind relationship. The target
++                        // formula is otherwise identical to live
++                        // TRAIL_PHASE (latched segment start/delta, same
++                        // strength blend) — JOINER's displayed position
++                        // therefore keeps moving every single frame here,
++                        // exactly as it would under live tracking, it's
++                        // only the PHASE SOURCE that's carried forward
++                        // instead of freshly sampled for a few frames.
++                        // Collapse onto MASTER stays structurally
++                        // impossible for the same reason live tracking's
++                        // is: the target is confined to the latched
++                        // segment, never MASTER's x/y. Once trailingRouteNow
++                        // next reads true, live tracking above resumes and
++                        // silently overwrites the latch with fresh data —
++                        // no explicit "handoff" needed since both branches
++                        // compute the same kind of target the same way.
++                        if(!sync.trailingRolloverActive)
 +                        {
-+                            vx = sync.lastVx; vy = sync.lastVy; vz = roomLocation.z;
-+                            apply = true;
-+                            source = 'TRAIL_PHASE_HOLD';
++                            sync.trailingRolloverActive = true;
++                            sync.trailingRolloverSince = nowMs;
++                            sync.trailingRolloverFreezeFrames = 0;
++
++                            const rolloverReason = (segmentsMatch ? 'segments_match' : (!joinerBehind ? 'joiner_behind_false' : 'other'));
++                            const projectedX0 = (sync.trailingLatchJSx + (sync.trailingLatchJDx * sync.trailingLatchPhase));
++                            const projectedY0 = (sync.trailingLatchJSy + (sync.trailingLatchJDy * sync.trailingLatchPhase));
++
++                            console.log(`[sync:TRAIL_ROLLOVER_ENTER] master=${ sync.masterId } joiner=${ sync.joinerId } prevMasterEdge=(${ sync.trailingLatchMSx },${ sync.trailingLatchMSy })->(${ sync.trailingLatchMGx },${ sync.trailingLatchMGy }) prevJoinerLagEdge=(${ Math.round(sync.trailingLatchJSx) },${ Math.round(sync.trailingLatchJSy) })->(${ Math.round(sync.trailingLatchJSx + sync.trailingLatchJDx) },${ Math.round(sync.trailingLatchJSy + sync.trailingLatchJDy) }) currentMasterSeg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) currentJoinerSeg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) prevRouteLag=-1 masterPhase=${ sync.trailingLatchPhase.toFixed(3) } projectedTrailingPhase=${ sync.trailingLatchPhase.toFixed(3) } previousDisplayedJoiner=(${ Number.isFinite(sync.lastVx) ? sync.lastVx.toFixed(3) : '?' },${ Number.isFinite(sync.lastVy) ? sync.lastVy.toFixed(3) : '?' }) currentProjectedJoiner=(${ projectedX0.toFixed(3) },${ projectedY0.toFixed(3) }) reason=${ rolloverReason }`);
 +                        }
++
++                        const prevLatchPhase = sync.trailingLatchPhase;
++
++                        sync.trailingLatchPhase = Math.min(1, (sync.trailingLatchPhase + (dt / Math.max(1, sync.trailingLatchInterval))));
++
++                        const targetX = (sync.trailingLatchJSx + (sync.trailingLatchJDx * sync.trailingLatchPhase));
++                        const targetY = (sync.trailingLatchJSy + (sync.trailingLatchJDy * sync.trailingLatchPhase));
++                        const targetZ = (sync.trailingLatchJSz + (sync.trailingLatchJDz * sync.trailingLatchPhase));
++
++                        vx = (roomLocation.x + ((targetX - roomLocation.x) * sync.trailingPhaseStrength));
++                        vy = (roomLocation.y + ((targetY - roomLocation.y) * sync.trailingPhaseStrength));
++                        vz = (roomLocation.z + ((targetZ - roomLocation.z) * sync.trailingPhaseStrength));
++                        apply = true;
++                        source = 'TRAIL_PHASE_ROLLOVER';
++
++                        // [sync:TRAIL_FREEZE_BUG] — regression assertion:
++                        // if the displayed position isn't actually moving
++                        // frame to frame while MASTER clearly is, the
++                        // extrapolation above has somehow degenerated back
++                        // into the old freeze behavior. Should never fire.
++                        const joinerFrameDelta = (Number.isFinite(sync.lastVx) ? Math.hypot((vx - sync.lastVx), (vy - sync.lastVy)) : 1);
++                        const masterFrameDelta = ((mLoc && Number.isFinite(sync.lastMx)) ? Math.hypot((mLoc.x - sync.lastMx), (mLoc.y - sync.lastMy)) : 0);
++
++                        if((joinerFrameDelta < 0.0005) && (masterFrameDelta > 0.001)) sync.trailingRolloverFreezeFrames++;
++                        else sync.trailingRolloverFreezeFrames = 0;
++
++                        if(sync.trailingRolloverFreezeFrames === 3)
++                        {
++                            console.log(`[sync:TRAIL_FREEZE_BUG] master=${ sync.masterId } joiner=${ sync.joinerId } displayedJoiner=(${ vx.toFixed(3) },${ vy.toFixed(3) }) masterLoc=(${ mLoc ? mLoc.x.toFixed(3) : '?' },${ mLoc ? mLoc.y.toFixed(3) : '?' }) consecutiveFrozenFrames=${ sync.trailingRolloverFreezeFrames } latchPhase=${ sync.trailingLatchPhase.toFixed(3) }`);
++                        }
++
++                        console.log(`[sync:TRAIL_ROLLOVER] master=${ sync.masterId } joiner=${ sync.joinerId } elapsedMs=${ nowMs - sync.trailingRolloverSince } routeLag=-1 currentMasterSeg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) currentJoinerSeg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) latchPhase=${ prevLatchPhase.toFixed(3) }->${ sync.trailingLatchPhase.toFixed(3) } projectedJoiner=(${ vx.toFixed(3) },${ vy.toFixed(3) }) previousJoiner=(${ Number.isFinite(sync.lastVx) ? sync.lastVx.toFixed(3) : '?' },${ Number.isFinite(sync.lastVy) ? sync.lastVy.toFixed(3) : '?' }) frameDelta=${ joinerFrameDelta.toFixed(4) } advancing=${ joinerFrameDelta > 0.0005 }`);
 +                    }
 +                }
 +                else if(j && j.moving)
@@ -2868,7 +3028,7 @@ index 6a88da8..4ea7fd7 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2259,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2419,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
