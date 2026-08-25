@@ -86,8 +86,10 @@ export const USERNAME_ICONS: IconChoice[] = [
     { key: 'tv-retro', name: 'TV Retro', iconClass: 'fa-pixel fa-regular fa-tv-retro' },
     { key: 'wand-magic-sparkles', name: 'Wand Magic Sparkles', iconClass: 'fa-pixel fa-regular fa-wand-magic-sparkles' },
     { key: 'wrench', name: 'Wrench', iconClass: 'fa-pixel fa-regular fa-wrench' },
-    // Non-pixel kit customs (class "fa-kit fa-<name>", prefix "fak").
-    { key: 'bow', name: 'Bow', iconClass: 'fa-kit fa-bow' },
+    // Non-pixel kit customs. Monotone uploads register as "fa-kit fa-<name>"
+    // (prefix "fak"); duotone uploads as "fa-kit-duotone fa-<name>" (prefix
+    // "fakd"). The bow is uploaded as a duotone icon.
+    { key: 'bow', name: 'Bow', iconClass: 'fa-kit-duotone fa-bow' },
     ...IMAGE_ICONS,
 ];
 
