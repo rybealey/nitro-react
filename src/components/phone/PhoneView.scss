@@ -448,17 +448,19 @@ $phone-red: #e03131;
                 position: absolute;
                 left: 50%;
                 top: 50%;
-                // -42 (tuned in-game from -32): centers on a lower point of
+                // -46 (tuned in-game from -32): centers on a lower point of
                 // the head crop so the full head sits inside the tile instead
                 // of peeking over the bottom edge.
                 margin-left: -45px;
-                margin-top: -42px;
+                margin-top: -46px;
             }
         }
 
+        // 1.6x (not 2x): the full-2x head overfilled the pinned tiles; 20%
+        // smaller leaves breathing room around the head.
         &.phone-avatar--2x .phone-avatar-crop .avatar-image {
-            transform: scale(2);
-            transform-origin: 45px 42px;
+            transform: scale(1.6);
+            transform-origin: 45px 46px;
             image-rendering: pixelated;
         }
 
