@@ -37,12 +37,15 @@ export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Settings', 'Characters
 export const DEFAULT_DOCK_APPS: string[] = [ 'Messages', 'Camera', 'Photos' ];
 export const DOCK_CAPACITY: number = 4;
 
+export type PhoneTheme = 'auto' | 'light' | 'dark';
+
 interface PhonePrefs
 {
     pinned: number[];
     muted: number[];
     grid: string[];
     dock: string[];
+    theme: PhoneTheme;
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
@@ -83,7 +86,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 pinned: (Array.isArray(parsed.pinned) ? parsed.pinned.filter((id: unknown) => (typeof id === 'number')) : []),
                 muted: (Array.isArray(parsed.muted) ? parsed.muted.filter((id: unknown) => (typeof id === 'number')) : []),
                 grid,
-                dock
+                dock,
+                theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto')
             };
         }
     }
@@ -91,7 +95,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ] };
+    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto' };
 }
 
 const usePhonePrefsState = () =>
@@ -101,6 +105,7 @@ const usePhonePrefsState = () =>
     const [ mutedIds, setMutedIds ] = useState<number[]>([]);
     const [ gridOrder, setGridOrder ] = useState<string[]>([ ...DEFAULT_GRID_APPS ]);
     const [ dockOrder, setDockOrder ] = useState<string[]>([ ...DEFAULT_DOCK_APPS ]);
+    const [ theme, setThemeState ] = useState<PhoneTheme>('auto');
 
     const ensureLoaded = () =>
     {
@@ -115,6 +120,7 @@ const usePhonePrefsState = () =>
         setMutedIds(prefs.muted);
         setGridOrder(prefs.grid);
         setDockOrder(prefs.dock);
+        setThemeState(prefs.theme);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
@@ -129,7 +135,8 @@ const usePhonePrefsState = () =>
                 pinned: (prefs.pinned ?? pinnedIds),
                 muted: (prefs.muted ?? mutedIds),
                 grid: (prefs.grid ?? gridOrder),
-                dock: (prefs.dock ?? dockOrder)
+                dock: (prefs.dock ?? dockOrder),
+                theme: (prefs.theme ?? theme)
             }));
         }
 
@@ -177,6 +184,13 @@ const usePhonePrefsState = () =>
         });
     }
 
+    // Appearance (Settings app): auto follows the system, light/dark pin it.
+    const setTheme = (nextTheme: PhoneTheme) =>
+    {
+        setThemeState(nextTheme);
+        save({ theme: nextTheme });
+    }
+
     // Drag-reorder of the home screen (grid + dock zones together).
     const setAppOrder = (grid: string[], dock: string[]) =>
     {
@@ -185,10 +199,36 @@ const usePhonePrefsState = () =>
         save({ grid, dock });
     }
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, setPinned, reorderPinned, toggleMuted, setAppOrder, ensureLoaded };
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, ensureLoaded };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);
+
+// Resolves the Appearance setting to the actual palette: auto tracks the
+// system's prefers-color-scheme live; light/dark pin it.
+const usePhoneThemeState = () =>
+{
+    const { theme } = usePhonePrefs();
+    const [ systemDark, setSystemDark ] = useState<boolean>(() => (window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : false));
+
+    useEffect(() =>
+    {
+        if(!window.matchMedia) return;
+
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
+
+        media.addEventListener('change', onChange);
+
+        return () => media.removeEventListener('change', onChange);
+    }, []);
+
+    const resolvedDark = ((theme === 'dark') || ((theme === 'auto') && systemDark));
+
+    return { resolvedDark, systemDark };
+}
+
+export const usePhoneTheme = () => useBetween(usePhoneThemeState);
 
 // Badge counts shared by the toolbar button and the phone home screen. The
 // Messages badge only counts unread direct messages from friends — group

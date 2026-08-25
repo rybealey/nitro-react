@@ -18,7 +18,7 @@ interface PhoneAppDef
 
 const APP_DEFS: Record<string, PhoneAppDef> = {
     'Contacts': { icon: 'users', active: true },
-    'Settings': { icon: 'sliders' },
+    'Settings': { icon: 'sliders', active: true },
     'Characters': { icon: 'user' },
     'App Store': { icon: 'download' },
     'Mercury': { icon: 'dollar' },

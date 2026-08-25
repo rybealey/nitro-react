@@ -11,28 +11,30 @@ import { PhoneHomeView } from './PhoneHomeView';
 import { PhoneComposeView, PhoneMessagesView } from './PhoneMessagesView';
 import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosView } from './PhonePhotosView';
+import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
-import { usePhonePhotos, usePhonePrefs } from './usePhone';
+import { usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
 
 // The PixelRP phone — the player's window to their social life, replacing
 // the classic Habbo friends list + messenger windows. Opened from the
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
     'Messages': 'messages',
     'Contacts': 'contacts',
     'Camera': 'camera',
-    'Photos': 'photos'
+    'Photos': 'photos',
+    'Settings': 'settings'
 };
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
@@ -54,6 +56,7 @@ export const PhoneView: FC<{}> = props =>
     const { visibleThreads = [], getMessageThread = null, setActiveThreadId = null } = useMessenger();
     const { requestFriend = null, getFriend = null } = useFriends();
     const { ensureLoaded } = usePhonePrefs();
+    const { resolvedDark = false } = usePhoneTheme();
     const { saveScreenshot = null } = usePhonePhotos();
     const displayRef = useRef<HTMLDivElement>(null);
     const powerTimer = useRef<number>(0);
@@ -266,6 +269,9 @@ export const PhoneView: FC<{}> = props =>
                     case 'photos':
                         show('photos');
                         return;
+                    case 'settings':
+                        show('settings');
+                        return;
                 }
             },
             eventUrlPrefix: 'phone/'
@@ -338,7 +344,7 @@ export const PhoneView: FC<{}> = props =>
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER }>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
-                    <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }` }>
+                    <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }` }>
                         <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
@@ -363,6 +369,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneCameraView openPhotos={ () => go('photos') } onExit={ () => go('home') } /> }
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
+                            { (screen === 'settings') &&
+                                <PhoneSettingsView onBack={ () => go('home') } /> }
                         </div>
                         { callFriend &&
                             <PhoneCallView friend={ callFriend } onEnd={ () => setCallFriendId(0) } /> }
