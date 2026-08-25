@@ -1,7 +1,7 @@
 import { ILinkEventTracker, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
@@ -238,12 +238,22 @@ export const RpSettingsView: FC<{}> = props =>
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
                             { (socialPage === 'Username') && <>
-                                <div className="rp-settings-section">
-                                    <div className="rp-settings-section-info">
+                                <div className="rp-settings-preview">
+                                    <Text small className="text-muted">Preview</Text>
+                                    <div className="rp-settings-preview-bubble">
+                                        <b>
+                                            { usernameIcon && <><span style={ { color: usernameIconColor } }><UsernameIconGlyph iconClass={ usernameIcon } /></span>{ ' ' }</> }
+                                            <span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ':' }
+                                        </b>
+                                        { ' Welcome to Pixel City!' }
+                                    </div>
+                                </div>
+                                <div className="rp-settings-stack-section">
+                                    <div className="rp-settings-stack-head">
                                         <Text bold>Color</Text>
                                         <Text small className="text-muted">The color of your username in your chat bubbles. Everyone in the room sees it.</Text>
                                     </div>
-                                    <div className="rp-settings-swatches rp-settings-swatches--scroll">
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
                                         { USERNAME_COLORS.map(entry => (
                                             <div key={ entry.key } title={ entry.name }
                                                 className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
@@ -252,35 +262,33 @@ export const RpSettingsView: FC<{}> = props =>
                                         )) }
                                     </div>
                                 </div>
-                                <div className="rp-settings-username-row">
-                                    <div className="rp-settings-section rp-settings-section--half">
-                                        <div className="rp-settings-section-info">
-                                            <Text bold>Icon</Text>
-                                            <Text small className="text-muted">An icon before your name in chat.</Text>
-                                        </div>
-                                        <div className="rp-settings-swatches rp-settings-swatches--scroll">
-                                            { USERNAME_ICONS.map(entry => (
-                                                <div key={ entry.key } title={ entry.name }
-                                                    className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
-                                                    onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
-                                                    <UsernameIconGlyph iconClass={ entry.iconClass } />
-                                                </div>
-                                            )) }
-                                        </div>
+                                <div className="rp-settings-stack-section">
+                                    <div className="rp-settings-stack-head">
+                                        <Text bold>Icon</Text>
+                                        <Text small className="text-muted">An icon before your name in chat.</Text>
                                     </div>
-                                    <div className="rp-settings-section rp-settings-section--half">
-                                        <div className="rp-settings-section-info">
-                                            <Text bold>Icon Color</Text>
-                                            <Text small className="text-muted">The color of your chat icon.</Text>
-                                        </div>
-                                        <div className="rp-settings-swatches rp-settings-swatches--scroll">
-                                            { USERNAME_COLORS.map(entry => (
-                                                <div key={ entry.key } title={ entry.name }
-                                                    className={ `rp-settings-swatch ${ (usernameIconColor === entry.color) ? 'is-selected' : '' }` }
-                                                    style={ { backgroundColor: entry.color } }
-                                                    onClick={ () => selectUsernameIconColor(entry.color) } />
-                                            )) }
-                                        </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                        { USERNAME_ICONS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
+                                                onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
+                                                <UsernameIconGlyph iconClass={ entry.iconClass } />
+                                            </div>
+                                        )) }
+                                    </div>
+                                </div>
+                                <div className="rp-settings-stack-section">
+                                    <div className="rp-settings-stack-head">
+                                        <Text bold>Icon Color</Text>
+                                        <Text small className="text-muted">The color of your chat icon.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                        { USERNAME_COLORS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch ${ (usernameIconColor === entry.color) ? 'is-selected' : '' }` }
+                                                style={ { backgroundColor: entry.color } }
+                                                onClick={ () => selectUsernameIconColor(entry.color) } />
+                                        )) }
                                     </div>
                                 </div>
                             </> }

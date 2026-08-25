@@ -1,6 +1,6 @@
 .nitro-card.rp-settings-window {
     width: 560px;
-    height: 460px;
+    height: 560px;
 
     // Sub-navigation layout (e.g. Roleplay tab): slim left rail of page
     // links beside the page content. Active link is a chrome-colored pill —
@@ -77,33 +77,49 @@
         grid-template-columns: repeat(3, 34px);
     }
 
-    // Icon + Icon Color sit side by side; each half stacks its label above a
-    // fixed 4-row swatch box that scrolls when there are more rows.
-    .rp-settings-username-row {
+    // Username page: full-width stacked sections — a compact "Title —
+    // description" head line above a grid that auto-fills the page width, so
+    // every option is visible without scrollboxes.
+    .rp-settings-stack-section {
         display: flex;
-        gap: 16px;
-        align-items: flex-start;
-
-        .rp-settings-section--half {
-            flex: 1;
-            min-width: 0;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 8px;
-            border-bottom: 0;
-        }
-
-        .rp-settings-section-info {
-            max-width: none;
-        }
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 4px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
-    .rp-settings-swatches--scroll {
-        // 4 rows of 26px swatches + 3 * 8px gaps, with a little breathing room
-        height: 132px;
-        overflow-y: auto;
-        align-content: start;
-        padding-right: 4px;
+    .rp-settings-stack-head {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .rp-settings-swatches--wide {
+        grid-template-columns: repeat(auto-fill, 34px);
+    }
+
+    // Live preview of the player's chat-bubble identity (icon + name colors),
+    // updating as swatches are picked.
+    .rp-settings-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: $border-radius;
+    }
+
+    .rp-settings-preview-bubble {
+        background: $white;
+        border: 2px solid #000;
+        border-radius: 8px;
+        padding: 3px 10px;
+        font-size: 13px;
+        color: #000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     // Color swatches + opacity slider stacked as one control column: the
