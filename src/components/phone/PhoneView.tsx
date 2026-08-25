@@ -247,7 +247,7 @@ export const PhoneView: FC<{}> = props =>
     return (
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-region" windowPosition={ DraggableWindowPosition.CENTER }>
             <div className="pixelrp-phone">
-                <div className="phone-shell">
+                <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
                     <div className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }` }>
                         <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
                             <div className="phone-status-time">{ clock }</div>
