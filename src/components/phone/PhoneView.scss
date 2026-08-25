@@ -464,10 +464,12 @@ $phone-red: #e03131;
             image-rendering: pixelated;
         }
 
-        // Unmasked (pinned grid): the pastel tile stays behind the head but
-        // the head is never clipped to it — tall hair pops over the edges.
+        // Unmasked (pinned grid): no tile at all — no pastel field, no ink
+        // outline, no clipping. Just the bare head at the same size, in the
+        // same footprint so the grid and presence dot don't move.
         &.phone-avatar--unmasked .phone-avatar-crop {
             overflow: visible;
+            border: none;
         }
 
         .phone-avatar-group-badge {
