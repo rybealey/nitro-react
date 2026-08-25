@@ -172,6 +172,32 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
         }
     }
 
+    const downloadPhoto = async () =>
+    {
+        if(!viewerPhoto) return;
+
+        try
+        {
+            const response = await fetch(viewerPhoto.url);
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+
+            anchor.href = objectUrl;
+            anchor.download = `pixelrp-photo-${ viewerPhoto.id }.png`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            setToastText('Photo downloaded');
+        }
+
+        catch(e)
+        {
+            setToastText('Couldn\'t download the photo');
+        }
+    }
+
     const layout = (isEditing ? editLayout() : null);
 
     return (
@@ -250,6 +276,9 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
                                 </div>
                                 <div className="phone-tap phone-photos-viewer-btn" title="Crop &amp; zoom" onClick={ startEdit }>
                                     <PhoneIcon icon="crop" size={ 18 } />
+                                </div>
+                                <div className="phone-tap phone-photos-viewer-btn" title="Download photo" onClick={ downloadPhoto }>
+                                    <PhoneIcon icon="download" size={ 18 } />
                                 </div>
                                 <div className={ `phone-tap phone-photos-viewer-btn is-next${ (viewerIndex <= 0) ? ' is-disabled' : '' }` } title="Newer" onClick={ event => setViewerIndex(Math.max(0, (viewerIndex - 1))) }>
                                     <PhoneIcon icon="chevron-left" size={ 20 } />
