@@ -734,31 +734,6 @@
             }
         }
 
-        // pixelrp custom 42 (cyber cat): dark navy body in a cyan neon frame
-        // with cat ears — white text like bubble 40.
-        &.bubble-42 {
-            border-image-source: url('@/assets/images/chat/chatbubbles/bubble_42.png');
-
-            border-image-slice: 12 12 12 12 fill;
-            border-image-width: 12px 12px 12px 12px;
-            border-image-outset: 0px 0px 0px 0px;
-
-            .username {
-                color: rgba($white, 1);
-            }
-
-            .message {
-                color: rgba($white, 1) !important;
-            }
-
-            .pointer {
-                background: url('@/assets/images/chat/chatbubbles/bubble_42_pointer.png');
-                width: 12px;
-                height: 7px;
-                bottom: -6px;
-            }
-        }
-
         .user-container {
             z-index: 3;
             display: flex;
