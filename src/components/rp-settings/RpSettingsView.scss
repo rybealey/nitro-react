@@ -94,6 +94,17 @@
         gap: 8px;
     }
 
+    // Section that doesn't apply to the current selection (e.g. Icon Color
+    // while an image icon is chosen): visibly muted and inert.
+    .rp-settings-stack-section.is-disabled {
+        opacity: 0.45;
+
+        .rp-settings-swatch {
+            pointer-events: none;
+            cursor: default;
+        }
+    }
+
     .rp-settings-swatches--wide {
         grid-template-columns: repeat(auto-fill, 34px);
     }
@@ -180,6 +191,13 @@
             width: 15px;
             height: 15px;
             line-height: 1;
+        }
+
+        // Image icons render at NATIVE size (pixel art — never scale).
+        img.username-icon-image {
+            width: auto;
+            height: auto;
+            image-rendering: pixelated;
         }
     }
 

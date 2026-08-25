@@ -6,7 +6,7 @@ import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemVie
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
-import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
+import { DEFAULT_USERNAME_ICON, IsImageIcon, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
 
 // PixelRP settings window, opened from the side drawer's Settings button
@@ -147,6 +147,9 @@ export const RpSettingsView: FC<{}> = props =>
 
     const selectUsernameIconColor = (color: string) =>
     {
+        // color does not apply to image icons — the section is disabled then
+        if(IsImageIcon(usernameIcon)) return;
+
         setUsernameIconColor(color);
         saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, usernameIcon, color);
     }
@@ -325,10 +328,10 @@ export const RpSettingsView: FC<{}> = props =>
                                         )) }
                                     </div>
                                 </div>
-                                <div className="rp-settings-stack-section">
+                                <div className={ `rp-settings-stack-section ${ IsImageIcon(usernameIcon) ? 'is-disabled' : '' }` }>
                                     <div className="rp-settings-stack-head">
                                         <Text bold>Icon Color</Text>
-                                        <Text small className="text-muted">The color of your chat icon.</Text>
+                                        <Text small className="text-muted">{ IsImageIcon(usernameIcon) ? 'Not applicable to image icons.' : 'The color of your chat icon.' }</Text>
                                     </div>
                                     <div className="rp-settings-swatches rp-settings-swatches--wide">
                                         { USERNAME_COLORS.map(entry => (

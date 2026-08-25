@@ -25,6 +25,16 @@
     }
 }
 
+// pixelrp: username image icons (assets/images/username-icons) sit inline
+// before the name — native size (pixel art, never scaled), centered on the
+// text line.
+.chat-content img.username-icon-image {
+    width: auto;
+    height: auto;
+    vertical-align: middle;
+    image-rendering: pixelated;
+}
+
 .bubble-container {
     position: absolute;
     width: fit-content;
