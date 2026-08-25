@@ -3,7 +3,6 @@ import { FC, useState } from 'react';
 import { CreateLinkEvent, GetSessionDataManager } from '../../api';
 import { Base, Flex, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
-import { PhoneIcon } from '../phone/PhoneIcon';
 import { usePhoneBadges } from '../phone/usePhone';
 import { ToolbarMeView } from './ToolbarMeView';
 
@@ -94,8 +93,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                 <Flex alignItems="center" gap={ 2 }>
                     <Flex gap={ 2 }>
                         <Base pointer title="Diamonds" className="navigation-item icon-diamonds" />
-                        <Base pointer title="Phone" className="navigation-item toolbar-phone-button" onClick={ event => CreateLinkEvent('phone/toggle') }>
-                            <PhoneIcon icon="smartphone" size={ 24 } />
+                        <Base pointer title="Phone" className="navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
                             { ((unreadMessages + requestCount) > 0) &&
                                 <LayoutItemCountView count={ (unreadMessages + requestCount) } /> }
                         </Base>

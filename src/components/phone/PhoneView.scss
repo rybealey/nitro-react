@@ -73,7 +73,6 @@ $phone-red: #e03131;
         justify-content: space-between;
         padding: 0 22px;
         color: #ffffff;
-        cursor: grab;
 
         .phone-status-time {
             font-family: 'Ubuntu', sans-serif;
@@ -101,17 +100,25 @@ $phone-red: #e03131;
         }
     }
 
+    // The dynamic island doubles as the drag handle — click and hold it to
+    // move the phone. Padding + content-box keeps the visible island the
+    // same size while giving the grab a slightly forgiving hit area.
     .phone-notch {
         position: absolute;
-        top: 10px;
+        top: 6px;
         left: 50%;
         transform: translateX(-50%);
-        width: 100px;
-        height: 25px;
-        background: #000;
-        border-radius: 14px;
+        width: 112px;
+        height: 33px;
+        padding: 4px 6px;
+        background: #000 content-box;
+        border-radius: 18px;
         z-index: 41;
         cursor: grab;
+
+        &:active {
+            cursor: grabbing;
+        }
     }
 
     .phone-home-indicator {
@@ -1231,7 +1238,7 @@ $phone-red: #e03131;
 
 $phone-icons: 'message', 'users', 'user', 'user-plus', 'sliders', 'camera', 'image', 'download', 'dollar',
     'heart', 'pencil', 'search', 'bookmark', 'volume-x', 'volume-2', 'trash', 'chevron-left',
-    'more-vertical', 'arrow-up', 'plus', 'check', 'close', 'phone', 'smartphone', 'map-pin-home',
+    'more-vertical', 'arrow-up', 'plus', 'check', 'close', 'phone', 'map-pin-home',
     'megaphone', 'cellular-signal-3', 'battery-full';
 
 @each $name in $phone-icons {

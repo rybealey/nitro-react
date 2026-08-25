@@ -233,7 +233,7 @@ export const PhoneView: FC<{}> = props =>
             <div className="pixelrp-phone">
                 <div className="phone-shell">
                     <div className="phone-display">
-                        <div className={ `phone-status-bar phone-drag-region${ onLightScreen ? ' on-light' : '' }` }>
+                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
                                 <span>PXL</span>
@@ -241,7 +241,7 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneIcon icon="battery-full" size={ 18 } />
                             </div>
                         </div>
-                        <div className="phone-notch phone-drag-region" />
+                        <div className="phone-notch phone-drag-region" title="Hold to move the phone" />
                         <div key={ `${ screen }-${ animation }` } className={ `phone-screen-anim phone-anim-${ animation }` }>
                             { (screen === 'home') &&
                                 <PhoneHomeView openApp={ app => go((app === 'Messages') ? 'messages' : 'contacts') } /> }
