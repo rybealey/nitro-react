@@ -725,10 +725,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..b16e3cf24ef1c6b3fcec0e52df161771
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d1527a79edec 100644
+index 6a88da8..2c858d4 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,58 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,49 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -775,19 +775,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +    private static FORMATION_LOCK_GAP_MAX: number = 0.25;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
 +
-+    // NEW (render-timing pass). Grace window for the per-unit walkSince
-+    // bookkeeping to survive an ORDINARY inter-packet endpoint gap
-+    // (_locationDelta briefly reads (0,0) between one step ending and the
-+    // next movement packet arriving) without treating it as a genuine
-+    // stop. Reuses the SAME 120ms value already established for badSince's
-+    // general transient-blip grace elsewhere in this file — not a new
-+    // arbitrary number, just applied to a second kind of brief gap.
-+    private static WALK_CONTINUITY_GRACE_MS: number = 120;
-+
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +103,165 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +94,163 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -795,15 +786,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +    // PixelRP moving-vs-moving alignment (v4: master/joiner PHASE sync).
 +    // Per-unit walk bookkeeping — raw room position, current step-goal tile
 +    // and the time this unit's current continuous walk began — refreshed
-+    // every frame the unit renders. idleSince (NEW, render-timing pass):
-+    // nowMs when this unit's step-goal FIRST read invalid (stepGoalX < 0)
-+    // after having been valid — i.e. when it most recently stopped being
-+    // mid-step. walkSince is no longer destroyed the instant that happens;
-+    // it only resets to -1 once idleSince has held for longer than
-+    // WALK_CONTINUITY_GRACE_MS (see the bookkeeping block below), so an
-+    // ordinary brief inter-packet endpoint gap no longer erases the
-+    // original continuous-walk start time.
-+    private _pixelrpAnchors: Map<number, { t: number, tx: number, ty: number, gx: number, gy: number, sx: number, sy: number, walkSince: number, idleSince: number }> = new Map();
++    // every frame the unit renders.
++    private _pixelrpAnchors: Map<number, { t: number, tx: number, ty: number, gx: number, gy: number, sx: number, sy: number, walkSince: number }> = new Map();
 +    private _pixelrpOwnId: number = -1;
 +
 +    // Single active master/joiner sync (own-avatar pairs only), created ONCE
@@ -882,20 +866,6 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +        // genuineDivergence check can't see it yet.
 +        // lastNativeGap/convergingEvidenceMs/trailingEvidenceMs: the
 +        // evidence accumulators themselves (see the update block).
-+        // lastEvidenceSampleAt (NEW, render-timing pass): nowMs of the last
-+        // frame a VALID native-gap sample was taken. Lets the evidence
-+        // block tell "the immediately preceding frame" apart from "some
-+        // number of unsampled frames ago" — see the evidence block comment
-+        // for why comparing across an unsampled gap as if it were one
-+        // frame fabricates false shrink/grow evidence.
-+        // lastStablePhysicalOrder (NEW, render-timing pass): the most
-+        // recent NON-'SAME' physicalOrder reading ('MASTER_AHEAD' or
-+        // 'JOINER_AHEAD'), held through any number of 'SAME' frames in
-+        // between — replaces a raw Math.sign() flip (which fired on
-+        // interpolation noise straddling zero, e.g. +0.02 -> -0.02, well
-+        // inside the SAME deadband) with a genuine stable-order EXCHANGE
-+        // as the only thing that counts as a crossing/overtake. See the
-+        // evidence block for the crossingConfirmed derivation.
 +        // demotionOffset{X,Y}/demotionOffsetSet/demotionHandoffT: on a
 +        // CONVERGING -> TRAILING demotion, if PHASE_SHIFT had already
 +        // applied a visible correction, its last value (vs native) is
@@ -907,8 +877,27 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +        formationState: number, formationStateSince: number,
 +        lockedDirX: number, lockedDirY: number,
 +        lastNativeGap: number, convergingEvidenceMs: number, trailingEvidenceMs: number,
-+        lastEvidenceSampleAt: number, lastStablePhysicalOrder: string,
 +        demotionOffsetSet: boolean, demotionOffsetX: number, demotionOffsetY: number, demotionHandoffT: number,
++        // ENTRY/EXIT visual-handoff continuity (transition-fix pass, on top
++        // of the otherwise-unmodified Round 6 middle). entryOffset{X,Y,Z}/
++        // entryOffsetSet/entryHandoffT/entryCompleteLogged: the very first
++        // frame a correction actually applies this session (whichever
++        // branch produces it — direct MASTER_COPY at LOCK, or PHASE_SHIFT
++        // pre-lock), capture (native − target) ONCE and decay it to zero
++        // over the same fixed 100ms window already used for
++        // RELEASE_BLEND/DEMOTION_BLEND, so frame one is pixel-identical to
++        // the immediately preceding native frame regardless of how large a
++        // jump the underlying s/phi (or direct LOCK) target already
++        // represents — this deliberately does NOT change when/why that
++        // target got large (s/formationState timing is untouched), only
++        // absorbs the resulting jump visually. releaseCompleteLogged:
++        // pairs with the existing releaseAnchorSet/releaseHandoffT fields,
++        // just a one-shot guard for the [sync:EXIT_COMPLETE] diagnostic.
++        // lastSource: previous frame's render source, for ENTRY_HANDOFF/
++        // EXIT_HANDOFF diagnostics only (source itself is a local, reset
++        // every render call).
++        entryOffsetSet: boolean, entryOffsetX: number, entryOffsetY: number, entryOffsetZ: number, entryHandoffT: number, entryCompleteLogged: boolean,
++        releaseCompleteLogged: boolean, lastSource: string,
 +        // TEMP DEBUG (pixelrp master/joiner sync investigation) fields below —
 +        // remove alongside the rest of the TEMP DEBUG block once diagnosis is
 +        // confirmed with the user. buf: circular buffer of pre-formatted
@@ -953,7 +942,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +584,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +573,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -994,7 +983,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +667,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +656,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1010,59 +999,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -456,17 +708,1270 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
- 
-         if(locationCache.locationChanged) update = true;
- 
--        if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
-+        // PixelRP (render-timing pass): an object whose DISPLAYED position
-+        // currently depends on something other than its own native motion
-+        // — the active MASTER/JOINER JOINER, whose established-lock branch
-+        // below is specifically written to keep tracking MASTER through a
-+        // JOINER-side moving=false endpoint gap — must not be allowed to
-+        // skip this frame's sprite reposition just because ITS OWN
-+        // visualization/location happen not to have changed. Vanilla's
-+        // early return above only tracks visualization pose changes
-+        // (needsUpdate) and this object's own native location delta
-+        // (locationChanged/update); neither reflects "MASTER moved, so
-+        // this JOINER's corrected screen position should move too" — so
-+        // without this bypass, a genuinely locked JOINER can visibly stall
-+        // at its last-drawn position for exactly the frames MASTER most
-+        // needs it to keep up (endpoint gaps), then jump back into place
-+        // the next time its own cache invalidates — the peek/separate/
-+        // re-collapse pattern from the captures. Scoped to ONLY the
-+        // current joiner's own per-object cache entry (identifier is
-+        // per-instanceId, see getCacheItem above): every other object,
-+        // including MASTER's own render call and any non-sync avatar,
-+        // keeps vanilla's early-return behavior untouched.
-+        const pixelrpActiveJoiner = !!(this._pixelrpSync && (object.instanceId === this._pixelrpSync.joinerId));
-+        const pixelrpSortableNeedsUpdate = sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter);
-+        const pixelrpCacheWouldReturn = (!pixelrpSortableNeedsUpdate && !update);
-+
-+        if(pixelrpCacheWouldReturn && !pixelrpActiveJoiner)
-         {
-             return sortableCache.spriteCount;
-         }
- 
-+        if(pixelrpCacheWouldReturn && pixelrpActiveJoiner)
-+        {
-+            // TEMP DEBUG (pixelrp master/joiner sync investigation):
-+            // [sync:CACHE_BYPASS] — fires exactly on the frames vanilla
-+            // would have skipped this JOINER, to correlate against the
-+            // bad clips. Cheap enough not to throttle: this condition is
-+            // inherently rare (visualization static AND native location
-+            // static AND this object is the active joiner), not a
-+            // per-frame log.
-+            const pixelrpSync = this._pixelrpSync;
-+            const pixelrpLogic = (object as any).logic;
-+            const pixelrpDelta = (pixelrpLogic ? pixelrpLogic._locationDelta : null);
-+            const pixelrpNativeMoving = !!(pixelrpDelta && ((pixelrpDelta.x !== 0) || (pixelrpDelta.y !== 0)));
-+            const pixelrpSourceExpected = ((pixelrpSync.mode === 1) ? 'MASTER_COPY' : (pixelrpSync.mode === 2) ? 'RELEASE_BLEND/DEMOTION' : 'PHASE_SHIFT_OR_NATIVE');
-+
-+            console.log(`[sync:CACHE_BYPASS] joinerId=${ pixelrpSync.joinerId } masterId=${ pixelrpSync.masterId } mode=${ pixelrpSync.mode } visualLocked=${ pixelrpSync.visualLocked } sortableNeedsUpdate=${ pixelrpSortableNeedsUpdate } update=${ update } nativeMoving=${ pixelrpNativeMoving } sourceExpected=${ pixelrpSourceExpected }`);
-+        }
-+
-         let x = vector.x;
+@@ -465,8 +706,1182 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1133,65 +1070,13 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +
 +            if(!hist)
 +            {
-+                hist = { t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, sx: stepStartX, sy: stepStartY, walkSince: ((stepGoalX >= 0) ? nowMs : -1), idleSince: ((stepGoalX >= 0) ? -1 : nowMs) };
++                hist = { t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, sx: stepStartX, sy: stepStartY, walkSince: ((stepGoalX >= 0) ? nowMs : -1) };
 +                anchors.set(object.instanceId, hist);
 +            }
 +            else
 +            {
-+                // PixelRP (render-timing pass): walkSince used to be
-+                // destroyed the instant stepGoalX went invalid for even
-+                // one frame — including the ORDINARY brief gap between one
-+                // step's lerp completing and the next movement packet
-+                // arriving, which is not a real stop. That made role
-+                // selection at ENGAGE (see remoteSince/ownSince below)
-+                // depend on which avatar happened to be mid-endpoint-gap
-+                // at that exact instant — the same continuous walk could
-+                // get a fresh walkSince or keep its old one purely by
-+                // timing luck, making MASTER/JOINER role assignment
-+                // non-deterministic for otherwise identical encounters.
-+                // idleSince now tracks how long stepGoalX has been
-+                // continuously invalid; walkSince only actually resets
-+                // once that idle stretch exceeds WALK_CONTINUITY_GRACE_MS
-+                // (120ms, the same value already used for badSince's
-+                // general transient-blip grace) — a brief inter-packet gap
-+                // preserves the original walk-start timestamp, a genuine
-+                // stop eventually does not.
-+                const wasMoving = (hist.gx >= 0);
-+                const nowMoving = (stepGoalX >= 0);
-+
-+                if(nowMoving && !wasMoving)
-+                {
-+                    const idleMs = ((hist.idleSince >= 0) ? (nowMs - hist.idleSince) : -1);
-+                    const withinGrace = ((hist.idleSince >= 0) && (idleMs <= RoomSpriteCanvas.WALK_CONTINUITY_GRACE_MS) && (hist.walkSince >= 0));
-+
-+                    // TEMP DEBUG (pixelrp master/joiner sync investigation):
-+                    // [sync:WALK_CONTINUITY] — fires only on the resume
-+                    // edge (transition from idle back to mid-step), never
-+                    // every frame.
-+                    console.log(`[sync:WALK_CONTINUITY] unit=${ object.instanceId } previousWalkSince=${ hist.walkSince } idleMs=${ idleMs } action=${ withinGrace ? 'PRESERVE' : 'NEW_WALK' }`);
-+
-+                    if(!withinGrace) hist.walkSince = nowMs;
-+
-+                    hist.idleSince = -1;
-+                }
-+                else if(!nowMoving && wasMoving)
-+                {
-+                    // just went idle this frame — start the idle clock,
-+                    // but do NOT touch walkSince yet: it's still unknown
-+                    // whether this is a brief gap or a real stop.
-+                    hist.idleSince = nowMs;
-+                }
-+                else if(!nowMoving && !wasMoving && (hist.walkSince >= 0) && (hist.idleSince >= 0)
-+                    && ((nowMs - hist.idleSince) > RoomSpriteCanvas.WALK_CONTINUITY_GRACE_MS))
-+                {
-+                    // idle stretch has now exceeded the grace window while
-+                    // still idle — confirmed as a genuine stop, not a
-+                    // packet gap. Reset once (walkSince >= 0 guard above
-+                    // prevents re-logging every subsequent idle frame).
-+                    console.log(`[sync:WALK_CONTINUITY] unit=${ object.instanceId } previousWalkSince=${ hist.walkSince } idleMs=${ nowMs - hist.idleSince } action=RESET`);
-+
-+                    hist.walkSince = -1;
-+                }
++                if((stepGoalX >= 0) && (hist.gx < 0)) hist.walkSince = nowMs;
++                if(stepGoalX < 0) hist.walkSince = -1;
 +
 +                hist.t = nowMs;
 +                hist.tx = roomLocation.x; hist.ty = roomLocation.y;
@@ -1324,8 +1209,9 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                    formationState: RoomSpriteCanvas.FORMATION_CANDIDATE, formationStateSince: nowMs,
 +                    lockedDirX: NaN, lockedDirY: NaN,
 +                    lastNativeGap: NaN, convergingEvidenceMs: 0, trailingEvidenceMs: 0,
-+                    lastEvidenceSampleAt: NaN, lastStablePhysicalOrder: 'UNKNOWN',
 +                    demotionOffsetSet: false, demotionOffsetX: NaN, demotionOffsetY: NaN, demotionHandoffT: 0,
++                    entryOffsetSet: false, entryOffsetX: NaN, entryOffsetY: NaN, entryOffsetZ: NaN, entryHandoffT: 0, entryCompleteLogged: false,
++                    releaseCompleteLogged: false, lastSource: 'NATIVE',
 +                    buf: [], postJump: 0,
 +                    lastVx: NaN, lastVy: NaN, lastMx: NaN, lastMy: NaN, lastPathOk: -1,
 +                    lastMSx: NaN, lastMSy: NaN, lastMGx: NaN, lastMGy: NaN,
@@ -1482,22 +1368,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                let nativeSignedGap = NaN;
 +                let nativeAbsGap = NaN;
 +                let nativeGapDelta = NaN;
++                let orderChanged = false;
 +                let physicalOrder = 'UNKNOWN';
-+                let crossingConfirmed = false;
-+                const stableOrderBefore = sync.lastStablePhysicalOrder;
-+                let stableOrderAfter = sync.lastStablePhysicalOrder;
 +
-+                // PixelRP (render-timing pass): evidenceSampleValid is the
-+                // SAME condition Round 6 used to gate the whole evidence
-+                // block — kept as its own named boolean so it can be
-+                // logged and so the "was the PREVIOUS frame also sampled"
-+                // question (evidenceSampleGapMs/evidenceBaselineReseeded
-+                // below) is answered from real data, not assumed.
-+                const evidenceSampleValid = !!(j && m && j.moving && m.moving && routeContinuous && mLoc);
-+                let evidenceSampleGapMs = NaN;
-+                let evidenceBaselineReseeded = false;
-+
-+                if(evidenceSampleValid)
++                if(j && m && j.moving && m.moving && routeContinuous && mLoc)
 +                {
 +                    const dirLen = (Math.hypot(mDirX, mDirY) || 1);
 +                    const lastNativeGapBefore = sync.lastNativeGap;
@@ -1507,76 +1381,38 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                    if(Number.isFinite(lastNativeGapBefore)) nativeGapDelta = (nativeSignedGap - lastNativeGapBefore);
 +                    physicalOrder = (nativeSignedGap > 0.15) ? 'JOINER_AHEAD' : (nativeSignedGap < -0.15) ? 'MASTER_AHEAD' : 'SAME';
 +
-+                    // Gap-awareness: lastNativeGapBefore is NaN either on
-+                    // the very first-ever sample of this session, OR
-+                    // because the ELSE branch below (evidence sampling
-+                    // invalid) explicitly invalidated it after any frame
-+                    // where sampling wasn't possible. Either way, this
-+                    // frame cannot be safely compared against it as if it
-+                    // were "the previous frame" — doing so previously let
-+                    // a stale pre-gap gap value produce fabricated
-+                    // shrinking/growing evidence purely from a packet/
-+                    // moving-state interruption, and let unsampled wall-
-+                    // clock time count as if it were continuously observed
-+                    // trend. evidenceSampleGapMs is purely diagnostic (how
-+                    // long since the last VALID sample, regardless of why);
-+                    // the actual gate is the finite-check below.
-+                    evidenceSampleGapMs = (Number.isFinite(sync.lastEvidenceSampleAt) ? (nowMs - sync.lastEvidenceSampleAt) : NaN);
-+                    evidenceBaselineReseeded = (!Number.isFinite(lastNativeGapBefore) && Number.isFinite(sync.lastEvidenceSampleAt));
-+                    sync.lastEvidenceSampleAt = nowMs;
++                    const gapSign = Math.sign(nativeSignedGap);
++                    const lastGapSign = (Number.isFinite(sync.lastNativeGap) ? Math.sign(sync.lastNativeGap) : 0);
 +
-+                    // Semantic crossing/overtake detection: a genuine
-+                    // overtake is a STABLE ORDER EXCHANGE (MASTER_AHEAD <->
-+                    // JOINER_AHEAD), not a raw sign flip of
-+                    // nativeSignedGap. The old Math.sign() check fired on
-+                    // ordinary interpolation jitter straddling zero (e.g.
-+                    // +0.02 -> -0.02) even though BOTH readings are
-+                    // logically 'SAME' under the existing 0.15 deadband —
-+                    // resetting both evidence accumulators on pure noise.
-+                    // lastStablePhysicalOrder holds the most recent
-+                    // NON-'SAME' reading through any number of 'SAME'
-+                    // frames in between, so a real approach-and-converge
-+                    // (…, MASTER_AHEAD, SAME, SAME, SAME, …) is correctly
-+                    // NOT a crossing, while an actual pass all the way
-+                    // through to the other side is.
-+                    if(physicalOrder !== 'SAME')
++                    // Overtake/crossing: the along-route order actually
++                    // flipped (not merely approached zero) — this is
++                    // evidence of a PASS, not a formation, so both
++                    // accumulators reset rather than either one crediting
++                    // it. A pair that is genuinely converging reaches
++                    // near-zero and STAYS there (handled by the
++                    // "alreadyNear" branch below); it does not need to
++                    // cross to the opposite sign.
++                    orderChanged = ((gapSign !== 0) && (lastGapSign !== 0) && (gapSign !== lastGapSign));
++
++                    if(orderChanged)
 +                    {
-+                        if((stableOrderBefore !== 'UNKNOWN') && (stableOrderBefore !== physicalOrder)) crossingConfirmed = true;
-+
-+                        sync.lastStablePhysicalOrder = physicalOrder;
-+                        stableOrderAfter = physicalOrder;
-+                    }
-+
-+                    if(crossingConfirmed)
-+                    {
-+                        // Overtake/crossing confirmed: evidence of a PASS,
-+                        // not a formation, so both accumulators reset
-+                        // rather than either one crediting it. A pair that
-+                        // is genuinely converging reaches near-zero and
-+                        // STAYS there (handled by the "alreadyNear" branch
-+                        // below); it does not need to cross to the
-+                        // opposite side.
 +                        sync.convergingEvidenceMs = 0;
 +                        sync.trailingEvidenceMs = 0;
 +                    }
-+                    else if(Number.isFinite(lastNativeGapBefore))
++                    else if(Number.isFinite(sync.lastNativeGap))
 +                    {
-+                        // Only credit a shrink/grow comparison when the
-+                        // baseline is itself valid — i.e. NOT the first
-+                        // sample of this session and NOT the first sample
-+                        // after a gap (evidenceBaselineReseeded above).
-+                        // Meaningfully shrinking (beyond float/
-+                        // interpolation noise), OR already close enough
-+                        // that "shrinking further" isn't a meaningful
-+                        // distinction (reuses FORMATION_GAP_NEAR_ZERO —
-+                        // see its comment) — both count as convergence
-+                        // evidence. Anything else (stable or growing, not
-+                        // yet near) counts as trailing evidence. Each
-+                        // branch also DECAYS (rather than hard-resets) the
-+                        // opposing accumulator, so a single noisy frame
-+                        // can't erase an otherwise-consistent trend built
-+                        // up over many frames.
-+                        const shrinking = (nativeAbsGap < (Math.abs(lastNativeGapBefore) - 0.005));
++                        // Meaningfully shrinking (beyond float/interpolation
++                        // noise), OR already close enough that "shrinking
++                        // further" isn't a meaningful distinction (reuses
++                        // FORMATION_GAP_NEAR_ZERO — see its comment) — both
++                        // count as convergence evidence. Anything else
++                        // (stable or growing, not yet near) counts as
++                        // trailing evidence. Each branch also DECAYS
++                        // (rather than hard-resets) the opposing
++                        // accumulator, so a single noisy frame can't erase
++                        // an otherwise-consistent trend built up over many
++                        // frames.
++                        const shrinking = (nativeAbsGap < (Math.abs(sync.lastNativeGap) - 0.005));
 +                        const alreadyNear = (nativeAbsGap < RoomSpriteCanvas.FORMATION_GAP_NEAR_ZERO);
 +
 +                        if(shrinking || alreadyNear)
@@ -1590,22 +1426,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                            sync.convergingEvidenceMs = Math.max(0, (sync.convergingEvidenceMs - dt));
 +                        }
 +                    }
-+                    // else: baseline just (re)seeded this frame — establish
-+                    // it below and credit nothing yet. The very next VALID
-+                    // sample compares cleanly against THIS one.
 +
 +                    sync.lastNativeGap = nativeSignedGap;
-+                }
-+                else
-+                {
-+                    // Invalidate the comparison baseline the moment
-+                    // sampling becomes impossible (moving-state gap,
-+                    // transient routeContinuous=false, etc) — this is the
-+                    // actual gap-awareness fix: it forces the NEXT valid
-+                    // sample to hit the "else: baseline just reseeded"
-+                    // path above instead of silently comparing across
-+                    // however many unsampled frames just elapsed.
-+                    sync.lastNativeGap = NaN;
 +                }
 +
 +                // Apply the transition — the SAME rule handles
@@ -1754,6 +1576,11 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                    && (j.gxx === m.gxx) && (j.gyy === m.gyy));
 +
 +                const prevMode = sync.mode;
++                // Hoisted (vs. the original block-scoped `let releaseReason`)
++                // so the EXIT_HANDOFF diagnostic below — which fires from a
++                // different branch later in this same function — can report
++                // which reason triggered the release that's now handing off.
++                let releaseReasonForLog = 'n/a';
 +
 +                // Genuine divergence, case A: routeContinuous false while
 +                // BOTH sides are actually mid-step. This is structurally
@@ -1810,16 +1637,15 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                // the existing plain PHASE_SHIFT unwind, unchanged).
 +                if((prevMode !== 2) && (sync.mode === 2))
 +                {
-+                    let releaseReason = 'other';
 +                    const releaseKind = (sync.visualLocked ? 'LOCK_HANDOFF' : 'SYNC_ABORT');
 +
-+                    if(!masterObject) releaseReason = 'master_missing';
-+                    else if(genuineDivergence) releaseReason = 'confirmed_divergence';
-+                    else if(j && m && (!j.moving || !m.moving)) releaseReason = 'moving_state';
-+                    else if(mLoc && ((Math.abs(roomLocation.x - mLoc.x) > (1 + 1e-6)) || (Math.abs(roomLocation.y - mLoc.y) > (1 + 1e-6)))) releaseReason = 'distance';
-+                    else releaseReason = 'grace_timeout';
++                    if(!masterObject) releaseReasonForLog = 'master_missing';
++                    else if(genuineDivergence) releaseReasonForLog = 'confirmed_divergence';
++                    else if(j && m && (!j.moving || !m.moving)) releaseReasonForLog = 'moving_state';
++                    else if(mLoc && ((Math.abs(roomLocation.x - mLoc.x) > (1 + 1e-6)) || (Math.abs(roomLocation.y - mLoc.y) > (1 + 1e-6)))) releaseReasonForLog = 'distance';
++                    else releaseReasonForLog = 'grace_timeout';
 +
-+                    console.log(`[sync:RELEASE_REASON] reason=${ releaseReason } releaseKind=${ releaseKind } master=${ sync.masterId } joiner=${ sync.joinerId } routeContinuous=${ routeContinuous } visualLocked=${ sync.visualLocked } badSinceMs=${ sync.badSince ? (nowMs - sync.badSince) : 0 }`);
++                    console.log(`[sync:RELEASE_REASON] reason=${ releaseReasonForLog } releaseKind=${ releaseKind } master=${ sync.masterId } joiner=${ sync.joinerId } routeContinuous=${ routeContinuous } visualLocked=${ sync.visualLocked } badSinceMs=${ sync.badSince ? (nowMs - sync.badSince) : 0 }`);
 +                }
 +
 +                // First-LOCK eligibility ("lockProof") is deliberately
@@ -1847,71 +1673,29 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                const geometryLockEligible = (pathOk && segmentsMatch);
 +                const lockProof = ((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && (nativeAbsGap < RoomSpriteCanvas.FORMATION_LOCK_GAP_MAX) && geometryLockEligible);
 +
-+                // PixelRP (render-timing pass): s used to advance whenever
-+                // formationState was CONVERGING, REGARDLESS of whether
-+                // PHASE_SHIFT (the only thing s actually parametrizes —
-+                // see `sync.s * phi` in the render branch below) was
-+                // eligible to render at all this frame. PHASE_SHIFT itself
-+                // additionally requires segmentsMatch — so a session could
-+                // sit at formationState=CONVERGING with segmentsMatch
-+                // false for hundreds of ms (still rendering NATIVE the
-+                // whole time, correctly), while s silently climbed all the
-+                // way to 1.0 in the background. The instant a packet
-+                // rollover made segmentsMatch momentarily true, PHASE_SHIFT
-+                // began rendering with the already-maxed s in a single
-+                // frame — a sudden full-strength correction instead of a
-+                // smooth ramp (the reported "tug"). phaseShiftEligible
-+                // mirrors PHASE_SHIFT's own render guard exactly, so s can
-+                // only advance on frames where it will actually be used.
-+                // Critically this PAUSES s (holds its current value) on an
-+                // ineligible frame rather than resetting it — s is simply
-+                // never touched here when ineligible, so a genuine brief
-+                // one-beat segmentsMatch=false blip during an
-+                // already-active PHASE_SHIFT does not lose progress either
-+                // (no silent charging, but also no snap-back-to-zero).
-+                const phaseShiftEligible = !!((sync.mode === 0) && (sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && j && j.moving && m && segmentsMatch);
-+                let sAdvancedThisFrame = false;
-+                let sPauseReason = '';
-+
 +                if(sync.mode === 0)
 +                {
-+                    // s only advances on frames where PHASE_SHIFT is
-+                    // actually render-eligible (see phaseShiftEligible
-+                    // above) — not merely whenever formationState is
-+                    // CONVERGING. CANDIDATE and TRAILING sessions still
-+                    // never charge s at all (formationState alone already
-+                    // excludes them from phaseShiftEligible), so there is
-+                    // still no hidden fully-charged timer waiting for a
-+                    // transient segmentsMatch packet to cash in instantly.
-+                    // On a CONVERGING->TRAILING demotion s is also
-+                    // explicitly reset to 0 (see that block) so no
++                    // s only advances while the persistent formationState
++                    // is CONVERGING (see the evidence-accumulation block
++                    // above and the FORMATION_* statics). CANDIDATE and
++                    // TRAILING sessions NEVER charge s at all — not
++                    // "charges but is gated at the LOCK check", genuinely
++                    // never accumulates — so there is no hidden
++                    // fully-charged timer sitting around waiting for one
++                    // transient segmentsMatch packet to cash in as an
++                    // instant LOCK. On a CONVERGING->TRAILING demotion s
++                    // is also explicitly reset to 0 (see that block) so no
 +                    // partially-charged progress survives to be cashed in
 +                    // later either. If s caps at 1 while lockProof is still
 +                    // false, mode simply stays 0 and tries again next frame
 +                    // (s does not decay in mode 0).
-+                    if(phaseShiftEligible)
-+                    {
-+                        sync.s = Math.min(1, (sync.s + (dt / 530)));
-+                        sAdvancedThisFrame = true;
-+                    }
-+                    else
-+                    {
-+                        if(sync.formationState !== RoomSpriteCanvas.FORMATION_CONVERGING) sPauseReason = 'not_converging';
-+                        else if(!j || !j.moving) sPauseReason = 'joiner_not_moving';
-+                        else if(!m) sPauseReason = 'no_master';
-+                        else if(!segmentsMatch) sPauseReason = 'segments_not_matched';
-+                    }
++                    if(sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) sync.s = Math.min(1, (sync.s + (dt / 530)));
 +
 +                    if((sync.s >= 1) && lockProof) sync.mode = 1;
 +                }
 +                else if(sync.mode === 2)
 +                {
-+                    sPauseReason = 'mode_release';
 +                    sync.s = Math.max(0, (sync.s - (dt / 530)));
-+                }
-+                else
-+                {
-+                    sPauseReason = 'mode_lock';
 +                }
 +
 +                // Safety rebase: whenever segments literally coincide, phi
@@ -1972,6 +1756,106 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                    apply = true;
 +                    source = 'MASTER_COPY';
 +                }
++                else if((sync.mode === 2) && sync.visualLocked)
++                {
++                    // LOCK -> RELEASE (an established visual lock has
++                    // genuinely ended — never fires for an aborted SYNC
++                    // that never locked; see the plain PHASE_SHIFT
++                    // fallback below for that case). TRANSITION-FIX: moved
++                    // out from under the `j.moving` gate this block used to
++                    // share with the segments/demotion/phase-shift branches
++                    // below — the most common release trigger
++                    // (releaseReasonForLog === 'moving_state') fires
++                    // *because* j.moving (or m.moving) just went false, so
++                    // gating this branch on j.moving meant the very first
++                    // release frame fell through every other branch
++                    // straight to raw NATIVE (apply stays false): an
++                    // instant jump equal to the entire corrected-vs-native
++                    // gap, with the offset never even captured — by the
++                    // time j.moving became true again next packet, the
++                    // capture used a now-stale, already-jumped baseline.
++                    // Checked here, right after the established-lock hold
++                    // above (which has the identical moving=false-survival
++                    // requirement for the same reason), so this fires
++                    // every single frame while mode===2 && visualLocked,
++                    // regardless of JOINER's own moving/segment state.
++                    //
++                    // JOINER owns its trajectory from here: the base
++                    // position is its own NATIVE interpolation
++                    // (roomLocation — no MASTER-relative φ correction at
++                    // all, and mLoc is never read again after this one
++                    // capture), with a small continuity OFFSET added on
++                    // top and decayed to zero over a short fixed window.
++                    // The offset is captured ONCE, the instant release
++                    // begins, as (last ACTUALLY DISPLAYED position − native
++                    // position at that same instant) — sync.lastVx/lastVy
++                    // already track exactly that (see the TEMP DEBUG
++                    // telemetry block below, set every frame apply was
++                    // true), which is a strictly more accurate anchor than
++                    // the previous mLoc-based capture (mLoc can have moved
++                    // slightly from what was last actually shown). Falls
++                    // back to mLoc, then to roomLocation itself (a no-op
++                    // offset), only if lastVx/lastVy were somehow never set
++                    // — shouldn't happen once visualLocked, since the
++                    // established-lock hold branch applies every frame
++                    // while locked. So frame one still equals the last
++                    // locked/corrected display exactly no matter what
++                    // JOINER's own moving flag reads this frame, and every
++                    // frame after that moves along JOINER's own direction,
++                    // just parallel-shifted by a shrinking amount.
++                    // Previously (pre-transition-fix) this also reused the
++                    // PHASE_SHIFT formula, which still carries a
++                    // MASTER-relative s·φ term, blended toward a frozen
++                    // MASTER anchor — baking a MASTER-direction pull into
++                    // what was meant to be a clean handoff (the reported
++                    // drag/curve toward MASTER's route); that was already
++                    // fixed pre-Round-6 (see releaseOffset comment
++                    // history) and is unchanged here — only WHEN this
++                    // branch is allowed to run has changed. 100ms reuses
++                    // the existing per-frame dt clamp constant already used
++                    // elsewhere in this function.
++                    if(!sync.releaseAnchorSet)
++                    {
++                        const baseX = (Number.isFinite(sync.lastVx) ? sync.lastVx : (mLoc ? mLoc.x : roomLocation.x));
++                        const baseY = (Number.isFinite(sync.lastVy) ? sync.lastVy : (mLoc ? mLoc.y : roomLocation.y));
++                        const baseZ = (mLoc ? mLoc.z : roomLocation.z);
++
++                        sync.releaseOffsetX = (baseX - roomLocation.x);
++                        sync.releaseOffsetY = (baseY - roomLocation.y);
++                        sync.releaseOffsetZ = (baseZ - roomLocation.z);
++                        sync.releaseAnchorSet = true;
++                        sync.releaseHandoffT = 0;
++
++                        // [sync:EXIT_HANDOFF] — fires once, the exact frame
++                        // release-continuity capture happens (which, thanks
++                        // to the fix above, is now always the true first
++                        // release frame — see DIAGNOSTICS in the transition
++                        // fix pass for the full field list this mirrors).
++                        console.log(`[sync:EXIT_HANDOFF] master=${ sync.masterId } joiner=${ sync.joinerId } lastDisplayedJoiner=(${ baseX.toFixed(3) },${ baseY.toFixed(3) }) nativeJoinerAtRelease=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) releaseOffset=(${ sync.releaseOffsetX.toFixed(3) },${ sync.releaseOffsetY.toFixed(3) }) master=(${ mLoc ? mLoc.x.toFixed(3) : '?' },${ mLoc ? mLoc.y.toFixed(3) : '?' }) jDir=(${ Number.isFinite(jDirX) ? jDirX : '?' },${ Number.isFinite(jDirY) ? jDirY : '?' }) mDir=(${ Number.isFinite(mDirX) ? mDirX : '?' },${ Number.isFinite(mDirY) ? mDirY : '?' }) reason=${ releaseReasonForLog } jMoving=${ j ? j.moving : '?' } srcPrev=${ sync.lastSource } srcNow=RELEASE_BLEND`);
++                    }
++
++                    if(sync.releaseAnchorSet)
++                    {
++                        const handoffWeight = Math.max(0, (1 - (sync.releaseHandoffT / 100)));
++
++                        if(handoffWeight > 0)
++                        {
++                            vx = (roomLocation.x + (sync.releaseOffsetX * handoffWeight));
++                            vy = (roomLocation.y + (sync.releaseOffsetY * handoffWeight));
++                            vz = (roomLocation.z + (sync.releaseOffsetZ * handoffWeight));
++                            apply = true;
++                            source = 'RELEASE_BLEND';
++                        }
++                        else if(!sync.releaseCompleteLogged)
++                        {
++                            sync.releaseCompleteLogged = true;
++
++                            console.log(`[sync:EXIT_COMPLETE] master=${ sync.masterId } joiner=${ sync.joinerId }`);
++                        }
++
++                        sync.releaseHandoffT += dt;
++                    }
++                }
 +                else if(j && j.moving)
 +                {
 +                    if((sync.mode === 1) && segmentsMatch && mLoc)
@@ -1988,56 +1872,6 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                        apply = true;
 +                        source = 'MASTER_COPY';
 +                        sync.visualLocked = true;
-+                    }
-+                    else if((sync.mode === 2) && sync.visualLocked)
-+                    {
-+                        // LOCK -> RELEASE (an established visual lock has
-+                        // genuinely ended — never fires for an aborted
-+                        // SYNC that never locked; see the plain PHASE_SHIFT
-+                        // fallback below for that case). JOINER owns its
-+                        // trajectory from here: the base position is its
-+                        // own NATIVE interpolation (roomLocation — no
-+                        // MASTER-relative φ correction at all), with a
-+                        // small continuity OFFSET added on top and decayed
-+                        // to zero over a short fixed window. The offset is
-+                        // captured ONCE, the instant release begins, as
-+                        // (last MASTER_COPY position − native position at
-+                        // that same instant) — so frame one still equals
-+                        // the last locked display exactly, but every frame
-+                        // after that moves along JOINER's own direction,
-+                        // just parallel-shifted by a shrinking amount.
-+                        // Previously this reused the PHASE_SHIFT formula
-+                        // (which still carries a MASTER-relative s·φ term)
-+                        // as the release base and blended it toward a
-+                        // frozen MASTER anchor — baking a MASTER-direction
-+                        // pull into what was meant to be a clean handoff
-+                        // (the reported drag/curve toward MASTER's route).
-+                        // 100ms reuses the existing per-frame dt clamp
-+                        // constant already used elsewhere in this function.
-+                        if(!sync.releaseAnchorSet && mLoc)
-+                        {
-+                            sync.releaseOffsetX = (mLoc.x - roomLocation.x);
-+                            sync.releaseOffsetY = (mLoc.y - roomLocation.y);
-+                            sync.releaseOffsetZ = (mLoc.z - roomLocation.z);
-+                            sync.releaseAnchorSet = true;
-+                            sync.releaseHandoffT = 0;
-+                        }
-+
-+                        if(sync.releaseAnchorSet)
-+                        {
-+                            const handoffWeight = Math.max(0, (1 - (sync.releaseHandoffT / 100)));
-+
-+                            if(handoffWeight > 0)
-+                            {
-+                                vx = (roomLocation.x + (sync.releaseOffsetX * handoffWeight));
-+                                vy = (roomLocation.y + (sync.releaseOffsetY * handoffWeight));
-+                                vz = (roomLocation.z + (sync.releaseOffsetZ * handoffWeight));
-+                                apply = true;
-+                                source = 'RELEASE_BLEND';
-+                            }
-+
-+                            sync.releaseHandoffT += dt;
-+                        }
 +                    }
 +                    else if(sync.demotionOffsetSet)
 +                    {
@@ -2125,6 +1959,56 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                    }
 +                }
 +
++                // ENTRY HANDOFF (transition-fix pass): the very first frame
++                // a correction actually applies this session — whichever
++                // branch produced it above, direct MASTER_COPY at LOCK or
++                // PHASE_SHIFT pre-lock — capture (native − target) ONCE and
++                // decay it to zero over the same fixed 100ms window already
++                // used for RELEASE_BLEND/DEMOTION_BLEND. roomLocation this
++                // frame IS the correct "previous displayed" baseline: no
++                // corrected frame has rendered yet this session (that's what
++                // !sync.entryOffsetSet means), so every prior frame rendered
++                // plain native, and native motion per frame is a tiny
++                // fraction of a tile — continuous with what was actually on
++                // screen last frame. This deliberately does NOT touch s,
++                // phi, formationState, or any of the target math above: s
++                // can still have silently precharged during a
++                // CONVERGING-but-segmentsMatch-false stretch (that timing is
++                // intentionally left alone this pass, see the diagnosis),
++                // so the target itself may already represent a large jump
++                // from native the first time it's actually rendered — this
++                // offset absorbs exactly that jump visually on frame one and
++                // fades it out quickly, without needing to change when or
++                // why the target got large.
++                if(apply && !sync.entryOffsetSet)
++                {
++                    sync.entryOffsetX = (roomLocation.x - vx);
++                    sync.entryOffsetY = (roomLocation.y - vy);
++                    sync.entryOffsetZ = (roomLocation.z - vz);
++                    sync.entryOffsetSet = true;
++                    sync.entryHandoffT = 0;
++
++                    console.log(`[sync:ENTRY_HANDOFF] master=${ sync.masterId } joiner=${ sync.joinerId } previousDisplayedJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) phaseTarget=(${ vx.toFixed(3) },${ vy.toFixed(3) }) entryOffset=(${ sync.entryOffsetX.toFixed(3) },${ sync.entryOffsetY.toFixed(3) }) entryBlend=1.000 s=${ sync.s.toFixed(3) } phi=${ Number.isFinite(sync.phiPrev) ? sync.phiPrev.toFixed(1) : '?' } mseg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) jseg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) srcPrev=${ sync.lastSource } srcNow=${ source }`);
++                }
++
++                if(apply && sync.entryOffsetSet && (sync.entryHandoffT < 100))
++                {
++                    const entryWeight = Math.max(0, (1 - (sync.entryHandoffT / 100)));
++
++                    vx += (sync.entryOffsetX * entryWeight);
++                    vy += (sync.entryOffsetY * entryWeight);
++                    vz += (sync.entryOffsetZ * entryWeight);
++
++                    sync.entryHandoffT += dt;
++
++                    if((sync.entryHandoffT >= 100) && !sync.entryCompleteLogged)
++                    {
++                        sync.entryCompleteLogged = true;
++
++                        console.log(`[sync:ENTRY_COMPLETE] master=${ sync.masterId } joiner=${ sync.joinerId }`);
++                    }
++                }
++
 +                if(apply)
 +                {
 +                    // Convert the room-space adjustment to a screen
@@ -2187,9 +2071,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +                        + `| PHASE raw=${ Number.isFinite(pixelrpRawPhase) ? pixelrpRawPhase.toFixed(1) : '?' } d=${ Number.isFinite(pixelrpD) ? pixelrpD.toFixed(1) : '?' } wrappedD=${ Number.isFinite(pixelrpWrappedD) ? pixelrpWrappedD.toFixed(1) : '?' } phiPrev=${ Number.isFinite(sync.phiPrev) ? sync.phiPrev.toFixed(1) : '?' } rawMinusPhiPrev=${ Number.isFinite(pixelrpRawPhase) ? (pixelrpRawPhase - sync.phiPrev).toFixed(1) : '?' } `
 +                        + `| ROUTE sameGoal=${ sameGoal } behind=${ joinerBehind } ahead=${ joinerAhead } routeContinuous=${ routeContinuous } pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } genuineDivergence=${ genuineDivergence } joinerIncompatible=${ joinerIncompatible } segmentsMatch=${ segmentsMatch } visualLocked=${ sync.visualLocked } releaseAnchorSet=${ sync.releaseAnchorSet } releaseHandoffT=${ sync.releaseHandoffT.toFixed(0) } `
 +                        + `| DIR mDir=(${ Number.isFinite(mDirX) ? mDirX : '?' },${ Number.isFinite(mDirY) ? mDirY : '?' }) jDir=(${ Number.isFinite(jDirX) ? jDirX : '?' },${ Number.isFinite(jDirY) ? jDirY : '?' }) expectedDir=(${ Number.isFinite(sync.lockedDirX) ? sync.lockedDirX : '?' },${ Number.isFinite(sync.lockedDirY) ? sync.lockedDirY : '?' }) sameDirection=${ sameDirection } formationType=${ formationType } `
-+                        + `| FORMATION formationState=${ formationStateLabel } formationStateSinceMs=${ nowMs - sync.formationStateSince } nativeSignedGap=${ Number.isFinite(nativeSignedGap) ? nativeSignedGap.toFixed(3) : '?' } nativeAbsGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } nativeGapDelta=${ Number.isFinite(nativeGapDelta) ? nativeGapDelta.toFixed(4) : '?' } physicalOrder=${ physicalOrder } semanticOrder=${ physicalOrder } lastStableOrder=${ stableOrderAfter } crossingConfirmed=${ crossingConfirmed } convergingEvidenceMs=${ sync.convergingEvidenceMs.toFixed(0) } trailingEvidenceMs=${ sync.trailingEvidenceMs.toFixed(0) } demotionOffsetSet=${ sync.demotionOffsetSet } `
-+                        + `| EVIDENCE evidenceSampleValid=${ evidenceSampleValid } evidenceSampleGapMs=${ Number.isFinite(evidenceSampleGapMs) ? evidenceSampleGapMs.toFixed(0) : '?' } evidenceBaselineReseeded=${ evidenceBaselineReseeded } stableOrderBefore=${ stableOrderBefore } walkSince=${ hist.walkSince } idleSince=${ hist.idleSince } `
-+                        + `| LOCK geometryLockEligible=${ geometryLockEligible } timerComplete=${ timerComplete } lockProof=${ lockProof } sFrozenReason=${ sFrozenReason } phaseShiftEligible=${ phaseShiftEligible } sAdvancedThisFrame=${ sAdvancedThisFrame } sPauseReason=${ sPauseReason } `
++                        + `| FORMATION formationState=${ formationStateLabel } formationStateSinceMs=${ nowMs - sync.formationStateSince } nativeSignedGap=${ Number.isFinite(nativeSignedGap) ? nativeSignedGap.toFixed(3) : '?' } nativeAbsGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } nativeGapDelta=${ Number.isFinite(nativeGapDelta) ? nativeGapDelta.toFixed(4) : '?' } physicalOrder=${ physicalOrder } orderChanged=${ orderChanged } convergingEvidenceMs=${ sync.convergingEvidenceMs.toFixed(0) } trailingEvidenceMs=${ sync.trailingEvidenceMs.toFixed(0) } demotionOffsetSet=${ sync.demotionOffsetSet } `
++                        + `| LOCK geometryLockEligible=${ geometryLockEligible } timerComplete=${ timerComplete } lockProof=${ lockProof } sFrozenReason=${ sFrozenReason } `
 +                        + `| ERR dx=${ Number.isFinite(anchorDx) ? anchorDx.toFixed(3) : '?' } dy=${ Number.isFinite(anchorDy) ? anchorDy.toFixed(3) : '?' } dist=${ Number.isFinite(anchorDist) ? anchorDist.toFixed(3) : '?' }`;
 +
 +                    // JUMP detection: the joiner's applied (room-space)
@@ -2214,12 +2097,29 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
 +
 +                            if(sync.postJump <= 0) sync.postJump = 10;
 +                        }
++
++                        // [sync:TRANSITION_JUMP] (transition-fix pass,
++                        // diagnostic only): the same JUMP test above,
++                        // specifically flagged when it fires during either
++                        // handoff window — validates that the ENTRY/EXIT
++                        // continuity fixes actually kept frame-to-frame
++                        // movement within normal native bounds. Should not
++                        // fire in ordinary operation once both fixes are
++                        // working; left in to catch a regression or an edge
++                        // case the fixes don't cover.
++                        if(isJump && ((sync.entryOffsetSet && (sync.entryHandoffT < 100)) || (sync.releaseAnchorSet && (sync.releaseHandoffT < 100))))
++                        {
++                            const phase = ((sync.releaseAnchorSet && (sync.releaseHandoffT < 100)) ? 'EXIT' : 'ENTRY');
++
++                            console.log(`[sync:TRANSITION_JUMP] master=${ sync.masterId } joiner=${ sync.joinerId } phase=${ phase } joinerDelta=${ joinerDelta.toFixed(3) } masterDelta=${ masterDelta.toFixed(3) } vx=${ vx.toFixed(3) } vy=${ vy.toFixed(3) } lastVx=${ sync.lastVx.toFixed(3) } lastVy=${ sync.lastVy.toFixed(3) }`);
++                        }
 +                    }
 +
 +                    sync.lastVx = (apply ? vx : NaN);
 +                    sync.lastVy = (apply ? vy : NaN);
 +                    sync.lastMx = (mLoc ? mLoc.x : NaN);
 +                    sync.lastMy = (mLoc ? mLoc.y : NaN);
++                    sync.lastSource = source;
 +
 +                    sync.buf.push(isJump ? (`>>> JUMP >>> ${ line }`) : line);
 +                    if(sync.buf.length > 30) sync.buf.shift();
@@ -2284,7 +2184,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..32e3829f588c4852cd5d27b5d428d152
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2032,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +1942,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
