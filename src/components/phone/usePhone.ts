@@ -4,19 +4,48 @@ import { useBetween } from 'use-between';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { useFriends, useMessageEvent, useMessenger } from '../../hooks';
 
-// Pinned / muted conversation preferences for the phone, persisted per
-// account in localStorage. Muting a conversation hides it from the unread
-// badge counts; pinning promotes it to the Messages app's pinned grid.
+// Pinned / muted conversation preferences plus home-screen layout for the
+// phone, persisted per account in localStorage. Muting a conversation hides
+// it from the unread badge counts; pinning promotes it to the Messages
+// app's pinned grid; the app order is the player's drag arrangement.
 // Loaded lazily via ensureLoaded() because the session user id isn't known
 // until after login.
+
+// The canonical app roster. New apps get appended to the stored layout on
+// load; unknown stored keys (renamed/removed apps) are dropped.
+export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Settings', 'Characters', 'App Store', 'Mercury', 'Sitch' ];
+export const DEFAULT_DOCK_APPS: string[] = [ 'Messages', 'Camera', 'Photos' ];
+export const DOCK_CAPACITY: number = 4;
 
 interface PhonePrefs
 {
     pinned: number[];
     muted: number[];
+    grid: string[];
+    dock: string[];
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
+
+// Reconcile a stored layout with the current app roster: keep the player's
+// order for apps that still exist, drop strays, slot new apps into their
+// default zone (grid overflow catches a full dock).
+const mergeAppOrder = (storedGrid: string[], storedDock: string[]): { grid: string[], dock: string[] } =>
+{
+    const known = [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ];
+    const dock = storedDock.filter(key => (known.indexOf(key) >= 0)).slice(0, DOCK_CAPACITY);
+    const grid = storedGrid.filter(key => ((known.indexOf(key) >= 0) && (dock.indexOf(key) === -1)));
+
+    for(const key of known)
+    {
+        if((grid.indexOf(key) >= 0) || (dock.indexOf(key) >= 0)) continue;
+
+        if((DEFAULT_DOCK_APPS.indexOf(key) >= 0) && (dock.length < DOCK_CAPACITY)) dock.push(key);
+        else grid.push(key);
+    }
+
+    return { grid, dock };
+}
 
 const readPrefs = (userId: number): PhonePrefs =>
 {
@@ -27,18 +56,22 @@ const readPrefs = (userId: number): PhonePrefs =>
         if(raw)
         {
             const parsed = JSON.parse(raw);
+            const readStrings = (value: unknown) => (Array.isArray(value) ? value.filter((key: unknown) => (typeof key === 'string')) : []);
+            const { grid, dock } = mergeAppOrder(readStrings(parsed.grid), (Array.isArray(parsed.dock) ? readStrings(parsed.dock) : [ ...DEFAULT_DOCK_APPS ]));
 
             return {
                 pinned: (Array.isArray(parsed.pinned) ? parsed.pinned.filter((id: unknown) => (typeof id === 'number')) : []),
-                muted: (Array.isArray(parsed.muted) ? parsed.muted.filter((id: unknown) => (typeof id === 'number')) : [])
+                muted: (Array.isArray(parsed.muted) ? parsed.muted.filter((id: unknown) => (typeof id === 'number')) : []),
+                grid,
+                dock
             };
         }
     }
 
-    catch(e) 
+    catch(e)
     {}
 
-    return { pinned: [], muted: [] };
+    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ] };
 }
 
 const usePhonePrefsState = () =>
@@ -46,6 +79,8 @@ const usePhonePrefsState = () =>
     const [ loadedUserId, setLoadedUserId ] = useState<number>(0);
     const [ pinnedIds, setPinnedIds ] = useState<number[]>([]);
     const [ mutedIds, setMutedIds ] = useState<number[]>([]);
+    const [ gridOrder, setGridOrder ] = useState<string[]>([ ...DEFAULT_GRID_APPS ]);
+    const [ dockOrder, setDockOrder ] = useState<string[]>([ ...DEFAULT_DOCK_APPS ]);
 
     const ensureLoaded = () =>
     {
@@ -58,9 +93,11 @@ const usePhonePrefsState = () =>
         setLoadedUserId(userId);
         setPinnedIds(prefs.pinned);
         setMutedIds(prefs.muted);
+        setGridOrder(prefs.grid);
+        setDockOrder(prefs.dock);
     }
 
-    const save = (pinned: number[], muted: number[]) =>
+    const save = (prefs: Partial<PhonePrefs>) =>
     {
         const userId = GetSessionDataManager().userId;
 
@@ -68,10 +105,15 @@ const usePhonePrefsState = () =>
 
         try
         {
-            window.localStorage.setItem(storageKey(userId), JSON.stringify({ pinned, muted }));
+            window.localStorage.setItem(storageKey(userId), JSON.stringify({
+                pinned: (prefs.pinned ?? pinnedIds),
+                muted: (prefs.muted ?? mutedIds),
+                grid: (prefs.grid ?? gridOrder),
+                dock: (prefs.dock ?? dockOrder)
+            }));
         }
 
-        catch(e) 
+        catch(e)
         {}
     }
 
@@ -83,9 +125,23 @@ const usePhonePrefsState = () =>
 
             if(flag) newValue.push(friendId);
 
-            save(newValue, mutedIds);
+            save({ pinned: newValue });
 
             return newValue;
+        });
+    }
+
+    // Drag-reorder of the Messages pinned grid: replaces the pin order
+    // wholesale (same ids, new sequence).
+    const reorderPinned = (order: number[]) =>
+    {
+        setPinnedIds(prevValue =>
+        {
+            if((order.length !== prevValue.length) || order.some(id => (prevValue.indexOf(id) === -1))) return prevValue;
+
+            save({ pinned: order });
+
+            return order;
         });
     }
 
@@ -95,13 +151,21 @@ const usePhonePrefsState = () =>
         {
             const newValue = ((prevValue.indexOf(friendId) >= 0) ? prevValue.filter(id => (id !== friendId)) : [ ...prevValue, friendId ]);
 
-            save(pinnedIds, newValue);
+            save({ muted: newValue });
 
             return newValue;
         });
     }
 
-    return { pinnedIds, mutedIds, setPinned, toggleMuted, ensureLoaded };
+    // Drag-reorder of the home screen (grid + dock zones together).
+    const setAppOrder = (grid: string[], dock: string[]) =>
+    {
+        setGridOrder(grid);
+        setDockOrder(dock);
+        save({ grid, dock });
+    }
+
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, setPinned, reorderPinned, toggleMuted, setAppOrder, ensureLoaded };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);

@@ -71,15 +71,19 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
     const { openThread = null, openThreadForUser = null, openCompose = null } = props;
     const { visibleThreads = [], closeThread = null } = useMessenger();
     const { getFriend = null } = useFriends();
-    const { pinnedIds, mutedIds, setPinned, toggleMuted } = usePhonePrefs();
+    const { pinnedIds, mutedIds, setPinned, reorderPinned, toggleMuted } = usePhonePrefs();
     const [ searchValue, setSearchValue ] = useState('');
     const [ openRowId, setOpenRowId ] = useState<number>(0);
     const [ dragState, setDragState ] = useState<{ threadId: number, startOffset: number, dx: number }>(null);
     const [ menuFriendId, setMenuFriendId ] = useState<number>(0);
+    const [ dragPin, setDragPin ] = useState<{ friendId: number, x: number, y: number, offX: number, offY: number }>(null);
     const dragMoved = useRef(false);
     const dragStartX = useRef(0);
     const longPressTimer = useRef<number>(0);
     const longPressFired = useRef(false);
+    const pinMoved = useRef(false);
+    const pinStart = useRef<{ friendId: number, x: number, y: number, left: number, top: number }>(null);
+    const screenRef = useRef<HTMLDivElement>(null);
 
     const threadForFriend = (friendId: number) => visibleThreads.find(thread => (thread.participant && (thread.participant.id === friendId)));
 
@@ -175,27 +179,101 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
         if(openThread) openThread(thread);
     }
 
-    const onPinDown = (friendId: number) =>
+    const onPinDown = (event: PointerEvent<HTMLDivElement>, friendId: number) =>
     {
+        try
+        {
+            event.currentTarget.setPointerCapture(event.pointerId);
+        }
+        catch(e)
+        {}
+
+        const rect = event.currentTarget.getBoundingClientRect();
+
         longPressFired.current = false;
+        pinMoved.current = false;
+        pinStart.current = { friendId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
 
         window.clearTimeout(longPressTimer.current);
 
         longPressTimer.current = window.setTimeout(() =>
         {
+            if(pinMoved.current) return;
+
             longPressFired.current = true;
 
             setMenuFriendId(friendId);
         }, LONG_PRESS_MS);
     }
 
-    const onPinUp = () => window.clearTimeout(longPressTimer.current);
+    const onPinMove = (event: PointerEvent<HTMLDivElement>) =>
+    {
+        const start = pinStart.current;
+
+        if(!start || longPressFired.current) return;
+
+        if(!dragPin)
+        {
+            if((Math.abs(event.clientX - start.x) <= 8) && (Math.abs(event.clientY - start.y) <= 8)) return;
+
+            window.clearTimeout(longPressTimer.current);
+
+            pinMoved.current = true;
+
+            setDragPin({ friendId: start.friendId, x: event.clientX, y: event.clientY, offX: (start.x - start.left), offY: (start.y - start.top) });
+
+            return;
+        }
+
+        // Reorder only while the pointer sits over another tile — this is
+        // the design's anti-jitter rule.
+        if(screenRef.current && reorderPinned)
+        {
+            const tiles = Array.from(screenRef.current.querySelectorAll('[data-pin-id]'));
+
+            for(const tile of tiles)
+            {
+                const pinId = parseInt(tile.getAttribute('data-pin-id'));
+
+                if(pinId === dragPin.friendId) continue;
+
+                const rect = tile.getBoundingClientRect();
+
+                if((event.clientX < rect.left) || (event.clientX > rect.right) || (event.clientY < rect.top) || (event.clientY > rect.bottom)) continue;
+
+                const order = [ ...pinnedIds ];
+                const from = order.indexOf(dragPin.friendId);
+                const to = order.indexOf(pinId);
+
+                if((from >= 0) && (to >= 0) && (from !== to))
+                {
+                    order.splice(from, 1);
+                    order.splice(to, 0, dragPin.friendId);
+                    reorderPinned(order);
+                }
+
+                break;
+            }
+        }
+
+        setDragPin({ ...dragPin, x: event.clientX, y: event.clientY });
+    }
+
+    const onPinUp = () =>
+    {
+        window.clearTimeout(longPressTimer.current);
+
+        pinStart.current = null;
+
+        setDragPin(null);
+    }
 
     const onPinTap = (friendId: number) =>
     {
-        if(longPressFired.current)
+        if(longPressFired.current || pinMoved.current)
         {
             longPressFired.current = false;
+            pinMoved.current = false;
 
             return;
         }
@@ -205,9 +283,25 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
 
     const menuFriend = (menuFriendId ? (getFriend && getFriend(menuFriendId)) : null);
     const menuThread = (menuFriendId ? threadForFriend(menuFriendId) : null);
+    const dragPinFriend = ((dragPin && getFriend) ? getFriend(dragPin.friendId) : null);
+
+    // Ghost coordinates in the (possibly transform-scaled) screen's local
+    // space: convert visual pixels back through the scale factor.
+    let pinGhostStyle = null;
+
+    if(dragPin && screenRef.current)
+    {
+        const rect = screenRef.current.getBoundingClientRect();
+        const scale = (rect.width ? (screenRef.current.offsetWidth / rect.width) : 1);
+
+        pinGhostStyle = {
+            left: (((dragPin.x - dragPin.offX) - rect.left) * scale),
+            top: (((dragPin.y - dragPin.offY) - rect.top) * scale)
+        };
+    }
 
     return (
-        <div className="phone-screen phone-app-screen phone-messages">
+        <div ref={ screenRef } className="phone-screen phone-app-screen phone-messages">
             <div className="phone-app-scroll">
                 <div className="phone-app-header">
                     <div>
@@ -234,7 +328,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                                         const muted = (mutedIds.indexOf(entry.friend.id) >= 0);
 
                                         return (
-                                            <div key={ entry.friend.id } className="phone-tap phone-pinned-tile" onClick={ event => onPinTap(entry.friend.id) } onPointerDown={ event => onPinDown(entry.friend.id) } onPointerUp={ onPinUp } onPointerLeave={ onPinUp } onPointerCancel={ onPinUp }>
+                                            <div key={ entry.friend.id } data-pin-id={ entry.friend.id } className={ `phone-tap phone-pinned-tile${ (dragPin && (dragPin.friendId === entry.friend.id)) ? ' is-drag-source' : '' }` } onClick={ event => onPinTap(entry.friend.id) } onPointerDown={ event => onPinDown(event, entry.friend.id) } onPointerMove={ onPinMove } onPointerUp={ onPinUp } onPointerCancel={ onPinUp }>
                                                 <div className="phone-pinned-avatar">
                                                     <PhoneAvatar id={ entry.friend.id } figure={ entry.friend.figure } size={ 60 } online={ entry.friend.online } unmasked={ true } />
                                                     { (unread > 0) &&
@@ -352,6 +446,11 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                             </div> }
                     </div>
                     <div className="phone-pin-menu-hint">TAP OUTSIDE TO CLOSE</div>
+                </div> }
+            { dragPin && dragPinFriend && pinGhostStyle &&
+                <div className="phone-pinned-ghost" style={ pinGhostStyle }>
+                    <PhoneAvatar id={ dragPinFriend.id } figure={ dragPinFriend.figure } size={ 60 } unmasked={ true } />
+                    <div className="phone-pinned-name">{ dragPinFriend.name }</div>
                 </div> }
         </div>
     );

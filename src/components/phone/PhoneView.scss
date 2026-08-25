@@ -252,11 +252,29 @@ $phone-red: #e03131;
         flex-direction: column;
         align-items: center;
         gap: 6px;
+        touch-action: none;
 
         &.is-disabled {
             filter: grayscale(1) brightness(0.96);
             opacity: 0.9;
             cursor: default;
+        }
+
+        // The tile being dragged: its slot stays (siblings reflow around
+        // it) but the art rides along in the ghost instead.
+        &.is-drag-source {
+            opacity: 0.25;
+        }
+    }
+
+    .phone-app-ghost {
+        position: absolute;
+        z-index: 80;
+        pointer-events: none;
+        transform: scale(1.1);
+
+        .phone-app-tile {
+            box-shadow: 8px 12px 0 rgba(26, 10, 20, 0.4);
         }
     }
 
@@ -515,6 +533,22 @@ $phone-red: #e03131;
         align-items: center;
         gap: 7px;
         touch-action: none;
+
+        &.is-drag-source {
+            opacity: 0.25;
+        }
+    }
+
+    .phone-pinned-ghost {
+        position: absolute;
+        z-index: 80;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        transform: scale(1.08);
+        filter: drop-shadow(6px 9px 0 rgba(26, 10, 20, 0.35));
     }
 
     .phone-pinned-avatar {
