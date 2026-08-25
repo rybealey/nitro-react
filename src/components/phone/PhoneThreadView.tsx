@@ -29,14 +29,17 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     const { sendMessage = null, closeThread = null, receipts = {}} = useMessenger();
     const { getFriend = null, followFriend = null } = useFriends();
     const { mutedIds, toggleMuted } = usePhonePrefs();
-    const { photos = [], requestPhotos = null } = usePhonePhotos();
+    const { photos = [], requestPhotos = null, saveScreenshot = null } = usePhonePhotos();
     const { report = null } = useHelp();
     const [ messageText, setMessageText ] = useState('');
     const [ menuOpen, setMenuOpen ] = useState(false);
     const [ attachOpen, setAttachOpen ] = useState(false);
     const [ pickerOpen, setPickerOpen ] = useState(false);
     const [ selectedPhotoIds, setSelectedPhotoIds ] = useState<number[]>([]);
+    const [ photoViewer, setPhotoViewer ] = useState<{ url: string, mine: boolean }>(null);
+    const [ toastText, setToastText ] = useState<string>(null);
     const messagesBox = useRef<HTMLDivElement>(null);
+    const toastTimer = useRef<number>(0);
 
     const participant = (thread ? thread.participant : null);
     const isGroup = (participant && (participant.id <= 0));
@@ -138,6 +141,41 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
         });
     }
 
+    const showToast = (text: string) =>
+    {
+        window.clearTimeout(toastTimer.current);
+
+        setToastText(text);
+
+        toastTimer.current = window.setTimeout(() => setToastText(null), 1800);
+    }
+
+    // Save a received photo into the player's own library: fetch the
+    // same-origin image and file it through the screenshot save path (new
+    // file pair + camera_web row — their copy stays theirs, this one is
+    // yours).
+    const savePhotoToLibrary = (url: string) =>
+    {
+        if(!saveScreenshot) return;
+
+        fetch(url)
+            .then(response => response.blob())
+            .then(blob => new Promise<string>((resolve, reject) =>
+            {
+                const reader = new FileReader();
+
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            }))
+            .then(dataUrl =>
+            {
+                saveScreenshot(dataUrl);
+                showToast('Saved to Photos');
+            })
+            .catch(() => showToast('Couldn\'t save the photo'));
+    }
+
     const shareSelectedPhotos = () =>
     {
         if(!selectedPhotoIds.length || !sendMessage) return;
@@ -212,8 +250,14 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                                     { showSender &&
                                         <div className="phone-thread-sender">{ groupChatData.username }</div> }
                                     { photoUrl &&
-                                        <div className={ `phone-thread-photo${ groupMine ? ' is-mine' : '' }` }>
-                                            <img src={ photoUrl } alt="Shared photo" loading="lazy" />
+                                        <div className="phone-thread-photo-wrap">
+                                            <div className={ `phone-tap phone-thread-photo${ groupMine ? ' is-mine' : '' }` } title="View photo" onClick={ event => setPhotoViewer({ url: photoUrl, mine: groupMine }) }>
+                                                <img src={ photoUrl } alt="Shared photo" loading="lazy" />
+                                            </div>
+                                            { !groupMine &&
+                                                <div className="phone-tap phone-thread-photo-save" title="Save to Photos" onClick={ event => savePhotoToLibrary(photoUrl) }>
+                                                    <PhoneIcon icon="download" size={ 14 } />
+                                                </div> }
                                         </div> }
                                     { !photoUrl &&
                                         <div className={ `phone-thread-bubble${ groupMine ? ' is-mine' : '' }` }>{ chat.message }</div> }
@@ -279,6 +323,31 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                             { selectedPhotoIds.length ? `SHARE ${ selectedPhotoIds.length } ${ (selectedPhotoIds.length === 1) ? 'PHOTO' : 'PHOTOS' }` : 'SHARE' }
                         </div>
                     </div>
+                </div> }
+            { photoViewer &&
+                <div className="phone-chat-photo-viewer">
+                    <img src={ photoViewer.url } alt="" onClick={ event => setPhotoViewer(null) } />
+                    <div className="phone-photos-viewer-top">
+                        <div className="phone-tap phone-photos-viewer-back" onClick={ event => setPhotoViewer(null) }>
+                            <PhoneIcon icon="chevron-left" size={ 22 } />
+                        </div>
+                        <div className="phone-photos-viewer-meta">
+                            <div className="phone-photos-viewer-date">{ photoViewer.mine ? 'Your photo' : `From ${ participant.name }` }</div>
+                        </div>
+                        <div className="phone-photos-viewer-spacer" />
+                    </div>
+                    { !photoViewer.mine &&
+                        <div className="phone-chat-photo-viewer-bottom">
+                            <div className="phone-tap phone-chat-photo-save-pill" onClick={ event => savePhotoToLibrary(photoViewer.url) }>
+                                <PhoneIcon icon="download" size={ 15 } />
+                                <span>Save to Photos</span>
+                            </div>
+                        </div> }
+                </div> }
+            { toastText &&
+                <div className="phone-camera-toast phone-thread-toast">
+                    <PhoneIcon icon="check" size={ 14 } />
+                    <span>{ toastText }</span>
                 </div> }
             { menuOpen &&
                 <div className="phone-thread-menu-backdrop" onClick={ event => setMenuOpen(false) }>

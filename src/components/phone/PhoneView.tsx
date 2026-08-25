@@ -138,9 +138,43 @@ export const PhoneView: FC<{}> = props =>
 
         const excluded = [ 'phone-shot-flash', 'phone-shot-toast' ];
 
+        // html-to-image clones the DOM, and clones reset every scroll
+        // position to the top. Convert each scrolled container into the
+        // visually identical translated form (children shifted up, scroll
+        // zeroed) for the capture, then put everything back. Both halves of
+        // the swap happen in the same synchronous block, so nothing ever
+        // paints differently on screen.
+        const restores: (() => void)[] = [];
+
+        displayRef.current.querySelectorAll('*').forEach(element =>
+        {
+            const container = element as HTMLElement;
+
+            if((container.scrollTop <= 0) && (container.scrollLeft <= 0)) return;
+
+            const scrollTop = container.scrollTop;
+            const scrollLeft = container.scrollLeft;
+            const children = Array.from(container.children) as HTMLElement[];
+            const previousTransforms = children.map(child => child.style.transform);
+
+            children.forEach(child => (child.style.transform = `translate(${ -scrollLeft }px, ${ -scrollTop }px)`));
+            container.scrollTop = 0;
+            container.scrollLeft = 0;
+
+            restores.push(() =>
+            {
+                children.forEach((child, index) => (child.style.transform = previousTransforms[index]));
+                container.scrollTop = scrollTop;
+                container.scrollLeft = scrollLeft;
+            });
+        });
+
+        const restoreScrolls = () => restores.reverse().forEach(restore => restore());
+
         toPng(displayRef.current, { pixelRatio: 1, backgroundColor: '#000000', filter: node => !(node.classList && excluded.some(name => node.classList.contains(name))) })
             .then(dataUrl =>
             {
+                restoreScrolls();
                 PlaySound(SoundNames.CAMERA_SHUTTER);
                 setShotFlash(true);
                 window.setTimeout(() => setShotFlash(false), 220);
@@ -150,6 +184,7 @@ export const PhoneView: FC<{}> = props =>
             })
             .catch(() =>
             {
+                restoreScrolls();
                 setShotToast('Screenshot failed');
                 window.setTimeout(() => setShotToast(null), 1800);
             });
@@ -300,7 +335,7 @@ export const PhoneView: FC<{}> = props =>
     const onLightScreen = ((screen !== 'home') && (screen !== 'camera'));
 
     return (
-        <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-region" windowPosition={ DraggableWindowPosition.CENTER }>
+        <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER }>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
                     <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }` }>
@@ -312,7 +347,7 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneIcon icon="battery-full" size={ 18 } />
                             </div>
                         </div>
-                        <div className="phone-notch phone-drag-region" title="Hold to move the phone" />
+                        <div className="phone-notch" />
                         <div key={ `${ screen }-${ animation }` } className={ `phone-screen-anim phone-anim-${ animation }` }>
                             { (screen === 'home') &&
                                 <PhoneHomeView openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app])) } /> }
@@ -340,6 +375,17 @@ export const PhoneView: FC<{}> = props =>
                                 <span>{ shotToast }</span>
                             </div> }
                         <div className="phone-glare" />
+                    </div>
+                    { /* The drag handle: DraggableWindow binds mousedown to this one
+                         wrapper; only its children take pointer events, so the grab
+                         zones are the orange bezel edges plus the dynamic island —
+                         screen content underneath stays fully interactive. */ }
+                    <div className="phone-drag-handle">
+                        <div className="phone-drag-edge is-top" title="Drag to move the phone" />
+                        <div className="phone-drag-edge is-bottom" title="Drag to move the phone" />
+                        <div className="phone-drag-edge is-left" title="Drag to move the phone" />
+                        <div className="phone-drag-edge is-right" title="Drag to move the phone" />
+                        <div className="phone-drag-island" title="Hold to move the phone" />
                     </div>
                     <div className="phone-power-btn" title="Put phone away · hold for screenshot" onPointerDown={ onPowerDown } onPointerUp={ onPowerUp } onPointerLeave={ () => window.clearTimeout(powerTimer.current) } />
                 </div>
