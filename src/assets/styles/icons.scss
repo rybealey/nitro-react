@@ -63,24 +63,6 @@
         height: 30px;
     }
 
-    &.icon-friendall {
-        background-image: url('@/assets/images/toolbar/icons/pixelrp-friends.png');
-        width: 40px;
-        height: 40px;
-    }
-
-    &.icon-friendsearch {
-        background-image: url('@/assets/images/toolbar/icons/friend_search.png');
-        height: 33px;
-        width: 29px;
-    }
-
-    &.icon-sendmessage {
-        background-image: url('@/assets/images/toolbar/icons/sendmessage.png');
-        width: 20px;
-        height: 21px;
-    }
-
     &.icon-me-talents {
         background-image: url('@/assets/images/toolbar/icons/me-menu/talents.png');
         width: 32px;
@@ -164,16 +146,6 @@
         background-image: url('@/assets/images/toolbar/icons/pixelrp-camera.png');
         width: 29px;
         height: 30px;
-    }
-
-    &.icon-message {
-        background-image: url('@/assets/images/toolbar/icons/message.png');
-        width: 36px;
-        height: 32px;
-
-        &.is-unseen {
-            background-image: url('@/assets/images/toolbar/icons/message_unsee.gif');
-        }
     }
 
     &.icon-wired-trigger {
