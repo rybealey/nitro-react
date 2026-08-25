@@ -6,10 +6,14 @@ $phone-ink: #1a0a14;
 $phone-pink: #e93a7d;
 $phone-pink-hot: #f8558c;
 $phone-magenta: #b81e74;
-$phone-screen-bg: #fdfcff;
-$phone-muted-text: #9a94a0;
-$phone-faint-text: #a7a2ae;
-$phone-hairline: #f0edf3;
+// Themable app-surface roles: these compile to var(--ph-*) so the whole
+// phone re-skins from the custom properties set on .phone-display (light
+// defaults there, overrides on .phone-display.is-dark). Hardware chrome
+// (shell, bezel, ink outlines) stays literal.
+$phone-screen-bg: var(--ph-bg);
+$phone-muted-text: var(--ph-muted);
+$phone-faint-text: var(--ph-faint);
+$phone-hairline: var(--ph-hairline);
 $phone-green: #3fbf5a;
 $phone-red: #e03131;
 
@@ -58,7 +62,42 @@ $phone-red: #e03131;
         overflow: hidden;
         box-shadow: inset 0 0 0 2px $phone-ink;
         font-family: 'Barlow', 'Ubuntu', sans-serif;
-        color: $phone-ink;
+        color: var(--ph-text);
+
+        // Appearance (Settings app): light is the default palette; is-dark
+        // swaps every app surface to the plum-black set. Only the phone UI
+        // themes - the hotel around it is untouched.
+        --ph-bg: #fdfcff;
+        --ph-text: #1a0a14;
+        --ph-muted: #9a94a0;
+        --ph-faint: #a7a2ae;
+        --ph-soft: #8a8390;
+        --ph-hairline: #f0edf3;
+        --ph-inset: #efedf3;
+        --ph-input-border: #e3dfe8;
+        --ph-bubble: #ece9ef;
+        --ph-hover: #f6f4f9;
+        --ph-send-idle: #d9d4de;
+        --ph-status-scrim: rgba(253, 252, 255, 0.85);
+        --ph-scrim-zero: rgba(253, 252, 255, 0);
+        --ph-header-scrim: rgba(253, 252, 255, 0.92);
+
+        &.is-dark {
+            --ph-bg: #171021;
+            --ph-text: #f4f0f7;
+            --ph-muted: #8f8699;
+            --ph-faint: #7d7590;
+            --ph-soft: #9a90a5;
+            --ph-hairline: #292136;
+            --ph-inset: #251d31;
+            --ph-input-border: #372c46;
+            --ph-bubble: #2c2338;
+            --ph-hover: #231b2e;
+            --ph-send-idle: #3a3147;
+            --ph-status-scrim: rgba(23, 16, 33, 0.85);
+            --ph-scrim-zero: rgba(23, 16, 33, 0);
+            --ph-header-scrim: rgba(23, 16, 33, 0.92);
+        }
     }
 
     .phone-status-bar {
@@ -95,8 +134,8 @@ $phone-red: #e03131;
         }
 
         &.on-light {
-            color: $phone-ink;
-            background: linear-gradient(180deg, rgba(253, 252, 255, 0.85), rgba(253, 252, 255, 0));
+            color: var(--ph-text);
+            background: linear-gradient(180deg, var(--ph-status-scrim), var(--ph-scrim-zero));
         }
     }
 
@@ -174,7 +213,7 @@ $phone-red: #e03131;
         cursor: pointer;
 
         &.on-light {
-            background: $phone-ink;
+            background: var(--ph-text);
         }
     }
 
@@ -395,7 +434,7 @@ $phone-red: #e03131;
         font-family: 'Ubuntu', sans-serif;
         font-size: 27px;
         font-weight: 700;
-        color: $phone-ink;
+        color: var(--ph-text);
         letter-spacing: -0.5px;
         line-height: 1.1;
     }
@@ -428,7 +467,7 @@ $phone-red: #e03131;
         gap: 8px;
         height: 34px;
         padding: 0 11px;
-        background: #efedf3;
+        background: var(--ph-inset);
         border-radius: 11px;
         color: $phone-muted-text;
 
@@ -440,7 +479,7 @@ $phone-red: #e03131;
             background: transparent;
             font-family: 'Barlow', sans-serif;
             font-size: 14px;
-            color: $phone-ink;
+            color: var(--ph-text);
 
             &::placeholder {
                 color: $phone-muted-text;
@@ -452,7 +491,7 @@ $phone-red: #e03131;
         padding: 14px 18px;
         font-size: 13px;
         line-height: 1.45;
-        color: #8a8390;
+        color: var(--ph-soft);
     }
 
     .phone-unread-badge {
@@ -598,7 +637,7 @@ $phone-red: #e03131;
     .phone-pinned-name {
         font-size: 12px;
         font-weight: 600;
-        color: $phone-ink;
+        color: var(--ph-text);
         max-width: 74px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -688,7 +727,7 @@ $phone-red: #e03131;
         .phone-thread-name {
             font-size: 15px;
             font-weight: 700;
-            color: $phone-ink;
+            color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -715,13 +754,13 @@ $phone-red: #e03131;
 
         .phone-thread-preview {
             font-size: 13.5px;
-            color: #8a8390;
+            color: var(--ph-soft);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
 
             &.is-unread {
-                color: $phone-ink;
+                color: var(--ph-text);
                 font-weight: 600;
             }
         }
@@ -779,12 +818,12 @@ $phone-red: #e03131;
         font-family: 'Ubuntu', sans-serif;
         font-size: 19px;
         font-weight: 700;
-        color: $phone-ink;
+        color: var(--ph-text);
     }
 
     .phone-messages-empty-text {
         font-size: 13.5px;
-        color: #8a8390;
+        color: var(--ph-soft);
         line-height: 1.5;
     }
 
@@ -841,7 +880,7 @@ $phone-red: #e03131;
         padding: 12px 14px;
         font-size: 14px;
         font-weight: 600;
-        color: $phone-ink;
+        color: var(--ph-text);
 
         & + .phone-pin-menu-item {
             border-top: 1.5px solid $phone-hairline;
@@ -852,7 +891,7 @@ $phone-red: #e03131;
         }
 
         &:hover {
-            background: #f6f4f9;
+            background: var(--ph-hover);
         }
     }
 
@@ -870,7 +909,7 @@ $phone-red: #e03131;
         display: flex;
         align-items: center;
         gap: 6px;
-        background: rgba(253, 252, 255, 0.92);
+        background: var(--ph-header-scrim);
         border-bottom: 1px solid $phone-hairline;
         z-index: 20;
     }
@@ -893,7 +932,7 @@ $phone-red: #e03131;
             font-family: 'Ubuntu', sans-serif;
             font-size: 15px;
             font-weight: 700;
-            color: $phone-ink;
+            color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -916,7 +955,7 @@ $phone-red: #e03131;
         align-items: center;
         justify-content: center;
         flex: none;
-        color: $phone-ink;
+        color: var(--ph-text);
         opacity: 0.55;
 
         &:hover {
@@ -946,7 +985,7 @@ $phone-red: #e03131;
         font-family: 'Silkscreen', monospace;
         font-size: 8px;
         letter-spacing: 0.5px;
-        color: #b7b2be;
+        color: var(--ph-faint);
         padding: 5px 0 9px;
     }
 
@@ -956,7 +995,7 @@ $phone-red: #e03131;
         text-align: center;
         font-size: 11px;
         line-height: 1.4;
-        color: #b7b2be;
+        color: var(--ph-faint);
         padding: 4px 0 8px;
     }
 
@@ -1002,8 +1041,8 @@ $phone-red: #e03131;
     }
 
     .phone-thread-bubble {
-        background: #ece9ef;
-        color: $phone-ink;
+        background: var(--ph-bubble);
+        color: var(--ph-text);
         padding: 8px 12px;
         border-radius: 17px 17px 17px 5px;
         font-size: 14px;
@@ -1022,7 +1061,7 @@ $phone-red: #e03131;
     .phone-thread-receipt {
         align-self: flex-end;
         font-size: 11px;
-        color: #b7b2be;
+        color: var(--ph-faint);
         padding: 3px 4px 0;
     }
 
@@ -1038,13 +1077,13 @@ $phone-red: #e03131;
             min-width: 0;
             height: 36px;
             padding: 0 13px;
-            border: 1.5px solid #e3dfe8;
+            border: 1.5px solid var(--ph-input-border);
             border-radius: 18px;
             outline: 0;
             background: transparent;
             font-family: 'Barlow', sans-serif;
             font-size: 14px;
-            color: $phone-ink;
+            color: var(--ph-text);
 
             &::placeholder {
                 color: $phone-muted-text;
@@ -1060,7 +1099,7 @@ $phone-red: #e03131;
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: #d9d4de;
+        background: var(--ph-send-idle);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1087,7 +1126,7 @@ $phone-red: #e03131;
         align-items: center;
         justify-content: center;
         flex: none;
-        color: $phone-ink;
+        color: var(--ph-text);
         opacity: 0.55;
 
         .phone-pi {
@@ -1126,9 +1165,9 @@ $phone-red: #e03131;
         max-width: 76%;
         border-radius: 17px 17px 17px 5px;
         overflow: hidden;
-        border: 1.5px solid #e3dfe8;
+        border: 1.5px solid var(--ph-input-border);
         box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
-        background: #ece9ef;
+        background: var(--ph-bubble);
 
         img {
             display: block;
@@ -1148,8 +1187,8 @@ $phone-red: #e03131;
         width: 26px;
         height: 26px;
         border-radius: 50%;
-        background: #efedf3;
-        border: 1.5px solid #e3dfe8;
+        background: var(--ph-inset);
+        border: 1.5px solid var(--ph-input-border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1232,7 +1271,7 @@ $phone-red: #e03131;
         }
 
         .phone-photos-viewer-date {
-            color: $phone-ink;
+            color: var(--ph-text);
         }
 
         .phone-photos-viewer-sub {
@@ -1329,7 +1368,7 @@ $phone-red: #e03131;
             font-family: 'Ubuntu', sans-serif;
             font-size: 15px;
             font-weight: 700;
-            color: $phone-ink;
+            color: var(--ph-text);
         }
 
         .phone-compose-spacer {
@@ -1357,7 +1396,7 @@ $phone-red: #e03131;
             background: transparent;
             font-family: 'Barlow', sans-serif;
             font-size: 14px;
-            color: $phone-ink;
+            color: var(--ph-text);
         }
     }
 
@@ -1372,20 +1411,20 @@ $phone-red: #e03131;
         padding: 8px 18px;
 
         &:hover {
-            background: #f9f7fb;
+            background: var(--ph-hover);
         }
     }
 
     .phone-compose-row-body {
         flex: 1;
         min-width: 0;
-        border-bottom: 1px solid #f4f1f7;
+        border-bottom: 1px solid var(--ph-hairline);
         padding-bottom: 9px;
 
         .phone-compose-row-name {
             font-size: 15px;
             font-weight: 700;
-            color: $phone-ink;
+            color: var(--ph-text);
         }
 
         .phone-compose-row-handle {
@@ -1411,7 +1450,7 @@ $phone-red: #e03131;
         .phone-contact-name {
             font-size: 15px;
             font-weight: 700;
-            color: $phone-ink;
+            color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1461,13 +1500,13 @@ $phone-red: #e03131;
         }
 
         &.is-remove {
-            background: #ffffff;
+            background: var(--ph-bg);
             border: 1.5px solid #f0c0c0;
             color: $phone-red;
 
             &.is-confirming {
                 background: $phone-red;
-                border-color: $phone-ink;
+                border-color: var(--ph-text);
                 color: #ffffff;
             }
         }
@@ -1475,6 +1514,172 @@ $phone-red: #e03131;
 
     .phone-search--inset {
         margin-top: 2px;
+    }
+
+    // ----- settings app -----
+
+    .phone-settings-card {
+        margin: 4px 18px 0;
+        background: var(--ph-bg);
+        border: 1.5px solid var(--ph-hairline);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .phone-settings-appearance {
+        display: flex;
+        justify-content: center;
+        gap: 26px;
+        padding: 18px 16px 14px;
+        border-bottom: 1px solid var(--ph-hairline);
+    }
+
+    .phone-settings-appearance-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+
+    // Mini phone-screen preview: a status pill and three chat bubbles in
+    // the palette the option would apply.
+    .phone-settings-preview {
+        width: 74px;
+        height: 104px;
+        border-radius: 14px;
+        border: 2px solid $phone-ink;
+        background: #fdfcff;
+        padding: 8px 7px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        .phone-settings-preview-bar {
+            width: 26px;
+            height: 5px;
+            border-radius: 3px;
+            background: #1a0a14;
+            align-self: center;
+            margin-bottom: 4px;
+        }
+
+        .phone-settings-preview-bubble {
+            width: 60%;
+            height: 12px;
+            border-radius: 6px 6px 6px 2px;
+            background: #ece9ef;
+
+            &.is-mine {
+                align-self: flex-end;
+                border-radius: 6px 6px 2px 6px;
+                background: linear-gradient(180deg, $phone-pink-hot, $phone-magenta);
+            }
+        }
+
+        &.is-dark-preview {
+            background: #171021;
+
+            .phone-settings-preview-bar {
+                background: #f4f0f7;
+            }
+
+            .phone-settings-preview-bubble {
+                background: #2c2338;
+
+                &.is-mine {
+                    background: linear-gradient(180deg, $phone-pink-hot, $phone-magenta);
+                }
+            }
+        }
+    }
+
+    .phone-settings-preview-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ph-text);
+    }
+
+    .phone-settings-preview-check {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 1.5px solid var(--ph-input-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+
+        &.is-chosen {
+            background: $phone-pink;
+            border-color: $phone-pink;
+        }
+
+        // Under Automatic the check marks what the system resolved to,
+        // not a pinned choice — show it softened.
+        &.is-auto {
+            background: var(--ph-faint);
+            border-color: var(--ph-faint);
+        }
+    }
+
+    .phone-settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .phone-settings-row-body {
+        flex: 1;
+        min-width: 0;
+
+        .phone-settings-row-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ph-text);
+        }
+
+        .phone-settings-row-sub {
+            font-size: 12px;
+            color: var(--ph-faint);
+        }
+    }
+
+    // iOS-style switch.
+    .phone-settings-switch {
+        width: 46px;
+        height: 28px;
+        border-radius: 14px;
+        background: var(--ph-input-border);
+        padding: 3px;
+        flex: none;
+        transition: background 0.18s ease;
+
+        .phone-settings-switch-knob {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            transition: transform 0.18s ease;
+        }
+
+        &.is-on {
+            background: $phone-green;
+
+            .phone-settings-switch-knob {
+                transform: translateX(18px);
+            }
+        }
+    }
+
+    .phone-settings-footnote {
+        padding: 12px 26px 0;
+        text-align: center;
+        font-size: 11.5px;
+        line-height: 1.5;
+        color: var(--ph-soft);
     }
 
     // ----- camera app -----
@@ -1718,7 +1923,7 @@ $phone-red: #e03131;
         position: relative;
         aspect-ratio: 1;
         overflow: hidden;
-        background: #ece9ef;
+        background: var(--ph-bubble);
 
         img {
             width: 100%;
