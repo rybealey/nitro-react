@@ -3207,6 +3207,7 @@ __metadata:
     eslint-plugin-jsx-a11y: "npm:^6.6.0"
     eslint-plugin-react: "npm:^7.30.1"
     eslint-plugin-react-hooks: "npm:^4.6.0"
+    pixelarticons: "npm:^2.4.1"
     react: "npm:^18.2.0"
     react-bootstrap: "npm:^2.2.2"
     react-dom: "npm:^18.2.0"
@@ -3451,6 +3452,17 @@ __metadata:
   version: 4.0.5
   resolution: "picomatch@npm:4.0.5"
   checksum: 10c0/947bc6b6e1ff1e6c5aaf95b107a0839d12802f4f7b867663f67d47accba939ca1cb582cf99dfc30438efa1c4648ac5990967e783e8929c36b03e8440704ef1bd
+  languageName: node
+  linkType: hard
+
+"pixelarticons@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "pixelarticons@npm:2.4.1"
+  peerDependencies:
+    react: ">=16"
+  bin:
+    pixelarticons: bin/upgrade.js
+  checksum: 10c0/d18a40141996286fd252151ec8a530059f679511a8b1a5d92ec7215cfea343586b4312575d68aa5cc4a7ec2e94941ea935de4d6cea5229040e58a0dff1909fb3
   languageName: node
   linkType: hard
 

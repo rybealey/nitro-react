@@ -9,7 +9,6 @@ import { CampaignView } from '../campaign/CampaignView';
 import { CatalogView } from '../catalog/CatalogView';
 import { ChatHistoryView } from '../chat-history/ChatHistoryView';
 import { FloorplanEditorView } from '../floorplan-editor/FloorplanEditorView';
-import { FriendsView } from '../friends/FriendsView';
 import { GameCenterView } from '../game-center/GameCenterView';
 import { GroupsView } from '../groups/GroupsView';
 import { GuideToolView } from '../guide-tool/GuideToolView';
@@ -20,6 +19,7 @@ import { InventoryView } from '../inventory/InventoryView';
 import { ModToolsView } from '../mod-tools/ModToolsView';
 import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
+import { PhoneView } from '../phone/PhoneView';
 import { RightSideView } from '../right-side/RightSideView';
 import { RoomView } from '../room/RoomView';
 import { ToolbarView } from '../toolbar/ToolbarView';
@@ -94,7 +94,7 @@ export const MainView: FC<{}> = props =>
             <NavigatorView />
             <InventoryView />
             <CatalogView />
-            <FriendsView />
+            <PhoneView />
             <RightSideView />
             <UserSettingsView />
             <RpSettingsView />

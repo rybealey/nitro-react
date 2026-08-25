@@ -634,3 +634,50 @@
         }
     }
 }
+
+// Friends spritesheet icons (relationships, accept/deny, mini profile).
+// Moved here from the retired friends-list component styles — these
+// classes are used by the infostand, user profile, groups and avatar menu.
+.nitro-friends-spritesheet {
+    background: url('@/assets/images/friends/friends-spritesheet.png') transparent no-repeat;
+
+    &.icon-heart {
+        width: 16px; height: 14px;
+        background-position: -5px -67px;
+    }
+
+    &.icon-none {
+        width: 16px; height: 14px;
+        background-position: -31px -67px;
+    }
+
+    &.icon-profile-sm {
+        width: 13px; height: 11px;
+        background-position: -51px -91px;
+
+        &:hover {
+            width: 13px; height: 11px;
+            background-position: -74px -91px;
+        }
+    }
+
+    &.icon-smile {
+        width: 16px; height: 14px;
+        background-position: -57px -67px;
+    }
+
+    &.icon-accept {
+        width: 13px; height: 14px;
+        background-position: -5px -91px;
+    }
+
+    &.icon-bobba {
+        width: 16px; height: 14px;
+        background-position: -96px -5px;
+    }
+
+    &.icon-deny {
+        width: 13px; height: 14px;
+        background-position: -28px -91px;
+    }
+}
