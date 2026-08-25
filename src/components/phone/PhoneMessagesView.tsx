@@ -3,7 +3,7 @@ import { GetGroupChatData, MessengerFriend, MessengerThread, MessengerThreadChat
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
-import { usePhonePrefs } from './usePhone';
+import { ParsePhotoMessage, usePhonePrefs } from './usePhone';
 
 // Messages app: pinned contacts grid on top, every conversation below.
 // Rows swipe left (drag) to reveal pin / mute / delete; pinned tiles hold
@@ -45,14 +45,16 @@ export const ThreadPreview = (thread: MessengerThread): string =>
 
             if(chat.type === MessengerThreadChat.ROOM_INVITE) return 'Room invite';
 
+            const isPhoto = !!ParsePhotoMessage(chat.message);
+
             if((thread.participant.id <= 0) && chat.extraData)
             {
                 const data = GetGroupChatData(chat.extraData);
 
-                if(data && data.username) return `${ data.username }: ${ chat.message }`;
+                if(data && data.username) return (isPhoto ? `${ data.username } shared a photo` : `${ data.username }: ${ chat.message }`);
             }
 
-            return chat.message;
+            return (isPhoto ? 'Shared a photo' : chat.message);
         }
     }
 

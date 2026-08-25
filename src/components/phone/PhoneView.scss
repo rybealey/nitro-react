@@ -1038,6 +1038,154 @@ $phone-red: #e03131;
         z-index: 60;
     }
 
+    // ----- attach menu + photo sharing -----
+
+    .phone-thread-attach {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        color: $phone-ink;
+        opacity: 0.55;
+
+        .phone-pi {
+            transition: transform 0.16s ease;
+        }
+
+        &.is-open {
+            opacity: 0.9;
+
+            .phone-pi {
+                transform: rotate(45deg);
+            }
+        }
+    }
+
+    .phone-thread-attach-menu {
+        position: absolute;
+        left: 10px;
+        bottom: 74px;
+        width: 200px;
+        background: $phone-screen-bg;
+        border: 2px solid $phone-ink;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.35);
+        animation: phone-sheet-up 0.18s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    .phone-thread-photo {
+        max-width: 76%;
+        border-radius: 17px 17px 17px 5px;
+        overflow: hidden;
+        border: 1.5px solid #e3dfe8;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+        background: #ece9ef;
+
+        img {
+            display: block;
+            width: 100%;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+
+        &.is-mine {
+            border-radius: 17px 17px 5px 17px;
+            border-color: rgba(184, 30, 116, 0.45);
+            box-shadow: 0 1px 3px rgba(184, 30, 116, 0.35);
+        }
+    }
+
+    .phone-photo-picker {
+        position: absolute;
+        inset: 0;
+        z-index: 62;
+        background: $phone-screen-bg;
+        display: flex;
+        flex-direction: column;
+        animation: phone-sheet-up 0.24s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    .phone-photo-picker-top {
+        padding: 48px 16px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-bottom: 1px solid $phone-hairline;
+
+        .phone-photos-edit-action {
+            color: $phone-pink;
+        }
+
+        .phone-photos-viewer-date {
+            color: $phone-ink;
+        }
+
+        .phone-photos-viewer-sub {
+            color: $phone-faint-text;
+        }
+    }
+
+    .phone-photo-picker-scroll {
+        padding-top: 0;
+    }
+
+    .phone-photo-picker-check {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 21px;
+        height: 21px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        background: rgba(26, 10, 20, 0.35);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 11px;
+
+        &.is-selected {
+            background: $phone-pink;
+        }
+    }
+
+    .phone-photo-picker-bottom {
+        padding: 10px 18px 22px;
+        border-top: 1px solid $phone-hairline;
+
+        .phone-photo-picker-send {
+            margin-top: 0;
+            text-align: center;
+
+            &.is-disabled {
+                opacity: 0.45;
+                cursor: default;
+                box-shadow: none;
+            }
+        }
+    }
+
+    // ----- side-button screenshot -----
+
+    .phone-shot-flash {
+        position: absolute;
+        inset: 0;
+        background: #ffffff;
+        z-index: 105;
+        pointer-events: none;
+        animation: phone-camera-flash 0.22s ease-out both;
+    }
+
+    .phone-shot-toast {
+        z-index: 106;
+    }
+
     .phone-thread-menu {
         position: absolute;
         top: 92px;

@@ -1,6 +1,7 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useMemo, useState } from 'react';
-import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
+import { toPng } from 'html-to-image';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { AddEventLinkTracker, PlaySound, RemoveLinkEventTracker, SoundNames } from '../../api';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneCallView } from './PhoneCallView';
@@ -11,7 +12,7 @@ import { PhoneComposeView, PhoneMessagesView } from './PhoneMessagesView';
 import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneThreadView } from './PhoneThreadView';
-import { usePhonePrefs } from './usePhone';
+import { usePhonePhotos, usePhonePrefs } from './usePhone';
 
 // The PixelRP phone — the player's window to their social life, replacing
 // the classic Habbo friends list + messenger windows. Opened from the
@@ -48,9 +49,15 @@ export const PhoneView: FC<{}> = props =>
     const [ threadId, setThreadId ] = useState<number>(0);
     const [ callFriendId, setCallFriendId ] = useState<number>(0);
     const [ clock, setClock ] = useState<string>('');
+    const [ shotFlash, setShotFlash ] = useState(false);
+    const [ shotToast, setShotToast ] = useState<string>(null);
     const { visibleThreads = [], getMessageThread = null, setActiveThreadId = null } = useMessenger();
     const { requestFriend = null, getFriend = null } = useFriends();
     const { ensureLoaded } = usePhonePrefs();
+    const { saveScreenshot = null } = usePhonePhotos();
+    const displayRef = useRef<HTMLDivElement>(null);
+    const powerTimer = useRef<number>(0);
+    const powerLongFired = useRef(false);
 
     const activeThread = useMemo(() => visibleThreads.find(thread => (thread.threadId === threadId)), [ visibleThreads, threadId ]);
     const callFriend = ((callFriendId && getFriend) ? getFriend(callFriendId) : null);
@@ -121,6 +128,54 @@ export const PhoneView: FC<{}> = props =>
     {
         if(screen === 'home') hide();
         else go('home');
+    }
+
+    // Side button: click puts the phone away; hold takes a screenshot of
+    // whatever's on the screen and files it into Photos.
+    const takeScreenshot = () =>
+    {
+        if(!displayRef.current || !saveScreenshot) return;
+
+        const excluded = [ 'phone-shot-flash', 'phone-shot-toast' ];
+
+        toPng(displayRef.current, { pixelRatio: 1, backgroundColor: '#000000', filter: node => !(node.classList && excluded.some(name => node.classList.contains(name))) })
+            .then(dataUrl =>
+            {
+                PlaySound(SoundNames.CAMERA_SHUTTER);
+                setShotFlash(true);
+                window.setTimeout(() => setShotFlash(false), 220);
+                saveScreenshot(dataUrl);
+                setShotToast('Saved to Photos');
+                window.setTimeout(() => setShotToast(null), 1800);
+            })
+            .catch(() =>
+            {
+                setShotToast('Screenshot failed');
+                window.setTimeout(() => setShotToast(null), 1800);
+            });
+    }
+
+    const onPowerDown = () =>
+    {
+        powerLongFired.current = false;
+
+        window.clearTimeout(powerTimer.current);
+
+        powerTimer.current = window.setTimeout(() =>
+        {
+            powerLongFired.current = true;
+
+            takeScreenshot();
+        }, 550);
+    }
+
+    const onPowerUp = () =>
+    {
+        window.clearTimeout(powerTimer.current);
+
+        if(!powerLongFired.current) hide();
+
+        powerLongFired.current = false;
     }
 
     useEffect(() =>
@@ -248,7 +303,7 @@ export const PhoneView: FC<{}> = props =>
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-region" windowPosition={ DraggableWindowPosition.CENTER }>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
-                    <div className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }` }>
+                    <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }` }>
                         <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
@@ -277,9 +332,16 @@ export const PhoneView: FC<{}> = props =>
                         { callFriend &&
                             <PhoneCallView friend={ callFriend } onEnd={ () => setCallFriendId(0) } /> }
                         <div className={ `phone-home-indicator${ onLightScreen ? ' on-light' : '' }` } title={ (screen === 'home') ? 'Put phone away' : 'Home' } onClick={ onHomeBar } />
+                        { shotFlash &&
+                            <div className="phone-shot-flash" /> }
+                        { shotToast &&
+                            <div className="phone-camera-toast phone-shot-toast">
+                                <PhoneIcon icon="check" size={ 14 } />
+                                <span>{ shotToast }</span>
+                            </div> }
                         <div className="phone-glare" />
                     </div>
-                    <div className="phone-power-btn" title="Put phone away" onClick={ hide } />
+                    <div className="phone-power-btn" title="Put phone away · hold for screenshot" onPointerDown={ onPowerDown } onPointerUp={ onPowerUp } onPointerLeave={ () => window.clearTimeout(powerTimer.current) } />
                 </div>
             </div>
         </DraggableWindow>

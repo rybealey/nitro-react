@@ -1,8 +1,28 @@
-import { RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
+import { RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
-import { GetSessionDataManager, SendMessageComposer } from '../../api';
+import { GetConfiguration, GetSessionDataManager, SendMessageComposer } from '../../api';
 import { useFriends, useMessageEvent, useMessenger } from '../../hooks';
+
+// Photo messages ride the normal messenger text channel as a marker plus
+// the photo's URL. Only URLs under the hotel's own camera base render as
+// photos — anything else displays as the literal text it is, so nobody can
+// make someone's client load arbitrary images.
+export const PHOTO_MESSAGE_PREFIX: string = '[photo]';
+
+export const MakePhotoMessage = (url: string): string => `${ PHOTO_MESSAGE_PREFIX }${ url }`;
+
+export const ParsePhotoMessage = (message: string): string =>
+{
+    if(!message || !message.startsWith(PHOTO_MESSAGE_PREFIX)) return null;
+
+    const url = message.substring(PHOTO_MESSAGE_PREFIX.length).trim();
+    const cameraBase = GetConfiguration<string>('camera.url', '');
+
+    if(!cameraBase || !url.startsWith(cameraBase)) return null;
+
+    return url;
+}
 
 // Pinned / muted conversation preferences plus home-screen layout for the
 // phone, persisted per account in localStorage. Muting a conversation hides
@@ -236,7 +256,18 @@ const usePhonePhotosState = () =>
         SendMessageComposer(composer);
     }
 
-    return { photos, photosLoaded, requestPhotos, deletePhoto, updatePhoto };
+    // Side-button screenshot: files the PNG straight into the library (no
+    // room, no furni); the reply refreshes the list.
+    const saveScreenshot = (base64Url: string) =>
+    {
+        const composer = new RpSaveScreenshotComposer();
+
+        composer.assignBase64(base64Url);
+
+        SendMessageComposer(composer);
+    }
+
+    return { photos, photosLoaded, requestPhotos, deletePhoto, updatePhoto, saveScreenshot };
 }
 
 export const usePhonePhotos = () => useBetween(usePhonePhotosState);
