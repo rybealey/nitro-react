@@ -1,6 +1,6 @@
 import { FC, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
-import { useFriends, useHelp, useMessenger } from '../../hooks';
+import { MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { usePhonePrefs } from './usePhone';
@@ -19,7 +19,7 @@ interface PhoneThreadViewProps
 export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 {
     const { thread = null, onBack = null, onDeleted = null } = props;
-    const { sendMessage = null, closeThread = null } = useMessenger();
+    const { sendMessage = null, closeThread = null, receipts = {}} = useMessenger();
     const { getFriend = null, followFriend = null } = useFriends();
     const { mutedIds, toggleMuted } = usePhonePrefs();
     const { report = null } = useHelp();
@@ -47,6 +47,47 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     }, [ chatCount, thread ]);
 
     if(!thread || !participant) return null;
+
+    // Receipt line under the newest message, when that message is our own:
+    // Sent -> Delivered -> "Read at HH:MM". Receipts are live (pixelrp
+    // packets); one older than the newest own message means only "Sent".
+    const findLastChat = (): { mine: boolean, date: Date } =>
+    {
+        for(let i = (thread.groups.length - 1); i >= 0; i--)
+        {
+            const group = thread.groups[i];
+
+            for(let j = (group.chats.length - 1); j >= 0; j--)
+            {
+                const chat = group.chats[j];
+
+                if(chat.type !== MessengerThreadChat.CHAT) continue;
+
+                return { mine: (group.userId === ownUserId), date: chat.date };
+            }
+        }
+
+        return null;
+    }
+
+    let receiptText: string = null;
+
+    if(!isGroup)
+    {
+        const lastChat = findLastChat();
+
+        if(lastChat && lastChat.mine)
+        {
+            receiptText = 'Sent';
+
+            const receipt = receipts[participant.id];
+
+            if(receipt && (receipt.date >= lastChat.date))
+            {
+                receiptText = ((receipt.type === MESSENGER_RECEIPT_READ) ? `Read at ${ receipt.date.getHours().toString().padStart(2, '0') }:${ receipt.date.getMinutes().toString().padStart(2, '0') }` : 'Delivered');
+            }
+        }
+    }
 
     const send = () =>
     {
@@ -127,6 +168,8 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                         );
                     });
                 }) }
+                { receiptText &&
+                    <div className="phone-thread-receipt">{ receiptText }</div> }
             </div>
             <div className="phone-thread-input">
                 <input type="text" spellCheck={ false } maxLength={ 255 } placeholder="Message" value={ messageText } onChange={ event => setMessageText(event.target.value) } onKeyDown={ onKeyDown } />

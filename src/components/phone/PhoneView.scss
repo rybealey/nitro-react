@@ -932,6 +932,13 @@ $phone-red: #e03131;
         }
     }
 
+    .phone-thread-receipt {
+        align-self: flex-end;
+        font-size: 11px;
+        color: #b7b2be;
+        padding: 3px 4px 0;
+    }
+
     .phone-thread-input {
         padding: 8px 12px 22px;
         display: flex;
