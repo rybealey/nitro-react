@@ -79,7 +79,7 @@ export const ChatHistoryView: FC<{}> = props =>
                                         </div>
                                         <div className="chat-content">
                                             { row.usernameIcon &&
-                                                <b className="username mr-1">{ '[ ' }<UsernameIconGlyph iconClass={ row.usernameIcon } color={ row.usernameIconColor || undefined } />{ ' ] ' }</b> }
+                                                <b className="username mr-1"><UsernameIconGlyph iconClass={ row.usernameIcon } color={ row.usernameIconColor || undefined } />{ ' ' }</b> }
                                             <b className="username mr-1"><span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: row.name } } />{ ': ' }</b>
                                             <span className="message" dangerouslySetInnerHTML={ { __html: `${ row.message }` } } />
                                         </div>
