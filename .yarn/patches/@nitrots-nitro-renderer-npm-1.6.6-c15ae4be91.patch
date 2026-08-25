@@ -1092,10 +1092,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da8..2c858d4 100644
+index 6a88da8..4ea7fd7 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,49 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,73 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1142,10 +1142,34 @@ index 6a88da8..2c858d4 100644
 +    private static FORMATION_LOCK_GAP_MAX: number = 0.25;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
 +
++    // ONE_TILE_BEHIND trailing-phase stabilization (separate from, and
++    // deliberately never charging, the SAME_POSITION s/formationState
++    // machinery above — see the _pixelrpSync field comment and the
++    // trailingRouteNow/trailingGraceOk block in renderObject() for the
++    // full model). TRAILING_PHASE_GRACE_MS: bridges the brief, expected
++    // topology ambiguity at a segment rollover when MASTER and JOINER's
++    // independent packet timing don't land on the exact same render frame
++    // (one rolls over a beat before the other) — short enough that it
++    // can't bridge a genuine "JOINER fell more than one segment behind"
++    // or corner divergence, long enough to survive normal jitter.
++    // TRAILING_PHASE_RAMP_MS: how long the visual correction takes to
++    // ramp from 0 (native) to full strength on activation — deliberately
++    // its OWN, shorter ramp than the 530ms SAME_POSITION s, since this is
++    // a small continuous phase-drift correction, not a convergence.
++    // TRAILING_EXIT_DECAY_MS: reuses the same fixed-100ms handoff already
++    // used by RELEASE_BLEND/DEMOTION_BLEND for exit continuity.
++    // TRAILING_STRETCH_GAP: diagnostic-only threshold (comfortably above
++    // a healthy ~1 tile native gap) for the [sync:TRAIL_STRETCH]
++    // assertion — not used by any correction logic.
++    private static TRAILING_PHASE_GRACE_MS: number = 150;
++    private static TRAILING_PHASE_RAMP_MS: number = 300;
++    private static TRAILING_EXIT_DECAY_MS: number = 100;
++    private static TRAILING_STRETCH_GAP: number = 1.35;
++
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +94,163 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +118,189 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1265,6 +1289,32 @@ index 6a88da8..2c858d4 100644
 +        // every render call).
 +        entryOffsetSet: boolean, entryOffsetX: number, entryOffsetY: number, entryOffsetZ: number, entryHandoffT: number, entryCompleteLogged: boolean,
 +        releaseCompleteLogged: boolean, lastSource: string,
++        // ONE_TILE_BEHIND trailing-phase stabilization state (trailing-
++        // phase-fix pass) — fully isolated from the SAME_POSITION fields
++        // above: never read/written by CONVERGING/LOCK/MASTER_COPY logic,
++        // and never charges s or sets mode/visualLocked. trailingBadSince:
++        // grace timer (same 0-sentinel convention as badSince) for the
++        // brief topology ambiguity at a segment rollover — see the
++        // TRAILING_PHASE_GRACE_MS comment. trailingPhaseStrength: 0..1
++        // entry-ramp gain: 0 means "not currently correcting" (fully
++        // decayed or never activated), ramps toward 1 on activation, held
++        // at 1 while live tracking continues, reset to 0 the instant an
++        // exit is captured (so the NEXT activation ramps fresh from
++        // native, guaranteeing entry continuity without touching the
++        // separate SAME_POSITION entryOffset* fields at all).
++        // trailingExitOffset{X,Y,Z}/trailingExitOffsetSet/
++        // trailingExitHandoffT: captured ONCE the instant trailing-phase
++        // correction stops qualifying (route grace expired, or the
++        // session released) — decays that constant offset to zero over
++        // TRAILING_EXIT_DECAY_MS, mirroring RELEASE_BLEND/DEMOTION_BLEND
++        // exactly but with dedicated fields, never reusing
++        // releaseOffset*/demotionOffset*. trailingLastSnapshotAt/
++        // trailingStretchLastLogAt/trailingCollapseLastLogAt: throttles
++        // for the periodic/assertion diagnostics only, no logic depends
++        // on them.
++        trailingBadSince: number, trailingPhaseStrength: number,
++        trailingExitOffsetSet: boolean, trailingExitOffsetX: number, trailingExitOffsetY: number, trailingExitOffsetZ: number, trailingExitHandoffT: number,
++        trailingLastSnapshotAt: number, trailingStretchLastLogAt: number, trailingCollapseLastLogAt: number,
 +        // TEMP DEBUG (pixelrp master/joiner sync investigation) fields below —
 +        // remove alongside the rest of the TEMP DEBUG block once diagnosis is
 +        // confirmed with the user. buf: circular buffer of pre-formatted
@@ -1309,7 +1359,7 @@ index 6a88da8..2c858d4 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +573,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +623,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1350,7 +1400,7 @@ index 6a88da8..2c858d4 100644
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +656,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +706,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1366,7 +1416,7 @@ index 6a88da8..2c858d4 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +706,1182 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +756,1449 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1579,6 +1629,9 @@ index 6a88da8..2c858d4 100644
 +                    demotionOffsetSet: false, demotionOffsetX: NaN, demotionOffsetY: NaN, demotionHandoffT: 0,
 +                    entryOffsetSet: false, entryOffsetX: NaN, entryOffsetY: NaN, entryOffsetZ: NaN, entryHandoffT: 0, entryCompleteLogged: false,
 +                    releaseCompleteLogged: false, lastSource: 'NATIVE',
++                    trailingBadSince: 0, trailingPhaseStrength: 0,
++                    trailingExitOffsetSet: false, trailingExitOffsetX: NaN, trailingExitOffsetY: NaN, trailingExitOffsetZ: NaN, trailingExitHandoffT: 0,
++                    trailingLastSnapshotAt: 0, trailingStretchLastLogAt: 0, trailingCollapseLastLogAt: 0,
 +                    buf: [], postJump: 0,
 +                    lastVx: NaN, lastVy: NaN, lastMx: NaN, lastMy: NaN, lastPathOk: -1,
 +                    lastMSx: NaN, lastMSy: NaN, lastMGx: NaN, lastMGy: NaN,
@@ -1942,6 +1995,36 @@ index 6a88da8..2c858d4 100644
 +                    && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
 +                    && (j.gxx === m.gxx) && (j.gyy === m.gyy));
 +
++                // ONE_TILE_BEHIND trailing-phase topology bookkeeping.
++                // trailingRouteNow: JOINER is RIGHT NOW, this frame,
++                // confirmed exactly one route edge behind MASTER (reuses
++                // joinerBehind — already direction-checked above — and
++                // excludes segmentsMatch, which would mean the same
++                // segment, not one behind). Deliberately narrower than the
++                // general routeContinuous (which also accepts sameGoal/
++                // joinerAhead) — this pass only stabilizes the specific
++                // ONE_TILE_BEHIND case, per the requirement to leave
++                // SAME_POSITION convergence and any ahead-of-master
++                // relationship untouched. trailingBadSince/trailingGraceOk
++                // bridge the brief, expected topology ambiguity right at a
++                // segment rollover (MASTER's and JOINER's independent
++                // packet timing rarely land on the exact same render
++                // frame) — same 0-sentinel grace-timer pattern already
++                // used for badSince elsewhere in this function, just
++                // scoped to this narrower condition so it can't bridge a
++                // genuine "fell more than one segment behind". Computed
++                // unconditionally every frame (cheap, and consistent with
++                // how badSince/pathOk are already tracked regardless of
++                // formationState) — only actually READ below once
++                // formationState is confirmed TRAILING.
++                const trailingRouteNow = !!(j && m && j.moving && m.moving && joinerBehind && !segmentsMatch && mLoc);
++
++                if(trailingRouteNow) sync.trailingBadSince = 0;
++                else if(sync.trailingBadSince === 0) sync.trailingBadSince = nowMs;
++
++                const trailingGraceOk = trailingRouteNow
++                    || ((sync.trailingBadSince !== 0) && ((nowMs - sync.trailingBadSince) <= RoomSpriteCanvas.TRAILING_PHASE_GRACE_MS));
++
 +                const prevMode = sync.mode;
 +                // Hoisted (vs. the original block-scoped `let releaseReason`)
 +                // so the EXIT_HANDOFF diagnostic below — which fires from a
@@ -2086,6 +2169,64 @@ index 6a88da8..2c858d4 100644
 +                    }
 +                }
 +
++                // ONE_TILE_BEHIND trailing-phase eligibility for THIS
++                // frame, using mode as it stands after the transition
++                // block above (so a same-frame release is already
++                // reflected). Requires the persistent, evidence-driven
++                // formationState to actually read TRAILING (never a raw
++                // distance/tuple check alone — same evidentiary bar the
++                // SAME_POSITION side already holds itself to) AND
++                // mode===0 (never fires once LOCK/RELEASE claims the
++                // session — trailing pairs never reach mode 1 anyway,
++                // since s never charges outside CONVERGING, but the
++                // explicit check keeps this branch's own scope obvious)
++                // AND the topology grace above.
++                const trailingEligibleNow = (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING) && (sync.mode === 0) && trailingGraceOk;
++
++                if((sync.trailingPhaseStrength > 0) && !trailingEligibleNow && !sync.trailingExitOffsetSet
++                    && (sync.formationState !== RoomSpriteCanvas.FORMATION_CONVERGING))
++                {
++                    // Trailing-phase correction was actively contributing
++                    // and just stopped qualifying — either the route grace
++                    // above expired (JOINER genuinely fell more than one
++                    // segment behind, or a corner ambiguity outlasted one
++                    // beat of skew) or the whole session released (mode
++                    // left 0 via the existing genuineDivergence/badSince
++                    // machinery, untouched). Deliberately skipped when
++                    // formationState has instead been promoted to
++                    // CONVERGING: that transition is already
++                    // visually continuous on its own (s starts at exactly
++                    // 0 for a session that never charged it, which makes
++                    // PHASE_SHIFT's own target reduce to native on its
++                    // first frame — see the transition-fix diagnosis) and
++                    // letting THIS decay also claim the render branch for
++                    // up to 100ms would only delay PHASE_SHIFT's start for
++                    // no visual benefit.
++                    //
++                    // Capture the exact currently-displayed position
++                    // (sync.lastVx/lastVy — the last frame this section's
++                    // own render branch, live or grace-held, actually
++                    // produced) against JOINER's own native position at
++                    // this same instant, and decay that constant offset to
++                    // zero over TRAILING_EXIT_DECAY_MS — mirrors
++                    // RELEASE_BLEND/DEMOTION_BLEND exactly, with dedicated
++                    // fields so this stays fully isolated from
++                    // SAME_POSITION release/demotion state.
++                    const baseX = (Number.isFinite(sync.lastVx) ? sync.lastVx : roomLocation.x);
++                    const baseY = (Number.isFinite(sync.lastVy) ? sync.lastVy : roomLocation.y);
++
++                    sync.trailingExitOffsetX = (baseX - roomLocation.x);
++                    sync.trailingExitOffsetY = (baseY - roomLocation.y);
++                    sync.trailingExitOffsetZ = 0;
++                    sync.trailingExitOffsetSet = true;
++                    sync.trailingExitHandoffT = 0;
++                    sync.trailingPhaseStrength = 0;
++
++                    const trailingStopReason = ((sync.mode === 2) ? 'released' : 'route_grace_expired');
++
++                    console.log(`[sync:TRAIL_PHASE_END] master=${ sync.masterId } joiner=${ sync.joinerId } reason=${ trailingStopReason } routeContinuous=${ routeContinuous } joinerBehind=${ joinerBehind } segmentsMatch=${ segmentsMatch } lastDisplayedJoiner=(${ baseX.toFixed(3) },${ baseY.toFixed(3) }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) continuityOffset=(${ sync.trailingExitOffsetX.toFixed(3) },${ sync.trailingExitOffsetY.toFixed(3) })`);
++                }
++
 +                let vx = 0;
 +                let vy = 0;
 +                let vz = 0;
@@ -2093,7 +2234,17 @@ index 6a88da8..2c858d4 100644
 +                let ended = false;
 +                let source = 'NATIVE';
 +
-+                if((sync.mode === 2) && (sync.s <= 0))
++                // trailing-phase-fix pass: added `&& !sync.trailingExitOffsetSet`.
++                // A pure-trailing session never charges s at all (it only
++                // advances under FORMATION_CONVERGING), so s is already
++                // <=0 on the very frame mode flips to 2 on genuine
++                // divergence — without this guard the session (and its
++                // trailing-phase decay below) would be destroyed on that
++                // same frame, before the decay ever got a chance to run,
++                // producing exactly the instant snap-to-native this pass
++                // exists to avoid. No-op for every non-trailing session
++                // (trailingExitOffsetSet is never set to true otherwise).
++                if((sync.mode === 2) && (sync.s <= 0) && !sync.trailingExitOffsetSet)
 +                {
 +                    // Record this pair for the re-engagement hysteresis
 +                    // (see _pixelrpLastReleased field comment and the
@@ -2221,6 +2372,172 @@ index 6a88da8..2c858d4 100644
 +                        }
 +
 +                        sync.releaseHandoffT += dt;
++                    }
++                }
++                else if(sync.trailingExitOffsetSet || ((sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING) && (sync.mode === 0) && trailingGraceOk))
++                {
++                    // ONE_TILE_BEHIND trailing-phase stabilization. Never
++                    // reuses s/phi or any SAME_POSITION field — this is a
++                    // wholly separate visual correction, gated entirely on
++                    // formationState===TRAILING (never CONVERGING/LOCK)
++                    // plus the topology grace above, and can never charge
++                    // toward LOCK: it doesn't touch sync.s or sync.mode at
++                    // all. Checked BEFORE the `j.moving` gate below (same
++                    // reasoning as established-lock-hold/RELEASE_BLEND
++                    // above) so the exit-decay sub-branch survives a
++                    // moving=false endpoint gap; the trailingExitOffsetSet
++                    // half of the OR keeps this reachable for exactly that
++                    // decay even after formationState has already moved on
++                    // (see the capture block's own comment for why a
++                    // promotion to CONVERGING specifically skips capture).
++                    if(sync.trailingExitOffsetSet)
++                    {
++                        // EXIT DECAY — checked first so an in-progress
++                        // decay always runs to completion regardless of
++                        // what trailingEligibleNow/trailingRouteNow read
++                        // this particular frame. See the capture block
++                        // (above, right before the render-decision
++                        // variables) for where these fields were set.
++                        const handoffWeight = Math.max(0, (1 - (sync.trailingExitHandoffT / RoomSpriteCanvas.TRAILING_EXIT_DECAY_MS)));
++
++                        if(handoffWeight > 0)
++                        {
++                            vx = (roomLocation.x + (sync.trailingExitOffsetX * handoffWeight));
++                            vy = (roomLocation.y + (sync.trailingExitOffsetY * handoffWeight));
++                            vz = (roomLocation.z + (sync.trailingExitOffsetZ * handoffWeight));
++                            apply = true;
++                            source = 'TRAIL_PHASE_EXIT';
++                        }
++                        else
++                        {
++                            sync.trailingExitOffsetSet = false;
++                        }
++
++                        sync.trailingExitHandoffT += dt;
++                    }
++                    else if(trailingRouteNow && j && m)
++                    {
++                        // LIVE TRACKING. masterPhase: MASTER's own
++                        // normalized progress through ITS current step
++                        // (0=just started, 1=about to roll over) — the
++                        // shared reference clock both units are meant to
++                        // be walking at, since server movement speed is
++                        // identical for both. Applied not to MASTER's
++                        // position but to JOINER's OWN trailing segment
++                        // (j.sx/sy/sz start, j.dx/dy/dz delta — the edge
++                        // exactly one route-topology step behind MASTER's
++                        // current edge, per joinerBehind/trailingRouteNow
++                        // above): the resulting target can never coincide
++                        // with MASTER's actual position, because it's
++                        // mathematically confined to JOINER's own segment,
++                        // a full tile away from MASTER's — collapse onto
++                        // MASTER is structurally impossible here, not just
++                        // guarded against. This directly compensates for
++                        // JOINER's own native-interpolation clock phase
++                        // drifting from MASTER's (independent per-avatar
++                        // packet timing is the actual root cause of the
++                        // reported gradual visual stretch — both sides
++                        // still walk at identical real speed, but each
++                        // one's client-side step clock is re-anchored by
++                        // its OWN packets' arrival timing, so with nothing
++                        // continuously re-aligning them the two phases can
++                        // drift apart tile after tile) by continuously
++                        // re-deriving JOINER's displayed phase FROM
++                        // MASTER's, every frame, rather than letting any
++                        // one frame's drift accumulate into the next.
++                        const masterPhase = Math.min(1, Math.max(0, ((m.time - m.change) / m.interval)));
++                        const targetX = (j.sx + (j.dx * masterPhase));
++                        const targetY = (j.sy + (j.dy * masterPhase));
++                        const targetZ = (j.sz + (j.dz * masterPhase));
++                        const jNativePhase = Math.min(1, Math.max(0, ((j.time - j.change) / j.interval)));
++
++                        if(sync.trailingPhaseStrength <= 0)
++                        {
++                            // Fresh activation (first time this session, or
++                            // re-activation after a full exit decay): the
++                            // ramp below starts at exactly 0, so THIS
++                            // frame's blended output reduces to plain
++                            // native — pixel-identical to whatever was
++                            // displayed the instant before (which was also
++                            // native, since nothing applied until now) —
++                            // then progressively leans into the
++                            // phase-matched target over TRAILING_PHASE_RAMP_MS.
++                            // No captured offset needed at all, unlike
++                            // entry-handoff/RELEASE_BLEND: starting the
++                            // BLEND WEIGHT at 0 against a continuously
++                            // fresh target is the natural generalization of
++                            // that same continuity idea to a target that
++                            // itself keeps moving (every frame, with
++                            // masterPhase) rather than one fixed value.
++                            console.log(`[sync:TRAIL_PHASE_START] master=${ sync.masterId } joiner=${ sync.joinerId } masterSeg=(${ Math.round(m.sx) },${ Math.round(m.sy) })->(${ m.gxx },${ m.gyy }) joinerSeg=(${ Math.round(j.sx) },${ Math.round(j.sy) })->(${ j.gxx },${ j.gyy }) routeOffset=-1 masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } phaseError=${ (masterPhase - jNativePhase).toFixed(3) } nativeWorldGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } target=(${ targetX.toFixed(3) },${ targetY.toFixed(3) }) currentDisplayed=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) })`);
++                        }
++
++                        sync.trailingPhaseStrength = Math.min(1, (sync.trailingPhaseStrength + (dt / RoomSpriteCanvas.TRAILING_PHASE_RAMP_MS)));
++
++                        vx = (roomLocation.x + ((targetX - roomLocation.x) * sync.trailingPhaseStrength));
++                        vy = (roomLocation.y + ((targetY - roomLocation.y) * sync.trailingPhaseStrength));
++                        vz = (roomLocation.z + ((targetZ - roomLocation.z) * sync.trailingPhaseStrength));
++                        apply = true;
++                        source = 'TRAIL_PHASE';
++
++                        // [sync:TRAIL_STRETCH] — the key diagnostic this
++                        // pass exists to make unnecessary: a confirmed
++                        // one-segment-behind pair, still topologically
++                        // exactly one edge apart right now, whose NATIVE
++                        // (uncorrected) route-relative gap has drifted well
++                        // past a stable ~1 tile. Throttled to at most once
++                        // per 2s while it holds, so a genuine ongoing
++                        // stretch stays visible without spamming.
++                        if(Number.isFinite(nativeAbsGap) && (nativeAbsGap > RoomSpriteCanvas.TRAILING_STRETCH_GAP) && ((nowMs - sync.trailingStretchLastLogAt) > 2000))
++                        {
++                            sync.trailingStretchLastLogAt = nowMs;
++
++                            console.log(`[sync:TRAIL_STRETCH] master=${ sync.masterId } joiner=${ sync.joinerId } nativeAbsGap=${ nativeAbsGap.toFixed(3) } masterPhase=${ masterPhase.toFixed(3) } strength=${ sync.trailingPhaseStrength.toFixed(3) } target=(${ targetX.toFixed(3) },${ targetY.toFixed(3) }) corrected=(${ vx.toFixed(3) },${ vy.toFixed(3) })`);
++                        }
++
++                        // [sync:TRAIL_COLLAPSE_RISK] — defensive assertion
++                        // only, should never fire: the target is always
++                        // derived from JOINER's OWN trailing segment, never
++                        // MASTER's x/y (see the block comment above), so it
++                        // cannot mathematically coincide with MASTER's
++                        // position while trailingRouteNow genuinely holds.
++                        if(Number.isFinite(nativeAbsGap) && (nativeAbsGap < RoomSpriteCanvas.FORMATION_GAP_NEAR_ZERO) && ((nowMs - sync.trailingCollapseLastLogAt) > 2000))
++                        {
++                            sync.trailingCollapseLastLogAt = nowMs;
++
++                            console.log(`[sync:TRAIL_COLLAPSE_RISK] master=${ sync.masterId } joiner=${ sync.joinerId } nativeAbsGap=${ nativeAbsGap.toFixed(3) } strength=${ sync.trailingPhaseStrength.toFixed(3) }`);
++                        }
++
++                        if((nowMs - sync.trailingLastSnapshotAt) > 250)
++                        {
++                            sync.trailingLastSnapshotAt = nowMs;
++
++                            const appliedPhase = (jNativePhase + ((masterPhase - jNativePhase) * sync.trailingPhaseStrength));
++                            const correctionMag = Math.hypot((targetX - roomLocation.x), (targetY - roomLocation.y));
++
++                            console.log(`[sync:TRAIL_PHASE] master=${ sync.masterId } joiner=${ sync.joinerId } masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } appliedPhase=${ appliedPhase.toFixed(3) } phaseError=${ (masterPhase - jNativePhase).toFixed(3) } routeOffset=-1 worldGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } correction=${ correctionMag.toFixed(3) } strength=${ sync.trailingPhaseStrength.toFixed(3) }`);
++                        }
++                    }
++                    else if(trailingEligibleNow)
++                    {
++                        // GRACE HOLD: topology briefly ambiguous (typical
++                        // one-beat rollover skew — see trailingRouteNow/
++                        // trailingGraceOk above), still within the short
++                        // grace window, session still alive. Freeze the
++                        // displayed position exactly where it was rather
++                        // than recomputing from momentarily-wrong topology
++                        // or falling through to a raw NATIVE jump — both
++                        // would produce the visible "backward/forward
++                        // pulse" this grace exists to prevent. Resumes live
++                        // tracking automatically, from the same strength
++                        // (no re-ramp), once joinerBehind reads true again
++                        // — normally within a frame or two.
++                        if(Number.isFinite(sync.lastVx) && Number.isFinite(sync.lastVy))
++                        {
++                            vx = sync.lastVx; vy = sync.lastVy; vz = roomLocation.z;
++                            apply = true;
++                            source = 'TRAIL_PHASE_HOLD';
++                        }
 +                    }
 +                }
 +                else if(j && j.moving)
@@ -2551,7 +2868,7 @@ index 6a88da8..2c858d4 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +1942,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2259,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
