@@ -1612,6 +1612,11 @@ $phone-red: #e03131;
         img {
             position: absolute;
             max-width: none;
+            // The global reset sets `img { object-fit: none }`, which pins
+            // the bitmap at natural size no matter what the element measures
+            // — the zoom changed the box but never the picture. `fill` makes
+            // the bitmap track the zoomed width/height.
+            object-fit: fill;
             image-rendering: pixelated;
             user-select: none;
             pointer-events: none;
