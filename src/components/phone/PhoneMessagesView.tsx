@@ -236,7 +236,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                                         return (
                                             <div key={ entry.friend.id } className="phone-tap phone-pinned-tile" onClick={ event => onPinTap(entry.friend.id) } onPointerDown={ event => onPinDown(entry.friend.id) } onPointerUp={ onPinUp } onPointerLeave={ onPinUp } onPointerCancel={ onPinUp }>
                                                 <div className="phone-pinned-avatar">
-                                                    <PhoneAvatar id={ entry.friend.id } figure={ entry.friend.figure } size={ 60 } online={ entry.friend.online } />
+                                                    <PhoneAvatar id={ entry.friend.id } figure={ entry.friend.figure } size={ 60 } online={ entry.friend.online } unmasked={ true } />
                                                     { (unread > 0) &&
                                                         <div className="phone-unread-badge">{ unread }</div> }
                                                     { muted &&

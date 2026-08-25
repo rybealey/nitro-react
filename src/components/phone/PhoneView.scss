@@ -464,6 +464,12 @@ $phone-red: #e03131;
             image-rendering: pixelated;
         }
 
+        // Unmasked (pinned grid): the pastel tile stays behind the head but
+        // the head is never clipped to it — tall hair pops over the edges.
+        &.phone-avatar--unmasked .phone-avatar-crop {
+            overflow: visible;
+        }
+
         .phone-avatar-group-badge {
             position: absolute;
             inset: 0;

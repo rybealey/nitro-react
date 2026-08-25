@@ -15,16 +15,17 @@ interface PhoneAvatarProps
     figure: string;
     size: number;
     online?: boolean;
+    unmasked?: boolean;
     className?: string;
 }
 
 export const PhoneAvatar: FC<PhoneAvatarProps> = props =>
 {
-    const { id = 0, figure = null, size = 48, online = undefined, className = null } = props;
+    const { id = 0, figure = null, size = 48, online = undefined, unmasked = false, className = null } = props;
     const big = (size >= 60);
 
     return (
-        <div className={ `phone-avatar${ big ? ' phone-avatar--2x' : '' }${ className ? (' ' + className) : '' }` } style={ { width: size, height: size, borderRadius: Math.round(size * 0.3) } }>
+        <div className={ `phone-avatar${ big ? ' phone-avatar--2x' : '' }${ unmasked ? ' phone-avatar--unmasked' : '' }${ className ? (' ' + className) : '' }` } style={ { width: size, height: size, borderRadius: Math.round(size * 0.3) } }>
             <div className="phone-avatar-crop" style={ { backgroundColor: PhoneAvatarColor(id) } }>
                 { (id > 0) && figure &&
                     <LayoutAvatarImageView figure={ figure } headOnly={ true } direction={ 2 } /> }
