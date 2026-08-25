@@ -1537,6 +1537,13 @@ $phone-red: #e03131;
         align-items: center;
         justify-content: center;
         color: #ffffff;
+        // the download button is a real <a> — keep it looking like its
+        // sibling buttons
+        text-decoration: none;
+
+        &:hover {
+            color: #ffffff;
+        }
 
         &.is-next .phone-pi {
             transform: rotate(180deg);
