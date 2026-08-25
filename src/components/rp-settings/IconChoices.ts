@@ -86,6 +86,8 @@ export const USERNAME_ICONS: IconChoice[] = [
     { key: 'tv-retro', name: 'TV Retro', iconClass: 'fa-pixel fa-regular fa-tv-retro' },
     { key: 'wand-magic-sparkles', name: 'Wand Magic Sparkles', iconClass: 'fa-pixel fa-regular fa-wand-magic-sparkles' },
     { key: 'wrench', name: 'Wrench', iconClass: 'fa-pixel fa-regular fa-wrench' },
+    // Non-pixel kit customs (class "fa-kit fa-<name>", prefix "fak").
+    { key: 'bow', name: 'Bow', iconClass: 'fa-kit fa-bow' },
     ...IMAGE_ICONS,
 ];
 
