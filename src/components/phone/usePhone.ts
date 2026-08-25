@@ -1,4 +1,4 @@
-import { RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer } from '@nitrots/nitro-renderer';
+import { RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
@@ -159,7 +159,20 @@ const usePhonePhotosState = () =>
 
     const requestPhotos = () => SendMessageComposer(new RpRequestPhotoListComposer());
 
-    return { photos, photosLoaded, requestPhotos };
+    // Both reply with the refreshed library (the same RpPhotoListEvent), so
+    // the grid/viewer update as soon as the server confirms.
+    const deletePhoto = (photoId: number) => SendMessageComposer(new RpDeletePhotoComposer(photoId));
+
+    const updatePhoto = (photoId: number, base64Url: string) =>
+    {
+        const composer = new RpUpdatePhotoComposer(photoId);
+
+        composer.assignBase64(base64Url);
+
+        SendMessageComposer(composer);
+    }
+
+    return { photos, photosLoaded, requestPhotos, deletePhoto, updatePhoto };
 }
 
 export const usePhonePhotos = () => useBetween(usePhonePhotosState);

@@ -448,14 +448,17 @@ $phone-red: #e03131;
                 position: absolute;
                 left: 50%;
                 top: 50%;
+                // -38 (not -32): centers on a lower point of the head crop so
+                // the full head sits inside the tile instead of peeking over
+                // the bottom edge.
                 margin-left: -45px;
-                margin-top: -32px;
+                margin-top: -38px;
             }
         }
 
         &.phone-avatar--2x .phone-avatar-crop .avatar-image {
             transform: scale(2);
-            transform-origin: 45px 32px;
+            transform-origin: 45px 38px;
             image-rendering: pixelated;
         }
 
@@ -1448,16 +1451,32 @@ $phone-red: #e03131;
         inset: 0;
         z-index: 60;
         background: #000;
-        display: flex;
-        flex-direction: column;
         animation: phone-fade 0.18s ease both;
     }
 
+    // Full-bleed: the photo owns the entire screen; chrome floats over it
+    // on gradient scrims and hides on tap.
+    .phone-photos-viewer-image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        image-rendering: pixelated;
+        cursor: pointer;
+    }
+
     .phone-photos-viewer-top {
-        padding: 46px 10px 8px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 46px 10px 14px;
         display: flex;
         align-items: center;
         gap: 6px;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+        z-index: 2;
 
         .phone-photos-viewer-back {
             width: 34px;
@@ -1466,71 +1485,190 @@ $phone-red: #e03131;
             align-items: center;
             justify-content: center;
             color: #ffffff;
+            flex: none;
+        }
+
+        .phone-photos-viewer-meta {
+            flex: 1;
+            text-align: center;
+            min-width: 0;
         }
 
         .phone-photos-viewer-date {
-            flex: 1;
-            text-align: center;
             font-family: 'Ubuntu', sans-serif;
             font-size: 13px;
             font-weight: 700;
             color: #ffffff;
         }
 
+        .phone-photos-viewer-sub {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.65);
+        }
+
         .phone-photos-viewer-spacer {
             width: 34px;
-        }
-    }
-
-    .phone-photos-viewer-stage {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            image-rendering: pixelated;
+            flex: none;
         }
     }
 
     .phone-photos-viewer-bottom {
-        height: 66px;
-        padding: 0 18px 12px;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 22px 20px 20px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        background: linear-gradient(0deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+        z-index: 2;
+    }
 
-        .phone-photos-viewer-nav {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.12);
+    .phone-photos-viewer-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(3px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+
+        &.is-next .phone-pi {
+            transform: rotate(180deg);
+        }
+
+        &.is-danger {
+            color: #ff7b6b;
+        }
+
+        &.is-disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+    }
+
+    // Delete confirmation, iOS action-sheet style.
+    .phone-photos-sheet-backdrop {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        background: rgba(0, 0, 0, 0.45);
+        display: flex;
+        align-items: flex-end;
+        padding: 0 10px 14px;
+    }
+
+    .phone-photos-sheet {
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        background: rgba(38, 34, 42, 0.97);
+        animation: phone-sheet-up 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+
+        .phone-photos-sheet-note {
+            padding: 12px 18px;
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .phone-photos-sheet-btn {
+            padding: 13px 18px;
+            text-align: center;
+            font-family: 'Ubuntu', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: #ffffff;
+
+            &.is-danger {
+                font-weight: 700;
+                color: #ff5b4d;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.06);
+            }
+        }
+    }
+
+    // Crop & zoom editor.
+    .phone-photos-edit-stage {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        cursor: grab;
+        touch-action: none;
+
+        &:active {
+            cursor: grabbing;
+        }
+
+        img {
+            position: absolute;
+            max-width: none;
+            image-rendering: pixelated;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .phone-photos-edit-loading {
+            position: absolute;
+            inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+    }
 
-            &.is-next .phone-pi {
-                transform: rotate(180deg);
-            }
+    .phone-photos-edit-action {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: #ffffff;
+        flex: none;
+        min-width: 46px;
 
-            &.is-disabled {
-                opacity: 0.3;
-                cursor: default;
-            }
+        &.is-save {
+            font-weight: 700;
+            color: $phone-pink-hot;
+            text-align: right;
         }
 
-        .phone-photos-viewer-shared {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.75);
+        &.is-disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+    }
+
+    .phone-photos-edit-bottom {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 18px 26px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: linear-gradient(0deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+        z-index: 2;
+
+        input[type='range'] {
+            width: 100%;
+            accent-color: $phone-pink-hot;
+        }
+
+        .phone-photos-edit-hint {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
         }
     }
 
@@ -1610,7 +1748,7 @@ $phone-red: #e03131;
 $phone-icons: 'message', 'users', 'user', 'user-plus', 'sliders', 'camera', 'image', 'download', 'dollar',
     'heart', 'pencil', 'search', 'bookmark', 'volume-x', 'volume-2', 'trash', 'chevron-left',
     'more-vertical', 'arrow-up', 'plus', 'check', 'close', 'phone', 'map-pin-home',
-    'megaphone', 'cellular-signal-3', 'battery-full';
+    'megaphone', 'cellular-signal-3', 'battery-full', 'crop';
 
 @each $name in $phone-icons {
     .phone-pi-#{$name} {
