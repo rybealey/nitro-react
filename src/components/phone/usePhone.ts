@@ -1,7 +1,8 @@
+import { RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
-import { GetSessionDataManager } from '../../api';
-import { useFriends, useMessenger } from '../../hooks';
+import { GetSessionDataManager, SendMessageComposer } from '../../api';
+import { useFriends, useMessageEvent, useMessenger } from '../../hooks';
 
 // Pinned / muted conversation preferences for the phone, persisted per
 // account in localStorage. Muting a conversation hides it from the unread
@@ -142,3 +143,23 @@ export const usePhoneBadges = () =>
 
     return { unreadMessages, requestCount: requests.length };
 }
+
+// The player's photo library (camera_web rows), shared between the Camera
+// and Photos apps so a fresh save shows up everywhere at once.
+const usePhonePhotosState = () =>
+{
+    const [ photos, setPhotos ] = useState<RpPhotoListItem[]>([]);
+    const [ photosLoaded, setPhotosLoaded ] = useState(false);
+
+    useMessageEvent<RpPhotoListEvent>(RpPhotoListEvent, event =>
+    {
+        setPhotos(event.getParser().photos);
+        setPhotosLoaded(true);
+    });
+
+    const requestPhotos = () => SendMessageComposer(new RpRequestPhotoListComposer());
+
+    return { photos, photosLoaded, requestPhotos };
+}
+
+export const usePhonePhotos = () => useBetween(usePhonePhotosState);

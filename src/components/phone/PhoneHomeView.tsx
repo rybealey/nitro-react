@@ -3,8 +3,8 @@ import { PhoneIcon } from './PhoneIcon';
 import { usePhoneBadges } from './usePhone';
 
 // Phone home screen: terrace wallpaper, a 4-wide app grid and the dock.
-// Only Messages and Contacts are live apps for now — the rest are visible
-// but disabled (grayed out) until their features ship.
+// Messages, Contacts, Camera and Photos are live apps — the rest are
+// visible but disabled (grayed out) until their features ship.
 
 interface PhoneApp
 {
@@ -24,8 +24,8 @@ const GRID_APPS: PhoneApp[] = [
 
 const DOCK_APPS: PhoneApp[] = [
     { key: 'Messages', icon: 'message', active: true },
-    { key: 'Camera', icon: 'camera' },
-    { key: 'Gallery', icon: 'image' }
+    { key: 'Camera', icon: 'camera', active: true },
+    { key: 'Photos', icon: 'image', active: true }
 ];
 
 interface PhoneHomeViewProps

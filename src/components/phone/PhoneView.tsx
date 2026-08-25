@@ -4,10 +4,12 @@ import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneCallView } from './PhoneCallView';
+import { PhoneCameraView } from './PhoneCameraView';
 import { PhoneContactsView } from './PhoneContactsView';
 import { PhoneHomeView } from './PhoneHomeView';
 import { PhoneComposeView, PhoneMessagesView } from './PhoneMessagesView';
 import { PhoneIcon } from './PhoneIcon';
+import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneThreadView } from './PhoneThreadView';
 import { usePhonePrefs } from './usePhone';
 
@@ -16,12 +18,20 @@ import { usePhonePrefs } from './usePhone';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos';
+
+// Which app each home-screen tile opens.
+const APP_SCREENS: Record<string, PhoneScreen> = {
+    'Messages': 'messages',
+    'Contacts': 'contacts',
+    'Camera': 'camera',
+    'Photos': 'photos'
+};
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
@@ -160,6 +170,12 @@ export const PhoneView: FC<{}> = props =>
                     case 'contacts':
                         show('contacts');
                         return;
+                    case 'camera':
+                        show('camera');
+                        return;
+                    case 'photos':
+                        show('photos');
+                        return;
                 }
             },
             eventUrlPrefix: 'phone/'
@@ -226,13 +242,13 @@ export const PhoneView: FC<{}> = props =>
 
     if(!isVisible) return null;
 
-    const onLightScreen = (screen !== 'home');
+    const onLightScreen = ((screen !== 'home') && (screen !== 'camera'));
 
     return (
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-region" windowPosition={ DraggableWindowPosition.CENTER }>
             <div className="pixelrp-phone">
                 <div className="phone-shell">
-                    <div className="phone-display">
+                    <div className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }` }>
                         <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
@@ -244,7 +260,7 @@ export const PhoneView: FC<{}> = props =>
                         <div className="phone-notch phone-drag-region" title="Hold to move the phone" />
                         <div key={ `${ screen }-${ animation }` } className={ `phone-screen-anim phone-anim-${ animation }` }>
                             { (screen === 'home') &&
-                                <PhoneHomeView openApp={ app => go((app === 'Messages') ? 'messages' : 'contacts') } /> }
+                                <PhoneHomeView openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app])) } /> }
                             { (screen === 'messages') &&
                                 <PhoneMessagesView openThread={ openThread } openThreadForUser={ openThreadForUser } openCompose={ () => go('compose') } /> }
                             { (screen === 'thread') &&
@@ -253,6 +269,10 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneComposeView openThreadForUser={ openThreadForUser } onCancel={ () => go('messages') } /> }
                             { (screen === 'contacts') &&
                                 <PhoneContactsView openThreadForUser={ openThreadForUser } startCall={ userId => setCallFriendId(userId) } onBack={ () => go('home') } /> }
+                            { (screen === 'camera') &&
+                                <PhoneCameraView openPhotos={ () => go('photos') } onExit={ () => go('home') } /> }
+                            { (screen === 'photos') &&
+                                <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                         </div>
                         { callFriend &&
                             <PhoneCallView friend={ callFriend } onEnd={ () => setCallFriendId(0) } /> }
