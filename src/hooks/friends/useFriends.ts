@@ -1,7 +1,7 @@
 import { AcceptFriendMessageComposer, DeclineFriendMessageComposer, FollowFriendMessageComposer, FriendListFragmentEvent, FriendListUpdateComposer, FriendListUpdateEvent, FriendParser, FriendRequestsEvent, GetFriendRequestsComposer, MessengerInitComposer, MessengerInitEvent, NewFriendRequestEvent, RequestFriendComposer, SetRelationshipStatusComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
-import { CloneObject, GetSessionDataManager, MessengerFriend, MessengerRequest, MessengerSettings, SendMessageComposer } from '../../api';
+import { CloneObject, GetSessionDataManager, MessengerFriend, MessengerRequest, MessengerSettings, SendMessageComposer, UpdateFriendLookup } from '../../api';
 import { useMessageEvent } from '../events';
 
 const useFriendsState = () =>
@@ -11,6 +11,10 @@ const useFriendsState = () =>
     const [ sentRequests, setSentRequests ] = useState<number[]>([]);
     const [ dismissedRequestIds, setDismissedRequestIds ] = useState<number[]>([]);
     const [ settings, setSettings ] = useState<MessengerSettings>(null);
+
+    // Mirror the list into the module-level lookup so plain helpers
+    // (GetUserProfile) can resolve friends who aren't in the current room.
+    useEffect(() => UpdateFriendLookup(friends), [ friends ]);
 
     const onlineFriends = useMemo(() =>
     {

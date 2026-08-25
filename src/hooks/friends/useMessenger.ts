@@ -1,4 +1,4 @@
-import { NewConsoleMessageEvent, RoomInviteErrorEvent, RoomInviteEvent, SendMessageComposer as SendMessageComposerPacket } from '@nitrots/nitro-renderer';
+import { NewConsoleMessageEvent, RoomInviteErrorEvent, RoomInviteEvent, RpMessengerMarkReadComposer, RpMessengerReceiptEvent, SendMessageComposer as SendMessageComposerPacket } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { CloneObject, GetSessionDataManager, LocalizeText, MessengerIconState, MessengerThread, MessengerThreadChat, NotificationAlertType, PlaySound, SendMessageComposer, SoundNames } from '../../api';
@@ -6,12 +6,25 @@ import { useMessageEvent } from '../events';
 import { useNotification } from '../notification';
 import { useFriends } from './useFriends';
 
+// Live delivered/read receipt per friend id (pixelrp custom packets). The
+// latest receipt wins; nothing is persisted — like the threads themselves,
+// receipts are session-scoped.
+export interface MessengerReceipt
+{
+    type: number; // MESSENGER_RECEIPT_DELIVERED | MESSENGER_RECEIPT_READ
+    date: Date;
+}
+
+export const MESSENGER_RECEIPT_DELIVERED: number = 1;
+export const MESSENGER_RECEIPT_READ: number = 2;
+
 const useMessengerState = () =>
 {
     const [ messageThreads, setMessageThreads ] = useState<MessengerThread[]>([]);
     const [ activeThreadId, setActiveThreadId ] = useState<number>(-1);
     const [ hiddenThreadIds, setHiddenThreadIds ] = useState<number[]>([]);
     const [ iconState, setIconState ] = useState<number>(MessengerIconState.HIDDEN);
+    const [ receipts, setReceipts ] = useState<Record<number, MessengerReceipt>>({});
     const { getFriend = null } = useFriends();
     const { simpleAlert = null } = useNotification();
 
@@ -79,11 +92,22 @@ const useMessengerState = () =>
         if(activeThreadId === threadId) setActiveThreadId(-1);
     }
 
+    // Tell the server this friend's conversation was just read, so they get
+    // a live "Read at" receipt on their phone.
+    const sendMarkRead = (thread: MessengerThread) =>
+    {
+        if(!thread || !thread.participant || (thread.participant.id <= 0)) return;
+
+        SendMessageComposer(new RpMessengerMarkReadComposer(thread.participant.id));
+    }
+
     const sendMessage = (thread: MessengerThread, senderId: number, messageText: string, secondsSinceSent: number = 0, extraData: string = null, messageType: number = MessengerThreadChat.CHAT) =>
     {
         if(!thread || !messageText || !messageText.length) return;
 
         const ownMessage = (senderId === GetSessionDataManager().userId);
+
+        if(!ownMessage && (activeThreadId === thread.threadId)) sendMarkRead(thread);
 
         if(ownMessage && (messageText.length <= 255)) SendMessageComposer(new SendMessageComposerPacket(thread.participant.id, messageText));
 
@@ -130,6 +154,15 @@ const useMessengerState = () =>
         sendMessage(thread, parser.senderId, parser.messageText, 0, null, MessengerThreadChat.ROOM_INVITE);
     });
 
+    useMessageEvent<RpMessengerReceiptEvent>(RpMessengerReceiptEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser || (parser.friendId <= 0)) return;
+
+        setReceipts(prevValue => ({ ...prevValue, [parser.friendId]: { type: parser.type, date: new Date() }}));
+    });
+
     useMessageEvent<RoomInviteErrorEvent>(RoomInviteErrorEvent, event =>
     {
         const parser = event.getParser();
@@ -140,6 +173,8 @@ const useMessengerState = () =>
     useEffect(() =>
     {
         if(activeThreadId <= 0) return;
+
+        sendMarkRead(messageThreads.find(thread => (thread.threadId === activeThreadId)));
 
         setMessageThreads(prevValue =>
         {
@@ -181,7 +216,7 @@ const useMessengerState = () =>
         });
     }, [ visibleThreads ]);
 
-    return { messageThreads, activeThread, iconState, visibleThreads, getMessageThread, setActiveThreadId, closeThread, sendMessage };
+    return { messageThreads, activeThread, iconState, visibleThreads, receipts, getMessageThread, setActiveThreadId, closeThread, sendMessage };
 }
 
 export const useMessenger = () => useBetween(useMessengerState);

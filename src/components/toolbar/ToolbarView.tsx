@@ -1,8 +1,9 @@
 import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
-import { CreateLinkEvent, GetSessionDataManager, MessengerIconState, OpenMessengerChat } from '../../api';
+import { CreateLinkEvent, GetSessionDataManager } from '../../api';
 import { Base, Flex, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
-import { useAchievements, useFriends, useInventoryUnseenTracker, useMessageEvent, useMessenger, useRoomEngineEvent } from '../../hooks';
+import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
+import { usePhoneBadges } from '../phone/usePhone';
 import { ToolbarMeView } from './ToolbarMeView';
 
 export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
@@ -13,8 +14,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
     const [ useGuideTool, setUseGuideTool ] = useState(false);
     const { getFullCount = 0 } = useInventoryUnseenTracker();
     const { getTotalUnseen = 0 } = useAchievements();
-    const { requests = [] } = useFriends();
-    const { iconState = MessengerIconState.HIDDEN } = useMessenger();
+    const { unreadMessages = 0, requestCount = 0 } = usePhoneBadges();
     const isMod = GetSessionDataManager().isModerator;
     
     useMessageEvent<PerkAllowancesMessageEvent>(PerkAllowancesMessageEvent, event =>
@@ -93,12 +93,10 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                 <Flex alignItems="center" gap={ 2 }>
                     <Flex gap={ 2 }>
                         <Base pointer title="Diamonds" className="navigation-item icon-diamonds" />
-                        <Base pointer className="navigation-item icon icon-friendall" onClick={ event => CreateLinkEvent('friends/toggle') }>
-                            { (requests.length > 0) &&
-                                <LayoutItemCountView count={ requests.length } /> }
+                        <Base pointer title="Phone" className="navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
+                            { ((unreadMessages + requestCount) > 0) &&
+                                <LayoutItemCountView count={ (unreadMessages + requestCount) } /> }
                         </Base>
-                        { ((iconState === MessengerIconState.SHOW) || (iconState === MessengerIconState.UNREAD)) &&
-                            <Base pointer className={ `navigation-item icon icon-message ${ (iconState === MessengerIconState.UNREAD) && 'is-unseen' }` } onClick={ event => OpenMessengerChat() } /> }
                     </Flex>
                 </Flex>
             </Flex>

@@ -1,3 +1,4 @@
+export * from './FriendLookup';
 export * from './GetGroupChatData';
 export * from './IGroupChatData';
 export * from './MessengerFriend';

@@ -634,7 +634,7 @@ __metadata:
 
 "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@npm%3A1.6.6#~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch":
   version: 1.6.6
-  resolution: "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@npm%3A1.6.6#~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch::version=1.6.6&hash=725c14"
+  resolution: "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@npm%3A1.6.6#~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch::version=1.6.6&hash=43face"
   dependencies:
     "@pixi/app": "npm:~6.5.0"
     "@pixi/basis": "npm:~6.5.0"
@@ -671,7 +671,7 @@ __metadata:
     gifuct-js: "npm:^2.1.2"
     howler: "npm:^2.2.3"
     pako: "npm:^2.0.4"
-  checksum: 10c0/33f7ff85b7eedaf9e050fe426f62fbc343c4493af5a0b9ba33147c86c1ad9cadd1d91e232f251fcf8c55ff2af14414c9e75ecda61e32a99282cd7a90173d18fd
+  checksum: 10c0/7002ba0cc287833d7d32648fe67ebbae0f74299ca7ba6c5aa93861fdce5c335ee69d06bdfe73a72cf30b6b955670a4b6ad8cbfdb514e9281eaa96f5eaeb22f30
   languageName: node
   linkType: hard
 
@@ -2675,6 +2675,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"html-to-image@npm:^1.11.13":
+  version: 1.11.13
+  resolution: "html-to-image@npm:1.11.13"
+  checksum: 10c0/03bd7192d87b99499e37ff12a8e2b41ddce4cf8e33a93dfadff18df0f213434c7f1ba8328db2158f4805da07b7aec3c90aec3152908281153217e86784218b10
+  languageName: node
+  linkType: hard
+
 "ignore@npm:^5.2.0":
   version: 5.2.4
   resolution: "ignore@npm:5.2.4"
@@ -3207,6 +3214,8 @@ __metadata:
     eslint-plugin-jsx-a11y: "npm:^6.6.0"
     eslint-plugin-react: "npm:^7.30.1"
     eslint-plugin-react-hooks: "npm:^4.6.0"
+    html-to-image: "npm:^1.11.13"
+    pixelarticons: "npm:^2.4.1"
     react: "npm:^18.2.0"
     react-bootstrap: "npm:^2.2.2"
     react-dom: "npm:^18.2.0"
@@ -3451,6 +3460,17 @@ __metadata:
   version: 4.0.5
   resolution: "picomatch@npm:4.0.5"
   checksum: 10c0/947bc6b6e1ff1e6c5aaf95b107a0839d12802f4f7b867663f67d47accba939ca1cb582cf99dfc30438efa1c4648ac5990967e783e8929c36b03e8440704ef1bd
+  languageName: node
+  linkType: hard
+
+"pixelarticons@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "pixelarticons@npm:2.4.1"
+  peerDependencies:
+    react: ">=16"
+  bin:
+    pixelarticons: bin/upgrade.js
+  checksum: 10c0/d18a40141996286fd252151ec8a530059f679511a8b1a5d92ec7215cfea343586b4312575d68aa5cc4a7ec2e94941ea935de4d6cea5229040e58a0dff1909fb3
   languageName: node
   linkType: hard
 

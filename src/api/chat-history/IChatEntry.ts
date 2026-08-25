@@ -12,6 +12,8 @@ export interface IChatEntry
     imageUrl?: string;
     color?: string;
     usernameColor?: string;
+    usernameIcon?: string;
+    usernameIconColor?: string;
     roomId: number;
     timestamp: string;
     type: number;

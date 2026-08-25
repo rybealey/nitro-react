@@ -1,11 +1,13 @@
-import { ILinkEventTracker, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
+import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
+import { DEFAULT_USERNAME_ICON, IsImageIcon, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
+import { UsernameIconGlyph } from './UsernameIconGlyph';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -32,7 +34,46 @@ export const RpSettingsView: FC<{}> = props =>
     const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
     const [ socialPage, setSocialPage ] = useState<string>(SOCIAL_PAGES[0]);
     const [ usernameColor, setUsernameColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
+    const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
+    const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
+    // Own avatar head + chest color for the preview bubble, built the same way
+    // the chat widget builds them (useChatWidget's setFigureImage).
+    const [ previewFigure, setPreviewFigure ] = useState<{ imageUrl: string, color: string }>(null);
+
+    useEffect(() =>
+    {
+        if(!isVisible) return;
+
+        let disposed = false;
+
+        const buildFigure = (figure: string) =>
+        {
+            const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, null, {
+                resetFigure: figure =>
+                {
+                    if(!disposed) buildFigure(figure);
+                },
+                dispose: () => {},
+                disposed: false
+            });
+
+            if(!avatarImage) return;
+
+            const image = avatarImage.getCroppedImage(AvatarSetType.HEAD);
+            const color = avatarImage.getPartColor(AvatarFigurePartType.CHEST);
+
+            setPreviewFigure({ imageUrl: image.src, color: ('#' + ((color && color.rgb) || 16777215).toString(16).padStart(6, '0')) });
+            avatarImage.dispose();
+        }
+
+        buildFigure(GetSessionDataManager().figure);
+
+        return () =>
+        {
+            disposed = true;
+        }
+    }, [ isVisible ]);
 
     // Snap any stored value onto the nearest of the five slider stops.
     const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
@@ -45,29 +86,35 @@ export const RpSettingsView: FC<{}> = props =>
         const opacity = snapOpacity(parser.chromeOpacity);
         const header = (IsValidHeaderKey(parser.headerColor) ? parser.headerColor : DEFAULT_HEADER_KEY);
         const uname = (IsValidUsernameColor(parser.usernameColor) ? parser.usernameColor : DEFAULT_USERNAME_COLOR);
+        const uicon = (IsValidUsernameIcon(parser.icon) ? parser.icon : DEFAULT_USERNAME_ICON);
+        const uiconColor = (IsValidUsernameColor(parser.iconColor) ? parser.iconColor : DEFAULT_USERNAME_COLOR);
 
         setChromeColor(color);
         setChromeOpacity(opacity);
         setHeaderKey(header);
         setUsernameColor(uname);
+        setUsernameIcon(uicon);
+        setUsernameIconColor(uiconColor);
         ApplyUiChrome(color, opacity, header);
     });
 
-    const saveSettings = (color: string, opacity: number, header: string, uname: string) =>
+    const saveSettings = (color: string, opacity: number, header: string, uname: string, icon: string, iconColor: string) =>
     {
-        // '' resets the server row's color/header/username to default
+        // '' resets the server row's color/header/username/icon to default
         SendMessageComposer(new RpSaveUiSettingsComposer(
             (color === DEFAULT_CHROME_COLOR) ? '' : color,
             opacity,
             (header === DEFAULT_HEADER_KEY) ? '' : header,
-            (uname === DEFAULT_USERNAME_COLOR) ? '' : uname));
+            (uname === DEFAULT_USERNAME_COLOR) ? '' : uname,
+            icon,
+            (iconColor === DEFAULT_USERNAME_COLOR) ? '' : iconColor));
     }
 
     const selectChrome = (color: string) =>
     {
         setChromeColor(color);
         ApplyUiChrome(color, chromeOpacity, headerKey);
-        saveSettings(color, chromeOpacity, headerKey, usernameColor);
+        saveSettings(color, chromeOpacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
     }
 
     const selectOpacity = (index: number) =>
@@ -76,20 +123,35 @@ export const RpSettingsView: FC<{}> = props =>
 
         setChromeOpacity(opacity);
         ApplyUiChrome(chromeColor, opacity, headerKey);
-        saveSettings(chromeColor, opacity, headerKey, usernameColor);
+        saveSettings(chromeColor, opacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
     }
 
     const selectHeader = (key: string) =>
     {
         setHeaderKey(key);
         ApplyUiChrome(chromeColor, chromeOpacity, key);
-        saveSettings(chromeColor, chromeOpacity, key, usernameColor);
+        saveSettings(chromeColor, chromeOpacity, key, usernameColor, usernameIcon, usernameIconColor);
     }
 
     const selectUsernameColor = (color: string) =>
     {
         setUsernameColor(color);
-        saveSettings(chromeColor, chromeOpacity, headerKey, color);
+        saveSettings(chromeColor, chromeOpacity, headerKey, color, usernameIcon, usernameIconColor);
+    }
+
+    const selectUsernameIcon = (icon: string) =>
+    {
+        setUsernameIcon(icon);
+        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, icon, usernameIconColor);
+    }
+
+    const selectUsernameIconColor = (color: string) =>
+    {
+        // color does not apply to image icons — the section is disabled then
+        if(IsImageIcon(usernameIcon)) return;
+
+        setUsernameIconColor(color);
+        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, usernameIcon, color);
     }
 
     useEffect(() =>
@@ -215,13 +277,34 @@ export const RpSettingsView: FC<{}> = props =>
                             )) }
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
-                            { (socialPage === 'Username') &&
-                                <div className="rp-settings-section">
-                                    <div className="rp-settings-section-info">
-                                        <Text bold>Color</Text>
-                                        <Text small className="text-muted">The color of your username in your chat bubbles. Everyone in the room sees it.</Text>
+                            { (socialPage === 'Username') && <>
+                                <div className="rp-settings-preview">
+                                    <Text small className="text-muted">Preview</Text>
+                                    <div className="bubble-container" style={ { position: 'relative' } }>
+                                        <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
+                                        <div className="chat-bubble bubble-0 type-0" style={ { maxWidth: '100%' } }>
+                                            <div className="user-container">
+                                                { previewFigure?.imageUrl &&
+                                                    <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
+                                            </div>
+                                            <div className="chat-content">
+                                                { usernameIcon &&
+                                                    /* key remounts the <i> so the FA kit re-converts it to SVG on
+                                                       every icon/color change (the kit swaps nodes outside React) */
+                                                    <b key={ `${ usernameIcon }|${ usernameIconColor }` } className="username mr-1"><span style={ { color: usernameIconColor } }><UsernameIconGlyph iconClass={ usernameIcon } /></span>{ ' ' }</b> }
+                                                <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
+                                                <span className="message">Welcome to San Francisco!</span>
+                                            </div>
+                                            <div className="pointer" />
+                                        </div>
                                     </div>
-                                    <div className="rp-settings-swatches">
+                                </div>
+                                <div className="rp-settings-stack-section">
+                                    <div className="rp-settings-stack-head">
+                                        <Text bold>Color</Text>
+                                        <Text small className="text-muted">The color of your username in your chat bubbles.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
                                         { USERNAME_COLORS.map(entry => (
                                             <div key={ entry.key } title={ entry.name }
                                                 className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
@@ -229,7 +312,37 @@ export const RpSettingsView: FC<{}> = props =>
                                                 onClick={ () => selectUsernameColor(entry.color) } />
                                         )) }
                                     </div>
-                                </div> }
+                                </div>
+                                <div className="rp-settings-stack-section">
+                                    <div className="rp-settings-stack-head">
+                                        <Text bold>Icon</Text>
+                                        <Text small className="text-muted">An icon before your name in chat.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                        { USERNAME_ICONS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
+                                                onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
+                                                <UsernameIconGlyph iconClass={ entry.iconClass } />
+                                            </div>
+                                        )) }
+                                    </div>
+                                </div>
+                                <div className={ `rp-settings-stack-section ${ IsImageIcon(usernameIcon) ? 'is-disabled' : '' }` }>
+                                    <div className="rp-settings-stack-head">
+                                        <Text bold>Icon Color</Text>
+                                        <Text small className="text-muted">{ IsImageIcon(usernameIcon) ? 'Not applicable to image icons.' : 'The color of your chat icon.' }</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                        { USERNAME_COLORS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch ${ (usernameIconColor === entry.color) ? 'is-selected' : '' }` }
+                                                style={ { backgroundColor: entry.color } }
+                                                onClick={ () => selectUsernameIconColor(entry.color) } />
+                                        )) }
+                                    </div>
+                                </div>
+                            </> }
                         </Column>
                     </div> }
                 { (currentTab !== 'Interface') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&

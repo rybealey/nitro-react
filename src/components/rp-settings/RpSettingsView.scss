@@ -1,6 +1,6 @@
 .nitro-card.rp-settings-window {
-    width: 450px;
-    height: 360px;
+    width: 560px;
+    height: 560px;
 
     // Sub-navigation layout (e.g. Roleplay tab): slim left rail of page
     // links beside the page content. Active link is a chrome-colored pill —
@@ -41,6 +41,11 @@
 
     .rp-settings-subpage {
         flex: 1;
+        min-width: 0;
+        // never scroll sideways; scroll vertically only if a page runs tall
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
     // Setting row: label + description on the left, control on the right.
@@ -70,6 +75,57 @@
 
     .rp-settings-swatches--headers {
         grid-template-columns: repeat(3, 34px);
+    }
+
+    // Username page: full-width stacked sections — a compact "Title —
+    // description" head line above a grid that auto-fills the page width, so
+    // every option is visible without scrollboxes.
+    .rp-settings-stack-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 4px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .rp-settings-stack-head {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    // Section that doesn't apply to the current selection (e.g. Icon Color
+    // while an image icon is chosen): visibly muted and inert.
+    .rp-settings-stack-section.is-disabled {
+        opacity: 0.45;
+
+        .rp-settings-swatch {
+            pointer-events: none;
+            cursor: default;
+        }
+    }
+
+    .rp-settings-swatches--wide {
+        grid-template-columns: repeat(auto-fill, 34px);
+    }
+
+    // Live preview of the player's chat-bubble identity (icon + name colors),
+    // updating as swatches are picked.
+    .rp-settings-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: $border-radius;
+    }
+
+    // The preview renders a REAL chat bubble (bubble-0 markup + global chat
+    // styles), so it only needs room to sit inline; keep it from overflowing.
+    .rp-settings-preview .bubble-container {
+        max-width: 100%;
+        min-width: 0;
     }
 
     // Color swatches + opacity slider stacked as one control column: the
@@ -117,6 +173,31 @@
         &.is-selected {
             border-color: $white;
             box-shadow: 0 0 0 2px var(--prp-chrome-95), inset 0 2px rgba(255, 255, 255, 0.08), inset 0 -2px rgba(0, 0, 0, 0.25);
+        }
+    }
+
+    // Icon swatches carry a glyph (not a background color): light plate, the
+    // icon centered in black. The "None" X reads as the familiar clear glyph.
+    .rp-settings-swatch--icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        font-size: 15px;
+
+        svg,
+        i {
+            width: 15px;
+            height: 15px;
+            line-height: 1;
+        }
+
+        // Image icons render at NATIVE size (pixel art — never scale).
+        img.username-icon-image {
+            width: auto;
+            height: auto;
+            image-rendering: pixelated;
         }
     }
 

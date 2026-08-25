@@ -1,6 +1,32 @@
+// Habbo-modified Ubuntu: symbol glyphs (| -> heart, etc.) are baked into
+// every weight. Each face must be declared explicitly — a weight left
+// undeclared here would fall back to stock Ubuntu and lose the symbols.
 @font-face {
     font-family: Ubuntu;
     src: url('@/assets/webfonts/Ubuntu.ttf');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: Ubuntu;
+    src: url('@/assets/webfonts/Ubuntu-m.ttf');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: Ubuntu;
+    src: url('@/assets/webfonts/Ubuntu-b.ttf');
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: Ubuntu;
+    src: url('@/assets/webfonts/Ubuntu-i.ttf');
+    font-weight: 400;
+    font-style: italic;
 }
 
 // PixelRP design-system faces (deployment screen).

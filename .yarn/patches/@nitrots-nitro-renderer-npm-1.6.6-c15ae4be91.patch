@@ -1,28 +1,42 @@
 diff --git a/src/events/session/RoomSessionChatEvent.ts b/src/events/session/RoomSessionChatEvent.ts
-index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..5077237c9ee46689060e131edc7dae0be68abbad 100644
+index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..11ad556b51eb593c23a6606382190d67cd6440d3 100644
 --- a/src/events/session/RoomSessionChatEvent.ts
 +++ b/src/events/session/RoomSessionChatEvent.ts
-@@ -24,8 +24,9 @@ export class RoomSessionChatEvent extends RoomSessionEvent
+@@ -24,8 +24,11 @@ export class RoomSessionChatEvent extends RoomSessionEvent
      private _links: string[];
      private _extraParam: number;
      private _style: number;
 +    private _usernameColor: string;
++    private _icon: string;
++    private _iconColor: string;
  
 -    constructor(type: string, session: IRoomSession, objectId: number, message: string, chatType: number, style: number = 0, links: string[] = null, extraParam: number = -1)
-+    constructor(type: string, session: IRoomSession, objectId: number, message: string, chatType: number, style: number = 0, links: string[] = null, extraParam: number = -1, usernameColor: string = '')
++    constructor(type: string, session: IRoomSession, objectId: number, message: string, chatType: number, style: number = 0, links: string[] = null, extraParam: number = -1, usernameColor: string = '', icon: string = '', iconColor: string = '')
      {
          super(type, session);
  
-@@ -35,6 +36,12 @@ export class RoomSessionChatEvent extends RoomSessionEvent
+@@ -35,6 +38,24 @@ export class RoomSessionChatEvent extends RoomSessionEvent
          this._links = links;
          this._extraParam = extraParam;
          this._style = style;
 +        this._usernameColor = usernameColor;
++        this._icon = icon;
++        this._iconColor = iconColor;
 +    }
 +
 +    public get usernameColor(): string
 +    {
 +        return this._usernameColor;
++    }
++
++    public get icon(): string
++    {
++        return this._icon;
++    }
++
++    public get iconColor(): string
++    {
++        return this._iconColor;
      }
  
      public get objectId(): number
@@ -192,20 +206,27 @@ index beb4a06196a800d842a1e3bbe48226d2ec3eea98..582243d4581bfa5b3615ab44b36d70ce
      {
          if(!containers || !containers.length) return null;
 diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
-index 7878a04307187848c6e07bcb2ecca59324b053f1..0fc4f22e103fd62259a9a3693460cf23663d5b90 100644
+index 7878a04307187848c6e07bcb2ecca59324b053f1..4162a6a615436046f4cd40f2a3b6667b462cb300 100644
 --- a/src/nitro/communication/NitroMessages.ts
 +++ b/src/nitro/communication/NitroMessages.ts
-@@ -1,4 +1,9 @@
+@@ -1,4 +1,16 @@
  import { IMessageConfiguration } from '../../api';
 +import { RpStatsEvent } from './messages/incoming/RpStatsEvent';
 +import { RpInventoryEvent } from './messages/incoming/RpInventoryEvent';
 +import { RpUiSettingsEvent } from './messages/incoming/RpUiSettingsEvent';
++import { RpMessengerReceiptEvent } from './messages/incoming/RpMessengerReceiptEvent';
++import { RpPhotoListEvent } from './messages/incoming/RpPhotoListEvent';
 +import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
++import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
++import { RpRequestPhotoListComposer } from './messages/outgoing/RpRequestPhotoListComposer';
++import { RpDeletePhotoComposer } from './messages/outgoing/RpDeletePhotoComposer';
++import { RpUpdatePhotoComposer } from './messages/outgoing/RpUpdatePhotoComposer';
++import { RpSaveScreenshotComposer } from './messages/outgoing/RpSaveScreenshotComposer';
 +import { RpSaveUiSettingsComposer } from './messages/outgoing/RpSaveUiSettingsComposer';
  import { AcceptFriendMessageComposer, AcceptFriendResultEvent, AcceptGameInviteMessageComposer, AcceptQuestMessageComposer, AccountSafetyLockStatusChangeMessageEvent, AchievementEvent, AchievementNotificationMessageEvent, AchievementResolutionCompletedMessageEvent, AchievementResolutionProgressMessageEvent, AchievementResolutionsMessageEvent, AchievementsEvent, AchievementsScoreEvent, ActivateQuestMessageComposer, ActivityPointNotificationMessageEvent, AddFavouriteRoomMessageComposer, AddJukeboxDiskComposer, AddSpamWallPostItMessageComposer, ApplySnapshotMessageComposer, ApplyTonerComposer, ApproveAllMembershipRequestsMessageComposer, ApproveNameMessageComposer, ApproveNameMessageEvent, AuthenticatedEvent, AuthenticationMessageComposer, AvailabilityStatusMessageEvent, AvailabilityTimeMessageEvent, AvatarEffectActivatedComposer, AvatarEffectActivatedEvent, AvatarEffectAddedEvent, AvatarEffectExpiredEvent, AvatarEffectSelectedComposer, AvatarEffectSelectedEvent, AvatarEffectsEvent, BadgePointLimitsEvent, BadgeReceivedEvent, BadgesEvent, BannedUsersFromRoomEvent, BonusRareInfoMessageEvent, BotAddedToInventoryEvent, BotCommandConfigurationEvent, BotErrorEvent, BotForceOpenContextMenuEvent, BotInventoryMessageEvent, BotPlaceComposer, BotReceivedMessageEvent, BotRemoveComposer, BotRemovedFromInventoryEvent, BotSkillListUpdateEvent, BotSkillSaveComposer, BreedPetsMessageComposer, BuildersClubFurniCountMessageEvent, BuildersClubPlaceRoomItemMessageComposer, BuildersClubPlaceWallItemMessageComposer, BuildersClubQueryFurniCountMessageComposer, BuildersClubSubscriptionStatusMessageEvent, BundleDiscountRulesetMessageEvent, BuyMarketplaceOfferMessageComposer, BuyMarketplaceTokensMessageComposer, CallForHelpDisabledNotifyMessageEvent, CallForHelpFromForumMessageMessageComposer, CallForHelpFromForumThreadMessageComposer, CallForHelpFromIMMessageComposer, CallForHelpFromPhotoMessageComposer, CallForHelpFromSelfieMessageComposer, CallForHelpMessageComposer, CallForHelpPendingCallsDeletedMessageEvent, CallForHelpPendingCallsMessageEvent, CallForHelpReplyMessageEvent, CallForHelpResultMessageEvent, CameraPublishStatusMessageEvent, CameraPurchaseOKMessageEvent, CameraStorageUrlMessageEvent, CampaignCalendarDataMessageEvent, CampaignCalendarDoorOpenedMessageEvent, CancelEventMessageComposer, CancelMarketplaceOfferMessageComposer, CancelMysteryBoxWaitMessageEvent, CancelPetBreedingComposer, CancelQuestMessageComposer, CanCreateRoomEvent, CanCreateRoomEventEvent, CanCreateRoomMessageComposer, CatalogGroupsComposer, CatalogPageExpirationEvent, CatalogPageMessageEvent, CatalogPagesListEvent, CatalogPageWithEarliestExpiryMessageEvent, CatalogPublishedMessageEvent, CategoriesWithVisitorCountEvent, CfhChatlogEvent, CfhSanctionMessageEvent, CfhTopicsInitEvent, ChangeEmailComposer, ChangeEmailResultEvent, ChangeQueueMessageComposer, ChangeUserNameMessageComposer, ChangeUserNameResultMessageEvent, ChatReviewGuideDecidesOnOfferMessageComposer, ChatReviewGuideDetachedMessageComposer, ChatReviewGuideVoteMessageComposer, ChatReviewSessionCreateMessageComposer, ChatReviewSessionDetachedMessageEvent, ChatReviewSessionOfferedToGuideMessageEvent, ChatReviewSessionResultsMessageEvent, ChatReviewSessionStartedMessageEvent, ChatReviewSessionVotingStatusMessageEvent, CheckUserNameMessageComposer, CheckUserNameResultMessageEvent, ClientHelloMessageComposer, ClientPingEvent, CloseIssueDefaultActionMessageComposer, CloseIssuesMessageComposer, ClubGiftInfoEvent, ClubGiftNotificationEvent, ClubGiftSelectedEvent, CommunityGoalEarnedPrizesMessageEvent, CommunityGoalHallOfFameMessageEvent, CommunityGoalProgressMessageEvent, CommunityGoalVoteMessageComposer, CommunityGoalVoteMessageEvent, CompetitionEntrySubmitResultEvent, CompetitionRoomsDataMessageEvent, CompetitionRoomsSearchMessageComposer, CompetitionStatusMessageEvent, CompetitionVotingInfoMessageEvent, CompleteDiffieHandshakeEvent, CompleteDiffieHandshakeMessageComposer, CompostPlantMessageComposer, ConcurrentUsersGoalProgressMessageEvent, ConfirmPetBreedingComposer, ConnectionErrorEvent, ControlYoutubeDisplayPlaybackMessageComposer, ConvertedRoomIdEvent, ConvertGlobalRoomIdMessageComposer, CraftableProductsEvent, CraftComposer, CraftingRecipeEvent, CraftingRecipesAvailableEvent, CraftingResultEvent, CraftSecretComposer, CreateFlatMessageComposer, CurrentTimingCodeMessageEvent, CustomUserNotificationMessageEvent, DeclineFriendMessageComposer, DefaultSanctionMessageComposer, DeleteFavouriteRoomMessageComposer, DeletePendingCallsForHelpMessageComposer, DesktopViewComposer, DesktopViewEvent, DiceValueMessageEvent, DirectSMSClubBuyAvailableMessageEvent, DisconnectMessageComposer, DisconnectReasonEvent, DoorbellMessageEvent, EditEventMessageComposer, ElementPointerMessageEvent, EmailStatusResultEvent, EpicPopupMessageEvent, ExtendedProfileChangedMessageEvent, ExtendRentOrBuyoutFurniMessageComposer, ExtendRentOrBuyoutStripItemMessageComposer, FavoriteMembershipUpdateMessageEvent, FavouriteChangedEvent, FavouritesEvent, FigureSetIdsMessageEvent, FigureUpdateEvent, FindFriendsProcessResultEvent, FindNewFriendsMessageComposer, FlatAccessDeniedMessageEvent, FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, FlatCreatedEvent, FloodControlEvent, FloorHeightMapEvent, FollowFriendFailedEvent, FollowFriendMessageComposer, ForumDataMessageEvent, ForumsListMessageEvent, ForwardToACompetitionRoomMessageComposer, ForwardToARandomPromotedRoomMessageComposer, ForwardToASubmittableRoomMessageComposer, ForwardToRandomCompetitionRoomMessageComposer, ForwardToSomeRoomMessageComposer, FriendFurniConfirmLockMessageComposer, FriendListFragmentEvent, FriendListUpdateComposer, FriendListUpdateEvent, FriendNotificationEvent, FriendRequestQuestCompleteMessageComposer, FriendRequestsEvent, FurniRentOrBuyoutOfferMessageEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureColorWheelComposer, FurnitureDataEvent, FurnitureDiceActivateComposer, FurnitureDiceDeactivateComposer, FurnitureExchangeComposer, FurnitureFloorAddEvent, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateComposer, FurnitureFloorUpdateEvent, FurnitureGroupInfoComposer, FurnitureListAddOrUpdateEvent, FurnitureListComposer, FurnitureListEvent, FurnitureListInvalidateEvent, FurnitureListRemovedEvent, FurnitureMannequinSaveLookComposer, FurnitureMannequinSaveNameComposer, FurnitureMultiStateComposer, FurnitureOneWayDoorComposer, FurniturePickupComposer, FurniturePlaceComposer, FurniturePlacePaintComposer, FurniturePostItPlaceComposer, FurniturePostItPlacedEvent, FurnitureRandomStateComposer, FurnitureStackHeightComposer, FurnitureStackHeightEvent, FurnitureWallAddEvent, FurnitureWallEvent, FurnitureWallMultiStateComposer, FurnitureWallRemoveEvent, FurnitureWallUpdateComposer, FurnitureWallUpdateEvent, Game2AccountGameStatusMessageEvent, Game2CheckGameDirectoryStatusMessageComposer, Game2ExitGameMessageComposer, Game2GameChatMessageComposer, Game2GameDirectoryStatusMessageEvent, Game2GetAccountGameStatusMessageComposer, Game2GetWeeklyFriendsLeaderboardComposer, Game2GetWeeklyLeaderboardComposer, Game2InArenaQueueMessageEvent, Game2JoiningGameFailedMessageEvent, Game2LoadStageReadyMessageComposer, Game2PlayAgainMessageComposer, Game2RequestFullStatusUpdateMessageComposer, Game2StartingGameFailedMessageEvent, Game2StopCounterMessageEvent, Game2UserLeftGameMessageEvent, Game2WeeklyFriendsLeaderboardEvent, Game2WeeklyLeaderboardEvent, GameAchievementsMessageEvent, GameInviteMessageEvent, GameListMessageEvent, GameStatusMessageEvent, GameUnloadedMessageComposer, GenericErrorEvent, GetBadgePointLimitsComposer, GetBonusRareInfoMessageComposer, GetBotInventoryComposer, GetBundleDiscountRulesetComposer, GetCatalogIndexComposer, GetCatalogPageComposer, GetCatalogPageExpirationComposer, GetCatalogPageWithEarliestExpiryComposer, GetCategoriesWithUserCountMessageComposer, GetCfhChatlogMessageComposer, GetCfhStatusMessageComposer, GetClubGiftInfo, GetClubOffersMessageComposer, GetCommunityGoalEarnedPrizesMessageComposer, GetCommunityGoalHallOfFameMessageComposer, GetCommunityGoalProgressMessageComposer, GetConcurrentUsersGoalProgressMessageComposer, GetConcurrentUsersRewardMessageComposer, GetCraftableProductsComposer, GetCraftingRecipeComposer, GetCraftingRecipesAvailableComposer, GetCurrentTimingCodeMessageComposer, GetCustomRoomFilterMessageComposer, GetDailyQuestMessageComposer, GetDirectClubBuyAvailableComposer, GetEmailStatusComposer, GetExtendedProfileByNameMessageComposer, GetFaqCategoryMessageComposer, GetFaqTextMessageComposer, GetForumsListMessageComposer, GetForumStatsMessageComposer, GetFriendRequestsComposer, GetGameAchievementsMessageComposer, GetGameListMessageComposer, GetGameStatusMessageComposer, GetGiftMessageComposer, GetGiftWrappingConfigurationComposer, GetGuestRoomMessageComposer, GetGuestRoomResultEvent, GetGuideReportingStatusMessageComposer, GetHabboBasicMembershipExtendOfferComposer, GetHabboClubExtendOfferMessageComposer, GetHabboGroupBadgesMessageComposer, GetIgnoredUsersComposer, GetInterstitialMessageComposer, GetIsBadgeRequestFulfilledComposer, GetIsOfferGiftableComposer, GetIsUserPartOfCompetitionMessageComposer, GetItemDataComposer, GetJukeboxPlayListMessageComposer, GetLimitedOfferAppearingNextComposer, GetMarketplaceCanMakeOfferComposer, GetMarketplaceConfigurationMessageComposer, GetMarketplaceItemStatsComposer, GetMarketplaceOffersMessageComposer, GetMarketplaceOwnOffersMessageComposer, GetMessagesMessageComposer, GetModeratorRoomInfoMessageComposer, GetModeratorUserInfoMessageComposer, GetNextTargetedOfferComposer, GetNowPlayingMessageComposer, GetOccupiedTilesMessageComposer, GetOfficialRoomsMessageComposer, GetOfficialSongIdMessageComposer, GetPendingCallsForHelpMessageComposer, GetPetCommandsComposer, GetPopularRoomTagsMessageComposer, GetProductOfferComposer, GetPromoArticlesComposer, GetQuestsMessageComposer, GetQuizQuestionsComposer, GetRecyclerStatusMessageComposer, GetRentOrBuyoutOfferMessageComposer, GetResolutionAchievementsMessageComposer, GetRoomAdPurchaseInfoComposer, GetRoomChatlogMessageComposer, GetRoomEntryDataMessageComposer, GetRoomEntryTileMessageComposer, GetRoomVisitsMessageComposer, GetSeasonalCalendarDailyOfferComposer, GetSeasonalQuestsOnlyMessageComposer, GetSecondsUntilMessageComposer, GetSellablePetPalettesComposer, GetSongInfoMessageComposer, GetSoundMachinePlayListMessageComposer, GetSoundSettingsComposer, GetTalentTrackLevelMessageComposer, GetTargetedOfferComposer, GetThreadMessageComposer, GetThreadsMessageComposer, GetUnreadForumsCountMessageComposer, GetUserChatlogMessageComposer, GetUserEventCatsMessageComposer, GetUserFlatCatsMessageComposer, GetUserGameAchievementsMessageComposer, GetUserSongDisksMessageComposer, GetUserTagsComposer, GetWardrobeMessageComposer, GetWeeklyGameRewardComposer, GetWeeklyGameRewardWinnersComposer, GetYoutubeDisplayStatusMessageComposer, GiftReceiverNotFoundEvent, GiftWrappingConfigurationEvent, GotMysteryBoxPrizeMessageEvent, GoToFlatMessageComposer, GroupAdminGiveComposer, GroupAdminTakeComposer, GroupBadgePartsComposer, GroupBadgePartsEvent, GroupBuyComposer, GroupBuyDataComposer, GroupBuyDataEvent, GroupConfirmMemberRemoveEvent, GroupConfirmRemoveMemberComposer, GroupDeleteComposer, GroupDetailsChangedMessageEvent, GroupFavoriteComposer, GroupFurniContextMenuInfoMessageEvent, GroupInformationComposer, GroupInformationEvent, GroupJoinComposer, GroupMembersComposer, GroupMembersEvent, GroupMembershipAcceptComposer, GroupMembershipDeclineComposer, GroupMembershipRequestedMessageEvent, GroupPurchasedEvent, GroupRemoveMemberComposer, GroupSaveBadgeComposer, GroupSaveColorsComposer, GroupSaveInformationComposer, GroupSavePreferencesComposer, GroupSettingsComposer, GroupSettingsEvent, GroupUnfavoriteComposer, GuestRoomSearchResultEvent, GuideOnDutyStatusMessageEvent, GuideReportingStatusMessageEvent, GuideSessionAttachedMessageEvent, GuideSessionCreateMessageComposer, GuideSessionDetachedMessageEvent, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionFeedbackMessageComposer, GuideSessionGetRequesterRoomMessageComposer, GuideSessionGuideDecidesMessageComposer, GuideSessionInvitedToGuideRoomMessageEvent, GuideSessionInviteRequesterMessageComposer, GuideSessionIsTypingMessageComposer, GuideSessionMessageMessageComposer, GuideSessionMessageMessageEvent, GuideSessionOnDutyUpdateMessageComposer, GuideSessionPartnerIsTypingMessageEvent, GuideSessionReportMessageComposer, GuideSessionRequesterCancelsMessageComposer, GuideSessionRequesterRoomMessageEvent, GuideSessionResolvedMessageComposer, GuideSessionStartedMessageEvent, GuideTicketCreationResultMessageEvent, GuideTicketResolutionMessageEvent, GuildBaseSearchMessageComposer, GuildEditFailedMessageEvent, GuildForumThreadsEvent, GuildMemberMgmtFailedMessageEvent, GuildMembershipsMessageEvent, HabboBroadcastMessageEvent, HabboClubExtendOfferMessageEvent, HabboClubOffersMessageEvent, HabboGroupBadgesMessageEvent, HabboGroupDeactivatedMessageEvent, HabboGroupJoinFailedMessageEvent, HabboSearchComposer, HabboSearchResultEvent, HarvestPetMessageComposer, HotelClosedAndOpensEvent, HotelClosesAndWillOpenAtEvent, HotelMergeNameChangeEvent, HotelWillCloseInMinutesEvent, IdentityAccountsEvent, IgnoredUsersEvent, IgnoreResultEvent, IgnoreUserComposer, IgnoreUserIdComposer, InClientLinkEvent, IncomingHeader, InfoFeedEnableMessageEvent, InfoRetrieveMessageComposer, InitCameraMessageEvent, InitDiffieHandshakeEvent, InitDiffieHandshakeMessageComposer, InstantMessageErrorEvent, InterstitialMessageEvent, InterstitialShownMessageComposer, IsBadgeRequestFulfilledEvent, IsOfferGiftableMessageEvent, IssueCloseNotificationMessageEvent, IssueDeletedMessageEvent, IssueInfoMessageEvent, IssuePickFailedMessageEvent, IsUserPartOfCompetitionMessageEvent, ItemDataUpdateMessageEvent, JoinedQueueMessageEvent, JoiningQueueFailedMessageEvent, JoinQueueMessageComposer, JukeboxPlayListFullMessageEvent, JukeboxSongDisksMessageEvent, LagWarningReportMessageComposer, LeaveQueueMessageComposer, LeftQueueMessageEvent, LimitedEditionSoldOutEvent, LimitedOfferAppearingNextMessageEvent, LoadGameMessageEvent, LoadGameUrlEvent, LoveLockFurniFinishedEvent, LoveLockFurniFriendConfirmedEvent, LoveLockFurniStartEvent, MaintenanceStatusMessageEvent, MakeOfferMessageComposer, MarkCatalogNewAdditionsPageOpenedComposer, MarketplaceBuyOfferResultEvent, MarketplaceCancelOfferResultEvent, MarketplaceCanMakeOfferResult, MarketplaceConfigurationEvent, MarketplaceItemStatsEvent, MarketplaceMakeOfferResult, MarketPlaceOffersEvent, MarketplaceOwnOffersEvent, MessageErrorEvent, MessengerInitComposer, MessengerInitEvent, MiniMailNewMessageEvent, MiniMailUnreadCountEvent, ModAlertMessageComposer, ModBanMessageComposer, ModerateMessageMessageComposer, ModerateRoomMessageComposer, ModerateThreadMessageComposer, ModeratorActionMessageComposer, ModeratorActionResultMessageEvent, ModeratorCautionEvent, ModeratorInitMessageEvent, ModeratorMessageEvent, ModeratorRoomInfoEvent, ModeratorToolPreferencesEvent, ModeratorUserInfoEvent, ModKickMessageComposer, ModMessageMessageComposer, ModMuteMessageComposer, ModToolPreferencesComposer, ModToolSanctionComposer, ModTradingLockMessageComposer, MoodlightSettingsComposer, MoodlightSettingsSaveComposer, MoodlightTogggleStateComposer, MOTDNotificationEvent, MuteAllInRoomEvent, MyFavouriteRoomsSearchMessageComposer, MyFrequentRoomHistorySearchMessageComposer, MyFriendsRoomsSearchMessageComposer, MyGuildBasesSearchMessageComposer, MyRecommendedRoomsMessageComposer, MyRoomHistorySearchMessageComposer, MyRoomRightsSearchMessageComposer, MyRoomsSearchMessageComposer, MysteryBoxKeysEvent, MysteryBoxWaitingCanceledMessageComposer, NavigatorCategoryListModeComposer, NavigatorCollapsedEvent, NavigatorDeleteSavedSearchComposer, NavigatorHomeRoomEvent, NavigatorInitComposer, NavigatorLiftedEvent, NavigatorMetadataEvent, NavigatorOpenRoomCreatorEvent, NavigatorSearchCloseComposer, NavigatorSearchComposer, NavigatorSearchesEvent, NavigatorSearchEvent, NavigatorSearchOpenComposer, NavigatorSearchSaveComposer, NavigatorSettingsEvent, NavigatorSettingsSaveComposer, NewConsoleMessageEvent, NewFriendRequestEvent, NewUserExperienceGetGiftsComposer, NewUserExperienceGiftOfferMessageEvent, NewUserExperienceNotCompleteEvent, NewUserExperienceScriptProceedComposer, NoobnessLevelMessageEvent, NoOwnedRoomsAlertMessageEvent, NoSuchFlatEvent, NotEnoughBalanceMessageEvent, NotificationDialogMessageEvent, NowPlayingMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OfficialSongIdMessageEvent, OneWayDoorStatusMessageEvent, OpenCampaignCalendarDoorAsStaffComposer, OpenCampaignCalendarDoorComposer, OpenMessageComposer, OpenMysteryTrophyMessageComposer, OpenPetPackageMessageComposer, OpenPetPackageRequestedMessageEvent, OpenPetPackageResultMessageEvent, OpenPresentComposer, OpenQuestTrackerMessageComposer, OpenWelcomeGiftComposer, OutgoingHeader, PeerUsersClassificationMessageComposer, PerformanceLogMessageComposer, PerkAllowancesMessageEvent, PetAddedToInventoryEvent, PetBreedingResultEvent, PetExperienceEvent, PetFigureUpdateEvent, PetInfoEvent, PetInventoryEvent, PetLevelNotificationEvent, PetLevelUpdateMessageEvent, PetMountComposer, PetMoveComposer, PetPlaceComposer, PetPlacingErrorEvent, PetReceivedMessageEvent, PetRemoveComposer, PetRemovedFromInventory, PetRespectComposer, PetRespectNoficationEvent, PetScratchFailedMessageEvent, PetSelectedMessageComposer, PetStatusUpdateEvent, PetSupplementComposer, PetSupplementedNotificationEvent, PetTrainingPanelMessageEvent, PhoneCollectionStateMessageEvent, PhotoCompetitionMessageComposer, PickIssuesMessageComposer, PlayListMessageEvent, PlayListSongAddedMessageEvent, PollAnswerComposer, PollContentsEvent, PollErrorEvent, PollOfferEvent, PollRejectComposer, PollStartComposer, PongMessageComposer, PopularRoomsSearchMessageComposer, PopularRoomTagsResultEvent, PostMessageMessageComposer, PostMessageMessageEvent, PostQuizAnswersComposer, PostThreadMessageEvent, PresentOpenedMessageEvent, ProductOfferEvent, PromoArticlesMessageEvent, PublishPhotoMessageComposer, PurchaseBasicMembershipExtensionComposer, PurchaseErrorMessageEvent, PurchaseFromCatalogAsGiftComposer, PurchaseFromCatalogComposer, PurchaseNotAllowedMessageEvent, PurchaseOKMessageEvent, PurchasePhotoMessageComposer, PurchaseRoomAdMessageComposer, PurchaseTargetedOfferComposer, PurchaseVipMembershipExtensionComposer, QuestCancelledMessageEvent, QuestCompletedMessageEvent, QuestDailyMessageEvent, QuestionAnsweredEvent, QuestionEvent, QuestionFinishedEvent, QuestMessageEvent, QuestsMessageEvent, QuizDataMessageEvent, QuizResultsMessageEvent, RateFlatMessageComposer, RecycleItemsMessageComposer, RecyclerFinishedMessageEvent, RecyclerStatusMessageEvent, RedeemCommunityGoalPrizeMessageComposer, RedeemItemClothingComposer, RedeemMarketplaceOfferCreditsMessageComposer, RedeemVoucherMessageComposer, RejectQuestMessageComposer, RelationshipStatusInfoEvent, ReleaseIssuesMessageComposer, RemainingMuteEvent, RemoveAllRightsMessageComposer, RemoveFriendComposer, RemoveJukeboxDiskComposer, RemoveOwnRoomRightsRoomMessageComposer, RemovePetSaddleComposer, RemoveWallItemComposer, RenderRoomMessageComposer, RenderRoomThumbnailMessageComposer, RentableSpaceCancelRentMessageComposer, RentableSpaceRentFailedMessageEvent, RentableSpaceRentMessageComposer, RentableSpaceRentOkMessageEvent, RentableSpaceStatusMessageComposer, RentableSpaceStatusMessageEvent, RequestABadgeComposer, RequestAchievementsMessageComposer, RequestBadgesComposer, RequestBotCommandConfigurationComposer, RequestCameraConfigurationComposer, RequestFriendComposer, RequestFurniInventoryWhenNotInRoomComposer, RequestPetInfoComposer, RequestPetsComposer, RequestSpamWallPostItMessageEvent, ResetPhoneNumberStateMessageComposer, ResetResolutionAchievementMessageComposer, RespectReceivedEvent, RoomAdErrorEvent, RoomAdEventTabAdClickedComposer, RoomAdEventTabViewedComposer, RoomAdPurchaseInfoEvent, RoomAdPurchaseInitiatedComposer, RoomAdSearchMessageComposer, RoomAmbassadorAlertComposer, RoomBannedUsersComposer, RoomBanUserComposer, RoomChatlogEvent, RoomChatSettingsEvent, RoomCompetitionInitMessageComposer, RoomDeleteComposer, RoomDimmerPresetsEvent, RoomDoorbellAcceptedEvent, RoomDoorbellAccessComposer, RoomEnterComposer, RoomEnterErrorEvent, RoomEnterEvent, RoomEntryInfoMessageEvent, RoomEntryTileMessageEvent, RoomEventCancelEvent, RoomEventEvent, RoomFilterSettingsMessageEvent, RoomForwardEvent, RoomGiveRightsComposer, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomInviteErrorEvent, RoomInviteEvent, RoomKickUserComposer, RoomMessageNotificationMessageEvent, RoomMuteComposer, RoomMuteUserComposer, RoomNetworkOpenConnectionMessageComposer, RoomOccupiedTilesMessageEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomRightsClearEvent, RoomRightsEvent, RoomRightsOwnerEvent, RoomScoreEvent, RoomSettingsComposer, RoomSettingsDataEvent, RoomSettingsErrorEvent, RoomSettingsSavedEvent, RoomSettingsSaveErrorEvent, RoomSettingsUpdatedEvent, RoomsWhereMyFriendsAreSearchMessageComposer, RoomsWithHighestScoreSearchMessageComposer, RoomTakeRightsComposer, RoomTextSearchMessageComposer, RoomThumbnailUpdateResultEvent, RoomUnbanUserComposer, RoomUnitActionComposer, RoomUnitChatComposer, RoomUnitChatEvent, RoomUnitChatShoutComposer, RoomUnitChatShoutEvent, RoomUnitChatStyleComposer, RoomUnitChatWhisperComposer, RoomUnitChatWhisperEvent, RoomUnitDanceComposer, RoomUnitDanceEvent, RoomUnitDropHandItemComposer, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RoomUnitGiveHandItemComposer, RoomUnitGiveHandItemPetComposer, RoomUnitHandItemEvent, RoomUnitHandItemReceivedEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitLookComposer, RoomUnitNumberEvent, RoomUnitPostureComposer, RoomUnitRemoveEvent, RoomUnitSignComposer, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomUnitTypingStartComposer, RoomUnitTypingStopComposer, RoomUnitWalkComposer, RoomUsersClassificationMessageComposer, RoomUsersWithRightsComposer, RoomVisitsEvent, RoomVisualizationSettingsEvent, SanctionStatusEvent, SaveRoomSettingsComposer, SaveWardrobeOutfitMessageComposer, ScrGetKickbackInfoMessageComposer, ScrSendKickbackInfoMessageEvent, SearchFaqsMessageComposer, SeasonalCalendarDailyOfferMessageEvent, SeasonalQuestsMessageEvent, SecondsUntilMessageEvent, SelectClubGiftComposer, SellablePetPalettesMessageEvent, SendMessageComposer, SendRoomInviteComposer, SetActivatedBadgesComposer, SetClothingChangeDataMessageComposer, SetItemDataMessageComposer, SetObjectDataMessageComposer, SetPhoneNumberVerificationStatusMessageComposer, SetRelationshipStatusComposer, SetRoomSessionTagsMessageComposer, SetTargetedOfferStateComposer, SetYoutubeDisplayPlaylistMessageComposer, ShopTargetedOfferViewedComposer, ShowEnforceRoomCategoryDialogEvent, ShowMysteryBoxWaitMessageEvent, SimpleAlertMessageEvent, SSOTicketMessageComposer, StartCampaignMessageComposer, SubmitRoomToCompetitionMessageComposer, TalentLevelUpEvent, TalentTrackComposer, TalentTrackLevelMessageEvent, TalentTrackMessageEvent, TargetedOfferEvent, TargetedOfferNotFoundEvent, ThreadMessagesMessageEvent, ThumbnailStatusMessageEvent, TogglePetBreedingComposer, TogglePetRidingComposer, ToggleStaffPickMessageComposer, TradingAcceptComposer, TradingAcceptEvent, TradingCancelComposer, TradingCloseComposer, TradingCloseEvent, TradingCompletedEvent, TradingConfirmationComposer, TradingConfirmationEvent, TradingListAddItemComposer, TradingListAddItemsComposer, TradingListItemEvent, TradingListItemRemoveComposer, TradingNoSuchItemEvent, TradingNotOpenEvent, TradingOpenComposer, TradingOpenEvent, TradingOpenFailedEvent, TradingOtherNotAllowedEvent, TradingUnacceptComposer, TradingYouAreNotAllowedEvent, TraxSongInfoMessageEvent, TryPhoneNumberMessageComposer, TryPhoneNumberResultMessageEvent, TryVerificationCodeResultMessageEvent, UnblockGroupMemberMessageComposer, UnignoreUserComposer, UniqueIDMessageComposer, UnloadGameMessageEvent, UnreadForumsCountMessageEvent, UnseenItemsEvent, UnseenResetCategoryComposer, UnseenResetItemsComposer, UpdateActionMessageComposer, UpdateConditionMessageComposer, UpdateFloorPropertiesMessageComposer, UpdateForumReadMarkerMessageComposer, UpdateForumSettingsMessageComposer, UpdateHomeRoomMessageComposer, UpdateMessageMessageEvent, UpdateRoomCategoryAndTradeSettingsComposer, UpdateRoomFilterMessageComposer, UpdateRoomThumbnailMessageComposer, UpdateThreadMessageComposer, UpdateThreadMessageEvent, UpdateTriggerMessageComposer, UsePetProductComposer, UserBannedMessageEvent, UserChatlogEvent, UserClassificationMessageEvent, UserCreditsEvent, UserCurrencyComposer, UserCurrencyEvent, UserCurrentBadgesComposer, UserCurrentBadgesEvent, UserEventCatsEvent, UserFigureComposer, UserFlatCatsEvent, UserGameAchievementsMessageEvent, UserInfoEvent, UserMottoComposer, UserNameChangeMessageEvent, UserPermissionsEvent, UserProfileComposer, UserProfileEvent, UserRelationshipsComposer, UserRespectComposer, UserSettingsCameraFollowComposer, UserSettingsEvent, UserSettingsOldChatComposer, UserSettingsRoomInvitesComposer, UserSettingsSoundComposer, UserSongDisksInventoryMessageEvent, UserSubscriptionComposer, UserSubscriptionEvent, UserTagsMessageEvent, UserUnbannedFromRoomEvent, UserWardrobePageEvent, VerifyCodeMessageComposer, VersionCheckMessageComposer, VisitUserComposer, VoteForRoomMessageComposer, VoucherRedeemErrorMessageEvent, VoucherRedeemOkMessageEvent, WardrobeMessageEvent, WeeklyCompetitiveFriendsLeaderboardEvent, WeeklyCompetitiveLeaderboardEvent, WeeklyGameRewardEvent, WeeklyGameRewardWinnersEvent, WelcomeGiftChangeEmailComposer, WelcomeGiftChangeEmailResultEvent, WelcomeGiftStatusEvent, WiredFurniActionEvent, WiredFurniConditionEvent, WiredFurniTriggerEvent, WiredOpenEvent, WiredRewardResultMessageEvent, WiredSaveSuccessEvent, WiredValidationErrorEvent, YouArePlayingGameEvent, YouAreSpectatorMessageEvent, YoutubeControlVideoMessageEvent, YoutubeDisplayPlaylistsEvent, YoutubeDisplayVideoMessageEvent } from './messages';
  
  export class NitroMessages implements IMessageConfiguration
-@@ -17,6 +22,11 @@ export class NitroMessages implements IMessageConfiguration
+@@ -17,6 +29,13 @@ export class NitroMessages implements IMessageConfiguration
  
      private registerEvents(): void
      {
@@ -213,24 +234,31 @@ index 7878a04307187848c6e07bcb2ecca59324b053f1..0fc4f22e103fd62259a9a3693460cf23
 +        this._events.set(IncomingHeader.RP_STATS, RpStatsEvent);
 +        this._events.set(IncomingHeader.RP_UI_SETTINGS, RpUiSettingsEvent);
 +        this._events.set(IncomingHeader.RP_INVENTORY, RpInventoryEvent);
++        this._events.set(IncomingHeader.RP_MESSENGER_RECEIPT, RpMessengerReceiptEvent);
++        this._events.set(IncomingHeader.RP_PHOTO_LIST, RpPhotoListEvent);
 +
          // ADVERTISEMENT
          this._events.set(IncomingHeader.INTERSTITIAL_MESSAGE, InterstitialMessageEvent);
          this._events.set(IncomingHeader.ROOM_AD_ERROR, RoomAdErrorEvent);
-@@ -1086,6 +1096,8 @@ export class NitroMessages implements IMessageConfiguration
+@@ -1086,6 +1105,13 @@ export class NitroMessages implements IMessageConfiguration
          this._composers.set(OutgoingHeader.USER_SETTINGS_OLD_CHAT, UserSettingsOldChatComposer);
          this._composers.set(OutgoingHeader.USER_SETTINGS_INVITES, UserSettingsRoomInvitesComposer);
          this._composers.set(OutgoingHeader.USER_SETTINGS_VOLUME, UserSettingsSoundComposer);
 +        this._composers.set(OutgoingHeader.RP_SAVE_UI_SETTINGS, RpSaveUiSettingsComposer);
 +        this._composers.set(OutgoingHeader.RP_USE_ITEM, RpUseItemComposer);
++        this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
++        this._composers.set(OutgoingHeader.RP_PHOTO_LIST_REQUEST, RpRequestPhotoListComposer);
++        this._composers.set(OutgoingHeader.RP_PHOTO_DELETE, RpDeletePhotoComposer);
++        this._composers.set(OutgoingHeader.RP_PHOTO_UPDATE, RpUpdatePhotoComposer);
++        this._composers.set(OutgoingHeader.RP_SAVE_SCREENSHOT, RpSaveScreenshotComposer);
  
          // LANDING VIEW
          this._composers.set(OutgoingHeader.COMMUNITY_GOAL_VOTE_COMPOSER, CommunityGoalVoteMessageComposer);
 diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
-index ae6f19e099940b5caea88b89466e784bff8ee2e3..8d7801de94226708d24f45ec5cae2b7ccba9f1a1 100644
+index ae6f19e099940b5caea88b89466e784bff8ee2e3..466147a8860c2c021656b63f03038cdd0514654b 100644
 --- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
 +++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
-@@ -464,4 +464,9 @@ export class IncomingHeader
+@@ -464,4 +464,11 @@ export class IncomingHeader
      public static WEEKLY_GAME2_LEADERBOARD = 2196;
      public static RENTABLE_FURNI_RENT_OR_BUYOUT_OFFER = 35;
      public static HANDSHAKE_IDENTITY_ACCOUNT = 3523;
@@ -239,6 +267,8 @@ index ae6f19e099940b5caea88b89466e784bff8ee2e3..8d7801de94226708d24f45ec5cae2b7c
 +    public static RP_STATS = 3901;
 +    public static RP_UI_SETTINGS = 3902;
 +    public static RP_INVENTORY = 3904;
++    public static RP_MESSENGER_RECEIPT = 3906;
++    public static RP_PHOTO_LIST = 3909;
  }
 diff --git a/src/nitro/communication/messages/incoming/RpInventoryEvent.ts b/src/nitro/communication/messages/incoming/RpInventoryEvent.ts
 new file mode 100644
@@ -298,6 +328,138 @@ index 0000000000000000000000000000000000000000..4abfa11f6fdbc0222e5fb0403789207c
 +    public getParser(): RpInventoryParser
 +    {
 +        return this.parser as RpInventoryParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/RpMessengerReceiptEvent.ts b/src/nitro/communication/messages/incoming/RpMessengerReceiptEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..622ecad76368d9a90583a69eefb45e2225d73ccb
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpMessengerReceiptEvent.ts
+@@ -0,0 +1,54 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: live message receipt for the phone's Messages app — a friend
++// received (delivered) or opened (read) the messages you sent them.
++export class RpMessengerReceiptParser implements IMessageParser
++{
++    public static DELIVERED: number = 1;
++    public static READ: number = 2;
++
++    private _friendId: number;
++    private _type: number;
++
++    public flush(): boolean
++    {
++        this._friendId = 0;
++        this._type = 0;
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._friendId = wrapper.readInt();
++        this._type = wrapper.readInt();
++
++        return true;
++    }
++
++    public get friendId(): number
++    {
++        return this._friendId;
++    }
++
++    public get type(): number
++    {
++        return this._type;
++    }
++}
++
++export class RpMessengerReceiptEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpMessengerReceiptParser);
++    }
++
++    public getParser(): RpMessengerReceiptParser
++    {
++        return this.parser as RpMessengerReceiptParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts b/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..69e3971cffa2946bd6b7262aa3752cd98cffed98
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
+@@ -0,0 +1,66 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: the player's photo library for the phone's Photos app — every
++// camera photo they've saved, newest first. `published` marks photos that
++// are visible on the website's Photos page.
++export interface RpPhotoListItem
++{
++    id: number;
++    url: string;
++    timestamp: number;
++    published: boolean;
++}
++
++export class RpPhotoListParser implements IMessageParser
++{
++    private _photos: RpPhotoListItem[];
++
++    public flush(): boolean
++    {
++        this._photos = [];
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._photos = [];
++
++        let count = wrapper.readInt();
++
++        while(count > 0)
++        {
++            this._photos.push({
++                id: wrapper.readInt(),
++                url: wrapper.readString(),
++                timestamp: wrapper.readInt(),
++                published: wrapper.readBoolean()
++            });
++
++            count--;
++        }
++
++        return true;
++    }
++
++    public get photos(): RpPhotoListItem[]
++    {
++        return this._photos;
++    }
++}
++
++export class RpPhotoListEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpPhotoListParser);
++    }
++
++    public getParser(): RpPhotoListParser
++    {
++        return this.parser as RpPhotoListParser;
 +    }
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpStatsEvent.ts b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
@@ -400,10 +562,10 @@ index 0000000000000000000000000000000000000000..4c04d83aae423f0bb46293264a5cd432
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf195666a5dc61f
+index 0000000000000000000000000000000000000000..8701756a24caf4c130cd3d9d99807d79b7dbbdd8
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,83 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -415,6 +577,8 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +    private _chromeOpacity: number;
 +    private _headerColor: string;
 +    private _usernameColor: string;
++    private _icon: string;
++    private _iconColor: string;
 +
 +    public flush(): boolean
 +    {
@@ -422,6 +586,8 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +        this._chromeOpacity = 95;
 +        this._headerColor = '';
 +        this._usernameColor = '';
++        this._icon = '';
++        this._iconColor = '';
 +
 +        return true;
 +    }
@@ -434,6 +600,8 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +        this._chromeOpacity = wrapper.readInt();
 +        this._headerColor = wrapper.readString();
 +        this._usernameColor = wrapper.readString();
++        this._icon = wrapper.readString();
++        this._iconColor = wrapper.readString();
 +
 +        return true;
 +    }
@@ -457,6 +625,16 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +    {
 +        return this._usernameColor;
 +    }
++
++    public get icon(): string
++    {
++        return this._icon;
++    }
++
++    public get iconColor(): string
++    {
++        return this._iconColor;
++    }
 +}
 +
 +export class RpUiSettingsEvent extends MessageEvent implements IMessageEvent
@@ -472,30 +650,160 @@ index 0000000000000000000000000000000000000000..85384a8f8ac7791cf841b24fbbf19566
 +    }
 +}
 diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
-index d9e905cac3e59c4fa9b696589d8d6f5fa6159983..14f175f49a20d7c8c5695fa7d4d06bc13406249b 100644
+index d9e905cac3e59c4fa9b696589d8d6f5fa6159983..3148ba1cf960ce8ba0bc28359a8cd2621a24ab41 100644
 --- a/src/nitro/communication/messages/incoming/index.ts
 +++ b/src/nitro/communication/messages/incoming/index.ts
-@@ -73,3 +73,6 @@ export * from './user/inventory/currency';
+@@ -73,3 +73,8 @@ export * from './user/inventory/currency';
  export * from './user/inventory/subscription';
  export * from './user/wardrobe';
  export * from './userclassification';
 +export * from './RpStatsEvent';
 +export * from './RpInventoryEvent';
 +export * from './RpUiSettingsEvent';
++export * from './RpMessengerReceiptEvent';
++export * from './RpPhotoListEvent';
 diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
-index c303114f44e2fd89b1e683380e26ea412de500b8..7f6d3ee98b8cbf2ef63a2fb5823c0bdc8a6816c5 100644
+index c303114f44e2fd89b1e683380e26ea412de500b8..2da7a39a824594ad5c28db510317c20f6e4509d1 100644
 --- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
 +++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
-@@ -467,4 +467,6 @@ export class OutgoingHeader
+@@ -467,4 +467,11 @@ export class OutgoingHeader
      public static RENTABLE_EXTEND_RENT_OR_BUYOUT_STRIP_ITEM = 2115;
      public static RENTABLE_EXTEND_RENT_OR_BUYOUT_FURNI = 1071;
      public static RENTABLE_GET_RENT_OR_BUYOUT_OFFER = 2518;
 +    public static RP_SAVE_UI_SETTINGS = 3903;
 +    public static RP_USE_ITEM = 3905;
++    public static RP_MESSENGER_MARK_READ = 3907;
++    public static RP_PHOTO_LIST_REQUEST = 3908;
++    public static RP_PHOTO_DELETE = 3910;
++    public static RP_PHOTO_UPDATE = 3912;
++    public static RP_SAVE_SCREENSHOT = 3913;
  }
+diff --git a/src/nitro/communication/messages/outgoing/RpDeletePhotoComposer.ts b/src/nitro/communication/messages/outgoing/RpDeletePhotoComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f3c0d6fcd9f8129ed5aab67c1d1a66328e48a5d4
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpDeletePhotoComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: delete one of the player's own photos from their phone library.
++export class RpDeletePhotoComposer implements IMessageComposer<ConstructorParameters<typeof RpDeletePhotoComposer>>
++{
++    private _data: ConstructorParameters<typeof RpDeletePhotoComposer>;
++
++    constructor(photoId: number)
++    {
++        this._data = [photoId];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpMessengerMarkReadComposer.ts b/src/nitro/communication/messages/outgoing/RpMessengerMarkReadComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..abb5e21169773e483da2524992a17c6ae7eb5e20
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpMessengerMarkReadComposer.ts
+@@ -0,0 +1,23 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: the player opened (read) the phone conversation with a friend —
++// the server relays a live read receipt to that friend.
++export class RpMessengerMarkReadComposer implements IMessageComposer<ConstructorParameters<typeof RpMessengerMarkReadComposer>>
++{
++    private _data: ConstructorParameters<typeof RpMessengerMarkReadComposer>;
++
++    constructor(friendId: number)
++    {
++        this._data = [friendId];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpRequestPhotoListComposer.ts b/src/nitro/communication/messages/outgoing/RpRequestPhotoListComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..1d653488bdcc41efb8b17166f694327d58f7635f
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpRequestPhotoListComposer.ts
+@@ -0,0 +1,23 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: ask the server for the player's photo library (the phone's
++// Photos app). No payload; the reply is RpPhotoListEvent.
++export class RpRequestPhotoListComposer implements IMessageComposer<ConstructorParameters<typeof RpRequestPhotoListComposer>>
++{
++    private _data: ConstructorParameters<typeof RpRequestPhotoListComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4b53f0d7e9c6734cfd46c1b5ec6d96f6658f433a
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
+@@ -0,0 +1,31 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: save a phone-screen screenshot (side-button long-press) into the
++// player's photo library. PNG bytes packed RenderRoom-style.
++export class RpSaveScreenshotComposer implements IMessageComposer<any[]>
++{
++    private _data: any[];
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public assignBase64(base64: string): void
++    {
++        const base64Data = base64.split(',')[1];
++        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
++
++        this._data.push(binaryData.byteLength, binaryData.buffer);
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        this._data = [];
++    }
++}
 diff --git a/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..02e97fa81356ff5996bdece0c9a4058270f4d3e7
+index 0000000000000000000000000000000000000000..aa43d5b28e3a1aa2d696e4403d0c23114747d896
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 @@ -0,0 +1,23 @@
@@ -507,9 +815,9 @@ index 0000000000000000000000000000000000000000..02e97fa81356ff5996bdece0c9a40582
 +{
 +    private _data: ConstructorParameters<typeof RpSaveUiSettingsComposer>;
 +
-+    constructor(chromeColor: string, chromeOpacity: number, headerColor: string, usernameColor: string)
++    constructor(chromeColor: string, chromeOpacity: number, headerColor: string, usernameColor: string, icon: string, iconColor: string)
 +    {
-+        this._data = [chromeColor, chromeOpacity, headerColor, usernameColor];
++        this._data = [chromeColor, chromeOpacity, headerColor, usernameColor, icon, iconColor];
 +    }
 +
 +    public getMessageArray()
@@ -520,6 +828,44 @@ index 0000000000000000000000000000000000000000..02e97fa81356ff5996bdece0c9a40582
 +    public dispose(): void
 +    {
 +        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpUpdatePhotoComposer.ts b/src/nitro/communication/messages/outgoing/RpUpdatePhotoComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e4b463c3cc033de30ced8bf0e8007e128dd91ce0
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpUpdatePhotoComposer.ts
+@@ -0,0 +1,32 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: save an edited (cropped/zoomed) version of one of the player's
++// own photos. Carries the photo id plus the PNG bytes, packed the same way
++// RenderRoomMessageComposer packs its screenshot (length + raw buffer).
++export class RpUpdatePhotoComposer implements IMessageComposer<any[]>
++{
++    private _data: any[];
++
++    constructor(photoId: number)
++    {
++        this._data = [photoId];
++    }
++
++    public assignBase64(base64: string): void
++    {
++        const base64Data = base64.split(',')[1];
++        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
++
++        this._data.push(binaryData.byteLength, binaryData.buffer);
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        this._data = [];
 +    }
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpUseItemComposer.ts b/src/nitro/communication/messages/outgoing/RpUseItemComposer.ts
@@ -551,44 +897,55 @@ index 0000000000000000000000000000000000000000..e150c477a733461d33511457c0847f89
 +    }
 +}
 diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
-index 794f8b373deda2aef70c54d9d8abdee1658d1add..9bc16bcea6253ef10192a766290b310262110585 100644
+index 794f8b373deda2aef70c54d9d8abdee1658d1add..4ee73c43a6e2e4ee28fd6216496eab5893357bed 100644
 --- a/src/nitro/communication/messages/outgoing/index.ts
 +++ b/src/nitro/communication/messages/outgoing/index.ts
-@@ -71,3 +71,5 @@ export * from './user/inventory/currency';
+@@ -71,3 +71,10 @@ export * from './user/inventory/currency';
  export * from './user/inventory/subscription';
  export * from './user/settings';
  export * from './userclassification';
 +export * from './RpSaveUiSettingsComposer';
 +export * from './RpUseItemComposer';
++export * from './RpMessengerMarkReadComposer';
++export * from './RpRequestPhotoListComposer';
++export * from './RpDeletePhotoComposer';
++export * from './RpUpdatePhotoComposer';
++export * from './RpSaveScreenshotComposer';
 diff --git a/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts b/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
-index f9538e5651165f760a3d2d6cd37490d6d4fb8971..09974c6b78a2485f4a386246c556c5f692641fc2 100644
+index f9538e5651165f760a3d2d6cd37490d6d4fb8971..5eece5a65a7e940bb3d352162de70365b79f9ed5 100644
 --- a/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
 +++ b/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
-@@ -8,6 +8,7 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -8,6 +8,9 @@ export class RoomUnitChatParser implements IMessageParser
      private _bubble: number;
      private _urls: string[];
      private _messageLength: number;
 +    private _usernameColor: string;
++    private _icon: string;
++    private _iconColor: string;
  
      public flush(): boolean
      {
-@@ -17,6 +18,7 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -17,6 +20,9 @@ export class RoomUnitChatParser implements IMessageParser
          this._bubble = 0;
          this._urls = [];
          this._messageLength = 0;
 +        this._usernameColor = '';
++        this._icon = '';
++        this._iconColor = '';
  
          return true;
      }
-@@ -33,6 +35,7 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -33,6 +39,9 @@ export class RoomUnitChatParser implements IMessageParser
          this.parseUrls(wrapper);
  
          this._messageLength = wrapper.readInt();
 +        this._usernameColor = wrapper.readString();
++        this._icon = wrapper.readString();
++        this._iconColor = wrapper.readString();
  
          return true;
      }
-@@ -84,4 +87,9 @@ export class RoomUnitChatParser implements IMessageParser
+@@ -84,4 +93,19 @@ export class RoomUnitChatParser implements IMessageParser
      {
          return this._messageLength;
      }
@@ -596,6 +953,16 @@ index f9538e5651165f760a3d2d6cd37490d6d4fb8971..09974c6b78a2485f4a386246c556c5f6
 +    public get usernameColor(): string
 +    {
 +        return this._usernameColor;
++    }
++
++    public get icon(): string
++    {
++        return this._icon;
++    }
++
++    public get iconColor(): string
++    {
++        return this._iconColor;
 +    }
  }
 diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
@@ -712,7 +1079,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef
  
      private clearPlanes(): void
 diff --git a/src/nitro/session/handler/RoomChatHandler.ts b/src/nitro/session/handler/RoomChatHandler.ts
-index 5f84504a3fc5d92d026b31913320682eb90cafd6..b16e3cf24ef1c6b3fcec0e52df161771ff145e98 100644
+index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf958d1445 100644
 --- a/src/nitro/session/handler/RoomChatHandler.ts
 +++ b/src/nitro/session/handler/RoomChatHandler.ts
 @@ -37,7 +37,7 @@ export class RoomChatHandler extends BaseHandler
@@ -720,7 +1087,7 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..b16e3cf24ef1c6b3fcec0e52df161771
          else if(event instanceof RoomUnitChatWhisperEvent) chatType = RoomSessionChatEvent.CHAT_TYPE_WHISPER;
  
 -        const chatEvent = new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, session, parser.roomIndex, parser.message, chatType, parser.bubble);
-+        const chatEvent = new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, session, parser.roomIndex, parser.message, chatType, parser.bubble, null, -1, parser.usernameColor);
++        const chatEvent = new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, session, parser.roomIndex, parser.message, chatType, parser.bubble, null, -1, parser.usernameColor, parser.icon, parser.iconColor);
  
          this.listener.events.dispatchEvent(chatEvent);
      }

@@ -63,22 +63,12 @@
         height: 30px;
     }
 
-    &.icon-friendall {
+    // The phone button (opens phone/toggle) — the original PixelRP toolbar
+    // phone art, rendered 1:1 native size.
+    &.icon-phone {
         background-image: url('@/assets/images/toolbar/icons/pixelrp-friends.png');
         width: 40px;
         height: 40px;
-    }
-
-    &.icon-friendsearch {
-        background-image: url('@/assets/images/toolbar/icons/friend_search.png');
-        height: 33px;
-        width: 29px;
-    }
-
-    &.icon-sendmessage {
-        background-image: url('@/assets/images/toolbar/icons/sendmessage.png');
-        width: 20px;
-        height: 21px;
     }
 
     &.icon-me-talents {
@@ -164,16 +154,6 @@
         background-image: url('@/assets/images/toolbar/icons/pixelrp-camera.png');
         width: 29px;
         height: 30px;
-    }
-
-    &.icon-message {
-        background-image: url('@/assets/images/toolbar/icons/message.png');
-        width: 36px;
-        height: 32px;
-
-        &.is-unseen {
-            background-image: url('@/assets/images/toolbar/icons/message_unsee.gif');
-        }
     }
 
     &.icon-wired-trigger {
@@ -632,5 +612,52 @@
         to {
             transform: rotate(360deg);
         }
+    }
+}
+
+// Friends spritesheet icons (relationships, accept/deny, mini profile).
+// Moved here from the retired friends-list component styles — these
+// classes are used by the infostand, user profile, groups and avatar menu.
+.nitro-friends-spritesheet {
+    background: url('@/assets/images/friends/friends-spritesheet.png') transparent no-repeat;
+
+    &.icon-heart {
+        width: 16px; height: 14px;
+        background-position: -5px -67px;
+    }
+
+    &.icon-none {
+        width: 16px; height: 14px;
+        background-position: -31px -67px;
+    }
+
+    &.icon-profile-sm {
+        width: 13px; height: 11px;
+        background-position: -51px -91px;
+
+        &:hover {
+            width: 13px; height: 11px;
+            background-position: -74px -91px;
+        }
+    }
+
+    &.icon-smile {
+        width: 16px; height: 14px;
+        background-position: -57px -67px;
+    }
+
+    &.icon-accept {
+        width: 13px; height: 14px;
+        background-position: -5px -91px;
+    }
+
+    &.icon-bobba {
+        width: 16px; height: 14px;
+        background-position: -96px -5px;
+    }
+
+    &.icon-deny {
+        width: 13px; height: 14px;
+        background-position: -28px -91px;
     }
 }
