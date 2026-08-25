@@ -1,7 +1,7 @@
-import { ILinkEventTracker, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
+import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
@@ -37,6 +37,43 @@ export const RpSettingsView: FC<{}> = props =>
     const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
     const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
+    // Own avatar head + chest color for the preview bubble, built the same way
+    // the chat widget builds them (useChatWidget's setFigureImage).
+    const [ previewFigure, setPreviewFigure ] = useState<{ imageUrl: string, color: string }>(null);
+
+    useEffect(() =>
+    {
+        if(!isVisible) return;
+
+        let disposed = false;
+
+        const buildFigure = (figure: string) =>
+        {
+            const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, null, {
+                resetFigure: figure =>
+                {
+                    if(!disposed) buildFigure(figure);
+                },
+                dispose: () => {},
+                disposed: false
+            });
+
+            if(!avatarImage) return;
+
+            const image = avatarImage.getCroppedImage(AvatarSetType.HEAD);
+            const color = avatarImage.getPartColor(AvatarFigurePartType.CHEST);
+
+            setPreviewFigure({ imageUrl: image.src, color: ('#' + ((color && color.rgb) || 16777215).toString(16).padStart(6, '0')) });
+            avatarImage.dispose();
+        }
+
+        buildFigure(GetSessionDataManager().figure);
+
+        return () =>
+        {
+            disposed = true;
+        }
+    }, [ isVisible ]);
 
     // Snap any stored value onto the nearest of the five slider stops.
     const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
@@ -240,18 +277,29 @@ export const RpSettingsView: FC<{}> = props =>
                             { (socialPage === 'Username') && <>
                                 <div className="rp-settings-preview">
                                     <Text small className="text-muted">Preview</Text>
-                                    <div className="rp-settings-preview-bubble">
-                                        <b>
-                                            { usernameIcon && <><span style={ { color: usernameIconColor } }><UsernameIconGlyph iconClass={ usernameIcon } /></span>{ ' ' }</> }
-                                            <span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ':' }
-                                        </b>
-                                        { ' Welcome to Pixel City!' }
+                                    <div className="bubble-container" style={ { position: 'relative' } }>
+                                        <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
+                                        <div className="chat-bubble bubble-0 type-0" style={ { maxWidth: '100%' } }>
+                                            <div className="user-container">
+                                                { previewFigure?.imageUrl &&
+                                                    <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
+                                            </div>
+                                            <div className="chat-content">
+                                                { usernameIcon &&
+                                                    /* key remounts the <i> so the FA kit re-converts it to SVG on
+                                                       every icon/color change (the kit swaps nodes outside React) */
+                                                    <b key={ `${ usernameIcon }|${ usernameIconColor }` } className="username mr-1"><span style={ { color: usernameIconColor } }><UsernameIconGlyph iconClass={ usernameIcon } /></span>{ ' ' }</b> }
+                                                <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
+                                                <span className="message">Welcome to San Francisco!</span>
+                                            </div>
+                                            <div className="pointer" />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="rp-settings-stack-section">
                                     <div className="rp-settings-stack-head">
                                         <Text bold>Color</Text>
-                                        <Text small className="text-muted">The color of your username in your chat bubbles. Everyone in the room sees it.</Text>
+                                        <Text small className="text-muted">The color of your username in your chat bubbles.</Text>
                                     </div>
                                     <div className="rp-settings-swatches rp-settings-swatches--wide">
                                         { USERNAME_COLORS.map(entry => (

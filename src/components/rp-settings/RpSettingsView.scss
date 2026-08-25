@@ -110,16 +110,11 @@
         border-radius: $border-radius;
     }
 
-    .rp-settings-preview-bubble {
-        background: $white;
-        border: 2px solid #000;
-        border-radius: 8px;
-        padding: 3px 10px;
-        font-size: 13px;
-        color: #000;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    // The preview renders a REAL chat bubble (bubble-0 markup + global chat
+    // styles), so it only needs room to sit inline; keep it from overflowing.
+    .rp-settings-preview .bubble-container {
+        max-width: 100%;
+        min-width: 0;
     }
 
     // Color swatches + opacity slider stacked as one control column: the
