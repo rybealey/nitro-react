@@ -1095,7 +1095,7 @@ diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSprit
 index 6a88da8..b144135 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,92 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,94 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1138,6 +1138,8 @@ index 6a88da8..b144135 100644
 +    // sides, combined with the formationState history, not used alone).
 +    // CORNER_GRACE_MS: see genuineDivergence Case A below.
 +    private static FORMATION_EVIDENCE_MS: number = 350;
++    // JOINER-only PHASE_SHIFT duration; native 530ms interpolation is unchanged.
++    private static FORMATION_CONVERGENCE_MS: number = 400;
 +    private static FORMATION_GAP_NEAR_ZERO: number = 0.12;
 +    private static FORMATION_LOCK_GAP_MAX: number = 0.25;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
@@ -1188,7 +1190,7 @@ index 6a88da8..b144135 100644
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +137,230 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +139,230 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1419,7 +1421,7 @@ index 6a88da8..b144135 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +683,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +685,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1460,7 +1462,7 @@ index 6a88da8..b144135 100644
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +766,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +768,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1476,7 +1478,7 @@ index 6a88da8..b144135 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +816,1703 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +818,1707 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2226,7 +2228,7 @@ index 6a88da8..b144135 100644
 +                    // later either. If s caps at 1 while lockProof is still
 +                    // false, mode simply stays 0 and tries again next frame
 +                    // (s does not decay in mode 0).
-+                    if(sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) sync.s = Math.min(1, (sync.s + (dt / 530)));
++                    if(sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) sync.s = Math.min(1, (sync.s + (dt / RoomSpriteCanvas.FORMATION_CONVERGENCE_MS)));
 +
 +                    if((sync.s >= 1) && lockProof)
 +                    {
@@ -2946,7 +2948,11 @@ index 6a88da8..b144135 100644
 +                        // preserves the formation spacing since nothing
 +                        // needs correcting.
 +                        const phi = sync.phiPrev;
-+                        const shifted = ((j.time - j.change) + (sync.s * phi));
++                        // Ease only the pre-lock convergence strength so the
++                        // faster ramp starts and finishes with zero slope.
++                        // SYNC_ABORT release keeps its existing linear unwind.
++                        const convergenceBlend = ((sync.mode === 0) ? ((sync.s * sync.s) * (3 - (2 * sync.s))) : sync.s);
++                        const shifted = ((j.time - j.change) + (convergenceBlend * phi));
 +                        const progress = Math.min(1, Math.max(0, (shifted / j.interval)));
 +
 +                        vx = (j.sx + (j.dx * progress));
@@ -3182,7 +3188,7 @@ index 6a88da8..b144135 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2573,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2579,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
