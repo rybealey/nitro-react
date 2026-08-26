@@ -1476,7 +1476,7 @@ index 6a88da8..b144135 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +816,1685 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +816,1703 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2228,7 +2228,25 @@ index 6a88da8..b144135 100644
 +                    // (s does not decay in mode 0).
 +                    if(sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) sync.s = Math.min(1, (sync.s + (dt / 530)));
 +
-+                    if((sync.s >= 1) && lockProof) sync.mode = 1;
++                    if((sync.s >= 1) && lockProof)
++                    {
++                        // Lock acquisition is one atomic state transition.
++                        // lockProof already carries the strict CONVERGING,
++                        // native-gap, path and identical-segment evidence;
++                        // waiting for the later j.moving-gated render branch
++                        // to latch visualLocked left a packet-boundary window
++                        // where a visually joined pair could render NATIVE and
++                        // separate again before MASTER_COPY became authoritative.
++                        sync.mode = 1;
++                        sync.visualLocked = true;
++                        sync.formationState = RoomSpriteCanvas.FORMATION_CONVERGING;
++                        sync.s = 1;
++                        sync.trailingBadSince = 0;
++                        sync.trailingCorrectingActive = false;
++                        sync.trailingExitOffsetSet = false;
++                        sync.trailingLatchSet = false;
++                        sync.trailingRolloverActive = false;
++                    }
 +                }
 +                else if(sync.mode === 2)
 +                {
@@ -3164,7 +3182,7 @@ index 6a88da8..b144135 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2555,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2573,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));

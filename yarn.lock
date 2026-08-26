@@ -634,7 +634,7 @@ __metadata:
 
 "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@npm%3A1.6.6#~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch":
   version: 1.6.6
-  resolution: "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@npm%3A1.6.6#~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch::version=1.6.6&hash=77a96d"
+  resolution: "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@npm%3A1.6.6#~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch::version=1.6.6&hash=bccaf0"
   dependencies:
     "@pixi/app": "npm:~6.5.0"
     "@pixi/basis": "npm:~6.5.0"
@@ -671,7 +671,7 @@ __metadata:
     gifuct-js: "npm:^2.1.2"
     howler: "npm:^2.2.3"
     pako: "npm:^2.0.4"
-  checksum: 10c0/5c75a8e86593f1e09f1dff2c5ea11ca4fd0b334550578d4e94c04a944a40bfff66c8f5d4dec81356db80bf24a92a54ffdb5af3e8d5c1b5ae505493402e80880e
+  checksum: 10c0/7715a146483ab311713f5c5e5fae16d5df653b6fbc72920d392e582140da5b6ea5127e3c432beb0f9a507522e4008ed33d9436211fa44b9e844ef10f4688c16f
   languageName: node
   linkType: hard
 
