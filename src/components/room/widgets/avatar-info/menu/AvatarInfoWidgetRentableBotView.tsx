@@ -17,6 +17,16 @@ const MODE_NORMAL = 0;
 const MODE_CHANGE_NAME = 1;
 const MODE_CHANGE_MOTTO = 2;
 
+// pixelrp: custom bot-menu actions for the back-and-forth patrol test mode
+// (see GenericBot.TickPatrol / SaveBotActionEvent on the emulator side).
+// Deliberately NOT added to BotSkillsEnum — these ids are project-specific
+// and picked well clear of every stock BotSkillsEnum value (0-25) so
+// there's no ambiguity reading either side of the wire. Still routed
+// through the existing BotSkillSaveComposer/SaveBotActionEvent pipeline
+// (header BOT_SKILL_SAVE / 2624) — no new packet was needed.
+const ACTION_WALK_HORIZONTAL = 90;
+const ACTION_WALK_VERTICAL = 91;
+
 export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotViewProps> = props =>
 {
     const { avatarInfo = null, onClose = null } = props;
@@ -110,6 +120,12 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                     // Server toggles freeroam <-> stand; keep our label in sync.
                     setIsFreeroaming(value => !value);
                     break;
+                case 'walk_horizontal':
+                    SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, ACTION_WALK_HORIZONTAL, ''));
+                    break;
+                case 'walk_vertical':
+                    SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, ACTION_WALK_VERTICAL, ''));
+                    break;
                 case 'setup_chat':
                     requestBotCommandConfiguration(BotSkillsEnum.SETUP_CHAT);
                     hideMenu = false;
@@ -175,6 +191,15 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                         <ContextMenuListItemView onClick={ event => processAction('random_walk') }>
                             { isFreeroaming ? LocalizeText('avatar.widget.random_walk') : 'Walk around' }
                         </ContextMenuListItemView> }
+                    { /* pixelrp: back-and-forth patrol test mode — unconditional (not
+                        gated on a botSkills flag) since it's a debug/testing tool meant
+                        to be readily available on any rentable bot, not a stock skill. */ }
+                    <ContextMenuListItemView onClick={ event => processAction('walk_horizontal') }>
+                        Walk Horizontally
+                    </ContextMenuListItemView>
+                    <ContextMenuListItemView onClick={ event => processAction('walk_vertical') }>
+                        Walk Vertically
+                    </ContextMenuListItemView>
                     { (avatarInfo.botSkills.indexOf(BotSkillsEnum.SETUP_CHAT) >= 0) &&
                         <ContextMenuListItemView onClick={ event => processAction('setup_chat') }>
                             { LocalizeText('avatar.widget.setup_chat') }
