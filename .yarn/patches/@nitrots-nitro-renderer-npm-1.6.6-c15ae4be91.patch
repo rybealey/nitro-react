@@ -1,5 +1,5 @@
 diff --git a/src/events/session/RoomSessionChatEvent.ts b/src/events/session/RoomSessionChatEvent.ts
-index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..4656bf5b92f60fcb144f1398a79877027baa8157 100644
+index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..11ad556b51eb593c23a6606382190d67cd6440d3 100644
 --- a/src/events/session/RoomSessionChatEvent.ts
 +++ b/src/events/session/RoomSessionChatEvent.ts
 @@ -24,8 +24,11 @@ export class RoomSessionChatEvent extends RoomSessionEvent
@@ -41,7 +41,7 @@ index 10ec0b7883a21f42b5d90cdece6dbe3e09794acb..4656bf5b92f60fcb144f1398a7987702
  
      public get objectId(): number
 diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
-index 30f15f49a4ac8e0520fb46dcc6d53c4434d928ab..c553ce649ec342f3a34650d6651e8a5b8ceb306f 100644
+index 30f15f49a4ac8e0520fb46dcc6d53c4434d928ab..3a24517344a79e0370d72bcf1744e6c1e2c9bd9b 100644
 --- a/src/nitro/avatar/AvatarImage.ts
 +++ b/src/nitro/avatar/AvatarImage.ts
 @@ -606,6 +606,12 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
@@ -67,7 +67,7 @@ index 30f15f49a4ac8e0520fb46dcc6d53c4434d928ab..c553ce649ec342f3a34650d6651e8a5b
  
      private resetActions(): boolean
 diff --git a/src/nitro/avatar/AvatarImagePartContainer.ts b/src/nitro/avatar/AvatarImagePartContainer.ts
-index a632ab79209fddad4e2673d8a1bedcb18d2903bd..82e2f7a7373764c9f05cc0222d4111a5cfe6f70d 100644
+index a632ab79209fddad4e2673d8a1bedcb18d2903bd..9ba1f450c97b109f657e7a365d9f26494d35d77a 100644
 --- a/src/nitro/avatar/AvatarImagePartContainer.ts
 +++ b/src/nitro/avatar/AvatarImagePartContainer.ts
 @@ -47,6 +47,22 @@ export class AvatarImagePartContainer
@@ -94,7 +94,7 @@ index a632ab79209fddad4e2673d8a1bedcb18d2903bd..82e2f7a7373764c9f05cc0222d4111a5
      {
          const frameNumber = (k % this._frames.length);
 diff --git a/src/nitro/avatar/cache/AvatarImageCache.ts b/src/nitro/avatar/cache/AvatarImageCache.ts
-index beb4a06196a800d842a1e3bbe48226d2ec3eea98..3f4b2795c4301b2677944fa8b0dfa6d67db776da 100644
+index beb4a06196a800d842a1e3bbe48226d2ec3eea98..582243d4581bfa5b3615ab44b36d70ce3e5c0100 100644
 --- a/src/nitro/avatar/cache/AvatarImageCache.ts
 +++ b/src/nitro/avatar/cache/AvatarImageCache.ts
 @@ -16,6 +16,9 @@ import { ImageData } from './ImageData';
@@ -206,7 +206,7 @@ index beb4a06196a800d842a1e3bbe48226d2ec3eea98..3f4b2795c4301b2677944fa8b0dfa6d6
      {
          if(!containers || !containers.length) return null;
 diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
-index 7878a04307187848c6e07bcb2ecca59324b053f1..394d62b0460b018888e2bbd895f6174b76241d03 100644
+index 7878a04307187848c6e07bcb2ecca59324b053f1..4162a6a615436046f4cd40f2a3b6667b462cb300 100644
 --- a/src/nitro/communication/NitroMessages.ts
 +++ b/src/nitro/communication/NitroMessages.ts
 @@ -1,4 +1,16 @@
@@ -255,7 +255,7 @@ index 7878a04307187848c6e07bcb2ecca59324b053f1..394d62b0460b018888e2bbd895f6174b
          // LANDING VIEW
          this._composers.set(OutgoingHeader.COMMUNITY_GOAL_VOTE_COMPOSER, CommunityGoalVoteMessageComposer);
 diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
-index ae6f19e099940b5caea88b89466e784bff8ee2e3..f59a16aa1b2e3f6c41bf63619430ba26a5806c6e 100644
+index ae6f19e099940b5caea88b89466e784bff8ee2e3..466147a8860c2c021656b63f03038cdd0514654b 100644
 --- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
 +++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
 @@ -464,4 +464,11 @@ export class IncomingHeader
@@ -272,7 +272,7 @@ index ae6f19e099940b5caea88b89466e784bff8ee2e3..f59a16aa1b2e3f6c41bf63619430ba26
  }
 diff --git a/src/nitro/communication/messages/incoming/RpInventoryEvent.ts b/src/nitro/communication/messages/incoming/RpInventoryEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..37bd825d6ff19a11dff5d0408591a8e045522210
+index 0000000000000000000000000000000000000000..4abfa11f6fdbc0222e5fb0403789207c2c24ec88
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpInventoryEvent.ts
 @@ -0,0 +1,54 @@
@@ -332,7 +332,7 @@ index 0000000000000000000000000000000000000000..37bd825d6ff19a11dff5d0408591a8e0
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpMessengerReceiptEvent.ts b/src/nitro/communication/messages/incoming/RpMessengerReceiptEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..385ff063bbce4dbdef7adfd6ec27806a535a31d3
+index 0000000000000000000000000000000000000000..622ecad76368d9a90583a69eefb45e2225d73ccb
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMessengerReceiptEvent.ts
 @@ -0,0 +1,54 @@
@@ -392,7 +392,7 @@ index 0000000000000000000000000000000000000000..385ff063bbce4dbdef7adfd6ec27806a
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts b/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..dedaafe1502b841bca9f19f4fd79ecc2c99092ad
+index 0000000000000000000000000000000000000000..69e3971cffa2946bd6b7262aa3752cd98cffed98
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
 @@ -0,0 +1,66 @@
@@ -464,7 +464,7 @@ index 0000000000000000000000000000000000000000..dedaafe1502b841bca9f19f4fd79ecc2
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpStatsEvent.ts b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..09b80b9003ae77d525f2c9259626b543d046db9b
+index 0000000000000000000000000000000000000000..4c04d83aae423f0bb46293264a5cd4324477ad23
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
 @@ -0,0 +1,92 @@
@@ -562,7 +562,7 @@ index 0000000000000000000000000000000000000000..09b80b9003ae77d525f2c9259626b543
 +}
 diff --git a/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..ab3708b4c9a3ced83988467bf0b95c24dd112a7e
+index 0000000000000000000000000000000000000000..8701756a24caf4c130cd3d9d99807d79b7dbbdd8
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpUiSettingsEvent.ts
 @@ -0,0 +1,83 @@
@@ -650,7 +650,7 @@ index 0000000000000000000000000000000000000000..ab3708b4c9a3ced83988467bf0b95c24
 +    }
 +}
 diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
-index d9e905cac3e59c4fa9b696589d8d6f5fa6159983..42b707e4ac85d33644bb184d1aa25a045cb2e923 100644
+index d9e905cac3e59c4fa9b696589d8d6f5fa6159983..3148ba1cf960ce8ba0bc28359a8cd2621a24ab41 100644
 --- a/src/nitro/communication/messages/incoming/index.ts
 +++ b/src/nitro/communication/messages/incoming/index.ts
 @@ -73,3 +73,8 @@ export * from './user/inventory/currency';
@@ -663,7 +663,7 @@ index d9e905cac3e59c4fa9b696589d8d6f5fa6159983..42b707e4ac85d33644bb184d1aa25a04
 +export * from './RpMessengerReceiptEvent';
 +export * from './RpPhotoListEvent';
 diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
-index c303114f44e2fd89b1e683380e26ea412de500b8..222e910346244053b45f6d636eaa7185a9ae7b5c 100644
+index c303114f44e2fd89b1e683380e26ea412de500b8..2da7a39a824594ad5c28db510317c20f6e4509d1 100644
 --- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
 +++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
 @@ -467,4 +467,11 @@ export class OutgoingHeader
@@ -680,7 +680,7 @@ index c303114f44e2fd89b1e683380e26ea412de500b8..222e910346244053b45f6d636eaa7185
  }
 diff --git a/src/nitro/communication/messages/outgoing/RpDeletePhotoComposer.ts b/src/nitro/communication/messages/outgoing/RpDeletePhotoComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..8b0f81844cb94852e5f462d1b8e87d24efb95f2f
+index 0000000000000000000000000000000000000000..f3c0d6fcd9f8129ed5aab67c1d1a66328e48a5d4
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpDeletePhotoComposer.ts
 @@ -0,0 +1,22 @@
@@ -708,7 +708,7 @@ index 0000000000000000000000000000000000000000..8b0f81844cb94852e5f462d1b8e87d24
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpMessengerMarkReadComposer.ts b/src/nitro/communication/messages/outgoing/RpMessengerMarkReadComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..9d1df7649c039ff15bdff4305bea10a06ca9d5ed
+index 0000000000000000000000000000000000000000..abb5e21169773e483da2524992a17c6ae7eb5e20
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpMessengerMarkReadComposer.ts
 @@ -0,0 +1,23 @@
@@ -737,7 +737,7 @@ index 0000000000000000000000000000000000000000..9d1df7649c039ff15bdff4305bea10a0
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpRequestPhotoListComposer.ts b/src/nitro/communication/messages/outgoing/RpRequestPhotoListComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..05b0b764241c1f737097cbe32b4032781ee1afbc
+index 0000000000000000000000000000000000000000..1d653488bdcc41efb8b17166f694327d58f7635f
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpRequestPhotoListComposer.ts
 @@ -0,0 +1,23 @@
@@ -766,7 +766,7 @@ index 0000000000000000000000000000000000000000..05b0b764241c1f737097cbe32b403278
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..f9f6d3c0d290d8746397ffedcf933a8cd037853f
+index 0000000000000000000000000000000000000000..4b53f0d7e9c6734cfd46c1b5ec6d96f6658f433a
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
 @@ -0,0 +1,31 @@
@@ -803,7 +803,7 @@ index 0000000000000000000000000000000000000000..f9f6d3c0d290d8746397ffedcf933a8c
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..a43ea24af835cd144063e88b2842bb76baec64d0
+index 0000000000000000000000000000000000000000..aa43d5b28e3a1aa2d696e4403d0c23114747d896
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpSaveUiSettingsComposer.ts
 @@ -0,0 +1,23 @@
@@ -832,7 +832,7 @@ index 0000000000000000000000000000000000000000..a43ea24af835cd144063e88b2842bb76
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpUpdatePhotoComposer.ts b/src/nitro/communication/messages/outgoing/RpUpdatePhotoComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..74665d2caa574afc519f8ee3ded1481b1be8cec1
+index 0000000000000000000000000000000000000000..e4b463c3cc033de30ced8bf0e8007e128dd91ce0
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpUpdatePhotoComposer.ts
 @@ -0,0 +1,32 @@
@@ -870,7 +870,7 @@ index 0000000000000000000000000000000000000000..74665d2caa574afc519f8ee3ded1481b
 +}
 diff --git a/src/nitro/communication/messages/outgoing/RpUseItemComposer.ts b/src/nitro/communication/messages/outgoing/RpUseItemComposer.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..d19cff51834c0ff9d2635bcdff516b247404e881
+index 0000000000000000000000000000000000000000..e150c477a733461d33511457c0847f897bcc5192
 --- /dev/null
 +++ b/src/nitro/communication/messages/outgoing/RpUseItemComposer.ts
 @@ -0,0 +1,22 @@
@@ -897,7 +897,7 @@ index 0000000000000000000000000000000000000000..d19cff51834c0ff9d2635bcdff516b24
 +    }
 +}
 diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
-index 794f8b373deda2aef70c54d9d8abdee1658d1add..d20412dac1dd7567f367c25f2726c7b0c671a464 100644
+index 794f8b373deda2aef70c54d9d8abdee1658d1add..4ee73c43a6e2e4ee28fd6216496eab5893357bed 100644
 --- a/src/nitro/communication/messages/outgoing/index.ts
 +++ b/src/nitro/communication/messages/outgoing/index.ts
 @@ -71,3 +71,10 @@ export * from './user/inventory/currency';
@@ -912,7 +912,7 @@ index 794f8b373deda2aef70c54d9d8abdee1658d1add..d20412dac1dd7567f367c25f2726c7b0
 +export * from './RpUpdatePhotoComposer';
 +export * from './RpSaveScreenshotComposer';
 diff --git a/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts b/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
-index f9538e5651165f760a3d2d6cd37490d6d4fb8971..b874a05961a4d01dddbadf48c67ba8165ec7c802 100644
+index f9538e5651165f760a3d2d6cd37490d6d4fb8971..5eece5a65a7e940bb3d352162de70365b79f9ed5 100644
 --- a/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
 +++ b/src/nitro/communication/messages/parser/room/unit/chat/RoomUnitChatParser.ts
 @@ -8,6 +8,9 @@ export class RoomUnitChatParser implements IMessageParser
@@ -966,7 +966,7 @@ index f9538e5651165f760a3d2d6cd37490d6d4fb8971..b874a05961a4d01dddbadf48c67ba816
 +    }
  }
 diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
-index d912d445e557d13117b0a72df899cfa795d9977f..c769e6168a6338554db44b5af7ee800789e8d6d8 100644
+index d912d445e557d13117b0a72df899cfa795d9977f..a9b94a1100fcc8e122603d13ee8b5c8f20775b21 100644
 --- a/src/nitro/room/RoomEngine.ts
 +++ b/src/nitro/room/RoomEngine.ts
 @@ -2545,7 +2545,15 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
@@ -987,7 +987,7 @@ index d912d445e557d13117b0a72df899cfa795d9977f..c769e6168a6338554db44b5af7ee8007
          }
      }
 diff --git a/src/nitro/room/RoomObjectEventHandler.ts b/src/nitro/room/RoomObjectEventHandler.ts
-index 5731eba205f6fb2d951d183cec28d5758118564d..65bc94fa7e691377c16ac2c57849bf9d34608c5f 100644
+index 5731eba205f6fb2d951d183cec28d5758118564d..5965e22d24a18de9c7cfb820052b580f3584d011 100644
 --- a/src/nitro/room/RoomObjectEventHandler.ts
 +++ b/src/nitro/room/RoomObjectEventHandler.ts
 @@ -421,9 +421,17 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
@@ -1010,7 +1010,7 @@ index 5731eba205f6fb2d951d183cec28d5758118564d..65bc94fa7e691377c16ac2c57849bf9d
                          else
                          {
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907bc0a99a7adf0fb46d52675a770400abaf9..2961922e829d9e33a239c2fe2944dae21df3947d 100644
+index ac3907bc0a99a7adf0fb46d52675a770400abaf9..6c499d64c437b7d0c3e6d022d486f234034e8e4a 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -4,7 +4,16 @@ import { ObjectMoveUpdateMessage } from '../../messages';
@@ -1057,7 +1057,7 @@ index ac3907bc0a99a7adf0fb46d52675a770400abaf9..2961922e829d9e33a239c2fe2944dae2
  
          this._locationDelta.assign(message.targetLocation);
 diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
-index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..5ff46415b9809f6a4748511d6c16ebc5b2e1458a 100644
+index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..b338cd240127ecaccdd57c61d3c2bfef383152ec 100644
 --- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
 +++ b/src/nitro/room/object/visualization/room/RoomVisualization.ts
 @@ -345,7 +345,16 @@ export class RoomVisualization extends RoomObjectSpriteVisualization implements
@@ -1079,7 +1079,7 @@ index 2fea53875c12fe49fb4994d9062eeacc2c7ba7e2..5ff46415b9809f6a4748511d6c16ebc5
  
      private clearPlanes(): void
 diff --git a/src/nitro/session/handler/RoomChatHandler.ts b/src/nitro/session/handler/RoomChatHandler.ts
-index 5f84504a3fc5d92d026b31913320682eb90cafd6..1d553882603597669eb1f47770fdaba4cfe7ec1f 100644
+index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf958d1445 100644
 --- a/src/nitro/session/handler/RoomChatHandler.ts
 +++ b/src/nitro/session/handler/RoomChatHandler.ts
 @@ -37,7 +37,7 @@ export class RoomChatHandler extends BaseHandler
@@ -1092,10 +1092,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..1d553882603597669eb1f47770fdaba4
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5fed0309f6 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..180039edb42dc34f2cee29a3d4210682de19c69e 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,107 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,105 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1136,22 +1136,20 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +    // legitimately share that exact tuple for their very first mutual step
 +    // (both about to walk the same corridor), which used to be read as
 +    // proof of same-position join intent and collapsed the real one-tile
-+    // gap to a full overlap. sameGoal now only counts toward CONVERGING
-+    // evidence when the actual native gap is already this close; at or
-+    // above it, the same sameGoal frame counts toward TRAILING evidence
-+    // instead — same tuple, correctly reinterpreted by real spacing.
-+    // Tightened from an initial 0.25 (reused from the old
-+    // FORMATION_LOCK_GAP_MAX) down to reuse FORMATION_GAP_NEAR_ZERO
-+    // instead — this file's existing "actually close" threshold — after
-+    // 0.25 still wasn't strict enough in practice: a late join needs to be
-+    // within about a TENTH of a tile now, not a quarter, before it's ever
-+    // trusted as genuine same-position intent.
++    // gap to a full overlap. The approved strict boundary is expressed in
++    // logical route tiles: <=0.15 may earn SAME_POSITION, >=0.20 is
++    // immediately too late, and the narrow 0.15-0.20 ambiguity band gets at
++    // most 100ms to return to the close side before defaulting to TRAILING.
++    // These are native, direction-normalized gaps; render corrections never
++    // feed back into the decision.
 +    private static FORMATION_EVIDENCE_MS: number = 350;
++    private static FORMATION_LATE_EVIDENCE_MS: number = 100;
 +    // JOINER-only PHASE_SHIFT duration; native 530ms interpolation is unchanged.
 +    private static FORMATION_CONVERGENCE_MS: number = 400;
 +    private static FORMATION_GAP_NEAR_ZERO: number = 0.12;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
-+    private static FORMATION_SAME_GOAL_CLOSE_GAP: number = RoomSpriteCanvas.FORMATION_GAP_NEAR_ZERO;
++    private static FORMATION_SAME_POSITION_GAP_MAX: number = 0.15;
++    private static FORMATION_TRAILING_GAP_MIN: number = 0.20;
 +
 +    // ONE_TILE_BEHIND trailing-phase stabilization (separate from, and
 +    // deliberately never charging, the SAME_POSITION s/formationState
@@ -1203,7 +1201,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +152,224 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +150,226 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1270,8 +1268,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +        // every session begins CANDIDATE and accumulates relation evidence:
 +        // sustained sameGoal+sameDirection (therefore the identical segment)
 +        // proves CONVERGING; sustained exact joinerBehind proves TRAILING.
-+        // Opposing evidence decays through brief packet-boundary skew. Once
-+        // either relation reaches FORMATION_EVIDENCE_MS, that lane remains
++        // Opposing evidence decays through brief packet-boundary skew.
++        // CONVERGING still requires FORMATION_EVIDENCE_MS; a clearly late
++        // reading or a 100ms unresolved boundary reading reaches
++        // FORMATION_LATE_EVIDENCE_MS instead. Once selected, that lane remains
 +        // authoritative for the session and ordinary rollover tuples cannot
 +        // switch it underneath the renderer. Corrected display coordinates
 +        // are never used as classification evidence.
@@ -1485,7 +1485,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +825,1791 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +825,1803 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1902,7 +1902,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +                        // Sustaining it proves same-position join intent even
 +                        // when equal native speeds keep the physical gap flat
 +                        // — BUT only when the pair is actually close right now
-+                        // (see FORMATION_SAME_GOAL_CLOSE_GAP above). A late
++                        // (see FORMATION_SAME_POSITION_GAP_MAX above). A late
 +                        // join that starts a genuine tile apart can share this
 +                        // exact tuple on its very first mutual step purely by
 +                        // coincidence (both about to walk the same corridor),
@@ -1915,15 +1915,27 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +                        // a real different-segment relation, nothing to
 +                        // disambiguate). Opposing evidence decays so brief
 +                        // packet-boundary tuple skew cannot choose either lane.
-+                        if(sameGoal && (nativeAbsGap < RoomSpriteCanvas.FORMATION_SAME_GOAL_CLOSE_GAP))
++                        // <=0.15: close enough to earn CONVERGING evidence.
++                        // >=0.20: structurally too late, so satisfy the short
++                        // late-evidence threshold immediately. Between them,
++                        // allow only 100ms to return to <=0.15; otherwise the
++                        // default is TRAILING. Returning close clears all late
++                        // evidence rather than letting a stale partial window
++                        // decide a later frame.
++                        if(sameGoal && (nativeAbsGap <= RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX))
 +                        {
 +                            sync.convergingEvidenceMs += dt;
-+                            sync.trailingEvidenceMs = Math.max(0, (sync.trailingEvidenceMs - dt));
++                            sync.trailingEvidenceMs = 0;
 +                        }
-+                        else if(joinerBehind || sameGoal)
++                        else if(joinerBehind || (sameGoal && (nativeAbsGap >= RoomSpriteCanvas.FORMATION_TRAILING_GAP_MIN)))
 +                        {
-+                            sync.trailingEvidenceMs += dt;
-+                            sync.convergingEvidenceMs = Math.max(0, (sync.convergingEvidenceMs - dt));
++                            sync.trailingEvidenceMs = RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS;
++                            sync.convergingEvidenceMs = 0;
++                        }
++                        else if(sameGoal)
++                        {
++                            sync.trailingEvidenceMs = Math.min(RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS, (sync.trailingEvidenceMs + dt));
++                            sync.convergingEvidenceMs = 0;
 +                        }
 +                        else
 +                        {
@@ -1948,7 +1960,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +                    {
 +                        sync.formationState = RoomSpriteCanvas.FORMATION_CONVERGING;
 +                    }
-+                    else if(sync.trailingEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS)
++                    else if(sync.trailingEvidenceMs >= RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS)
 +                    {
 +                        sync.formationState = RoomSpriteCanvas.FORMATION_TRAILING;
 +                        sync.s = 0;
@@ -2090,7 +2102,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +                // take — JOINER and MASTER literally on the SAME shared
 +                // edge (segmentsMatch true, the sameGoal-but-far case the
 +                // classifier now routes to TRAILING — see
-+                // FORMATION_SAME_GOAL_CLOSE_GAP above), just far apart in
++                // FORMATION_SAME_POSITION_GAP_MAX above), just far apart in
 +                // progress along it (JOINER near the start, MASTER near
 +                // the end). Reuses the identical close-gap threshold as
 +                // the classifier itself, so "far enough to have been
@@ -2111,7 +2123,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +                // catching up to MASTER despite the latched formation lane.
 +                const sameSegmentTrailingFarEnough = !!(j && m && j.moving && m.moving && segmentsMatch && mLoc
 +                    && ((sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
-+                        || (Number.isFinite(nativeAbsGap) && (nativeAbsGap >= RoomSpriteCanvas.FORMATION_SAME_GOAL_CLOSE_GAP))));
++                        || (Number.isFinite(nativeAbsGap) && (nativeAbsGap > RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX))));
 +                const trailingRouteNow = !!(j && m && j.moving && m.moving && mLoc
 +                    && ((joinerBehind && !segmentsMatch) || sameSegmentTrailingFarEnough));
 +
@@ -2659,8 +2671,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
 +                        // above — is the OTHER shape: JOINER and MASTER on
 +                        // the literal SAME shared edge (a late join whose
 +                        // very first mutual step happened to coincide with
-+                        // MASTER's current one — see FORMATION_SAME_GOAL_
-+                        // CLOSE_GAP), just far apart in progress along it.
++                        // MASTER's current one — see FORMATION_SAME_POSITION_
++                        // GAP_MAX), just far apart in progress along it.
 +                        // There is no separate "JOINER's own behind segment"
 +                        // to project onto here (they share the one edge), so
 +                        // the target is instead MASTER's own live position
@@ -3279,7 +3291,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..80579ec61eafe5f1131bff7f2b14ae5f
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2670,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2682,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
