@@ -1092,10 +1092,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da8..b144135 100644
+index 6a88da8..ea94e78 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,85 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,100 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1129,11 +1129,26 @@ index 6a88da8..b144135 100644
 +    // one convergence attempt. GAP_NEAR_ZERO remains a trailing-collapse
 +    // diagnostic threshold only; it no longer gates lock acquisition.
 +    // CORNER_GRACE_MS: see genuineDivergence Case A below.
++    // SAME_GOAL_CLOSE_GAP: sameGoal alone is a discrete TUPLE match (JOINER's
++    // first step happens to target the same tile MASTER is currently
++    // targeting) — it does NOT by itself prove the two are actually close
++    // together. A pair that starts a genuine, natural one tile apart can
++    // legitimately share that exact tuple for their very first mutual step
++    // (both about to walk the same corridor), which used to be read as
++    // proof of same-position join intent and collapsed the real one-tile
++    // gap to a full overlap. sameGoal now only counts toward CONVERGING
++    // evidence when the actual native gap is already this close; at or
++    // above it, the same sameGoal frame counts toward TRAILING evidence
++    // instead — same tuple, correctly reinterpreted by real spacing. Value
++    // reuses the same number this file already vetted once before as
++    // FORMATION_LOCK_GAP_MAX (comfortably above observed healthy-lock
++    // gaps ~0.13 tile, well below observed false-lock gaps ~0.5+ tile).
 +    private static FORMATION_EVIDENCE_MS: number = 350;
 +    // JOINER-only PHASE_SHIFT duration; native 530ms interpolation is unchanged.
 +    private static FORMATION_CONVERGENCE_MS: number = 400;
 +    private static FORMATION_GAP_NEAR_ZERO: number = 0.12;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
++    private static FORMATION_SAME_GOAL_CLOSE_GAP: number = 0.25;
 +
 +    // ONE_TILE_BEHIND trailing-phase stabilization (separate from, and
 +    // deliberately never charging, the SAME_POSITION s/formationState
@@ -1181,7 +1196,7 @@ index 6a88da8..b144135 100644
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +130,224 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +145,224 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1406,7 +1421,7 @@ index 6a88da8..b144135 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +670,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +685,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1447,7 +1462,7 @@ index 6a88da8..b144135 100644
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +753,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +768,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1463,7 +1478,7 @@ index 6a88da8..b144135 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +803,1672 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +818,1683 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1878,16 +1893,27 @@ index 6a88da8..b144135 100644
 +                        // Same goal + same direction is the identical-segment
 +                        // relation here (one-tile steps make the starts equal).
 +                        // Sustaining it proves same-position join intent even
-+                        // when equal native speeds keep the physical gap flat.
-+                        // A sustained exact one-edge-behind relation proves
-+                        // TRAILING instead. Opposing evidence decays so brief
++                        // when equal native speeds keep the physical gap flat
++                        // — BUT only when the pair is actually close right now
++                        // (see FORMATION_SAME_GOAL_CLOSE_GAP above). A late
++                        // join that starts a genuine tile apart can share this
++                        // exact tuple on its very first mutual step purely by
++                        // coincidence (both about to walk the same corridor),
++                        // without being any closer than a real one-tile-behind
++                        // pair — that case now counts toward TRAILING instead,
++                        // same as a direct one-edge-behind reading, so it can't
++                        // be collapsed into a false same-position lock. A
++                        // sustained exact one-edge-behind relation still always
++                        // proves TRAILING regardless of distance (it's already
++                        // a real different-segment relation, nothing to
++                        // disambiguate). Opposing evidence decays so brief
 +                        // packet-boundary tuple skew cannot choose either lane.
-+                        if(sameGoal)
++                        if(sameGoal && (nativeAbsGap < RoomSpriteCanvas.FORMATION_SAME_GOAL_CLOSE_GAP))
 +                        {
 +                            sync.convergingEvidenceMs += dt;
 +                            sync.trailingEvidenceMs = Math.max(0, (sync.trailingEvidenceMs - dt));
 +                        }
-+                        else if(joinerBehind)
++                        else if(joinerBehind || sameGoal)
 +                        {
 +                            sync.trailingEvidenceMs += dt;
 +                            sync.convergingEvidenceMs = Math.max(0, (sync.convergingEvidenceMs - dt));
@@ -3138,7 +3164,7 @@ index 6a88da8..b144135 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2529,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2555,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
