@@ -1095,7 +1095,7 @@ diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSprit
 index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55ae8156ae 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,114 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,118 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1153,6 +1153,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +    private static FORMATION_GAP_NEAR_ZERO: number = 0.12;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
 +    private static FORMATION_SAME_POSITION_GAP_MAX: number = 0.10;
++    // At initial engagement, projected route distance alone can hide a late
++    // diagonal/side-offset JOINER. Require the raw native x/y anchors to be
++    // genuinely stacked before an already-later walker may earn convergence.
++    private static FORMATION_STACKED_PLANAR_GAP_MAX: number = 0.10;
 +    private static FORMATION_TRAILING_GAP_MIN: number = 0.15;
 +
 +    // ONE_TILE_BEHIND trailing-phase stabilization (separate from, and
@@ -1210,7 +1214,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +159,226 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +163,226 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1437,7 +1441,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +701,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +705,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1478,7 +1482,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +784,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +788,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1494,7 +1498,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +834,1825 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +838,1833 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1687,21 +1691,29 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                const remoteSince = ((hist.walkSince >= 0) ? hist.walkSince : nowMs);
 +                const ownSince = ((own.walkSince >= 0) ? own.walkSince : nowMs);
 +                const joinerIsOwn = (ownSince > remoteSince);
++                const masterSince = (joinerIsOwn ? remoteSince : ownSince);
++                const joinerSince = (joinerIsOwn ? ownSince : remoteSince);
++                const engagePlanarGap = Math.hypot((roomLocation.x - own.tx), (roomLocation.y - own.ty));
++                const lateEntryAtEngage = ((joinerSince > masterSince)
++                    && (engagePlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX));
 +
 +                this._pixelrpSync = {
 +                    masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
 +                    joinerId: (joinerIsOwn ? this._pixelrpOwnId : object.instanceId),
 +                    mode: 0, s: 0, last: nowMs, badSince: 0, rawPrev: NaN, phiPrev: 0,
 +                    visualLocked: false, releaseAnchorSet: false, releaseOffsetX: NaN, releaseOffsetY: NaN, releaseOffsetZ: NaN, releaseHandoffT: 0,
-+                    // Always starts at CANDIDATE regardless of which
++                    // Normally starts at CANDIDATE regardless of which
 +                    // samePathWith sub-condition matched (sameGoal is
 +                    // logged below via `via` for diagnostic context only —
 +                    // it no longer seeds eligibility directly; see the
 +                    // formationState field comment for why a single ENGAGE
 +                    // tuple proved unreliable in both directions). Real
 +                    // classification is earned from persistent route evidence,
-+                    // starting fresh this frame.
-+                    formationState: RoomSpriteCanvas.FORMATION_CANDIDATE, formationStateSince: nowMs,
++                    // starting fresh this frame. The one deliberate exception
++                    // is a later-starting JOINER whose raw planar anchors are
++                    // not genuinely stacked: that is latched as TRAILING now,
++                    // before route projection can hide the offset.
++                    formationState: (lateEntryAtEngage ? RoomSpriteCanvas.FORMATION_TRAILING : RoomSpriteCanvas.FORMATION_CANDIDATE), formationStateSince: nowMs,
 +                    lockedDirX: NaN, lockedDirY: NaN,
 +                    lastNativeGap: NaN, convergingEvidenceMs: 0, trailingEvidenceMs: 0,
 +                    demotionOffsetSet: false, demotionOffsetX: NaN, demotionOffsetY: NaN, demotionHandoffT: 0,
@@ -1727,7 +1739,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                // the matching [sync] telemetry block inside the joiner-
 +                // handling code below. Remove alongside it after diagnosis
 +                // is confirmed with the user.
-+                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') }`);
++                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) planarGap=${ engagePlanarGap.toFixed(3) } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') }`);
 +            }
 +            else if(!unitInfo.own && own && recentlyReleasedBlocked && this._pixelrpLastReleased && !this._pixelrpLastReleased.blockLogged && samePathWith(own))
 +            {
@@ -3322,7 +3334,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2713,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2725,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
