@@ -1476,7 +1476,7 @@ index 6a88da8..b144135 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +816,1658 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +816,1685 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1933,6 +1933,7 @@ index 6a88da8..b144135 100644
 +                // set it pre-lock), that last corrected position is
 +                // captured as a decaying continuity offset (see the field
 +                // comment) instead of a hard cut.
++                if((sync.mode === 0) && !sync.visualLocked)
 +                {
 +                    const prevFormationState = sync.formationState;
 +
@@ -2093,6 +2094,24 @@ index 6a88da8..b144135 100644
 +                    || ((sync.trailingBadSince !== 0) && ((nowMs - sync.trailingBadSince) <= RoomSpriteCanvas.TRAILING_PHASE_GRACE_MS));
 +
 +                const prevMode = sync.mode;
++
++                // An established SAME_POSITION lock is authoritative. The
++                // pre-lock formation classifier and every trailing field are
++                // no longer allowed to weaken it while MASTER_COPY owns the
++                // JOINER. Ordinary endpoint/rollover packet states may still
++                // update the raw observations above, but only confirmed route
++                // divergence (or a missing MASTER) may move this session into
++                // RELEASE.
++                const absoluteLockActive = ((sync.mode === 1) && sync.visualLocked);
++
++                if(absoluteLockActive)
++                {
++                    sync.s = 1;
++                    sync.trailingCorrectingActive = false;
++                    sync.trailingExitOffsetSet = false;
++                    sync.trailingRolloverActive = false;
++                }
++
 +                // Hoisted (vs. the original block-scoped `let releaseReason`)
 +                // so the EXIT_HANDOFF diagnostic below — which fires from a
 +                // different branch later in this same function — can report
@@ -2140,7 +2159,8 @@ index 6a88da8..b144135 100644
 +                    && ((j.moving && m.moving && !routeContinuous && sync.badSince && ((nowMs - sync.badSince) > RoomSpriteCanvas.FORMATION_CORNER_GRACE_MS))
 +                        || (j.moving && !m.moving && joinerIncompatible)));
 +
-+                if((sync.mode !== 2) && (!masterObject || genuineDivergence || (sync.badSince && ((nowMs - sync.badSince) > 120)))) sync.mode = 2;
++                if((sync.mode !== 2) && (!masterObject || genuineDivergence
++                    || (!absoluteLockActive && sync.badSince && ((nowMs - sync.badSince) > 120)))) sync.mode = 2;
 +
 +                // TEMP DEBUG (pixelrp master/joiner sync investigation):
 +                // [sync:RELEASE_REASON] — fires once, the frame RELEASE
@@ -2825,6 +2845,13 @@ index 6a88da8..b144135 100644
 +                        apply = true;
 +                        source = 'MASTER_COPY';
 +                        sync.visualLocked = true;
++                        sync.formationState = RoomSpriteCanvas.FORMATION_CONVERGING;
++                        sync.s = 1;
++                        sync.trailingBadSince = 0;
++                        sync.trailingCorrectingActive = false;
++                        sync.trailingExitOffsetSet = false;
++                        sync.trailingLatchSet = false;
++                        sync.trailingRolloverActive = false;
 +                    }
 +                    else if(sync.demotionOffsetSet)
 +                    {
@@ -3137,7 +3164,7 @@ index 6a88da8..b144135 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2528,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2555,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
