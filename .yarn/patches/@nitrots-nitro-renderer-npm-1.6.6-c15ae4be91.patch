@@ -1092,7 +1092,7 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da8..24cd696 100644
+index 6a88da8..4a36830 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,103 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -1481,7 +1481,7 @@ index 6a88da8..24cd696 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +821,1683 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +821,1771 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2080,7 +2080,29 @@ index 6a88da8..24cd696 100644
 +                // how badSince/pathOk are already tracked regardless of
 +                // formationState) — only actually READ below once
 +                // formationState is confirmed TRAILING.
-+                const trailingRouteNow = !!(j && m && j.moving && m.moving && joinerBehind && !segmentsMatch && mLoc);
++                //
++                // sameSegmentTrailingFarEnough (Option 2, late-join-close
++                // pass): the OTHER shape a genuinely-TRAILING session can
++                // take — JOINER and MASTER literally on the SAME shared
++                // edge (segmentsMatch true, the sameGoal-but-far case the
++                // classifier now routes to TRAILING — see
++                // FORMATION_SAME_GOAL_CLOSE_GAP above), just far apart in
++                // progress along it (JOINER near the start, MASTER near
++                // the end). Reuses the identical close-gap threshold as
++                // the classifier itself, so "far enough to have been
++                // classified TRAILING" and "far enough to actively hold"
++                // agree by construction. Folded into the SAME
++                // trailingRouteNow signal (rather than a second parallel
++                // one) so the grace timer/outer gate below stays a single
++                // source of truth for "is a trailing correction live right
++                // now" regardless of which of the two shapes it's in —
++                // the LIVE TRACKING branch further down picks the correct
++                // target formula for whichever one actually applies this
++                // frame.
++                const sameSegmentTrailingFarEnough = !!(j && m && j.moving && m.moving && segmentsMatch && mLoc
++                    && Number.isFinite(nativeAbsGap) && (nativeAbsGap >= RoomSpriteCanvas.FORMATION_SAME_GOAL_CLOSE_GAP));
++                const trailingRouteNow = !!(j && m && j.moving && m.moving && mLoc
++                    && ((joinerBehind && !segmentsMatch) || sameSegmentTrailingFarEnough));
 +
 +                if(trailingRouteNow) sync.trailingBadSince = 0;
 +                else if(sync.trailingBadSince === 0) sync.trailingBadSince = nowMs;
@@ -2586,45 +2608,97 @@ index 6a88da8..24cd696 100644
 +                    }
 +                    else if(trailingRouteNow && j && m)
 +                    {
-+                        // LIVE TRACKING (trailing-stability pass). masterPhase:
-+                        // MASTER's own normalized progress through ITS
-+                        // current step. target: that SAME phase applied to
-+                        // JOINER's OWN trailing segment (j.sx/dx — one
-+                        // route-topology edge behind MASTER's current edge)
-+                        // — never MASTER's x/y, so collapse onto MASTER
-+                        // stays structurally impossible. phaseError is the
-+                        // route-relative drift this whole mechanism watches:
-+                        // 0 means JOINER's own native phase already matches
-+                        // where a perfectly-stable one-tile-behind pair
-+                        // would be. See TRAILING_NATIVE/TRAILING_CORRECTING
-+                        // below for what actually happens with it — this is
-+                        // deliberately NOT "vx = target every frame" any
-+                        // more (that was Update 8's bug: two independently-
-+                        // read clocks — j.time/j.change here vs m.time/
-+                        // m.change for masterPhase — imposed on the display
-+                        // at full strength every single frame, and any
-+                        // frame-to-frame inconsistency between them (packet
-+                        // jitter, GetTicker delta variance) showed up 1:1 as
-+                        // a visible hitch).
++                        // LIVE TRACKING (trailing-stability pass, extended by
++                        // the Option 2 late-join-close pass to cover a SECOND
++                        // shape of genuine trailing — see isGenuineBehind
++                        // below). masterPhase/jNativePhase are always MASTER's
++                        // and JOINER's own normalized progress through their
++                        // current step, computed the same way regardless of
++                        // which shape applies — only what they're COMPARED
++                        // against (absError) and how the target position is
++                        // built differ between the two.
 +                        const masterPhase = Math.min(1, Math.max(0, ((m.time - m.change) / m.interval)));
-+                        const targetX = (j.sx + (j.dx * masterPhase));
-+                        const targetY = (j.sy + (j.dy * masterPhase));
-+                        const targetZ = (j.sz + (j.dz * masterPhase));
 +                        const jNativePhase = Math.min(1, Math.max(0, ((j.time - j.change) / j.interval)));
 +                        const phaseError = (masterPhase - jNativePhase);
-+                        const absPhaseError = Math.abs(phaseError);
++
++                        // isGenuineBehind: the ORIGINAL trailing shape —
++                        // JOINER on its own, different, adjacent edge, one
++                        // route-topology step behind MASTER's current one.
++                        // target: MASTER's phase applied to JOINER's OWN
++                        // trailing segment (j.sx/dx) — never MASTER's x/y,
++                        // so collapse onto MASTER stays structurally
++                        // impossible. absError here is the phase drift
++                        // (0 = JOINER's own phase already matches where a
++                        // stable one-tile-behind pair would be).
++                        //
++                        // The Option 2 addition — sameSegmentTrailingFarEnough
++                        // above — is the OTHER shape: JOINER and MASTER on
++                        // the literal SAME shared edge (a late join whose
++                        // very first mutual step happened to coincide with
++                        // MASTER's current one — see FORMATION_SAME_GOAL_
++                        // CLOSE_GAP), just far apart in progress along it.
++                        // There is no separate "JOINER's own behind segment"
++                        // to project onto here (they share the one edge), so
++                        // the target is instead MASTER's own live position
++                        // minus exactly one tile along MASTER's own current
++                        // direction — always a full tile away from wherever
++                        // MASTER currently is, by construction, so this still
++                        // can never collapse onto MASTER either, just via a
++                        // different (necessarily MASTER-position-relative,
++                        // since no other reference exists yet) route to the
++                        // same guarantee. absError here is the WORLD-DISTANCE
++                        // shortfall from that one-tile target (0 = already
++                        // exactly one tile back), not a phase difference —
++                        // the two are deliberately not conflated, only the
++                        // downstream dead-zone/hysteresis/correction/logging
++                        // pipeline below is shared between them.
++                        const isGenuineBehind = (joinerBehind && !segmentsMatch);
++                        let targetX: number, targetY: number, targetZ: number, absError: number;
++
++                        if(isGenuineBehind)
++                        {
++                            targetX = (j.sx + (j.dx * masterPhase));
++                            targetY = (j.sy + (j.dy * masterPhase));
++                            targetZ = (j.sz + (j.dz * masterPhase));
++                            absError = Math.abs(phaseError);
++                        }
++                        else
++                        {
++                            const mDirLen = (Math.hypot(mDirX, mDirY) || 1);
++
++                            targetX = (mLoc.x - (mDirX / mDirLen));
++                            targetY = (mLoc.y - (mDirY / mDirLen));
++                            targetZ = mLoc.z;
++                            absError = Math.abs(1 - (Number.isFinite(nativeAbsGap) ? nativeAbsGap : 0));
++                        }
++
 +                        const firstEverLatch = !sync.trailingLatchSet;
 +
-+                        // Refresh the latch every confirmed live frame —
-+                        // read by the ROLLOVER branch below the moment
-+                        // trailingRouteNow next goes false.
++                        // trailingLatchSet itself just marks "a trailing
++                        // correction has been live at least once this
++                        // session" — read by the EXIT stop-detection below
++                        // regardless of which shape produced it. The
++                        // detailed latch fields (JSx/JDx/etc, used ONLY by
++                        // the ROLLOVER extrapolation branch to bridge a
++                        // packet-timing ambiguity) are deliberately refreshed
++                        // ONLY for the genuine-behind shape — there's no
++                        // equivalent "JOINER's own segment" to latch for the
++                        // same-segment shape, so a rollover ambiguity hit
++                        // before this session ever had a genuine-behind
++                        // sample simply falls through to native for that one
++                        // frame (see the finite-check in the ROLLOVER branch)
++                        // rather than extrapolating from stale/absent data.
 +                        sync.trailingLatchSet = true;
-+                        sync.trailingLatchJSx = j.sx; sync.trailingLatchJSy = j.sy; sync.trailingLatchJSz = j.sz;
-+                        sync.trailingLatchJDx = j.dx; sync.trailingLatchJDy = j.dy; sync.trailingLatchJDz = j.dz;
-+                        sync.trailingLatchInterval = m.interval;
-+                        sync.trailingLatchPhase = masterPhase;
-+                        sync.trailingLatchMSx = Math.round(m.sx); sync.trailingLatchMSy = Math.round(m.sy);
-+                        sync.trailingLatchMGx = m.gxx; sync.trailingLatchMGy = m.gyy;
++
++                        if(isGenuineBehind)
++                        {
++                            sync.trailingLatchJSx = j.sx; sync.trailingLatchJSy = j.sy; sync.trailingLatchJSz = j.sz;
++                            sync.trailingLatchJDx = j.dx; sync.trailingLatchJDy = j.dy; sync.trailingLatchJDz = j.dz;
++                            sync.trailingLatchInterval = m.interval;
++                            sync.trailingLatchPhase = masterPhase;
++                            sync.trailingLatchMSx = Math.round(m.sx); sync.trailingLatchMSy = Math.round(m.sy);
++                            sync.trailingLatchMGx = m.gxx; sync.trailingLatchMGy = m.gyy;
++                        }
 +
 +                        if(firstEverLatch)
 +                        {
@@ -2635,7 +2709,7 @@ index 6a88da8..24cd696 100644
 +                            // rollover until genuine divergence proves
 +                            // otherwise — see trailingGraceOk/trailingRouteNow
 +                            // above and the ROLLOVER branch below.
-+                            console.log(`[sync:TRAIL_LATCH] master=${ sync.masterId } joiner=${ sync.joinerId } routeLag=-1 masterEdge=(${ sync.trailingLatchMSx },${ sync.trailingLatchMSy })->(${ sync.trailingLatchMGx },${ sync.trailingLatchMGy }) joinerEdge=(${ Math.round(j.sx) },${ Math.round(j.sy) })->(${ j.gxx },${ j.gyy }) masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } phaseError=${ phaseError.toFixed(3) }`);
++                            console.log(`[sync:TRAIL_LATCH] master=${ sync.masterId } joiner=${ sync.joinerId } routeLag=-1 shape=${ isGenuineBehind ? 'behind_edge' : 'same_edge' } masterEdge=(${ Math.round(m.sx) },${ Math.round(m.sy) })->(${ m.gxx },${ m.gyy }) joinerEdge=(${ Math.round(j.sx) },${ Math.round(j.sy) })->(${ j.gxx },${ j.gyy }) masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } phaseError=${ phaseError.toFixed(3) } nativeAbsGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' }`);
 +                        }
 +
 +                        if(sync.trailingRolloverActive)
@@ -2660,17 +2734,17 @@ index 6a88da8..24cd696 100644
 +                        // right around one boundary value — once correction
 +                        // starts, it stays engaged until comfortably
 +                        // resolved, not just momentarily under threshold.
-+                        if(!sync.trailingCorrectingActive && (absPhaseError > RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_START))
++                        if(!sync.trailingCorrectingActive && (absError > RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_START))
 +                        {
 +                            sync.trailingCorrectingActive = true;
 +
-+                            console.log(`[sync:TRAIL_CORRECT_START] master=${ sync.masterId } joiner=${ sync.joinerId } phaseError=${ phaseError.toFixed(3) } threshold=${ RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_START } masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } visualPhase=${ jNativePhase.toFixed(3) }`);
++                            console.log(`[sync:TRAIL_CORRECT_START] master=${ sync.masterId } joiner=${ sync.joinerId } shape=${ isGenuineBehind ? 'behind_edge' : 'same_edge' } absError=${ absError.toFixed(3) } phaseError=${ phaseError.toFixed(3) } threshold=${ RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_START } masterPhase=${ masterPhase.toFixed(3) } joinerNativePhase=${ jNativePhase.toFixed(3) } visualPhase=${ jNativePhase.toFixed(3) }`);
 +                        }
-+                        else if(sync.trailingCorrectingActive && (absPhaseError < RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_STOP))
++                        else if(sync.trailingCorrectingActive && (absError < RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_STOP))
 +                        {
 +                            sync.trailingCorrectingActive = false;
 +
-+                            console.log(`[sync:TRAIL_CORRECT_END] master=${ sync.masterId } joiner=${ sync.joinerId } finalPhaseError=${ phaseError.toFixed(3) } source=NATIVE`);
++                            console.log(`[sync:TRAIL_CORRECT_END] master=${ sync.masterId } joiner=${ sync.joinerId } shape=${ isGenuineBehind ? 'behind_edge' : 'same_edge' } finalAbsError=${ absError.toFixed(3) } finalPhaseError=${ phaseError.toFixed(3) } source=NATIVE`);
 +                        }
 +
 +                        if(sync.trailingCorrectingActive)
@@ -2694,7 +2768,7 @@ index 6a88da8..24cd696 100644
 +                                const appliedX = (vx - roomLocation.x);
 +                                const appliedY = (vy - roomLocation.y);
 +
-+                                console.log(`[sync:TRAIL_CORRECT] master=${ sync.masterId } joiner=${ sync.joinerId } phaseError=${ phaseError.toFixed(3) } appliedCorrection=(${ appliedX.toFixed(4) },${ appliedY.toFixed(4) }) correctionStrength=${ RoomSpriteCanvas.TRAILING_CORRECTION_GAIN } perFrameCorrectionDelta=${ Math.hypot(appliedX, appliedY).toFixed(4) } source=${ source }`);
++                                console.log(`[sync:TRAIL_CORRECT] master=${ sync.masterId } joiner=${ sync.joinerId } shape=${ isGenuineBehind ? 'behind_edge' : 'same_edge' } absError=${ absError.toFixed(3) } phaseError=${ phaseError.toFixed(3) } appliedCorrection=(${ appliedX.toFixed(4) },${ appliedY.toFixed(4) }) correctionStrength=${ RoomSpriteCanvas.TRAILING_CORRECTION_GAIN } perFrameCorrectionDelta=${ Math.hypot(appliedX, appliedY).toFixed(4) } source=${ source }`);
 +                            }
 +                        }
 +                        else
@@ -2713,7 +2787,7 @@ index 6a88da8..24cd696 100644
 +
 +                                const correctedGapIfApplied = Math.hypot((targetX - roomLocation.x), (targetY - roomLocation.y));
 +
-+                                console.log(`[sync:TRAIL_NATIVE] master=${ sync.masterId } joiner=${ sync.joinerId } routeLag=-1 phaseError=${ phaseError.toFixed(3) } deadzone=${ RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_STOP } source=NATIVE nativeGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } correctedGapIfApplied=${ correctedGapIfApplied.toFixed(3) }`);
++                                console.log(`[sync:TRAIL_NATIVE] master=${ sync.masterId } joiner=${ sync.joinerId } routeLag=-1 shape=${ isGenuineBehind ? 'behind_edge' : 'same_edge' } absError=${ absError.toFixed(3) } phaseError=${ phaseError.toFixed(3) } deadzone=${ RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_STOP } source=NATIVE nativeGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } correctedGapIfApplied=${ correctedGapIfApplied.toFixed(3) }`);
 +                            }
 +                        }
 +
@@ -2756,7 +2830,7 @@ index 6a88da8..24cd696 100644
 +                        sync.trailingLastNativeX = roomLocation.x;
 +                        sync.trailingLastNativeY = roomLocation.y;
 +                    }
-+                    else if(trailingEligibleNow && sync.trailingLatchSet)
++                    else if(trailingEligibleNow && sync.trailingLatchSet && Number.isFinite(sync.trailingLatchJSx))
 +                    {
 +                        // ROLLOVER: topology briefly ambiguous (segment-tuple
 +                        // skew right at a rollover — see trailingRouteNow/
@@ -2780,6 +2854,20 @@ index 6a88da8..24cd696 100644
 +                        // MASTER stays impossible for the same reason live
 +                        // tracking's is — confined to the latched segment,
 +                        // never MASTER's x/y.
++                        //
++                        // The extra Number.isFinite(trailingLatchJSx) guard
++                        // (Option 2 addition): the detailed latch fields this
++                        // branch reads are only ever populated by the
++                        // genuine-behind shape of LIVE TRACKING (see there)
++                        // — a session that has so far been ENTIRELY the
++                        // same-edge shape has trailingLatchSet=true (a
++                        // trailing correction has been live) but no valid
++                        // segment to extrapolate from yet. Rather than
++                        // extrapolate from stale/NaN data, that rare combo
++                        // (topology ambiguity hit before this session ever
++                        // had a genuine-behind sample) simply falls through
++                        // to native for that one frame — bounded by the same
++                        // short TRAILING_PHASE_GRACE_MS window either way.
 +                        if(!sync.trailingRolloverActive)
 +                        {
 +                            sync.trailingRolloverActive = true;
@@ -3167,7 +3255,7 @@ index 6a88da8..24cd696 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2558,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2646,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
