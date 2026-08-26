@@ -1095,7 +1095,7 @@ diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSprit
 index 6a88da8..b144135 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,94 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,85 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1109,7 +1109,7 @@ index 6a88da8..b144135 100644
 +    // Replaces a one-shot ENGAGE-time boolean with evidence-driven
 +    // classification — see the _pixelrpSync field comment and the
 +    // evidence-accumulation block in renderObject() for the full model.
-+    // CANDIDATE: freshly engaged, insufficient native evidence yet either
++    // CANDIDATE: freshly engaged, insufficient route-relation evidence yet
 +    // way (renders native, same as TRAILING, until it resolves).
 +    // TRAILING: confirmed stable route-relative spacing — no correction.
 +    // CONVERGING: confirmed genuine convergence intent — PHASE_SHIFT (and
@@ -1122,26 +1122,17 @@ index 6a88da8..b144135 100644
 +    private static FORMATION_STATE_NAMES: string[] = [ 'CANDIDATE', 'TRAILING', 'CONVERGING' ];
 +
 +    // Evidence-accumulation and lock-proof thresholds. EVIDENCE_MS: how
-+    // long a consistent trend (shrinking-or-near gap for CONVERGING,
-+    // stable-or-growing gap for TRAILING) must hold before it's trusted —
++    // long a consistent route relation (same segment for CONVERGING,
++    // exactly one route edge behind for TRAILING) must hold before trusted —
 +    // long enough to reject single-frame/packet-timing noise (a handful of
 +    // frames at any sane framerate), short enough to resolve well within
-+    // one convergence attempt. GAP_NEAR_ZERO: reuses the SAME 0.12 scale
-+    // already established elsewhere in this file (the JUMP-detection
-+    // threshold) as "a meaningfully large tile-fraction" — here used as
-+    // "close enough to already read as converged" for evidence purposes,
-+    // not a new arbitrary number. LOCK_GAP_MAX: the native gap ceiling for
-+    // actually ENTERING lock — deliberately more generous than
-+    // GAP_NEAR_ZERO (chosen comfortably above observed healthy-lock native
-+    // gaps, up to ~0.13 tile in captures, and well below observed
-+    // false-lock gaps, ~0.5+ tile in captures — real margin on both
-+    // sides, combined with the formationState history, not used alone).
++    // one convergence attempt. GAP_NEAR_ZERO remains a trailing-collapse
++    // diagnostic threshold only; it no longer gates lock acquisition.
 +    // CORNER_GRACE_MS: see genuineDivergence Case A below.
 +    private static FORMATION_EVIDENCE_MS: number = 350;
 +    // JOINER-only PHASE_SHIFT duration; native 530ms interpolation is unchanged.
 +    private static FORMATION_CONVERGENCE_MS: number = 400;
 +    private static FORMATION_GAP_NEAR_ZERO: number = 0.12;
-+    private static FORMATION_LOCK_GAP_MAX: number = 0.25;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
 +
 +    // ONE_TILE_BEHIND trailing-phase stabilization (separate from, and
@@ -1190,7 +1181,7 @@ index 6a88da8..b144135 100644
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +139,230 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +130,224 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1251,23 +1242,17 @@ index 6a88da8..b144135 100644
 +        visualLocked: boolean, releaseAnchorSet: boolean, releaseOffsetX: number, releaseOffsetY: number, releaseOffsetZ: number, releaseHandoffT: number,
 +        // formationState / formationStateSince: replaces the old one-shot
 +        // ENGAGE-time boolean (convergenceEligible) with evidence-driven,
-+        // TRANSITIONABLE classification — see FORMATION_* statics above
++        // PERSISTENT classification — see FORMATION_* statics above
 +        // and the evidence-accumulation block in the joiner-handling code
-+        // for the full model. A single ENGAGE-time tuple (sameGoal vs
-+        // behind/ahead) proved unreliable in both directions: sameGoal at
-+        // ENGAGE does NOT prove genuine convergence intent (confirmed in
-+        // captures: sameGoal engages at native gaps of 0.35-0.6 tile that
-+        // never actually closed, later falsely LOCKing anyway once a
-+        // packet-timing tuple coincidence briefly reappeared); conversely
-+        // behind/ahead at ENGAGE does NOT prove the relationship can never
-+        // become genuine convergence (confirmed: a pair that engaged
-+        // "trailing" whose native gap then genuinely, persistently closed
-+        // toward zero, correctly wanting PHASE_SHIFT/LOCK, stayed frozen
-+        // native forever under the old permanent-boolean model). All
-+        // transitions are driven by the SAME rule (see the evidence block):
-+        // accumulated route-relative native gap trend, never a single
-+        // frame's discrete segment tuple, and never the corrected render
-+        // position (only native roomLocation/mLoc are ever used as proof).
++        // for the full model. A single ENGAGE-time tuple is unreliable, so
++        // every session begins CANDIDATE and accumulates relation evidence:
++        // sustained sameGoal+sameDirection (therefore the identical segment)
++        // proves CONVERGING; sustained exact joinerBehind proves TRAILING.
++        // Opposing evidence decays through brief packet-boundary skew. Once
++        // either relation reaches FORMATION_EVIDENCE_MS, that lane remains
++        // authoritative for the session and ordinary rollover tuples cannot
++        // switch it underneath the renderer. Corrected display coordinates
++        // are never used as classification evidence.
 +        // formationStateSince: nowMs at the last transition, for the
 +        // [sync:FORMATION_STATE] diagnostic and formationStateSinceMs.
 +        // lockedDir{X,Y}: the last confirmed shared direction (both
@@ -1276,8 +1261,8 @@ index 6a88da8..b144135 100644
 +        // direction can be recognized as genuine divergence even while
 +        // MASTER is momentarily stopped and the symmetric "both moving"
 +        // genuineDivergence check can't see it yet.
-+        // lastNativeGap/convergingEvidenceMs/trailingEvidenceMs: the
-+        // evidence accumulators themselves (see the update block).
++        // lastNativeGap remains diagnostic; convergingEvidenceMs and
++        // trailingEvidenceMs accumulate persistent route-relation proof.
 +        // demotionOffset{X,Y}/demotionOffsetSet/demotionHandoffT: on a
 +        // CONVERGING -> TRAILING demotion, if PHASE_SHIFT had already
 +        // applied a visible correction, its last value (vs native) is
@@ -1421,7 +1406,7 @@ index 6a88da8..b144135 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +685,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +670,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1462,7 +1447,7 @@ index 6a88da8..b144135 100644
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +768,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +753,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1478,7 +1463,7 @@ index 6a88da8..b144135 100644
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +818,1707 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +803,1672 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1608,7 +1593,7 @@ index 6a88da8..b144135 100644
 +            // (`via=sameGoal|behind|ahead`). It does NOT seed formation
 +            // classification directly (see formationState on _pixelrpSync
 +            // — every session starts at CANDIDATE regardless of `via` and
-+            // earns TRAILING/CONVERGING from native evidence afterward; a
++            // earns TRAILING/CONVERGING from persistent route evidence; a
 +            // single ENGAGE-time tuple proved unreliable as permanent
 +            // proof in either direction).
 +            const samePathWith = (other: { tx: number, ty: number, gx: number, gy: number, sx: number, sy: number }): { sameGoal: boolean, behind: boolean, ahead: boolean } =>
@@ -1683,7 +1668,7 @@ index 6a88da8..b144135 100644
 +                    // it no longer seeds eligibility directly; see the
 +                    // formationState field comment for why a single ENGAGE
 +                    // tuple proved unreliable in both directions). Real
-+                    // classification is earned from native evidence,
++                    // classification is earned from persistent route evidence,
 +                    // starting fresh this frame.
 +                    formationState: RoomSpriteCanvas.FORMATION_CANDIDATE, formationStateSince: nowMs,
 +                    lockedDirX: NaN, lockedDirY: NaN,
@@ -1843,8 +1828,8 @@ index 6a88da8..b144135 100644
 +                    sync.lockedDirY = mDirY;
 +                }
 +
-+                // Native route-relative signed gap + formation-state
-+                // evidence. NEVER derived from the corrected render
++                // Native route-relative signed gap diagnostics plus persistent
++                // route-relation formation evidence. NEVER derived from render
 +                // position (vx/vy below) or from the current frame's
 +                // discrete segment tuple alone — only from native
 +                // roomLocation (JOINER) and mLoc (MASTER), exactly as
@@ -1888,71 +1873,50 @@ index 6a88da8..b144135 100644
 +                        sync.convergingEvidenceMs = 0;
 +                        sync.trailingEvidenceMs = 0;
 +                    }
-+                    else if(Number.isFinite(sync.lastNativeGap))
++                    else if(sync.formationState === RoomSpriteCanvas.FORMATION_CANDIDATE)
 +                    {
-+                        // Meaningfully shrinking (beyond float/interpolation
-+                        // noise), OR already close enough that "shrinking
-+                        // further" isn't a meaningful distinction (reuses
-+                        // FORMATION_GAP_NEAR_ZERO — see its comment) — both
-+                        // count as convergence evidence. Anything else
-+                        // (stable or growing, not yet near) counts as
-+                        // trailing evidence. Each branch also DECAYS
-+                        // (rather than hard-resets) the opposing
-+                        // accumulator, so a single noisy frame can't erase
-+                        // an otherwise-consistent trend built up over many
-+                        // frames.
-+                        const shrinking = (nativeAbsGap < (Math.abs(sync.lastNativeGap) - 0.005));
-+                        const alreadyNear = (nativeAbsGap < RoomSpriteCanvas.FORMATION_GAP_NEAR_ZERO);
-+
-+                        if(shrinking || alreadyNear)
++                        // Same goal + same direction is the identical-segment
++                        // relation here (one-tile steps make the starts equal).
++                        // Sustaining it proves same-position join intent even
++                        // when equal native speeds keep the physical gap flat.
++                        // A sustained exact one-edge-behind relation proves
++                        // TRAILING instead. Opposing evidence decays so brief
++                        // packet-boundary tuple skew cannot choose either lane.
++                        if(sameGoal)
 +                        {
 +                            sync.convergingEvidenceMs += dt;
 +                            sync.trailingEvidenceMs = Math.max(0, (sync.trailingEvidenceMs - dt));
 +                        }
-+                        else
++                        else if(joinerBehind)
 +                        {
 +                            sync.trailingEvidenceMs += dt;
 +                            sync.convergingEvidenceMs = Math.max(0, (sync.convergingEvidenceMs - dt));
++                        }
++                        else
++                        {
++                            sync.convergingEvidenceMs = Math.max(0, (sync.convergingEvidenceMs - dt));
++                            sync.trailingEvidenceMs = Math.max(0, (sync.trailingEvidenceMs - dt));
 +                        }
 +                    }
 +
 +                    sync.lastNativeGap = nativeSignedGap;
 +                }
 +
-+                // Apply the transition — the SAME rule handles
-+                // CANDIDATE->CONVERGING, CANDIDATE->TRAILING, and
-+                // TRAILING->CONVERGING all identically; a CONVERGING
-+                // session that later accumulates enough trailing evidence
-+                // (gap stopped shrinking and stayed non-trivial) is
-+                // demoted by the exact same trailingEvidenceMs branch —
-+                // no separate demotion rule needed. On a genuine demotion
-+                // specifically (state WAS converging, now isn't), any
-+                // partially-charged convergence progress is discarded —
-+                // per the requirement, it must not be preservable to cash
-+                // in later — and, if a visible PHASE_SHIFT correction was
-+                // actually showing (sync.lastVx finite — it's only ever
-+                // set when `apply` was true, and only PHASE_SHIFT can have
-+                // set it pre-lock), that last corrected position is
-+                // captured as a decaying continuity offset (see the field
-+                // comment) instead of a hard cut.
-+                if((sync.mode === 0) && !sync.visualLocked)
++                // Choose the session lane once from persistent topology.
++                // After CANDIDATE resolves, ordinary rollover tuples cannot
++                // switch SAME_POSITION and TRAILING authority underneath one
++                // another; only the existing genuine-divergence release ends
++                // the relationship.
++                if((sync.mode === 0) && !sync.visualLocked && (sync.formationState === RoomSpriteCanvas.FORMATION_CANDIDATE))
 +                {
 +                    const prevFormationState = sync.formationState;
 +
-+                    if((sync.formationState !== RoomSpriteCanvas.FORMATION_CONVERGING) && (sync.convergingEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS))
++                    if(sync.convergingEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS)
 +                    {
 +                        sync.formationState = RoomSpriteCanvas.FORMATION_CONVERGING;
 +                    }
-+                    else if((sync.formationState !== RoomSpriteCanvas.FORMATION_TRAILING) && (sync.trailingEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS))
++                    else if(sync.trailingEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS)
 +                    {
-+                        if((prevFormationState === RoomSpriteCanvas.FORMATION_CONVERGING) && Number.isFinite(sync.lastVx))
-+                        {
-+                            sync.demotionOffsetX = (sync.lastVx - roomLocation.x);
-+                            sync.demotionOffsetY = (sync.lastVy - roomLocation.y);
-+                            sync.demotionOffsetSet = true;
-+                            sync.demotionHandoffT = 0;
-+                        }
-+
 +                        sync.formationState = RoomSpriteCanvas.FORMATION_TRAILING;
 +                        sync.s = 0;
 +                    }
@@ -1963,7 +1927,7 @@ index 6a88da8..b144135 100644
 +
 +                        // TEMP DEBUG (pixelrp master/joiner sync investigation):
 +                        // [sync:FORMATION_STATE] — fires once per transition,
-+                        // with the native evidence that justified it.
++                        // with the persistent relation evidence that justified it.
 +                        console.log(`[sync:FORMATION_STATE] ${ RoomSpriteCanvas.FORMATION_STATE_NAMES[prevFormationState] }->${ RoomSpriteCanvas.FORMATION_STATE_NAMES[sync.formationState] } master=${ sync.masterId } joiner=${ sync.joinerId } nativeSignedGap=${ Number.isFinite(nativeSignedGap) ? nativeSignedGap.toFixed(3) : '?' } convergingEvidenceMs=${ sync.convergingEvidenceMs.toFixed(0) } trailingEvidenceMs=${ sync.trailingEvidenceMs.toFixed(0) } physicalOrder=${ physicalOrder } demotionOffsetSet=${ sync.demotionOffsetSet }`);
 +                    }
 +                }
@@ -2187,30 +2151,16 @@ index 6a88da8..b144135 100644
 +                    console.log(`[sync:RELEASE_REASON] reason=${ releaseReasonForLog } releaseKind=${ releaseKind } master=${ sync.masterId } joiner=${ sync.joinerId } routeContinuous=${ routeContinuous } visualLocked=${ sync.visualLocked } badSinceMs=${ sync.badSince ? (nowMs - sync.badSince) : 0 }`);
 +                }
 +
-+                // First-LOCK eligibility ("lockProof") is deliberately
-+                // stricter than mere timer-plus-tuple: it requires the
-+                // persistent CONVERGING state (native-gap-history proof,
-+                // accumulated over FORMATION_EVIDENCE_MS) AND the CURRENT
-+                // native gap to actually be small right now
-+                // (FORMATION_LOCK_GAP_MAX — instantaneous confirmation, not
-+                // just a trend) AND the existing pathOk/segmentsMatch
-+                // geometric requirements — no single one of these is
-+                // trusted alone (s>=1 is checked separately below, kept
-+                // out of lockProof itself so the diagnostic line can show
-+                // "geometry+evidence proof" and "timer complete" as
-+                // independent facts rather than one conflated boolean).
-+                // Confirmed in captures: sessions previously reached
-+                // `s>=1 && pathOk && segmentsMatch` while the native gap
-+                // was STILL 0.5-0.7 tile (an incidental segmentsMatch
-+                // tuple coincidence on a genuinely trailing pair — see the
-+                // PHASE_SHIFT branch comment) and locked anyway;
-+                // formationState now prevents that class entirely (such a
-+                // session is TRAILING, not CONVERGING, so s never even
-+                // reaches 1 — see below), and nativeAbsGap is a second,
-+                // independent check against any other route to a
-+                // large-gap lock.
++                // First-LOCK eligibility requires the latched CONVERGING lane
++                // (earned from sustained identical-segment topology) plus the
++                // existing live path/segment geometry. Native-gap shrink is no
++                // longer a prerequisite: at equal native speeds it can remain
++                // flat forever, which delayed genuine joins for several tiles.
++                // Persistent one-edge-behind evidence resolves to TRAILING and
++                // never charges s, so a rollover sameGoal coincidence still
++                // cannot collapse a genuine trailing formation.
 +                const geometryLockEligible = (pathOk && segmentsMatch);
-+                const lockProof = ((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && (nativeAbsGap < RoomSpriteCanvas.FORMATION_LOCK_GAP_MAX) && geometryLockEligible);
++                const lockProof = ((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && geometryLockEligible);
 +
 +                if(sync.mode === 0)
 +                {
@@ -2222,9 +2172,9 @@ index 6a88da8..b144135 100644
 +                    // never accumulates — so there is no hidden
 +                    // fully-charged timer sitting around waiting for one
 +                    // transient segmentsMatch packet to cash in as an
-+                    // instant LOCK. On a CONVERGING->TRAILING demotion s
-+                    // is also explicitly reset to 0 (see that block) so no
-+                    // partially-charged progress survives to be cashed in
++                    // instant LOCK. Once CANDIDATE resolves, the chosen lane
++                    // is persistent, so no partially charged convergence can
++                    // later be cashed in by a trailing session.
 +                    // later either. If s caps at 1 while lockProof is still
 +                    // false, mode simply stays 0 and tries again next frame
 +                    // (s does not decay in mode 0).
@@ -3188,7 +3138,7 @@ index 6a88da8..b144135 100644
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2579,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2529,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
