@@ -45,7 +45,13 @@ export const MusicPlayerView: FC<{}> = props =>
         <div className="nitro-music-player rounded">
             <div className="music-player-header">
                 <div className="music-player-kicker">NOW PLAYING</div>
-                <i className="fa-pixel fa-regular fa-plus-large music-player-add" title="Add a song" onClick={ event => setIsQueueOpen(true) } />
+                { /* onClick lives on the wrapper: the FA kit swaps the <i> for an
+                     <svg> at runtime (MutationObserver), which kills React
+                     handlers bound to the <i> itself. The wrapper stays
+                     React-managed and the click bubbles up from the svg. */ }
+                <div className="music-player-add" title="Add a song" onClick={ event => setIsQueueOpen(true) }>
+                    <i className="fa-pixel fa-regular fa-plus-large" />
+                </div>
             </div>
             <div className="music-player-title">{ current ? current.title : 'Nothing playing' }</div>
             <div className="music-player-meta">
