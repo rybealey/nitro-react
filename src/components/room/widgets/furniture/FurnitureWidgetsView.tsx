@@ -18,7 +18,6 @@ import { FurnitureStackHeightView } from './FurnitureStackHeightView';
 import { FurnitureStickieView } from './FurnitureStickieView';
 import { FurnitureTrophyView } from './FurnitureTrophyView';
 import { FurnitureYoutubeDisplayView } from './FurnitureYoutubeDisplayView';
-import { FurniturePlaylistEditorWidgetView } from './playlist-editor/FurniturePlaylistEditorWidgetView';
 
 export const FurnitureWidgetsView: FC<{}> = props =>
 {
@@ -35,7 +34,9 @@ export const FurnitureWidgetsView: FC<{}> = props =>
             <FurnitureHighScoreView />
             <FurnitureInternalLinkView />
             <FurnitureMannequinView />
-            <FurniturePlaylistEditorWidgetView />
+            { /* PixelRP: the stock trax playlist editor is retired — the jukebox
+                 double-click (REQUEST_PLAYLIST_EDITOR trigger) opens the YouTube
+                 queue window in MusicPlayerView instead. */ }
             <FurnitureRoomLinkView />
             <FurnitureSpamWallPostItView />
             <FurnitureStackHeightView />

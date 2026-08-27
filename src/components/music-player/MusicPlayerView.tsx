@@ -1,8 +1,8 @@
-import { RoomObjectCategory } from '@nitrots/nitro-renderer';
+import { RoomEngineTriggerWidgetEvent } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
-import { GetRoomEngine, GetRoomSession } from '../../api';
-import { useObjectDoubleClickedEvent } from '../../hooks';
+import { GetRoomEngine } from '../../api';
+import { useRoomEngineEvent } from '../../hooks';
 import { JukeboxQueueView } from './JukeboxQueueView';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { useJukebox } from './useJukebox';
@@ -41,13 +41,14 @@ export const MusicPlayerView: FC<{}> = props =>
     const [ isQueueOpen, setIsQueueOpen ] = useState(false);
     const { present, current, queue } = useJukebox();
 
-    // Double-clicking the jukebox floor item opens the queue window (room
-    // objects carry the color-stripped classname, so jukebox*1 is 'jukebox').
-    useObjectDoubleClickedEvent(event =>
+    // Double-clicking the jukebox opens the queue window. The renderer's
+    // jukebox furni logic swallows the generic double-click and fires the
+    // playlist-editor trigger instead — the stock trax editor is retired
+    // (see FurnitureWidgetsView), so that trigger is ours. Room objects
+    // carry the color-stripped classname ('jukebox' for jukebox*1).
+    useRoomEngineEvent<RoomEngineTriggerWidgetEvent>(RoomEngineTriggerWidgetEvent.REQUEST_PLAYLIST_EDITOR, event =>
     {
-        if(event.category !== RoomObjectCategory.FLOOR) return;
-
-        const roomObject = GetRoomEngine().getRoomObject(GetRoomSession().roomId, event.id, event.category);
+        const roomObject = GetRoomEngine().getRoomObject(event.roomId, event.objectId, event.category);
 
         if(roomObject && (roomObject.type === 'jukebox')) setIsQueueOpen(true);
     });
