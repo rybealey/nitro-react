@@ -70,7 +70,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
 
     return (
         <NitroCardView className="nitro-mod-tools-room" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
-            <NitroCardHeaderView headerText={ 'Room Info' + (name ? ': ' + name : '') } onCloseClick={ event => onCloseClick() } />
+            <NitroCardHeaderView headerText={ name || 'Room Info' } onCloseClick={ event => onCloseClick() } />
             <NitroCardContentView className="text-black">
                 <Flex gap={ 2 }>
                     <Column justifyContent="center" grow gap={ 1 }>
@@ -88,8 +88,11 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                         </Flex>
                     </Column>
                     <Column gap={ 1 }>
-                        <Button onClick={ event => TryVisitRoom(roomId) }>Visit Room</Button>
+                        <Button onClick={ event => TryVisitRoom(roomId) }>Visit</Button>
                         <Button onClick={ event => CreateLinkEvent(`mod-tools/open-room-chatlog/${ roomId }`) }>Chatlog</Button>
+                        { /* The official Room info panel (was the bottom-left cog,
+                             which no longer renders — mods reach it from here). */ }
+                        <Button onClick={ event => CreateLinkEvent('navigator/toggle-room-info') }>Settings</Button>
                     </Column>
                 </Flex>
                 <Column className="bg-muted rounded p-2" gap={ 1 }>
