@@ -72,28 +72,26 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         <NitroCardView className="nitro-mod-tools-room" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
             <NitroCardHeaderView headerText={ name || 'Room Info' } onCloseClick={ event => onCloseClick() } />
             <NitroCardContentView className="text-black">
-                <Flex gap={ 2 }>
-                    <Column justifyContent="center" grow gap={ 1 }>
-                        <Flex alignItems="center" gap={ 2 }>
-                            <Text bold align="end" className="col-7">Room Owner:</Text>
-                            <Text underline pointer truncate>{ ownerName }</Text>
-                        </Flex>
-                        <Flex alignItems="center" gap={ 2 }>
-                            <Text bold align="end" className="col-7">Users in room:</Text>
-                            <Text>{ usersInRoom }</Text>
-                        </Flex>
-                        <Flex alignItems="center" gap={ 2 }>
-                            <Text bold align="end" className="col-7">Owner in room:</Text>
-                            <Text>{ ownerInRoom ? 'Yes' : 'No' }</Text>
-                        </Flex>
-                    </Column>
-                    <Column gap={ 1 }>
-                        <Button onClick={ event => TryVisitRoom(roomId) }>Visit</Button>
-                        <Button onClick={ event => CreateLinkEvent(`mod-tools/open-room-chatlog/${ roomId }`) }>Chatlog</Button>
-                        { /* The official Room info panel (was the bottom-left cog,
-                             which no longer renders — mods reach it from here). */ }
-                        <Button onClick={ event => CreateLinkEvent('navigator/toggle-room-info') }>Settings</Button>
-                    </Column>
+                <Column justifyContent="center" grow gap={ 1 }>
+                    <Flex alignItems="center" gap={ 2 }>
+                        <Text bold align="end" className="col-7">Room Owner:</Text>
+                        <Text underline pointer truncate>{ ownerName }</Text>
+                    </Flex>
+                    <Flex alignItems="center" gap={ 2 }>
+                        <Text bold align="end" className="col-7">Users in room:</Text>
+                        <Text>{ usersInRoom }</Text>
+                    </Flex>
+                    <Flex alignItems="center" gap={ 2 }>
+                        <Text bold align="end" className="col-7">Owner in room:</Text>
+                        <Text>{ ownerInRoom ? 'Yes' : 'No' }</Text>
+                    </Flex>
+                </Column>
+                <Flex gap={ 1 }>
+                    <Button className="flex-grow-1" onClick={ event => TryVisitRoom(roomId) }>Visit</Button>
+                    <Button className="flex-grow-1" onClick={ event => CreateLinkEvent(`mod-tools/open-room-chatlog/${ roomId }`) }>Chatlog</Button>
+                    { /* The official Room info panel (was the bottom-left cog,
+                         which no longer renders — mods reach it from here). */ }
+                    <Button className="flex-grow-1" onClick={ event => CreateLinkEvent('navigator/toggle-room-info') }>Settings</Button>
                 </Flex>
                 <Column className="bg-muted rounded p-2" gap={ 1 }>
                     <Flex alignItems="center" gap={ 1 }>
