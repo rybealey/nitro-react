@@ -201,12 +201,8 @@
         }
     }
 
-    // Tab strip in the HUD / right-side chrome language: dark bevelled plate,
-    // Ubuntu type, quiet inactive tabs, rgba($light, .1) pill on the active
-    // one (same surface as the HUD bars). Scoped here so every other
-    // NitroCard window keeps the stock bootstrap tabs. The !importants beat
-    // the bootstrap utility classes baked into NitroCardTabsItemView
-    // (rounded-top, border, pt-1).
+    // Chrome tab strip (recipe lives in the prp-chrome-tab-strip mixin,
+    // shared with the Shop / Navigator / Inventory windows).
     // The slim theme separates header from body with a 2px border + a white
     // box-shadow stripe — that's the visible gap above the tab strip. Drop
     // both so the dark strip sits flush under the header.
@@ -218,35 +214,6 @@
     // &.theme-primary-slim beats the theme's own 3-class tab-strip rule.
     &.theme-primary-slim .nitro-card-tabs,
     .nitro-card-tabs {
-        background: var(--prp-chrome-plate);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        border-bottom: 0;
-        padding: 6px 8px !important;
-        min-height: 38px;
-        max-height: 38px;
-        align-items: center;
-
-        .nav-item {
-            border: 0 !important;
-            border-radius: $border-radius !important;
-            margin-bottom: 0;
-            padding: 4px 12px;
-            background: transparent;
-            font-family: 'Ubuntu', sans-serif;
-            font-size: 12px;
-            font-weight: 700;
-            color: rgba($light, 0.6);
-            transition: background 0.1s ease, color 0.1s ease;
-
-            &:hover {
-                color: $white;
-            }
-
-            &.active {
-                background: rgba($light, 0.1);
-                color: $white;
-            }
-        }
+        @include prp-chrome-tab-strip;
     }
 }

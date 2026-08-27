@@ -4,6 +4,45 @@
 // defaults compile to EXACTLY the original $dark recipe; the Settings window
 // (Interface tab) overrides them at runtime via UiChrome.ts when the player
 // picks a color scheme (persisted server-side in user_ui_settings).
+// Tab strip in the HUD / right-side chrome language: dark bevelled plate,
+// Ubuntu type, quiet inactive tabs, rgba($light, .1) pill on the active one
+// (same surface as the HUD bars). Windows opt in per root class (Settings,
+// Shop, Navigator); everything else keeps the stock bootstrap tabs. The
+// !importants beat the bootstrap utility classes baked into
+// NitroCardTabsItemView (rounded-top, border, pt-1).
+@mixin prp-chrome-tab-strip {
+    background: var(--prp-chrome-plate);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-bottom: 0;
+    padding: 6px 8px !important;
+    min-height: 38px;
+    max-height: 38px;
+    align-items: center;
+
+    .nav-item {
+        border: 0 !important;
+        border-radius: $border-radius !important;
+        margin-bottom: 0;
+        padding: 4px 12px;
+        background: transparent;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba($light, 0.6);
+        transition: background 0.1s ease, color 0.1s ease;
+
+        &:hover {
+            color: $white;
+        }
+
+        &.active {
+            background: rgba($light, 0.1);
+            color: $white;
+        }
+    }
+}
+
 :root {
     --prp-chrome-95: #{rgba($dark, 0.95)};
     --prp-chrome-92: #{rgba($dark, 0.92)};
