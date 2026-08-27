@@ -1,7 +1,7 @@
-import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpStatsEvent } from '@nitrots/nitro-renderer';
+import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
-import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent } from '../../../../api';
+import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetState } from '../../../../hooks/rooms/targetState';
@@ -207,7 +207,14 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                     <div className="hud-name-row">
                         <span className="hud-name">{ selfName }</span>
                         { (playerStats.aggressive || playerStats.passive) &&
-                            <span className={ `hud-state ${ playerStats.aggressive ? 'aggressive' : 'passive' }` }>{ playerStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span> }
+                            (playerStats.aggressive
+                                ? <span className="hud-state aggressive">AGGRESSIVE</span>
+                                : <span className="hud-state passive is-cancellable">
+                                    PASSIVE
+                                    { /* slides out on hover; ends passive early (server
+                                         shouts the roleplay line for the room) */ }
+                                    <span className="hud-state-cancel" title="End passive status" onClick={ event => SendMessageComposer(new RpPassiveCancelComposer()) }>×</span>
+                                </span>) }
                     </div>
                     <HudBars stats={ playerStats } />
                 </div>
