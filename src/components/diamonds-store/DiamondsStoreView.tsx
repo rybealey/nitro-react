@@ -2,12 +2,13 @@ import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
 import { Button, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
+import { useStripeCheckout } from './useStripeCheckout';
 
 // The PixelRP Diamonds Store window, opened from the toolbar's Diamonds icon
-// (CreateLinkEvent('diamonds-store/toggle')). Layout only for now - the
-// Purchase button is wired to Stripe in a follow-up task.
+// (CreateLinkEvent('diamonds-store/toggle')).
 
 type DiamondsStoreTab = 'store' | 'buy';
+type BuyViewState = 'form' | 'checkout' | 'complete' | 'error';
 
 const MIN_DIAMONDS = 100;
 const MAX_DIAMONDS = 100000;
@@ -24,6 +25,10 @@ export const DiamondsStoreView: FC<{}> = props =>
     // real number on blur.
     const [ diamondsInput, setDiamondsInput ] = useState<string>(String(DEFAULT_DIAMONDS));
     const [ acceptedTerms, setAcceptedTerms ] = useState(false);
+    const [ buyState, setBuyState ] = useState<BuyViewState>('form');
+    const [ checkoutDiamonds, setCheckoutDiamonds ] = useState(0);
+    const [ checkoutError, setCheckoutError ] = useState('');
+    const { containerRef: checkoutContainerRef, mount: mountCheckout, destroy: destroyCheckout } = useStripeCheckout();
 
     const show = (tab: DiamondsStoreTab = null) =>
     {
@@ -32,7 +37,18 @@ export const DiamondsStoreView: FC<{}> = props =>
         if(tab) setCurrentTab(tab);
     }
 
-    const hide = () => setIsVisible(false);
+    const hide = () =>
+    {
+        setIsVisible(false);
+
+        // don't reopen the store mid-checkout or stuck on a stale result -
+        // destroy() itself is handled by the checkoutActive effect below
+        if(buyState !== 'form')
+        {
+            setBuyState('form');
+            setCheckoutError('');
+        }
+    }
 
     // While the field is empty or holds something unparseable, there's no
     // valid amount yet - treat it as invalid rather than guessing a number.
@@ -56,6 +72,59 @@ export const DiamondsStoreView: FC<{}> = props =>
 
         setDiamondsInput(String(clamped));
     }
+
+    const onPurchase = () =>
+    {
+        if(!acceptedTerms || !diamondsValid) return;
+
+        setCheckoutError('');
+        setCheckoutDiamonds(diamonds);
+        setBuyState('checkout');
+    }
+
+    const onCheckoutComplete = () => setBuyState('complete');
+
+    const onDone = () =>
+    {
+        setBuyState('form');
+        setAcceptedTerms(false);
+    }
+
+    const onCheckoutErrorBack = () =>
+    {
+        setBuyState('form');
+        setCheckoutError('');
+    }
+
+    // Mounted only while the checkout state is actually on screen - leaving
+    // it any way (finishing, erroring, switching tabs, closing the window,
+    // or unmounting) tears the embedded Checkout instance down so a second
+    // one is never created while one is still live.
+    const checkoutActive = (buyState === 'checkout') && isVisible && (currentTab === 'buy');
+
+    useEffect(() =>
+    {
+        if(!checkoutActive) return;
+
+        let cancelled = false;
+
+        mountCheckout(checkoutDiamonds, () =>
+        {
+            if(!cancelled) onCheckoutComplete();
+        }).catch((error: Error) =>
+        {
+            if(cancelled) return;
+
+            setCheckoutError(error?.message || 'Couldn\'t start checkout - try again in a moment.');
+            setBuyState('error');
+        });
+
+        return () =>
+        {
+            cancelled = true;
+            destroyCheckout();
+        };
+    }, [ checkoutActive ]);
 
     useEffect(() =>
     {
@@ -106,7 +175,7 @@ export const DiamondsStoreView: FC<{}> = props =>
                     <div className="diamonds-store-empty">
                         Nothing here yet - diamond items are coming soon.
                     </div> }
-                { (currentTab === 'buy') &&
+                { (currentTab === 'buy') && (buyState === 'form') &&
                     <div className="diamonds-store-buy">
                         <div className="diamonds-store-section-title">Buy Diamonds</div>
                         <div className="diamonds-store-field">
@@ -131,9 +200,23 @@ export const DiamondsStoreView: FC<{}> = props =>
                                 <div className="diamonds-store-switch-knob" />
                             </div>
                         </div>
-                        <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ () => {} }>
+                        <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ onPurchase }>
                             { `Purchase ${ totalDisplay }` }
                         </Button>
+                    </div> }
+                { (currentTab === 'buy') && (buyState === 'checkout') &&
+                    <div className="diamonds-store-checkout">
+                        <div ref={ checkoutContainerRef } className="diamonds-store-checkout-container" />
+                    </div> }
+                { (currentTab === 'buy') && (buyState === 'complete') &&
+                    <div className="diamonds-store-result">
+                        <div className="diamonds-store-result-message">Diamonds delivered - enjoy!</div>
+                        <Button fullWidth variant="success" onClick={ onDone }>Done</Button>
+                    </div> }
+                { (currentTab === 'buy') && (buyState === 'error') &&
+                    <div className="diamonds-store-result">
+                        <div className="diamonds-store-result-message diamonds-store-result-error">{ checkoutError }</div>
+                        <Button fullWidth variant="secondary" onClick={ onCheckoutErrorBack }>Back</Button>
                     </div> }
             </NitroCardContentView>
         </NitroCardView>

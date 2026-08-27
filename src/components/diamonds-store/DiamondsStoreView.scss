@@ -112,4 +112,38 @@
             }
         }
     }
+
+    // Stripe's embedded Checkout iframe sizes itself, but the window needs
+    // to be tall enough up front for it to have somewhere to lay out into -
+    // the card grows to fit (resize: none only blocks user resizing).
+    .diamonds-store-checkout {
+        display: flex;
+        flex-direction: column;
+        padding: 2px;
+    }
+
+    .diamonds-store-checkout-container {
+        width: 100%;
+        min-height: 460px;
+    }
+
+    .diamonds-store-result {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding: 32px 4px;
+        text-align: center;
+    }
+
+    .diamonds-store-result-message {
+        font-size: 13px;
+        font-weight: 700;
+        color: $black;
+
+        &.diamonds-store-result-error {
+            font-weight: 400;
+            color: rgba(0, 0, 0, 0.65);
+        }
+    }
 }
