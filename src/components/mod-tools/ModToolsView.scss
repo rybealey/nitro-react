@@ -50,6 +50,13 @@
 }
 
 .nitro-mod-tools-tickets {
+    // Chrome tab strip, matching the Settings window (theme selectors beat
+    // the stock theme-primary/-slim $secondary tab bar).
+    &.theme-primary .nitro-card-tabs,
+    &.theme-primary-slim .nitro-card-tabs {
+        @include prp-chrome-tab-strip;
+    }
+
     width: 400px;
     height: 200px;
 }

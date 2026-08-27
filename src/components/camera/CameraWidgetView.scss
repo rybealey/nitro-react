@@ -91,6 +91,13 @@
 }
 
 .nitro-camera-editor {
+    // Chrome tab strip, matching the Settings window (theme selectors beat
+    // the stock theme-primary/-slim $secondary tab bar).
+    &.theme-primary .nitro-card-tabs,
+    &.theme-primary-slim .nitro-card-tabs {
+        @include prp-chrome-tab-strip;
+    }
+
     width: $camera-editor-width;
     height: $camera-editor-height;
 
