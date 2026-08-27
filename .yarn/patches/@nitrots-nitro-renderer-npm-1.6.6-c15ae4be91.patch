@@ -1543,7 +1543,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +167,239 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +167,249 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1700,6 +1700,16 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +        trailingAcquireHoldX: number, trailingAcquireHoldY: number, trailingAcquireHoldZ: number,
 +        trailingAcquireMasterX: number, trailingAcquireMasterY: number,
 +        trailingAcquireRequiredTravel: number, trailingAcquireTravel: number,
++        // Once acquisition establishes the one-tile gap, keep it authoritative
++        // instead of falling back to JOINER's native interpolation. The current
++        // and immediately-previous MASTER edges provide an allocation-free,
++        // path-aware target: previousEdge(masterPhase) is exactly one travelled
++        // route tile behind, including cardinal, diagonal and turning paths.
++        trailingSpacingLocked: boolean, trailingMasterEdgeSet: boolean,
++        trailingMasterCurrentSx: number, trailingMasterCurrentSy: number, trailingMasterCurrentSz: number,
++        trailingMasterCurrentDx: number, trailingMasterCurrentDy: number, trailingMasterCurrentDz: number,
++        trailingMasterPreviousSx: number, trailingMasterPreviousSy: number, trailingMasterPreviousSz: number,
++        trailingMasterPreviousDx: number, trailingMasterPreviousDy: number, trailingMasterPreviousDz: number,
 +        // Rollover-continuity fix (Update 8 follow-up): replaces the old
 +        // world-position FREEZE that used to render during a brief
 +        // segment-tuple ambiguity at rollover (segmentsMatch/joinerBehind
@@ -1840,7 +1850,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +855,2011 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +855,2141 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2140,6 +2150,11 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    trailingAcquireHoldX: NaN, trailingAcquireHoldY: NaN, trailingAcquireHoldZ: NaN,
 +                    trailingAcquireMasterX: NaN, trailingAcquireMasterY: NaN,
 +                    trailingAcquireRequiredTravel: NaN, trailingAcquireTravel: 0,
++                    trailingSpacingLocked: false, trailingMasterEdgeSet: false,
++                    trailingMasterCurrentSx: NaN, trailingMasterCurrentSy: NaN, trailingMasterCurrentSz: NaN,
++                    trailingMasterCurrentDx: NaN, trailingMasterCurrentDy: NaN, trailingMasterCurrentDz: NaN,
++                    trailingMasterPreviousSx: NaN, trailingMasterPreviousSy: NaN, trailingMasterPreviousSz: NaN,
++                    trailingMasterPreviousDx: NaN, trailingMasterPreviousDy: NaN, trailingMasterPreviousDz: NaN,
 +                    trailingLatchSet: false,
 +                    trailingLatchJSx: NaN, trailingLatchJSy: NaN, trailingLatchJSz: NaN,
 +                    trailingLatchJDx: NaN, trailingLatchJDy: NaN, trailingLatchJDz: NaN,
@@ -2249,11 +2264,92 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                const mDirY = (m ? (m.gyy - Math.round(m.sy)) : NaN);
 +                const jDirX = (j ? (j.gxx - Math.round(j.sx)) : NaN);
 +                const jDirY = (j ? (j.gyy - Math.round(j.sy)) : NaN);
++
++                // Keep the two most recent MASTER route edges for an exact,
++                // path-aware one-tile trailing target. On first observation the
++                // previous edge is safely synthesized by extending the current
++                // direction back one tile; each real rollover then replaces it
++                // with the edge MASTER just completed. This is constant-sized
++                // state (no render-loop arrays or per-frame sample allocation).
++                if((sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING) && m && m.moving
++                    && Number.isFinite(mDirX) && Number.isFinite(mDirY))
++                {
++                    const currentSx = Math.round(m.sx);
++                    const currentSy = Math.round(m.sy);
++                    const currentSz = m.sz;
++                    const currentDz = m.dz;
++
++                    if(!sync.trailingMasterEdgeSet)
++                    {
++                        sync.trailingMasterEdgeSet = true;
++                        sync.trailingMasterCurrentSx = currentSx;
++                        sync.trailingMasterCurrentSy = currentSy;
++                        sync.trailingMasterCurrentSz = currentSz;
++                        sync.trailingMasterCurrentDx = mDirX;
++                        sync.trailingMasterCurrentDy = mDirY;
++                        sync.trailingMasterCurrentDz = currentDz;
++                        sync.trailingMasterPreviousSx = (currentSx - mDirX);
++                        sync.trailingMasterPreviousSy = (currentSy - mDirY);
++                        sync.trailingMasterPreviousSz = (currentSz - currentDz);
++                        sync.trailingMasterPreviousDx = mDirX;
++                        sync.trailingMasterPreviousDy = mDirY;
++                        sync.trailingMasterPreviousDz = currentDz;
++                    }
++                    else if((currentSx !== sync.trailingMasterCurrentSx)
++                        || (currentSy !== sync.trailingMasterCurrentSy)
++                        || (mDirX !== sync.trailingMasterCurrentDx)
++                        || (mDirY !== sync.trailingMasterCurrentDy))
++                    {
++                        const continuedFromPreviousGoal = ((currentSx === (sync.trailingMasterCurrentSx + sync.trailingMasterCurrentDx))
++                            && (currentSy === (sync.trailingMasterCurrentSy + sync.trailingMasterCurrentDy)));
++
++                        if(continuedFromPreviousGoal)
++                        {
++                            sync.trailingMasterPreviousSx = sync.trailingMasterCurrentSx;
++                            sync.trailingMasterPreviousSy = sync.trailingMasterCurrentSy;
++                            sync.trailingMasterPreviousSz = sync.trailingMasterCurrentSz;
++                            sync.trailingMasterPreviousDx = sync.trailingMasterCurrentDx;
++                            sync.trailingMasterPreviousDy = sync.trailingMasterCurrentDy;
++                            sync.trailingMasterPreviousDz = sync.trailingMasterCurrentDz;
++                        }
++                        else
++                        {
++                            // A discontinuous MASTER edge is not route history.
++                            // Re-seed locally; the existing divergence machinery
++                            // remains responsible for ending a genuinely broken pair.
++                            sync.trailingMasterPreviousSx = (currentSx - mDirX);
++                            sync.trailingMasterPreviousSy = (currentSy - mDirY);
++                            sync.trailingMasterPreviousSz = (currentSz - currentDz);
++                            sync.trailingMasterPreviousDx = mDirX;
++                            sync.trailingMasterPreviousDy = mDirY;
++                            sync.trailingMasterPreviousDz = currentDz;
++                        }
++
++                        sync.trailingMasterCurrentSx = currentSx;
++                        sync.trailingMasterCurrentSy = currentSy;
++                        sync.trailingMasterCurrentSz = currentSz;
++                        sync.trailingMasterCurrentDx = mDirX;
++                        sync.trailingMasterCurrentDy = mDirY;
++                        sync.trailingMasterCurrentDz = currentDz;
++                    }
++                }
++
 +                const sameDirection = !!(m && j && (mDirX === jDirX) && (mDirY === jDirY));
 +                const sameGoal = !!(j && m && sameDirection && (j.gxx === m.gxx) && (j.gyy === m.gyy));
 +                const joinerBehind = !!(j && m && sameDirection && (j.gxx === Math.round(m.sx)) && (j.gyy === Math.round(m.sy)));
 +                const joinerAhead = !!(j && m && sameDirection && (m.gxx === Math.round(j.sx)) && (m.gyy === Math.round(j.sy)));
 +                const routeContinuous = !!(j && m && (sameGoal || joinerBehind || joinerAhead));
++                // A locked trailing pair can legitimately have different live
++                // directions for one complete tile at a corner: MASTER is on
++                // the new edge while JOINER is still following the previous
++                // one. Accept either of those two recorded route directions,
++                // but not an unrelated manual turn.
++                const persistentTrailingCompatible = !!(sync.trailingSpacingLocked && sync.trailingMasterEdgeSet
++                    && (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING) && j && m && j.moving && m.moving && mLoc
++                    && (((jDirX === mDirX) && (jDirY === mDirY))
++                        || ((jDirX === sync.trailingMasterPreviousDx) && (jDirY === sync.trailingMasterPreviousDy)))
++                    && (Math.abs(roomLocation.x - mLoc.x) <= (1 + 1e-6))
++                    && (Math.abs(roomLocation.y - mLoc.y) <= (1 + 1e-6)));
 +                // Maintenance distance bound: an established pair one
 +                // legitimate segment apart (routeContinuous via
 +                // joinerBehind/joinerAhead) sits at up to EXACTLY 1 tile on
@@ -2267,7 +2363,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                // — routeContinuous stays the primary proof; this is only a
 +                // sanity bound against a genuinely corrupted pairing, so it
 +                // must allow the boundary routeContinuous itself permits.
-+                const pathOk = !!(j && m && j.moving && m.moving && routeContinuous && mLoc
++                const pathOk = !!(j && m && j.moving && m.moving && (routeContinuous || persistentTrailingCompatible) && mLoc
 +                    && (Math.abs(roomLocation.x - mLoc.x) <= (1 + 1e-6))
 +                    && (Math.abs(roomLocation.y - mLoc.y) <= (1 + 1e-6)));
 +
@@ -2410,6 +2506,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                        sync.s = 0;
 +                        sync.trailingAcquireActive = true;
 +                        sync.trailingAcquireHoldSet = false;
++                        sync.trailingSpacingLocked = false;
++                        sync.trailingMasterEdgeSet = false;
 +                    }
 +
 +                    if(sync.formationState !== prevFormationState)
@@ -2571,7 +2669,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    && ((sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
 +                        || (Number.isFinite(nativeSignedGap) && (nativeSignedGap < -RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX))));
 +                const trailingRouteNow = !!(j && m && j.moving && m.moving && mLoc
-+                    && ((joinerBehind && !segmentsMatch) || sameSegmentTrailingFarEnough));
++                    && ((joinerBehind && !segmentsMatch) || sameSegmentTrailingFarEnough || persistentTrailingCompatible));
 +
 +                if(trailingRouteNow) sync.trailingBadSince = 0;
 +                else if(sync.trailingBadSince === 0) sync.trailingBadSince = nowMs;
@@ -2642,7 +2740,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                const joinerIncompatible = !!(j && j.moving && Number.isFinite(sync.lockedDirX)
 +                    && ((jDirX !== sync.lockedDirX) || (jDirY !== sync.lockedDirY)));
 +                const genuineDivergence = !!(j && m
-+                    && ((j.moving && m.moving && !routeContinuous && sync.badSince && ((nowMs - sync.badSince) > RoomSpriteCanvas.FORMATION_CORNER_GRACE_MS))
++                    && ((j.moving && m.moving && !routeContinuous && !persistentTrailingCompatible && sync.badSince && ((nowMs - sync.badSince) > RoomSpriteCanvas.FORMATION_CORNER_GRACE_MS))
 +                        || (j.moving && !m.moving && joinerIncompatible)));
 +
 +                if((sync.mode !== 2) && (!masterObject || genuineDivergence
@@ -2717,6 +2815,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                        sync.trailingCorrectingActive = false;
 +                        sync.trailingExitOffsetSet = false;
 +                        sync.trailingLatchSet = false;
++                        sync.trailingSpacingLocked = false;
++                        sync.trailingMasterEdgeSet = false;
 +                        sync.trailingRolloverActive = false;
 +                    }
 +                }
@@ -2798,6 +2898,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    sync.trailingExitOffsetSet = true;
 +                    sync.trailingExitHandoffT = 0;
 +                    sync.trailingCorrectingActive = false;
++                    sync.trailingSpacingLocked = false;
 +
 +                    const trailingStopReason = ((sync.mode === 2) ? 'released' : 'route_grace_expired');
 +
@@ -2843,6 +2944,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    // captures aren't silently missing this transition.
 +                    sync.trailingRolloverActive = false;
 +                    sync.trailingCorrectingActive = false;
++                    sync.trailingSpacingLocked = false;
 +
 +                    console.log(`[sync:TRAIL_ROLLOVER_RESOLVE] master=${ sync.masterId } joiner=${ sync.joinerId } resolution=same_position elapsedMs=${ nowMs - sync.trailingRolloverSince } resultingSource=PHASE_SHIFT displayedJoiner=(${ Number.isFinite(sync.lastVx) ? sync.lastVx.toFixed(3) : '?' },${ Number.isFinite(sync.lastVy) ? sync.lastVy.toFixed(3) : '?' }) nativeJoiner=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) })`);
 +                }
@@ -2921,9 +3023,20 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +
 +                            sync.trailingAcquireActive = false;
 +                            sync.trailingAcquireHoldSet = false;
++                            sync.trailingSpacingLocked = true;
 +
 +                            return { x: targetX, y: targetY, z: targetZ };
 +                        }
++                    }
++
++                    // Acquisition is over: the one-tile route position is now
++                    // authoritative for the lifetime of this trailing session.
++                    // The target is driven only by MASTER's previous route edge,
++                    // so assigning it exactly is smooth at native speed and cannot
++                    // be consumed by JOINER's hidden/native catch-up movement.
++                    if(sync.trailingSpacingLocked)
++                    {
++                        return { x: targetX, y: targetY, z: targetZ };
 +                    }
 +
 +                    // Carry the correction already displayed last frame while
@@ -2950,6 +3063,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                        {
 +                            sync.trailingAcquireActive = false;
 +                            sync.trailingAcquireHoldSet = false;
++                            sync.trailingSpacingLocked = true;
 +                        }
 +
 +                        return { x: targetX, y: targetY, z: targetZ };
@@ -2984,6 +3098,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    {
 +                        sync.trailingAcquireActive = false;
 +                        sync.trailingAcquireHoldSet = false;
++                        sync.trailingSpacingLocked = true;
 +                    }
 +
 +                    return { x: correctedX, y: correctedY, z: correctedZ };
@@ -3226,7 +3341,23 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                        const isGenuineBehind = (joinerBehind && !segmentsMatch);
 +                        let targetX: number, targetY: number, targetZ: number, absError: number;
 +
-+                        if(isGenuineBehind)
++                        if(sync.trailingMasterEdgeSet)
++                        {
++                            // The MASTER's previous route edge at its current
++                            // phase is exactly one travelled tile behind. Unlike
++                            // native JOINER phase, this target cannot drift toward
++                            // MASTER and it naturally preserves the old direction
++                            // for one tile when MASTER turns onto a new edge.
++                            targetX = (sync.trailingMasterPreviousSx + (sync.trailingMasterPreviousDx * masterPhase));
++                            targetY = (sync.trailingMasterPreviousSy + (sync.trailingMasterPreviousDy * masterPhase));
++                            targetZ = (sync.trailingMasterPreviousSz + (sync.trailingMasterPreviousDz * masterPhase));
++
++                            const displayedX = (Number.isFinite(sync.lastVx) ? sync.lastVx : roomLocation.x);
++                            const displayedY = (Number.isFinite(sync.lastVy) ? sync.lastVy : roomLocation.y);
++
++                            absError = Math.hypot((targetX - displayedX), (targetY - displayedY));
++                        }
++                        else if(isGenuineBehind)
 +                        {
 +                            targetX = (j.sx + (j.dx * masterPhase));
 +                            targetY = (j.sy + (j.dy * masterPhase));
@@ -3307,7 +3438,14 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                        // right around one boundary value — once correction
 +                        // starts, it stays engaged until comfortably
 +                        // resolved, not just momentarily under threshold.
-+                        if(!sync.trailingCorrectingActive && (absError > RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_START))
++                        if(sync.trailingAcquireActive || sync.trailingSpacingLocked)
++                        {
++                            // Acquisition must run even when native phases happen
++                            // to look synchronized. Once acquired, never let the
++                            // old native-phase dead zone turn the route lock off.
++                            sync.trailingCorrectingActive = true;
++                        }
++                        else if(!sync.trailingCorrectingActive && (absError > RoomSpriteCanvas.TRAILING_PHASE_DEADZONE_START))
 +                        {
 +                            sync.trailingCorrectingActive = true;
 +
@@ -3332,7 +3470,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +
 +                            vx = corrected.x; vy = corrected.y; vz = corrected.z;
 +                            apply = true;
-+                            source = 'TRAIL_CORRECT';
++                            source = (sync.trailingSpacingLocked ? 'TRAIL_LOCK' : 'TRAIL_CORRECT');
 +
 +                            if((nowMs - sync.trailingLastSnapshotAt) > 250)
 +                            {
@@ -3537,6 +3675,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                        sync.trailingCorrectingActive = false;
 +                        sync.trailingExitOffsetSet = false;
 +                        sync.trailingLatchSet = false;
++                        sync.trailingSpacingLocked = false;
++                        sync.trailingMasterEdgeSet = false;
 +                        sync.trailingRolloverActive = false;
 +                    }
 +                    else if(sync.demotionOffsetSet)
