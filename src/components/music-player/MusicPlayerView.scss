@@ -1,0 +1,107 @@
+// PixelRP music player — right-side chrome panel under the purse. Paints
+// from the --prp-chrome-* vars like every chrome surface (never hardcoded
+// dark rgba), same plate + blur language as the purse above it.
+.nitro-music-player {
+    pointer-events: all;
+    background: var(--prp-chrome-plate);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: $white;
+    font-size: $font-size-sm;
+    padding: 6px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .music-player-kicker {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: rgba($light, 0.5);
+    }
+
+    .music-player-title {
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        color: $white;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .music-player-meta {
+        display: flex;
+        gap: 4px;
+        min-width: 0;
+        color: rgba($light, 0.7);
+
+        .music-player-artist,
+        .music-player-album {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .music-player-separator {
+            flex-shrink: 0;
+            color: rgba($light, 0.4);
+        }
+    }
+
+    .music-player-next {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+        margin-top: 4px;
+        padding: 3px 6px;
+        border-radius: $border-radius;
+        background-color: rgba($light, 0.1);
+
+        .music-player-next-song {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: rgba($light, 0.85);
+        }
+    }
+
+    .music-player-volume {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        color: rgba($light, 0.7);
+
+        input[type='range'] {
+            flex: 1;
+            appearance: none;
+            -webkit-appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba($light, 0.25);
+            outline: none;
+            cursor: pointer;
+
+            &::-webkit-slider-thumb {
+                appearance: none;
+                -webkit-appearance: none;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: $white;
+                border: 0;
+            }
+
+            &::-moz-range-thumb {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: $white;
+                border: 0;
+            }
+        }
+    }
+}

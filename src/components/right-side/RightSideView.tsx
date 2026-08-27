@@ -2,6 +2,7 @@ import { FC } from 'react';
 import { Column, Flex } from '../../common';
 import { OfferView } from '../catalog/views/targeted-offer/OfferView';
 import { GroupRoomInformationView } from '../groups/views/GroupRoomInformationView';
+import { MusicPlayerView } from '../music-player/MusicPlayerView';
 import { NotificationCenterView } from '../notification-center/NotificationCenterView';
 import { OnlineCountView } from '../online-count/OnlineCountView';
 import { PurseView } from '../purse/PurseView';
@@ -21,6 +22,7 @@ export const RightSideView: FC<{}> = props =>
                     <RoomQuickToolsView />
                     <PurseView />
                 </Flex>
+                <MusicPlayerView />
                 <GroupRoomInformationView />
                 <MysteryBoxExtensionView />
                 <OfferView/>
