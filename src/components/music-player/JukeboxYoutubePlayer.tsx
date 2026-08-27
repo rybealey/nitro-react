@@ -32,6 +32,7 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
     const currentRef = useRef<JukeboxCurrent>(null);
     const loadedVideoIdRef = useRef<string>(null);
     const reportedDurationFor = useRef<string>(null);
+    const errorReportTimerRef = useRef<number>(null);
     const [ needsUnmute, setNeedsUnmute ] = useState(true);
 
     // track changes / seeks — re-broadcasts of the same video re-anchor
@@ -90,17 +91,52 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
                             }
                         }
                     },
-                    // embed-disabled / removed videos: advance the room queue
-                    onError: () => SendMessageComposer(new RpJukeboxReportComposer(0, true))
+                    // embed-disabled / removed videos: advance the room queue.
+                    // The server ignores an unknown-duration "ended" report until
+                    // elapsed >= 30s, so the immediate report here is dropped and
+                    // an error'd track would otherwise stall for the full 600s
+                    // Cycle cap. Schedule a follow-up report timed to land just
+                    // past that 30s gate so the queue actually advances.
+                    onError: () =>
+                    {
+                        SendMessageComposer(new RpJukeboxReportComposer(0, true));
+
+                        if(errorReportTimerRef.current) window.clearTimeout(errorReportTimerRef.current);
+
+                        const delay = Math.max(0, ((currentRef.current?.startedAtMs ?? Date.now()) + 35000) - Date.now());
+
+                        errorReportTimerRef.current = window.setTimeout(() =>
+                        {
+                            errorReportTimerRef.current = null;
+                            SendMessageComposer(new RpJukeboxReportComposer(0, true));
+                        }, delay);
+                    }
                 }
             });
         });
 
-        return () => { disposed = true; playerRef.current?.destroy?.(); playerRef.current = null; }
+        return () =>
+        {
+            disposed = true;
+            playerRef.current?.destroy?.();
+            playerRef.current = null;
+
+            if(errorReportTimerRef.current)
+            {
+                window.clearTimeout(errorReportTimerRef.current);
+                errorReportTimerRef.current = null;
+            }
+        }
     }, []);
 
     useEffect(() =>
     {
+        if(errorReportTimerRef.current)
+        {
+            window.clearTimeout(errorReportTimerRef.current);
+            errorReportTimerRef.current = null;
+        }
+
         currentRef.current = current;
         syncToCurrent();
     }, [ current?.videoId, current?.startedAtMs ]);
