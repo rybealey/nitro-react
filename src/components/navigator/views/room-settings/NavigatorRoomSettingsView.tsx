@@ -1,20 +1,20 @@
-import { RoomBannedUsersComposer, RoomDataParser, RoomSettingsDataEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
+import { RoomDataParser, RoomSettingsDataEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { useMessageEvent } from '../../../../hooks';
 import { NavigatorRoomSettingsAccessTabView } from './NavigatorRoomSettingsAccessTabView';
 import { NavigatorRoomSettingsBasicTabView } from './NavigatorRoomSettingsBasicTabView';
-import { NavigatorRoomSettingsModTabView } from './NavigatorRoomSettingsModTabView';
 import { NavigatorRoomSettingsRightsTabView } from './NavigatorRoomSettingsRightsTabView';
 import { NavigatorRoomSettingsVipChatTabView } from './NavigatorRoomSettingsVipChatTabView';
 
+// PixelRP: the ModTool tab (tab.5, room mute/kick/ban settings + ban list)
+// is retired — RP moderation happens through the staff tools instead.
 const TABS: string[] = [
     'navigator.roomsettings.tab.1',
     'navigator.roomsettings.tab.2',
     'navigator.roomsettings.tab.3',
-    'navigator.roomsettings.tab.4',
-    'navigator.roomsettings.tab.5'
+    'navigator.roomsettings.tab.4'
 ];
 
 export const NavigatorRoomSettingsView: FC<{}> = props =>
@@ -59,8 +59,6 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
                 allowBan: data.roomModerationSettings.allowBan
             }
         });
-
-        SendMessageComposer(new RoomBannedUsersComposer(data.roomId));
     });
 
     const onClose = () =>
@@ -198,8 +196,6 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
                     <NavigatorRoomSettingsRightsTabView roomData={ roomData } handleChange={ handleChange } /> }
                 { (currentTab === TABS[3]) &&
                     <NavigatorRoomSettingsVipChatTabView roomData={ roomData } handleChange={ handleChange } /> }
-                { (currentTab === TABS[4]) &&
-                    <NavigatorRoomSettingsModTabView roomData={ roomData } handleChange={ handleChange } /> }
             </NitroCardContentView>
         </NitroCardView>
     );
