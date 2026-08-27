@@ -1,5 +1,6 @@
 import { FC, useState } from 'react';
 import { FaVolumeUp } from 'react-icons/fa';
+import { JukeboxQueueView } from './JukeboxQueueView';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { useJukebox } from './useJukebox';
 
@@ -64,6 +65,8 @@ export const MusicPlayerView: FC<{}> = props =>
                 <JukeboxYoutubePlayer current={ current } volume={ volume } expanded={ expanded } /> }
             { current &&
                 <div className="music-player-expand" onClick={ event => setExpanded(value => !value) }>{ expanded ? 'Shrink video' : 'Expand video' }</div> }
+            { isQueueOpen &&
+                <JukeboxQueueView current={ current } queue={ queue } onClose={ () => setIsQueueOpen(false) } /> }
         </div>
     );
 }

@@ -169,3 +169,15 @@
         &:active { opacity: 0.72; }
     }
 }
+
+.nitro-jukebox-queue {
+    width: 280px;
+
+    .jukebox-queue-now { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .jukebox-queue-list { display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; margin-bottom: 8px; }
+    .jukebox-queue-row { display: flex; align-items: center; gap: 6px; }
+    .jukebox-queue-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .jukebox-queue-by { color: $muted; font-size: 11px; flex-shrink: 0; }
+    .jukebox-queue-empty { color: $muted; }
+    .jukebox-queue-add { display: flex; gap: 6px; }
+}
