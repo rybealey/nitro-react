@@ -1,4 +1,4 @@
-import { RoomDataParser, RoomSettingsDataEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
+import { RoomDataParser, RoomSettingsDataEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
@@ -6,21 +6,36 @@ import { useMessageEvent } from '../../../../hooks';
 import { NavigatorRoomSettingsAccessTabView } from './NavigatorRoomSettingsAccessTabView';
 import { NavigatorRoomSettingsBasicTabView } from './NavigatorRoomSettingsBasicTabView';
 import { NavigatorRoomSettingsRightsTabView } from './NavigatorRoomSettingsRightsTabView';
+import { NavigatorRoomSettingsRoleplayTabView } from './NavigatorRoomSettingsRoleplayTabView';
 import { NavigatorRoomSettingsVipChatTabView } from './NavigatorRoomSettingsVipChatTabView';
 
 // PixelRP: the ModTool tab (tab.5, room mute/kick/ban settings + ban list)
 // is retired — RP moderation happens through the staff tools instead.
+// Stock tab labels localize; the PixelRP Roleplay tab is a plain label.
 const TABS: string[] = [
     'navigator.roomsettings.tab.1',
     'navigator.roomsettings.tab.2',
     'navigator.roomsettings.tab.3',
-    'navigator.roomsettings.tab.4'
+    'navigator.roomsettings.tab.4',
+    'Roleplay'
 ];
 
 export const NavigatorRoomSettingsView: FC<{}> = props =>
 {
     const [ roomData, setRoomData ] = useState<IRoomData>(null);
     const [ currentTab, setCurrentTab ] = useState(TABS[0]);
+    // Roleplay tab state lives here (not in the tab view) because the zone
+    // packet arrives right after the settings data, before the tab mounts.
+    const [ isSafeZone, setIsSafeZone ] = useState(false);
+
+    useMessageEvent<RpRoomZoneEvent>(RpRoomZoneEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser) return;
+
+        setIsSafeZone(parser.isSafeZone);
+    });
 
     useMessageEvent<RoomSettingsDataEvent>(RoomSettingsDataEvent, event =>
     {
@@ -184,7 +199,7 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
             <NitroCardTabsView>
                 { TABS.map(tab =>
                 {
-                    return <NitroCardTabsItemView key={ tab } isActive={ (currentTab === tab) } onClick={ event => setCurrentTab(tab) }>{ LocalizeText(tab) }</NitroCardTabsItemView>
+                    return <NitroCardTabsItemView key={ tab } isActive={ (currentTab === tab) } onClick={ event => setCurrentTab(tab) }>{ tab.startsWith('navigator.') ? LocalizeText(tab) : tab }</NitroCardTabsItemView>
                 }) }
             </NitroCardTabsView>
             <NitroCardContentView>
@@ -196,6 +211,8 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
                     <NavigatorRoomSettingsRightsTabView roomData={ roomData } handleChange={ handleChange } /> }
                 { (currentTab === TABS[3]) &&
                     <NavigatorRoomSettingsVipChatTabView roomData={ roomData } handleChange={ handleChange } /> }
+                { (currentTab === TABS[4]) &&
+                    <NavigatorRoomSettingsRoleplayTabView roomData={ roomData } isSafeZone={ isSafeZone } setIsSafeZone={ setIsSafeZone } /> }
             </NitroCardContentView>
         </NitroCardView>
     );
