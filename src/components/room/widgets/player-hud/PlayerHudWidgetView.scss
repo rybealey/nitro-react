@@ -121,6 +121,9 @@
         // Own passive tag: hovering slides an x out to the right; clicking
         // it ends the passive status early (server announces the shout).
         &.is-cancellable {
+            // the HUD container is pointer-events: none; the cancellable
+            // chip opts back in so :hover and the x click can fire
+            pointer-events: auto;
             display: inline-flex;
             align-items: center;
 
