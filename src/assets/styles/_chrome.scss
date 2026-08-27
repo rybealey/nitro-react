@@ -32,6 +32,12 @@
         color: rgba($light, 0.6);
         transition: background 0.1s ease, color 0.1s ease;
 
+        // The stock theme paints a little stripe across each tab top via
+        // :before — no place for it on the chrome strip.
+        &:before {
+            content: none;
+        }
+
         &:hover {
             color: $white;
         }
