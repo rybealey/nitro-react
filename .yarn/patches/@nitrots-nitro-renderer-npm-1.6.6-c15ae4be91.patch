@@ -1623,7 +1623,7 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
          this.listener.events.dispatchEvent(chatEvent);
      }
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a2781eed0 100644
+index 6a88da850856d0c177c1911bce05708057cb6b5f..3b9955d03b912393ed5de2aa8ad160b7b6f539ba 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -13,6 +13,123 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
@@ -1750,7 +1750,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +167,249 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +168,258 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1983,15 +1983,24 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +    // samePathWith again and spawn a fresh session, sometimes with
 +    // roles reversed, producing the same magnetic-feeling behavior the
 +    // release was supposed to end. sawSeparated latches true the first
-+    // time, after release, the pair's distance genuinely exceeds the
-+    // engage proximity gate (<1 tile) — i.e. real evidence they've
++    // time, after release, the pair's distance genuinely exceeds a
++    // full tile on some axis (the stillClose test in the hysteresis
++    // check) — i.e. real evidence they've
 +    // completed the crossing/separated — which is the primary proof;
 +    // the 3000ms window is only a backstop for the case they never
 +    // visibly separate (e.g. end up standing still near each other).
 +    // Scoped to this one pair via pairKey; unrelated pairs are
 +    // unaffected. blockLogged avoids repeating the same diagnostic
 +    // line every frame while the block remains active.
-+    private _pixelrpLastReleased: { pairKey: string, at: number, sawSeparated: boolean, blockLogged: boolean } = null;
++    // dirX/dirY: the released session's last CONFIRMED shared walk
++    // direction (sync.lockedDirX/Y at release; NaN if the session never
++    // confirmed one). A pair that re-proves a shared route in a
++    // DIFFERENT direction (a turnaround — the pair reversed and
++    // re-formed) is a NEW relationship, not the old crossing
++    // continuing, so it unblocks immediately instead of waiting out
++    // the backstop — see the direction-aware unblock in the
++    // hysteresis check in renderObject().
++    private _pixelrpLastReleased: { pairKey: string, at: number, sawSeparated: boolean, blockLogged: boolean, dirX: number, dirY: number } = null;
 +    // One-sided departures and diagonal/off-route approaches are not
 +    // synchronized immediately. Retain only their first raw gap so a shared
 +    // route proven within FORMATION_PENDING_LATE_MS can inherit the original
@@ -2000,7 +2009,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +722,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +742,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -2041,7 +2050,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +805,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +825,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -2057,7 +2066,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +855,2158 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +875,2199 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2184,10 +2193,11 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +            // unit's current step-start tile (this unit one beat ahead) —
 +            // all derived from already-tracked per-frame step data,
 +            // symmetric so it doesn't matter which side ends up MASTER vs
-+            // JOINER once roles are assigned below. Still gated on <1 tile
-+            // overlap on both axes — keeps opposite-side converging units
-+            // from sticking before they truly overlap; this proximity gate
-+            // is the system's actual scope and is unchanged.
++            // JOINER once roles are assigned below. Still gated on
++            // proximity on both axes (<= 1 tile + epsilon, matching the
++            // maintenance bound — see the gate comment below) — keeps
++            // opposite-side converging units from sticking before they
++            // truly overlap; this proximity gate is the system's scope.
 +            // Returns null on no match, or which sub-condition matched
 +            // when it does — used only for the [sync:ENGAGE] diagnostic
 +            // (`via=sameGoal|behind|ahead`). It does NOT seed formation
@@ -2198,7 +2208,19 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +            // proof in either direction).
 +            const samePathWith = (other: { tx: number, ty: number, gx: number, gy: number, sx: number, sy: number }): { sameGoal: boolean, behind: boolean, ahead: boolean } =>
 +            {
-+                if(!((Math.abs(roomLocation.x - other.tx) < 1) && (Math.abs(roomLocation.y - other.ty) < 1))) return null;
++                // Proximity gate: <= 1 tile (+epsilon), matching the
++                // maintenance pathOk distance bound EXACTLY. The old strict
++                // <1 made a pair whose native gap had already reached a full
++                // tile (e.g. the server's walk-grid slew finished forming
++                // them while no session was active) permanently
++                // unengageable — never captured, never locked, never
++                // correctable. At exactly 1.0 the engage flows into the
++                // lateEntry acquire with requiredTravel ~0: an instant
++                // spacing lock, no hold. The bound must never exceed
++                // maintenance's (1 + 1e-6): engaging a pair maintenance
++                // would reject just thrashes engage->release and re-arms
++                // the re-engagement hysteresis.
++                if(!((Math.abs(roomLocation.x - other.tx) <= (1 + 1e-6)) && (Math.abs(roomLocation.y - other.ty) <= (1 + 1e-6)))) return null;
 +
 +                // Direction compatibility: endpoint adjacency alone doesn't
 +                // prove same-route travel — MASTER A->B and a candidate
@@ -2240,6 +2262,34 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    const stillClose = ((Math.abs(roomLocation.x - own.tx) < 1) && (Math.abs(roomLocation.y - own.ty) < 1));
 +
 +                    if(!stillClose) this._pixelrpLastReleased.sawSeparated = true;
++                    else if(Number.isFinite(this._pixelrpLastReleased.dirX) && samePathWith(own))
++                    {
++                        // Direction-aware unblock: the pair is still close, but
++                        // it has re-proven a shared route (samePathWith requires
++                        // both sides mid-step with IDENTICAL step directions) in
++                        // a direction DIFFERENT from the one the released
++                        // session had confirmed. That is a turnaround re-forming
++                        // the pair — a NEW route relationship — not the
++                        // crossing/overtake release loop this hysteresis exists
++                        // to suppress (a loop keeps the SAME direction). Treat
++                        // it as separation-grade proof so ENGAGE can fire this
++                        // same frame, while the pair is still catchable
++                        // (<1 tile apart). Without this, the full 3000ms
++                        // backstop always elapsed here — sawSeparated needs a
++                        // >=1-tile observation, which a pair that is FORMING UP
++                        // can never produce — and the entire acquire window was
++                        // consumed rendering pure native (confirmed
++                        // frame-by-frame from the 2026-08-28 turnaround clip).
++                        const sharedDirX = (stepGoalX - stepStartX);
++                        const sharedDirY = (stepGoalY - stepStartY);
++
++                        if((sharedDirX !== this._pixelrpLastReleased.dirX) || (sharedDirY !== this._pixelrpLastReleased.dirY))
++                        {
++                            this._pixelrpLastReleased.sawSeparated = true;
++
++                            console.log(`[sync:REENGAGE_UNBLOCKED] reason=direction_change pairKey=${ this._pixelrpLastReleased.pairKey } releasedDir=(${ this._pixelrpLastReleased.dirX },${ this._pixelrpLastReleased.dirY }) newDir=(${ sharedDirX },${ sharedDirY }) sinceReleaseMs=${ nowMs - this._pixelrpLastReleased.at }`);
++                        }
++                    }
 +                }
 +
 +                recentlyReleasedBlocked = (!this._pixelrpLastReleased.sawSeparated && ((nowMs - this._pixelrpLastReleased.at) < 3000));
@@ -3351,7 +3401,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                    // (see _pixelrpLastReleased field comment and the
 +                    // ENGAGE-time check above) BEFORE clearing sync —
 +                    // `sync` still refers to the just-ended session's data.
-+                    this._pixelrpLastReleased = { pairKey: this.pixelrpPairKey(sync.masterId, sync.joinerId), at: nowMs, sawSeparated: false, blockLogged: false };
++                    this._pixelrpLastReleased = { pairKey: this.pixelrpPairKey(sync.masterId, sync.joinerId), at: nowMs, sawSeparated: false, blockLogged: false, dirX: sync.lockedDirX, dirY: sync.lockedDirY };
 +                    this._pixelrpSync = null;
 +                    ended = true;
 +                }
@@ -4218,7 +4268,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2920,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +3128,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
