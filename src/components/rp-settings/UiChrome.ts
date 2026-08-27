@@ -130,6 +130,14 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     style.setProperty('--prp-chrome-band-hi', hsla(h, s, (l + 1.5), a(0.95)));
     style.setProperty('--prp-chrome-band-lo', hsla(h, s, (l - 2.4), a(0.95)));
 
+    // Room context menu: lighter header band + the dual-tone item/hover
+    // splits (the grad vars in _chrome.scss compose from these).
+    style.setProperty('--prp-menu-header', hsla(h, s, (l + 14), a(0.95)));
+    style.setProperty('--prp-menu-item-hi', hsla(h, s, (l - 4), a(0.95)));
+    style.setProperty('--prp-menu-item-lo', hsla(h, s, (l - 7), a(0.95)));
+    style.setProperty('--prp-menu-hover-hi', hsla(h, s, (l + 7), a(0.95)));
+    style.setProperty('--prp-menu-hover-lo', hsla(h, s, (l + 4), a(0.95)));
+
     // Drawer icon tint: the drawer PNGs are grayscale; each icon carries a
     // masked overlay pseudo-element painted with this color and blended
     // with mix-blend-mode: color — exact hue, original shading preserved

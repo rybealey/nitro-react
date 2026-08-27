@@ -24,6 +24,18 @@
     --prp-chrome-chip: linear-gradient(var(--prp-chrome-band-hi) 0, var(--prp-chrome-band-hi) 3px, var(--prp-chrome-95) 3px, var(--prp-chrome-95) calc(100% - 3px), var(--prp-chrome-band-lo) calc(100% - 3px));
     --prp-chrome-icon-tint: transparent;
 
+    /* Room context menu (avatar/furni click menus). Same scheme base, with
+       the original menu's relative steps: a clearly lighter header band,
+       list items split two-tone slightly darker than the frame, and a
+       lighter two-tone hover. The grad vars compose the 50/50 splits. */
+    --prp-menu-header: #{lighten(rgba($dark, 0.95), 14)};
+    --prp-menu-item-hi: #{darken(rgba($dark, 0.95), 4)};
+    --prp-menu-item-lo: #{darken(rgba($dark, 0.95), 7)};
+    --prp-menu-hover-hi: #{lighten(rgba($dark, 0.95), 7)};
+    --prp-menu-hover-lo: #{lighten(rgba($dark, 0.95), 4)};
+    --prp-menu-item-grad: repeating-linear-gradient(var(--prp-menu-item-hi), var(--prp-menu-item-hi) 50%, var(--prp-menu-item-lo) 50%, var(--prp-menu-item-lo) 100%);
+    --prp-menu-hover-grad: repeating-linear-gradient(var(--prp-menu-hover-hi), var(--prp-menu-hover-hi) 50%, var(--prp-menu-hover-lo) 50%, var(--prp-menu-hover-lo) 100%);
+
     /* Window header duo-tone (Settings > Interface). Defaults = CMS brand
        orange (pixel design system orange-400 over orange-500). */
     --prp-header-top: #f0954a;

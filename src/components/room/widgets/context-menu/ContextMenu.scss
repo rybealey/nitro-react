@@ -1,6 +1,10 @@
 .nitro-context-menu {
     padding: 2px;
-    background-color: $gable-green;
+    // PixelRP: the menu follows the player's UI chrome scheme (Settings >
+    // Interface) instead of the fixed gable-green/william/mirage recipe.
+    background-color: var(--prp-chrome-95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border: 2px solid rgba($white, 0.5);
     border-radius: $border-radius;
     font-size: $font-size-sm;
@@ -59,7 +63,7 @@
     }
 
     .menu-header {
-        background-color: $william;
+        background-color: var(--prp-menu-header);
         color: $white;
         min-width: 117px;
         height: 25px;
@@ -114,11 +118,12 @@
             height: 24px;
             max-height: 24px;
             padding: 3px;
-            background: $bg-mirage-split-background;
+            // Dual-tone split, scheme-derived (was mirage/aztec + cello).
+            background: var(--prp-menu-item-grad);
             cursor: pointer;
 
             &:not(.disabled):hover {
-                background: $bg-cello-split-background;
+                background: var(--prp-menu-hover-grad);
             }
 
             .fa-icon,
