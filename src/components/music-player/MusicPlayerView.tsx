@@ -1,17 +1,42 @@
 import { FC, useState } from 'react';
 import { FaVolumeUp } from 'react-icons/fa';
+import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { useJukebox } from './useJukebox';
+
+const VOLUME_STORAGE_KEY = 'pixelrp.jukebox.volume';
+
+const getStoredVolume = () =>
+{
+    try
+    {
+        const stored = parseInt(localStorage.getItem(VOLUME_STORAGE_KEY));
+
+        if(!isNaN(stored)) return Math.min(100, Math.max(0, stored));
+    }
+    catch(e) { }
+
+    return 50;
+}
 
 // PixelRP music player — the panel under the purse that appears whenever
 // the room's jukebox reports itself present. Presence, current track and
-// queue are all server-authoritative (see useJukebox); playback is wired
-// in a later task, and the queue-add icon opens a window Task 7 mounts.
+// queue are all server-authoritative (see useJukebox); the queue-add icon
+// opens a window Task 7 mounts.
 export const MusicPlayerView: FC<{}> = props =>
 {
-    const [ volume, setVolume ] = useState(50);
+    const [ volume, setVolume ] = useState(getStoredVolume);
+    const [ expanded, setExpanded ] = useState(false);
     // Task 7 mounts the add-song window from this state.
     const [ isQueueOpen, setIsQueueOpen ] = useState(false);
     const { present, current, queue } = useJukebox();
+
+    const updateVolume = (value: number) =>
+    {
+        setVolume(value);
+
+        try { localStorage.setItem(VOLUME_STORAGE_KEY, value.toString()); }
+        catch(e) { }
+    }
 
     if(!present) return null;
 
@@ -33,8 +58,12 @@ export const MusicPlayerView: FC<{}> = props =>
             </div>
             <div className="music-player-volume">
                 <FaVolumeUp className="fa-icon" />
-                <input type="range" min={ 0 } max={ 100 } value={ volume } onChange={ event => setVolume(parseInt(event.target.value)) } />
+                <input type="range" min={ 0 } max={ 100 } value={ volume } onChange={ event => updateVolume(parseInt(event.target.value)) } />
             </div>
+            { current &&
+                <JukeboxYoutubePlayer current={ current } volume={ volume } expanded={ expanded } /> }
+            { current &&
+                <div className="music-player-expand" onClick={ event => setExpanded(value => !value) }>{ expanded ? 'Shrink video' : 'Expand video' }</div> }
         </div>
     );
 }
