@@ -18,7 +18,11 @@ export const DiamondsStoreView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
     const [ currentTab, setCurrentTab ] = useState<DiamondsStoreTab>('store');
-    const [ diamonds, setDiamonds ] = useState<number>(DEFAULT_DIAMONDS);
+    // Held as the raw text the input shows, so the field can sit empty
+    // mid-edit (select-all + backspace, then retype) instead of snapping
+    // back to a placeholder value on every keystroke. Only clamped into a
+    // real number on blur.
+    const [ diamondsInput, setDiamondsInput ] = useState<string>(String(DEFAULT_DIAMONDS));
     const [ acceptedTerms, setAcceptedTerms ] = useState(false);
 
     const show = (tab: DiamondsStoreTab = null) =>
@@ -30,20 +34,27 @@ export const DiamondsStoreView: FC<{}> = props =>
 
     const hide = () => setIsVisible(false);
 
+    // While the field is empty or holds something unparseable, there's no
+    // valid amount yet - treat it as invalid rather than guessing a number.
+    const parsedDiamonds = parseInt(diamondsInput, 10);
+    const diamondsValid = (diamondsInput.trim() !== '') && !isNaN(parsedDiamonds);
+    const diamonds = (diamondsValid ? parsedDiamonds : 0);
+
     // 1 diamond = 1 cent.
     const totalCents = diamonds;
     const totalDisplay = `$${ (totalCents / 100).toFixed(2) }`;
 
     const onDiamondsChange = (event: ChangeEvent<HTMLInputElement>) =>
     {
-        const parsed = parseInt(event.target.value, 10);
-
-        setDiamonds(isNaN(parsed) ? MIN_DIAMONDS : parsed);
+        setDiamondsInput(event.target.value);
     }
 
     const onDiamondsBlur = () =>
     {
-        setDiamonds(prevValue => Math.min(MAX_DIAMONDS, Math.max(MIN_DIAMONDS, prevValue)));
+        const parsed = parseInt(diamondsInput, 10);
+        const clamped = Math.min(MAX_DIAMONDS, Math.max(MIN_DIAMONDS, (isNaN(parsed) ? MIN_DIAMONDS : parsed)));
+
+        setDiamondsInput(String(clamped));
     }
 
     useEffect(() =>
@@ -102,7 +113,7 @@ export const DiamondsStoreView: FC<{}> = props =>
                             <label className="diamonds-store-field-label" htmlFor="diamonds-store-amount">Diamonds</label>
                             <input id="diamonds-store-amount" className="form-control diamonds-store-input" type="number"
                                 step={ DIAMONDS_STEP } min={ MIN_DIAMONDS } max={ MAX_DIAMONDS }
-                                value={ diamonds } onChange={ onDiamondsChange } onBlur={ onDiamondsBlur } />
+                                value={ diamondsInput } onChange={ onDiamondsChange } onBlur={ onDiamondsBlur } />
                         </div>
                         <div className="diamonds-store-summary">
                             <div className="diamonds-store-summary-row">
@@ -120,7 +131,7 @@ export const DiamondsStoreView: FC<{}> = props =>
                                 <div className="diamonds-store-switch-knob" />
                             </div>
                         </div>
-                        <Button fullWidth variant="success" disabled={ !acceptedTerms } onClick={ () => {} }>
+                        <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ () => {} }>
                             { `Purchase ${ totalDisplay }` }
                         </Button>
                     </div> }
