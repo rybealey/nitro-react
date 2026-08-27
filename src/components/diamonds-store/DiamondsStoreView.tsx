@@ -1,7 +1,8 @@
-import { ILinkEventTracker } from '@nitrots/nitro-renderer';
+import { DiamondsStoreEvent, DiamondsStoreListing, DiamondsStorePurchaseResultEvent, GetDiamondsStoreComposer, ILinkEventTracker, PurchaseDiamondsStoreItemComposer } from '@nitrots/nitro-renderer';
 import { ChangeEvent, FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Button, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
+import { useMessageEvent } from '../../hooks';
 import { useStripeCheckout } from './useStripeCheckout';
 
 // The PixelRP Diamonds Store window, opened from the toolbar's Diamonds icon
@@ -9,6 +10,7 @@ import { useStripeCheckout } from './useStripeCheckout';
 
 type DiamondsStoreTab = 'store' | 'buy';
 type BuyViewState = 'form' | 'checkout' | 'complete' | 'error';
+type StoreViewState = 'list' | 'confirm' | 'success' | 'error';
 
 const MIN_DIAMONDS = 100;
 const MAX_DIAMONDS = 100000;
@@ -29,6 +31,38 @@ export const DiamondsStoreView: FC<{}> = props =>
     const [ checkoutDiamonds, setCheckoutDiamonds ] = useState(0);
     const [ checkoutError, setCheckoutError ] = useState('');
     const { containerRef: checkoutContainerRef, mount: mountCheckout, destroy: destroyCheckout } = useStripeCheckout();
+    const [ listings, setListings ] = useState<DiamondsStoreListing[]>([]);
+    const [ storeState, setStoreState ] = useState<StoreViewState>('list');
+    const [ selectedListing, setSelectedListing ] = useState<DiamondsStoreListing>(null);
+    const [ storeError, setStoreError ] = useState('');
+
+    useMessageEvent<DiamondsStoreEvent>(DiamondsStoreEvent, event =>
+    {
+        setListings(event.getParser().items);
+    });
+
+    useMessageEvent<DiamondsStorePurchaseResultEvent>(DiamondsStorePurchaseResultEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(parser.status === 0)
+        {
+            setStoreState('success');
+            return;
+        }
+
+        setStoreError((parser.status === 1) ? 'Not enough diamonds - top up in the Buy Diamonds tab.' : 'Your backpack is full - free a slot and try again.');
+        setStoreState('error');
+    });
+
+    // Request fresh listings whenever the Store tab comes on screen, so sale
+    // prices are always current.
+    useEffect(() =>
+    {
+        if(!isVisible || (currentTab !== 'store')) return;
+
+        SendMessageComposer(new GetDiamondsStoreComposer());
+    }, [ isVisible, currentTab ]);
 
     const show = (tab: DiamondsStoreTab = null) =>
     {
@@ -119,6 +153,8 @@ export const DiamondsStoreView: FC<{}> = props =>
 
         setBuyState('form');
         setCheckoutError('');
+        setStoreState('list');
+        setStoreError('');
     }, [ isVisible ]);
 
     useEffect(() =>
@@ -190,9 +226,52 @@ export const DiamondsStoreView: FC<{}> = props =>
                 </NitroCardTabsItemView>
             </NitroCardTabsView>
             <NitroCardContentView>
-                { (currentTab === 'store') &&
-                    <div className="diamonds-store-empty">
-                        Nothing here yet - diamond items are coming soon.
+                { (currentTab === 'store') && (storeState === 'list') &&
+                    <div className="diamonds-store-listings">
+                        { (listings.length === 0) &&
+                            <div className="diamonds-store-empty">
+                                Nothing here yet - diamond items are coming soon.
+                            </div> }
+                        { listings.map(listing =>
+                        {
+                            const onSale = (listing.specialPrice >= 0);
+
+                            return (
+                                <div key={ listing.itemKey } className="diamonds-store-listing" onClick={ () =>
+                                {
+                                    setSelectedListing(listing);
+                                    setStoreState('confirm');
+                                } }>
+                                    <div className={ `diamonds-store-listing-icon icon-${ listing.icon }` } />
+                                    <div className="diamonds-store-listing-info">
+                                        <div className="diamonds-store-listing-name">{ listing.name }</div>
+                                        <div className="diamonds-store-listing-desc">{ listing.description }</div>
+                                    </div>
+                                    <div className="diamonds-store-listing-price">
+                                        { onSale && <span className="diamonds-store-price-was">{ listing.price }</span> }
+                                        <span className="diamonds-store-price-now">{ onSale ? listing.specialPrice : listing.price }</span>
+                                        { onSale && <span className="diamonds-store-sale-tag">SALE</span> }
+                                    </div>
+                                </div>);
+                        }) }
+                    </div> }
+                { (currentTab === 'store') && (storeState === 'confirm') && selectedListing &&
+                    <div className="diamonds-store-result">
+                        <div className="diamonds-store-result-message">
+                            { `Buy ${ selectedListing.name } for ${ (selectedListing.specialPrice >= 0) ? selectedListing.specialPrice : selectedListing.price } diamonds?` }
+                        </div>
+                        <Button fullWidth variant="success" onClick={ () => SendMessageComposer(new PurchaseDiamondsStoreItemComposer(selectedListing.itemKey)) }>Buy</Button>
+                        <Button fullWidth variant="secondary" onClick={ () => setStoreState('list') }>Cancel</Button>
+                    </div> }
+                { (currentTab === 'store') && (storeState === 'success') &&
+                    <div className="diamonds-store-result">
+                        <div className="diamonds-store-result-message">Purchased - check your backpack!</div>
+                        <Button fullWidth variant="success" onClick={ () => setStoreState('list') }>Done</Button>
+                    </div> }
+                { (currentTab === 'store') && (storeState === 'error') &&
+                    <div className="diamonds-store-result">
+                        <div className="diamonds-store-result-message diamonds-store-result-error">{ storeError }</div>
+                        <Button fullWidth variant="secondary" onClick={ () => setStoreState('list') }>Back</Button>
                     </div> }
                 { (currentTab === 'buy') && (buyState === 'form') &&
                     <div className="diamonds-store-buy">

@@ -155,4 +155,76 @@
             color: rgba(0, 0, 0, 0.65);
         }
     }
+
+    .diamonds-store-listings {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .diamonds-store-listing {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px;
+        border-radius: $border-radius;
+        background: rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+
+        &:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    .diamonds-store-listing-icon {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: auto;
+        image-rendering: pixelated;
+
+        &.icon-vip-token-gold { background-image: url('@/assets/images/rp-items/vip-token-gold.png'); }
+        &.icon-vip-token-silver { background-image: url('@/assets/images/rp-items/vip-token-silver.png'); }
+    }
+
+    .diamonds-store-listing-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .diamonds-store-listing-name {
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .diamonds-store-listing-desc {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.6);
+    }
+
+    .diamonds-store-listing-price {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: 700;
+    }
+
+    .diamonds-store-price-was {
+        text-decoration: line-through;
+        color: rgba(0, 0, 0, 0.45);
+        font-weight: 400;
+        font-size: 11px;
+    }
+
+    .diamonds-store-sale-tag {
+        padding: 1px 4px;
+        border-radius: $border-radius;
+        background: $success;
+        color: $white;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
 }
