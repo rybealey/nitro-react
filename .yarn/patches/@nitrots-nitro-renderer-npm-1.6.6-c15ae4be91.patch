@@ -1850,7 +1850,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +855,2141 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +855,2153 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2115,10 +2115,22 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                const joinerPhaseAtEngage = (joinerIsOwn ? own.stepPhase : hist.stepPhase);
 +                const engagePlanarGap = Math.hypot((roomLocation.x - own.tx), (roomLocation.y - own.ty));
 +                // Direction-independent late rule: at the FIRST proven shared
-+                // route, anything not genuinely stacked is late. The pending
-+                // approach memory preserves the same evidence when packet
-+                // rollover has already collapsed the raw anchors by ENGAGE.
++                // route, anything not genuinely stacked is late. A pair that
++                // DID start stacked is also late when one unit has already
++                // progressed farther along their identical first edge: this
++                // is the stacked-departure case where MASTER visibly leaves
++                // before JOINER. Testing the shared native step start keeps
++                // this proof separate from ordinary converging approaches,
++                // while the phase comparison works for every route direction.
++                // The pending approach memory preserves the same evidence when
++                // packet rollover has already collapsed the raw anchors by ENGAGE.
++                const sharedStepStart = (pathMatch.sameGoal
++                    && (stepStartX === own.sx) && (stepStartY === own.sy));
++                const staggeredStackedDeparture = (sharedStepStart
++                    && Number.isFinite(masterPhaseAtEngage) && Number.isFinite(joinerPhaseAtEngage)
++                    && ((masterPhaseAtEngage - joinerPhaseAtEngage) > 1e-6));
 +                const lateEntryAtEngage = (pendingLateAtEngage
++                    || staggeredStackedDeparture
 +                    || (engagePlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX));
 +
 +                this._pixelrpSync = {
@@ -2173,7 +2185,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                // the matching [sync] telemetry block inside the joiner-
 +                // handling code below. Remove alongside it after diagnosis
 +                // is confirmed with the user.
-+                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') } roleVia=${ roleVia }`);
++                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } stackedDepartureLate=${ staggeredStackedDeparture } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') } roleVia=${ roleVia }`);
 +            }
 +            else if(!unitInfo.own && own && recentlyReleasedBlocked && this._pixelrpLastReleased && !this._pixelrpLastReleased.blockLogged && samePathWith(own))
 +            {
