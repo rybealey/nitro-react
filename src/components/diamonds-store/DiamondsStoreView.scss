@@ -1,5 +1,12 @@
 .nitro-diamonds-store {
     width: 420px;
+    // Static window size: the Stripe embedded form is much taller than the
+    // buy form, so the content area scrolls instead of growing the window.
+    height: 480px;
+
+    .content-area {
+        overflow-y: auto;
+    }
 
     // Chrome tab strip, matching the Settings / Shop / Navigator windows
     // (theme selectors beat the stock theme-primary/-slim $secondary tab bar).
@@ -122,6 +129,8 @@
         padding: 2px;
     }
 
+    // Taller than the visible area on purpose - it scrolls within the
+    // fixed-height window.
     .diamonds-store-checkout-container {
         width: 100%;
         min-height: 460px;
