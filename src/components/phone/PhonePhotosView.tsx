@@ -84,13 +84,25 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
         image.src = viewerPhoto.url;
     }
 
+    // The phone shell is transform-scaled, so the stage's visual rect and its
+    // layout box differ. All edit math runs in layout px (what the CSS left/
+    // top/width land in); pointer movement converts through this factor.
+    const stageLocalScale = () =>
+    {
+        if(!stageRef.current) return 1;
+
+        const rect = stageRef.current.getBoundingClientRect();
+
+        return (rect.width ? (stageRef.current.clientWidth / rect.width) : 1);
+    }
+
     // Cover-fit scale for the current zoom, and the pan clamped so the
     // image always covers the whole stage.
     const editLayout = (nextZoom: number = zoom, nextPan: { x: number, y: number } = pan) =>
     {
         if(!stageRef.current || !imageSize) return null;
 
-        const stage = stageRef.current.getBoundingClientRect();
+        const stage = { width: stageRef.current.clientWidth, height: stageRef.current.clientHeight };
         const coverScale = Math.max((stage.width / imageSize.width), (stage.height / imageSize.height));
         const scale = (coverScale * nextZoom);
         const width = (imageSize.width * scale);
@@ -129,7 +141,8 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
     {
         if(!dragRef.current) return;
 
-        const layout = editLayout(zoom, { x: (dragRef.current.panX + (event.clientX - dragRef.current.startX)), y: (dragRef.current.panY + (event.clientY - dragRef.current.startY)) });
+        const localScale = stageLocalScale();
+        const layout = editLayout(zoom, { x: (dragRef.current.panX + ((event.clientX - dragRef.current.startX) * localScale)), y: (dragRef.current.panY + ((event.clientY - dragRef.current.startY) * localScale)) });
 
         if(layout) setPan({ x: layout.x, y: layout.y });
     }

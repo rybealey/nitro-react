@@ -17,20 +17,23 @@ $phone-hairline: var(--ph-hairline);
 $phone-green: #3fbf5a;
 $phone-red: #e03131;
 
+// Hardware is authored at 336x700; the shell is transform-scaled down and
+// the wrapper is sized to the scaled result so the draggable layout box
+// always matches what's visible on screen (drag bounds depend on it).
+$phone-scale: 0.8;
+
 .pixelrp-phone {
     position: relative;
     user-select: none;
-
-    // Undersized displays still get the whole phone on screen.
-    @media (max-height: 780px) {
-        transform: scale(0.85);
-        transform-origin: top center;
-    }
+    width: 336px * $phone-scale;
+    height: 700px * $phone-scale;
 
     .phone-shell {
         position: relative;
         width: 336px;
         height: 700px;
+        transform: scale($phone-scale);
+        transform-origin: top left;
         border-radius: 48px;
         padding: 6px;
         background: linear-gradient(150deg, #f5b96a, #e87332 55%, #c95a24);

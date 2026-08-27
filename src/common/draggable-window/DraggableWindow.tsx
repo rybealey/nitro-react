@@ -18,12 +18,16 @@ export interface DraggableWindowProps
     dragStyle?: CSSProperties;
     offsetLeft?: number;
     offsetTop?: number;
+    // When set, replaces the default containment (can't cross the top, the
+    // handle can't leave the bottom) with loose bounds: the window may hang
+    // off any edge as long as at least this many px stay on screen.
+    minVisible?: number;
     children?: ReactNode;
 }
 
 export const DraggableWindow: FC<DraggableWindowProps> = props =>
 {
-    const { uniqueKey = null, handleSelector = '.drag-handler', windowPosition = DraggableWindowPosition.CENTER, disableDrag = false, dragStyle = {}, children = null, offsetLeft = 0, offsetTop = 0 } = props;
+    const { uniqueKey = null, handleSelector = '.drag-handler', windowPosition = DraggableWindowPosition.CENTER, disableDrag = false, dragStyle = {}, children = null, offsetLeft = 0, offsetTop = 0, minVisible = null } = props;
     const [ delta, setDelta ] = useState<{ x: number, y: number }>(null);
     const [ offset, setOffset ] = useState<{ x: number, y: number }>(null);
     const [ start, setStart ] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
@@ -114,24 +118,52 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
         const left = elementRef.current.offsetLeft + offsetX;
         const top = elementRef.current.offsetTop + offsetY;
 
-        if(top < BOUNDS_THRESHOLD_TOP)
+        if(minVisible !== null)
         {
-            offsetY = -elementRef.current.offsetTop;
+            // Loose bounds: free movement, but keep at least minVisible px of
+            // the window inside the viewport so it can always be grabbed back.
+            if((top + elementRef.current.offsetHeight) < minVisible)
+            {
+                offsetY = (minVisible - elementRef.current.offsetHeight) - elementRef.current.offsetTop;
+            }
+
+            else if(top > (document.body.offsetHeight - minVisible))
+            {
+                offsetY = (document.body.offsetHeight - minVisible) - elementRef.current.offsetTop;
+            }
+
+            if((left + elementRef.current.offsetWidth) < minVisible)
+            {
+                offsetX = (minVisible - elementRef.current.offsetWidth) - elementRef.current.offsetLeft;
+            }
+
+            else if(left > (document.body.offsetWidth - minVisible))
+            {
+                offsetX = (document.body.offsetWidth - minVisible) - elementRef.current.offsetLeft;
+            }
         }
 
-        else if((top + dragHandler.offsetHeight) >= (document.body.offsetHeight - BOUNDS_THRESHOLD_TOP))
+        else
         {
-            offsetY = (document.body.offsetHeight - elementRef.current.offsetHeight) - elementRef.current.offsetTop;
-        }
+            if(top < BOUNDS_THRESHOLD_TOP)
+            {
+                offsetY = -elementRef.current.offsetTop;
+            }
 
-        if((left + elementRef.current.offsetWidth) < BOUNDS_THRESHOLD_LEFT)
-        {
-            offsetX = -elementRef.current.offsetLeft;
-        }
+            else if((top + dragHandler.offsetHeight) >= (document.body.offsetHeight - BOUNDS_THRESHOLD_TOP))
+            {
+                offsetY = (document.body.offsetHeight - elementRef.current.offsetHeight) - elementRef.current.offsetTop;
+            }
 
-        else if(left >= (document.body.offsetWidth - BOUNDS_THRESHOLD_LEFT))
-        {
-            offsetX = (document.body.offsetWidth - elementRef.current.offsetWidth) - elementRef.current.offsetLeft;
+            if((left + elementRef.current.offsetWidth) < BOUNDS_THRESHOLD_LEFT)
+            {
+                offsetX = -elementRef.current.offsetLeft;
+            }
+
+            else if(left >= (document.body.offsetWidth - BOUNDS_THRESHOLD_LEFT))
+            {
+                offsetX = (document.body.offsetWidth - elementRef.current.offsetWidth) - elementRef.current.offsetLeft;
+            }
         }
 
         setDelta({ x: 0, y: 0 });
@@ -146,7 +178,7 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
 
             SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, newStorage);
         }
-    }, [ dragHandler, delta, offset, uniqueKey ]);
+    }, [ dragHandler, delta, offset, uniqueKey, minVisible ]);
 
     const onDragMouseUp = useCallback((event: MouseEvent) =>
     {

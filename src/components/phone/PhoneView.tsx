@@ -341,7 +341,7 @@ export const PhoneView: FC<{}> = props =>
     const onLightScreen = ((screen !== 'home') && (screen !== 'camera'));
 
     return (
-        <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER }>
+        <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER } minVisible={ 48 }>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
                     <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }` }>
