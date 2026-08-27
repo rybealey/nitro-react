@@ -271,6 +271,13 @@
     width: $avatar-editor-width;
     height: $avatar-editor-height;
 
+    // Chrome tab strip, matching the Settings window (theme selectors beat
+    // the stock theme-primary/-slim $secondary tab bar).
+    &.theme-primary .nitro-card-tabs,
+    &.theme-primary-slim .nitro-card-tabs {
+        @include prp-chrome-tab-strip;
+    }
+
     .category-item {
         height: 40px;
     }
