@@ -1,9 +1,9 @@
 import { RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomSessionFavoriteGroupUpdateEvent, RoomSessionUserBadgesEvent, RoomSessionUserFigureUpdateEvent, UserRelationshipsComposer } from '@nitrots/nitro-renderer';
-import { Dispatch, FC, FocusEvent, KeyboardEvent, SetStateAction, useEffect, useState } from 'react';
-import { FaPencilAlt, FaTimes } from 'react-icons/fa';
+import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
-import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text, UserProfileIconView } from '../../../../../common';
-import { useMessageEvent, useRoom, useRoomSessionManagerEvent } from '../../../../../hooks';
+import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text } from '../../../../../common';
+import { useMessageEvent, useRoomSessionManagerEvent } from '../../../../../hooks';
 import { InfoStandWidgetUserRelationshipsView } from './InfoStandWidgetUserRelationshipsView';
 import { InfoStandWidgetUserTagsView } from './InfoStandWidgetUserTagsView';
 
@@ -18,32 +18,7 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
 {
     const { avatarInfo = null, setAvatarInfo = null, onClose = null } = props;
     const [ motto, setMotto ] = useState<string>(null);
-    const [ isEditingMotto, setIsEditingMotto ] = useState(false);
     const [ relationships, setRelationships ] = useState<RelationshipStatusInfoMessageParser>(null);
-    const { roomSession = null } = useRoom();
-
-    const saveMotto = (motto: string) =>
-    {
-        if(!isEditingMotto || (motto.length > GetConfiguration<number>('motto.max.length', 38))) return;
-
-        roomSession.sendMottoMessage(motto);
-
-        setIsEditingMotto(false);
-    }
-
-    const onMottoBlur = (event: FocusEvent<HTMLInputElement>) => saveMotto(event.target.value);
-
-    const onMottoKeyDown = (event: KeyboardEvent<HTMLInputElement>) =>
-    {
-        event.stopPropagation();
-
-        switch(event.key)
-        {
-            case 'Enter':
-                saveMotto((event.target as HTMLInputElement).value);
-                return;
-        }
-    }
 
     useRoomSessionManagerEvent<RoomSessionUserBadgesEvent>(RoomSessionUserBadgesEvent.RSUBE_BADGES, event =>
     {
@@ -107,14 +82,12 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
 
     useEffect(() =>
     {
-        setIsEditingMotto(false);
         setMotto(avatarInfo.motto);
 
         SendMessageComposer(new UserRelationshipsComposer(avatarInfo.webID));
 
         return () =>
         {
-            setIsEditingMotto(false);
             setMotto(null);
             setRelationships(null);
         }
@@ -128,8 +101,8 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                 <Column gap={ 1 }>
                     <Flex alignItems="center" justifyContent="between">
                         <Flex alignItems="center" gap={ 1 }>
-                            <UserProfileIconView userId={ avatarInfo.webID } />
-                            <Text variant="white" small wrap>{ avatarInfo.name }</Text>
+                            { /* the name is the profile link (replaces the old icon) */ }
+                            <Text variant="white" small wrap pointer className="infostand-name-link" onClick={ event => GetUserProfile(avatarInfo.webID) }>{ avatarInfo.name }</Text>
                         </Flex>
                         <FaTimes className="cursor-pointer fa-icon" onClick={ onClose } />
                     </Flex>
@@ -138,7 +111,7 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                 <Column gap={ 1 }>
                     <Flex gap={ 1 }>
                         <Column fullWidth className="body-image" onClick={ event => GetUserProfile(avatarInfo.webID) }>
-                            <LayoutAvatarImageView figure={ avatarInfo.figure } direction={ 4 } />
+                            <LayoutAvatarImageView figure={ avatarInfo.figure } direction={ 2 } />
                         </Column>
                         <Column grow alignItems="center" gap={ 0 }>
                             <Flex gap={ 1 }>
@@ -171,21 +144,13 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                     <hr className="m-0" />
                 </Column>
                 <Column gap={ 1 }>
+                    { /* PixelRP: the motto is RP-managed (job/role text) — read-only
+                         for everyone, own infostand included. The emulator rejects
+                         motto-change packets too. */ }
                     <Flex alignItems="center" className="bg-light-dark rounded py-1 px-2">
-                        { (avatarInfo.type !== AvatarInfoUser.OWN_USER) &&
-                            <Flex grow alignItems="center" className="motto-content">
-                                <Text fullWidth pointer wrap textBreak small variant="white">{ motto }</Text>
-                            </Flex> }
-                        { avatarInfo.type === AvatarInfoUser.OWN_USER &&
-                            <Flex grow alignItems="center" gap={ 2 }>
-                                <FaPencilAlt className="small fa-icon" />
-                                <Flex grow alignItems="center" className="motto-content">
-                                    { !isEditingMotto &&
-                                        <Text fullWidth pointer wrap textBreak small variant="white" onClick={ event => setIsEditingMotto(true) }>{ motto }&nbsp;</Text> }
-                                    { isEditingMotto &&
-                                        <input type="text" className="motto-input" maxLength={ GetConfiguration<number>('motto.max.length', 38) } value={ motto } onChange={ event => setMotto(event.target.value) } onBlur={ onMottoBlur } onKeyDown={ onMottoKeyDown } autoFocus={ true } /> }
-                                </Flex>
-                            </Flex> }
+                        <Flex grow alignItems="center" className="motto-content">
+                            <Text fullWidth wrap textBreak small variant="white">{ motto }</Text>
+                        </Flex>
                     </Flex>
                     <hr className="m-0" />
                 </Column>
