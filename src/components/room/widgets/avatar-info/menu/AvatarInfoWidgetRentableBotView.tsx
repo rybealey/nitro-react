@@ -230,10 +230,10 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                         gated on a botSkills flag) since it's a debug/testing tool meant
                         to be readily available on any rentable bot, not a stock skill. */ }
                     <ContextMenuListItemView onClick={ event => processAction('walk_horizontal') }>
-                        Walk Horizontally
+                        Walk horizontally
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('walk_vertical') }>
-                        Walk Vertically
+                        Walk vertically
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('walk_free') }>
                         Walk freely
