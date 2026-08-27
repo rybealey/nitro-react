@@ -5,9 +5,10 @@ import { useFriends, useMessageEvent } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
-// Contacts app: pending friend requests up top, then the full friends list.
-// Message jumps into the Messages app; call rings the (cosmetic) PixelRP
-// Audio overlay; removing a friend needs a second confirming tap.
+// Contacts app: pending friend requests up top, then friends split into
+// Online and Offline sections (each alphabetized). Message jumps into the
+// Messages app; call rings the (cosmetic) PixelRP Audio overlay; removing
+// a friend needs a second confirming tap.
 
 interface PhoneContactsViewProps
 {
@@ -29,6 +30,9 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
             .sort((a, b) => (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase()));
     }, [ friends ]);
 
+    const onlineFriends = useMemo(() => sortedFriends.filter(friend => friend.online), [ sortedFriends ]);
+    const offlineFriends = useMemo(() => sortedFriends.filter(friend => !friend.online), [ sortedFriends ]);
+
     useEffect(() =>
     {
         if(!confirmRemoveId) return;
@@ -49,6 +53,34 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
 
         SendMessageComposer(new RemoveFriendComposer(friendId));
         setConfirmRemoveId(0);
+    }
+
+    const friendRow = (friend: typeof sortedFriends[number]) =>
+    {
+        const confirming = (confirmRemoveId === friend.id);
+
+        return (
+            <div key={ friend.id } className="phone-contact-row">
+                <div className="phone-tap" onClick={ event => GetUserProfile(friend.id) }>
+                    <PhoneAvatar id={ friend.id } figure={ friend.figure } size={ 44 } online={ friend.online } />
+                </div>
+                <div className="phone-contact-body">
+                    <div className="phone-contact-name">{ friend.name }</div>
+                    <div className="phone-contact-handle">{ confirming ? 'tap again to remove' : `@${ (friend.name || '').toLowerCase() }` }</div>
+                </div>
+                <div className="phone-contact-actions">
+                    <div className="phone-tap phone-round-btn is-message" title="Message" onClick={ event => (openThreadForUser && openThreadForUser(friend.id)) }>
+                        <PhoneIcon icon="message" size={ 16 } />
+                    </div>
+                    <div className="phone-tap phone-round-btn is-call" title="Call" onClick={ event => (startCall && startCall(friend.id)) }>
+                        <PhoneIcon icon="phone" size={ 16 } />
+                    </div>
+                    <div className={ `phone-tap phone-round-btn is-remove${ confirming ? ' is-confirming' : '' }` } title={ confirming ? 'Tap again to remove friend' : 'Remove friend' } onClick={ event => removeFriend(friend.id) }>
+                        <PhoneIcon icon="trash" size={ 15 } />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -90,39 +122,23 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
                                 );
                             }) }
                         </div>
-                        <div className="phone-section-label">FRIENDS</div>
                     </> }
-                <div>
-                    { sortedFriends.map(friend =>
-                    {
-                        const confirming = (confirmRemoveId === friend.id);
-
-                        return (
-                            <div key={ friend.id } className="phone-contact-row">
-                                <div className="phone-tap" onClick={ event => GetUserProfile(friend.id) }>
-                                    <PhoneAvatar id={ friend.id } figure={ friend.figure } size={ 44 } online={ friend.online } />
-                                </div>
-                                <div className="phone-contact-body">
-                                    <div className="phone-contact-name">{ friend.name }</div>
-                                    <div className="phone-contact-handle">{ confirming ? 'tap again to remove' : `@${ (friend.name || '').toLowerCase() }` }</div>
-                                </div>
-                                <div className="phone-contact-actions">
-                                    <div className="phone-tap phone-round-btn is-message" title="Message" onClick={ event => (openThreadForUser && openThreadForUser(friend.id)) }>
-                                        <PhoneIcon icon="message" size={ 16 } />
-                                    </div>
-                                    <div className="phone-tap phone-round-btn is-call" title="Call" onClick={ event => (startCall && startCall(friend.id)) }>
-                                        <PhoneIcon icon="phone" size={ 16 } />
-                                    </div>
-                                    <div className={ `phone-tap phone-round-btn is-remove${ confirming ? ' is-confirming' : '' }` } title={ confirming ? 'Tap again to remove friend' : 'Remove friend' } onClick={ event => removeFriend(friend.id) }>
-                                        <PhoneIcon icon="trash" size={ 15 } />
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    }) }
-                    { !sortedFriends.length &&
-                        <div className="phone-list-note">No contacts yet. Walk up to someone in the city and ask to be friends — or search below.</div> }
-                </div>
+                { (onlineFriends.length > 0) &&
+                    <>
+                        <div className="phone-section-label">ONLINE</div>
+                        <div>
+                            { onlineFriends.map(friendRow) }
+                        </div>
+                    </> }
+                { (offlineFriends.length > 0) &&
+                    <>
+                        <div className="phone-section-label">OFFLINE</div>
+                        <div>
+                            { offlineFriends.map(friendRow) }
+                        </div>
+                    </> }
+                { !sortedFriends.length &&
+                    <div className="phone-list-note">No contacts yet. Walk up to someone in the city and ask to be friends — or search below.</div> }
                 <PhoneAddContactView />
                 <div className="phone-scroll-spacer" />
             </div>
