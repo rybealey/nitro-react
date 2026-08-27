@@ -410,9 +410,10 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                     </> }
                 { isEmpty &&
                     <div className="phone-messages-empty">
-                        <div className="phone-messages-empty-mark">
-                            <img src={ new URL('../../assets/images/phone/mark-p.png', import.meta.url).href } alt="PixelRP" />
-                        </div>
+                        { /* Invisible stand-in for the removed P mark: keeps the
+                             title/text/button exactly where they sat in the
+                             center-justified column. */ }
+                        <div className="phone-messages-empty-spacer" />
                         <div className="phone-messages-empty-title">No messages yet</div>
                         <div className="phone-messages-empty-text">Join friends, form gangs, run the city.<br />Start a conversation to see it here.</div>
                         <div className="phone-tap phone-cta" onClick={ event => (openCompose && openCompose()) }>NEW MESSAGE</div>

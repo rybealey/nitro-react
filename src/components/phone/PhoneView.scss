@@ -798,6 +798,13 @@ $phone-scale: 0.8;
         gap: 14px;
     }
 
+    // Same footprint as the (removed) Messages P mark so the empty-state
+    // text/button keep their position; Photos still renders the real mark.
+    .phone-messages-empty-spacer {
+        height: 108px;
+        flex-shrink: 0;
+    }
+
     .phone-messages-empty-mark {
         width: 108px;
         height: 108px;
