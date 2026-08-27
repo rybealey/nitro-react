@@ -35,6 +35,9 @@ export const DiamondsStoreView: FC<{}> = props =>
     const [ storeState, setStoreState ] = useState<StoreViewState>('list');
     const [ selectedListing, setSelectedListing ] = useState<DiamondsStoreListing>(null);
     const [ storeError, setStoreError ] = useState('');
+    // Guards the confirm screen's Buy button against a double-click firing
+    // two purchases before the server round-trips a result.
+    const [ purchasePending, setPurchasePending ] = useState(false);
 
     useMessageEvent<DiamondsStoreEvent>(DiamondsStoreEvent, event =>
     {
@@ -44,6 +47,8 @@ export const DiamondsStoreView: FC<{}> = props =>
     useMessageEvent<DiamondsStorePurchaseResultEvent>(DiamondsStorePurchaseResultEvent, event =>
     {
         const parser = event.getParser();
+
+        setPurchasePending(false);
 
         if(parser.status === 0)
         {
@@ -155,6 +160,7 @@ export const DiamondsStoreView: FC<{}> = props =>
         setCheckoutError('');
         setStoreState('list');
         setStoreError('');
+        setPurchasePending(false);
     }, [ isVisible ]);
 
     useEffect(() =>
@@ -260,7 +266,11 @@ export const DiamondsStoreView: FC<{}> = props =>
                         <div className="diamonds-store-result-message">
                             { `Buy ${ selectedListing.name } for ${ (selectedListing.specialPrice >= 0) ? selectedListing.specialPrice : selectedListing.price } diamonds?` }
                         </div>
-                        <Button fullWidth variant="success" onClick={ () => SendMessageComposer(new PurchaseDiamondsStoreItemComposer(selectedListing.itemKey)) }>Buy</Button>
+                        <Button fullWidth variant="success" disabled={ purchasePending } onClick={ () =>
+                        {
+                            setPurchasePending(true);
+                            SendMessageComposer(new PurchaseDiamondsStoreItemComposer(selectedListing.itemKey));
+                        } }>Buy</Button>
                         <Button fullWidth variant="secondary" onClick={ () => setStoreState('list') }>Cancel</Button>
                     </div> }
                 { (currentTab === 'store') && (storeState === 'success') &&
