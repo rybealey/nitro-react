@@ -1228,7 +1228,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +177,232 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +177,235 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1377,7 +1377,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +        trailingExitOffsetSet: boolean, trailingExitOffsetX: number, trailingExitOffsetY: number, trailingExitOffsetZ: number, trailingExitHandoffT: number,
 +        trailingLastSnapshotAt: number, trailingStretchLastLogAt: number, trailingCollapseLastLogAt: number, trailingNativeLastLogAt: number,
 +        trailingLastNativeX: number, trailingLastNativeY: number,
-+        trailingAcquirePauseRemaining: number,
++        // Latches the faster late-entry correction across discrete tile-edge
++        // changes. It clears only when the DISPLAYED JOINER actually reaches
++        // the live one-tile-behind target; topology alone cannot end it early.
++        trailingAcquireActive: boolean, trailingAcquirePauseRemaining: number,
 +        // Rollover-continuity fix (Update 8 follow-up): replaces the old
 +        // world-position FREEZE that used to render during a brief
 +        // segment-tuple ambiguity at rollover (segmentsMatch/joinerBehind
@@ -1461,7 +1464,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +725,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +728,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1502,7 +1505,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +808,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +811,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1518,7 +1521,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +858,1935 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +861,1952 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1791,7 +1794,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                    trailingExitOffsetSet: false, trailingExitOffsetX: NaN, trailingExitOffsetY: NaN, trailingExitOffsetZ: NaN, trailingExitHandoffT: 0,
 +                    trailingLastSnapshotAt: 0, trailingStretchLastLogAt: 0, trailingCollapseLastLogAt: 0, trailingNativeLastLogAt: 0,
 +                    trailingLastNativeX: NaN, trailingLastNativeY: NaN,
-+                    trailingAcquirePauseRemaining: RoomSpriteCanvas.TRAILING_ACQUIRE_PAUSE_MS,
++                    trailingAcquireActive: lateEntryAtEngage, trailingAcquirePauseRemaining: RoomSpriteCanvas.TRAILING_ACQUIRE_PAUSE_MS,
 +                    trailingLatchSet: false,
 +                    trailingLatchJSx: NaN, trailingLatchJSy: NaN, trailingLatchJSz: NaN,
 +                    trailingLatchJDx: NaN, trailingLatchJDy: NaN, trailingLatchJDz: NaN,
@@ -2060,6 +2063,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                    {
 +                        sync.formationState = RoomSpriteCanvas.FORMATION_TRAILING;
 +                        sync.s = 0;
++                        sync.trailingAcquireActive = true;
 +                    }
 +
 +                    if(sync.formationState !== prevFormationState)
@@ -2540,6 +2544,12 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +
 +                    if(targetError <= RoomSpriteCanvas.TRAILING_LOCK_EPSILON)
 +                    {
++                        if(allowAcquirePause)
++                        {
++                            sync.trailingAcquireActive = false;
++                            sync.trailingAcquirePauseRemaining = 0;
++                        }
++
 +                        return { x: targetX, y: targetY, z: targetZ };
 +                    }
 +
@@ -2588,7 +2598,17 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                        stepY *= scale;
 +                    }
 +
-+                    return { x: (baseX + stepX), y: (baseY + stepY), z: (nativeZ + stepZ) };
++                    const correctedX = (baseX + stepX);
++                    const correctedY = (baseY + stepY);
++                    const correctedZ = (nativeZ + stepZ);
++
++                    if(allowAcquirePause && (Math.hypot((targetX - correctedX), (targetY - correctedY), (targetZ - correctedZ)) <= RoomSpriteCanvas.TRAILING_LOCK_EPSILON))
++                    {
++                        sync.trailingAcquireActive = false;
++                        sync.trailingAcquirePauseRemaining = 0;
++                    }
++
++                    return { x: correctedX, y: correctedY, z: correctedZ };
 +                };
 +
 +                let vx = 0;
@@ -2930,7 +2950,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                            // full target in one step (see
 +                            // applyGentleCorrection above) — toward the
 +                            // phase-matched target.
-+                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, !isGenuineBehind);
++                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, sync.trailingAcquireActive);
 +
 +                            vx = corrected.x; vy = corrected.y; vz = corrected.z;
 +                            apply = true;
@@ -3021,7 +3041,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                            const targetX = (mLoc.x - carryDirX);
 +                            const targetY = (mLoc.y - carryDirY);
 +                            const targetZ = mLoc.z;
-+                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, true);
++                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, sync.trailingAcquireActive);
 +
 +                            vx = corrected.x; vy = corrected.y; vz = corrected.z;
 +                            apply = true;
@@ -3089,7 +3109,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                        const targetX = (sync.trailingLatchJSx + (sync.trailingLatchJDx * sync.trailingLatchPhase));
 +                        const targetY = (sync.trailingLatchJSy + (sync.trailingLatchJDy * sync.trailingLatchPhase));
 +                        const targetZ = (sync.trailingLatchJSz + (sync.trailingLatchJDz * sync.trailingLatchPhase));
-+                        const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ);
++                        const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, sync.trailingAcquireActive);
 +
 +                        vx = corrected.x; vy = corrected.y; vz = corrected.z;
 +                        apply = true;
@@ -3456,7 +3476,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2847,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2867,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
