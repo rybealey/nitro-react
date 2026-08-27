@@ -92,7 +92,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                 </Flex>
                 <Flex alignItems="center" gap={ 2 }>
                     <Flex gap={ 2 }>
-                        <Base pointer title="Diamonds" className="navigation-item icon-diamonds" />
+                        <Base pointer title="Diamonds" className="navigation-item icon-diamonds" onClick={ event => CreateLinkEvent('diamonds-store/toggle') } />
                         <Base pointer title="Phone" className="navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
                             { ((unreadMessages + requestCount) > 0) &&
                                 <LayoutItemCountView count={ (unreadMessages + requestCount) } /> }

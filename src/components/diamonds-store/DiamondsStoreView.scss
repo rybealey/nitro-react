@@ -1,0 +1,115 @@
+.nitro-diamonds-store {
+    width: 420px;
+
+    // Chrome tab strip, matching the Settings / Shop / Navigator windows
+    // (theme selectors beat the stock theme-primary/-slim $secondary tab bar).
+    &.theme-primary .nitro-card-tabs,
+    &.theme-primary-slim .nitro-card-tabs {
+        @include prp-chrome-tab-strip;
+    }
+
+    .diamonds-store-empty {
+        padding: 24px 4px;
+        text-align: center;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    .diamonds-store-buy {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 2px;
+    }
+
+    .diamonds-store-section-title {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: $black;
+    }
+
+    .diamonds-store-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .diamonds-store-field-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: rgba(0, 0, 0, 0.5);
+        margin-bottom: 0;
+    }
+
+    .diamonds-store-input {
+        width: 100%;
+    }
+
+    .diamonds-store-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: $border-radius;
+    }
+
+    .diamonds-store-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13px;
+        color: $black;
+
+        &.diamonds-store-summary-total {
+            font-weight: 700;
+        }
+    }
+
+    .diamonds-store-accept-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 4px 2px;
+
+        span {
+            font-size: 12px;
+            color: rgba(0, 0, 0, 0.65);
+        }
+    }
+
+    // Small on/off switch, matching the phone Settings app's toggle recipe.
+    .diamonds-store-switch {
+        width: 40px;
+        height: 24px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 3px;
+        flex: none;
+        cursor: pointer;
+        transition: background 0.18s ease;
+
+        .diamonds-store-switch-knob {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            transition: transform 0.18s ease;
+        }
+
+        &.is-on {
+            background: $success;
+
+            .diamonds-store-switch-knob {
+                transform: translateX(16px);
+            }
+        }
+    }
+}
