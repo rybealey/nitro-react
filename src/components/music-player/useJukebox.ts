@@ -10,7 +10,7 @@ export interface JukeboxQueueEntry { videoId: string; title: string; author: str
 export const useJukebox = () =>
 {
     const [ present, setPresent ] = useState(false);
-    const [ current, setCurrent ] = useState<JukeboxCurrent>(null);
+    const [ current, setCurrent ] = useState<JukeboxCurrent | null>(null);
     const [ queue, setQueue ] = useState<JukeboxQueueEntry[]>([]);
     const { roomSession = null } = useRoom();
 
@@ -32,8 +32,12 @@ export const useJukebox = () =>
 
     useEffect(() =>
     {
-        // Leaving/changing rooms clears everything; the new room's entry
-        // packet repopulates it.
+        if(roomSession) return;
+
+        // No room: hide the panel. Room-to-room switches need no client reset —
+        // the server pushes a fresh state packet in every room's entry burst
+        // (and that packet can arrive BEFORE roomSession updates, so wiping on
+        // every change would race it and lose the just-received state).
         setPresent(false);
         setCurrent(null);
         setQueue([]);
