@@ -1,6 +1,5 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { FaPencilAlt } from 'react-icons/fa';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
 import { LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -63,8 +62,6 @@ export const RpProfileView: FC<{}> = props =>
     return (
         <NitroCardView uniqueKey="rp-profile" className="rp-profile-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Profile" onCloseClick={ () => setIsVisible(false) } />
-            { /* placeholder edit control, styled into the header row */ }
-            <div className="rp-profile-edit" title="Edit"><FaPencilAlt /></div>
             <NitroCardContentView className="text-black">
                 <div className="rp-profile-layout">
                     <div className="rp-profile-left">

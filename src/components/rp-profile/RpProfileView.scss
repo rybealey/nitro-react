@@ -1,28 +1,6 @@
 .nitro-card.rp-profile-window {
     width: 480px;
 
-    // Placeholder edit chip beside the close button (stock header).
-    .rp-profile-edit {
-        position: absolute;
-        top: 4px;
-        right: 32px;
-        z-index: 1;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: $border-radius;
-        background: rgba(0, 0, 0, 0.25);
-        color: $white;
-        cursor: pointer;
-        transition: background 0.1s ease;
-
-        svg { width: 10px; height: 10px; }
-
-        &:hover { background: rgba(0, 0, 0, 0.4); }
-    }
-
     .rp-profile-layout {
         display: flex;
         gap: 10px;
