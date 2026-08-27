@@ -63,6 +63,14 @@
         padding: 3px 6px;
         border-radius: $border-radius;
         background-color: rgba($light, 0.1);
+        cursor: pointer;
+        transition: background-color 0.1s ease;
+
+        &:hover {
+            background-color: rgba($light, 0.18);
+
+            .music-player-next-song { color: $white; }
+        }
 
         .music-player-next-song {
             flex: 1;

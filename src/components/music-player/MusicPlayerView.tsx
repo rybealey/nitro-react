@@ -81,7 +81,9 @@ export const MusicPlayerView: FC<{}> = props =>
         <div className="nitro-music-player rounded">
             <div className="music-player-kicker">NOW PLAYING</div>
             <div className="music-player-title">{ current ? current.title : 'Nothing playing' }</div>
-            <div className="music-player-next">
+            { /* also an entry point to the queue window (same as
+                 double-clicking the jukebox furni) */ }
+            <div className="music-player-next" title="Open the jukebox queue" onClick={ event => setIsQueueOpen(true) }>
                 <span className="music-player-kicker">UP NEXT</span>
                 <span className="music-player-next-song">{ queue[0] ? queue[0].title : 'Queue is empty' }</span>
             </div>
