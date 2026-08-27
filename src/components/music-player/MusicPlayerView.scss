@@ -13,6 +13,19 @@
     flex-direction: column;
     gap: 2px;
 
+    .music-player-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        .music-player-add {
+            cursor: pointer;
+            color: rgba($light, 0.6);
+
+            &:hover { color: $white; }
+        }
+    }
+
     .music-player-kicker {
         font-family: 'Ubuntu', sans-serif;
         font-size: 9px;
