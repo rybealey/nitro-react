@@ -1521,7 +1521,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +861,1952 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +861,1975 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1750,23 +1750,47 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +
 +            if(pathMatch)
 +            {
-+                // Roles by establishment: whoever has been walking longer was
-+                // already on the path → MASTER; the later arrival is the
-+                // JOINER. Tie (or unknown) keeps the own avatar as master.
 +                const remoteSince = ((hist.walkSince >= 0) ? hist.walkSince : nowMs);
 +                const ownSince = ((own.walkSince >= 0) ? own.walkSince : nowMs);
-+                const joinerIsOwn = (ownSince > remoteSince);
++                // Assign roles from the FIRST proven shared-route geometry,
++                // not total walking time: an avatar may have walked elsewhere
++                // for longer before entering this route. On adjacent edges the
++                // avatar behind is JOINER; on one shared edge, the lower phase
++                // is JOINER. Only a true tie/unknown falls back to walkSince.
++                let joinerIsOwn: boolean;
++                let roleVia: string;
++
++                if(pathMatch.behind)
++                {
++                    joinerIsOwn = false;
++                    roleVia = 'remote_behind';
++                }
++                else if(pathMatch.ahead)
++                {
++                    joinerIsOwn = true;
++                    roleVia = 'own_behind';
++                }
++                else if(pathMatch.sameGoal && Number.isFinite(hist.stepPhase) && Number.isFinite(own.stepPhase)
++                    && (Math.abs(hist.stepPhase - own.stepPhase) > 1e-6))
++                {
++                    joinerIsOwn = (own.stepPhase < hist.stepPhase);
++                    roleVia = 'shared_edge_phase';
++                }
++                else
++                {
++                    joinerIsOwn = (ownSince > remoteSince);
++                    roleVia = 'walk_time_tie';
++                }
++
 +                const masterPhaseAtEngage = (joinerIsOwn ? hist.stepPhase : own.stepPhase);
 +                const joinerPhaseAtEngage = (joinerIsOwn ? own.stepPhase : hist.stepPhase);
 +                const engagePlanarGap = Math.hypot((roomLocation.x - own.tx), (roomLocation.y - own.ty));
-+                // Evaluate the first shared-route moment, not when either unit
-+                // began its whole continuous walk. A JOINER may have already
-+                // been walking elsewhere before entering MASTER's route.
-+                const masterAlreadyAheadAtEngage = ((!joinerIsOwn && pathMatch.behind)
-+                    || (joinerIsOwn && pathMatch.ahead)
-+                    || (pathMatch.sameGoal && (masterPhaseAtEngage > joinerPhaseAtEngage)));
-+                const lateEntryAtEngage = (pendingLateAtEngage || (masterAlreadyAheadAtEngage
-+                    && (engagePlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX)));
++                // Direction-independent late rule: at the FIRST proven shared
++                // route, anything not genuinely stacked is late. The pending
++                // approach memory preserves the same evidence when packet
++                // rollover has already collapsed the raw anchors by ENGAGE.
++                const lateEntryAtEngage = (pendingLateAtEngage
++                    || (engagePlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX));
 +
 +                this._pixelrpSync = {
 +                    masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
@@ -1781,9 +1805,8 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                    // tuple proved unreliable in both directions). Real
 +                    // classification is earned from persistent route evidence,
 +                    // starting fresh this frame. The one deliberate exception
-+                    // is a JOINER entering the shared route after MASTER is
-+                    // already ahead in its step while their raw planar anchors
-+                    // are not genuinely stacked: latch that as TRAILING now.
++                    // is a JOINER that is not genuinely stacked at the first
++                    // proven shared-route moment: latch that as TRAILING now.
 +                    formationState: (lateEntryAtEngage ? RoomSpriteCanvas.FORMATION_TRAILING : RoomSpriteCanvas.FORMATION_CANDIDATE), formationStateSince: nowMs,
 +                    lockedDirX: NaN, lockedDirY: NaN,
 +                    lastNativeGap: NaN, convergingEvidenceMs: 0, trailingEvidenceMs: 0,
@@ -1813,7 +1836,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                // the matching [sync] telemetry block inside the joiner-
 +                // handling code below. Remove alongside it after diagnosis
 +                // is confirmed with the user.
-+                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') }`);
++                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') } roleVia=${ roleVia }`);
 +            }
 +            else if(!unitInfo.own && own && recentlyReleasedBlocked && this._pixelrpLastReleased && !this._pixelrpLastReleased.blockLogged && samePathWith(own))
 +            {
@@ -3476,7 +3499,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2867,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2890,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
