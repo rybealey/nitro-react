@@ -8,7 +8,12 @@ import { useFurniAddedEvent, useFurniRemovedEvent, useRoom } from '../../hooks';
 // Jukebox (jukebox*1) stands in the current room. Interface shell only for
 // now: the song/artist/album, queue and volume are placeholders awaiting the
 // playback wiring.
-const JUKEBOX_CLASS_NAME = 'jukebox*1';
+// Room objects carry the COLOR-STRIPPED classname (RoomContentLoader
+// removeColorIndex): the catalog's jukebox*1 stands in the room as plain
+// 'jukebox'. The other jukebox-family furni have distinct base names
+// (jukebox_ptv, jukebox_big, ...), so the exact match still targets only
+// the one item.
+const JUKEBOX_CLASS_NAME = 'jukebox';
 
 export const MusicPlayerView: FC<{}> = props =>
 {
