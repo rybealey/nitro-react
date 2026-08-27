@@ -1,6 +1,6 @@
 import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
-import { CreateLinkEvent, GetSessionDataManager } from '../../api';
+import { CreateLinkEvent, GetSessionDataManager, HasHabboVip } from '../../api';
 import { Base, Flex, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
 import { usePhoneBadges } from '../phone/usePhone';
@@ -82,7 +82,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                                     { (getFullCount > 0) &&
                                         <LayoutItemCountView count={ getFullCount } /> }
                                 </Base> }
-                            { (isInRoom && isMod) &&
+                            { (isInRoom && (isMod || HasHabboVip())) &&
                                 <Base pointer className="navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } /> }
                             { isMod &&
                                 <Base pointer className="navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } /> }
