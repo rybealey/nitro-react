@@ -1223,7 +1223,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +    // Per-unit walk bookkeeping — raw room position, current step-goal tile
 +    // and the time this unit's current continuous walk began — refreshed
 +    // every frame the unit renders.
-+    private _pixelrpAnchors: Map<number, { t: number, tx: number, ty: number, gx: number, gy: number, sx: number, sy: number, walkSince: number }> = new Map();
++    private _pixelrpAnchors: Map<number, { t: number, tx: number, ty: number, gx: number, gy: number, sx: number, sy: number, walkSince: number, stepPhase: number }> = new Map();
 +    private _pixelrpOwnId: number = -1;
 +
 +    // Single active master/joiner sync (own-avatar pairs only), created ONCE
@@ -1498,7 +1498,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +838,1833 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +838,1845 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1562,6 +1562,11 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                stepGoalY = Math.round(stepStart.y + stepDelta.y);
 +            }
 +
++            const stepInterval = ((unitLogic && ((unitLogic as any)._updateInterval > 0)) ? (unitLogic as any)._updateInterval : 530);
++            const stepPhase = ((stepGoalX >= 0) && unitLogic)
++                ? Math.min(1, Math.max(0, (((unitLogic as any).time - (unitLogic as any)._changeTime) / stepInterval)))
++                : 0;
++
 +            // ---- per-unit walk bookkeeping (raw values) ----
 +            const nowMs = Date.now();
 +            const anchors = this._pixelrpAnchors;
@@ -1569,7 +1574,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +
 +            if(!hist)
 +            {
-+                hist = { t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, sx: stepStartX, sy: stepStartY, walkSince: ((stepGoalX >= 0) ? nowMs : -1) };
++                hist = { t: nowMs, tx: roomLocation.x, ty: roomLocation.y, gx: stepGoalX, gy: stepGoalY, sx: stepStartX, sy: stepStartY, walkSince: ((stepGoalX >= 0) ? nowMs : -1), stepPhase };
 +                anchors.set(object.instanceId, hist);
 +            }
 +            else
@@ -1581,6 +1586,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                hist.tx = roomLocation.x; hist.ty = roomLocation.y;
 +                hist.gx = stepGoalX; hist.gy = stepGoalY;
 +                hist.sx = stepStartX; hist.sy = stepStartY;
++                hist.stepPhase = stepPhase;
 +            }
 +
 +            if(unitInfo.own)
@@ -1691,10 +1697,16 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                const remoteSince = ((hist.walkSince >= 0) ? hist.walkSince : nowMs);
 +                const ownSince = ((own.walkSince >= 0) ? own.walkSince : nowMs);
 +                const joinerIsOwn = (ownSince > remoteSince);
-+                const masterSince = (joinerIsOwn ? remoteSince : ownSince);
-+                const joinerSince = (joinerIsOwn ? ownSince : remoteSince);
++                const masterPhaseAtEngage = (joinerIsOwn ? hist.stepPhase : own.stepPhase);
++                const joinerPhaseAtEngage = (joinerIsOwn ? own.stepPhase : hist.stepPhase);
 +                const engagePlanarGap = Math.hypot((roomLocation.x - own.tx), (roomLocation.y - own.ty));
-+                const lateEntryAtEngage = ((joinerSince > masterSince)
++                // Evaluate the first shared-route moment, not when either unit
++                // began its whole continuous walk. A JOINER may have already
++                // been walking elsewhere before entering MASTER's route.
++                const masterAlreadyAheadAtEngage = ((!joinerIsOwn && pathMatch.behind)
++                    || (joinerIsOwn && pathMatch.ahead)
++                    || (pathMatch.sameGoal && (masterPhaseAtEngage > joinerPhaseAtEngage)));
++                const lateEntryAtEngage = (masterAlreadyAheadAtEngage
 +                    && (engagePlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX));
 +
 +                this._pixelrpSync = {
@@ -1710,9 +1722,9 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                    // tuple proved unreliable in both directions). Real
 +                    // classification is earned from persistent route evidence,
 +                    // starting fresh this frame. The one deliberate exception
-+                    // is a later-starting JOINER whose raw planar anchors are
-+                    // not genuinely stacked: that is latched as TRAILING now,
-+                    // before route projection can hide the offset.
++                    // is a JOINER entering the shared route after MASTER is
++                    // already ahead in its step while their raw planar anchors
++                    // are not genuinely stacked: latch that as TRAILING now.
 +                    formationState: (lateEntryAtEngage ? RoomSpriteCanvas.FORMATION_TRAILING : RoomSpriteCanvas.FORMATION_CANDIDATE), formationStateSince: nowMs,
 +                    lockedDirX: NaN, lockedDirY: NaN,
 +                    lastNativeGap: NaN, convergingEvidenceMs: 0, trailingEvidenceMs: 0,
@@ -1739,7 +1751,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                // the matching [sync] telemetry block inside the joiner-
 +                // handling code below. Remove alongside it after diagnosis
 +                // is confirmed with the user.
-+                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) planarGap=${ engagePlanarGap.toFixed(3) } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') }`);
++                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') }`);
 +            }
 +            else if(!unitInfo.own && own && recentlyReleasedBlocked && this._pixelrpLastReleased && !this._pixelrpLastReleased.blockLogged && samePathWith(own))
 +            {
@@ -3334,7 +3346,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2725,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2737,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
