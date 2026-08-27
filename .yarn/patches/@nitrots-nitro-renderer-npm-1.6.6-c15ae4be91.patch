@@ -1095,7 +1095,7 @@ diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSprit
 index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55ae8156ae 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,118 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,125 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1200,11 +1200,18 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +    private static TRAILING_PHASE_DEADZONE_START: number = 0.10;
 +    private static TRAILING_PHASE_DEADZONE_STOP: number = 0.04;
 +    private static TRAILING_CORRECTION_GAIN: number = 0.10;
++    // Faster only while a late same-edge JOINER is establishing its initial
++    // one-tile lag; ordinary established trailing stabilization stays at 0.10.
++    private static TRAILING_ACQUIRE_GAIN: number = 0.20;
 +    // Kept below native walking velocity (~1 / 530 = 0.00189 tile/ms), so
 +    // establishing the one-tile lag can smoothly slow JOINER but can never
 +    // reverse it. At 0.0012, even the largest valid same-edge late-join gap
 +    // settles within roughly two walked tiles, including classification time.
 +    private static TRAILING_MAX_CORRECTION_PER_MS: number = 0.0012;
++    // A confirmed late same-edge entry may briefly spend all of JOINER's
++    // native forward step on establishing spacing. This is consumed only
++    // while actively acquiring the one-tile lag and never permits reversal.
++    private static TRAILING_ACQUIRE_PAUSE_MS: number = 100;
 +    // Once the accumulated visual position is within one hundredth of a tile
 +    // of the route target, finish on the exact target. The remaining movement
 +    // is sub-pixel at normal room scale, while exact assignment prevents an
@@ -1214,7 +1221,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -51,6 +163,226 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -51,6 +170,227 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
      private _SafeStr_4507: boolean = false;
      private _rotation: number = 0;
@@ -1363,6 +1370,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +        trailingExitOffsetSet: boolean, trailingExitOffsetX: number, trailingExitOffsetY: number, trailingExitOffsetZ: number, trailingExitHandoffT: number,
 +        trailingLastSnapshotAt: number, trailingStretchLastLogAt: number, trailingCollapseLastLogAt: number, trailingNativeLastLogAt: number,
 +        trailingLastNativeX: number, trailingLastNativeY: number,
++        trailingAcquirePauseRemaining: number,
 +        // Rollover-continuity fix (Update 8 follow-up): replaces the old
 +        // world-position FREEZE that used to render during a brief
 +        // segment-tuple ambiguity at rollover (segmentsMatch/joinerBehind
@@ -1441,7 +1449,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -373,7 +705,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -373,7 +713,39 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              }
          }
  
@@ -1482,7 +1490,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
-@@ -424,6 +788,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -424,6 +796,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          this._objectCache.removeObjectCache(identifier);
      }
  
@@ -1498,7 +1506,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +838,1845 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +846,1886 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -1735,6 +1743,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                    trailingExitOffsetSet: false, trailingExitOffsetX: NaN, trailingExitOffsetY: NaN, trailingExitOffsetZ: NaN, trailingExitHandoffT: 0,
 +                    trailingLastSnapshotAt: 0, trailingStretchLastLogAt: 0, trailingCollapseLastLogAt: 0, trailingNativeLastLogAt: 0,
 +                    trailingLastNativeX: NaN, trailingLastNativeY: NaN,
++                    trailingAcquirePauseRemaining: RoomSpriteCanvas.TRAILING_ACQUIRE_PAUSE_MS,
 +                    trailingLatchSet: false,
 +                    trailingLatchJSx: NaN, trailingLatchJSy: NaN, trailingLatchJSz: NaN,
 +                    trailingLatchJDx: NaN, trailingLatchJDy: NaN, trailingLatchJDz: NaN,
@@ -2459,7 +2468,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                // most a small fraction of any such jitter ever reaches
 +                // the screen, and the step size can never exceed a
 +                // fraction of normal per-frame walking movement.
-+                const applyGentleCorrection = (nativeX: number, nativeY: number, nativeZ: number, targetX: number, targetY: number, targetZ: number): { x: number, y: number, z: number } =>
++                const applyGentleCorrection = (nativeX: number, nativeY: number, nativeZ: number, targetX: number, targetY: number, targetZ: number, allowAcquirePause: boolean = false): { x: number, y: number, z: number } =>
 +                {
 +                    // Carry the correction already displayed last frame while
 +                    // adding JOINER's new native movement. The previous code
@@ -2484,9 +2493,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                        return { x: targetX, y: targetY, z: targetZ };
 +                    }
 +
-+                    let stepX = (errorX * RoomSpriteCanvas.TRAILING_CORRECTION_GAIN);
-+                    let stepY = (errorY * RoomSpriteCanvas.TRAILING_CORRECTION_GAIN);
-+                    const stepZ = ((targetZ - nativeZ) * RoomSpriteCanvas.TRAILING_CORRECTION_GAIN);
++                    const correctionGain = (allowAcquirePause ? RoomSpriteCanvas.TRAILING_ACQUIRE_GAIN : RoomSpriteCanvas.TRAILING_CORRECTION_GAIN);
++                    let stepX = (errorX * correctionGain);
++                    let stepY = (errorY * correctionGain);
++                    const stepZ = ((targetZ - nativeZ) * correctionGain);
 +                    const stepMag = Math.hypot(stepX, stepY);
 +                    // Convert the logical tile/ms cap to the current route
 +                    // edge's world-space length. A diagonal logical tile has
@@ -2494,7 +2504,20 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                    // acquisition unnecessarily slower than cardinal movement.
 +                    // The ratio to native speed remains identical and positive.
 +                    const routeStepScale = ((Number.isFinite(mDirX) && Number.isFinite(mDirY)) ? Math.max(1, Math.hypot(mDirX, mDirY)) : 1);
-+                    const maxStep = (RoomSpriteCanvas.TRAILING_MAX_CORRECTION_PER_MS * dt * routeStepScale);
++                    let maxStep = (RoomSpriteCanvas.TRAILING_MAX_CORRECTION_PER_MS * dt * routeStepScale);
++
++                    if(allowAcquirePause && hasPreviousTrailingSample && (sync.trailingAcquirePauseRemaining > 0))
++                    {
++                        // Spend at most this frame's real native advance on
++                        // opening the gap. Equal correction produces a brief
++                        // zero-speed frame; never exceeding it prevents reverse
++                        // movement, including at an interpolation endpoint.
++                        const nativeStepMag = Math.hypot((nativeX - sync.trailingLastNativeX), (nativeY - sync.trailingLastNativeY));
++                        const nativeNominalStep = ((dt / Math.max(1, (j ? j.interval : 530))) * routeStepScale);
++
++                        maxStep = Math.min(nativeStepMag, Math.max(maxStep, nativeNominalStep));
++                        sync.trailingAcquirePauseRemaining = Math.max(0, (sync.trailingAcquirePauseRemaining - dt));
++                    }
 +
 +                    if((stepMag > maxStep) && (stepMag > 0))
 +                    {
@@ -2846,7 +2869,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                            // full target in one step (see
 +                            // applyGentleCorrection above) — toward the
 +                            // phase-matched target.
-+                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ);
++                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, !isGenuineBehind);
 +
 +                            vx = corrected.x; vy = corrected.y; vz = corrected.z;
 +                            apply = true;
@@ -2916,6 +2939,32 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
 +                            {
 +                                console.log(`[sync:TRAIL_HITCH] master=${ sync.masterId } joiner=${ sync.joinerId } prevDisplayed=(${ sync.lastVx.toFixed(3) },${ sync.lastVy.toFixed(3) }) currDisplayed=(${ vx.toFixed(3) },${ vy.toFixed(3) }) prevNative=(${ sync.trailingLastNativeX.toFixed(3) },${ sync.trailingLastNativeY.toFixed(3) }) currNative=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) visualFrameDelta=${ displayedDelta.toFixed(4) } nativeFrameDelta=${ nativeDelta.toFixed(4) } appliedCorrectionDelta=${ disturbance.toFixed(4) } phaseError=${ phaseError.toFixed(3) }`);
 +                            }
++                        }
++
++                        sync.trailingLastNativeX = roomLocation.x;
++                        sync.trailingLastNativeY = roomLocation.y;
++                    }
++                    else if(trailingEligibleNow && sync.trailingLatchSet && !Number.isFinite(sync.trailingLatchJSx) && mLoc)
++                    {
++                        // A late same-edge session has no behind-edge segment
++                        // latch yet. Preserve its accumulated visual offset
++                        // through the brief rollover ambiguity instead of
++                        // falling back to native and restarting acquisition on
++                        // every tile. The last confirmed route direction keeps
++                        // the target exactly one logical tile behind MASTER.
++                        const carryDirX = (Number.isFinite(sync.lockedDirX) ? sync.lockedDirX : mDirX);
++                        const carryDirY = (Number.isFinite(sync.lockedDirY) ? sync.lockedDirY : mDirY);
++
++                        if(Number.isFinite(carryDirX) && Number.isFinite(carryDirY))
++                        {
++                            const targetX = (mLoc.x - carryDirX);
++                            const targetY = (mLoc.y - carryDirY);
++                            const targetZ = mLoc.z;
++                            const corrected = applyGentleCorrection(roomLocation.x, roomLocation.y, roomLocation.z, targetX, targetY, targetZ, true);
++
++                            vx = corrected.x; vy = corrected.y; vz = corrected.z;
++                            apply = true;
++                            source = 'TRAIL_ACQUIRE_ROLLOVER';
 +                        }
 +
 +                        sync.trailingLastNativeX = roomLocation.x;
@@ -3346,7 +3395,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..77ee06f458c152fef3c0b23ac338ca55
  
          x = (x + Math.trunc(this._width / 2));
          y = (y + Math.trunc(this._height / 2));
-@@ -527,6 +2737,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -527,6 +2786,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
              sortableSprite.x = (spriteX - this._screenOffsetX);
              sortableSprite.y = (spriteY - this._screenOffsetY);
              sortableSprite.z = ((z + sprite.relativeDepth) + (3.7E-11 * count));
