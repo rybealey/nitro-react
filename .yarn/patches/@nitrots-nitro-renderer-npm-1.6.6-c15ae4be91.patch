@@ -1420,7 +1420,7 @@ diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSprit
 index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a2781eed0 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -13,6 +13,122 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+@@ -13,6 +13,123 @@ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
  {
@@ -1478,9 +1478,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +    private static FORMATION_GAP_NEAR_ZERO: number = 0.12;
 +    private static FORMATION_CORNER_GRACE_MS: number = 60;
 +    private static FORMATION_SAME_POSITION_GAP_MAX: number = 0.10;
-+    // Remember a non-stacked, different-direction approach for one complete
-+    // native movement interval. This is evidence only: no visual correction
-+    // starts unless the pair subsequently proves a shared route.
++    // Remember either a one-sided departure or a non-stacked, different-
++    // direction approach for one complete native movement interval. This is
++    // evidence only: no visual correction starts unless the pair subsequently
++    // proves a shared route.
 +    private static FORMATION_PENDING_LATE_MS: number = 530;
 +    // At initial engagement, projected route distance alone can hide a late
 +    // diagonal/side-offset JOINER. Require the raw native x/y anchors to be
@@ -1785,10 +1786,10 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +    // unaffected. blockLogged avoids repeating the same diagnostic
 +    // line every frame while the block remains active.
 +    private _pixelrpLastReleased: { pairKey: string, at: number, sawSeparated: boolean, blockLogged: boolean } = null;
-+    // Diagonal/off-route approaches are not synchronized immediately (that
-+    // would magnetize ordinary crossings). Retain only their first raw gap so
-+    // a shared route proven within FORMATION_PENDING_LATE_MS can inherit the
-+    // original late-entry evidence instead of judging after they overlap.
++    // One-sided departures and diagonal/off-route approaches are not
++    // synchronized immediately. Retain only their first raw gap so a shared
++    // route proven within FORMATION_PENDING_LATE_MS can inherit the original
++    // late-entry evidence instead of judging after phases have converged.
 +    private _pixelrpPendingLate: { pairKey: string, at: number, planarGap: number } = null;
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
@@ -1850,7 +1851,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
      private renderObject(object: IRoomObject, identifier: string, time: number, update: boolean, updateVisuals: boolean, count: number): number
      {
          if(!object) return 0;
-@@ -465,8 +855,2153 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -465,8 +855,2158 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          let y = vector.y;
          let z = vector.z;
  
@@ -2038,11 +2039,14 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                recentlyReleasedBlocked = (!this._pixelrpLastReleased.sawSeparated && ((nowMs - this._pixelrpLastReleased.at) < 3000));
 +            }
 +
-+            // Remember the FIRST close, different-direction approach without
-+            // engaging or moving either avatar. If the pair turns onto one
-+            // shared route within a native 530ms step, ENGAGE below inherits
-+            // this original non-stacked gap as late evidence. Ordinary
-+            // crossings never prove a shared route and remain fully native.
++            // Remember the FIRST one-sided departure or close, different-
++            // direction approach without engaging or moving either avatar.
++            // The one-sided case is the strict stacked-departure rule: once
++            // one avatar has a live step while the other still has none, the
++            // later mover is late even if their visible gap is still tiny.
++            // If the pair proves one shared route within a native 530ms step,
++            // ENGAGE below inherits this evidence. Ordinary crossings never
++            // prove a shared route and remain fully native.
 +            const pendingPairKey = ((!unitInfo.own && own) ? this.pixelrpPairKey(this._pixelrpOwnId, object.instanceId) : null);
 +
 +            if(!unitInfo.own && own && !this._pixelrpSync && !recentlyReleasedBlocked)
@@ -2055,11 +2059,13 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                const ownDirY = (ownMoving ? (own.gy - own.sy) : NaN);
 +                const differentDirections = (remoteMoving && ownMoving
 +                    && ((remoteDirX !== ownDirX) || (remoteDirY !== ownDirY)));
++                const oneSidedDeparture = (remoteMoving !== ownMoving);
 +                const stillClose = ((Math.abs(roomLocation.x - own.tx) < 1) && (Math.abs(roomLocation.y - own.ty) < 1));
 +                const approachPlanarGap = Math.hypot((roomLocation.x - own.tx), (roomLocation.y - own.ty));
 +
-+                if(differentDirections && stillClose
-+                    && (approachPlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX)
++                if(stillClose
++                    && (oneSidedDeparture || (differentDirections
++                        && (approachPlanarGap > RoomSpriteCanvas.FORMATION_STACKED_PLANAR_GAP_MAX)))
 +                    && (!this._pixelrpPendingLate || (this._pixelrpPendingLate.pairKey !== pendingPairKey)))
 +                {
 +                    this._pixelrpPendingLate = { pairKey: pendingPairKey, at: nowMs, planarGap: approachPlanarGap };
@@ -2185,7 +2191,7 @@ index 6a88da850856d0c177c1911bce05708057cb6b5f..4e4d39e50d806708c4fd003575a3638a
 +                // the matching [sync] telemetry block inside the joiner-
 +                // handling code below. Remove alongside it after diagnosis
 +                // is confirmed with the user.
-+                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } stackedDepartureLate=${ staggeredStackedDeparture } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') } roleVia=${ roleVia }`);
++                console.log(`[sync:ENGAGE] master=${ this._pixelrpSync.masterId } joiner=${ this._pixelrpSync.joinerId } ownSince=${ ownSince } remoteSince=${ remoteSince } goal=(${ stepGoalX },${ stepGoalY }) ownAnchor=(${ own.tx.toFixed(2) },${ own.ty.toFixed(2) }) remoteAnchor=(${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) }) masterPhase=${ masterPhaseAtEngage.toFixed(3) } joinerPhase=${ joinerPhaseAtEngage.toFixed(3) } planarGap=${ engagePlanarGap.toFixed(3) } pendingLate=${ pendingLateAtEngage } stackedDepartureLate=${ staggeredStackedDeparture } lateEntry=${ lateEntryAtEngage } via=${ pathMatch.sameGoal ? 'sameGoal' : (pathMatch.behind ? 'behind' : 'ahead') } roleVia=${ roleVia }`);
 +            }
 +            else if(!unitInfo.own && own && recentlyReleasedBlocked && this._pixelrpLastReleased && !this._pixelrpLastReleased.blockLogged && samePathWith(own))
 +            {
