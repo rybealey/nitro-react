@@ -138,7 +138,7 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
                         </div>
                     </> }
                 { !sortedFriends.length &&
-                    <div className="phone-list-note">No contacts yet. Walk up to someone in the city and ask to be friends — or search below.</div> }
+                    <div className="phone-list-note">No contacts yet. Walk up to someone in the city and ask to be friends - or search below.</div> }
                 <PhoneAddContactView />
                 <div className="phone-scroll-spacer" />
             </div>

@@ -29,7 +29,7 @@ export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRolep
     return (
         <Column gap={ 1 }>
             <Text bold>Zone Type</Text>
-            <Text>Safe zones pause every visitor&apos;s passive countdown — time only ticks in unsafe rooms.</Text>
+            <Text>Safe zones pause every visitor&apos;s passive countdown - time only ticks in unsafe rooms.</Text>
             <select className="form-select form-select-sm" value={ isSafeZone ? 'safe' : 'unsafe' } onChange={ event => saveZone(event.target.value) }>
                 <option value="safe">Safe</option>
                 <option value="unsafe">Unsafe</option>

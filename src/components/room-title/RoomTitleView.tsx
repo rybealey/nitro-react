@@ -13,7 +13,7 @@ export const RoomTitleView: FC<{}> = props =>
     if(!roomSession || !roomName || !roomName.length) return null;
 
     const roomId = navigatorData?.enteredGuestRoom?.roomId;
-    const title = (GetSessionDataManager().isModerator && roomId) ? `#${ roomId } – ${ roomName }` : roomName;
+    const title = (GetSessionDataManager().isModerator && roomId) ? `#${ roomId } - ${ roomName }` : roomName;
 
     return (
         <Flex justifyContent="end" className="nitro-room-title rounded-bottom p-1 px-2">

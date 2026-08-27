@@ -167,7 +167,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
         const dragging = (dragApp && (dragApp.key === key));
 
         return (
-            <div key={ key } data-app-key={ key } data-zone={ zone } className={ `phone-app${ app.active ? ' phone-tap' : ' is-disabled' }${ dragging ? ' is-drag-source' : '' }` } title={ app.active ? key : `${ key } — coming soon` } onClick={ event => onTileTap(key) } onPointerDown={ event => onTileDown(event, key) } onPointerMove={ onTileMove } onPointerUp={ onTileUp } onPointerCancel={ onTileUp }>
+            <div key={ key } data-app-key={ key } data-zone={ zone } className={ `phone-app${ app.active ? ' phone-tap' : ' is-disabled' }${ dragging ? ' is-drag-source' : '' }` } title={ app.active ? key : `${ key } - coming soon` } onClick={ event => onTileTap(key) } onPointerDown={ event => onTileDown(event, key) } onPointerMove={ onTileMove } onPointerUp={ onTileUp } onPointerCancel={ onTileUp }>
                 <div className="phone-app-tile">
                     <PhoneIcon icon={ app.icon } size={ 26 } />
                     { (count > 0) &&

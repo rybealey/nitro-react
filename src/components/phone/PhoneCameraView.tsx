@@ -142,7 +142,7 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
                 <div className="phone-camera-nosignal">
                     <PhoneIcon icon="camera" size={ 34 } />
                     <div className="phone-camera-nosignal-title">No scene in view</div>
-                    <div className="phone-camera-nosignal-text">Step into a room to use the camera — the screen becomes your viewfinder.</div>
+                    <div className="phone-camera-nosignal-text">Step into a room to use the camera - the screen becomes your viewfinder.</div>
                 </div> }
             { showFlash &&
                 <div className="phone-camera-flash" /> }

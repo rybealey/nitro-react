@@ -66,14 +66,14 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                     <div className="phone-settings-row">
                         <div className="phone-settings-row-body">
                             <div className="phone-settings-row-title">Automatic</div>
-                            <div className="phone-settings-row-sub">{ isAuto ? `Following your device — ${ systemDark ? 'dark' : 'light' } right now` : 'Match your device\'s appearance' }</div>
+                            <div className="phone-settings-row-sub">{ isAuto ? `Following your device - ${ systemDark ? 'dark' : 'light' } right now` : 'Match your device\'s appearance' }</div>
                         </div>
                         <div className={ `phone-tap phone-settings-switch${ isAuto ? ' is-on' : '' }` } onClick={ event => setTheme(isAuto ? (resolvedDark ? 'dark' : 'light') : 'auto') }>
                             <div className="phone-settings-switch-knob" />
                         </div>
                     </div>
                 </div>
-                <div className="phone-settings-footnote">Appearance only changes your phone — the rest of the hotel stays as it is.</div>
+                <div className="phone-settings-footnote">Appearance only changes your phone - the rest of the hotel stays as it is.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

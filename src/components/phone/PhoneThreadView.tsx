@@ -315,7 +315,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                                 }) }
                             </div> }
                         { !photos.length &&
-                            <div className="phone-list-note">No photos in your library yet — take some with the Camera first.</div> }
+                            <div className="phone-list-note">No photos in your library yet - take some with the Camera first.</div> }
                         <div className="phone-scroll-spacer" />
                     </div>
                     <div className="phone-photo-picker-bottom">

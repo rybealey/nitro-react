@@ -18,8 +18,8 @@ const PREVIEW_CHANGELOG: DeployChangelog = {
     title: 'Preview',
     sections: [
         { category: 'Added', entries: [
-            'Corporation HQs — claim an office and customize it with your corp',
-            'Turf map overlay in the city HUD — see who holds every block',
+            'Corporation HQs - claim an office and customize it with your corp',
+            'Turf map overlay in the city HUD - see who holds every block',
             '6 new furni sets for terrace and rooftop rooms',
         ] },
         { category: 'Fixed', entries: [
@@ -227,7 +227,7 @@ export const DeploymentView: FC<DeploymentViewProps> = props =>
                             }) }
                         </div>
                     </div> }
-                <div className="deploy-footer">Your progress is safe — you&apos;ll reconnect right where you left off.</div>
+                <div className="deploy-footer">Your progress is safe - you&apos;ll reconnect right where you left off.</div>
             </div>
             <div className="deploy-bottom-strip" />
         </div>

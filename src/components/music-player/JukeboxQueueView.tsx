@@ -32,7 +32,7 @@ export const JukeboxQueueView: FC<JukeboxQueueViewProps> = props =>
             <NitroCardHeaderView headerText="Jukebox" onCloseClick={ event => (onClose && onClose()) } />
             <NitroCardContentView className="text-black">
                 <div className="jukebox-queue-now">
-                    <b>Now playing:</b> { current ? `${ current.title } — ${ current.author }` : 'Nothing' }
+                    <b>Now playing:</b> { current ? `${ current.title } - ${ current.author }` : 'Nothing' }
                     { current && <Button variant="secondary" onClick={ event => SendMessageComposer(new RpJukeboxSkipComposer()) }>Skip</Button> }
                 </div>
                 <div className="jukebox-queue-list">
@@ -43,7 +43,7 @@ export const JukeboxQueueView: FC<JukeboxQueueViewProps> = props =>
                             <Button variant="danger" onClick={ event => SendMessageComposer(new RpJukeboxRemoveComposer(index)) }>×</Button>
                         </div>
                     )) }
-                    { !queue.length && <div className="jukebox-queue-empty">Queue is empty — add a song below.</div> }
+                    { !queue.length && <div className="jukebox-queue-empty">Queue is empty - add a song below.</div> }
                 </div>
                 <div className="jukebox-queue-add">
                     <input type="text" className="form-control form-control-sm" spellCheck={ false } placeholder="Paste a YouTube link" value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event => (event.key === 'Enter') && addUrl() } />
