@@ -6,4 +6,5 @@ export const RpProfileState = {
     name: '' as string,
     figure: '' as string,
     motto: '' as string,
+    online: false as boolean,
 };

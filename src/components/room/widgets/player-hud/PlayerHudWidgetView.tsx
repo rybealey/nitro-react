@@ -198,6 +198,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         RpProfileState.name = selfName;
                         RpProfileState.figure = ownFigure;
                         RpProfileState.motto = (GetSessionDataManager().motto ?? '');
+                        RpProfileState.online = true;
                         CreateLinkEvent('rp-profile/show');
                     } } />
                     <HudStars wanted={ playerStats.wanted } />
@@ -232,6 +233,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             RpProfileState.name = target.name;
                             RpProfileState.figure = target.figure;
                             RpProfileState.motto = (target.motto ?? '');
+                            RpProfileState.online = true;
                             CreateLinkEvent('rp-profile/show');
                         } } />
                         <HudStars wanted={ targetStats.wanted } />

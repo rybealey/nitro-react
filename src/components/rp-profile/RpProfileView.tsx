@@ -70,7 +70,7 @@ export const RpProfileView: FC<{}> = props =>
                     <div className="rp-profile-left">
                         <div className="rp-profile-card rp-profile-identity">
                             { /* classic Habbo online badge, pinned top-right of this card */ }
-                            <i className="icon icon-pf-online rp-profile-online-badge" title="Online" />
+                            <i className={ `icon ${ RpProfileState.online ? 'icon-pf-online' : 'icon-pf-offline' } rp-profile-online-badge` } title={ RpProfileState.online ? 'Online' : 'Offline' } />
                             <div className="rp-profile-avatar">
                                 <LayoutAvatarImageView figure={ RpProfileState.figure } direction={ 2 } />
                             </div>

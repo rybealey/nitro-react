@@ -20,18 +20,22 @@ export function GetUserProfile(userId: number): void
         RpProfileState.name = userData.name;
         RpProfileState.figure = userData.figure;
         RpProfileState.motto = (userData.custom ?? '');
+        // resolved from the current room, so they're in the hotel right now
+        RpProfileState.online = true;
     }
     else if(sessionData && (userId === sessionData.userId))
     {
         RpProfileState.name = (sessionData.userName ?? '');
         RpProfileState.figure = (sessionData.figure ?? '');
         RpProfileState.motto = (sessionData.motto ?? '');
+        RpProfileState.online = true;
     }
     else if(friend)
     {
         RpProfileState.name = (friend.name ?? '');
         RpProfileState.figure = (friend.figure ?? '');
         RpProfileState.motto = (friend.motto ?? '');
+        RpProfileState.online = !!friend.online;
     }
     else
     {
@@ -40,6 +44,7 @@ export function GetUserProfile(userId: number): void
         RpProfileState.name = 'Unknown';
         RpProfileState.figure = '';
         RpProfileState.motto = '';
+        RpProfileState.online = false;
     }
 
     CreateLinkEvent('rp-profile/show');
