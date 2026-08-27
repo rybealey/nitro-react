@@ -78,19 +78,22 @@ export interface UseStripeCheckoutResult
     destroy: () => void;
 }
 
-// Owns the lifecycle of a single Stripe embedded Checkout instance. Only one
-// may exist at a time - initEmbeddedCheckout() itself rejects if a second is
-// created while one is live - so mount() no-ops on re-entry and destroy()
-// is always safe to call, mounted or not.
+// Owns the lifecycle of a single Stripe embedded Checkout instance. Each
+// mount() call builds its own Stripe object, so initEmbeddedCheckout()'s
+// own single-instance guard is per-call and doesn't protect against two
+// overlapping mount() calls - a generationRef token is what actually
+// enforces "only the latest call's instance survives": every await in
+// mount() rechecks its captured generation against the current one, and
+// destroy() bumps the generation so any in-flight call is superseded too.
 export const useStripeCheckout = (): UseStripeCheckoutResult =>
 {
     const containerRef = useRef<HTMLDivElement>(null);
     const checkoutRef = useRef<any>(null);
-    const mountingRef = useRef(false);
+    const generationRef = useRef(0);
 
     const destroy = useCallback(() =>
     {
-        mountingRef.current = false;
+        generationRef.current++;
 
         checkoutRef.current?.destroy?.();
         checkoutRef.current = null;
@@ -98,36 +101,36 @@ export const useStripeCheckout = (): UseStripeCheckoutResult =>
 
     const mount = useCallback(async (diamonds: number, onComplete: () => void) =>
     {
-        if(mountingRef.current || checkoutRef.current) return;
+        if(checkoutRef.current) return;
 
-        mountingRef.current = true;
+        const generation = ++generationRef.current;
 
-        try
+        const [ session ] = await Promise.all([ createCheckoutSession(diamonds), loadStripeJs() ]);
+
+        // superseded (destroy()/another mount() ran) while the fetch + script
+        // load were in flight - this call hasn't created anything yet, so
+        // there's nothing of its own to clean up.
+        if(generationRef.current !== generation) return;
+
+        const stripeCtor = (window as any).Stripe;
+
+        if(!stripeCtor) throw new Error(GENERIC_ERROR_MESSAGE);
+
+        const stripe = stripeCtor(session.publishableKey);
+        const checkout = await stripe.initEmbeddedCheckout({ clientSecret: session.clientSecret, onComplete });
+
+        // superseded while awaiting initEmbeddedCheckout() - this call did
+        // create an instance, so destroy that local instance directly
+        // (never the shared ref, which may already belong to the call that
+        // won) and never touch checkoutRef.
+        if((generationRef.current !== generation) || !containerRef.current)
         {
-            const [ session ] = await Promise.all([ createCheckoutSession(diamonds), loadStripeJs() ]);
-
-            const stripeCtor = (window as any).Stripe;
-
-            if(!stripeCtor) throw new Error(GENERIC_ERROR_MESSAGE);
-
-            const stripe = stripeCtor(session.publishableKey);
-            const checkout = await stripe.initEmbeddedCheckout({ clientSecret: session.clientSecret, onComplete });
-
-            // destroy()/unmount may have happened while the above awaited -
-            // don't mount an instance nobody is showing anymore.
-            if(!mountingRef.current || !containerRef.current)
-            {
-                checkout.destroy?.();
-                return;
-            }
-
-            checkout.mount(containerRef.current);
-            checkoutRef.current = checkout;
+            checkout.destroy?.();
+            return;
         }
-        finally
-        {
-            mountingRef.current = false;
-        }
+
+        checkout.mount(containerRef.current);
+        checkoutRef.current = checkout;
     }, []);
 
     // belt-and-suspenders unmount cleanup, in addition to the caller's own
