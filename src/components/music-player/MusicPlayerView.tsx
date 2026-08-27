@@ -1,10 +1,14 @@
+import { RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
-import { FaVolumeUp } from 'react-icons/fa';
+import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
+import { GetRoomEngine, GetRoomSession } from '../../api';
+import { useObjectDoubleClickedEvent } from '../../hooks';
 import { JukeboxQueueView } from './JukeboxQueueView';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { useJukebox } from './useJukebox';
 
 const VOLUME_STORAGE_KEY = 'pixelrp.jukebox.volume';
+const MUTED_STORAGE_KEY = 'pixelrp.jukebox.muted';
 
 const getStoredVolume = () =>
 {
@@ -19,17 +23,34 @@ const getStoredVolume = () =>
     return 50;
 }
 
+const getStoredMuted = () =>
+{
+    try { return localStorage.getItem(MUTED_STORAGE_KEY) === 'true'; }
+    catch(e) { return false; }
+}
+
 // PixelRP music player — the panel under the purse that appears whenever
 // the room's jukebox reports itself present. Presence, current track and
-// queue are all server-authoritative (see useJukebox); the queue-add icon
-// opens a window Task 7 mounts.
+// queue are all server-authoritative (see useJukebox); double-clicking the
+// jukebox furniture opens the queue window.
 export const MusicPlayerView: FC<{}> = props =>
 {
     const [ volume, setVolume ] = useState(getStoredVolume);
+    const [ muted, setMuted ] = useState(getStoredMuted);
     const [ expanded, setExpanded ] = useState(false);
-    // Task 7 mounts the add-song window from this state.
     const [ isQueueOpen, setIsQueueOpen ] = useState(false);
     const { present, current, queue } = useJukebox();
+
+    // Double-clicking the jukebox floor item opens the queue window (room
+    // objects carry the color-stripped classname, so jukebox*1 is 'jukebox').
+    useObjectDoubleClickedEvent(event =>
+    {
+        if(event.category !== RoomObjectCategory.FLOOR) return;
+
+        const roomObject = GetRoomEngine().getRoomObject(GetRoomSession().roomId, event.id, event.category);
+
+        if(roomObject && (roomObject.type === 'jukebox')) setIsQueueOpen(true);
+    });
 
     const updateVolume = (value: number) =>
     {
@@ -39,38 +60,46 @@ export const MusicPlayerView: FC<{}> = props =>
         catch(e) { }
     }
 
-    if(!present) return null;
+    const toggleMuted = () =>
+    {
+        setMuted(prevValue =>
+        {
+            try { localStorage.setItem(MUTED_STORAGE_KEY, (!prevValue).toString()); }
+            catch(e) { }
+
+            return !prevValue;
+        });
+    }
+
+    // The panel slides in only while something is queued or playing; the
+    // double-click hook and the queue window stay live while it's hidden so
+    // the first song can always be queued.
+    const active = (present && (!!current || (queue.length > 0)));
 
     return (
+        <div className={ `nitro-music-player-slide${ active ? ' is-active' : '' }` }>
         <div className="nitro-music-player rounded">
-            <div className="music-player-header">
-                <div className="music-player-kicker">NOW PLAYING</div>
-                { /* onClick lives on the wrapper: the FA kit swaps the <i> for an
-                     <svg> at runtime (MutationObserver), which kills React
-                     handlers bound to the <i> itself. The wrapper stays
-                     React-managed and the click bubbles up from the svg. */ }
-                <div className="music-player-add" title="Add a song" onClick={ event => setIsQueueOpen(true) }>
-                    <i className="fa-pixel fa-regular fa-plus-large" />
-                </div>
-            </div>
+            <div className="music-player-kicker">NOW PLAYING</div>
             <div className="music-player-title">{ current ? current.title : 'Nothing playing' }</div>
-            <div className="music-player-meta">
-                <span className="music-player-artist">{ current?.author || 'Unknown artist' }</span>
-                <span className="music-player-separator">·</span>
-                <span className="music-player-album">{ current ? `queued by ${ current.queuedBy }` : 'Unknown album' }</span>
-            </div>
             <div className="music-player-next">
                 <span className="music-player-kicker">UP NEXT</span>
                 <span className="music-player-next-song">{ queue[0] ? queue[0].title : 'Queue is empty' }</span>
             </div>
             <div className="music-player-volume">
-                <FaVolumeUp className="fa-icon" />
+                { /* react-icons svgs are React-managed, so a direct onClick is
+                     safe here (unlike the FA kit's swapped-in icons) */ }
+                { muted
+                    ? <FaVolumeMute className="fa-icon music-player-mute is-muted" title="Unmute" onClick={ toggleMuted } />
+                    : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                 <input type="range" min={ 0 } max={ 100 } value={ volume } onChange={ event => updateVolume(parseInt(event.target.value)) } />
             </div>
             { current &&
-                <JukeboxYoutubePlayer current={ current } volume={ volume } expanded={ expanded } /> }
+                <JukeboxYoutubePlayer current={ current } volume={ volume } muted={ muted } expanded={ expanded } /> }
             { current &&
                 <div className="music-player-expand" onClick={ event => setExpanded(value => !value) }>{ expanded ? 'Shrink video' : 'Expand video' }</div> }
+        </div>
+            { /* portals to the windows layer; lives outside the sliding panel so
+                 it stays reachable while the panel is slid away */ }
             { isQueueOpen &&
                 <JukeboxQueueView current={ current } queue={ queue } onClose={ () => setIsQueueOpen(false) } /> }
         </div>

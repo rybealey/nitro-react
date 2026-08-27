@@ -22,18 +22,62 @@ const loadIframeApi = () =>
     return apiPromise;
 }
 
-interface JukeboxYoutubePlayerProps { current: JukeboxCurrent; volume: number; expanded: boolean; }
+interface JukeboxYoutubePlayerProps { current: JukeboxCurrent; volume: number; muted: boolean; expanded: boolean; }
 
 export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
 {
-    const { current = null, volume = 50, expanded = false } = props;
+    const { current = null, volume = 50, muted = false, expanded = false } = props;
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const currentRef = useRef<JukeboxCurrent>(null);
     const loadedVideoIdRef = useRef<string>(null);
     const reportedDurationFor = useRef<string>(null);
     const errorReportTimerRef = useRef<number>(null);
-    const [ needsUnmute, setNeedsUnmute ] = useState(true);
+    const autoplayWatchdogRef = useRef<number>(null);
+    const mutedRef = useRef<boolean>(muted);
+    const [ needsUnmute, setNeedsUnmute ] = useState(false);
+
+    // Unmuted is the default: the hotel always has user activation by the
+    // time a track starts (login, walking, clicking), which satisfies the
+    // browser autoplay policy. If playback still gets blocked, fall back to
+    // muted playback + the unmute pill so the room at least stays in sync.
+    const fallBackToMuted = () =>
+    {
+        if(!playerRef.current) return;
+
+        playerRef.current.mute?.();
+        playerRef.current.playVideo?.();
+        // no pill when the player chose mute themselves — the speaker icon
+        // is their control
+        if(!mutedRef.current) setNeedsUnmute(true);
+    }
+
+    const clearAutoplayWatchdog = () =>
+    {
+        if(!autoplayWatchdogRef.current) return;
+
+        window.clearTimeout(autoplayWatchdogRef.current);
+        autoplayWatchdogRef.current = null;
+    }
+
+    // Not every browser fires onAutoplayBlocked — a watchdog catches the
+    // silent-refusal case (player just sits unstarted/paused after a load).
+    const armAutoplayWatchdog = () =>
+    {
+        clearAutoplayWatchdog();
+
+        autoplayWatchdogRef.current = window.setTimeout(() =>
+        {
+            autoplayWatchdogRef.current = null;
+
+            const YT = (window as any).YT;
+            const state = playerRef.current?.getPlayerState?.();
+
+            if((state === YT?.PlayerState?.PLAYING) || (state === YT?.PlayerState?.BUFFERING) || (state === YT?.PlayerState?.ENDED)) return;
+
+            fallBackToMuted();
+        }, 2500);
+    }
 
     // track changes / seeks — re-broadcasts of the same video re-anchor
     // startedAtMs server-side as elapsed drifts, so only reseek when the
@@ -58,6 +102,7 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
 
         loadedVideoIdRef.current = track.videoId;
         playerRef.current.loadVideoById({ videoId: track.videoId, startSeconds: elapsed });
+        armAutoplayWatchdog();
     }
 
     // create the player once
@@ -74,15 +119,24 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
                 events: {
                     onReady: () =>
                     {
-                        playerRef.current.mute();
+                        if(mutedRef.current) playerRef.current.mute?.();
+                        else playerRef.current.unMute?.();
+                        playerRef.current.setVolume?.(volume);
                         syncToCurrent();
                     },
+                    // Chrome's dedicated blocked-autoplay signal; the watchdog
+                    // covers browsers that don't fire it.
+                    onAutoplayBlocked: () => fallBackToMuted(),
                     onStateChange: (event: any) =>
                     {
                         if(event.data === (window as any).YT.PlayerState.ENDED)
                             SendMessageComposer(new RpJukeboxReportComposer(0, true));
                         if(event.data === (window as any).YT.PlayerState.PLAYING)
                         {
+                            clearAutoplayWatchdog();
+
+                            if(!playerRef.current.isMuted?.()) setNeedsUnmute(false);
+
                             const duration = Math.round(playerRef.current.getDuration());
                             if(duration > 0 && reportedDurationFor.current !== currentRef.current?.videoId)
                             {
@@ -121,6 +175,8 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
             playerRef.current?.destroy?.();
             playerRef.current = null;
 
+            clearAutoplayWatchdog();
+
             if(errorReportTimerRef.current)
             {
                 window.clearTimeout(errorReportTimerRef.current);
@@ -143,10 +199,32 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
 
     useEffect(() => { playerRef.current?.setVolume?.(volume); }, [ volume ]);
 
+    useEffect(() =>
+    {
+        mutedRef.current = muted;
+
+        if(!playerRef.current) return;
+
+        if(muted)
+        {
+            playerRef.current.mute?.();
+            setNeedsUnmute(false);
+        }
+        else
+        {
+            // the toggle click is a user gesture, so unmuting always sticks
+            playerRef.current.unMute?.();
+            playerRef.current.setVolume?.(volume);
+            setNeedsUnmute(false);
+        }
+    }, [ muted ]);
+
     const unmute = () =>
     {
         playerRef.current?.unMute?.();
         playerRef.current?.setVolume?.(volume);
+        // a blocked autoplay may have left the player paused
+        playerRef.current?.playVideo?.();
         setNeedsUnmute(false);
     }
 

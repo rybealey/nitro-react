@@ -1,8 +1,31 @@
 // PixelRP music player — right-side chrome panel under the purse. Paints
 // from the --prp-chrome-* vars like every chrome surface (never hardcoded
 // dark rgba), same plate + blur language as the purse above it.
+.nitro-music-player-slide {
+    max-height: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-height 0.35s ease;
+
+    &.is-active {
+        max-height: 500px; // fits the expanded video dock
+        overflow: visible;
+        pointer-events: all;
+
+        .nitro-music-player {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .nitro-music-player {
+        transform: translateX(calc(100% + 14px));
+        opacity: 0;
+        transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+}
+
 .nitro-music-player {
-    pointer-events: all;
     background: var(--prp-chrome-plate);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
@@ -12,19 +35,6 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-
-    .music-player-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-
-        .music-player-add {
-            cursor: pointer;
-            color: rgba($light, 0.6);
-
-            &:hover { color: $white; }
-        }
-    }
 
     .music-player-kicker {
         font-family: 'Ubuntu', sans-serif;
@@ -43,24 +53,6 @@
         text-overflow: ellipsis;
     }
 
-    .music-player-meta {
-        display: flex;
-        gap: 4px;
-        min-width: 0;
-        color: rgba($light, 0.7);
-
-        .music-player-artist,
-        .music-player-album {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .music-player-separator {
-            flex-shrink: 0;
-            color: rgba($light, 0.4);
-        }
-    }
 
     .music-player-next {
         display: flex;
@@ -87,6 +79,15 @@
         gap: 6px;
         margin-top: 4px;
         color: rgba($light, 0.7);
+
+        .music-player-mute {
+            cursor: pointer;
+            flex-shrink: 0;
+
+            &:hover { color: $white; }
+
+            &.is-muted { color: rgba($light, 0.4); }
+        }
 
         input[type='range'] {
             flex: 1;
