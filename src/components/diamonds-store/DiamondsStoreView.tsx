@@ -40,14 +40,6 @@ export const DiamondsStoreView: FC<{}> = props =>
     const hide = () =>
     {
         setIsVisible(false);
-
-        // don't reopen the store mid-checkout or stuck on a stale result -
-        // destroy() itself is handled by the checkoutActive effect below
-        if(buyState !== 'form')
-        {
-            setBuyState('form');
-            setCheckoutError('');
-        }
     }
 
     // While the field is empty or holds something unparseable, there's no
@@ -69,8 +61,15 @@ export const DiamondsStoreView: FC<{}> = props =>
     {
         const parsed = parseInt(diamondsInput, 10);
         const clamped = Math.min(MAX_DIAMONDS, Math.max(MIN_DIAMONDS, (isNaN(parsed) ? MIN_DIAMONDS : parsed)));
+        // The server validates diamonds as multiple_of:100 - snap to the
+        // nearest 100-step here too, so a blurred value (e.g. typed or
+        // pasted) can't sail through as a 422 from the checkout request.
+        // Round (not floor/ceil) first, then re-clamp: rounding a value near
+        // MIN/MAX up or down by up to 50 could otherwise push it just
+        // outside [MIN_DIAMONDS, MAX_DIAMONDS].
+        const stepped = Math.min(MAX_DIAMONDS, Math.max(MIN_DIAMONDS, Math.round(clamped / DIAMONDS_STEP) * DIAMONDS_STEP));
 
-        setDiamondsInput(String(clamped));
+        setDiamondsInput(String(stepped));
     }
 
     const onPurchase = () =>
@@ -101,6 +100,26 @@ export const DiamondsStoreView: FC<{}> = props =>
     // or unmounting) tears the embedded Checkout instance down so a second
     // one is never created while one is still live.
     const checkoutActive = (buyState === 'checkout') && isVisible && (currentTab === 'buy');
+
+    // Whenever the store closes - toolbar toggle, close button, or a
+    // 'diamonds-store/hide' link event - reset out of a mid-checkout or
+    // stuck-result state, so reopening always lands back on the form
+    // instead of resuming (or re-mounting a fresh) checkout session.
+    // destroy() of the embedded Checkout instance itself is handled by the
+    // checkoutActive effect above, once buyState flips away from 'checkout'.
+    //
+    // Driven by its own effect on [isVisible], not read/reset inline inside
+    // hide() - the linkTracker effect below only re-subscribes when
+    // isVisible changes, so a hide() closure captured there would otherwise
+    // keep seeing whatever buyState existed at that last subscribe, and
+    // silently skip the reset if checkout had since started.
+    useEffect(() =>
+    {
+        if(isVisible) return;
+
+        setBuyState('form');
+        setCheckoutError('');
+    }, [ isVisible ]);
 
     useEffect(() =>
     {
