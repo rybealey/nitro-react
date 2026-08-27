@@ -77,6 +77,8 @@
         image-rendering: pixelated;
 
         &.rp-item-smoothie { background-image: url('@/assets/images/rp-items/smoothie.png'); }
+        &.rp-item-vip-token-gold { background-image: url('@/assets/images/rp-items/vip-token-gold.png'); }
+        &.rp-item-vip-token-silver { background-image: url('@/assets/images/rp-items/vip-token-silver.png'); }
     }
 
     .rp-inventory-count {

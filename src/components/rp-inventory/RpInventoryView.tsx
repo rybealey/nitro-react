@@ -1,7 +1,7 @@
 import { ILinkEventTracker, RpInventoryEvent, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
-import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 
@@ -16,6 +16,8 @@ const UNLOCKED_SLOTS: number = 10;
 // item key -> display name + icon class (icons live in assets/images/rp-items)
 const ITEMS: Record<string, { name: string, cls: string }> = {
     smoothie: { name: 'Passive Smoothie', cls: 'rp-item-smoothie' },
+    vip_token_31: { name: 'VIP Token (31 days)', cls: 'rp-item-vip-token-gold' },
+    vip_token_14: { name: 'VIP Token (14 days)', cls: 'rp-item-vip-token-silver' },
 };
 
 export const RpInventoryView: FC<{}> = props =>
@@ -66,6 +68,11 @@ export const RpInventoryView: FC<{}> = props =>
 
     if(!isVisible) return null;
 
+    // VIP unlocks carry slots 11-12. Soft lapse: a slot past the unlock that
+    // still holds an item stays usable (consume/inspect) - it just won't accept
+    // anything new (the server enforces placement).
+    const unlockedSlots = (HasHabboVip() ? CARRY_SLOTS.length : UNLOCKED_SLOTS);
+
     return (
         <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
@@ -81,7 +88,7 @@ export const RpInventoryView: FC<{}> = props =>
                 <div className="rp-inventory-grid">
                     { CARRY_SLOTS.map(slot =>
                     {
-                        if(slot > UNLOCKED_SLOTS)
+                        if((slot > unlockedSlots) && !items.get(slot))
                         {
                             return (
                                 <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
