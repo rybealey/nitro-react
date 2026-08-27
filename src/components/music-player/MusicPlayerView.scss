@@ -119,56 +119,41 @@
         }
     }
 
-    .jukebox-player {
-        position: relative;
-        margin-top: 6px;
-        width: 200px;   // YouTube embed minimum — never smaller, never hidden
-        height: 200px;
-        align-self: center;
-
-        &.is-expanded {
-            width: 356px;
-            height: 200px;
-            align-self: flex-end; // grows leftward past the 200px column
-        }
+    // Audio-only playback: the iframe stays mounted and playing but is
+    // visually collapsed to a 1x1 transparent box (never display:none —
+    // that risks pausing playback in some browsers).
+    .jukebox-player-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
 
         .jukebox-player-frame,
         .jukebox-player-frame iframe {
-            width: 100%;
-            height: 100%;
+            width: 1px;
+            height: 1px;
             border: 0;
-            border-radius: $border-radius;
-        }
-
-        .jukebox-player-unmute {
-            position: absolute;
-            left: 50%;
-            bottom: 8px;
-            transform: translateX(-50%);
-            padding: 4px 10px;
-            border-radius: $border-radius;
-            background: var(--prp-chrome-95);
-            color: $white;
-            font-family: 'Ubuntu', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-
-            &:active { opacity: 0.72; }
         }
     }
 
-    .music-player-expand {
+    .jukebox-player-unmute {
         margin-top: 4px;
-        text-align: center;
+        align-self: center;
+        padding: 4px 10px;
+        border-radius: $border-radius;
+        background: rgba($light, 0.1);
+        color: $white;
+        font-family: 'Ubuntu', sans-serif;
         font-size: 11px;
-        color: rgba($light, 0.6);
+        font-weight: 700;
         cursor: pointer;
+        white-space: nowrap;
 
-        &:hover { color: $white; }
-        &:active { opacity: 0.72; }
+        &:hover { background: rgba($light, 0.18); }
     }
+
 }
 
 .nitro-jukebox-queue {

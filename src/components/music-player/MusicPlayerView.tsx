@@ -37,7 +37,6 @@ export const MusicPlayerView: FC<{}> = props =>
 {
     const [ volume, setVolume ] = useState(getStoredVolume);
     const [ muted, setMuted ] = useState(getStoredMuted);
-    const [ expanded, setExpanded ] = useState(false);
     const [ isQueueOpen, setIsQueueOpen ] = useState(false);
     const { present, current, queue } = useJukebox();
 
@@ -95,9 +94,7 @@ export const MusicPlayerView: FC<{}> = props =>
                 <input type="range" min={ 0 } max={ 100 } value={ volume } onChange={ event => updateVolume(parseInt(event.target.value)) } />
             </div>
             { current &&
-                <JukeboxYoutubePlayer current={ current } volume={ volume } muted={ muted } expanded={ expanded } /> }
-            { current &&
-                <div className="music-player-expand" onClick={ event => setExpanded(value => !value) }>{ expanded ? 'Shrink video' : 'Expand video' }</div> }
+                <JukeboxYoutubePlayer current={ current } volume={ volume } muted={ muted } /> }
         </div>
             { /* portals to the windows layer; lives outside the sliding panel so
                  it stays reachable while the panel is slid away */ }

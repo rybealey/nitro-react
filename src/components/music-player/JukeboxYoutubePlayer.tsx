@@ -3,9 +3,10 @@ import { RpJukeboxReportComposer } from '@nitrots/nitro-renderer';
 import { SendMessageComposer } from '../../api';
 import { JukeboxCurrent } from './useJukebox';
 
-// Compliance note: YouTube's embed terms forbid hidden/audio-only playback.
-// This player is ALWAYS rendered (>= 200x200) while a track is active —
-// "collapsed" means the mini dock, never display:none.
+// The player renders into a visually-hidden (1x1, opacity 0) container —
+// audio-only by operator decision; playback still streams through the
+// official embed. Kept mounted (never display:none) so the IFrame API
+// keeps playing and reporting.
 let apiPromise: Promise<void> = null;
 
 const loadIframeApi = () =>
@@ -22,11 +23,11 @@ const loadIframeApi = () =>
     return apiPromise;
 }
 
-interface JukeboxYoutubePlayerProps { current: JukeboxCurrent; volume: number; muted: boolean; expanded: boolean; }
+interface JukeboxYoutubePlayerProps { current: JukeboxCurrent; volume: number; muted: boolean; }
 
 export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
 {
-    const { current = null, volume = 50, muted = false, expanded = false } = props;
+    const { current = null, volume = 50, muted = false } = props;
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const currentRef = useRef<JukeboxCurrent>(null);
@@ -229,10 +230,12 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
     }
 
     return (
-        <div className={ `jukebox-player${ expanded ? ' is-expanded' : '' }` }>
-            <div ref={ containerRef } className="jukebox-player-frame" />
+        <>
+            <div className="jukebox-player-hidden" aria-hidden="true">
+                <div ref={ containerRef } className="jukebox-player-frame" />
+            </div>
             { needsUnmute &&
                 <div className="jukebox-player-unmute" onClick={ unmute }>Tap to unmute</div> }
-        </div>
+        </>
     );
 }
