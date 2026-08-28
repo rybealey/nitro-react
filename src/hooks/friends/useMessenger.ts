@@ -1,5 +1,5 @@
-import { NewConsoleMessageEvent, RoomInviteErrorEvent, RoomInviteEvent, RpMessengerMarkReadComposer, RpMessengerReceiptEvent, SendMessageComposer as SendMessageComposerPacket } from '@nitrots/nitro-renderer';
-import { useEffect, useMemo, useState } from 'react';
+import { NewConsoleMessageEvent, RoomInviteErrorEvent, RoomInviteEvent, RpMessengerFriendTypingEvent, RpMessengerMarkReadComposer, RpMessengerReceiptEvent, RpMessengerTypingComposer, SendMessageComposer as SendMessageComposerPacket } from '@nitrots/nitro-renderer';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBetween } from 'use-between';
 import { CloneObject, GetSessionDataManager, LocalizeText, MessengerIconState, MessengerThread, MessengerThreadChat, NotificationAlertType, PlaySound, SendMessageComposer, SoundNames } from '../../api';
 import { useMessageEvent } from '../events';
@@ -25,6 +25,9 @@ const useMessengerState = () =>
     const [ hiddenThreadIds, setHiddenThreadIds ] = useState<number[]>([]);
     const [ iconState, setIconState ] = useState<number>(MessengerIconState.HIDDEN);
     const [ receipts, setReceipts ] = useState<Record<number, MessengerReceipt>>({});
+    // Friend ids currently typing a message to us (live, pixelrp custom packet).
+    const [ typingFriendIds, setTypingFriendIds ] = useState<number[]>([]);
+    const typingTimers = useRef<Record<number, number>>({});
     const { getFriend = null } = useFriends();
     const { simpleAlert = null } = useNotification();
 
@@ -101,6 +104,37 @@ const useMessengerState = () =>
         SendMessageComposer(new RpMessengerMarkReadComposer(thread.participant.id));
     }
 
+    // Track a friend's live typing state, with a safety timeout so the
+    // indicator always clears even if a "stopped" packet never arrives.
+    const setFriendTyping = (friendId: number, typing: boolean) =>
+    {
+        if(!friendId || (friendId <= 0)) return;
+
+        window.clearTimeout(typingTimers.current[friendId]);
+
+        if(typing)
+        {
+            setTypingFriendIds(prevValue => ((prevValue.indexOf(friendId) >= 0) ? prevValue : [ ...prevValue, friendId ]));
+
+            typingTimers.current[friendId] = window.setTimeout(() => setFriendTyping(friendId, false), 8000);
+        }
+        else
+        {
+            delete typingTimers.current[friendId];
+
+            setTypingFriendIds(prevValue => prevValue.filter(id => (id !== friendId)));
+        }
+    }
+
+    // Tell the server we are (or stopped) typing to this friend, for their
+    // live typing indicator. Direct-message friends only.
+    const sendTyping = (friendId: number, typing: boolean) =>
+    {
+        if(!friendId || (friendId <= 0)) return;
+
+        SendMessageComposer(new RpMessengerTypingComposer(friendId, typing));
+    }
+
     const sendMessage = (thread: MessengerThread, senderId: number, messageText: string, secondsSinceSent: number = 0, extraData: string = null, messageType: number = MessengerThreadChat.CHAT) =>
     {
         if(!thread || !messageText || !messageText.length) return;
@@ -141,6 +175,9 @@ const useMessengerState = () =>
 
         if(!thread) return;
 
+        // A message arriving means they've stopped typing.
+        setFriendTyping(parser.senderId, false);
+
         sendMessage(thread, parser.senderId, parser.messageText, parser.secondsSinceSent, parser.extraData);
     });
 
@@ -161,6 +198,15 @@ const useMessengerState = () =>
         if(!parser || (parser.friendId <= 0)) return;
 
         setReceipts(prevValue => ({ ...prevValue, [parser.friendId]: { type: parser.type, date: new Date() }}));
+    });
+
+    useMessageEvent<RpMessengerFriendTypingEvent>(RpMessengerFriendTypingEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser || (parser.friendId <= 0)) return;
+
+        setFriendTyping(parser.friendId, parser.typing);
     });
 
     useMessageEvent<RoomInviteErrorEvent>(RoomInviteErrorEvent, event =>
@@ -216,7 +262,7 @@ const useMessengerState = () =>
         });
     }, [ visibleThreads ]);
 
-    return { messageThreads, activeThread, iconState, visibleThreads, receipts, getMessageThread, setActiveThreadId, closeThread, sendMessage };
+    return { messageThreads, activeThread, iconState, visibleThreads, receipts, typingFriendIds, getMessageThread, setActiveThreadId, closeThread, sendMessage, sendTyping };
 }
 
 export const useMessenger = () => useBetween(useMessengerState);

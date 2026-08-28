@@ -26,7 +26,7 @@ interface PhoneThreadViewProps
 export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 {
     const { thread = null, onBack = null, onDeleted = null } = props;
-    const { sendMessage = null, closeThread = null, receipts = {}} = useMessenger();
+    const { sendMessage = null, closeThread = null, receipts = {}, typingFriendIds = [], sendTyping = null } = useMessenger();
     const { getFriend = null, followFriend = null } = useFriends();
     const { mutedIds, toggleMuted } = usePhonePrefs();
     const { photos = [], requestPhotos = null, saveScreenshot = null } = usePhonePhotos();
@@ -40,6 +40,8 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     const [ toastText, setToastText ] = useState<string>(null);
     const messagesBox = useRef<HTMLDivElement>(null);
     const toastTimer = useRef<number>(0);
+    const typingSentRef = useRef(false);
+    const typingStopTimer = useRef<number>(0);
 
     const participant = (thread ? thread.participant : null);
     const isGroup = (participant && (participant.id <= 0));
@@ -47,6 +49,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     const online = (friend ? friend.online : false);
     const muted = ((participant && !isGroup) ? (mutedIds.indexOf(participant.id) >= 0) : false);
     const ownUserId = GetSessionDataManager().userId;
+    const isTyping = (!!participant && !isGroup && (typingFriendIds.indexOf(participant.id) >= 0));
 
     const chatCount = useMemo(() =>
     {
@@ -58,7 +61,21 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     useEffect(() =>
     {
         if(messagesBox.current) messagesBox.current.scrollTop = messagesBox.current.scrollHeight;
-    }, [ chatCount, thread ]);
+    }, [ chatCount, thread, isTyping ]);
+
+    // Leaving the conversation (thread switch or unmount) tells the friend we
+    // stopped typing. The receiver also auto-expires the indicator on its own.
+    useEffect(() =>
+    {
+        return () =>
+        {
+            window.clearTimeout(typingStopTimer.current);
+
+            if(typingSentRef.current && participant && !isGroup && sendTyping) sendTyping(participant.id, false);
+
+            typingSentRef.current = false;
+        }
+    }, [ participant?.id ]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if(!thread || !participant) return null;
 
@@ -103,6 +120,41 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
         }
     }
 
+    // Tell the friend we stopped typing (on send, cleared input, or leaving).
+    const stopTyping = () =>
+    {
+        window.clearTimeout(typingStopTimer.current);
+
+        if(typingSentRef.current && participant && !isGroup && sendTyping) sendTyping(participant.id, false);
+
+        typingSentRef.current = false;
+    }
+
+    // One "typing" per burst; a 3s idle timer sends the "stopped".
+    const notifyTyping = () =>
+    {
+        if(!participant || isGroup || !sendTyping) return;
+
+        if(!typingSentRef.current)
+        {
+            sendTyping(participant.id, true);
+
+            typingSentRef.current = true;
+        }
+
+        window.clearTimeout(typingStopTimer.current);
+
+        typingStopTimer.current = window.setTimeout(stopTyping, 3000);
+    }
+
+    const onMessageChange = (value: string) =>
+    {
+        setMessageText(value);
+
+        if(value.trim().length) notifyTyping();
+        else stopTyping();
+    }
+
     const send = () =>
     {
         const text = messageText.trim();
@@ -111,6 +163,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 
         sendMessage(thread, ownUserId, text);
         setMessageText('');
+        stopTyping();
     }
 
     const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) =>
@@ -266,14 +319,20 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                         );
                     });
                 }) }
-                { receiptText &&
+                { receiptText && !isTyping &&
                     <div className="phone-thread-receipt">{ receiptText }</div> }
+                { isTyping &&
+                    <div className="phone-thread-typing">
+                        <span />
+                        <span />
+                        <span />
+                    </div> }
             </div>
             <div className="phone-thread-input">
                 <div className={ `phone-tap phone-thread-attach${ attachOpen ? ' is-open' : '' }` } title="Attach" onClick={ event => setAttachOpen(!attachOpen) }>
                     <PhoneIcon icon="plus" size={ 22 } />
                 </div>
-                <input type="text" spellCheck={ false } maxLength={ 255 } placeholder="Message" value={ messageText } onChange={ event => setMessageText(event.target.value) } onKeyDown={ onKeyDown } />
+                <input type="text" spellCheck={ false } maxLength={ 255 } placeholder="Message" value={ messageText } onChange={ event => onMessageChange(event.target.value) } onKeyDown={ onKeyDown } />
                 <div className={ `phone-tap phone-thread-send${ messageText.trim().length ? ' is-ready' : '' }` } title="Send" onClick={ send }>
                     <PhoneIcon icon="arrow-up" size={ 20 } />
                 </div>
