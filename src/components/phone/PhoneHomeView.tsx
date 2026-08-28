@@ -1,5 +1,4 @@
 import { FC, PointerEvent, useRef, useState } from 'react';
-import { PhoneIcon } from './PhoneIcon';
 import { DOCK_CAPACITY, usePhoneBadges, usePhonePrefs } from './usePhone';
 
 // Phone home screen: terrace wallpaper, a 4-wide app grid and the dock.
@@ -12,21 +11,30 @@ const DRAG_THRESHOLD: number = 8;
 
 interface PhoneAppDef
 {
+    // FontAwesome Duotone Solid glyph name (fa-<icon>) for the app tile.
     icon: string;
     active?: boolean;
+    // Per-app icon plate gradient (from the design); disabled apps still get
+    // their colour, greyed by the .is-disabled filter.
+    plate?: string;
 }
 
 const APP_DEFS: Record<string, PhoneAppDef> = {
-    'Contacts': { icon: 'users', active: true },
-    'Settings': { icon: 'sliders', active: true },
-    'Characters': { icon: 'user' },
-    'App Store': { icon: 'download' },
-    'Mercury': { icon: 'dollar' },
-    'Sitch': { icon: 'heart' },
-    'Messages': { icon: 'message', active: true },
-    'Camera': { icon: 'camera', active: true },
-    'Photos': { icon: 'image', active: true }
+    'Contacts': { icon: 'address-book', active: true, plate: 'linear-gradient(160deg, #8fb8ff, #3f6fbf 58%, #204a8a)' },
+    'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #b8b8c0, #8a8a92 58%, #55555e)' },
+    'Characters': { icon: 'user', plate: 'linear-gradient(160deg, #b6a0ff, #7a5cff 60%, #4a34c0)' },
+    'App Store': { icon: 'store', plate: 'linear-gradient(160deg, #6fd0ff, #2b9fd6 58%, #166a99)' },
+    'Mercury': { icon: 'sack-dollar', plate: 'linear-gradient(160deg, #7fe0a0, #3fbf5a 60%, #1f8a3e)' },
+    'Sitch': { icon: 'heart', plate: 'linear-gradient(160deg, #ff8fbf, #e93a7d 60%, #a01e5c)' },
+    'Messages': { icon: 'comment-dots', active: true, plate: 'linear-gradient(160deg, #ff9dc6, #e93a7d 58%, #a01e5c)' },
+    'Camera': { icon: 'camera', active: true, plate: 'linear-gradient(160deg, #b8bcc8, #7a7f8f 58%, #474b57)' },
+    'Photos': { icon: 'images', active: true, plate: 'linear-gradient(160deg, #ffd36f, #f0954a 50%, #e93a7d)' }
 };
+
+// The phone app-tile glyphs come from the PixelRP FontAwesome Duotone Solid
+// kit (loaded in index.html), not the pixelarticons mask set the rest of the
+// phone chrome uses.
+const AppGlyph: FC<{ icon: string }> = ({ icon }) => <i className={ `phone-app-fa fa-duotone fa-solid fa-${ icon }` } aria-hidden="true" />;
 
 interface DragApp
 {
@@ -168,8 +176,8 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 
         return (
             <div key={ key } data-app-key={ key } data-zone={ zone } className={ `phone-app${ app.active ? ' phone-tap' : ' is-disabled' }${ dragging ? ' is-drag-source' : '' }` } title={ app.active ? key : `${ key } - coming soon` } onClick={ event => onTileTap(key) } onPointerDown={ event => onTileDown(event, key) } onPointerMove={ onTileMove } onPointerUp={ onTileUp } onPointerCancel={ onTileUp }>
-                <div className="phone-app-tile">
-                    <PhoneIcon icon={ app.icon } size={ 26 } />
+                <div className="phone-app-tile" style={ app.plate ? { background: app.plate } : undefined }>
+                    <AppGlyph icon={ app.icon } />
                     { (count > 0) &&
                         <div className="phone-app-badge">{ (count > 99) ? '99+' : count }</div> }
                 </div>
@@ -206,8 +214,8 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
             </div>
             { dragApp && ghostStyle &&
                 <div className="phone-app-ghost" style={ ghostStyle }>
-                    <div className="phone-app-tile">
-                        <PhoneIcon icon={ (APP_DEFS[dragApp.key] ?? { icon: 'user' }).icon } size={ 26 } />
+                    <div className="phone-app-tile" style={ (APP_DEFS[dragApp.key]?.plate) ? { background: APP_DEFS[dragApp.key].plate } : undefined }>
+                        <AppGlyph icon={ (APP_DEFS[dragApp.key] ?? { icon: 'user' }).icon } />
                     </div>
                 </div> }
         </div>

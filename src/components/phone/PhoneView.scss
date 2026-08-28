@@ -85,6 +85,19 @@ $phone-scale: 0.8;
         --ph-scrim-zero: rgba(253, 252, 255, 0);
         --ph-header-scrim: rgba(253, 252, 255, 0.92);
 
+        // Settings list sits on a faintly-grey "grouped" backdrop; cards sit
+        // on top in --ph-bg.
+        --ph-group: #f1f0f4;
+        // Glassmorphism — the design's signature chrome. Translucent fills +
+        // backdrop blur on bars, dock, search, headers, inputs and menus.
+        // Authored at the 336px shell size (visually softened again by the
+        // 0.8 shell scale), so the blur radius is kept modest.
+        --ph-glass: rgba(253, 252, 255, 0.55);
+        --ph-glass2: rgba(253, 252, 255, 0.72);
+        --ph-glass-brd: rgba(255, 255, 255, 0.7);
+        --ph-glass-hi: rgba(255, 255, 255, 0.9);
+        --ph-glass-blur: blur(18px) saturate(1.8);
+
         &.is-dark {
             --ph-bg: #171021;
             --ph-text: #f4f0f7;
@@ -100,6 +113,13 @@ $phone-scale: 0.8;
             --ph-status-scrim: rgba(23, 16, 33, 0.85);
             --ph-scrim-zero: rgba(23, 16, 33, 0);
             --ph-header-scrim: rgba(23, 16, 33, 0.92);
+
+            --ph-group: #100d14;
+            --ph-glass: rgba(37, 29, 49, 0.55);
+            --ph-glass2: rgba(37, 29, 49, 0.72);
+            --ph-glass-brd: rgba(255, 255, 255, 0.14);
+            --ph-glass-hi: rgba(255, 255, 255, 0.18);
+            --ph-glass-blur: blur(18px) saturate(1.7);
         }
     }
 
@@ -138,7 +158,10 @@ $phone-scale: 0.8;
 
         &.on-light {
             color: var(--ph-text);
-            background: linear-gradient(180deg, var(--ph-status-scrim), var(--ph-scrim-zero));
+            background: var(--ph-glass);
+            backdrop-filter: var(--ph-glass-blur);
+            -webkit-backdrop-filter: var(--ph-glass-blur);
+            box-shadow: inset 0 1px 0 var(--ph-glass-hi);
         }
     }
 
@@ -318,10 +341,14 @@ $phone-scale: 0.8;
         right: 16px;
         bottom: 26px;
         min-height: 76px;
-        border-radius: 22px;
-        background: rgba(26, 10, 20, 0.34);
-        backdrop-filter: blur(3px);
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 26px;
+        // Over the wallpaper the dock is a light glass panel (the design uses
+        // the same translucent white regardless of theme).
+        background: rgba(255, 255, 255, 0.14);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -375,6 +402,25 @@ $phone-scale: 0.8;
 
         .phone-pi {
             filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+        }
+
+        // FontAwesome Duotone Solid app glyph (kit c305b2c178). Both layers
+        // paint white; the secondary layer rides at lower opacity for the
+        // duotone depth. The FA runtime swaps the <i> for an inline <svg>.
+        .phone-app-fa {
+            font-size: 30px;
+            line-height: 1;
+            color: #ffffff;
+            --fa-primary-color: #ffffff;
+            --fa-secondary-color: #ffffff;
+            --fa-primary-opacity: 1;
+            --fa-secondary-opacity: 0.45;
+            filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+        }
+
+        svg.phone-app-fa {
+            width: 30px;
+            height: 30px;
         }
     }
 
@@ -470,7 +516,10 @@ $phone-scale: 0.8;
         gap: 8px;
         height: 34px;
         padding: 0 11px;
-        background: var(--ph-inset);
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
         border-radius: 11px;
         color: $phone-muted-text;
 
@@ -635,6 +684,12 @@ $phone-scale: 0.8;
 
     .phone-pinned-avatar {
         position: relative;
+
+        // Bordered rounded-square tile (design), with the hard pixel-sticker
+        // offset shadow. The avatar itself carries the ink outline + field.
+        .phone-avatar-crop {
+            box-shadow: 3px 3px 0 rgba(26, 10, 20, 0.14);
+        }
     }
 
     .phone-pinned-name {
@@ -875,11 +930,13 @@ $phone-scale: 0.8;
 
     .phone-pin-menu-card {
         width: 220px;
-        background: $phone-screen-bg;
-        border: 2px solid $phone-ink;
-        border-radius: 14px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        border-radius: 20px;
         overflow: hidden;
-        box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.4);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 12px 34px rgba(0, 0, 0, 0.4);
     }
 
     .phone-pin-menu-item {
@@ -893,7 +950,7 @@ $phone-scale: 0.8;
         color: var(--ph-text);
 
         & + .phone-pin-menu-item {
-            border-top: 1.5px solid $phone-hairline;
+            border-top: 1.5px solid var(--ph-glass-brd);
         }
 
         &.is-danger {
@@ -919,8 +976,11 @@ $phone-scale: 0.8;
         display: flex;
         align-items: center;
         gap: 6px;
-        background: var(--ph-header-scrim);
-        border-bottom: 1px solid $phone-hairline;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border-bottom: 1px solid var(--ph-glass-brd);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi);
         z-index: 20;
     }
 
@@ -1080,7 +1140,11 @@ $phone-scale: 0.8;
         display: flex;
         align-items: center;
         gap: 9px;
-        border-top: 1px solid $phone-hairline;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border-top: 1px solid var(--ph-glass-brd);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi);
 
         input {
             flex: 1;
@@ -1157,11 +1221,13 @@ $phone-scale: 0.8;
         left: 10px;
         bottom: 74px;
         width: 200px;
-        background: $phone-screen-bg;
-        border: 2px solid $phone-ink;
-        border-radius: 14px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        border-radius: 18px;
         overflow: hidden;
-        box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 10px 30px rgba(0, 0, 0, 0.3);
         animation: phone-sheet-up 0.18s cubic-bezier(0.22, 0.61, 0.36, 1) both;
     }
 
@@ -1352,11 +1418,13 @@ $phone-scale: 0.8;
         top: 92px;
         right: 12px;
         width: 220px;
-        background: $phone-screen-bg;
-        border: 2px solid $phone-ink;
-        border-radius: 14px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        border-radius: 18px;
         overflow: hidden;
-        box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 12px 34px rgba(0, 0, 0, 0.4);
     }
 
     // ----- compose -----
@@ -1690,6 +1758,124 @@ $phone-scale: 0.8;
         font-size: 11.5px;
         line-height: 1.5;
         color: var(--ph-soft);
+    }
+
+    // Settings screen sits on the grouped backdrop; each card floats on
+    // --ph-bg above it (iOS grouped-list look).
+    .phone-settings.phone-app-screen {
+        background: var(--ph-group);
+    }
+
+    .phone-settings-list {
+        padding: 6px 0 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .phone-settings-account {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 13px 15px;
+
+        .phone-settings-account-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .phone-settings-account-name {
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--ph-text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .phone-settings-account-sub {
+            font-size: 12px;
+            color: var(--ph-faint);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .phone-settings-item {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 10px 14px;
+
+        & + .phone-settings-item {
+            border-top: 1px solid var(--ph-hairline);
+        }
+
+        &.is-inert {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .phone-settings-item-label {
+            flex: 1;
+            min-width: 0;
+            font-size: 15px;
+            color: var(--ph-text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .phone-settings-item-value {
+            font-size: 13px;
+            color: var(--ph-faint);
+            flex: none;
+        }
+
+        .phone-settings-chev {
+            opacity: 0.35;
+            flex: none;
+        }
+    }
+
+    // Colored rounded icon chip carrying a white glyph.
+    .phone-settings-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        color: #ffffff;
+    }
+
+    // Appearance sub-screen option list (Light / Dark / Automatic).
+    .phone-appearance-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 15px;
+        font-size: 15px;
+        color: var(--ph-text);
+
+        & + .phone-appearance-option {
+            border-top: 1px solid var(--ph-hairline);
+        }
+
+        span {
+            flex: 1;
+        }
+
+        .phone-appearance-check {
+            color: $phone-pink;
+            flex: none;
+        }
+
+        &:hover {
+            background: var(--ph-hover);
+        }
     }
 
     // ----- camera app -----
@@ -2279,7 +2465,10 @@ $phone-scale: 0.8;
 $phone-icons: 'message', 'users', 'user', 'user-plus', 'sliders', 'camera', 'image', 'download', 'dollar',
     'heart', 'pencil', 'search', 'bookmark', 'volume-x', 'volume-2', 'trash', 'chevron-left',
     'more-vertical', 'arrow-up', 'plus', 'check', 'close', 'phone', 'map-pin-home',
-    'megaphone', 'cellular-signal-3', 'battery-full', 'crop';
+    'megaphone', 'cellular-signal-3', 'battery-full', 'crop',
+    // added for the redesigned Settings / Appearance surfaces
+    'chevron-right', 'sun', 'moon', 'clock', 'human', 'lock', 'shield', 'gamepad',
+    'wallet', 'wifi', 'battery', 'bell';
 
 @each $name in $phone-icons {
     .phone-pi-#{$name} {

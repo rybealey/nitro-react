@@ -4,6 +4,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, PlaySound, RemoveLinkEventTracker, SoundNames } from '../../api';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
+import { PhoneAppearanceView } from './PhoneAppearanceView';
 import { PhoneCallView } from './PhoneCallView';
 import { PhoneCameraView } from './PhoneCameraView';
 import { PhoneContactsView } from './PhoneContactsView';
@@ -20,7 +21,7 @@ import { usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -37,6 +38,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
+    if(to === 'appearance') return 'slide-right';
+    if((from === 'appearance') && (to === 'settings')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -370,7 +373,9 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } /> }
+                            { (screen === 'appearance') &&
+                                <PhoneAppearanceView onBack={ () => go('settings') } /> }
                         </div>
                         { callFriend &&
                             <PhoneCallView friend={ callFriend } onEnd={ () => setCallFriendId(0) } /> }

@@ -1,4 +1,4 @@
-import { FC, PointerEvent, useMemo, useRef, useState } from 'react';
+import { FC, PointerEvent, useMemo, useRef, useState, WheelEvent } from 'react';
 import { GetGroupChatData, MessengerFriend, MessengerThread, MessengerThreadChat } from '../../api';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
@@ -81,6 +81,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
     const [ dragPin, setDragPin ] = useState<{ friendId: number, x: number, y: number, offX: number, offY: number }>(null);
     const dragMoved = useRef(false);
     const dragStartX = useRef(0);
+    const wheelSettleTimer = useRef<number>(0);
     const longPressTimer = useRef<number>(0);
     const longPressFired = useRef(false);
     const pinMoved = useRef(false);
@@ -160,6 +161,47 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
 
         setOpenRowId((offset < (-SWIPE_WIDTH / 2)) ? dragState.threadId : 0);
         setDragState(null);
+    }
+
+    // Trackpad support: a two-finger horizontal swipe fires wheel events
+    // (deltaX), never pointer drags, so mice/trackpads couldn't open the
+    // row actions. Drive the same offset model from horizontal wheel delta,
+    // then settle open/closed once the gesture stops. Only hijack clearly
+    // horizontal wheels so vertical scrolling is untouched.
+    const onRowWheel = (event: WheelEvent<HTMLDivElement>, threadId: number) =>
+    {
+        if(Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+
+        dragMoved.current = true;
+
+        setDragState(prevValue =>
+        {
+            const sameRow = (prevValue && (prevValue.threadId === threadId));
+            const currentDx = (sameRow ? prevValue.dx : 0);
+            const startOffset = ((openRowId === threadId) ? -SWIPE_WIDTH : 0);
+
+            // Swiping content left (deltaX > 0) reveals the right-side
+            // actions, i.e. pushes the row negative.
+            return { threadId, startOffset, dx: (currentDx - event.deltaX) };
+        });
+
+        window.clearTimeout(wheelSettleTimer.current);
+
+        wheelSettleTimer.current = window.setTimeout(() =>
+        {
+            setDragState(prevValue =>
+            {
+                if(!prevValue || (prevValue.threadId !== threadId)) return prevValue;
+
+                const offset = (prevValue.startOffset + prevValue.dx);
+
+                setOpenRowId((offset < (-SWIPE_WIDTH / 2)) ? threadId : 0);
+
+                return null;
+            });
+
+            dragMoved.current = false;
+        }, 140);
     }
 
     const onRowTap = (thread: MessengerThread) =>
@@ -332,7 +374,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                                         return (
                                             <div key={ entry.friend.id } data-pin-id={ entry.friend.id } className={ `phone-tap phone-pinned-tile${ (dragPin && (dragPin.friendId === entry.friend.id)) ? ' is-drag-source' : '' }` } onClick={ event => onPinTap(entry.friend.id) } onPointerDown={ event => onPinDown(event, entry.friend.id) } onPointerMove={ onPinMove } onPointerUp={ onPinUp } onPointerCancel={ onPinUp }>
                                                 <div className="phone-pinned-avatar">
-                                                    <PhoneAvatar id={ entry.friend.id } figure={ entry.friend.figure } size={ 60 } online={ entry.friend.online } unmasked={ true } />
+                                                    <PhoneAvatar id={ entry.friend.id } figure={ entry.friend.figure } size={ 60 } online={ entry.friend.online } />
                                                     { (unread > 0) &&
                                                         <div className="phone-unread-badge">{ unread }</div> }
                                                     { muted &&
@@ -382,7 +424,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                                                 <span>DELETE</span>
                                             </div>
                                         </div>
-                                        <div className={ `phone-thread-row${ dragging ? ' is-dragging' : '' }` } style={ { transform: `translateX(${ offset }px)` } } onClick={ event => onRowTap(thread) } onPointerDown={ event => onRowDown(event, thread.threadId) } onPointerMove={ onRowMove } onPointerUp={ onRowUp } onPointerCancel={ onRowUp }>
+                                        <div className={ `phone-thread-row${ dragging ? ' is-dragging' : '' }` } style={ { transform: `translateX(${ offset }px)` } } onClick={ event => onRowTap(thread) } onWheel={ event => onRowWheel(event, thread.threadId) } onPointerDown={ event => onRowDown(event, thread.threadId) } onPointerMove={ onRowMove } onPointerUp={ onRowUp } onPointerCancel={ onRowUp }>
                                             <div className={ `phone-thread-dot${ (unread > 0) ? ' is-unread' : '' }` } />
                                             <PhoneAvatar id={ participant.id } figure={ participant.figure } size={ 48 } online={ isGroup ? undefined : getFriend && !!getFriend(participant.id)?.online } />
                                             <div className="phone-thread-row-body">
@@ -452,7 +494,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
                 </div> }
             { dragPin && dragPinFriend && pinGhostStyle &&
                 <div className="phone-pinned-ghost" style={ pinGhostStyle }>
-                    <PhoneAvatar id={ dragPinFriend.id } figure={ dragPinFriend.figure } size={ 60 } unmasked={ true } />
+                    <PhoneAvatar id={ dragPinFriend.id } figure={ dragPinFriend.figure } size={ 60 } />
                     <div className="phone-pinned-name">{ dragPinFriend.name }</div>
                 </div> }
         </div>

@@ -1,47 +1,56 @@
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
+import { GetSessionDataManager } from '../../api';
+import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
-import { usePhonePrefs, usePhoneTheme } from './usePhone';
+import { usePhonePrefs } from './usePhone';
 
-// Settings app — Appearance for now, iOS Display & Brightness style: two
-// mini phone previews (Light / Dark) plus an Automatic toggle that follows
-// the device's prefers-color-scheme. Only the phone UI themes; the hotel
-// around it never changes.
+// Settings app, iOS grouped-list style: a real account row (the player's own
+// avatar + name) on top, then the familiar system groups. Every row is a
+// visible-but-inert placeholder except Appearance, which opens its own
+// sub-screen and drives the phone's live light/dark theme.
 
 interface PhoneSettingsViewProps
 {
     onBack: () => void;
+    openAppearance: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null } = props;
-    const { theme, setTheme } = usePhonePrefs();
-    const { resolvedDark = false, systemDark = false } = usePhoneTheme();
+    const { onBack = null, openAppearance = null } = props;
+    const { theme } = usePhonePrefs();
 
-    const isAuto = (theme === 'auto');
+    const ownId = GetSessionDataManager().userId;
+    const ownFigure = GetSessionDataManager().figure;
+    const ownName = (GetSessionDataManager().userName || 'You');
 
-    // A preview shows as "chosen" when it's the pinned mode, or — under
-    // Automatic — the mode the system currently resolves to.
-    const lightChosen = (isAuto ? !resolvedDark : (theme === 'light'));
-    const darkChosen = (isAuto ? resolvedDark : (theme === 'dark'));
+    const appearanceLabel = ((theme === 'auto') ? 'Automatic' : ((theme === 'dark') ? 'Dark' : 'Light'));
 
-    const previewCard = (dark: boolean, label: string, chosen: boolean) =>
+    // One list row. Inert rows (the placeholders) are greyed and take no tap;
+    // live rows get the tap affordance + handler.
+    const item = (icon: string, iconBg: string, label: string, options: { value?: string, chevron?: boolean, inert?: boolean, switchOn?: boolean, onTap?: () => void } = {}) =>
     {
+        const { value = null, chevron = true, inert = true, switchOn = undefined, onTap = null } = options;
+
         return (
-            <div className="phone-tap phone-settings-appearance-option" onClick={ event => setTheme(dark ? 'dark' : 'light') }>
-                <div className={ `phone-settings-preview${ dark ? ' is-dark-preview' : '' }` }>
-                    <div className="phone-settings-preview-bar" />
-                    <div className="phone-settings-preview-bubble" />
-                    <div className="phone-settings-preview-bubble is-mine" />
-                    <div className="phone-settings-preview-bubble" />
+            <div className={ `phone-settings-item${ inert ? ' is-inert' : ' phone-tap' }` } onClick={ event => (!inert && onTap && onTap()) }>
+                <div className="phone-settings-icon" style={ { background: iconBg } }>
+                    <PhoneIcon icon={ icon } size={ 17 } />
                 </div>
-                <div className="phone-settings-preview-label">{ label }</div>
-                <div className={ `phone-settings-preview-check${ chosen ? ' is-chosen' : '' }${ (chosen && isAuto) ? ' is-auto' : '' }` }>
-                    { chosen && <PhoneIcon icon="check" size={ 12 } /> }
-                </div>
+                <div className="phone-settings-item-label">{ label }</div>
+                { (value !== null) &&
+                    <span className="phone-settings-item-value">{ value }</span> }
+                { (switchOn !== undefined) &&
+                    <div className={ `phone-settings-switch${ switchOn ? ' is-on' : '' }` }>
+                        <div className="phone-settings-switch-knob" />
+                    </div> }
+                { chevron &&
+                    <PhoneIcon icon="chevron-right" size={ 18 } className="phone-settings-chev" /> }
             </div>
         );
     }
+
+    const group = (children: ReactNode) => <div className="phone-settings-card">{ children }</div>;
 
     return (
         <div className="phone-screen phone-app-screen phone-settings">
@@ -57,23 +66,40 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                <div className="phone-section-label">APPEARANCE</div>
-                <div className="phone-settings-card">
-                    <div className="phone-settings-appearance">
-                        { previewCard(false, 'Light', lightChosen) }
-                        { previewCard(true, 'Dark', darkChosen) }
-                    </div>
-                    <div className="phone-settings-row">
-                        <div className="phone-settings-row-body">
-                            <div className="phone-settings-row-title">Automatic</div>
-                            <div className="phone-settings-row-sub">{ isAuto ? `Following your device - ${ systemDark ? 'dark' : 'light' } right now` : 'Match your device\'s appearance' }</div>
+                <div className="phone-settings-list">
+                    { group(
+                        <div className="phone-settings-account">
+                            <PhoneAvatar id={ ownId } figure={ ownFigure } size={ 54 } />
+                            <div className="phone-settings-account-body">
+                                <div className="phone-settings-account-name">{ ownName }</div>
+                                <div className="phone-settings-account-sub">PixelRP ID, Wallet & more</div>
+                            </div>
+                            <PhoneIcon icon="chevron-right" size={ 20 } className="phone-settings-chev" />
                         </div>
-                        <div className={ `phone-tap phone-settings-switch${ isAuto ? ' is-on' : '' }` } onClick={ event => setTheme(isAuto ? (resolvedDark ? 'dark' : 'light') : 'auto') }>
-                            <div className="phone-settings-switch-knob" />
-                        </div>
-                    </div>
+                    ) }
+                    { group(<>
+                        { item('cellular-signal-3', '#f0954a', 'Airplane Mode', { chevron: false, switchOn: false }) }
+                        { item('wifi', '#3f8fbf', 'Wi-Fi', { value: 'Pixel' }) }
+                        { item('cellular-signal-3', '#3fbf5a', 'Cellular') }
+                        { item('battery', '#3fbf5a', 'Battery') }
+                    </>) }
+                    { group(<>
+                        { item('sliders', '#8a8a90', 'General') }
+                        { item('human', '#3f6fbf', 'Accessibility') }
+                        { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
+                        { item('image', '#2ba88f', 'Wallpaper') }
+                    </>) }
+                    { group(item('clock', '#7a5cff', 'Screen Time')) }
+                    { group(<>
+                        { item('shield', '#e03131', 'Emergency SOS') }
+                        { item('lock', '#3f8fbf', 'Privacy & Security') }
+                    </>) }
+                    { group(<>
+                        { item('gamepad', '#e93a7d', 'Game Center') }
+                        { item('wallet', '#1a0a14', 'Wallet') }
+                    </>) }
                 </div>
-                <div className="phone-settings-footnote">Appearance only changes your phone - the rest of the hotel stays as it is.</div>
+                <div className="phone-settings-footnote">Placeholder services aside, Appearance is live - it only re-skins your phone.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>
