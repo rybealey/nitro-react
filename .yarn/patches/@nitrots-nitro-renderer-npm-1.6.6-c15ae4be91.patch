@@ -2215,10 +2215,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
      }
 diff --git a/src/room/renderer/PixelRPSystem11.ts b/src/room/renderer/PixelRPSystem11.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891f712c14f
+index 0000000000000000000000000000000000000000..1b1dac395fe00bd8e8de0d30b25128f056567d61
 --- /dev/null
 +++ b/src/room/renderer/PixelRPSystem11.ts
-@@ -0,0 +1,630 @@
+@@ -0,0 +1,659 @@
 +export enum PixelRPSystem11Relation
 +{
 +    UNKNOWN = 0,
@@ -2345,7 +2345,8 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +    private static readonly MAX_SLOT_OFFSET = 1;
 +    private static readonly MAX_ADOPTION_DISCREPANCY = 0.08;
 +    private static readonly MAX_CONTINUITY_DISCREPANCY = 0.08;
-+    private static readonly DEBUG = false;
++    // Diagnostic pass: event-only state instrumentation. No render-frame log.
++    private static readonly INSTRUMENT_TRANSITIONS = true;
 +
 +    private readonly _history = new Map<number, PixelRPRouteHistory>();
 +    private _session: PixelRPSystem11Session = null;
@@ -2461,12 +2462,15 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +        }
 +
 +        let joinerSlotShift = NaN;
++        let wasPending = false;
 +
 +        if(this._pendingAdoption
 +            && (this._pendingAdoption.pairKey === pairKey)
 +            && (this._pendingAdoption.masterId === master.id)
 +            && (this._pendingAdoption.joinerId === joiner.id))
 +        {
++            wasPending = true;
++
 +            if((this._pendingAdoption.masterSequenceSeen === master.sequence)
 +                && (this._pendingAdoption.joinerSequenceSeen === joiner.sequence)) return;
 +
@@ -2489,12 +2493,16 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +        const target = this.targetForProposal(proposal, master.phase);
 +        const targetJump = target ? this.tileDistance(joiner.x, joiner.y, joiner.z, target.x, target.y, target.z) : NaN;
 +
-+        this.debugTransition('PROPOSE', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, joinerSlotShift, targetJump, joiner.x, joiner.y, joiner.z, target);
-+
 +        if((proposal.relation === PixelRPSystem11Relation.DIVERGED))
 +        {
 +            this._pendingAdoption = null;
-+            this.debugTransition('DIVERGE', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, joinerSlotShift, targetJump, joiner.x, joiner.y, joiner.z, target);
++
++            if(wasPending)
++            {
++                this.logTransition('S11_DIVERGE', 'NATIVE', PixelRPSystem11Relation.UNKNOWN, PixelRPSystem11Relation.DIVERGED,
++                    master, joiner, joinerSlotShift, targetJump, proposal.reason, proposal.joinerEdge);
++            }
++
 +            return;
 +        }
 +
@@ -2511,7 +2519,8 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +                joinerSequenceSeen: joiner.sequence
 +            };
 +
-+            this.debugTransition('PENDING', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, joinerSlotShift, targetJump, joiner.x, joiner.y, joiner.z, target);
++            this.logTransition('S11_PENDING', 'PENDING', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
++                master, joiner, joinerSlotShift, targetJump, proposal.reason, proposal.joinerEdge);
 +            return;
 +        }
 +
@@ -2535,7 +2544,8 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +            stoppedSince: 0
 +        };
 +
-+        this.debugTransition('ACCEPT', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, joinerSlotShift, targetJump, joiner.x, joiner.y, joiner.z, target);
++        this.logTransition('S11_ACTIVATE', 'SLOT', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
++            master, joiner, joinerSlotShift, targetJump, proposal.reason, proposal.joinerEdge);
 +    }
 +
 +    public getTarget(id: number, now: number): PixelRPSystem11Target
@@ -2549,7 +2559,7 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +
 +        if(!master || !joiner)
 +        {
-+            this.release();
++            this.release('history-missing');
 +            return null;
 +        }
 +
@@ -2559,7 +2569,7 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +
 +            if((now - session.stoppedSince) > PixelRPSystem11.STOP_GRACE_MS)
 +            {
-+                this.release();
++                this.release('movement-stopped');
 +                return null;
 +            }
 +        }
@@ -2572,8 +2582,9 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +        {
 +            const proposal = this.unknownProposal(master, NaN, 'native-route-diverged');
 +            proposal.relation = PixelRPSystem11Relation.DIVERGED;
-+            this.debugTransition('DIVERGE', session.relation, proposal, master, joiner, session.joinerSlotShift, NaN, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, null);
-+            this.release();
++            this.logTransition('S11_DIVERGE', 'NATIVE', session.relation, PixelRPSystem11Relation.DIVERGED,
++                master, joiner, session.joinerSlotShift, NaN, proposal.reason, null);
++            this.release('native-route-diverged');
 +            return null;
 +        }
 +
@@ -2588,8 +2599,9 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +
 +            if(proposal.relation === PixelRPSystem11Relation.DIVERGED)
 +            {
-+                this.debugTransition('DIVERGE', session.relation, proposal, master, joiner, session.joinerSlotShift, NaN, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, null);
-+                this.release();
++                this.logTransition('S11_DIVERGE', 'NATIVE', session.relation, PixelRPSystem11Relation.DIVERGED,
++                    master, joiner, session.joinerSlotShift, NaN, proposal.reason, proposal.joinerEdge);
++                this.release('route-slots-diverged');
 +                return null;
 +            }
 +
@@ -2603,8 +2615,6 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +                const interval = (master.interval > 0) ? master.interval : PixelRPSystem11.DEFAULT_INTERVAL;
 +                const allowedJump = Math.min(0.27, (PixelRPSystem11.MAX_CONTINUITY_DISCREPANCY + (elapsed / interval)));
 +
-+                this.debugTransition('PROPOSE', session.relation, proposal, master, joiner, session.joinerSlotShift, targetJump, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, proposedTarget);
-+
 +                if(proposedTarget && (targetJump <= allowedJump))
 +                {
 +                    const oldRelation = session.relation;
@@ -2615,28 +2625,34 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +                    session.lastSharedPhase = master.phase;
 +                    session.lastPhaseAt = now;
 +
-+                    this.debugTransition((oldRelation === proposal.relation) ? 'ACCEPT' : 'RELATION_CHANGE', oldRelation, proposal, master, joiner, session.joinerSlotShift, targetJump, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, proposedTarget);
++                    if(oldRelation !== proposal.relation)
++                    {
++                        this.logTransition('S11_RELATION_CHANGE', 'SLOT', oldRelation, proposal.relation,
++                            master, joiner, session.joinerSlotShift, targetJump, proposal.reason, proposal.joinerEdge);
++                    }
 +                }
 +                else
 +                {
-+                    this.debugTransition('REJECT', session.relation, proposal, master, joiner, session.joinerSlotShift, targetJump, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, proposedTarget);
++                    this.logTransition('S11_REJECT', 'SLOT', session.relation, proposal.relation,
++                        master, joiner, session.joinerSlotShift, targetJump, 'target-discontinuous', proposal.joinerEdge);
 +                }
 +            }
 +            else
 +            {
-+                this.debugTransition('PENDING', session.relation, proposal, master, joiner, session.joinerSlotShift, NaN, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, null);
++                this.logTransition('S11_PENDING', 'SLOT', session.relation, proposal.relation,
++                    master, joiner, session.joinerSlotShift, NaN, proposal.reason, proposal.joinerEdge);
 +            }
 +        }
 +
 +        if(!session.renderJoinerEdge || ((now - session.renderJoinerEdge.changedAt) > PixelRPSystem11.EDGE_STALE_MS))
 +        {
-+            this.release();
++            this.release('render-edge-stale');
 +            return null;
 +        }
 +
 +        if((master.current.slot - session.renderMasterSlot) > 1)
 +        {
-+            this.release();
++            this.release('joiner-slot-missing');
 +            return null;
 +        }
 +
@@ -2652,7 +2668,7 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +
 +        if(!target)
 +        {
-+            this.release();
++            this.release('render-target-missing');
 +            return null;
 +        }
 +
@@ -2671,8 +2687,9 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +                reason: 'impossible-frame-displacement'
 +            };
 +
-+            this.debugTransition('REJECT', session.relation, proposal, master, joiner, session.joinerSlotShift, proposedDelta, session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, target);
-+            this.release();
++            this.logTransition('S11_REJECT', 'SLOT', session.relation, session.relation,
++                master, joiner, session.joinerSlotShift, proposedDelta, proposal.reason, session.renderJoinerEdge);
++            this.release('impossible-frame-displacement');
 +            return null;
 +        }
 +
@@ -2802,13 +2819,17 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +        return (sameStart && differentGoal);
 +    }
 +
-+    private release(): void
++    private release(reason: string): void
 +    {
 +        const session = this._session;
 +
 +        if(!session) return;
 +
++        const master = this._history.get(session.masterId);
 +        const joiner = this._history.get(session.joinerId);
++        const targetDistance = (joiner && Number.isFinite(session.lastRenderedX))
++            ? this.tileDistance(session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, joiner.x, joiner.y, joiner.z)
++            : NaN;
 +
 +        this._reengagementBlock = {
 +            pairKey: session.pairKey,
@@ -2816,7 +2837,8 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +            joinerSequence: joiner ? joiner.sequence : 0
 +        };
 +
-+        if(PixelRPSystem11.DEBUG) console.log(`[SYSTEM11_RELEASE] master=${ session.masterId } joiner=${ session.joinerId }`);
++        this.logTransition('S11_DEACTIVATE', 'NATIVE', session.relation, PixelRPSystem11Relation.UNKNOWN,
++            master, joiner, session.joinerSlotShift, targetDistance, reason, session.renderJoinerEdge);
 +
 +        this._session = null;
 +    }
@@ -2841,12 +2863,19 @@ index 0000000000000000000000000000000000000000..95c492474ba6ad49bf9304ad10129891
 +        return (a < b) ? `${ a }:${ b }` : `${ b }:${ a }`;
 +    }
 +
-+    private debugTransition(event: string, oldRelation: PixelRPSystem11Relation, proposal: PixelRPSlotProposal, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory,
-+        joinerSlotShift: number, targetJump: number, currentX: number, currentY: number, currentZ: number, target: PixelRPSystem11Target): void
++    private logTransition(event: string, timeSource: 'NATIVE' | 'PENDING' | 'SLOT', oldRelation: PixelRPSystem11Relation, newRelation: PixelRPSystem11Relation,
++        master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, slotOffset: number, targetDistance: number, reason: string, joinerEdge: PixelRPRouteEdge): void
 +    {
-+        if(!PixelRPSystem11.DEBUG) return;
++        if(!PixelRPSystem11.INSTRUMENT_TRANSITIONS) return;
 +
-+        console.log(`[SYSTEM11_${ event }] old=${ PixelRPSystem11Relation[oldRelation] } proposed=${ PixelRPSystem11Relation[proposal.relation] } master=${ master.id } joiner=${ joiner.id } masterSlot=${ master.current ? master.current.slot : 'n/a' } joinerSlot=${ proposal.joinerEdge ? proposal.joinerEdge.slot : 'n/a' } slotShift=${ Number.isFinite(joinerSlotShift) ? joinerSlotShift : 'n/a' } masterPhase=${ master.phase.toFixed(3) } joinerPhase=${ joiner.phase.toFixed(3) } timingDelta=${ Number.isFinite(proposal.timingDelta) ? proposal.timingDelta.toFixed(3) : 'n/a' } current=(${ currentX.toFixed(3) },${ currentY.toFixed(3) },${ currentZ.toFixed(3) }) target=(${ target ? target.x.toFixed(3) : 'n/a' },${ target ? target.y.toFixed(3) : 'n/a' },${ target ? target.z.toFixed(3) : 'n/a' }) targetJump=${ Number.isFinite(targetJump) ? targetJump.toFixed(3) : 'n/a' } reason=${ proposal.reason }`);
++        const masterSlot = (master && master.current) ? master.current.slot : NaN;
++        const joinerSlot = joinerEdge
++            ? joinerEdge.slot
++            : ((Number.isFinite(masterSlot) && Number.isFinite(slotOffset)) ? (masterSlot - slotOffset) : ((joiner && joiner.current) ? joiner.current.slot : NaN));
++        const masterPhase = master ? master.phase : NaN;
++        const joinerNativePhase = joiner ? joiner.phase : NaN;
++
++        console.log(`[${ event }] timeSource=${ timeSource } oldRelation=${ PixelRPSystem11Relation[oldRelation] } newRelation=${ PixelRPSystem11Relation[newRelation] } masterSlot=${ Number.isFinite(masterSlot) ? masterSlot : 'n/a' } joinerSlot=${ Number.isFinite(joinerSlot) ? joinerSlot : 'n/a' } slotOffset=${ Number.isFinite(slotOffset) ? slotOffset : 'n/a' } masterPhase=${ Number.isFinite(masterPhase) ? masterPhase.toFixed(3) : 'n/a' } joinerNativePhase=${ Number.isFinite(joinerNativePhase) ? joinerNativePhase.toFixed(3) : 'n/a' } targetDistance=${ Number.isFinite(targetDistance) ? targetDistance.toFixed(3) : 'n/a' } reason=${ reason }`);
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
