@@ -382,9 +382,12 @@ const usePhonePhotosState = () =>
 
     // Side-button screenshot: files the PNG straight into the library (no
     // room, no furni); the reply refreshes the list.
-    const saveScreenshot = (base64Url: string) =>
+    // kind: 'screenshot' = the side-button phone-screen capture, 'saved' = a
+    // photo received in a DM filed into the library. Recorded in the photo's
+    // metadata server-side.
+    const saveScreenshot = (base64Url: string, kind: 'screenshot' | 'saved' = 'screenshot') =>
     {
-        const composer = new RpSaveScreenshotComposer();
+        const composer = new RpSaveScreenshotComposer((kind === 'saved') ? 1 : 0);
 
         composer.assignBase64(base64Url);
 

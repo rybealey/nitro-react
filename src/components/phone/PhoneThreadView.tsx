@@ -232,7 +232,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
             }))
             .then(dataUrl =>
             {
-                saveScreenshot(dataUrl);
+                saveScreenshot(dataUrl, 'saved');
                 showToast('Saved to Photos');
             })
             .catch(() => showToast('Couldn\'t save the photo'));

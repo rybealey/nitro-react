@@ -1,0 +1,156 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index be243d9adbc7a85951870c3f293b9a173da7e600..f8560c63858ad2299061836ac5a48e1586738390 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -15,6 +15,7 @@ import { RpPassiveCancelComposer } from './messages/outgoing/RpPassiveCancelComp
+ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+ import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
+ import { RpSetAirplaneModeComposer } from './messages/outgoing/RpSetAirplaneModeComposer';
++import { RpSavePhotoComposer } from './messages/outgoing/RpSavePhotoComposer';
+ import { RpMessengerTypingComposer } from './messages/outgoing/RpMessengerTypingComposer';
+ import { RpRequestPhotoListComposer } from './messages/outgoing/RpRequestPhotoListComposer';
+ import { RpDeletePhotoComposer } from './messages/outgoing/RpDeletePhotoComposer';
+@@ -1128,6 +1129,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_USE_ITEM, RpUseItemComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
++        this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_TYPING, RpMessengerTypingComposer);
+         this._composers.set(OutgoingHeader.RP_PHOTO_LIST_REQUEST, RpRequestPhotoListComposer);
+         this._composers.set(OutgoingHeader.RP_PHOTO_DELETE, RpDeletePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts b/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
+index 69e3971cffa2946bd6b7262aa3752cd98cffed98..81c82054c5338ebaaec08a8124a9afb12c7c8356 100644
+--- a/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpPhotoListEvent.ts
+@@ -10,6 +10,13 @@ export interface RpPhotoListItem
+     url: string;
+     timestamp: number;
+     published: boolean;
++    // 'camera' | 'screenshot' | 'saved' | '' (legacy rows from before
++    // metadata existed)
++    source: string;
++    // The room's name snapshotted at capture time ('' outside a room)
++    roomName: string;
++    // Players inside a phone camera shot's frame (empty otherwise)
++    taggedUsers: string[];
+ }
+ 
+ export class RpPhotoListParser implements IMessageParser
+@@ -33,12 +40,24 @@ export class RpPhotoListParser implements IMessageParser
+ 
+         while(count > 0)
+         {
+-            this._photos.push({
+-                id: wrapper.readInt(),
+-                url: wrapper.readString(),
+-                timestamp: wrapper.readInt(),
+-                published: wrapper.readBoolean()
+-            });
++            const id = wrapper.readInt();
++            const url = wrapper.readString();
++            const timestamp = wrapper.readInt();
++            const published = wrapper.readBoolean();
++            const source = wrapper.readString();
++            const roomName = wrapper.readString();
++            const taggedUsers: string[] = [];
++
++            let userCount = wrapper.readInt();
++
++            while(userCount > 0)
++            {
++                taggedUsers.push(wrapper.readString());
++
++                userCount--;
++            }
++
++            this._photos.push({ id, url, timestamp, published, source, roomName, taggedUsers });
+ 
+             count--;
+         }
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index 53941d1443681fee11957b2f9beb447a31fd894d..b93ca2188e82ab06d646312d011b48b607054af1 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -471,6 +471,7 @@ export class OutgoingHeader
+     public static RP_USE_ITEM = 3905;
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
++    public static RP_SAVE_PHOTO = 3936;
+     public static RP_MESSENGER_TYPING = 3933;
+     public static RP_PHOTO_LIST_REQUEST = 3908;
+     public static RP_PHOTO_DELETE = 3910;
+diff --git a/src/nitro/communication/messages/outgoing/RpSavePhotoComposer.ts b/src/nitro/communication/messages/outgoing/RpSavePhotoComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..20196cf5b46c989a0da1635821cbd5e312e200f4
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSavePhotoComposer.ts
+@@ -0,0 +1,33 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: save a phone-camera room shot straight into the player's photo
++// library (no inventory furni). Carries the ids of the players inside the
++// frame (validated server-side against the room roster), then the PNG bytes
++// packed RenderRoom-style.
++export class RpSavePhotoComposer implements IMessageComposer<any[]>
++{
++    private _data: any[];
++
++    constructor(taggedUserIds: number[])
++    {
++        this._data = [ taggedUserIds.length, ...taggedUserIds ];
++    }
++
++    public assignBase64(base64: string): void
++    {
++        const base64Data = base64.split(',')[1];
++        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
++
++        this._data.push(binaryData.byteLength, binaryData.buffer);
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        this._data = [];
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
+index 4b53f0d7e9c6734cfd46c1b5ec6d96f6658f433a..0ba2edfc59bd3eda0f7cf52c80fbd307658a02b2 100644
+--- a/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
++++ b/src/nitro/communication/messages/outgoing/RpSaveScreenshotComposer.ts
+@@ -1,14 +1,15 @@
+ import { IMessageComposer } from '../../../../api';
+ 
+-// PixelRP: save a phone-screen screenshot (side-button long-press) into the
+-// player's photo library. PNG bytes packed RenderRoom-style.
++// PixelRP: save a phone-screen screenshot (kind 0, side-button long-press)
++// or a photo received in a DM (kind 1, "Save to Photos") into the player's
++// photo library. Leading kind flag, then PNG bytes packed RenderRoom-style.
+ export class RpSaveScreenshotComposer implements IMessageComposer<any[]>
+ {
+     private _data: any[];
+ 
+-    constructor()
++    constructor(kind: number = 0)
+     {
+-        this._data = [];
++        this._data = [ kind ];
+     }
+ 
+     public assignBase64(base64: string): void
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 0737b2a3d24e49172b84f131d2fc0f92edc398af..6f928ee400dee345d0194e89d39f9c1f77469fd8 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -75,6 +75,7 @@ export * from './RpSaveUiSettingsComposer';
+ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';
+ export * from './RpSetAirplaneModeComposer';
++export * from './RpSavePhotoComposer';
+ export * from './RpMessengerTypingComposer';
+ export * from './RpRequestPhotoListComposer';
+ export * from './RpDeletePhotoComposer';

@@ -1,15 +1,16 @@
-import { CameraPurchaseOKMessageEvent, CameraStorageUrlMessageEvent, NitroRectangle, PurchasePhotoMessageComposer, RoomSessionEvent, TextureUtils } from '@nitrots/nitro-renderer';
+import { NitroRectangle, RoomObjectCategory, RoomObjectType, RoomSessionEvent, RpPhotoListEvent, RpSavePhotoComposer, TextureUtils } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useRef, useState } from 'react';
-import { GetRoomEngine, GetRoomSession, PlaySound, SendMessageComposer, SoundNames } from '../../api';
+import { GetRoomEngine, GetRoomObjectBounds, GetRoomSession, PlaySound, SendMessageComposer, SoundNames } from '../../api';
 import { useMessageEvent, useRoomSessionManagerEvent } from '../../hooks';
 import { PhoneIcon } from './PhoneIcon';
 import { usePhonePhotos } from './usePhone';
 
 // Camera app, iOS style: the phone screen itself is the viewfinder — the
 // display goes transparent so the room shows straight through it. The
-// shutter captures exactly the room region behind the screen, then Use
-// Photo runs the PlusEMU camera pipeline (upload + free purchase), which
-// files the shot into the Photos app and the player's inventory.
+// shutter captures exactly the room region behind the screen; Use Photo
+// files the shot straight into the Photos app (no inventory furni) along
+// with its metadata — the players inside the frame, resolved at shutter
+// time, plus room + capture-type recorded server-side.
 
 interface PhoneCameraViewProps
 {
@@ -28,6 +29,10 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
     const [ showSavedToast, setShowSavedToast ] = useState(false);
     const viewportRef = useRef<HTMLDivElement>(null);
     const savingRef = useRef(false);
+    // Player ids whose avatars intersected the viewfinder at shutter time -
+    // computed per capture, shipped with Use Photo (server validates against
+    // the room roster and resolves usernames itself).
+    const taggedUserIdsRef = useRef<number[]>([]);
 
     useRoomSessionManagerEvent<RoomSessionEvent>(RoomSessionEvent.CREATED, event => setInRoom(true));
     useRoomSessionManagerEvent<RoomSessionEvent>(RoomSessionEvent.ENDED, event =>
@@ -38,16 +43,9 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
         savingRef.current = false;
     });
 
-    // Upload handshake: the storage-url reply means the server holds the
-    // pending photo; the (free) purchase makes it permanent.
-    useMessageEvent<CameraStorageUrlMessageEvent>(CameraStorageUrlMessageEvent, event =>
-    {
-        if(!savingRef.current) return;
-
-        SendMessageComposer(new PurchasePhotoMessageComposer(''));
-    });
-
-    useMessageEvent<CameraPurchaseOKMessageEvent>(CameraPurchaseOKMessageEvent, event =>
+    // Save completion: RpSavePhoto replies with the refreshed photo list
+    // (usePhonePhotos picks the photos up from the same event).
+    useMessageEvent<RpPhotoListEvent>(RpPhotoListEvent, event =>
     {
         if(!savingRef.current) return;
 
@@ -56,8 +54,6 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
         setIsSaving(false);
         setCapturedUrl(null);
         setShowSavedToast(true);
-
-        if(requestPhotos) requestPhotos();
     });
 
     useEffect(() =>
@@ -74,6 +70,40 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
         if(requestPhotos) requestPhotos();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Every real player whose avatar bounds intersect the viewfinder rect.
+    // GetRoomObjectBounds reports canvas-1 coordinates — the same space as
+    // getBoundingClientRect (the room canvas fills the window at origin), so
+    // a plain rect intersection is exact. Geometric only: someone standing
+    // behind furni still counts as "in frame".
+    const usersInFrame = (roomId: number, bounds: DOMRect): number[] =>
+    {
+        const session = GetRoomSession();
+
+        if(!session) return [];
+
+        const userIds: number[] = [];
+        const roomObjects = GetRoomEngine().getRoomObjects(roomId, RoomObjectCategory.UNIT);
+
+        for(const roomObject of roomObjects)
+        {
+            if(roomObject.id < 0) continue;
+
+            const userData = session.userDataManager.getUserDataByIndex(roomObject.id);
+
+            if(!userData || (userData.type !== RoomObjectType.USER)) continue;
+
+            const rect = GetRoomObjectBounds(roomId, roomObject.id, RoomObjectCategory.UNIT, 1);
+
+            if(!rect) continue;
+
+            const intersects = ((rect.x < (bounds.x + bounds.width)) && ((rect.x + rect.width) > bounds.x) && (rect.y < (bounds.y + bounds.height)) && ((rect.y + rect.height) > bounds.y));
+
+            if(intersects) userIds.push(userData.webID);
+        }
+
+        return userIds;
+    }
+
     const takePicture = () =>
     {
         const session = GetRoomSession();
@@ -85,6 +115,8 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
         const texture = GetRoomEngine().createTextureFromRoom(session.roomId, 1, rectangle);
 
         if(!texture) return;
+
+        taggedUserIdsRef.current = usersInFrame(session.roomId, bounds);
 
         PlaySound(SoundNames.CAMERA_SHUTTER);
         setShowFlash(true);
@@ -99,7 +131,11 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
         savingRef.current = true;
 
         setIsSaving(true);
-        GetRoomEngine().saveBase64AsScreenshot(capturedUrl);
+
+        const composer = new RpSavePhotoComposer(taggedUserIdsRef.current);
+
+        composer.assignBase64(capturedUrl);
+        SendMessageComposer(composer);
     }
 
     const latestPhoto = (photos.length ? photos[0] : null);
