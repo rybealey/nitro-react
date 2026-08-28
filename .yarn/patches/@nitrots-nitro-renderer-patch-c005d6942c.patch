@@ -1482,3 +1482,219 @@ index 143cfca39c0fec9d4f17a7775da12be909bf7fd2..4d5ba02009597697203abb09a8b98f00
  
                          if(rolloverHandoffWeight > 0)
                          {
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 4d5ba02009597697203abb09a8b98f002d4eec6d..d830c6c904b0238ee4910dd72a9d2406e08a9493 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -443,6 +443,20 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         // straight to native (which could itself be a large jump if the
+         // rejected position had already drifted far from native).
+         safetyHoldOffsetSet: boolean, safetyHoldOffsetX: number, safetyHoldOffsetY: number, safetyHoldHandoffT: number,
++        // Fix 2 hardening: "what was actually displayed last frame,
++        // period" — set EVERY frame regardless of whether that frame's
++        // branch set apply=true, unlike lastVx/lastVy (which the rest of
++        // the file deliberately resets to NaN on an apply=false frame, as
++        // a semantic "no continuity to preserve" signal several OTHER
++        // continuity-capture branches key off). The safety clamp needs
++        // the opposite semantics: it must have a real baseline to compare
++        // against even when the immediately preceding frame rendered
++        // plain native — confirmed in capture as the exact reason a
++        // 0.795-tile one-frame jump sailed through uncaught: the prior
++        // frame was apply=false (lastVx/lastVy went NaN), which disabled
++        // the clamp's Number.isFinite(lastVx) guard entirely for the next
++        // frame's transition.
++        lastDisplayedX: number, lastDisplayedY: number,
+         // Rollover-continuity fix (Update 8 follow-up): replaces the old
+         // world-position FREEZE that used to render during a brief
+         // segment-tuple ambiguity at rollover (segmentsMatch/joinerBehind
+@@ -1357,6 +1371,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     trailingMasterPreviousDx: NaN, trailingMasterPreviousDy: NaN, trailingMasterPreviousDz: NaN,
+                     trailingMasterEdgeCapturedAt: NaN,
+                     safetyHoldOffsetSet: false, safetyHoldOffsetX: NaN, safetyHoldOffsetY: NaN, safetyHoldHandoffT: 0,
++                    lastDisplayedX: NaN, lastDisplayedY: NaN,
+                     trailingLatchSet: false,
+                     trailingLatchJSx: NaN, trailingLatchJSy: NaN, trailingLatchJSz: NaN,
+                     trailingLatchJDx: NaN, trailingLatchJDy: NaN, trailingLatchJDz: NaN,
+@@ -1754,12 +1769,32 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         // crossing/overtake evidence" for free — this
+                         // resets to 0 the instant an overtake is detected,
+                         // same as convergingEvidenceMs/trailingEvidenceMs.
++                        //
++                        // Threshold fix: this originally capped/compared
++                        // against FORMATION_LATE_EVIDENCE_MS (100ms) — the
++                        // TRAILING-grade threshold, appropriate for a
++                        // structural signal like joinerBehind. But
++                        // promoting to CONVERGING is a same-POSITION claim,
++                        // exactly the class of claim the CANDIDATE lane
++                        // above already requires the much stronger
++                        // FORMATION_EVIDENCE_MS (530ms) to prove, for
++                        // precisely this reason (see that block's own
++                        // comment). Confirmed in capture: a pair engaged
++                        // directly into TRAILING, briefly shared an edge
++                        // with ~0.33 tile of remaining progress difference
++                        // (a real but still-apart same-edge coincidence,
++                        // not "together"), and promoted to CONVERGING
++                        // within about 100ms of engaging - the same
++                        // false-positive shape this whole mechanism exists
++                        // to prevent, just admitted through a threshold
++                        // that was 5x too permissive for what it was
++                        // proving.
+                         const routeSameEdge = !!(j && m
+                             && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
+                             && (j.gxx === m.gxx) && (j.gyy === m.gyy));
+ 
+                         sync.trailingSameEdgeEvidenceMs = (routeSameEdge
+-                            ? Math.min(RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS, (sync.trailingSameEdgeEvidenceMs + dt))
++                            ? Math.min(RoomSpriteCanvas.FORMATION_EVIDENCE_MS, (sync.trailingSameEdgeEvidenceMs + dt))
+                             : Math.max(0, (sync.trailingSameEdgeEvidenceMs - dt)));
+                     }
+ 
+@@ -2102,7 +2137,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 // that block's s-ramp/lockProof handling too, no extra
+                 // frame of delay.
+                 if((sync.mode === 0) && (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
+-                    && (sync.trailingSameEdgeEvidenceMs >= RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS))
++                    && (sync.trailingSameEdgeEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS))
+                 {
+                     // Continuity capture BEFORE the flip — mirrors the
+                     // ordinary trailing-exit capture (see its own comment
+@@ -3295,8 +3330,23 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         sync.phaseRolloverOffsetSet = false;
+                     }
+                     else if((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && m
+-                        && !segmentsMatch && routeContinuous && Number.isFinite(sync.lastVx) && Number.isFinite(sync.lastVy))
++                        && !segmentsMatch && (routeContinuous || sync.phaseRolloverOffsetSet) && Number.isFinite(sync.lastVx) && Number.isFinite(sync.lastVy))
+                     {
++                        // Blip-survival widening: routeContinuous alone is
++                        // required to START a new hold (real proof this is
++                        // an ordinary rollover, not a divergence), but an
++                        // ALREADY-ACTIVE hold (phaseRolloverOffsetSet) must
++                        // also survive a frame where routeContinuous itself
++                        // goes false — confirmed in capture: MASTER's own
++                        // moving=false endpoint blip zeroes mDir, which
++                        // breaks sameGoal/joinerBehind/joinerAhead (and so
++                        // routeContinuous) even while JOINER is still
++                        // moving normally. Safe to relax here specifically
++                        // because it only affects what RENDERS during an
++                        // already-confirmed-safe ambiguous moment — genuine
++                        // divergence detection (genuineDivergence/mode) is
++                        // a fully separate signal computed earlier in the
++                        // frame and unaffected by this.
+                         // Round 10 (pre-lock rollover continuity): an
+                         // ORDINARY adjacent-segment rollover mid-PHASE_SHIFT
+                         // — JOINER's or MASTER's own next-step packet just
+@@ -3380,6 +3430,60 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         sync.phaseRolloverHandoffT += dt;
+                     }
+                 }
++                else if(sync.phaseRolloverOffsetSet)
++                {
++                    // Blip-survival, JOINER side: mirrors the widening
++                    // just above, but for the OTHER half of the same
++                    // failure — JOINER's own moving=false endpoint blip
++                    // fails the `j && j.moving` gate itself, so nothing
++                    // inside that block (including the widened check
++                    // above) ever runs at all this frame, regardless of
++                    // routeContinuous. Confirmed in capture as the
++                    // exact mechanism behind a reported hitch: JOINER
++                    // moving=false for one frame -> falls through to raw
++                    // NATIVE (apply stays false) -> sync.lastVx resets to
++                    // NaN on that native frame (see the final commit
++                    // point far below) -> the VERY NEXT frame's full-
++                    // strength PHASE_SHIFT reapplication (0.7-0.8 tile
++                    // observed) sails straight through Fix 2's clamp,
++                    // since that clamp requires Number.isFinite(lastVx)
++                    // to even evaluate.
++                    //
++                    // This branch only ever continues an ALREADY-ACTIVE
++                    // hold (started by the ordinary j.moving-gated branch
++                    // above on an earlier frame) — it cannot start a new
++                    // one, since starting requires the route evidence
++                    // (routeContinuous) that branch already gates on.
++                    // Identical decay math to the ordinary continuation
++                    // case; only WHEN this runs differs.
++                    let rolloverHandoffWeight;
++
++                    if(sync.phaseRolloverHandoffT <= RoomSpriteCanvas.PHASE_ROLLOVER_HOLD_BACKSTOP_MS)
++                    {
++                        rolloverHandoffWeight = 1;
++                    }
++                    else
++                    {
++                        const rolloverFadeT = (sync.phaseRolloverHandoffT - RoomSpriteCanvas.PHASE_ROLLOVER_HOLD_BACKSTOP_MS);
++
++                        rolloverHandoffWeight = Math.max(0, (1 - (rolloverFadeT / RoomSpriteCanvas.TRAILING_EXIT_DECAY_MS)));
++                    }
++
++                    if(rolloverHandoffWeight > 0)
++                    {
++                        vx = (roomLocation.x + (sync.phaseRolloverOffsetX * rolloverHandoffWeight));
++                        vy = (roomLocation.y + (sync.phaseRolloverOffsetY * rolloverHandoffWeight));
++                        vz = roomLocation.z;
++                        apply = true;
++                        source = 'PHASE_ROLLOVER_HOLD';
++                    }
++                    else
++                    {
++                        sync.phaseRolloverOffsetSet = false;
++                    }
++
++                    sync.phaseRolloverHandoffT += dt;
++                }
+ 
+                 // ENTRY HANDOFF (transition-fix pass): the very first frame
+                 // a correction actually applies this session — whichever
+@@ -3548,9 +3652,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+                         sync.safetyHoldHandoffT += dt;
+                     }
+-                    else if(apply && Number.isFinite(sync.lastVx) && Number.isFinite(sync.lastVy))
++                    else if(apply && Number.isFinite(sync.lastDisplayedX) && Number.isFinite(sync.lastDisplayedY))
+                     {
+-                        const proposedDelta = Math.hypot((vx - sync.lastVx), (vy - sync.lastVy));
++                        // Hardening: compares against lastDisplayedX/Y
++                        // (set every frame regardless of apply) rather
++                        // than lastVx/lastVy (NaN'd out by an apply=false
++                        // frame — see that field's own comment). Confirmed
++                        // in capture: a NATIVE frame (JOINER's own
++                        // moving=false blip, see the PHASE_ROLLOVER_HOLD
++                        // blip-survival fix above — this is now the
++                        // second, independent layer against the same
++                        // class of transition) immediately followed by a
++                        // full-strength PHASE_SHIFT reapplication produced
++                        // a real, confirmed 0.795-tile one-frame jump that
++                        // the old lastVx-gated check couldn't even
++                        // evaluate, since lastVx was NaN going into it.
++                        const proposedDelta = Math.hypot((vx - sync.lastDisplayedX), (vy - sync.lastDisplayedY));
+                         // Movement-aware budget: scales off real native
+                         // per-frame movement (~1/530 tile/ms) with a
+                         // generous 10x margin for ordinary jitter/lag,
+@@ -3566,10 +3683,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+                         if(proposedDelta > maxSaneDelta)
+                         {
+-                            console.log(`[sync:CORRECTION_REJECTED] master=${ sync.masterId } joiner=${ sync.joinerId } proposedVx=${ vx.toFixed(3) } proposedVy=${ vy.toFixed(3) } lastVx=${ sync.lastVx.toFixed(3) } lastVy=${ sync.lastVy.toFixed(3) } proposedDelta=${ proposedDelta.toFixed(4) } maxSaneDelta=${ maxSaneDelta.toFixed(4) } rejectedSource=${ source } formationState=${ RoomSpriteCanvas.FORMATION_STATE_NAMES[sync.formationState] || '?' } mode=${ sync.mode }`);
++                            console.log(`[sync:CORRECTION_REJECTED] master=${ sync.masterId } joiner=${ sync.joinerId } proposedVx=${ vx.toFixed(3) } proposedVy=${ vy.toFixed(3) } lastDisplayedX=${ sync.lastDisplayedX.toFixed(3) } lastDisplayedY=${ sync.lastDisplayedY.toFixed(3) } proposedDelta=${ proposedDelta.toFixed(4) } maxSaneDelta=${ maxSaneDelta.toFixed(4) } rejectedSource=${ source } formationState=${ RoomSpriteCanvas.FORMATION_STATE_NAMES[sync.formationState] || '?' } mode=${ sync.mode }`);
+ 
+-                            sync.safetyHoldOffsetX = (sync.lastVx - roomLocation.x);
+-                            sync.safetyHoldOffsetY = (sync.lastVy - roomLocation.y);
++                            sync.safetyHoldOffsetX = (sync.lastDisplayedX - roomLocation.x);
++                            sync.safetyHoldOffsetY = (sync.lastDisplayedY - roomLocation.y);
+                             sync.safetyHoldOffsetSet = true;
+                             sync.safetyHoldHandoffT = 0;
+ 
+@@ -3624,6 +3741,14 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+                     sync.lastVx = (apply ? vx : NaN);
+                     sync.lastVy = (apply ? vy : NaN);
++                    // Fix 2 hardening: unlike lastVx/lastVy, always set to
++                    // whatever was ACTUALLY shown this frame — the
++                    // corrected position if apply was true, otherwise
++                    // plain native (roomLocation), never NaN. See this
++                    // field's own declaration comment for why the clamp
++                    // needs this distinct baseline.
++                    sync.lastDisplayedX = (apply ? vx : roomLocation.x);
++                    sync.lastDisplayedY = (apply ? vy : roomLocation.y);
+                     sync.lastMx = (mLoc ? mLoc.x : NaN);
+                     sync.lastMy = (mLoc ? mLoc.y : NaN);
+                     sync.lastSource = source;
