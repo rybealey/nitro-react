@@ -101,7 +101,7 @@ const readPrefs = (userId: number): PhonePrefs =>
                 grid,
                 dock,
                 theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto'),
-                position: (((parsed.position === 'left') || (parsed.position === 'right')) ? parsed.position : 'center')
+                position: (((parsed.position === 'left') || (parsed.position === 'right') || (parsed.position === 'center')) ? parsed.position : 'right')
             };
         }
     }
@@ -109,7 +109,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'center' };
+    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right' };
 }
 
 // Synchronous read of just the saved open-position, straight from storage -
@@ -128,7 +128,7 @@ export const ReadPhonePosition = (): PhonePosition =>
             {
                 const value = JSON.parse(raw).position;
 
-                if((value === 'left') || (value === 'right')) return value;
+                if((value === 'left') || (value === 'right') || (value === 'center')) return value;
             }
         }
     }
@@ -136,7 +136,7 @@ export const ReadPhonePosition = (): PhonePosition =>
     catch(e)
     {}
 
-    return 'center';
+    return 'right';
 }
 
 const usePhonePrefsState = () =>
@@ -147,7 +147,7 @@ const usePhonePrefsState = () =>
     const [ gridOrder, setGridOrder ] = useState<string[]>([ ...DEFAULT_GRID_APPS ]);
     const [ dockOrder, setDockOrder ] = useState<string[]>([ ...DEFAULT_DOCK_APPS ]);
     const [ theme, setThemeState ] = useState<PhoneTheme>('auto');
-    const [ position, setPositionState ] = useState<PhonePosition>('center');
+    const [ position, setPositionState ] = useState<PhonePosition>('right');
 
     const ensureLoaded = () =>
     {

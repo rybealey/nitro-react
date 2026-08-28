@@ -78,7 +78,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         </div>
                     ) }
                     { group(<>
-                        { item('cellular-signal-3', '#f0954a', 'Airplane Mode', { chevron: false, switchOn: false }) }
+                        { item('plane-up', '#f0954a', 'Airplane Mode', { chevron: false, switchOn: false }) }
                         { item('wifi', '#3f8fbf', 'Wi-Fi', { value: 'Pixel' }) }
                         { item('cellular-signal-3', '#3fbf5a', 'Cellular') }
                         { item('battery', '#3fbf5a', 'Battery') }
