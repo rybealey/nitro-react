@@ -1385,3 +1385,100 @@ index 1c394f471c3f9cdd42810002b1d4e56f1345304c..143cfca39c0fec9d4f17a7775da12be9
                          apply = true;
                          source = 'PHASE_SHIFT';
                          // Re-arm the rollover hold below for the NEXT rollover
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 143cfca39c0fec9d4f17a7775da12be909bf7fd2..4d5ba02009597697203abb09a8b98f002d4eec6d 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -196,6 +196,29 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // snap.
+     private static CONVERGING_STALL_GRACE_MS: number = 600;
+     private static CONVERGING_ASSIST_MAX_PER_MS: number = 0.003;
++    // PHASE_ROLLOVER_HOLD hold-duration fix: the original version decayed
++    // the captured continuity offset to zero over a fixed
++    // TRAILING_EXIT_DECAY_MS (100ms) window, borrowed from the permanent-
++    // exit idiom used elsewhere (RELEASE_BLEND/TRAIL_PHASE_EXIT). Wrong
++    // fit here — confirmed in capture: the real rollover ambiguity this
++    // branch exists to bridge sometimes takes well over 100ms to resolve
++    // (JOINER's own next packet is a separate, independently-timed event
++    // from MASTER's), so the hold was fading out and handing back to
++    // plain NATIVE before the ambiguity was actually over, then snapping
++    // to PHASE_SHIFT again once it resolved — a visible hold/let-go/grab
++    // stutter every rollover. PHASE_ROLLOVER_HOLD_BACKSTOP_MS: hold the
++    // offset perfectly STEADY (no decay at all) for up to this long —
++    // comfortably under one full native tile interval (530ms) so it can
++    // never bleed into the NEXT rollover cycle — resuming PHASE_SHIFT
++    // immediately and exactly the instant segmentsMatch genuinely
++    // returns (already handled: that branch resets phaseRolloverOffsetSet
++    // the moment it fires). Only past this backstop does it finally fade
++    // to native over TRAILING_EXIT_DECAY_MS, purely as a circuit-breaker
++    // for the case this is hiding a genuine divergence rather than an
++    // ordinary rollover — routeContinuous alone can't structurally catch
++    // that here (joinerBehind stays true across ordinary same-direction
++    // walking regardless of how long JOINER's own packet takes).
++    private static PHASE_ROLLOVER_HOLD_BACKSTOP_MS: number = 450;
+ 
+     private _id: number;
+     private _container: IRoomSpriteCanvasContainer;
+@@ -3294,16 +3317,32 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         // a hard cut from the corrected PHASE_SHIFT position
+                         // to raw native and back the instant segmentsMatch
+                         // returned, visible as a brief tug/peek/separation.
+-                        // Same fixed-window continuity technique already
+-                        // used for RELEASE_BLEND/DEMOTION_BLEND/
+-                        // TRAIL_PHASE_EXIT: capture the last ACTUALLY
+-                        // DISPLAYED position once, decay that constant
+-                        // offset toward native over a short window, and
+-                        // resume PHASE_SHIFT the moment segmentsMatch (or a
+-                        // fresh rollover) reclaims the branch above — which,
+-                        // for an ordinary one-frame tuple gap, is usually
+-                        // the very next frame, well before this decay
+-                        // finishes.
++                        // Then (hold-duration fix): capturing the offset
++                        // once and decaying it to native over a fixed
++                        // TRAILING_EXIT_DECAY_MS (100ms) window — the same
++                        // technique RELEASE_BLEND/DEMOTION_BLEND/
++                        // TRAIL_PHASE_EXIT use for a PERMANENT exit — was
++                        // still the wrong shape for THIS branch: confirmed
++                        // in capture, the real rollover ambiguity here
++                        // sometimes takes well over 100ms to resolve
++                        // (JOINER's own next packet is a separate,
++                        // independently-timed event from MASTER's), so the
++                        // hold faded back to native before the ambiguity
++                        // was actually over, then snapped to PHASE_SHIFT
++                        // again once it resolved — a visible hold/let-go/
++                        // grab stutter every rollover, not a one-off.
++                        //
++                        // Now two-phase: hold the offset perfectly STEADY
++                        // (no decay) for up to PHASE_ROLLOVER_HOLD_
++                        // BACKSTOP_MS, only fading toward native over
++                        // TRAILING_EXIT_DECAY_MS past that backstop — a
++                        // circuit-breaker for the case this is hiding a
++                        // genuine divergence, not the expected path.
++                        // Resumes PHASE_SHIFT immediately and exactly the
++                        // instant segmentsMatch genuinely returns (that
++                        // branch already resets phaseRolloverOffsetSet the
++                        // moment it fires) — usually well before either
++                        // window matters.
+                         if(!sync.phaseRolloverOffsetSet)
+                         {
+                             sync.phaseRolloverOffsetX = (sync.lastVx - roomLocation.x);
+@@ -3312,7 +3351,18 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                             sync.phaseRolloverHandoffT = 0;
+                         }
+ 
+-                        const rolloverHandoffWeight = Math.max(0, (1 - (sync.phaseRolloverHandoffT / RoomSpriteCanvas.TRAILING_EXIT_DECAY_MS)));
++                        let rolloverHandoffWeight;
++
++                        if(sync.phaseRolloverHandoffT <= RoomSpriteCanvas.PHASE_ROLLOVER_HOLD_BACKSTOP_MS)
++                        {
++                            rolloverHandoffWeight = 1;
++                        }
++                        else
++                        {
++                            const rolloverFadeT = (sync.phaseRolloverHandoffT - RoomSpriteCanvas.PHASE_ROLLOVER_HOLD_BACKSTOP_MS);
++
++                            rolloverHandoffWeight = Math.max(0, (1 - (rolloverFadeT / RoomSpriteCanvas.TRAILING_EXIT_DECAY_MS)));
++                        }
+ 
+                         if(rolloverHandoffWeight > 0)
+                         {
