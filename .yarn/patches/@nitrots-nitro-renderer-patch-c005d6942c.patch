@@ -1248,3 +1248,140 @@ index cc84ded7f0bcd9dccf59186b1f0398d4f0f379e3..1c394f471c3f9cdd42810002b1d4e56f
                  if(sync.mode === 0)
                  {
                      // s only advances while the persistent formationState
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 1c394f471c3f9cdd42810002b1d4e56f1345304c..143cfca39c0fec9d4f17a7775da12be909bf7fd2 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -171,6 +171,31 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // a circuit breaker for the case route evidence never resolves
+     // either way (MASTER genuinely gone, not just paused).
+     private static TRAILING_ENDPOINT_HOLD_BACKSTOP_MS: number = 280;
++    // Final-approach assist: PHASE_SHIFT's own phi-based correction only
++    // ever nudges the DISPLAY — nativeAbsGap is computed strictly from
++    // each side's own independent native position (see the field comment
++    // on nativeSignedGap far above) and is NOT affected by what renders,
++    // so it can only close on its own if the two avatars' independently
++    // arriving movement packets happen to drift into closer timing
++    // alignment. Confirmed in capture: a fully-charged (s=1) CONVERGING
++    // pair sat with nativeAbsGap oscillating ~0.2-0.6 for 4+ seconds
++    // without ever reaching LOCK's 0.10 threshold, genuinely still
++    // closing but very slowly. This does not (and cannot) make
++    // nativeAbsGap itself shrink faster, and therefore does not make
++    // LOCK/MASTER_COPY fire any sooner either — it only closes what the
++    // PLAYER actually sees, nudging the displayed position the rest of
++    // the way toward MASTER's live position once s has been fully
++    // charged for a while and the pair is still visibly apart.
++    // CONVERGING_STALL_GRACE_MS: how long to wait at s=1 before engaging
++    // — long enough that the ordinary fast case (which typically
++    // resolves within a cycle or two) never sees this. CONVERGING_ASSIST_
++    // MAX_PER_MS: hard per-frame step cap, deliberately faster than
++    // TRAILING_MAX_CORRECTION_PER_MS (that one is a maintenance nudge
++    // meant to stay under native speed; this one is meant to actively
++    // finish closing a stalled gap) but still capped, not an instant
++    // snap.
++    private static CONVERGING_STALL_GRACE_MS: number = 600;
++    private static CONVERGING_ASSIST_MAX_PER_MS: number = 0.003;
+ 
+     private _id: number;
+     private _container: IRoomSpriteCanvasContainer;
+@@ -306,6 +331,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         // a shrinking gap) — see the TRAILING evidence branch and the
+         // TRAIL_TO_CONVERGING transition it feeds, both in renderObject().
+         trailingSameEdgeEvidenceMs: number,
++        // Final-approach assist: nowMs of when a CONVERGING session first
++        // observed s>=1 with nativeAbsGap still above threshold; NaN
++        // whenever not currently stalled. See CONVERGING_STALL_GRACE_MS.
++        convergingStalledSinceMs: number,
+         demotionOffsetSet: boolean, demotionOffsetX: number, demotionOffsetY: number, demotionHandoffT: number,
+         // ENTRY/EXIT visual-handoff continuity (transition-fix pass, on top
+         // of the otherwise-unmodified Round 6 middle). entryOffset{X,Y,Z}/
+@@ -1286,6 +1315,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     lockedDirX: NaN, lockedDirY: NaN,
+                     lastNativeGap: NaN, convergingEvidenceMs: 0, trailingEvidenceMs: 0,
+                     trailingSameEdgeEvidenceMs: 0,
++                    convergingStalledSinceMs: NaN,
+                     demotionOffsetSet: false, demotionOffsetX: NaN, demotionOffsetY: NaN, demotionHandoffT: 0,
+                     entryOffsetSet: false, entryOffsetX: NaN, entryOffsetY: NaN, entryOffsetZ: NaN, entryHandoffT: 0, entryCompleteLogged: false,
+                     releaseCompleteLogged: false, lastSource: 'NATIVE',
+@@ -1975,10 +2005,20 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 // divergence (that's joinerIncompatible/genuineDivergence
+                 // Case B just above, which still releases immediately) and
+                 // not the ordinary case the 120ms grace was tuned for
+-                // either. Scoped to an established TRAILING session only —
+-                // see TRAILING_ENDPOINT_HOLD_BACKSTOP_MS for the reasoning.
++                // either. Scoped to an established TRAILING or CONVERGING
++                // session — see TRAILING_ENDPOINT_HOLD_BACKSTOP_MS for the
++                // reasoning. Originally scoped to TRAILING only; confirmed
++                // in a later capture that an established CONVERGING pair
++                // (already past CANDIDATE, s fully charged, actively
++                // PHASE_SHIFT-corrected) hits the identical ambiguity at
++                // an ordinary MASTER endpoint pause and released
++                // prematurely (badSinceMs=151, genuineDivergence=false) —
++                // nothing about "genuine route uncertainty during a brief
++                // pause" is specific to which of the two active lanes the
++                // pair is in.
+                 const masterPausedRouteUncertain = !!(j && m && j.moving && !m.moving && !joinerIncompatible
+-                    && (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING));
++                    && ((sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
++                        || (sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING)));
+                 const releaseGraceMs = (masterPausedRouteUncertain ? RoomSpriteCanvas.TRAILING_ENDPOINT_HOLD_BACKSTOP_MS : 120);
+ 
+                 if((sync.mode !== 2) && (!masterObject || genuineDivergence
+@@ -3173,6 +3213,57 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         vx = (j.sx + (j.dx * progress));
+                         vy = (j.sy + (j.dy * progress));
+                         vz = (j.sz + (j.dz * progress));
++
++                        // Final-approach assist (see CONVERGING_STALL_
++                        // GRACE_MS/CONVERGING_ASSIST_MAX_PER_MS above): phi
++                        // alone doesn't always fully close the gap in a
++                        // reasonable time — nativeAbsGap is intrinsic to
++                        // each side's own independent native movement and
++                        // isn't affected by anything rendered, so it can
++                        // only shrink as fast as the two avatars' own
++                        // packet timing happens to drift into alignment.
++                        // Deliberately a SEPARATE, self-contained gain-free
++                        // hard-capped step toward MASTER's live position —
++                        // not a reuse of applyGentleCorrection, which
++                        // carries TRAILING-specific carried-forward-base
++                        // state (trailingLastNativeX/Y) that's never
++                        // populated on a pure CONVERGING session and would
++                        // behave unpredictably if invoked from here.
++                        const convergingStalled = ((sync.mode === 0) && (sync.s >= 1)
++                            && Number.isFinite(nativeAbsGap) && (nativeAbsGap > RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX));
++
++                        if(convergingStalled)
++                        {
++                            if(!Number.isFinite(sync.convergingStalledSinceMs)) sync.convergingStalledSinceMs = nowMs;
++                        }
++                        else
++                        {
++                            sync.convergingStalledSinceMs = NaN;
++                        }
++
++                        if(convergingStalled && mLoc && Number.isFinite(sync.convergingStalledSinceMs)
++                            && ((nowMs - sync.convergingStalledSinceMs) > RoomSpriteCanvas.CONVERGING_STALL_GRACE_MS))
++                        {
++                            const assistErrorX = (mLoc.x - vx);
++                            const assistErrorY = (mLoc.y - vy);
++                            const assistErrorZ = (mLoc.z - vz);
++                            const assistErrorMag = Math.hypot(assistErrorX, assistErrorY, assistErrorZ);
++
++                            if(assistErrorMag <= RoomSpriteCanvas.TRAILING_LOCK_EPSILON)
++                            {
++                                vx = mLoc.x; vy = mLoc.y; vz = mLoc.z;
++                            }
++                            else
++                            {
++                                const assistStep = Math.min((RoomSpriteCanvas.CONVERGING_ASSIST_MAX_PER_MS * dt), assistErrorMag);
++                                const assistScale = (assistStep / assistErrorMag);
++
++                                vx += (assistErrorX * assistScale);
++                                vy += (assistErrorY * assistScale);
++                                vz += (assistErrorZ * assistScale);
++                            }
++                        }
++
+                         apply = true;
+                         source = 'PHASE_SHIFT';
+                         // Re-arm the rollover hold below for the NEXT rollover
