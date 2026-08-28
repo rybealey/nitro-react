@@ -29,10 +29,10 @@ index f8f3bda8f3f5b8d4cb81bff36f09cd24c68f8587..dec5f583cb9789e5fd9472ff9cb33803
          // rounds native avatar movement onto an unrelated client-clock beat.
 diff --git a/src/room/renderer/PixelRPSystem11.ts b/src/room/renderer/PixelRPSystem11.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c772fadf88a
+index 0000000000000000000000000000000000000000..9afb7822bbca7f83912dadc751960d85b5cfc6c2
 --- /dev/null
 +++ b/src/room/renderer/PixelRPSystem11.ts
-@@ -0,0 +1,537 @@
+@@ -0,0 +1,685 @@
 +export enum PixelRPSystem11Relation
 +{
 +    UNKNOWN = 0,
@@ -102,7 +102,6 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +    joinerSequenceSeen: number;
 +    masterAdvancedPending: boolean;
 +    joinerAdvancedPending: boolean;
-+    uncertaintySince: number;
 +    renderEdge: PixelRPRouteEdge;
 +    enteredAt: number;
 +    entryOffsetSet: boolean;
@@ -114,6 +113,22 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +    lastRenderedZ: number;
 +    lastRenderedAt: number;
 +    stoppedSince: number;
++}
++
++interface PixelRPRelationProposal
++{
++    relation: PixelRPSystem11Relation;
++    progressDelta: number;
++    reason: string;
++}
++
++interface PixelRPPendingAdoption
++{
++    pairKey: string;
++    masterId: number;
++    joinerId: number;
++    masterSequence: number;
++    joinerSequence: number;
 +}
 +
 +interface PixelRPExitHandoff
@@ -141,15 +156,19 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +export class PixelRPSystem11
 +{
 +    private static readonly EDGE_STALE_MS = 900;
-+    private static readonly UNCERTAINTY_BACKSTOP_MS = 560;
 +    private static readonly STOP_GRACE_MS = 160;
 +    private static readonly HANDOFF_MS = 100;
 +    private static readonly REENGAGE_BACKSTOP_MS = 1500;
++    private static readonly QUANTISE_BOUNDARY = 0.5;
++    private static readonly QUANTISE_UNCERTAINTY = 0.08;
++    private static readonly MAX_ENTRY_DISCREPANCY = 0.08;
++    private static readonly MAX_TRANSITION_DISCREPANCY = 0.08;
 +    private static readonly DEBUG = false;
 +
 +    private readonly _history = new Map<number, PixelRPRouteHistory>();
 +    private readonly _exitHandoffs = new Map<number, PixelRPExitHandoff>();
 +    private _session: PixelRPSystem11Session = null;
++    private _pendingAdoption: PixelRPPendingAdoption = null;
 +    private _reengagementBlock: PixelRPReengagementBlock = null;
 +
 +    public record(sample: PixelRPMovementSample, now: number): void
@@ -248,25 +267,63 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +            this._reengagementBlock = null;
 +        }
 +
-+        const relation = this.classify(master, joiner);
++        if(this._pendingAdoption
++            && (this._pendingAdoption.pairKey === pairKey)
++            && (this._pendingAdoption.masterId === master.id)
++            && (this._pendingAdoption.joinerId === joiner.id)
++            && (this._pendingAdoption.masterSequence === master.sequence)
++            && (this._pendingAdoption.joinerSequence === joiner.sequence)) return;
 +
-+        if((relation === PixelRPSystem11Relation.UNKNOWN) || (relation === PixelRPSystem11Relation.DIVERGED)) return;
++        const proposal = this.proposeRelation(master, joiner);
 +
-+        const renderEdge = this.edgeForRelation(relation, master, joiner);
++        if(proposal.relation === PixelRPSystem11Relation.DIVERGED)
++        {
++            this._pendingAdoption = null;
++            this.debugTransition('DIVERGE', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, NaN, proposal.reason);
++            return;
++        }
 +
-+        if(!renderEdge) return;
++        const renderEdge = this.edgeForRelation(proposal.relation, master, joiner);
++        const proposedTarget = this.pointOnEdge(renderEdge, master.phase);
++        const targetJump = proposedTarget ? this.tileDistance(joiner.x, joiner.y, joiner.z, proposedTarget.x, proposedTarget.y, proposedTarget.z) : NaN;
++
++        this.debugTransition('PROPOSE', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, targetJump, proposal.reason,
++            joiner.x, joiner.y, joiner.z, proposedTarget ? proposedTarget.x : NaN, proposedTarget ? proposedTarget.y : NaN, proposedTarget ? proposedTarget.z : NaN);
++
++        if((proposal.relation === PixelRPSystem11Relation.UNKNOWN)
++            || !renderEdge
++            || !proposedTarget
++            || (targetJump > PixelRPSystem11.MAX_ENTRY_DISCREPANCY))
++        {
++            this._pendingAdoption = {
++                pairKey,
++                masterId: master.id,
++                joinerId: joiner.id,
++                masterSequence: master.sequence,
++                joinerSequence: joiner.sequence
++            };
++
++            const reason = (proposal.relation === PixelRPSystem11Relation.UNKNOWN)
++                ? proposal.reason
++                : (!renderEdge ? 'required-real-edge-missing' : 'entry-target-discontinuous');
++
++            this.debugTransition('PENDING', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, targetJump, reason,
++                joiner.x, joiner.y, joiner.z, proposedTarget ? proposedTarget.x : NaN, proposedTarget ? proposedTarget.y : NaN, proposedTarget ? proposedTarget.z : NaN);
++            return;
++        }
++
++        this._pendingAdoption = null;
 +
 +        this._session = {
 +            masterId: master.id,
 +            joinerId: joiner.id,
 +            pairKey,
-+            relation,
-+            lastProvenRelation: relation,
++            relation: proposal.relation,
++            lastProvenRelation: proposal.relation,
 +            masterSequenceSeen: master.sequence,
 +            joinerSequenceSeen: joiner.sequence,
 +            masterAdvancedPending: false,
 +            joinerAdvancedPending: false,
-+            uncertaintySince: 0,
 +            renderEdge,
 +            enteredAt: now,
 +            entryOffsetSet: false,
@@ -280,7 +337,8 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +            stoppedSince: 0
 +        };
 +
-+        this.debug(`ENGAGE relation=${ PixelRPSystem11Relation[relation] } master=${ master.id } joiner=${ joiner.id }`);
++        this.debugTransition('ACCEPT', PixelRPSystem11Relation.UNKNOWN, proposal, master, joiner, targetJump, 'continuous-entry',
++            joiner.x, joiner.y, joiner.z, proposedTarget.x, proposedTarget.y, proposedTarget.z);
 +    }
 +
 +    public getTarget(id: number, now: number): PixelRPSystem11Target
@@ -327,52 +385,67 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +        {
 +            session.masterSequenceSeen = master.sequence;
 +            session.masterAdvancedPending = true;
-+            if(!session.uncertaintySince) session.uncertaintySince = now;
 +        }
 +
 +        if(joiner.sequence !== session.joinerSequenceSeen)
 +        {
 +            session.joinerSequenceSeen = joiner.sequence;
 +            session.joinerAdvancedPending = true;
-+            if(!session.uncertaintySince) session.uncertaintySince = now;
 +        }
 +
 +        if(session.masterAdvancedPending && session.joinerAdvancedPending)
 +        {
-+            if(!this.proveCurrentRelation(session, master, joiner, now))
-+            {
-+                this.release(now);
-+                return this.exitHandoffTarget(history, id, now);
-+            }
-+        }
-+        else if((session.masterAdvancedPending || session.joinerAdvancedPending)
-+            && session.uncertaintySince && ((now - session.uncertaintySince) >= PixelRPSystem11.UNCERTAINTY_BACKSTOP_MS))
-+        {
-+            const observed = this.classify(master, joiner);
++            const proposal = this.proposeRelation(master, joiner);
 +
-+            if((observed === PixelRPSystem11Relation.UNKNOWN) || (observed === PixelRPSystem11Relation.DIVERGED))
++            if(proposal.relation === PixelRPSystem11Relation.DIVERGED)
 +            {
++                this.debugTransition('DIVERGE', session.lastProvenRelation, proposal, master, joiner, NaN, proposal.reason);
 +                this.release(now);
 +                return this.exitHandoffTarget(history, id, now);
 +            }
 +
-+            this.commitRelation(session, observed, master, joiner);
++            if(!this.tryCommitRelation(session, proposal, master, joiner, now))
++            {
++                this.debugTransition('PENDING', session.lastProvenRelation, proposal, master, joiner, NaN, proposal.reason);
++
++                const preservedProposal: PixelRPRelationProposal = {
++                    relation: session.lastProvenRelation,
++                    progressDelta: proposal.progressDelta,
++                    reason: 'preserve-proven-relation'
++                };
++
++                if(!this.tryCommitRelation(session, preservedProposal, master, joiner, now, false))
++                {
++                    this.release(now);
++                    return this.exitHandoffTarget(history, id, now);
++                }
++            }
++
++            session.masterAdvancedPending = false;
++            session.joinerAdvancedPending = false;
 +        }
 +
-+        // During ordinary one-sided rollover, preserve the proven relation.
-+        // ALIGNED and BEHIND can select a new real MASTER edge continuously.
-+        // AHEAD cannot predict MASTER's next turn, so a MASTER-first rollover
-+        // briefly holds the last displayed endpoint until JOINER's real edge
-+        // arrives.
++        // One-sided packet rollover is uncertainty, not a relationship change.
++        // ALIGNED and BEHIND may advance to a known real MASTER edge only when
++        // that same-relation target is continuous. AHEAD waits for JOINER's
++        // genuine next edge and never predicts a route.
 +        if(session.masterAdvancedPending && !session.joinerAdvancedPending)
 +        {
-+            if(session.lastProvenRelation === PixelRPSystem11Relation.ALIGNED)
++            if((session.lastProvenRelation === PixelRPSystem11Relation.ALIGNED)
++                || (session.lastProvenRelation === PixelRPSystem11Relation.BEHIND))
 +            {
-+                session.renderEdge = master.current;
-+            }
-+            else if((session.lastProvenRelation === PixelRPSystem11Relation.BEHIND) && master.previous)
-+            {
-+                session.renderEdge = master.previous;
++                const rolloverProposal: PixelRPRelationProposal = {
++                    relation: session.lastProvenRelation,
++                    progressDelta: NaN,
++                    reason: 'one-sided-rollover'
++                };
++
++                const rolloverEdge = this.edgeForRelation(rolloverProposal.relation, master, joiner);
++
++                if(rolloverEdge && !this.edgeEquals(session.renderEdge, rolloverEdge))
++                {
++                    this.tryCommitRelation(session, rolloverProposal, master, joiner, now, false);
++                }
 +            }
 +            else if((session.lastProvenRelation === PixelRPSystem11Relation.AHEAD) && Number.isFinite(session.lastRenderedX))
 +            {
@@ -428,63 +501,134 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +        return { x, y, z };
 +    }
 +
-+    private proveCurrentRelation(session: PixelRPSystem11Session, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, now: number): boolean
++    private tryCommitRelation(session: PixelRPSystem11Session, proposal: PixelRPRelationProposal, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, now: number, relationChange = true): boolean
 +    {
-+        const observed = this.classify(master, joiner);
++        if((proposal.relation === PixelRPSystem11Relation.UNKNOWN) || (proposal.relation === PixelRPSystem11Relation.DIVERGED)) return false;
 +
-+        if((observed === PixelRPSystem11Relation.UNKNOWN) || (observed === PixelRPSystem11Relation.DIVERGED)) return false;
++        const edge = this.edgeForRelation(proposal.relation, master, joiner);
++        const target = this.pointOnEdge(edge, master.phase);
 +
-+        this.commitRelation(session, observed, master, joiner);
-+        session.masterAdvancedPending = false;
-+        session.joinerAdvancedPending = false;
-+        session.uncertaintySince = 0;
-+        session.lastRenderedAt = now;
++        if(!edge || !target)
++        {
++            this.debugTransition('REJECT', session.lastProvenRelation, proposal, master, joiner, NaN, 'required-real-edge-missing');
++            return false;
++        }
++
++        const referenceX = Number.isFinite(session.lastRenderedX) ? session.lastRenderedX : joiner.x;
++        const referenceY = Number.isFinite(session.lastRenderedY) ? session.lastRenderedY : joiner.y;
++        const referenceZ = Number.isFinite(session.lastRenderedZ) ? session.lastRenderedZ : joiner.z;
++        const targetJump = this.tileDistance(referenceX, referenceY, referenceZ, target.x, target.y, target.z);
++        const elapsed = Math.min(100, Math.max(0, (now - session.lastRenderedAt)));
++        const allowedJump = Math.min(0.27, (PixelRPSystem11.MAX_TRANSITION_DISCREPANCY + (elapsed / 530)));
++
++        this.debugTransition('PROPOSE', session.lastProvenRelation, proposal, master, joiner, targetJump, proposal.reason,
++            referenceX, referenceY, referenceZ, target.x, target.y, target.z);
++
++        if(targetJump > allowedJump)
++        {
++            this.debugTransition('REJECT', session.lastProvenRelation, proposal, master, joiner, targetJump, 'target-discontinuous',
++                referenceX, referenceY, referenceZ, target.x, target.y, target.z);
++            return false;
++        }
++
++        const oldRelation = session.lastProvenRelation;
++
++        if(relationChange)
++        {
++            session.relation = proposal.relation;
++            session.lastProvenRelation = proposal.relation;
++        }
++
++        session.renderEdge = edge;
++
++        this.debugTransition((oldRelation === proposal.relation) ? 'ACCEPT' : 'RELATION_CHANGE', oldRelation, proposal, master, joiner, targetJump, 'continuous-target',
++            referenceX, referenceY, referenceZ, target.x, target.y, target.z);
 +
 +        return true;
 +    }
 +
-+    private commitRelation(session: PixelRPSystem11Session, relation: PixelRPSystem11Relation, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): void
++    private proposeRelation(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): PixelRPRelationProposal
 +    {
-+        const edge = this.edgeForRelation(relation, master, joiner);
++        if(!master.current || !joiner.current)
++        {
++            return { relation: PixelRPSystem11Relation.UNKNOWN, progressDelta: NaN, reason: 'current-edge-missing' };
++        }
 +
-+        if(!edge) return;
++        if(this.explicitlyDiverged(master, joiner))
++        {
++            return { relation: PixelRPSystem11Relation.DIVERGED, progressDelta: NaN, reason: 'route-diverged' };
++        }
 +
-+        session.relation = relation;
-+        session.lastProvenRelation = relation;
-+        session.renderEdge = edge;
-+        session.masterAdvancedPending = false;
-+        session.joinerAdvancedPending = false;
-+        session.uncertaintySince = 0;
++        let routeOffset = NaN;
 +
-+        this.debug(`RELATION ${ PixelRPSystem11Relation[relation] } master=${ master.id } joiner=${ joiner.id }`);
-+    }
++        if(this.edgeEquals(master.current, joiner.current)) routeOffset = 0;
++        else if((master.previous && this.edgeEquals(joiner.current, master.previous))
++            || ((joiner.current.gx === master.current.sx) && (joiner.current.gy === master.current.sy))) routeOffset = 1;
++        else if((joiner.previous && this.edgeEquals(master.current, joiner.previous))
++            || ((master.current.gx === joiner.current.sx) && (master.current.gy === joiner.current.sy))) routeOffset = -1;
 +
-+    private classify(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): PixelRPSystem11Relation
-+    {
-+        if(!master.current || !joiner.current) return PixelRPSystem11Relation.UNKNOWN;
-+        if(this.edgeEquals(master.current, joiner.current)) return PixelRPSystem11Relation.ALIGNED;
-+        if(master.previous && this.edgeEquals(joiner.current, master.previous)) return PixelRPSystem11Relation.BEHIND;
-+        if(joiner.previous && this.edgeEquals(master.current, joiner.previous)) return PixelRPSystem11Relation.AHEAD;
-+        if((joiner.current.gx === master.current.sx) && (joiner.current.gy === master.current.sy)) return PixelRPSystem11Relation.BEHIND;
-+        if((master.current.gx === joiner.current.sx) && (master.current.gy === joiner.current.sy)) return PixelRPSystem11Relation.AHEAD;
-+        if(this.explicitlyDiverged(master, joiner)) return PixelRPSystem11Relation.DIVERGED;
++        if(!Number.isFinite(routeOffset))
++        {
++            return { relation: PixelRPSystem11Relation.UNKNOWN, progressDelta: NaN, reason: 'route-offset-unproven' };
++        }
 +
-+        return PixelRPSystem11Relation.UNKNOWN;
++        const progressDelta = (routeOffset + master.phase - joiner.phase);
++        const boundaryDistance = Math.abs(Math.abs(progressDelta) - PixelRPSystem11.QUANTISE_BOUNDARY);
++
++        if(boundaryDistance <= PixelRPSystem11.QUANTISE_UNCERTAINTY)
++        {
++            return { relation: PixelRPSystem11Relation.UNKNOWN, progressDelta, reason: 'quantise-boundary-uncertain' };
++        }
++
++        if(Math.abs(progressDelta) > 1.5)
++        {
++            return { relation: PixelRPSystem11Relation.UNKNOWN, progressDelta, reason: 'outside-supported-route-slot' };
++        }
++
++        if(progressDelta > PixelRPSystem11.QUANTISE_BOUNDARY)
++        {
++            return { relation: PixelRPSystem11Relation.BEHIND, progressDelta, reason: 'nearest-slot-behind' };
++        }
++
++        if(progressDelta < -PixelRPSystem11.QUANTISE_BOUNDARY)
++        {
++            return { relation: PixelRPSystem11Relation.AHEAD, progressDelta, reason: 'nearest-slot-ahead' };
++        }
++
++        return { relation: PixelRPSystem11Relation.ALIGNED, progressDelta, reason: 'nearest-slot-aligned' };
 +    }
 +
 +    private edgeForRelation(relation: PixelRPSystem11Relation, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): PixelRPRouteEdge
 +    {
 +        if(relation === PixelRPSystem11Relation.ALIGNED) return master.current;
 +
-+        if(relation === PixelRPSystem11Relation.BEHIND)
++        if(relation === PixelRPSystem11Relation.BEHIND) return master.previous;
++
++        if(relation === PixelRPSystem11Relation.AHEAD)
 +        {
-+            if(master.previous && this.edgeEquals(joiner.current, master.previous)) return master.previous;
-+            if(joiner.current && (joiner.current.gx === master.current.sx) && (joiner.current.gy === master.current.sy)) return joiner.current;
++            const joinerIsOnRealNextEdge = this.edgeEquals(master.current, joiner.previous)
++                || ((master.current.gx === joiner.current.sx) && (master.current.gy === joiner.current.sy));
++
++            return joinerIsOnRealNextEdge ? joiner.current : null;
 +        }
 +
-+        if(relation === PixelRPSystem11Relation.AHEAD) return joiner.current;
-+
 +        return null;
++    }
++
++    private pointOnEdge(edge: PixelRPRouteEdge, phase: number): PixelRPSystem11Target
++    {
++        if(!edge) return null;
++
++        return {
++            x: (edge.sx + ((edge.gx - edge.sx) * phase)),
++            y: (edge.sy + ((edge.gy - edge.sy) * phase)),
++            z: (edge.sz + ((edge.gz - edge.sz) * phase))
++        };
++    }
++
++    private tileDistance(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number
++    {
++        return Math.max(Math.abs(ax - bx), Math.abs(ay - by), Math.abs(az - bz));
 +    }
 +
 +    private explicitlyDiverged(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): boolean
@@ -508,7 +652,8 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +
 +        const joiner = this._history.get(session.joinerId);
 +
-+        if(joiner && Number.isFinite(session.lastRenderedX))
++        if(joiner && Number.isFinite(session.lastRenderedX)
++            && (this.tileDistance(session.lastRenderedX, session.lastRenderedY, session.lastRenderedZ, joiner.x, joiner.y, joiner.z) <= PixelRPSystem11.MAX_ENTRY_DISCREPANCY))
 +        {
 +            this._exitHandoffs.set(session.joinerId, {
 +                startedAt: now,
@@ -525,7 +670,7 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +            startedAt: now
 +        };
 +
-+        this.debug(`RELEASE master=${ session.masterId } joiner=${ session.joinerId }`);
++        if(PixelRPSystem11.DEBUG) console.log(`[SYSTEM11_RELEASE] master=${ session.masterId } joiner=${ session.joinerId }`);
 +        this._session = null;
 +    }
 +
@@ -565,9 +710,12 @@ index 0000000000000000000000000000000000000000..5585840aaad83a2120256ce864f62c77
 +        return (a < b) ? `${ a }:${ b }` : `${ b }:${ a }`;
 +    }
 +
-+    private debug(message: string): void
++    private debugTransition(event: string, oldRelation: PixelRPSystem11Relation, proposal: PixelRPRelationProposal, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, targetJump: number, reason: string,
++        currentX = NaN, currentY = NaN, currentZ = NaN, targetX = NaN, targetY = NaN, targetZ = NaN): void
 +    {
-+        if(PixelRPSystem11.DEBUG) console.log(`[system11] ${ message }`);
++        if(!PixelRPSystem11.DEBUG) return;
++
++        console.log(`[SYSTEM11_${ event }] old=${ PixelRPSystem11Relation[oldRelation] } proposed=${ PixelRPSystem11Relation[proposal.relation] } master=${ master.id } joiner=${ joiner.id } masterPhase=${ master.phase.toFixed(3) } joinerPhase=${ joiner.phase.toFixed(3) } progressDelta=${ Number.isFinite(proposal.progressDelta) ? proposal.progressDelta.toFixed(3) : 'n/a' } current=(${ Number.isFinite(currentX) ? currentX.toFixed(3) : 'n/a' },${ Number.isFinite(currentY) ? currentY.toFixed(3) : 'n/a' },${ Number.isFinite(currentZ) ? currentZ.toFixed(3) : 'n/a' }) target=(${ Number.isFinite(targetX) ? targetX.toFixed(3) : 'n/a' },${ Number.isFinite(targetY) ? targetY.toFixed(3) : 'n/a' },${ Number.isFinite(targetZ) ? targetZ.toFixed(3) : 'n/a' }) targetJump=${ Number.isFinite(targetJump) ? targetJump.toFixed(3) : 'n/a' } reason=${ reason }`);
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
