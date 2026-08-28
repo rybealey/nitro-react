@@ -21,11 +21,10 @@
     <!-- No Ubuntu here: chat needs the bundled Habbo-modified Ubuntu (symbol
          glyphs like | -> heart); stock Google Ubuntu would shadow its weights. -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;family=Silkscreen:wght@400;700&amp;display=swap">
-    <!-- PixelRP FontAwesome kit (custom icons for chat username icons). Swaps
-         <i class="fa-kit-..."> to SVG at runtime via its MutationObserver. -->
-    <script src="https://kit.fontawesome.com/19221c1121.js" crossorigin="anonymous"></script>
-    <!-- PixelRP FontAwesome kit (Duotone Solid) - used for the phone UI app
-         tile icons (fa-duotone fa-solid fa-...). -->
+    <!-- PixelRP FontAwesome kit (Duotone Solid, webfont) - used for the phone
+         UI app tile icons (fa-duotone fa-solid fa-...). This is the only FA
+         kit on the page: a second (SVG-JS) kit would hijack every <i class=fa>
+         and break these webfont glyphs. -->
     <script src="https://kit.fontawesome.com/c305b2c178.js" crossorigin="anonymous"></script>
     <title>Nitro</title>
   </head>

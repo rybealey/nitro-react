@@ -19,16 +19,28 @@ interface PhoneAppDef
     plate?: string;
 }
 
+// The full app roster from the design. Live apps: Messages, Contacts,
+// Camera, Photos, Settings. Everything else is a visible-but-disabled
+// placeholder (greyed) matching the design's decorative home screen.
 const APP_DEFS: Record<string, PhoneAppDef> = {
-    'Contacts': { icon: 'address-book', active: true, plate: 'linear-gradient(160deg, #8fb8ff, #3f6fbf 58%, #204a8a)' },
-    'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #b8b8c0, #8a8a92 58%, #55555e)' },
-    'Characters': { icon: 'user', plate: 'linear-gradient(160deg, #b6a0ff, #7a5cff 60%, #4a34c0)' },
-    'App Store': { icon: 'store', plate: 'linear-gradient(160deg, #6fd0ff, #2b9fd6 58%, #166a99)' },
-    'Mercury': { icon: 'sack-dollar', plate: 'linear-gradient(160deg, #7fe0a0, #3fbf5a 60%, #1f8a3e)' },
-    'Sitch': { icon: 'heart', plate: 'linear-gradient(160deg, #ff8fbf, #e93a7d 60%, #a01e5c)' },
+    // dock
+    'Phone': { icon: 'phone', plate: 'linear-gradient(160deg, #7fe0a0, #3fbf5a 58%, #1f8a3e)' },
     'Messages': { icon: 'comment-dots', active: true, plate: 'linear-gradient(160deg, #ff9dc6, #e93a7d 58%, #a01e5c)' },
     'Camera': { icon: 'camera', active: true, plate: 'linear-gradient(160deg, #b8bcc8, #7a7f8f 58%, #474b57)' },
-    'Photos': { icon: 'images', active: true, plate: 'linear-gradient(160deg, #ffd36f, #f0954a 50%, #e93a7d)' }
+    'App Store': { icon: 'store', plate: 'linear-gradient(160deg, #6fd0ff, #2b9fd6 58%, #166a99)' },
+    // grid
+    'Contacts': { icon: 'address-book', active: true, plate: 'linear-gradient(160deg, #8fb8ff, #3f6fbf 58%, #204a8a)' },
+    'Photos': { icon: 'images', active: true, plate: 'linear-gradient(160deg, #ffd36f, #f0954a 50%, #e93a7d)' },
+    'Stocks': { icon: 'chart-line', plate: 'linear-gradient(160deg, #3a3a46, #211c28 60%, #0f0b14)' },
+    'Music': { icon: 'music', plate: 'linear-gradient(160deg, #ff9d9d, #e03131 58%, #9e1e1e)' },
+    'Wallet': { icon: 'wallet', plate: 'linear-gradient(160deg, #5a5560, #332e3a 60%, #17131c)' },
+    'Calendar': { icon: 'calendar', plate: 'linear-gradient(160deg, #ff9d9d, #f05555 55%, #c22e2e)' },
+    'Tasks': { icon: 'list-check', plate: 'linear-gradient(160deg, #ffd88a, #f0a800 58%, #c07e00)' },
+    'Notes': { icon: 'note-sticky', plate: 'linear-gradient(160deg, #ffe58a, #f5c542 58%, #c29800)' },
+    'Weather': { icon: 'cloud-sun', plate: 'linear-gradient(160deg, #8fd6ff, #3f9fdf 58%, #1f6aa8)' },
+    'News': { icon: 'newspaper', plate: 'linear-gradient(160deg, #c3bdb2, #7f776a 58%, #463f36)' },
+    'Translate': { icon: 'language', plate: 'linear-gradient(160deg, #7fe0d0, #2ba88f 58%, #177a66)' },
+    'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #b8b8c0, #8a8a92 58%, #55555e)' }
 };
 
 // The phone app-tile glyphs come from the PixelRP FontAwesome Duotone Solid

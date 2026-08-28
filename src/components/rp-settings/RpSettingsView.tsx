@@ -6,8 +6,7 @@ import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemVie
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
-import { DEFAULT_USERNAME_ICON, IsImageIcon, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
-import { UsernameIconGlyph } from './UsernameIconGlyph';
+import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon } from './IconChoices';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -137,21 +136,6 @@ export const RpSettingsView: FC<{}> = props =>
     {
         setUsernameColor(color);
         saveSettings(chromeColor, chromeOpacity, headerKey, color, usernameIcon, usernameIconColor);
-    }
-
-    const selectUsernameIcon = (icon: string) =>
-    {
-        setUsernameIcon(icon);
-        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, icon, usernameIconColor);
-    }
-
-    const selectUsernameIconColor = (color: string) =>
-    {
-        // color does not apply to image icons — the section is disabled then
-        if(IsImageIcon(usernameIcon)) return;
-
-        setUsernameIconColor(color);
-        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, usernameIcon, color);
     }
 
     useEffect(() =>
@@ -288,10 +272,6 @@ export const RpSettingsView: FC<{}> = props =>
                                                     <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
                                             </div>
                                             <div className="chat-content">
-                                                { usernameIcon &&
-                                                    /* key remounts the <i> so the FA kit re-converts it to SVG on
-                                                       every icon/color change (the kit swaps nodes outside React) */
-                                                    <b key={ `${ usernameIcon }|${ usernameIconColor }` } className="username mr-1"><span style={ { color: usernameIconColor } }><UsernameIconGlyph iconClass={ usernameIcon } /></span>{ ' ' }</b> }
                                                 <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
                                                 <span className="message">Welcome to San Francisco!</span>
                                             </div>
@@ -310,35 +290,6 @@ export const RpSettingsView: FC<{}> = props =>
                                                 className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
                                                 style={ { backgroundColor: entry.color } }
                                                 onClick={ () => selectUsernameColor(entry.color) } />
-                                        )) }
-                                    </div>
-                                </div>
-                                <div className="rp-settings-stack-section">
-                                    <div className="rp-settings-stack-head">
-                                        <Text bold>Icon</Text>
-                                        <Text small className="text-muted">An icon before your name in chat.</Text>
-                                    </div>
-                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
-                                        { USERNAME_ICONS.map(entry => (
-                                            <div key={ entry.key } title={ entry.name }
-                                                className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
-                                                onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
-                                                <UsernameIconGlyph iconClass={ entry.iconClass } />
-                                            </div>
-                                        )) }
-                                    </div>
-                                </div>
-                                <div className={ `rp-settings-stack-section ${ IsImageIcon(usernameIcon) ? 'is-disabled' : '' }` }>
-                                    <div className="rp-settings-stack-head">
-                                        <Text bold>Icon Color</Text>
-                                        <Text small className="text-muted">{ IsImageIcon(usernameIcon) ? 'Not applicable to image icons.' : 'The color of your chat icon.' }</Text>
-                                    </div>
-                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
-                                        { USERNAME_COLORS.map(entry => (
-                                            <div key={ entry.key } title={ entry.name }
-                                                className={ `rp-settings-swatch ${ (usernameIconColor === entry.color) ? 'is-selected' : '' }` }
-                                                style={ { backgroundColor: entry.color } }
-                                                onClick={ () => selectUsernameIconColor(entry.color) } />
                                         )) }
                                     </div>
                                 </div>

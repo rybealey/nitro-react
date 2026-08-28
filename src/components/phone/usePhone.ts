@@ -31,11 +31,16 @@ export const ParsePhotoMessage = (message: string): string =>
 // Loaded lazily via ensureLoaded() because the session user id isn't known
 // until after login.
 
-// The canonical app roster. New apps get appended to the stored layout on
-// load; unknown stored keys (renamed/removed apps) are dropped.
-export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Settings', 'Characters', 'App Store', 'Mercury', 'Sitch' ];
-export const DEFAULT_DOCK_APPS: string[] = [ 'Messages', 'Camera', 'Photos' ];
+// The canonical app roster + default arrangement (mirrors the design's home
+// screen). New apps get appended to the stored layout on load; unknown stored
+// keys (renamed/removed apps) are dropped.
+export const DEFAULT_DOCK_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App Store' ];
+export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Stocks', 'Music', 'Wallet', 'Calendar', 'Tasks', 'Notes', 'Weather', 'News', 'Translate', 'Settings' ];
 export const DOCK_CAPACITY: number = 4;
+
+// Bump when the default roster changes enough that stored layouts should be
+// discarded and reset to the new arrangement (rather than merged).
+const PHONE_LAYOUT_VERSION: number = 2;
 
 export type PhoneTheme = 'auto' | 'light' | 'dark';
 
@@ -80,7 +85,11 @@ const readPrefs = (userId: number): PhonePrefs =>
         {
             const parsed = JSON.parse(raw);
             const readStrings = (value: unknown) => (Array.isArray(value) ? value.filter((key: unknown) => (typeof key === 'string')) : []);
-            const { grid, dock } = mergeAppOrder(readStrings(parsed.grid), (Array.isArray(parsed.dock) ? readStrings(parsed.dock) : [ ...DEFAULT_DOCK_APPS ]));
+            // A stored layout from an older roster version is discarded so the
+            // new default arrangement shows; pins/mutes/theme are preserved.
+            const { grid, dock } = ((parsed.layout === PHONE_LAYOUT_VERSION)
+                ? mergeAppOrder(readStrings(parsed.grid), (Array.isArray(parsed.dock) ? readStrings(parsed.dock) : [ ...DEFAULT_DOCK_APPS ]))
+                : { grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ] });
 
             return {
                 pinned: (Array.isArray(parsed.pinned) ? parsed.pinned.filter((id: unknown) => (typeof id === 'number')) : []),
@@ -132,6 +141,7 @@ const usePhonePrefsState = () =>
         try
         {
             window.localStorage.setItem(storageKey(userId), JSON.stringify({
+                layout: PHONE_LAYOUT_VERSION,
                 pinned: (prefs.pinned ?? pinnedIds),
                 muted: (prefs.muted ?? mutedIds),
                 grid: (prefs.grid ?? gridOrder),

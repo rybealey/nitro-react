@@ -3,7 +3,6 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, ChatEntryType, LocalizeText, RemoveLinkEventTracker } from '../../api';
 import { Flex, InfiniteScroll, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
 import { useChatHistory } from '../../hooks';
-import { UsernameIconGlyph } from '../rp-settings/UsernameIconGlyph';
 
 export const ChatHistoryView: FC<{}> = props =>
 {
@@ -78,8 +77,6 @@ export const ChatHistoryView: FC<{}> = props =>
                                 <div className="user-image" style={ { backgroundImage: `url(${ row.imageUrl })` } } /> }
                                         </div>
                                         <div className="chat-content">
-                                            { row.usernameIcon &&
-                                                <b className="username mr-1"><UsernameIconGlyph iconClass={ row.usernameIcon } color={ row.usernameIconColor || undefined } />{ ' ' }</b> }
                                             <b className="username mr-1"><span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: row.name } } />{ ': ' }</b>
                                             <span className="message" dangerouslySetInnerHTML={ { __html: `${ row.message }` } } />
                                         </div>
