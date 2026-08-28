@@ -15,6 +15,9 @@
 
         .nitro-purse-subscription {
             background-color: rgba($light, 0.1);
+            // Square tile: the row's height (two currency lines) sets the
+            // cross size, aspect-ratio derives the width to match.
+            aspect-ratio: 1;
         }
 
         .nitro-purse-button {
