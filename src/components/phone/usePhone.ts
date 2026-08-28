@@ -44,6 +44,9 @@ const PHONE_LAYOUT_VERSION: number = 2;
 
 export type PhoneTheme = 'auto' | 'light' | 'dark';
 
+// Where the phone pops up on the client when opened.
+export type PhonePosition = 'left' | 'center' | 'right';
+
 interface PhonePrefs
 {
     pinned: number[];
@@ -51,6 +54,7 @@ interface PhonePrefs
     grid: string[];
     dock: string[];
     theme: PhoneTheme;
+    position: PhonePosition;
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
@@ -96,7 +100,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 muted: (Array.isArray(parsed.muted) ? parsed.muted.filter((id: unknown) => (typeof id === 'number')) : []),
                 grid,
                 dock,
-                theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto')
+                theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto'),
+                position: (((parsed.position === 'left') || (parsed.position === 'right')) ? parsed.position : 'center')
             };
         }
     }
@@ -104,7 +109,34 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto' };
+    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'center' };
+}
+
+// Synchronous read of just the saved open-position, straight from storage -
+// used by PhoneView on open, before the React prefs state may have loaded.
+export const ReadPhonePosition = (): PhonePosition =>
+{
+    try
+    {
+        const userId = GetSessionDataManager().userId;
+
+        if(userId)
+        {
+            const raw = window.localStorage.getItem(storageKey(userId));
+
+            if(raw)
+            {
+                const value = JSON.parse(raw).position;
+
+                if((value === 'left') || (value === 'right')) return value;
+            }
+        }
+    }
+
+    catch(e)
+    {}
+
+    return 'center';
 }
 
 const usePhonePrefsState = () =>
@@ -115,6 +147,7 @@ const usePhonePrefsState = () =>
     const [ gridOrder, setGridOrder ] = useState<string[]>([ ...DEFAULT_GRID_APPS ]);
     const [ dockOrder, setDockOrder ] = useState<string[]>([ ...DEFAULT_DOCK_APPS ]);
     const [ theme, setThemeState ] = useState<PhoneTheme>('auto');
+    const [ position, setPositionState ] = useState<PhonePosition>('center');
 
     const ensureLoaded = () =>
     {
@@ -130,6 +163,7 @@ const usePhonePrefsState = () =>
         setGridOrder(prefs.grid);
         setDockOrder(prefs.dock);
         setThemeState(prefs.theme);
+        setPositionState(prefs.position);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
@@ -146,7 +180,8 @@ const usePhonePrefsState = () =>
                 muted: (prefs.muted ?? mutedIds),
                 grid: (prefs.grid ?? gridOrder),
                 dock: (prefs.dock ?? dockOrder),
-                theme: (prefs.theme ?? theme)
+                theme: (prefs.theme ?? theme),
+                position: (prefs.position ?? position)
             }));
         }
 
@@ -201,6 +236,14 @@ const usePhonePrefsState = () =>
         save({ theme: nextTheme });
     }
 
+    // Where the phone opens on the client (left / center / right). Read by
+    // PhoneView when the phone is shown.
+    const setPosition = (nextPosition: PhonePosition) =>
+    {
+        setPositionState(nextPosition);
+        save({ position: nextPosition });
+    }
+
     // Drag-reorder of the home screen (grid + dock zones together).
     const setAppOrder = (grid: string[], dock: string[]) =>
     {
@@ -209,7 +252,7 @@ const usePhonePrefsState = () =>
         save({ grid, dock });
     }
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, ensureLoaded };
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, ensureLoaded };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);

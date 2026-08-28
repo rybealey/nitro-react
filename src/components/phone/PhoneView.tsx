@@ -1,7 +1,7 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { toPng } from 'html-to-image';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
-import { AddEventLinkTracker, PlaySound, RemoveLinkEventTracker, SoundNames } from '../../api';
+import { AddEventLinkTracker, GetLocalStorage, PlaySound, RemoveLinkEventTracker, SetLocalStorage, SoundNames, WindowSaveOptions } from '../../api';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAppearanceView } from './PhoneAppearanceView';
@@ -14,7 +14,7 @@ import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
-import { usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
+import { ReadPhonePosition, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
 
 // The PixelRP phone — the player's window to their social life, replacing
 // the classic Habbo friends list + messenger windows. Opened from the
@@ -80,8 +80,35 @@ export const PhoneView: FC<{}> = props =>
         if((to !== 'thread') && setActiveThreadId) setActiveThreadId(-1);
     }
 
+    // Place the phone at the player's chosen side the next time it mounts.
+    // DraggableWindow centers the phone (windowPosition=CENTER) then applies
+    // its saved drag offset as a transform; writing that offset here slides
+    // the phone to the left/center/right edge on open. Vertical stays centered.
+    const applyOpenPosition = () =>
+    {
+        const width = (336 * 0.8); // .pixelrp-phone wrapper width (see PhoneView.scss $phone-scale)
+        const margin = 20;
+        const viewport = (window.innerWidth || document.body.offsetWidth || width);
+        const centeredLeft = ((viewport - width) / 2);
+
+        const position = ReadPhonePosition();
+
+        let targetLeft = centeredLeft;
+
+        if(position === 'left') targetLeft = margin;
+        else if(position === 'right') targetLeft = (viewport - width - margin);
+
+        const storage = { ...(GetLocalStorage<WindowSaveOptions>('nitro.windows.pixelrp-phone') || {}) } as WindowSaveOptions;
+
+        storage.offset = { x: (targetLeft - centeredLeft), y: 0 };
+
+        SetLocalStorage<WindowSaveOptions>('nitro.windows.pixelrp-phone', storage);
+    }
+
     const show = (to: PhoneScreen = null) =>
     {
+        if(!isVisible) applyOpenPosition();
+
         setIsVisible(true);
 
         if(to) go(to);
@@ -106,6 +133,8 @@ export const PhoneView: FC<{}> = props =>
         setThreadId(thread.threadId);
 
         if(setActiveThreadId) setActiveThreadId(thread.threadId);
+
+        if(!isVisible) applyOpenPosition();
 
         setIsVisible(true);
         setScreen(prevValue =>

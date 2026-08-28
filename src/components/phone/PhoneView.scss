@@ -1851,7 +1851,20 @@ $phone-scale: 0.8;
         color: #ffffff;
     }
 
-    // Appearance sub-screen option list (Light / Dark / Automatic).
+    // Small label heading a group on the Appearance screen (e.g. the phone
+    // open-position options).
+    .phone-appearance-sublabel {
+        margin: 2px 4px -6px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--ph-faint);
+    }
+
+    // Appearance sub-screen option list (Light / Dark / Automatic; phone
+    // position Left / Center / Right).
     .phone-appearance-option {
         display: flex;
         align-items: center;

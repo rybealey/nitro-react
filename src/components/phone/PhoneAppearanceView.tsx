@@ -14,7 +14,7 @@ interface PhoneAppearanceViewProps
 export const PhoneAppearanceView: FC<PhoneAppearanceViewProps> = props =>
 {
     const { onBack = null } = props;
-    const { theme, setTheme } = usePhonePrefs();
+    const { theme, setTheme, position, setPosition } = usePhonePrefs();
     const { resolvedDark = false, systemDark = false } = usePhoneTheme();
 
     const isAuto = (theme === 'auto');
@@ -79,6 +79,12 @@ export const PhoneAppearanceView: FC<PhoneAppearanceViewProps> = props =>
                         { option('sun', 'Light', (theme === 'light'), () => setTheme('light')) }
                         { option('moon', 'Dark', (theme === 'dark'), () => setTheme('dark')) }
                         { option('clock', 'Automatic', isAuto, () => setTheme('auto')) }
+                    </div>
+                    <div className="phone-appearance-sublabel">Where the phone opens</div>
+                    <div className="phone-settings-card">
+                        { option('align-left', 'Left', (position === 'left'), () => setPosition('left')) }
+                        { option('align-center', 'Center', (position === 'center'), () => setPosition('center')) }
+                        { option('align-right', 'Right', (position === 'right'), () => setPosition('right')) }
                     </div>
                 </div>
                 <div className="phone-settings-footnote">{ isAuto ? `Automatic follows your device - ${ systemDark ? 'dark' : 'light' } right now.` : 'Appearance only changes your phone - the rest of the hotel stays as it is.' }</div>
