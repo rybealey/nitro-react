@@ -1060,3 +1060,191 @@ index e4cf6ee1d1cbfe355608cb85bea5283f00a3b83d..cc84ded7f0bcd9dccf59186b1f0398d4
                      let isJump = false;
  
                      if(apply && Number.isFinite(sync.lastVx))
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index cc84ded7f0bcd9dccf59186b1f0398d4f0f379e3..1c394f471c3f9cdd42810002b1d4e56f1345304c 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -154,6 +154,23 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     private static TRAILING_SAFETY_STEP_MULTIPLE: number = 10;
+     private static TRAILING_SAFETY_STEP_FLOOR: number = 0.05;
+     private static TRAILING_SAFETY_STEP_CEILING: number = 0.5;
++    // Fix 4 (provisional endpoint hold): the general release trigger's
++    // ordinary grace is 120ms — deliberately short, since it also covers
++    // genuinely-diverged-but-not-yet-detected cases. That's too short
++    // specifically for an established TRAILING pair riding out MASTER's
++    // ordinary end-of-tile pause: confirmed in capture, release fired at
++    // 134ms with genuineDivergence=false, then the valid route relation
++    // was back one frame later. Rather than a blanket-longer 120ms for
++    // every release reason, this wider backstop applies ONLY when the
++    // specific uncertainty is "MASTER paused, JOINER hasn't (yet) proven
++    // incompatible" — see masterPausedRouteUncertain below. An explicitly
++    // incompatible route (joinerIncompatible, Case B of genuineDivergence
++    // just above) still releases immediately, no grace at all — this
++    // only widens the window for genuine uncertainty, not for a route
++    // already proven wrong. Still a plain timeout, not a new hold state:
++    // a circuit breaker for the case route evidence never resolves
++    // either way (MASTER genuinely gone, not just paused).
++    private static TRAILING_ENDPOINT_HOLD_BACKSTOP_MS: number = 280;
+ 
+     private _id: number;
+     private _container: IRoomSpriteCanvasContainer;
+@@ -284,6 +301,11 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         formationState: number, formationStateSince: number,
+         lockedDirX: number, lockedDirY: number,
+         lastNativeGap: number, convergingEvidenceMs: number, trailingEvidenceMs: number,
++        // Fix 3: sustained proof that an established TRAILING pair's
++        // route relationship has structurally become SAME_EDGE (not just
++        // a shrinking gap) — see the TRAILING evidence branch and the
++        // TRAIL_TO_CONVERGING transition it feeds, both in renderObject().
++        trailingSameEdgeEvidenceMs: number,
+         demotionOffsetSet: boolean, demotionOffsetX: number, demotionOffsetY: number, demotionHandoffT: number,
+         // ENTRY/EXIT visual-handoff continuity (transition-fix pass, on top
+         // of the otherwise-unmodified Round 6 middle). entryOffset{X,Y,Z}/
+@@ -1263,6 +1285,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     formationState: (lateEntryAtEngage ? RoomSpriteCanvas.FORMATION_TRAILING : RoomSpriteCanvas.FORMATION_CANDIDATE), formationStateSince: nowMs,
+                     lockedDirX: NaN, lockedDirY: NaN,
+                     lastNativeGap: NaN, convergingEvidenceMs: 0, trailingEvidenceMs: 0,
++                    trailingSameEdgeEvidenceMs: 0,
+                     demotionOffsetSet: false, demotionOffsetX: NaN, demotionOffsetY: NaN, demotionHandoffT: 0,
+                     entryOffsetSet: false, entryOffsetX: NaN, entryOffsetY: NaN, entryOffsetZ: NaN, entryHandoffT: 0, entryCompleteLogged: false,
+                     releaseCompleteLogged: false, lastSource: 'NATIVE',
+@@ -1566,6 +1589,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     {
+                         sync.convergingEvidenceMs = 0;
+                         sync.trailingEvidenceMs = 0;
++                        sync.trailingSameEdgeEvidenceMs = 0;
+                     }
+                     else if(sync.formationState === RoomSpriteCanvas.FORMATION_CANDIDATE)
+                     {
+@@ -1642,6 +1666,49 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                             sync.trailingEvidenceMs = Math.max(0, (sync.trailingEvidenceMs - dt));
+                         }
+                     }
++                    else if(sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
++                    {
++                        // Fix 3: TRAILING is not a permanent classification
++                        // either — keep re-validating it against the live
++                        // route relationship, same philosophy as the
++                        // CANDIDATE evidence above. If the pair's native
++                        // positions structurally become the exact same
++                        // edge (not just a shrinking gap — see the Round
++                        // 10 comment above for why gap magnitude alone is
++                        // the wrong signal), that's proof the relationship
++                        // has genuinely changed from "one edge behind" to
++                        // "same position," and continuing to force an
++                        // artificial one-tile separation is wrong
++                        // (confirmed in capture: native gap literally
++                        // 0.000 while TRAILING still rendered JOINER a
++                        // full tile away). Reuses the identical
++                        // routeSameEdge test and the identical +=dt
++                        // accumulation-over-a-window discipline as the
++                        // CANDIDATE lane above — a single coincidental
++                        // shared-tuple frame must NOT be enough by itself
++                        // (that exact false-positive is the historical
++                        // failure mode documented at the segmentsMatch-vs-
++                        // CONVERGING site further down: a genuine
++                        // one-tile-behind JOINER can briefly land on
++                        // MASTER's literal tuple for one packet while
++                        // still being most of a tile away in real space —
++                        // reclassifying off that single frame would pull
++                        // a real trailing formation apart). Being inside
++                        // this same outer block (already gated on
++                        // j.moving && m.moving && routeContinuous && mLoc)
++                        // and past the orderChanged check above also
++                        // covers "both native routes valid" and "no
++                        // crossing/overtake evidence" for free — this
++                        // resets to 0 the instant an overtake is detected,
++                        // same as convergingEvidenceMs/trailingEvidenceMs.
++                        const routeSameEdge = !!(j && m
++                            && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
++                            && (j.gxx === m.gxx) && (j.gyy === m.gyy));
++
++                        sync.trailingSameEdgeEvidenceMs = (routeSameEdge
++                            ? Math.min(RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS, (sync.trailingSameEdgeEvidenceMs + dt))
++                            : Math.max(0, (sync.trailingSameEdgeEvidenceMs - dt)));
++                    }
+ 
+                     sync.lastNativeGap = nativeSignedGap;
+                 }
+@@ -1902,8 +1969,20 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     && ((j.moving && m.moving && !routeContinuous && !persistentTrailingCompatible && sync.badSince && ((nowMs - sync.badSince) > RoomSpriteCanvas.FORMATION_CORNER_GRACE_MS))
+                         || (j.moving && !m.moving && joinerIncompatible)));
+ 
++                // Fix 4: MASTER paused (moving=false) but JOINER hasn't
++                // (yet) proven incompatible with the last confirmed shared
++                // direction — genuine route uncertainty, not a proven
++                // divergence (that's joinerIncompatible/genuineDivergence
++                // Case B just above, which still releases immediately) and
++                // not the ordinary case the 120ms grace was tuned for
++                // either. Scoped to an established TRAILING session only —
++                // see TRAILING_ENDPOINT_HOLD_BACKSTOP_MS for the reasoning.
++                const masterPausedRouteUncertain = !!(j && m && j.moving && !m.moving && !joinerIncompatible
++                    && (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING));
++                const releaseGraceMs = (masterPausedRouteUncertain ? RoomSpriteCanvas.TRAILING_ENDPOINT_HOLD_BACKSTOP_MS : 120);
++
+                 if((sync.mode !== 2) && (!masterObject || genuineDivergence
+-                    || (!absoluteLockActive && sync.badSince && ((nowMs - sync.badSince) > 120)))) sync.mode = 2;
++                    || (!absoluteLockActive && sync.badSince && ((nowMs - sync.badSince) > releaseGraceMs)))) sync.mode = 2;
+ 
+                 // TEMP DEBUG (pixelrp master/joiner sync investigation):
+                 // [sync:RELEASE_REASON] — fires once, the frame RELEASE
+@@ -1953,6 +2032,59 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 const lockGapSafe = (Number.isFinite(nativeAbsGap) && (nativeAbsGap <= RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX));
+                 const lockProof = ((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && geometryLockEligible && lockGapSafe);
+ 
++                // Fix 3: the TRAILING -> CONVERGING hand-off itself, fed by
++                // trailingSameEdgeEvidenceMs above. Placed here (mode still
++                // 0, before the s-ramp block below) so a session that
++                // promotes this exact frame is immediately eligible for
++                // that block's s-ramp/lockProof handling too, no extra
++                // frame of delay.
++                if((sync.mode === 0) && (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
++                    && (sync.trailingSameEdgeEvidenceMs >= RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS))
++                {
++                    // Continuity capture BEFORE the flip — mirrors the
++                    // ordinary trailing-exit capture (see its own comment
++                    // below) but is needed EXPLICITLY here: that capture
++                    // deliberately skips promotions to CONVERGING, on the
++                    // (here false) assumption that such a promotion is
++                    // always already visually continuous — true only for
++                    // a CANDIDATE session that never charged an active
++                    // correction in the first place. THIS session may
++                    // have been actively rendering up to a full tile away
++                    // from native via TRAIL_LOCK/TRAIL_CORRECT, so
++                    // PHASE_SHIFT's native-phase-based first frame (s=0,
++                    // see below) would otherwise snap straight back to
++                    // native instead of continuing from where JOINER was
++                    // actually being drawn. Reuses trailingExitOffsetSet/
++                    // TRAIL_PHASE_EXIT's own decay render branch directly
++                    // — that branch's own gating (`sync.trailingExitOffsetSet
++                    // || (formationState===TRAILING && ...)`) doesn't
++                    // require formationState to still read TRAILING once
++                    // the flag itself is set, so it picks this up cleanly
++                    // even though formationState is CONVERGING by the time
++                    // it runs.
++                    const baseX = (Number.isFinite(sync.lastVx) ? sync.lastVx : roomLocation.x);
++                    const baseY = (Number.isFinite(sync.lastVy) ? sync.lastVy : roomLocation.y);
++
++                    sync.trailingExitOffsetX = (baseX - roomLocation.x);
++                    sync.trailingExitOffsetY = (baseY - roomLocation.y);
++                    sync.trailingExitOffsetZ = 0;
++                    sync.trailingExitOffsetSet = true;
++                    sync.trailingExitHandoffT = 0;
++                    sync.trailingCorrectingActive = false;
++                    sync.trailingSpacingLocked = false;
++                    sync.trailingMasterEdgeSet = false;
++                    sync.trailingLatchSet = false;
++                    sync.trailingRolloverActive = false;
++                    sync.trailingAcquireActive = false;
++                    sync.trailingSameEdgeEvidenceMs = 0;
++
++                    sync.formationState = RoomSpriteCanvas.FORMATION_CONVERGING;
++                    sync.formationStateSince = nowMs;
++                    sync.s = 0;
++
++                    console.log(`[sync:TRAIL_TO_CONVERGING] master=${ sync.masterId } joiner=${ sync.joinerId } continuityOffset=(${ sync.trailingExitOffsetX.toFixed(3) },${ sync.trailingExitOffsetY.toFixed(3) }) nativeAbsGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' }`);
++                }
++
+                 if(sync.mode === 0)
+                 {
+                     // s only advances while the persistent formationState
