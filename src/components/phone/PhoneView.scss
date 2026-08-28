@@ -2363,6 +2363,14 @@ $phone-scale: 0.8;
         &::-webkit-scrollbar {
             display: none;
         }
+
+        // People: no scroll strip - wrap instead, and let the bare sprite
+        // heads overflow their boxes without being clipped.
+        &.is-people {
+            overflow: visible;
+            flex-wrap: wrap;
+            row-gap: 10px;
+        }
     }
 
     .phone-album-tile {
@@ -2552,12 +2560,13 @@ $phone-scale: 0.8;
         color: var(--ph-soft);
     }
 
-    // Collection detail header (Screenshots / person / place / album).
+    // Collection detail header (Screenshots / person / place / album) -
+    // takes over as the app's main header while a detail is open.
     .phone-collections-detail-head {
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 8px 14px 8px 8px;
+        padding: 12px 14px 8px 8px;
 
         .phone-collections-detail-meta {
             flex: 1;
@@ -2566,8 +2575,10 @@ $phone-scale: 0.8;
 
         .phone-collections-detail-title {
             font-family: 'Ubuntu', sans-serif;
-            font-size: 17px;
+            font-size: 24px;
             font-weight: 700;
+            letter-spacing: -0.4px;
+            line-height: 1.15;
             color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;

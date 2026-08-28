@@ -44,8 +44,17 @@ const NameColor = (name: string): string =>
     return PhoneAvatarColor(hash);
 }
 
-export const PhonePhotosCollectionsView: FC<{}> = props =>
+interface PhonePhotosCollectionsViewProps
 {
+    // Lets the Photos shell swap its main header out while a collection
+    // detail (album / person / place / screenshots) is open - the detail
+    // head takes over as THE header instead of stacking under it.
+    onDetailChange?: (open: boolean) => void;
+}
+
+export const PhonePhotosCollectionsView: FC<PhonePhotosCollectionsViewProps> = props =>
+{
+    const { onDetailChange = null } = props;
     const { photos = [] } = usePhonePhotos();
     const { albums = [], albumPhotos = {}, requestAlbums = null, requestAlbumPhotos = null, createAlbum = null, deleteAlbum = null, setAlbumMember = null, setAlbumPhoto = null } = usePhoneAlbums();
     const { friends = [] } = useFriends();
@@ -114,6 +123,11 @@ export const PhonePhotosCollectionsView: FC<{}> = props =>
     const activeAlbum: RpAlbumListItem = ((view?.type === 'album') ? albums.find(album => (album.id === view.id)) : null);
     const activeAlbumPhotos = ((view?.type === 'album') ? (albumPhotos[view.id] || []) : []);
     const isAlbumOwner = (activeAlbum && (activeAlbum.ownerId === ownId));
+
+    useEffect(() =>
+    {
+        if(onDetailChange) onDetailChange(view !== null);
+    }, [ view ]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Albums vanishing under us (deleted / removed as member) drop back to
     // the sections view.
@@ -282,7 +296,7 @@ export const PhonePhotosCollectionsView: FC<{}> = props =>
                                 <PhoneIcon icon="user" size={ 15 } />
                                 <span>People</span>
                             </div>
-                            <div className="phone-collections-row">
+                            <div className="phone-collections-row is-people">
                                 { people.map(([ name, personPhotos ]) =>
                                 {
                                     const friend = friendByName(name);

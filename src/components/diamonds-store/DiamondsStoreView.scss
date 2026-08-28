@@ -159,27 +159,38 @@
     .diamonds-store-listings {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
+        padding: 2px;
     }
 
+    // White sticker cards with explicit dark text - the old rows inherited
+    // the window's light text on a light wash and were barely readable.
     .diamonds-store-listing {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 8px;
-        border-radius: $border-radius;
-        background: rgba(0, 0, 0, 0.05);
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease;
 
         &:hover {
-            background: rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+            border-color: #8a6fe8;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
         }
     }
 
     .diamonds-store-listing-icon {
         flex-shrink: 0;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background-color: #f3eefe;
+        border: 1px solid rgba(0, 0, 0, 0.08);
         background-repeat: no-repeat;
         background-position: center;
         background-size: auto;
@@ -195,25 +206,35 @@
     }
 
     .diamonds-store-listing-name {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
+        color: #1c1c22;
     }
 
     .diamonds-store-listing-desc {
-        font-size: 11px;
-        color: rgba(0, 0, 0, 0.6);
+        font-size: 11.5px;
+        line-height: 1.35;
+        color: rgba(28, 28, 34, 0.68);
     }
 
+    // Price as a diamond chip: currency icon + count on a soft purple pill.
     .diamonds-store-listing-price {
         display: flex;
         align-items: center;
         gap: 5px;
+        flex-shrink: 0;
+        padding: 5px 10px;
+        border-radius: 14px;
+        background: #efe9ff;
+        border: 1px solid rgba(122, 92, 255, 0.35);
+        color: #4a34c0;
+        font-size: 13px;
         font-weight: 700;
     }
 
     .diamonds-store-price-was {
         text-decoration: line-through;
-        color: rgba(0, 0, 0, 0.45);
+        color: rgba(74, 52, 192, 0.5);
         font-weight: 400;
         font-size: 11px;
     }

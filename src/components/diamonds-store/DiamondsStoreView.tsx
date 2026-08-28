@@ -1,7 +1,7 @@
 import { DiamondsStoreEvent, DiamondsStoreListing, DiamondsStorePurchaseResultEvent, GetDiamondsStoreComposer, ILinkEventTracker, PurchaseDiamondsStoreItemComposer } from '@nitrots/nitro-renderer';
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { Button, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
+import { Button, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { useStripeCheckout } from './useStripeCheckout';
 
@@ -254,6 +254,7 @@ export const DiamondsStoreView: FC<{}> = props =>
                                         <div className="diamonds-store-listing-desc">{ listing.description }</div>
                                     </div>
                                     <div className="diamonds-store-listing-price">
+                                        <LayoutCurrencyIcon type={ 5 } />
                                         { onSale && <span className="diamonds-store-price-was">{ listing.price }</span> }
                                         <span className="diamonds-store-price-now">{ onSale ? listing.specialPrice : listing.price }</span>
                                         { onSale && <span className="diamonds-store-sale-tag">SALE</span> }

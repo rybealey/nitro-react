@@ -29,6 +29,7 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
     const { openCamera = null, onBack = null } = props;
     const { photos = [], photosLoaded = false, requestPhotos = null, deletePhoto = null, updatePhoto = null } = usePhonePhotos();
     const [ tab, setTab ] = useState<'library' | 'collections'>('library');
+    const [ collectionDetailOpen, setCollectionDetailOpen ] = useState(false);
     const [ viewerIndex, setViewerIndex ] = useState<number>(-1);
     const [ chromeHidden, setChromeHidden ] = useState(false);
     const [ confirmingDelete, setConfirmingDelete ] = useState(false);
@@ -193,20 +194,22 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
     return (
         <div className="phone-screen phone-app-screen phone-photos">
             <div className="phone-app-scroll">
-                <div className="phone-app-header">
-                    <div className="phone-app-header-lead">
-                        <div className="phone-tap phone-thread-back" onClick={ event => (onBack && onBack()) }>
-                            <PhoneIcon icon="chevron-left" size={ 24 } />
+                { /* An open collection detail takes over as THE header. */ }
+                { !((tab === 'collections') && collectionDetailOpen) &&
+                    <div className="phone-app-header">
+                        <div className="phone-app-header-lead">
+                            <div className="phone-tap phone-thread-back" onClick={ event => (onBack && onBack()) }>
+                                <PhoneIcon icon="chevron-left" size={ 24 } />
+                            </div>
+                            <div>
+                                <div className="phone-app-kicker">PIXELRP PHOTOS</div>
+                                <div className="phone-app-title">Photos</div>
+                            </div>
                         </div>
-                        <div>
-                            <div className="phone-app-kicker">PIXELRP PHOTOS</div>
-                            <div className="phone-app-title">Photos</div>
+                        <div className="phone-tap phone-fab" title="Open Camera" onClick={ event => (openCamera && openCamera()) }>
+                            <PhoneIcon icon="camera" size={ 20 } />
                         </div>
-                    </div>
-                    <div className="phone-tap phone-fab" title="Open Camera" onClick={ event => (openCamera && openCamera()) }>
-                        <PhoneIcon icon="camera" size={ 20 } />
-                    </div>
-                </div>
+                    </div> }
                 { (tab === 'library') &&
                     <>
                         { (photos.length > 0) &&
@@ -241,7 +244,7 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
                             </div> }
                     </> }
                 { (tab === 'collections') &&
-                    <PhonePhotosCollectionsView /> }
+                    <PhonePhotosCollectionsView onDetailChange={ setCollectionDetailOpen } /> }
                 <div className="phone-scroll-spacer" />
                 <div className="phone-photos-tab-spacer" />
             </div>

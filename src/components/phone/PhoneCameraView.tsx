@@ -171,7 +171,7 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
                     <img src={ capturedUrl } alt="" />
                     <div className="phone-camera-preview-bar">
                         <div className={ `phone-tap phone-camera-preview-btn${ isSaving ? ' is-disabled' : '' }` } onClick={ event => (!isSaving && setCapturedUrl(null)) }>Retake</div>
-                        <div className={ `phone-tap phone-camera-preview-btn is-primary${ isSaving ? ' is-disabled' : '' }` } onClick={ usePhoto }>{ isSaving ? 'Saving…' : 'Use Photo' }</div>
+                        <div className={ `phone-tap phone-camera-preview-btn is-primary${ isSaving ? ' is-disabled' : '' }` } onClick={ usePhoto }>{ isSaving ? 'Saving…' : 'Save' }</div>
                     </div>
                 </div> }
             { !inRoom &&

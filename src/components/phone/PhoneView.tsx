@@ -14,7 +14,7 @@ import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
-import { ReadPhonePosition, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
+import { ReadPhonePosition, useAirplane, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
 
 // The PixelRP phone — the player's window to their social life, replacing
 // the classic Habbo friends list + messenger windows. Opened from the
@@ -60,6 +60,7 @@ export const PhoneView: FC<{}> = props =>
     const { requestFriend = null, getFriend = null } = useFriends();
     const { ensureLoaded } = usePhonePrefs();
     const { resolvedDark = false } = usePhoneTheme();
+    const { enabled: airplaneOn = false } = useAirplane();
     const { saveScreenshot = null } = usePhonePhotos();
     const displayRef = useRef<HTMLDivElement>(null);
     const powerTimer = useRef<number>(0);
@@ -381,7 +382,8 @@ export const PhoneView: FC<{}> = props =>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
                                 <span>PXL</span>
-                                <PhoneIcon icon="cellular-signal-3" size={ 15 } />
+                                { /* Airplane mode replaces the signal bars, like a real phone. */ }
+                                <PhoneIcon icon={ airplaneOn ? 'plane-up' : 'cellular-signal-3' } size={ 15 } />
                                 <PhoneIcon icon="battery-full" size={ 18 } />
                             </div>
                         </div>
