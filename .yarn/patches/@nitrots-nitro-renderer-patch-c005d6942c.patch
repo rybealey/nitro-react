@@ -484,3 +484,225 @@ index 3b9955d03b912393ed5de2aa8ad160b7b6f539ba..4dd982c6b04cecdfcbbbd9b378e0d0c1
  
                      const trailingStopReason = ((sync.mode === 2) ? 'released' : 'route_grace_expired');
  
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 4dd982c6b04cecdfcbbbd9b378e0d0c162b98aa8..e4cf6ee1d1cbfe355608cb85bea5283f00a3b83d 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -365,6 +365,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         trailingLatchInterval: number, trailingLatchPhase: number,
+         trailingLatchMSx: number, trailingLatchMSy: number, trailingLatchMGx: number, trailingLatchMGy: number,
+         trailingRolloverActive: boolean, trailingRolloverSince: number, trailingRolloverFreezeFrames: number,
++        // Round 10 (pre-lock rollover continuity): phaseRolloverOffset{X,Y}/
++        // phaseRolloverOffsetSet/phaseRolloverHandoffT — mirrors
++        // trailingExitOffset*/trailingExitOffsetSet/trailingExitHandoffT
++        // exactly (same fixed-window continuity-blend technique), but for
++        // an ordinary adjacent-segment rollover mid-PHASE_SHIFT (pre-lock,
++        // formationState CONVERGING) instead of a full trailing-phase exit.
++        // See the PHASE_ROLLOVER_HOLD branch in renderObject() for the
++        // full rationale.
++        phaseRolloverOffsetSet: boolean, phaseRolloverOffsetX: number, phaseRolloverOffsetY: number, phaseRolloverHandoffT: number,
+         // TEMP DEBUG (pixelrp master/joiner sync investigation) fields below —
+         // remove alongside the rest of the TEMP DEBUG block once diagnosis is
+         // confirmed with the user. buf: circular buffer of pre-formatted
+@@ -1238,6 +1247,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     trailingLatchInterval: 530, trailingLatchPhase: 0,
+                     trailingLatchMSx: NaN, trailingLatchMSy: NaN, trailingLatchMGx: NaN, trailingLatchMGy: NaN,
+                     trailingRolloverActive: false, trailingRolloverSince: 0, trailingRolloverFreezeFrames: 0,
++                    phaseRolloverOffsetSet: false, phaseRolloverOffsetX: NaN, phaseRolloverOffsetY: NaN, phaseRolloverHandoffT: 0,
+                     buf: [], postJump: 0,
+                     lastVx: NaN, lastVy: NaN, lastMx: NaN, lastMy: NaN, lastPathOk: -1,
+                     lastMSx: NaN, lastMSy: NaN, lastMGx: NaN, lastMGy: NaN,
+@@ -1512,45 +1522,70 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     }
+                     else if(sync.formationState === RoomSpriteCanvas.FORMATION_CANDIDATE)
+                     {
+-                        // Same goal + same direction is the identical-segment
+-                        // relation here (one-tile steps make the starts equal).
+-                        // Sustaining it proves same-position join intent even
+-                        // when equal native speeds keep the physical gap flat
+-                        // — BUT only when the pair is actually close right now
+-                        // (see FORMATION_SAME_POSITION_GAP_MAX above). A late
+-                        // join that starts a genuine tile apart can share this
+-                        // exact tuple on its very first mutual step purely by
+-                        // coincidence (both about to walk the same corridor),
+-                        // without being any closer than a real one-tile-behind
+-                        // pair — that case now counts toward TRAILING instead,
+-                        // same as a direct one-edge-behind reading, so it can't
+-                        // be collapsed into a false same-position lock. A
+-                        // sustained exact one-edge-behind relation still always
+-                        // proves TRAILING regardless of distance (it's already
+-                        // a real different-segment relation, nothing to
+-                        // disambiguate). Opposing evidence decays so brief
+-                        // packet-boundary tuple skew cannot choose either lane.
+-                        // <=0.10: close enough to earn CONVERGING evidence.
+-                        // >=0.15: structurally too late, so satisfy the short
+-                        // late-evidence threshold immediately. Between them,
+-                        // allow only 100ms to return to <=0.10; otherwise the
+-                        // default is TRAILING. Returning close clears all late
+-                        // evidence rather than letting a stale partial window
+-                        // decide a later frame. Late evidence uses the SIGNED
+-                        // gap so only MASTER-ahead spacing qualifies; JOINER-
+-                        // ahead/crossing geometry cannot masquerade as late.
+-                        if(sameGoal && (nativeAbsGap <= RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX))
++                        // Round 10 (route-offset classifier): the pair's
++                        // ROUTE/destination relationship — same edge, or one
++                        // edge behind — is now the PRIMARY signal, replacing
++                        // native-gap magnitude (shrinking/near-zero vs
++                        // stable) as the thing that decides CONVERGING vs
++                        // TRAILING. What the gap-based version got wrong:
++                        // two avatars walking the identical segment at equal
++                        // native speed with a legitimate, stable phase
++                        // offset could never earn CONVERGING evidence,
++                        // because convergence evidence required the native
++                        // gap to ALREADY be near zero — but PHASE_SHIFT (the
++                        // thing that actually shrinks it) only ever runs
++                        // once CONVERGING has been chosen. Route-same-edge
++                        // no longer needs the gap to already be small.
++                        // Native gap is retained only as secondary/fallback
++                        // evidence below, plus as the LOCK-time safety check
++                        // (see lockGapSafe at the lockProof site) — it no
++                        // longer gates classification itself.
++                        //
++                        // routeSameEdge duplicates the same literal test as
++                        // segmentsMatch (declared later, after the mode
++                        // transition it gates) — recomputed narrowly here
++                        // rather than hoisting that declaration, to keep
++                        // this change scoped to the evidence block alone.
++                        //
++                        // Neither lane sets its evidence directly to the
++                        // full threshold on a single reading — both
++                        // accumulate via +=dt exactly like the old gap-based
++                        // evidence did, so a single coincidental
++                        // packet-boundary tuple (see the segmentsMatch-vs-
++                        // CONVERGING comment further down for a real
++                        // example of that coincidence) cannot promote
++                        // either lane by itself; the SAME route relationship
++                        // must be observed consistently for the full
++                        // window. Opposing evidence resets/decays exactly
++                        // as before so a brief tuple skew can't split the
++                        // difference between lanes.
++                        const routeSameEdge = !!(j && m
++                            && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
++                            && (j.gxx === m.gxx) && (j.gyy === m.gyy));
++
++                        if(routeSameEdge)
+                         {
+                             sync.convergingEvidenceMs += dt;
+                             sync.trailingEvidenceMs = 0;
+                         }
+-                        else if(joinerBehind || (sameGoal && (nativeSignedGap <= -RoomSpriteCanvas.FORMATION_TRAILING_GAP_MIN)))
++                        else if(joinerBehind)
+                         {
+-                            sync.trailingEvidenceMs = RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS;
++                            // Structurally one route edge behind MASTER
++                            // (JOINER's own goal tile is MASTER's current
++                            // start tile, same direction) — accumulated,
++                            // not instant, over FORMATION_LATE_EVIDENCE_MS.
++                            sync.trailingEvidenceMs = Math.min(RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS, (sync.trailingEvidenceMs + dt));
+                             sync.convergingEvidenceMs = 0;
+                         }
+-                        else if(sameGoal && (nativeSignedGap < -RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX))
++                        else if(sameGoal && (nativeSignedGap <= -RoomSpriteCanvas.FORMATION_TRAILING_GAP_MIN))
+                         {
++                            // Secondary/fallback evidence only: this frame's
++                            // route reading is neither routeSameEdge nor
++                            // joinerBehind (e.g. still mid-approach, no
++                            // shared tuple yet), but a clearly MASTER-ahead
++                            // signed gap on a shared goal is still real
++                            // corroborating evidence — native gap as a
++                            // fallback, not the primary signal.
+                             sync.trailingEvidenceMs = Math.min(RoomSpriteCanvas.FORMATION_LATE_EVIDENCE_MS, (sync.trailingEvidenceMs + dt));
+                             sync.convergingEvidenceMs = 0;
+                         }
+@@ -1855,7 +1890,21 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 // never charges s, so a rollover sameGoal coincidence still
+                 // cannot collapse a genuine trailing formation.
+                 const geometryLockEligible = (pathOk && segmentsMatch);
+-                const lockProof = ((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && geometryLockEligible);
++                // Round 10: CONVERGING classification itself no longer
++                // requires the native gap to already be small (see the
++                // route-offset evidence block above) — so that safety has
++                // to be re-asserted here instead, right before the actual
++                // LOCK transition, to preserve the existing guarantee that
++                // a pair still ~0.5-0.7 tiles apart can never enter LOCK.
++                // Requires a FRESH, confirmed small reading this frame
++                // (not merely "no evidence against it") — NaN (e.g. a
++                // momentary moving=false blip) fails closed. If s reaches 1
++                // before the gap has actually closed, lockProof simply
++                // stays false and mode remains 0 to try again next frame
++                // (s does not decay in mode 0) — normally only a frame or
++                // two behind PHASE_SHIFT actually finishing the job.
++                const lockGapSafe = (Number.isFinite(nativeAbsGap) && (nativeAbsGap <= RoomSpriteCanvas.FORMATION_SAME_POSITION_GAP_MAX));
++                const lockProof = ((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && geometryLockEligible && lockGapSafe);
+ 
+                 if(sync.mode === 0)
+                 {
+@@ -2863,6 +2912,68 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         vz = (j.sz + (j.dz * progress));
+                         apply = true;
+                         source = 'PHASE_SHIFT';
++                        // Re-arm the rollover hold below for the NEXT rollover
++                        // — PHASE_SHIFT is live again this frame, so any
++                        // offset captured for a previous rollover is stale.
++                        sync.phaseRolloverOffsetSet = false;
++                    }
++                    else if((sync.formationState === RoomSpriteCanvas.FORMATION_CONVERGING) && m
++                        && !segmentsMatch && routeContinuous && Number.isFinite(sync.lastVx) && Number.isFinite(sync.lastVy))
++                    {
++                        // Round 10 (pre-lock rollover continuity): an
++                        // ORDINARY adjacent-segment rollover mid-PHASE_SHIFT
++                        // — JOINER's or MASTER's own next-step packet just
++                        // landed, so segmentsMatch (the exact same tuple)
++                        // no longer holds this one frame, even though the
++                        // pair's underlying route relationship hasn't
++                        // actually changed. routeContinuous (still true
++                        // here — a genuine divergence would already have
++                        // flipped mode to 2 above, well before this branch
++                        // is reached) is what proves that: it stays true
++                        // across exactly this kind of rollover via
++                        // joinerBehind/joinerAhead/sameGoal, so there is
++                        // nothing here to correct against, only a discrete
++                        // tuple reading that changed for one frame.
++                        //
++                        // Previously this fell all the way through to plain
++                        // NATIVE for that one frame (apply stays false) —
++                        // a hard cut from the corrected PHASE_SHIFT position
++                        // to raw native and back the instant segmentsMatch
++                        // returned, visible as a brief tug/peek/separation.
++                        // Same fixed-window continuity technique already
++                        // used for RELEASE_BLEND/DEMOTION_BLEND/
++                        // TRAIL_PHASE_EXIT: capture the last ACTUALLY
++                        // DISPLAYED position once, decay that constant
++                        // offset toward native over a short window, and
++                        // resume PHASE_SHIFT the moment segmentsMatch (or a
++                        // fresh rollover) reclaims the branch above — which,
++                        // for an ordinary one-frame tuple gap, is usually
++                        // the very next frame, well before this decay
++                        // finishes.
++                        if(!sync.phaseRolloverOffsetSet)
++                        {
++                            sync.phaseRolloverOffsetX = (sync.lastVx - roomLocation.x);
++                            sync.phaseRolloverOffsetY = (sync.lastVy - roomLocation.y);
++                            sync.phaseRolloverOffsetSet = true;
++                            sync.phaseRolloverHandoffT = 0;
++                        }
++
++                        const rolloverHandoffWeight = Math.max(0, (1 - (sync.phaseRolloverHandoffT / RoomSpriteCanvas.TRAILING_EXIT_DECAY_MS)));
++
++                        if(rolloverHandoffWeight > 0)
++                        {
++                            vx = (roomLocation.x + (sync.phaseRolloverOffsetX * rolloverHandoffWeight));
++                            vy = (roomLocation.y + (sync.phaseRolloverOffsetY * rolloverHandoffWeight));
++                            vz = roomLocation.z;
++                            apply = true;
++                            source = 'PHASE_ROLLOVER_HOLD';
++                        }
++                        else
++                        {
++                            sync.phaseRolloverOffsetSet = false;
++                        }
++
++                        sync.phaseRolloverHandoffT += dt;
+                     }
+                 }
+ 
