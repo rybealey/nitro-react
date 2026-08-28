@@ -2448,33 +2448,20 @@ $phone-scale: 0.8;
     }
 }
 
-// ----- pixelarticons masks (tinted via currentColor) -----
-
+// ----- phone UI icons (FontAwesome Duotone Solid, kit c305b2c178) -----
+// The whole phone chrome renders FA duotone glyphs via PhoneIcon. Both layers
+// take the element's currentColor so an icon tints to the text color around
+// it; the secondary layer rides softer for the duotone depth.
 .phone-pi {
-    display: inline-block;
+    display: inline-flex;
     flex: none;
-    background-color: currentColor;
-    mask-repeat: no-repeat;
-    mask-position: center;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    -webkit-mask-size: contain;
-}
-
-$phone-icons: 'message', 'users', 'user', 'user-plus', 'sliders', 'camera', 'image', 'download', 'dollar',
-    'heart', 'pencil', 'search', 'bookmark', 'volume-x', 'volume-2', 'trash', 'chevron-left',
-    'more-vertical', 'arrow-up', 'plus', 'check', 'close', 'phone', 'map-pin-home',
-    'megaphone', 'cellular-signal-3', 'battery-full', 'crop',
-    // added for the redesigned Settings / Appearance surfaces
-    'chevron-right', 'sun', 'moon', 'clock', 'human', 'lock', 'shield', 'gamepad',
-    'wallet', 'wifi', 'battery', 'bell';
-
-@each $name in $phone-icons {
-    .phone-pi-#{$name} {
-        mask-image: url('~/pixelarticons/svg/#{$name}.svg');
-        -webkit-mask-image: url('~/pixelarticons/svg/#{$name}.svg');
-    }
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    --fa-primary-color: currentColor;
+    --fa-secondary-color: currentColor;
+    --fa-primary-opacity: 1;
+    --fa-secondary-opacity: 0.4;
 }
 
 @keyframes phone-home-in {
