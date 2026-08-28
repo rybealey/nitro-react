@@ -15,9 +15,15 @@
 
         .nitro-purse-subscription {
             background-color: rgba($light, 0.1);
-            // Square tile: the row's height (two currency lines) sets the
-            // cross size, aspect-ratio derives the width to match.
-            aspect-ratio: 1;
+            // 1:1 tile. aspect-ratio can't do this here (the row's auto
+            // height is never a definite cross size, so the ratio has no
+            // axis to resolve from - verified both stretch and centered
+            // variants render non-square). The row's height IS deterministic
+            // chrome though: the help/cog button column is its tallest at
+            // (23 + 2*4) + (21 + 2*4) = 60px, so a fixed 60px width makes
+            // the stretched tile exactly square. Revisit if those icons or
+            // their p-1 padding change.
+            width: 60px;
         }
 
         .nitro-purse-button {
