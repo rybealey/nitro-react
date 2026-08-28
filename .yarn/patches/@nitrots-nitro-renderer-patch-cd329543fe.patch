@@ -1,0 +1,324 @@
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index d830c6c904b0238ee4910dd72a9d2406e08a9493..35489aeebaa0cbabbdee4af0db56c23b3ff61d71 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -219,6 +219,14 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // that here (joinerBehind stays true across ordinary same-direction
+     // walking regardless of how long JOINER's own packet takes).
+     private static PHASE_ROLLOVER_HOLD_BACKSTOP_MS: number = 450;
++    // System 11: route-offset states. These describe a logical relationship
++    // between movement edges, never a decimal world-space gap.
++    private static SYSTEM11_UNKNOWN: number = 0;
++    private static SYSTEM11_ALIGNED: number = 1;
++    private static SYSTEM11_BEHIND: number = 2;
++    private static SYSTEM11_AHEAD: number = 3;
++    private static SYSTEM11_DIVERGED: number = 4;
++    private static SYSTEM11_STATE_NAMES: string[] = [ 'UNKNOWN', 'ALIGNED', 'BEHIND', 'AHEAD', 'DIVERGED' ];
+ 
+     private _id: number;
+     private _container: IRoomSpriteCanvasContainer;
+@@ -291,6 +299,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // blips (e.g. a masterObject lookup miss).
+     private _pixelrpSync: {
+         masterId: number, joinerId: number, mode: number, s: number, last: number, badSince: number, rawPrev: number, phiPrev: number,
++        // System 11 keeps two logical edges per avatar and a sticky route
++        // offset. Packet rollover may make the live tuple ambiguous, but does
++        // not rewrite a proven relationship. DIVERGED is the only immediate
++        // terminal transition and always returns movement to JOINER.
++        system11State: number, system11PreferredState: number, system11LastLoggedState: number, system11MasterPhase: number,
++        system11MasterEdgeCapturedAt: number, system11JoinerEdgeCapturedAt: number,
++        system11MasterCurrentSet: boolean, system11MasterPreviousSet: boolean,
++        system11MasterCurrentSx: number, system11MasterCurrentSy: number, system11MasterCurrentSz: number,
++        system11MasterCurrentGx: number, system11MasterCurrentGy: number, system11MasterCurrentGz: number,
++        system11MasterPreviousSx: number, system11MasterPreviousSy: number, system11MasterPreviousSz: number,
++        system11MasterPreviousGx: number, system11MasterPreviousGy: number, system11MasterPreviousGz: number,
++        system11JoinerCurrentSet: boolean, system11JoinerPreviousSet: boolean,
++        system11JoinerCurrentSx: number, system11JoinerCurrentSy: number, system11JoinerCurrentSz: number,
++        system11JoinerCurrentGx: number, system11JoinerCurrentGy: number, system11JoinerCurrentGz: number,
++        system11JoinerPreviousSx: number, system11JoinerPreviousSy: number, system11JoinerPreviousSz: number,
++        system11JoinerPreviousGx: number, system11JoinerPreviousGy: number, system11JoinerPreviousGz: number,
+         // visualLocked: latches true the first frame LOCK actually renders
+         // MASTER_COPY (segments literally coincided at that instant), and
+         // then stays true — once genuinely established, a same-route
+@@ -1337,6 +1361,26 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     masterId: (joinerIsOwn ? object.instanceId : this._pixelrpOwnId),
+                     joinerId: (joinerIsOwn ? this._pixelrpOwnId : object.instanceId),
+                     mode: 0, s: 0, last: nowMs, badSince: 0, rawPrev: NaN, phiPrev: 0,
++                    // A pair already on adjacent edges is immediately proven
++                    // BEHIND. A same-edge staggered departure remains UNKNOWN
++                    // until rollover exposes that one-step relationship; this
++                    // avoids manufacturing a gap while both are still on one edge.
++                    system11State: (pathMatch.sameGoal
++                        ? (lateEntryAtEngage ? RoomSpriteCanvas.SYSTEM11_UNKNOWN : RoomSpriteCanvas.SYSTEM11_ALIGNED)
++                        : RoomSpriteCanvas.SYSTEM11_BEHIND),
++                    system11PreferredState: (lateEntryAtEngage ? RoomSpriteCanvas.SYSTEM11_BEHIND : RoomSpriteCanvas.SYSTEM11_ALIGNED),
++                    system11LastLoggedState: RoomSpriteCanvas.SYSTEM11_UNKNOWN, system11MasterPhase: 0,
++                    system11MasterEdgeCapturedAt: NaN, system11JoinerEdgeCapturedAt: NaN,
++                    system11MasterCurrentSet: false, system11MasterPreviousSet: false,
++                    system11MasterCurrentSx: NaN, system11MasterCurrentSy: NaN, system11MasterCurrentSz: NaN,
++                    system11MasterCurrentGx: NaN, system11MasterCurrentGy: NaN, system11MasterCurrentGz: NaN,
++                    system11MasterPreviousSx: NaN, system11MasterPreviousSy: NaN, system11MasterPreviousSz: NaN,
++                    system11MasterPreviousGx: NaN, system11MasterPreviousGy: NaN, system11MasterPreviousGz: NaN,
++                    system11JoinerCurrentSet: false, system11JoinerPreviousSet: false,
++                    system11JoinerCurrentSx: NaN, system11JoinerCurrentSy: NaN, system11JoinerCurrentSz: NaN,
++                    system11JoinerCurrentGx: NaN, system11JoinerCurrentGy: NaN, system11JoinerCurrentGz: NaN,
++                    system11JoinerPreviousSx: NaN, system11JoinerPreviousSy: NaN, system11JoinerPreviousSz: NaN,
++                    system11JoinerPreviousGx: NaN, system11JoinerPreviousGy: NaN, system11JoinerPreviousGz: NaN,
+                     visualLocked: false, releaseAnchorSet: false, releaseOffsetX: NaN, releaseOffsetY: NaN, releaseOffsetZ: NaN, releaseHandoffT: 0,
+                     // Normally starts at CANDIDATE regardless of which
+                     // samePathWith sub-condition matched (sameGoal is
+@@ -1483,6 +1527,154 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 const jDirX = (j ? (j.gxx - Math.round(j.sx)) : NaN);
+                 const jDirY = (j ? (j.gyy - Math.round(j.sy)) : NaN);
+ 
++                // ---- System 11: logical route-offset model ----
++                // Histories advance only when a movement edge changes; render
++                // frames never become relationship evidence. A discontinuous
++                // edge clears only that avatar's previous-edge proof and fails
++                // closed to UNKNOWN rather than inventing route history.
++                let system11MasterAdvanced = false;
++                let system11JoinerAdvanced = false;
++
++                if(m && m.moving)
++                {
++                    const sx = Math.round(m.sx);
++                    const sy = Math.round(m.sy);
++                    const sz = m.sz;
++                    const gx = m.gxx;
++                    const gy = m.gyy;
++                    const gz = (m.sz + m.dz);
++
++                    sync.system11MasterPhase = Math.min(1, Math.max(0, ((m.time - m.change) / m.interval)));
++
++                    if(!sync.system11MasterCurrentSet)
++                    {
++                        sync.system11MasterCurrentSet = true;
++                        sync.system11MasterPreviousSet = true;
++                        sync.system11MasterCurrentSx = sx; sync.system11MasterCurrentSy = sy; sync.system11MasterCurrentSz = sz;
++                        sync.system11MasterCurrentGx = gx; sync.system11MasterCurrentGy = gy; sync.system11MasterCurrentGz = gz;
++                        sync.system11MasterPreviousSx = (sx - (gx - sx)); sync.system11MasterPreviousSy = (sy - (gy - sy)); sync.system11MasterPreviousSz = (sz - m.dz);
++                        sync.system11MasterPreviousGx = sx; sync.system11MasterPreviousGy = sy; sync.system11MasterPreviousGz = sz;
++                    }
++                    else if((sx !== sync.system11MasterCurrentSx) || (sy !== sync.system11MasterCurrentSy)
++                        || (gx !== sync.system11MasterCurrentGx) || (gy !== sync.system11MasterCurrentGy))
++                    {
++                        system11MasterAdvanced = true;
++
++                        if((sx === sync.system11MasterCurrentGx) && (sy === sync.system11MasterCurrentGy))
++                        {
++                            sync.system11MasterPreviousSet = true;
++                            sync.system11MasterPreviousSx = sync.system11MasterCurrentSx; sync.system11MasterPreviousSy = sync.system11MasterCurrentSy; sync.system11MasterPreviousSz = sync.system11MasterCurrentSz;
++                            sync.system11MasterPreviousGx = sync.system11MasterCurrentGx; sync.system11MasterPreviousGy = sync.system11MasterCurrentGy; sync.system11MasterPreviousGz = sync.system11MasterCurrentGz;
++                        }
++                        else
++                        {
++                            sync.system11MasterPreviousSet = false;
++                        }
++
++                        sync.system11MasterCurrentSx = sx; sync.system11MasterCurrentSy = sy; sync.system11MasterCurrentSz = sz;
++                        sync.system11MasterCurrentGx = gx; sync.system11MasterCurrentGy = gy; sync.system11MasterCurrentGz = gz;
++                    }
++
++                    sync.system11MasterEdgeCapturedAt = nowMs;
++                }
++
++                if(j && j.moving)
++                {
++                    const sx = Math.round(j.sx);
++                    const sy = Math.round(j.sy);
++                    const sz = j.sz;
++                    const gx = j.gxx;
++                    const gy = j.gyy;
++                    const gz = (j.sz + j.dz);
++
++                    if(!sync.system11JoinerCurrentSet)
++                    {
++                        sync.system11JoinerCurrentSet = true;
++                        sync.system11JoinerPreviousSet = true;
++                        sync.system11JoinerCurrentSx = sx; sync.system11JoinerCurrentSy = sy; sync.system11JoinerCurrentSz = sz;
++                        sync.system11JoinerCurrentGx = gx; sync.system11JoinerCurrentGy = gy; sync.system11JoinerCurrentGz = gz;
++                        sync.system11JoinerPreviousSx = (sx - (gx - sx)); sync.system11JoinerPreviousSy = (sy - (gy - sy)); sync.system11JoinerPreviousSz = (sz - j.dz);
++                        sync.system11JoinerPreviousGx = sx; sync.system11JoinerPreviousGy = sy; sync.system11JoinerPreviousGz = sz;
++                    }
++                    else if((sx !== sync.system11JoinerCurrentSx) || (sy !== sync.system11JoinerCurrentSy)
++                        || (gx !== sync.system11JoinerCurrentGx) || (gy !== sync.system11JoinerCurrentGy))
++                    {
++                        system11JoinerAdvanced = true;
++
++                        if((sx === sync.system11JoinerCurrentGx) && (sy === sync.system11JoinerCurrentGy))
++                        {
++                            sync.system11JoinerPreviousSet = true;
++                            sync.system11JoinerPreviousSx = sync.system11JoinerCurrentSx; sync.system11JoinerPreviousSy = sync.system11JoinerCurrentSy; sync.system11JoinerPreviousSz = sync.system11JoinerCurrentSz;
++                            sync.system11JoinerPreviousGx = sync.system11JoinerCurrentGx; sync.system11JoinerPreviousGy = sync.system11JoinerCurrentGy; sync.system11JoinerPreviousGz = sync.system11JoinerCurrentGz;
++                        }
++                        else
++                        {
++                            sync.system11JoinerPreviousSet = false;
++                        }
++
++                        sync.system11JoinerCurrentSx = sx; sync.system11JoinerCurrentSy = sy; sync.system11JoinerCurrentSz = sz;
++                        sync.system11JoinerCurrentGx = gx; sync.system11JoinerCurrentGy = gy; sync.system11JoinerCurrentGz = gz;
++                    }
++
++                    sync.system11JoinerEdgeCapturedAt = nowMs;
++                }
++
++                let system11ObservedState = RoomSpriteCanvas.SYSTEM11_UNKNOWN;
++                const system11BothMoving = !!(j && m && j.moving && m.moving);
++
++                if(system11BothMoving)
++                {
++                    const msx = Math.round(m.sx);
++                    const msy = Math.round(m.sy);
++                    const jsx = Math.round(j.sx);
++                    const jsy = Math.round(j.sy);
++                    const sameEdge = ((jsx === msx) && (jsy === msy) && (j.gxx === m.gxx) && (j.gyy === m.gyy));
++                    const behindEdge = ((j.gxx === msx) && (j.gyy === msy));
++                    const aheadEdge = ((m.gxx === jsx) && (m.gyy === jsy));
++
++                    if(sameEdge) system11ObservedState = RoomSpriteCanvas.SYSTEM11_ALIGNED;
++                    else if(behindEdge) system11ObservedState = RoomSpriteCanvas.SYSTEM11_BEHIND;
++                    else if(aheadEdge) system11ObservedState = RoomSpriteCanvas.SYSTEM11_AHEAD;
++                }
++
++                // An explicit split from the same route node is not rollover
++                // uncertainty. The previous MASTER edge catches the equivalent
++                // turn-away while MASTER is already one packet farther ahead.
++                const sameStartDifferentGoal = !!(system11BothMoving
++                    && (Math.round(j.sx) === Math.round(m.sx)) && (Math.round(j.sy) === Math.round(m.sy))
++                    && ((j.gxx !== m.gxx) || (j.gyy !== m.gyy)));
++                const behindPreviousEdgeConflict = !!((sync.system11State === RoomSpriteCanvas.SYSTEM11_BEHIND)
++                    && system11JoinerAdvanced && sync.system11MasterPreviousSet && j
++                    && (Math.round(j.sx) === sync.system11MasterPreviousSx) && (Math.round(j.sy) === sync.system11MasterPreviousSy)
++                    && ((j.gxx !== sync.system11MasterPreviousGx) || (j.gyy !== sync.system11MasterPreviousGy)));
++                const system11ExplicitDivergence = (sameStartDifferentGoal || behindPreviousEdgeConflict);
++
++                if(system11ExplicitDivergence)
++                {
++                    sync.system11State = RoomSpriteCanvas.SYSTEM11_DIVERGED;
++                }
++                else if(sync.system11State === RoomSpriteCanvas.SYSTEM11_UNKNOWN)
++                {
++                    // A remembered staggered departure waits for an actual
++                    // adjacent-edge observation; SAME_EDGE by itself is not
++                    // allowed to erase that pending one-step relationship.
++                    if((system11ObservedState !== RoomSpriteCanvas.SYSTEM11_UNKNOWN)
++                        && !((sync.system11PreferredState === RoomSpriteCanvas.SYSTEM11_BEHIND)
++                            && (system11ObservedState === RoomSpriteCanvas.SYSTEM11_ALIGNED)))
++                    {
++                        sync.system11State = system11ObservedState;
++                    }
++                }
++                // Proven ALIGNED/BEHIND/AHEAD is intentionally sticky for this
++                // contiguous route session. A different observed tuple is packet
++                // uncertainty; only structural divergence above can end it.
++
++                if(sync.system11LastLoggedState !== sync.system11State)
++                {
++                    console.log(`[sync:SYSTEM11_STATE] master=${ sync.masterId } joiner=${ sync.joinerId } state=${ RoomSpriteCanvas.SYSTEM11_STATE_NAMES[sync.system11State] } observed=${ RoomSpriteCanvas.SYSTEM11_STATE_NAMES[system11ObservedState] } mAdvanced=${ system11MasterAdvanced } jAdvanced=${ system11JoinerAdvanced }`);
++                    sync.system11LastLoggedState = sync.system11State;
++                }
++
+                 // Keep the two most recent MASTER route edges for an exact,
+                 // path-aware one-tile trailing target. On first observation the
+                 // previous edge is safely synthesized by extending the current
+@@ -1588,7 +1780,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 // — routeContinuous stays the primary proof; this is only a
+                 // sanity bound against a genuinely corrupted pairing, so it
+                 // must allow the boundary routeContinuous itself permits.
+-                const pathOk = !!(j && m && j.moving && m.moving && (routeContinuous || persistentTrailingCompatible) && mLoc
++                const system11Compatible = ((sync.system11State === RoomSpriteCanvas.SYSTEM11_ALIGNED)
++                    || (sync.system11State === RoomSpriteCanvas.SYSTEM11_BEHIND)
++                    || (sync.system11State === RoomSpriteCanvas.SYSTEM11_AHEAD));
++                const pathOk = !!(j && m && j.moving && m.moving && (routeContinuous || persistentTrailingCompatible || system11Compatible) && mLoc
+                     && (Math.abs(roomLocation.x - mLoc.x) <= (1 + 1e-6))
+                     && (Math.abs(roomLocation.y - mLoc.y) <= (1 + 1e-6)));
+ 
+@@ -2053,9 +2248,9 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 // direction, not mere absence of agreement data.
+                 const joinerIncompatible = !!(j && j.moving && Number.isFinite(sync.lockedDirX)
+                     && ((jDirX !== sync.lockedDirX) || (jDirY !== sync.lockedDirY)));
+-                const genuineDivergence = !!(j && m
+-                    && ((j.moving && m.moving && !routeContinuous && !persistentTrailingCompatible && sync.badSince && ((nowMs - sync.badSince) > RoomSpriteCanvas.FORMATION_CORNER_GRACE_MS))
+-                        || (j.moving && !m.moving && joinerIncompatible)));
++                const genuineDivergence = ((sync.system11State === RoomSpriteCanvas.SYSTEM11_DIVERGED) || !!(j && m
++                    && ((j.moving && m.moving && !routeContinuous && !persistentTrailingCompatible && !system11Compatible && sync.badSince && ((nowMs - sync.badSince) > RoomSpriteCanvas.FORMATION_CORNER_GRACE_MS))
++                        || (j.moving && !m.moving && joinerIncompatible))));
+ 
+                 // Fix 4: MASTER paused (moving=false) but JOINER hasn't
+                 // (yet) proven incompatible with the last confirmed shared
+@@ -2137,6 +2332,8 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 // that block's s-ramp/lockProof handling too, no extra
+                 // frame of delay.
+                 if((sync.mode === 0) && (sync.formationState === RoomSpriteCanvas.FORMATION_TRAILING)
++                    && (sync.system11State !== RoomSpriteCanvas.SYSTEM11_BEHIND)
++                    && (sync.system11State !== RoomSpriteCanvas.SYSTEM11_AHEAD)
+                     && (sync.trailingSameEdgeEvidenceMs >= RoomSpriteCanvas.FORMATION_EVIDENCE_MS))
+                 {
+                     // Continuity capture BEFORE the flip — mirrors the
+@@ -3485,6 +3682,56 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     sync.phaseRolloverHandoffT += dt;
+                 }
+ 
++                // System 11 owns the final compatible-pair target. The legacy
++                // state machine still runs above as a rollback-safe fallback for
++                // UNKNOWN and for its existing release bookkeeping, but it may
++                // not spatially reinterpret a proven logical route offset.
++                if(!ended && !genuineDivergence)
++                {
++                    const sharedPhase = Math.min(1, Math.max(0, sync.system11MasterPhase));
++
++                    if((sync.system11State === RoomSpriteCanvas.SYSTEM11_ALIGNED) && mLoc)
++                    {
++                        vx = mLoc.x; vy = mLoc.y; vz = mLoc.z;
++                        apply = true;
++                        source = 'SYSTEM11_ALIGNED';
++                    }
++                    else if((sync.system11State === RoomSpriteCanvas.SYSTEM11_BEHIND) && sync.system11MasterPreviousSet
++                        && Number.isFinite(sync.system11MasterEdgeCapturedAt)
++                        && ((nowMs - sync.system11MasterEdgeCapturedAt) <= RoomSpriteCanvas.TRAILING_MASTER_EDGE_STALE_MS))
++                    {
++                        vx = (sync.system11MasterPreviousSx
++                            + ((sync.system11MasterPreviousGx - sync.system11MasterPreviousSx) * sharedPhase));
++                        vy = (sync.system11MasterPreviousSy
++                            + ((sync.system11MasterPreviousGy - sync.system11MasterPreviousSy) * sharedPhase));
++                        vz = (sync.system11MasterPreviousSz
++                            + ((sync.system11MasterPreviousGz - sync.system11MasterPreviousSz) * sharedPhase));
++                        apply = true;
++                        source = 'SYSTEM11_BEHIND';
++                    }
++                    else if((sync.system11State === RoomSpriteCanvas.SYSTEM11_AHEAD) && sync.system11JoinerCurrentSet
++                        && Number.isFinite(sync.system11JoinerEdgeCapturedAt)
++                        && ((nowMs - sync.system11JoinerEdgeCapturedAt) <= RoomSpriteCanvas.TRAILING_MASTER_EDGE_STALE_MS))
++                    {
++                        vx = (sync.system11JoinerCurrentSx
++                            + ((sync.system11JoinerCurrentGx - sync.system11JoinerCurrentSx) * sharedPhase));
++                        vy = (sync.system11JoinerCurrentSy
++                            + ((sync.system11JoinerCurrentGy - sync.system11JoinerCurrentSy) * sharedPhase));
++                        vz = (sync.system11JoinerCurrentSz
++                            + ((sync.system11JoinerCurrentGz - sync.system11JoinerCurrentSz) * sharedPhase));
++                        apply = true;
++                        source = 'SYSTEM11_AHEAD';
++                    }
++                    else if(sync.system11State === RoomSpriteCanvas.SYSTEM11_UNKNOWN)
++                    {
++                        // No logical proof means no correction. In particular,
++                        // the old acquisition wait cannot freeze or slow JOINER
++                        // while System 11 waits for the next route edge.
++                        apply = false;
++                        source = 'SYSTEM11_UNKNOWN_NATIVE';
++                    }
++                }
++
+                 // ENTRY HANDOFF (transition-fix pass): the very first frame
+                 // a correction actually applies this session — whichever
+                 // branch produced it above, direct MASTER_COPY at LOCK or
+@@ -3595,7 +3842,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         + `| M change=${ m ? m.change : '?' } time=${ m ? m.time.toFixed(0) : '?' } seg=(${ m ? Math.round(m.sx) : '?' },${ m ? Math.round(m.sy) : '?' })->(${ m ? m.gxx : '?' },${ m ? m.gyy : '?' }) loc=(${ mLoc ? mLoc.x.toFixed(3) : '?' },${ mLoc ? mLoc.y.toFixed(3) : '?' }) moving=${ m ? m.moving : '?' } `
+                         + `| J change=${ j ? j.change : '?' } time=${ j ? j.time.toFixed(0) : '?' } seg=(${ j ? Math.round(j.sx) : '?' },${ j ? Math.round(j.sy) : '?' })->(${ j ? j.gxx : '?' },${ j ? j.gyy : '?' }) native=(${ roomLocation.x.toFixed(3) },${ roomLocation.y.toFixed(3) }) corrected=${ apply ? `(${ vx.toFixed(3) },${ vy.toFixed(3) })` : 'n/a' } moving=${ j ? j.moving : '?' } `
+                         + `| PHASE raw=${ Number.isFinite(pixelrpRawPhase) ? pixelrpRawPhase.toFixed(1) : '?' } d=${ Number.isFinite(pixelrpD) ? pixelrpD.toFixed(1) : '?' } wrappedD=${ Number.isFinite(pixelrpWrappedD) ? pixelrpWrappedD.toFixed(1) : '?' } phiPrev=${ Number.isFinite(sync.phiPrev) ? sync.phiPrev.toFixed(1) : '?' } rawMinusPhiPrev=${ Number.isFinite(pixelrpRawPhase) ? (pixelrpRawPhase - sync.phiPrev).toFixed(1) : '?' } `
+-                        + `| ROUTE sameGoal=${ sameGoal } behind=${ joinerBehind } ahead=${ joinerAhead } routeContinuous=${ routeContinuous } pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } genuineDivergence=${ genuineDivergence } joinerIncompatible=${ joinerIncompatible } segmentsMatch=${ segmentsMatch } visualLocked=${ sync.visualLocked } releaseAnchorSet=${ sync.releaseAnchorSet } releaseHandoffT=${ sync.releaseHandoffT.toFixed(0) } `
++                        + `| ROUTE system11=${ RoomSpriteCanvas.SYSTEM11_STATE_NAMES[sync.system11State] } observed=${ RoomSpriteCanvas.SYSTEM11_STATE_NAMES[system11ObservedState] } sameGoal=${ sameGoal } behind=${ joinerBehind } ahead=${ joinerAhead } routeContinuous=${ routeContinuous } pathOk=${ pathOk } badSince=${ sync.badSince ? (nowMs - sync.badSince) : 0 } genuineDivergence=${ genuineDivergence } joinerIncompatible=${ joinerIncompatible } segmentsMatch=${ segmentsMatch } visualLocked=${ sync.visualLocked } releaseAnchorSet=${ sync.releaseAnchorSet } releaseHandoffT=${ sync.releaseHandoffT.toFixed(0) } `
+                         + `| DIR mDir=(${ Number.isFinite(mDirX) ? mDirX : '?' },${ Number.isFinite(mDirY) ? mDirY : '?' }) jDir=(${ Number.isFinite(jDirX) ? jDirX : '?' },${ Number.isFinite(jDirY) ? jDirY : '?' }) expectedDir=(${ Number.isFinite(sync.lockedDirX) ? sync.lockedDirX : '?' },${ Number.isFinite(sync.lockedDirY) ? sync.lockedDirY : '?' }) sameDirection=${ sameDirection } formationType=${ formationType } `
+                         + `| FORMATION formationState=${ formationStateLabel } formationStateSinceMs=${ nowMs - sync.formationStateSince } nativeSignedGap=${ Number.isFinite(nativeSignedGap) ? nativeSignedGap.toFixed(3) : '?' } nativeAbsGap=${ Number.isFinite(nativeAbsGap) ? nativeAbsGap.toFixed(3) : '?' } nativeGapDelta=${ Number.isFinite(nativeGapDelta) ? nativeGapDelta.toFixed(4) : '?' } physicalOrder=${ physicalOrder } orderChanged=${ orderChanged } convergingEvidenceMs=${ sync.convergingEvidenceMs.toFixed(0) } trailingEvidenceMs=${ sync.trailingEvidenceMs.toFixed(0) } demotionOffsetSet=${ sync.demotionOffsetSet } `
+                         + `| LOCK geometryLockEligible=${ geometryLockEligible } timerComplete=${ timerComplete } lockProof=${ lockProof } sFrozenReason=${ sFrozenReason } `
