@@ -2215,10 +2215,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
      }
 diff --git a/src/room/renderer/PixelRPSystem11.ts b/src/room/renderer/PixelRPSystem11.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256f8a4372b
+index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f27bbcbba
 --- /dev/null
 +++ b/src/room/renderer/PixelRPSystem11.ts
-@@ -0,0 +1,727 @@
+@@ -0,0 +1,880 @@
 +export enum PixelRPSystem11Relation
 +{
 +    UNKNOWN = 0,
@@ -2303,6 +2303,23 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +    joinerSequenceSeen: number;
 +}
 +
++interface PixelRPAcquisitionHold
++{
++    pairKey: string;
++    masterId: number;
++    joinerId: number;
++    pairBaseline: number;
++    logicalOffset: number;
++    relation: PixelRPSystem11Relation;
++    startedAt: number;
++    completeAt: number;
++    requiredWaitMs: number;
++    x: number;
++    y: number;
++    z: number;
++    targetDistanceBefore: number;
++}
++
 +interface PixelRPSystem11Session
 +{
 +    masterId: number;
@@ -2350,12 +2367,14 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +    private static readonly MAX_LOGICAL_OFFSET = 1;
 +    private static readonly MAX_ACTIVATION_DISCREPANCY = 0.03;
 +    private static readonly MAX_CONTINUITY_DISCREPANCY = 0.08;
++    private static readonly MAX_ACQUISITION_HOLD_MS = 40;
 +    // Diagnostic pass: event-only state instrumentation. No render-frame log.
 +    private static readonly INSTRUMENT_TRANSITIONS = true;
 +
 +    private readonly _history = new Map<number, PixelRPRouteHistory>();
 +    private _session: PixelRPSystem11Session = null;
 +    private _pendingAdoption: PixelRPPendingAdoption = null;
++    private _acquisitionHold: PixelRPAcquisitionHold = null;
 +    private _reengagementBlock: PixelRPReengagementBlock = null;
 +
 +    public record(sample: PixelRPMovementSample, now: number): void
@@ -2443,7 +2462,7 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +
 +    public considerPair(ownId: number, remoteId: number, now: number): void
 +    {
-+        if(this._session || (ownId < 0) || (remoteId < 0) || (ownId === remoteId)) return;
++        if(this._session || this._acquisitionHold || (ownId < 0) || (remoteId < 0) || (ownId === remoteId)) return;
 +
 +        const own = this._history.get(ownId);
 +        const remote = this._history.get(remoteId);
@@ -2469,6 +2488,7 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +        let pairBaseline = NaN;
 +        let logicalOffset = NaN;
 +        let wasPending = false;
++        let joinerBoundaryEvent = false;
 +
 +        if(this._pendingAdoption
 +            && (this._pendingAdoption.pairKey === pairKey)
@@ -2480,6 +2500,7 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +            if((this._pendingAdoption.masterSequenceSeen === master.sequence)
 +                && (this._pendingAdoption.joinerSequenceSeen === joiner.sequence)) return;
 +
++            joinerBoundaryEvent = (this._pendingAdoption.joinerSequenceSeen !== joiner.sequence);
 +            pairBaseline = this._pendingAdoption.pairBaseline;
 +            logicalOffset = this._pendingAdoption.logicalOffset;
 +        }
@@ -2524,42 +2545,24 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +                joinerSequenceSeen: joiner.sequence
 +            };
 +
++            if(wasPending && joinerBoundaryEvent
++                && this.tryStartAcquisitionHold(master, joiner, proposal, pairKey, pairBaseline, targetJump, now)) return;
++
 +            this.logTransition('S11_PENDING', 'PENDING', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
 +                master, joiner, pairBaseline, proposal.logicalOffset, proposal.signedProgress, targetJump, proposal.reason, proposal.joinerEdge);
 +            return;
 +        }
 +
-+        this._pendingAdoption = null;
-+        this._session = {
-+            masterId: master.id,
-+            joinerId: joiner.id,
-+            pairKey,
-+            pairBaseline,
-+            logicalOffset: proposal.logicalOffset,
-+            relation: proposal.relation,
-+            masterSequenceSeen: master.sequence,
-+            joinerSequenceSeen: joiner.sequence,
-+            renderMasterSlot: master.current.slot,
-+            renderJoinerEdge: proposal.joinerEdge,
-+            lastSharedPhase: master.phase,
-+            lastPhaseAt: now,
-+            lastRenderedX: target.x,
-+            lastRenderedY: target.y,
-+            lastRenderedZ: target.z,
-+            lastRenderedAt: now,
-+            stoppedSince: 0
-+        };
-+
-+        this.logTransition('S11_ACTIVATE', 'SLOT', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
-+            master, joiner, pairBaseline, proposal.logicalOffset, proposal.signedProgress, targetJump,
-+            wasPending ? `edge-boundary:${ proposal.reason }` : proposal.reason, proposal.joinerEdge);
++        this.activateSession(master, joiner, proposal, pairKey, pairBaseline, target, targetJump, now,
++            wasPending ? `edge-boundary:${ proposal.reason }` : proposal.reason);
 +    }
 +
 +    public getTarget(id: number, now: number): PixelRPSystem11Target
 +    {
 +        const session = this._session;
 +
-+        if(!session || (session.joinerId !== id)) return null;
++        if(!session) return this.getAcquisitionHoldTarget(id, now);
++        if(session.joinerId !== id) return null;
 +
 +        const master = this._history.get(session.masterId);
 +        const joiner = this._history.get(session.joinerId);
@@ -2710,6 +2713,139 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +        session.lastRenderedAt = now;
 +
 +        return target;
++    }
++
++    private tryStartAcquisitionHold(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, proposal: PixelRPSlotProposal,
++        pairKey: string, pairBaseline: number, targetDistanceBefore: number, now: number): boolean
++    {
++        if((proposal.relation === PixelRPSystem11Relation.UNKNOWN)
++            || (proposal.relation === PixelRPSystem11Relation.DIVERGED)
++            || !proposal.joinerEdge || !joiner.current || !Number.isFinite(proposal.logicalOffset)) return false;
++
++        const boundaryDistance = this.tileDistance(joiner.x, joiner.y, joiner.z,
++            joiner.current.sx, joiner.current.sy, joiner.current.sz);
++        const targetEndsAtBoundary = (this.tileDistance(proposal.joinerEdge.gx, proposal.joinerEdge.gy, proposal.joinerEdge.gz,
++            joiner.current.sx, joiner.current.sy, joiner.current.sz) <= PixelRPSystem11.MAX_ACTIVATION_DISCREPANCY);
++
++        if((boundaryDistance > PixelRPSystem11.MAX_ACTIVATION_DISCREPANCY) || !targetEndsAtBoundary)
++        {
++            this.logHoldTransition('S11_HOLD_ABORT', proposal.relation, master, joiner, NaN,
++                targetDistanceBefore, NaN, targetEndsAtBoundary ? 'joiner-past-boundary' : 'joiner-not-early');
++            return false;
++        }
++
++        const interval = (master.interval > 0) ? master.interval : PixelRPSystem11.DEFAULT_INTERVAL;
++        const requiredWaitMs = Math.max(0, ((1 - master.phase) * interval));
++
++        if((requiredWaitMs <= 0) || (requiredWaitMs > PixelRPSystem11.MAX_ACQUISITION_HOLD_MS))
++        {
++            this.logHoldTransition('S11_HOLD_ABORT', proposal.relation, master, joiner, requiredWaitMs,
++                targetDistanceBefore, NaN, (requiredWaitMs > PixelRPSystem11.MAX_ACQUISITION_HOLD_MS) ? 'required-wait-too-long' : 'joiner-already-late');
++            return false;
++        }
++
++        this._acquisitionHold = {
++            pairKey,
++            masterId: master.id,
++            joinerId: joiner.id,
++            pairBaseline,
++            logicalOffset: proposal.logicalOffset,
++            relation: proposal.relation,
++            startedAt: now,
++            completeAt: (now + requiredWaitMs),
++            requiredWaitMs,
++            x: joiner.x,
++            y: joiner.y,
++            z: joiner.z,
++            targetDistanceBefore
++        };
++
++        this.logHoldTransition('S11_HOLD_START', proposal.relation, master, joiner, requiredWaitMs,
++            targetDistanceBefore, NaN, 'joiner-early-at-real-boundary');
++        return true;
++    }
++
++    private getAcquisitionHoldTarget(id: number, now: number): PixelRPSystem11Target
++    {
++        const hold = this._acquisitionHold;
++
++        if(!hold || (hold.joinerId !== id)) return null;
++
++        const master = this._history.get(hold.masterId);
++        const joiner = this._history.get(hold.joinerId);
++
++        if(!master || !joiner || !master.moving || !joiner.moving || this.explicitlyDiverged(master, joiner))
++        {
++            this.logHoldTransition('S11_HOLD_ABORT', hold.relation, master, joiner, hold.requiredWaitMs,
++                hold.targetDistanceBefore, NaN, 'movement-or-route-changed');
++            this._acquisitionHold = null;
++            return null;
++        }
++
++        if(now < hold.completeAt)
++        {
++            return { x: hold.x, y: hold.y, z: hold.z };
++        }
++
++        const proposal = this.proposeForLogicalOffset(master, joiner, hold.pairBaseline, hold.logicalOffset, NaN);
++        const target = this.targetForProposal(proposal, master.phase);
++        const targetDistanceAfter = target
++            ? this.tileDistance(hold.x, hold.y, hold.z, target.x, target.y, target.z)
++            : NaN;
++
++        this.logHoldTransition('S11_HOLD_COMPLETE', hold.relation, master, joiner, hold.requiredWaitMs,
++            hold.targetDistanceBefore, targetDistanceAfter, proposal.reason);
++
++        if((proposal.relation === hold.relation) && target
++            && (targetDistanceAfter <= PixelRPSystem11.MAX_ACTIVATION_DISCREPANCY))
++        {
++            this.activateSession(master, joiner, proposal, hold.pairKey, hold.pairBaseline, target,
++                targetDistanceAfter, now, `boundary-hold:${ proposal.reason }`, hold, targetDistanceAfter);
++            return target;
++        }
++
++        this.logHoldTransition('S11_HOLD_ABORT', hold.relation, master, joiner, hold.requiredWaitMs,
++            hold.targetDistanceBefore, targetDistanceAfter, 'post-hold-target-discontinuous');
++        this._acquisitionHold = null;
++
++        if(this._pendingAdoption && (this._pendingAdoption.pairKey === hold.pairKey))
++        {
++            this._pendingAdoption.masterSequenceSeen = master.sequence;
++            this._pendingAdoption.joinerSequenceSeen = joiner.sequence;
++        }
++
++        return null;
++    }
++
++    private activateSession(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, proposal: PixelRPSlotProposal,
++        pairKey: string, pairBaseline: number, target: PixelRPSystem11Target, targetDistance: number, now: number,
++        reason: string, hold: PixelRPAcquisitionHold = null, targetDistanceAfter: number = NaN): void
++    {
++        this._pendingAdoption = null;
++        this._acquisitionHold = null;
++        this._session = {
++            masterId: master.id,
++            joinerId: joiner.id,
++            pairKey,
++            pairBaseline,
++            logicalOffset: proposal.logicalOffset,
++            relation: proposal.relation,
++            masterSequenceSeen: master.sequence,
++            joinerSequenceSeen: joiner.sequence,
++            renderMasterSlot: master.current.slot,
++            renderJoinerEdge: proposal.joinerEdge,
++            lastSharedPhase: master.phase,
++            lastPhaseAt: now,
++            lastRenderedX: target.x,
++            lastRenderedY: target.y,
++            lastRenderedZ: target.z,
++            lastRenderedAt: now,
++            stoppedSince: 0
++        };
++
++        this.logTransition('S11_ACTIVATE', 'SLOT', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
++            master, joiner, pairBaseline, proposal.logicalOffset, proposal.signedProgress, targetDistance,
++            reason, proposal.joinerEdge, hold, targetDistanceAfter);
 +    }
 +
 +    private assignPairBaseline(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): number
@@ -2929,7 +3065,8 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +
 +    private logTransition(event: string, timeSource: 'NATIVE' | 'PENDING' | 'SLOT', oldRelation: PixelRPSystem11Relation, newRelation: PixelRPSystem11Relation,
 +        master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, pairBaseline: number, logicalOffset: number, signedProgress: number,
-+        targetDistance: number, reason: string, joinerEdge: PixelRPRouteEdge): void
++        targetDistance: number, reason: string, joinerEdge: PixelRPRouteEdge, hold: PixelRPAcquisitionHold = null,
++        targetDistanceAfter: number = NaN): void
 +    {
 +        if(!PixelRPSystem11.INSTRUMENT_TRANSITIONS) return;
 +
@@ -2943,7 +3080,23 @@ index 0000000000000000000000000000000000000000..170bdb19301844dbe3bbb47547f64256
 +        const masterPhase = master ? master.phase : NaN;
 +        const joinerNativePhase = joiner ? joiner.phase : NaN;
 +
-+        console.log(`[${ event }] timeSource=${ timeSource } oldRelation=${ PixelRPSystem11Relation[oldRelation] } newRelation=${ PixelRPSystem11Relation[newRelation] } masterSlot=${ Number.isFinite(masterSlot) ? masterSlot : 'n/a' } joinerSlot=${ Number.isFinite(joinerSlot) ? joinerSlot : 'n/a' } pairBaseline=${ Number.isFinite(pairBaseline) ? pairBaseline : 'n/a' } normalizedJoinerSlot=${ Number.isFinite(normalizedJoinerSlot) ? normalizedJoinerSlot : 'n/a' } logicalOffset=${ Number.isFinite(logicalOffset) ? logicalOffset : 'n/a' } signedProgress=${ Number.isFinite(signedProgress) ? signedProgress.toFixed(3) : 'n/a' } masterPhase=${ Number.isFinite(masterPhase) ? masterPhase.toFixed(3) : 'n/a' } joinerNativePhase=${ Number.isFinite(joinerNativePhase) ? joinerNativePhase.toFixed(3) : 'n/a' } targetDistance=${ Number.isFinite(targetDistance) ? targetDistance.toFixed(3) : 'n/a' } reason=${ reason }`);
++        const holdFields = hold
++            ? ` requiredWaitMs=${ hold.requiredWaitMs.toFixed(1) } relation=${ PixelRPSystem11Relation[hold.relation] } targetDistanceBefore=${ hold.targetDistanceBefore.toFixed(3) } targetDistanceAfter=${ Number.isFinite(targetDistanceAfter) ? targetDistanceAfter.toFixed(3) : 'n/a' }`
++            : '';
++
++        console.log(`[${ event }] timeSource=${ timeSource } oldRelation=${ PixelRPSystem11Relation[oldRelation] } newRelation=${ PixelRPSystem11Relation[newRelation] } masterSlot=${ Number.isFinite(masterSlot) ? masterSlot : 'n/a' } joinerSlot=${ Number.isFinite(joinerSlot) ? joinerSlot : 'n/a' } pairBaseline=${ Number.isFinite(pairBaseline) ? pairBaseline : 'n/a' } normalizedJoinerSlot=${ Number.isFinite(normalizedJoinerSlot) ? normalizedJoinerSlot : 'n/a' } logicalOffset=${ Number.isFinite(logicalOffset) ? logicalOffset : 'n/a' } signedProgress=${ Number.isFinite(signedProgress) ? signedProgress.toFixed(3) : 'n/a' } masterPhase=${ Number.isFinite(masterPhase) ? masterPhase.toFixed(3) : 'n/a' } joinerNativePhase=${ Number.isFinite(joinerNativePhase) ? joinerNativePhase.toFixed(3) : 'n/a' } targetDistance=${ Number.isFinite(targetDistance) ? targetDistance.toFixed(3) : 'n/a' }${ holdFields } reason=${ reason }`);
++    }
++
++    private logHoldTransition(event: 'S11_HOLD_START' | 'S11_HOLD_COMPLETE' | 'S11_HOLD_ABORT', relation: PixelRPSystem11Relation,
++        master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, requiredWaitMs: number, targetDistanceBefore: number,
++        targetDistanceAfter: number, reason: string): void
++    {
++        if(!PixelRPSystem11.INSTRUMENT_TRANSITIONS) return;
++
++        const masterPhase = master ? master.phase : NaN;
++        const joinerNativePhase = joiner ? joiner.phase : NaN;
++
++        console.log(`[${ event }] timeSource=PENDING requiredWaitMs=${ Number.isFinite(requiredWaitMs) ? requiredWaitMs.toFixed(1) : 'n/a' } relation=${ PixelRPSystem11Relation[relation] } masterPhase=${ Number.isFinite(masterPhase) ? masterPhase.toFixed(3) : 'n/a' } joinerNativePhase=${ Number.isFinite(joinerNativePhase) ? joinerNativePhase.toFixed(3) : 'n/a' } targetDistanceBefore=${ Number.isFinite(targetDistanceBefore) ? targetDistanceBefore.toFixed(3) : 'n/a' } targetDistanceAfter=${ Number.isFinite(targetDistanceAfter) ? targetDistanceAfter.toFixed(3) : 'n/a' } reason=${ reason }`);
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
