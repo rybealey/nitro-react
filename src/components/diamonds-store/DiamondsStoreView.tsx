@@ -12,9 +12,11 @@ type DiamondsStoreTab = 'store' | 'buy';
 type BuyViewState = 'form' | 'checkout' | 'complete' | 'error';
 type StoreViewState = 'list' | 'confirm' | 'success' | 'error';
 
-const MIN_DIAMONDS = 100;
+// MIN must stay in lockstep with the CMS DiamondCheckoutFormRequest rule
+// (min:500) or valid-looking amounts 422 at checkout.
+const MIN_DIAMONDS = 500;
 const MAX_DIAMONDS = 100000;
-const DEFAULT_DIAMONDS = 300;
+const DEFAULT_DIAMONDS = 500;
 const DIAMONDS_STEP = 100;
 
 export const DiamondsStoreView: FC<{}> = props =>
