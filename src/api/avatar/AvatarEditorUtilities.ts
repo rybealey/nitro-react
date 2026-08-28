@@ -74,14 +74,15 @@ export class AvatarEditorUtilities
 
         for(const partColor of palette.colors.getValues())
         {
-            if(partColor.isSelectable && (clubItemsDimmed || (clubMemberLevel >= partColor.clubLevel)))
+            // pixelrp: HC/VIP no longer gates editor colors - every
+            // selectable color is available to everyone.
+            if(partColor.isSelectable)
             {
                 let i = 0;
 
                 while(i < this.MAX_PALETTES)
                 {
-                    const isDisabled = (clubMemberLevel < partColor.clubLevel);
-                    const colorItem = new AvatarEditorGridColorItem(partColor, isDisabled);
+                    const colorItem = new AvatarEditorGridColorItem(partColor, false);
 
                     colorItems[i].push(colorItem);
 
@@ -146,15 +147,16 @@ export class AvatarEditorUtilities
                 isValidGender = true;
             }
 
-            if(partSet.isSelectable && isValidGender && (clubItemsDimmed || (clubMemberLevel >= partSet.clubLevel)))
+            // pixelrp: HC/VIP no longer gates editor clothing - every
+            // selectable set shows for everyone (sellable sets still need
+            // ownership / staff full-wardrobe via FIGURE_SET_IDS).
+            if(partSet.isSelectable && isValidGender)
             {
-                const isDisabled = (clubMemberLevel < partSet.clubLevel);
-
                 let isValid = true;
 
                 if(partSet.isSellable) isValid = this.hasFigureSetId(partSet.id);
 
-                if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, isDisabled));
+                if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, false));
             }
 
             i--;
@@ -257,7 +259,8 @@ export class AvatarEditorUtilities
 
         for(const color of palette.colors.getValues())
         {
-            if(!color.isSelectable || (GetClubMemberLevel() < color.clubLevel)) continue;
+            // pixelrp: colors are not club-gated.
+            if(!color.isSelectable) continue;
 
             return color.id;
         }
