@@ -1,8 +1,14 @@
 .nitro-diamonds-store {
     width: 420px;
-    // Static window size: the Stripe embedded form is much taller than the
-    // buy form, so the content area scrolls instead of growing the window.
-    height: 480px;
+    // Compact by default - only the Stripe embedded form needs the tall
+    // window, so the card animates up to checkout height while it's on
+    // screen (.diamonds-store-tall) and back down after.
+    height: 340px;
+    transition: height 0.25s ease;
+
+    &.diamonds-store-tall {
+        height: 480px;
+    }
 
     .content-area {
         overflow-y: auto;

@@ -221,7 +221,7 @@ export const DiamondsStoreView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="diamonds-store" className="nitro-diamonds-store" theme="primary-slim">
+        <NitroCardView uniqueKey="diamonds-store" className={ `nitro-diamonds-store${ checkoutActive ? ' diamonds-store-tall' : '' }` } theme="primary-slim">
             <NitroCardHeaderView headerText="Diamonds Store" onCloseClick={ () => hide() } />
             <NitroCardTabsView>
                 <NitroCardTabsItemView isActive={ currentTab === 'store' } onClick={ () => setCurrentTab('store') }>
