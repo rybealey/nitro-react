@@ -1,4 +1,4 @@
-import { CreateLinkEvent, GetRoomSession, GetSessionDataManager } from '..';
+import { CreateLinkEvent, GetRoomSession, GetSessionDataManager, OwnMotto } from '..';
 import { GetFriendById } from '../friends';
 import { RpProfileState } from '../../components/rp-profile/RpProfileState';
 
@@ -27,7 +27,9 @@ export function GetUserProfile(userId: number): void
     {
         RpProfileState.name = (sessionData.userName ?? '');
         RpProfileState.figure = (sessionData.figure ?? '');
-        RpProfileState.motto = (sessionData.motto ?? '');
+        // SessionDataManager has no motto - the login UserInfoEvent's value
+        // is cached in OwnMotto (useSessionInfo).
+        RpProfileState.motto = OwnMotto.value;
         RpProfileState.online = true;
     }
     else if(friend)

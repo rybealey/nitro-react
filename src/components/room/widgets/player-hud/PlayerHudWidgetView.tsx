@@ -1,7 +1,7 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
-import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
+import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetState } from '../../../../hooks/rooms/targetState';
@@ -197,7 +197,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                     {
                         RpProfileState.name = selfName;
                         RpProfileState.figure = ownFigure;
-                        RpProfileState.motto = (GetSessionDataManager().motto ?? '');
+                        RpProfileState.motto = OwnMotto.value;
                         RpProfileState.online = true;
                         CreateLinkEvent('rp-profile/show');
                     } } />

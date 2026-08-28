@@ -287,7 +287,7 @@ export const PhonePhotosCollectionsView: FC<{}> = props =>
                                     return (
                                         <div key={ name } className="phone-tap phone-person" onClick={ event => setView({ type: 'person', name }) }>
                                             { friend &&
-                                                <PhoneAvatar id={ friend.id } figure={ friend.figure } size={ 56 } className="phone-person-avatar" /> }
+                                                <PhoneAvatar id={ friend.id } figure={ friend.figure } size={ 60 } unmasked={ true } className="phone-person-avatar" /> }
                                             { !friend &&
                                                 <div className="phone-person-letter" style={ { backgroundColor: NameColor(name) } }>{ name.charAt(0).toUpperCase() }</div> }
                                             <div className="phone-person-name">{ name }</div>

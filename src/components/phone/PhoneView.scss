@@ -2459,11 +2459,8 @@ $phone-scale: 0.8;
         align-items: center;
         gap: 4px;
 
-        // Round crop for the People circles.
-        .phone-person-avatar,
-        .phone-person-avatar .phone-avatar-crop {
-            border-radius: 50% !important;
-        }
+        // Bare sprite head (unmasked PhoneAvatar) - same treatment as the
+        // pinned-messages heads: no field, no outline, no crop.
     }
 
     .phone-person-letter {

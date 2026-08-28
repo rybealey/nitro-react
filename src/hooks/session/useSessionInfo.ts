@@ -1,7 +1,7 @@
 import { FigureUpdateEvent, RoomUnitChatStyleComposer, UserInfoDataParser, UserInfoEvent, UserSettingsEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
-import { GetLocalStorage, GetSessionDataManager, SendMessageComposer } from '../../api';
+import { GetLocalStorage, GetSessionDataManager, OwnMotto, SendMessageComposer } from '../../api';
 import { useMessageEvent } from '../events';
 import { useLocalStorage } from '../useLocalStorage';
 
@@ -41,6 +41,9 @@ const useSessionInfoState = () =>
 
         setUserInfo(parser.userInfo);
         setUserFigure(parser.userInfo.figure);
+        // SessionDataManager never keeps the motto - cache it for the RP
+        // profile (own-profile path).
+        OwnMotto.value = (parser.userInfo.motto ?? '');
         setUserRespectRemaining(parser.userInfo.respectsRemaining);
         setPetRespectRemaining(parser.userInfo.respectsPetRemaining);
     });
