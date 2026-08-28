@@ -2215,10 +2215,10 @@ index 5f84504a3fc5d92d026b31913320682eb90cafd6..87284dbab0ff9e86c88680d17c1bbbbf
      }
 diff --git a/src/room/renderer/PixelRPSystem11.ts b/src/room/renderer/PixelRPSystem11.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f27bbcbba
+index 0000000000000000000000000000000000000000..84feb89e1dec85373a8cc9466d5dbd45bcdb34cd
 --- /dev/null
 +++ b/src/room/renderer/PixelRPSystem11.ts
-@@ -0,0 +1,880 @@
+@@ -0,0 +1,925 @@
 +export enum PixelRPSystem11Relation
 +{
 +    UNKNOWN = 0,
@@ -2470,11 +2470,29 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +        if(!own || !remote || !own.moving || !remote.moving || !own.current || !remote.current) return;
 +        if((Math.abs(own.x - remote.x) > 1.05) || (Math.abs(own.y - remote.y) > 1.05)) return;
 +
-+        const ownStartedFirst = ((own.walkSince >= 0) && (remote.walkSince >= 0) && (own.walkSince < remote.walkSince));
-+        const remoteStartedFirst = ((own.walkSince >= 0) && (remote.walkSince >= 0) && (remote.walkSince < own.walkSince));
-+        const master = ownStartedFirst ? own : (remoteStartedFirst ? remote : ((own.id < remote.id) ? own : remote));
-+        const joiner = (master.id === own.id) ? remote : own;
-+        const pairKey = this.pairKey(master.id, joiner.id);
++        const pairKey = this.pairKey(own.id, remote.id);
++        let master: PixelRPRouteHistory;
++        let joiner: PixelRPRouteHistory;
++
++        if(this._pendingAdoption && (this._pendingAdoption.pairKey === pairKey))
++        {
++            // Keep MASTER/JOINER roles fixed for the life of this pending pair.
++            // Re-deriving roles from walkSince on every call let a brief
++            // stop/restart (or coincidental walkSince proximity) flip who is
++            // MASTER mid-pair, which also silently discarded the proven
++            // relationship below (a fresh pairKey/masterId/joinerId no longer
++            // matched the stored pending adoption).
++            master = (this._pendingAdoption.masterId === own.id) ? own : remote;
++            joiner = (master === own) ? remote : own;
++        }
++        else
++        {
++            const ownStartedFirst = ((own.walkSince >= 0) && (remote.walkSince >= 0) && (own.walkSince < remote.walkSince));
++            const remoteStartedFirst = ((own.walkSince >= 0) && (remote.walkSince >= 0) && (remote.walkSince < own.walkSince));
++
++            master = ownStartedFirst ? own : (remoteStartedFirst ? remote : ((own.id < remote.id) ? own : remote));
++            joiner = (master.id === own.id) ? remote : own;
++        }
 +
 +        if(this._reengagementBlock && (this._reengagementBlock.pairKey === pairKey))
 +        {
@@ -2505,9 +2523,19 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +            logicalOffset = this._pendingAdoption.logicalOffset;
 +        }
 +
++        // Retained proven relationship entering this evaluation, captured
++        // before any fresh seeding below can touch `logicalOffset`.
++        const priorLogicalOffset = logicalOffset;
++        const oldRelation = Number.isFinite(priorLogicalOffset)
++            ? this.relationForLogicalOffset(priorLogicalOffset)
++            : PixelRPSystem11Relation.UNKNOWN;
++
 +        if(!Number.isFinite(pairBaseline))
 +        {
-+            pairBaseline = this.assignPairBaseline(master, joiner);
++            const assigned = this.assignPairBaseline(master, joiner);
++
++            pairBaseline = assigned.pairBaseline;
++            logicalOffset = assigned.provenLogicalOffset;
 +        }
 +
 +        const proposal = Number.isFinite(pairBaseline)
@@ -2524,7 +2552,7 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +
 +            if(wasPending)
 +            {
-+                this.logTransition('S11_DIVERGE', 'NATIVE', PixelRPSystem11Relation.UNKNOWN, PixelRPSystem11Relation.DIVERGED,
++                this.logTransition('S11_DIVERGE', 'NATIVE', oldRelation, PixelRPSystem11Relation.DIVERGED,
 +                    master, joiner, pairBaseline, proposal.logicalOffset, proposal.signedProgress, targetJump, proposal.reason, proposal.joinerEdge);
 +            }
 +
@@ -2548,13 +2576,13 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +            if(wasPending && joinerBoundaryEvent
 +                && this.tryStartAcquisitionHold(master, joiner, proposal, pairKey, pairBaseline, targetJump, now)) return;
 +
-+            this.logTransition('S11_PENDING', 'PENDING', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
++            this.logTransition('S11_PENDING', 'PENDING', oldRelation, proposal.relation,
 +                master, joiner, pairBaseline, proposal.logicalOffset, proposal.signedProgress, targetJump, proposal.reason, proposal.joinerEdge);
 +            return;
 +        }
 +
 +        this.activateSession(master, joiner, proposal, pairKey, pairBaseline, target, targetJump, now,
-+            wasPending ? `edge-boundary:${ proposal.reason }` : proposal.reason);
++            wasPending ? `edge-boundary:${ proposal.reason }` : proposal.reason, oldRelation);
 +    }
 +
 +    public getTarget(id: number, now: number): PixelRPSystem11Target
@@ -2603,9 +2631,6 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +
 +        if(edgeEvent)
 +        {
-+            session.masterSequenceSeen = master.sequence;
-+            session.joinerSequenceSeen = joiner.sequence;
-+
 +            const proposal = this.proposeForLogicalOffset(master, joiner, session.pairBaseline, session.logicalOffset, NaN);
 +
 +            if(proposal.relation === PixelRPSystem11Relation.DIVERGED)
@@ -2630,6 +2655,17 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +                {
 +                    const oldRelation = session.relation;
 +
++                    // Only consume the sequence numbers that triggered this
++                    // re-evaluation once we've confirmed a continuous real
++                    // edge to move onto. Consuming them unconditionally (as
++                    // soon as MASTER rolled over, even before JOINER's
++                    // matching edge existed yet) let a same-tick MASTER
++                    // rollover permanently skip past JOINER's still-pending
++                    // edge: the render then held one full edge stale until
++                    // JOINER's own later rollover produced a near-one-tile
++                    // jump that the safety guard below had to reject.
++                    session.masterSequenceSeen = master.sequence;
++                    session.joinerSequenceSeen = joiner.sequence;
 +                    session.relation = proposal.relation;
 +                    session.renderMasterSlot = master.current.slot;
 +                    session.renderJoinerEdge = proposal.joinerEdge;
@@ -2800,7 +2836,7 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +            && (targetDistanceAfter <= PixelRPSystem11.MAX_ACTIVATION_DISCREPANCY))
 +        {
 +            this.activateSession(master, joiner, proposal, hold.pairKey, hold.pairBaseline, target,
-+                targetDistanceAfter, now, `boundary-hold:${ proposal.reason }`, hold, targetDistanceAfter);
++                targetDistanceAfter, now, `boundary-hold:${ proposal.reason }`, hold.relation, hold, targetDistanceAfter);
 +            return target;
 +        }
 +
@@ -2819,7 +2855,7 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +
 +    private activateSession(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, proposal: PixelRPSlotProposal,
 +        pairKey: string, pairBaseline: number, target: PixelRPSystem11Target, targetDistance: number, now: number,
-+        reason: string, hold: PixelRPAcquisitionHold = null, targetDistanceAfter: number = NaN): void
++        reason: string, oldRelation: PixelRPSystem11Relation, hold: PixelRPAcquisitionHold = null, targetDistanceAfter: number = NaN): void
 +    {
 +        this._pendingAdoption = null;
 +        this._acquisitionHold = null;
@@ -2843,17 +2879,20 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +            stoppedSince: 0
 +        };
 +
-+        this.logTransition('S11_ACTIVATE', 'SLOT', PixelRPSystem11Relation.UNKNOWN, proposal.relation,
++        this.logTransition('S11_ACTIVATE', 'SLOT', oldRelation, proposal.relation,
 +            master, joiner, pairBaseline, proposal.logicalOffset, proposal.signedProgress, targetDistance,
 +            reason, proposal.joinerEdge, hold, targetDistanceAfter);
 +    }
 +
-+    private assignPairBaseline(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): number
++    private assignPairBaseline(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory): { pairBaseline: number, provenLogicalOffset: number }
 +    {
-+        if(!master.current || !joiner.current) return NaN;
++        if(!master.current || !joiner.current) return { pairBaseline: NaN, provenLogicalOffset: NaN };
 +
 +        // Prefer a real shared edge. Its two local slot numbers describe the
 +        // same route position, so their difference is a pure counter baseline.
++        // This alone doesn't prove the CURRENT relation - the shared edge can
++        // be from earlier in either side's history - so it is left for the
++        // caller to classify from live slots/phase.
 +        for(let masterIndex = (master.edges.length - 1); masterIndex >= 0; masterIndex--)
 +        {
 +            const masterEdge = master.edges[masterIndex];
@@ -2862,23 +2901,29 @@ index 0000000000000000000000000000000000000000..30611d4b129e909f563895ed24abf34f
 +            {
 +                const joinerEdge = joiner.edges[joinerIndex];
 +
-+                if(this.edgeEquals(masterEdge, joinerEdge)) return (masterEdge.slot - joinerEdge.slot);
++                if(this.edgeEquals(masterEdge, joinerEdge)) return { pairBaseline: (masterEdge.slot - joinerEdge.slot), provenLogicalOffset: NaN };
 +            }
 +        }
 +
-+        // Adjacent real edges can also establish the same counter baseline.
-+        // The logical relationship remains separate and is never encoded here.
++        // Adjacent CURRENT real edges structurally prove the live relation
++        // outright: a genuine late JOINER already sits on the real edge
++        // leading into MASTER's current start tile (BEHIND), or MASTER is
++        // already moving into JOINER's current start tile (AHEAD). Seed that
++        // proven relation immediately instead of leaving it to live-phase
++        // math, which is noisy right at pair formation (signedProgress can
++        // sit near a relation boundary for several frames) and has no memory
++        // of a relation it already saw evidence for.
 +        if((joiner.current.gx === master.current.sx) && (joiner.current.gy === master.current.sy))
 +        {
-+            return ((master.current.slot - 1) - joiner.current.slot);
++            return { pairBaseline: ((master.current.slot - 1) - joiner.current.slot), provenLogicalOffset: 1 };
 +        }
 +
 +        if((master.current.gx === joiner.current.sx) && (master.current.gy === joiner.current.sy))
 +        {
-+            return ((master.current.slot + 1) - joiner.current.slot);
++            return { pairBaseline: ((master.current.slot + 1) - joiner.current.slot), provenLogicalOffset: -1 };
 +        }
 +
-+        return NaN;
++        return { pairBaseline: NaN, provenLogicalOffset: NaN };
 +    }
 +
 +    private classifyRelationship(master: PixelRPRouteHistory, joiner: PixelRPRouteHistory, pairBaseline: number): PixelRPSlotProposal
