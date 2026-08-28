@@ -1,10 +1,12 @@
 import { FC, PointerEvent, WheelEvent, useEffect, useRef, useState } from 'react';
 import { PhoneIcon } from './PhoneIcon';
+import { PhonePhotosCollectionsView } from './PhonePhotosCollectionsView';
 import { usePhonePhotos } from './usePhone';
 
-// Photos app, iOS style: a 3-up grid of every photo the player has saved
-// with the Camera, and a full-bleed viewer with meta, navigation, delete
-// and a crop/zoom editor that saves the edit back to the library.
+// Photos app, iOS style. Library tab: a 3-up grid of every photo the player
+// has saved, with a full-bleed viewer (meta, navigation, delete, crop/zoom
+// editor). Collections tab: albums, shared albums, People and Places - see
+// PhonePhotosCollectionsView.
 
 const MIN_ZOOM: number = 1;
 const MAX_ZOOM: number = 3;
@@ -26,6 +28,7 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
 {
     const { openCamera = null, onBack = null } = props;
     const { photos = [], photosLoaded = false, requestPhotos = null, deletePhoto = null, updatePhoto = null } = usePhonePhotos();
+    const [ tab, setTab ] = useState<'library' | 'collections'>('library');
     const [ viewerIndex, setViewerIndex ] = useState<number>(-1);
     const [ chromeHidden, setChromeHidden ] = useState(false);
     const [ confirmingDelete, setConfirmingDelete ] = useState(false);
@@ -204,37 +207,54 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
                         <PhoneIcon icon="camera" size={ 20 } />
                     </div>
                 </div>
-                { (photos.length > 0) &&
+                { (tab === 'library') &&
                     <>
-                        <div className="phone-photos-grid">
-                            { photos.map((photo, index) =>
-                            {
-                                return (
-                                    <div key={ photo.id } className="phone-tap phone-photos-cell" onClick={ event => 
+                        { (photos.length > 0) &&
+                            <>
+                                <div className="phone-photos-grid">
+                                    { photos.map((photo, index) =>
                                     {
-                                        setViewerIndex(index); setChromeHidden(false); 
-                                    } }>
-                                        <img src={ photo.url } alt="" loading="lazy" />
-                                        { photo.published &&
-                                            <div className="phone-photos-shared" title="Shared to the city feed">
-                                                <PhoneIcon icon="users" size={ 11 } />
-                                            </div> }
-                                    </div>
-                                );
-                            }) }
-                        </div>
-                        <div className="phone-photos-count">{ photos.length } { (photos.length === 1) ? 'Photo' : 'Photos' }</div>
+                                        return (
+                                            <div key={ photo.id } className="phone-tap phone-photos-cell" onClick={ event =>
+                                            {
+                                                setViewerIndex(index); setChromeHidden(false);
+                                            } }>
+                                                <img src={ photo.url } alt="" loading="lazy" />
+                                                { photo.published &&
+                                                    <div className="phone-photos-shared" title="Shared to the city feed">
+                                                        <PhoneIcon icon="users" size={ 11 } />
+                                                    </div> }
+                                            </div>
+                                        );
+                                    }) }
+                                </div>
+                                <div className="phone-photos-count">{ photos.length } { (photos.length === 1) ? 'Photo' : 'Photos' }</div>
+                            </> }
+                        { photosLoaded && !photos.length &&
+                            <div className="phone-messages-empty">
+                                <div className="phone-messages-empty-mark">
+                                    <PhoneIcon icon="camera" size={ 42 } style={ { color: '#ffffff' } } />
+                                </div>
+                                <div className="phone-messages-empty-title">No photos yet</div>
+                                <div className="phone-messages-empty-text">Open the Camera and frame the city<br />through your phone screen.</div>
+                                <div className="phone-tap phone-cta" onClick={ event => (openCamera && openCamera()) }>OPEN CAMERA</div>
+                            </div> }
                     </> }
-                { photosLoaded && !photos.length &&
-                    <div className="phone-messages-empty">
-                        <div className="phone-messages-empty-mark">
-                            <PhoneIcon icon="camera" size={ 42 } style={ { color: '#ffffff' } } />
-                        </div>
-                        <div className="phone-messages-empty-title">No photos yet</div>
-                        <div className="phone-messages-empty-text">Open the Camera and frame the city<br />through your phone screen.</div>
-                        <div className="phone-tap phone-cta" onClick={ event => (openCamera && openCamera()) }>OPEN CAMERA</div>
-                    </div> }
+                { (tab === 'collections') &&
+                    <PhonePhotosCollectionsView /> }
                 <div className="phone-scroll-spacer" />
+                <div className="phone-photos-tab-spacer" />
+            </div>
+            { /* bottom glass tab bar: Library | Collections */ }
+            <div className="phone-photos-tabbar">
+                <div className={ `phone-tap phone-photos-tab${ (tab === 'library') ? ' is-active' : '' }` } onClick={ event => setTab('library') }>
+                    <PhoneIcon icon="image" size={ 19 } />
+                    <span>Library</span>
+                </div>
+                <div className={ `phone-tap phone-photos-tab${ (tab === 'collections') ? ' is-active' : '' }` } onClick={ event => setTab('collections') }>
+                    <PhoneIcon icon="bookmark" size={ 19 } />
+                    <span>Collections</span>
+                </div>
             </div>
             { viewerPhoto && !isEditing &&
                 <div className="phone-photos-viewer">

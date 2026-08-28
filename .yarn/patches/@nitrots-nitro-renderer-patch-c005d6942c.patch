@@ -1,0 +1,455 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index f8560c63858ad2299061836ac5a48e1586738390..06b589c16e56b305086e1af4a294c4cc54df3849 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -4,6 +4,8 @@ import { RpInventoryEvent } from './messages/incoming/RpInventoryEvent';
+ import { RpUiSettingsEvent } from './messages/incoming/RpUiSettingsEvent';
+ import { RpMessengerReceiptEvent } from './messages/incoming/RpMessengerReceiptEvent';
+ import { RpAirplaneModeEvent } from './messages/incoming/RpAirplaneModeEvent';
++import { RpAlbumListEvent } from './messages/incoming/RpAlbumListEvent';
++import { RpAlbumPhotosEvent } from './messages/incoming/RpAlbumPhotosEvent';
+ import { RpMessengerFriendTypingEvent } from './messages/incoming/RpMessengerFriendTypingEvent';
+ import { RpPhotoListEvent } from './messages/incoming/RpPhotoListEvent';
+ import { RpJukeboxStateEvent } from './messages/incoming/RpJukeboxStateEvent';
+@@ -16,6 +18,12 @@ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+ import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
+ import { RpSetAirplaneModeComposer } from './messages/outgoing/RpSetAirplaneModeComposer';
+ import { RpSavePhotoComposer } from './messages/outgoing/RpSavePhotoComposer';
++import { RpRequestAlbumsComposer } from './messages/outgoing/RpRequestAlbumsComposer';
++import { RpCreateAlbumComposer } from './messages/outgoing/RpCreateAlbumComposer';
++import { RpDeleteAlbumComposer } from './messages/outgoing/RpDeleteAlbumComposer';
++import { RpAlbumMemberComposer } from './messages/outgoing/RpAlbumMemberComposer';
++import { RpAlbumPhotoComposer } from './messages/outgoing/RpAlbumPhotoComposer';
++import { RpRequestAlbumPhotosComposer } from './messages/outgoing/RpRequestAlbumPhotosComposer';
+ import { RpMessengerTypingComposer } from './messages/outgoing/RpMessengerTypingComposer';
+ import { RpRequestPhotoListComposer } from './messages/outgoing/RpRequestPhotoListComposer';
+ import { RpDeletePhotoComposer } from './messages/outgoing/RpDeletePhotoComposer';
+@@ -49,6 +57,8 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_INVENTORY, RpInventoryEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_RECEIPT, RpMessengerReceiptEvent);
+         this._events.set(IncomingHeader.RP_AIRPLANE_MODE, RpAirplaneModeEvent);
++        this._events.set(IncomingHeader.RP_ALBUM_LIST, RpAlbumListEvent);
++        this._events.set(IncomingHeader.RP_ALBUM_PHOTOS, RpAlbumPhotosEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_FRIEND_TYPING, RpMessengerFriendTypingEvent);
+         this._events.set(IncomingHeader.RP_PHOTO_LIST, RpPhotoListEvent);
+         this._events.set(IncomingHeader.RP_JUKEBOX_STATE, RpJukeboxStateEvent);
+@@ -1130,6 +1140,12 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
++        this._composers.set(OutgoingHeader.RP_REQUEST_ALBUMS, RpRequestAlbumsComposer);
++        this._composers.set(OutgoingHeader.RP_CREATE_ALBUM, RpCreateAlbumComposer);
++        this._composers.set(OutgoingHeader.RP_DELETE_ALBUM, RpDeleteAlbumComposer);
++        this._composers.set(OutgoingHeader.RP_ALBUM_MEMBER, RpAlbumMemberComposer);
++        this._composers.set(OutgoingHeader.RP_ALBUM_PHOTO, RpAlbumPhotoComposer);
++        this._composers.set(OutgoingHeader.RP_REQUEST_ALBUM_PHOTOS, RpRequestAlbumPhotosComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_TYPING, RpMessengerTypingComposer);
+         this._composers.set(OutgoingHeader.RP_PHOTO_LIST_REQUEST, RpRequestPhotoListComposer);
+         this._composers.set(OutgoingHeader.RP_PHOTO_DELETE, RpDeletePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index da80f937b523b416e6eab7e3d5737ab69319f839..29b96af42755ae212b31d0a1c1601cef816a0866 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -471,6 +471,8 @@ export class IncomingHeader
+     public static RP_INVENTORY = 3904;
+     public static RP_MESSENGER_RECEIPT = 3906;
+     public static RP_AIRPLANE_MODE = 3935;
++    public static RP_ALBUM_LIST = 3938;
++    public static RP_ALBUM_PHOTOS = 3944;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
+     public static RP_PHOTO_LIST = 3909;
+     public static RP_JUKEBOX_STATE = 3917;
+diff --git a/src/nitro/communication/messages/incoming/RpAlbumListEvent.ts b/src/nitro/communication/messages/incoming/RpAlbumListEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c123fd98aa65e7d900951f0ce0ae76c49e288554
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpAlbumListEvent.ts
+@@ -0,0 +1,89 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: the phone Photos app's albums - every album the player owns or is
++// a member of. Cover is the album's latest photo ('' when empty); members
++// are listed for shared albums.
++export interface RpAlbumMember
++{
++    id: number;
++    name: string;
++}
++
++export interface RpAlbumListItem
++{
++    id: number;
++    name: string;
++    shared: boolean;
++    ownerId: number;
++    ownerName: string;
++    photoCount: number;
++    coverUrl: string;
++    members: RpAlbumMember[];
++}
++
++export class RpAlbumListParser implements IMessageParser
++{
++    private _albums: RpAlbumListItem[];
++
++    public flush(): boolean
++    {
++        this._albums = [];
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._albums = [];
++
++        let count = wrapper.readInt();
++
++        while(count > 0)
++        {
++            const id = wrapper.readInt();
++            const name = wrapper.readString();
++            const shared = wrapper.readBoolean();
++            const ownerId = wrapper.readInt();
++            const ownerName = wrapper.readString();
++            const photoCount = wrapper.readInt();
++            const coverUrl = wrapper.readString();
++            const members: RpAlbumMember[] = [];
++
++            let memberCount = wrapper.readInt();
++
++            while(memberCount > 0)
++            {
++                members.push({ id: wrapper.readInt(), name: wrapper.readString() });
++
++                memberCount--;
++            }
++
++            this._albums.push({ id, name, shared, ownerId, ownerName, photoCount, coverUrl, members });
++
++            count--;
++        }
++
++        return true;
++    }
++
++    public get albums(): RpAlbumListItem[]
++    {
++        return this._albums;
++    }
++}
++
++export class RpAlbumListEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpAlbumListParser);
++    }
++
++    public getParser(): RpAlbumListParser
++    {
++        return this.parser as RpAlbumListParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/RpAlbumPhotosEvent.ts b/src/nitro/communication/messages/incoming/RpAlbumPhotosEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2b7867992450546e52e6dad324f6b257b3796460
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpAlbumPhotosEvent.ts
+@@ -0,0 +1,75 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: the photos inside one album, newest-added first. Shared albums
++// mix photos from every contributor, so each entry carries its owner.
++export interface RpAlbumPhoto
++{
++    id: number;
++    url: string;
++    timestamp: number;
++    ownerId: number;
++    ownerName: string;
++}
++
++export class RpAlbumPhotosParser implements IMessageParser
++{
++    private _albumId: number;
++    private _photos: RpAlbumPhoto[];
++
++    public flush(): boolean
++    {
++        this._albumId = 0;
++        this._photos = [];
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._albumId = wrapper.readInt();
++        this._photos = [];
++
++        let count = wrapper.readInt();
++
++        while(count > 0)
++        {
++            this._photos.push({
++                id: wrapper.readInt(),
++                url: wrapper.readString(),
++                timestamp: wrapper.readInt(),
++                ownerId: wrapper.readInt(),
++                ownerName: wrapper.readString()
++            });
++
++            count--;
++        }
++
++        return true;
++    }
++
++    public get albumId(): number
++    {
++        return this._albumId;
++    }
++
++    public get photos(): RpAlbumPhoto[]
++    {
++        return this._photos;
++    }
++}
++
++export class RpAlbumPhotosEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpAlbumPhotosParser);
++    }
++
++    public getParser(): RpAlbumPhotosParser
++    {
++        return this.parser as RpAlbumPhotosParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index f5b03590551559f83ab20a0cefe2a98fd54b892c..549e6254a7ac9dfc59e9482b309ab712410b8799 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -78,6 +78,8 @@ export * from './RpInventoryEvent';
+ export * from './RpUiSettingsEvent';
+ export * from './RpMessengerReceiptEvent';
+ export * from './RpAirplaneModeEvent';
++export * from './RpAlbumListEvent';
++export * from './RpAlbumPhotosEvent';
+ export * from './RpMessengerFriendTypingEvent';
+ export * from './RpPhotoListEvent';
+ export * from './RpJukeboxStateEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index b93ca2188e82ab06d646312d011b48b607054af1..2c41c85a68c2b7ff770f9d1d3d4dc020f92cf7d5 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -472,6 +472,12 @@ export class OutgoingHeader
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_SAVE_PHOTO = 3936;
++    public static RP_REQUEST_ALBUMS = 3937;
++    public static RP_CREATE_ALBUM = 3939;
++    public static RP_DELETE_ALBUM = 3940;
++    public static RP_ALBUM_MEMBER = 3941;
++    public static RP_ALBUM_PHOTO = 3942;
++    public static RP_REQUEST_ALBUM_PHOTOS = 3943;
+     public static RP_MESSENGER_TYPING = 3933;
+     public static RP_PHOTO_LIST_REQUEST = 3908;
+     public static RP_PHOTO_DELETE = 3910;
+diff --git a/src/nitro/communication/messages/outgoing/RpAlbumMemberComposer.ts b/src/nitro/communication/messages/outgoing/RpAlbumMemberComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b02dd1e073d30e147873751a44a2805a16583346
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpAlbumMemberComposer.ts
+@@ -0,0 +1,23 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: add (true) or remove (false) a member on a shared album (owner
++// only; added members must be friends of the owner).
++export class RpAlbumMemberComposer implements IMessageComposer<ConstructorParameters<typeof RpAlbumMemberComposer>>
++{
++    private _data: ConstructorParameters<typeof RpAlbumMemberComposer>;
++
++    constructor(albumId: number, userId: number, add: boolean)
++    {
++        this._data = [ albumId, userId, add ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpAlbumPhotoComposer.ts b/src/nitro/communication/messages/outgoing/RpAlbumPhotoComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c138b0b804950e948b78410b33d8b142a44756a5
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpAlbumPhotoComposer.ts
+@@ -0,0 +1,23 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: add (true) or remove (false) one of the player's own photos in an
++// album they own or are a member of.
++export class RpAlbumPhotoComposer implements IMessageComposer<ConstructorParameters<typeof RpAlbumPhotoComposer>>
++{
++    private _data: ConstructorParameters<typeof RpAlbumPhotoComposer>;
++
++    constructor(albumId: number, photoId: number, add: boolean)
++    {
++        this._data = [ albumId, photoId, add ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpCreateAlbumComposer.ts b/src/nitro/communication/messages/outgoing/RpCreateAlbumComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f99e70d098b4f0132f40d8937f03105947055c99
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpCreateAlbumComposer.ts
+@@ -0,0 +1,23 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: create a photo album. Shared albums carry the initial member ids
++// (friends of the creator; the server validates).
++export class RpCreateAlbumComposer implements IMessageComposer<any[]>
++{
++    private _data: any[];
++
++    constructor(name: string, shared: boolean, memberIds: number[])
++    {
++        this._data = [ name, shared, memberIds.length, ...memberIds ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        this._data = [];
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpDeleteAlbumComposer.ts b/src/nitro/communication/messages/outgoing/RpDeleteAlbumComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a05df2108e56a9255964b2d75568b5933e4a9dee
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpDeleteAlbumComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: delete a photo album (owner only; photos stay in the library).
++export class RpDeleteAlbumComposer implements IMessageComposer<ConstructorParameters<typeof RpDeleteAlbumComposer>>
++{
++    private _data: ConstructorParameters<typeof RpDeleteAlbumComposer>;
++
++    constructor(albumId: number)
++    {
++        this._data = [ albumId ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpRequestAlbumPhotosComposer.ts b/src/nitro/communication/messages/outgoing/RpRequestAlbumPhotosComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..49d814a4c74b54cdc8d83d16b608993cffddd70c
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpRequestAlbumPhotosComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: request the photos inside one album.
++export class RpRequestAlbumPhotosComposer implements IMessageComposer<ConstructorParameters<typeof RpRequestAlbumPhotosComposer>>
++{
++    private _data: ConstructorParameters<typeof RpRequestAlbumPhotosComposer>;
++
++    constructor(albumId: number)
++    {
++        this._data = [ albumId ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpRequestAlbumsComposer.ts b/src/nitro/communication/messages/outgoing/RpRequestAlbumsComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..48a2174a376c9f84ff751ece6cdf1cdf0b4cc840
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpRequestAlbumsComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: request the player's photo albums (Photos app Collections tab).
++export class RpRequestAlbumsComposer implements IMessageComposer<ConstructorParameters<typeof RpRequestAlbumsComposer>>
++{
++    private _data: ConstructorParameters<typeof RpRequestAlbumsComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 6f928ee400dee345d0194e89d39f9c1f77469fd8..f04ee048a79f6ba2b70954e17e37361fbc95e7ee 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -76,6 +76,12 @@ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';
+ export * from './RpSetAirplaneModeComposer';
+ export * from './RpSavePhotoComposer';
++export * from './RpRequestAlbumsComposer';
++export * from './RpCreateAlbumComposer';
++export * from './RpDeleteAlbumComposer';
++export * from './RpAlbumMemberComposer';
++export * from './RpAlbumPhotoComposer';
++export * from './RpRequestAlbumPhotosComposer';
+ export * from './RpMessengerTypingComposer';
+ export * from './RpRequestPhotoListComposer';
+ export * from './RpDeletePhotoComposer';

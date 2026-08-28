@@ -1,4 +1,4 @@
-import { RpAirplaneModeEvent, RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpSetAirplaneModeComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
+import { RpAirplaneModeEvent, RpAlbumListEvent, RpAlbumListItem, RpAlbumMemberComposer, RpAlbumPhoto, RpAlbumPhotoComposer, RpAlbumPhotosEvent, RpCreateAlbumComposer, RpDeleteAlbumComposer, RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestAlbumPhotosComposer, RpRequestAlbumsComposer, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpSetAirplaneModeComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetConfiguration, GetSessionDataManager, SendMessageComposer } from '../../api';
@@ -398,3 +398,58 @@ const usePhonePhotosState = () =>
 }
 
 export const usePhonePhotos = () => useBetween(usePhonePhotosState);
+
+// Photo albums for the Photos app's Collections tab. Personal albums hold
+// the player's own photos; shared albums carry invited friends who can view
+// and contribute. Every mutation replies with the refreshed album list, so
+// state always comes from the server. The Screenshots album, People and
+// Places groupings are computed client-side from photo metadata - they have
+// no server state.
+const usePhoneAlbumsState = () =>
+{
+    const [ albums, setAlbums ] = useState<RpAlbumListItem[]>([]);
+    const [ albumsLoaded, setAlbumsLoaded ] = useState(false);
+    const [ albumPhotos, setAlbumPhotos ] = useState<Record<number, RpAlbumPhoto[]>>({});
+
+    useMessageEvent<RpAlbumListEvent>(RpAlbumListEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser) return;
+
+        setAlbums(parser.albums);
+        setAlbumsLoaded(true);
+    });
+
+    useMessageEvent<RpAlbumPhotosEvent>(RpAlbumPhotosEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser || (parser.albumId <= 0)) return;
+
+        setAlbumPhotos(prevValue => ({ ...prevValue, [parser.albumId]: parser.photos }));
+    });
+
+    const requestAlbums = () => SendMessageComposer(new RpRequestAlbumsComposer());
+
+    const requestAlbumPhotos = (albumId: number) => SendMessageComposer(new RpRequestAlbumPhotosComposer(albumId));
+
+    const createAlbum = (name: string, shared: boolean, memberIds: number[] = []) =>
+    {
+        const trimmed = (name || '').trim();
+
+        if(!trimmed.length) return;
+
+        SendMessageComposer(new RpCreateAlbumComposer(trimmed, shared, memberIds));
+    }
+
+    const deleteAlbum = (albumId: number) => SendMessageComposer(new RpDeleteAlbumComposer(albumId));
+
+    const setAlbumMember = (albumId: number, userId: number, add: boolean) => SendMessageComposer(new RpAlbumMemberComposer(albumId, userId, add));
+
+    const setAlbumPhoto = (albumId: number, photoId: number, add: boolean) => SendMessageComposer(new RpAlbumPhotoComposer(albumId, photoId, add));
+
+    return { albums, albumsLoaded, albumPhotos, requestAlbums, requestAlbumPhotos, createAlbum, deleteAlbum, setAlbumMember, setAlbumPhoto };
+}
+
+export const usePhoneAlbums = () => useBetween(usePhoneAlbumsState);

@@ -2277,6 +2277,398 @@ $phone-scale: 0.8;
         color: $phone-faint-text;
     }
 
+    // ----- photos: bottom tab bar (Library | Collections) -----
+
+    .phone-photos-tabbar {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 18px;
+        z-index: 20;
+        padding: 9px 22px;
+        border-radius: 22px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 8px 24px rgba(0, 0, 0, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+    }
+
+    .phone-photos-tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        color: var(--ph-faint);
+
+        span {
+            font-family: 'Ubuntu', sans-serif;
+            font-weight: 600;
+            font-size: 10px;
+        }
+
+        &.is-active {
+            color: $phone-pink;
+        }
+    }
+
+    // Keeps scrolled content clear of the floating tab bar.
+    .phone-photos-tab-spacer {
+        height: 58px;
+        flex-shrink: 0;
+    }
+
+    // ----- photos: Collections tab -----
+
+    .phone-collections-section-head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 14px 18px 8px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 16px;
+        color: var(--ph-text);
+
+        .phone-pi {
+            opacity: 0.6;
+        }
+    }
+
+    .phone-collections-new {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 11px;
+        border-radius: 14px;
+        background: $phone-pink;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 600;
+        font-size: 11px;
+    }
+
+    .phone-collections-row {
+        display: flex;
+        gap: 13px;
+        padding: 2px 18px 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    .phone-album-tile {
+        flex: none;
+        width: 96px;
+
+        &.is-wide {
+            width: 128px;
+        }
+    }
+
+    .phone-album-cover {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        border-radius: 13px;
+        overflow: hidden;
+        background: var(--ph-inset);
+        border: 2px solid $phone-ink;
+        box-shadow: 3px 3px 0 rgba(26, 10, 20, 0.14);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+
+        .phone-album-cover-empty {
+            color: var(--ph-faint);
+        }
+
+        &.is-wide {
+            width: 128px;
+        }
+
+        // The dashed "New Album" tile - no ink border, no shadow.
+        &.is-new {
+            background: transparent;
+            border: 2px dashed var(--ph-faint);
+            box-shadow: none;
+            color: var(--ph-faint);
+        }
+
+        // Small mark next to the album-name input in the create sheet.
+        &.is-input-mark {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            box-shadow: none;
+            background: linear-gradient(160deg, #ff9dc6, #e93a7d 60%, #a01e5c);
+            color: #ffffff;
+            flex: none;
+        }
+    }
+
+    .phone-album-shared-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(26, 10, 20, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+    }
+
+    .phone-album-name {
+        margin-top: 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--ph-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .phone-album-count {
+        font-size: 11.5px;
+        color: var(--ph-faint);
+    }
+
+    .phone-person {
+        flex: none;
+        width: 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+
+        // Round crop for the People circles.
+        .phone-person-avatar,
+        .phone-person-avatar .phone-avatar-crop {
+            border-radius: 50% !important;
+        }
+    }
+
+    .phone-person-letter {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 2px solid $phone-ink;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 22px;
+        color: rgba(26, 10, 20, 0.75);
+
+        &.is-small {
+            width: 42px;
+            height: 42px;
+            font-size: 17px;
+            flex: none;
+        }
+    }
+
+    .phone-person-name {
+        max-width: 64px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ph-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .phone-places-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 2px 18px 6px;
+    }
+
+    .phone-place-tile {
+        position: relative;
+        aspect-ratio: 1.25;
+        border-radius: 13px;
+        overflow: hidden;
+        border: 2px solid $phone-ink;
+        box-shadow: 3px 3px 0 rgba(26, 10, 20, 0.14);
+        background: var(--ph-inset);
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+    }
+
+    .phone-place-overlay {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 18px 9px 7px;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+        color: #ffffff;
+
+        .phone-place-name {
+            font-size: 12.5px;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .phone-place-count {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+    }
+
+    .phone-collections-empty {
+        padding: 10px 22px 14px;
+        font-size: 12.5px;
+        line-height: 1.45;
+        color: var(--ph-soft);
+    }
+
+    // Collection detail header (Screenshots / person / place / album).
+    .phone-collections-detail-head {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 14px 8px 8px;
+
+        .phone-collections-detail-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .phone-collections-detail-title {
+            font-family: 'Ubuntu', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--ph-text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .phone-collections-detail-sub {
+            font-size: 12px;
+            color: var(--ph-faint);
+        }
+
+        .phone-collections-detail-actions {
+            display: flex;
+            gap: 7px;
+            flex: none;
+        }
+    }
+
+    // Small square action buttons on the light app surface (the viewer-btn
+    // base styles assume the dark photo overlay).
+    .phone-photos-viewer-btn.is-compact {
+        width: 30px;
+        height: 30px;
+        background: var(--ph-inset);
+        color: var(--ph-text);
+        backdrop-filter: none;
+
+        &.is-danger {
+            color: $phone-red;
+        }
+    }
+
+    // Create-album sheet: name input row + invite list.
+    .phone-collections-name-row {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 14px 16px 6px;
+
+        input {
+            flex: 1;
+            min-width: 0;
+            height: 42px;
+            padding: 0 13px;
+            border: 1.5px solid var(--ph-input-border);
+            border-radius: 12px;
+            outline: 0;
+            background: transparent;
+            font-family: 'Barlow', sans-serif;
+            font-size: 15px;
+            color: var(--ph-text);
+
+            &::placeholder {
+                color: $phone-muted-text;
+            }
+
+            &:focus {
+                border-color: $phone-pink-hot;
+            }
+        }
+    }
+
+    .phone-collections-invite-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 18px 4px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: $phone-muted-text;
+
+        .phone-collections-invite-count {
+            color: $phone-pink;
+        }
+    }
+
+    .phone-invite-check {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid var(--ph-faint);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        flex: none;
+
+        &.is-picked {
+            background: $phone-pink;
+            border-color: $phone-pink;
+        }
+    }
+
+    // Already-in-album photos in the add picker.
+    .phone-photos-cell.is-muted-cell {
+        opacity: 0.35;
+        cursor: default;
+    }
+
     .phone-photos-viewer {
         position: absolute;
         inset: 0;
