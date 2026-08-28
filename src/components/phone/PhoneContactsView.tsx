@@ -4,6 +4,7 @@ import { GetUserProfile, SendMessageComposer } from '../../api';
 import { useFriends, useMessageEvent } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
+import { useAirplane } from './usePhone';
 
 // Contacts app: a Friends / Requests segmented control. Friends splits into
 // Online and Offline sections (each alphabetized) with an inline add-contact
@@ -27,6 +28,9 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
     const { friends = [], requests = [], requestResponse = null } = useFriends();
     const [ confirmRemoveId, setConfirmRemoveId ] = useState<number>(0);
     const [ tab, setTab ] = useState<ContactsTab>('friends');
+    const { enabled: airplane } = useAirplane();
+    // Airplane mode hides incoming friend requests until it's switched off.
+    const visibleRequests = (airplane ? [] : requests);
 
     const sortedFriends = useMemo(() =>
     {
@@ -108,8 +112,8 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
                     </div>
                     <div className={ `phone-tap phone-contacts-tab${ (tab === 'requests') ? ' is-active' : '' }` } onClick={ event => setTab('requests') }>
                         <span>Requests</span>
-                        { (requests.length > 0) &&
-                            <span className="phone-contacts-tab-badge">{ requests.length }</span> }
+                        { (visibleRequests.length > 0) &&
+                            <span className="phone-contacts-tab-badge">{ visibleRequests.length }</span> }
                     </div>
                 </div>
                 { (tab === 'friends') &&
@@ -134,7 +138,7 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
                     </> }
                 { (tab === 'requests') &&
                     <>
-                        { requests.map(request =>
+                        { visibleRequests.map(request =>
                         {
                             return (
                                 <div key={ request.id } className="phone-contact-row">
@@ -154,7 +158,7 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
                                 </div>
                             );
                         }) }
-                        { !requests.length &&
+                        { !visibleRequests.length &&
                             <div className="phone-requests-empty">
                                 <div className="phone-requests-empty-title">No pending requests</div>
                                 <div className="phone-requests-empty-text">Friend requests from other players show up here.</div>

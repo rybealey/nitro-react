@@ -1133,6 +1133,12 @@ $phone-scale: 0.8;
         font-size: 11px;
         color: var(--ph-faint);
         padding: 3px 4px 0;
+
+        // Airplane-mode bounce: the message didn't reach the recipient.
+        &.is-error {
+            color: $phone-red;
+            font-weight: 600;
+        }
     }
 
     // Three-dot "friend is typing" bubble (design's typingIn + typingDot).

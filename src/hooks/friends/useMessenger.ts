@@ -17,6 +17,8 @@ export interface MessengerReceipt
 
 export const MESSENGER_RECEIPT_DELIVERED: number = 1;
 export const MESSENGER_RECEIPT_READ: number = 2;
+// pixelrp: the recipient has airplane mode on - the message bounced.
+export const MESSENGER_RECEIPT_NOT_DELIVERED: number = 3;
 
 const useMessengerState = () =>
 {

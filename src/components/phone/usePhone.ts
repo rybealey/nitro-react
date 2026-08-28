@@ -1,4 +1,4 @@
-import { RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
+import { RpAirplaneModeEvent, RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpSetAirplaneModeComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetConfiguration, GetSessionDataManager, SendMessageComposer } from '../../api';
@@ -283,6 +283,35 @@ const usePhoneThemeState = () =>
 
 export const usePhoneTheme = () => useBetween(usePhoneThemeState);
 
+// Airplane mode: a per-account flag persisted server-side. The server pushes
+// the saved state on login; toggling it sends the new value back. While on,
+// incoming friend requests are hidden in Contacts and DMs to the player bounce
+// with a "Not Delivered" receipt (both enforced server-side / here). Kept
+// alive from the toolbar via usePhoneBadges so the login push is never missed.
+const useAirplaneState = () =>
+{
+    const [ enabled, setEnabledState ] = useState<boolean>(false);
+
+    useMessageEvent<RpAirplaneModeEvent>(RpAirplaneModeEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser) return;
+
+        setEnabledState(!!parser.enabled);
+    });
+
+    const setEnabled = (flag: boolean) =>
+    {
+        setEnabledState(flag);
+        SendMessageComposer(new RpSetAirplaneModeComposer(flag));
+    }
+
+    return { enabled, setEnabled };
+}
+
+export const useAirplane = () => useBetween(useAirplaneState);
+
 // Badge counts shared by the toolbar button and the phone home screen. The
 // Messages badge only counts unread direct messages from friends — group
 // chats (participant.id <= 0), muted conversations and hidden threads never
@@ -292,6 +321,7 @@ export const usePhoneBadges = () =>
     const { visibleThreads = [] } = useMessenger();
     const { requests = [], getFriend = null } = useFriends();
     const { mutedIds, ensureLoaded } = usePhonePrefs();
+    const { enabled: airplaneMode = false } = useAirplane();
 
     // Muted ids must be loaded before the badge math is right; by the time
     // any thread or request exists the session user id is known.
@@ -318,7 +348,8 @@ export const usePhoneBadges = () =>
         return count;
     }, [ visibleThreads, mutedIds, getFriend ]);
 
-    return { unreadMessages, requestCount: requests.length };
+    // Airplane mode hides incoming friend requests, so they don't count.
+    return { unreadMessages, requestCount: (airplaneMode ? 0 : requests.length) };
 }
 
 // The player's photo library (camera_web rows), shared between the Camera

@@ -2,7 +2,7 @@ import { FC, ReactNode } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
-import { usePhonePrefs } from './usePhone';
+import { useAirplane, usePhonePrefs } from './usePhone';
 
 // Settings app, iOS grouped-list style: a real account row (the player's own
 // avatar + name) on top, then the familiar system groups. Every row is a
@@ -19,6 +19,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
     const { onBack = null, openAppearance = null } = props;
     const { theme } = usePhonePrefs();
+    const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
     const ownId = GetSessionDataManager().userId;
     const ownFigure = GetSessionDataManager().figure;
@@ -78,9 +79,9 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         </div>
                     ) }
                     { group(<>
-                        { item('plane-up', '#f0954a', 'Airplane Mode', { chevron: false, switchOn: false }) }
+                        { item('plane-up', '#f0954a', 'Airplane Mode', { chevron: false, inert: false, switchOn: airplane, onTap: () => setAirplane(!airplane) }) }
                         { item('wifi', '#3f8fbf', 'Wi-Fi', { value: 'Pixel' }) }
-                        { item('cellular-signal-3', '#3fbf5a', 'Cellular') }
+                        { item('cellular-signal-3', '#3fbf5a', 'Cellular', { value: '5G LTE' }) }
                         { item('battery', '#3fbf5a', 'Battery') }
                     </>) }
                     { group(<>

@@ -1,6 +1,6 @@
 import { FC, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
-import { MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
+import { MESSENGER_RECEIPT_NOT_DELIVERED, MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { MakePhotoMessage, ParsePhotoMessage, usePhonePhotos, usePhonePrefs } from './usePhone';
@@ -102,6 +102,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     }
 
     let receiptText: string = null;
+    let receiptError = false;
 
     if(!isGroup)
     {
@@ -115,7 +116,15 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 
             if(receipt && (receipt.date >= lastChat.date))
             {
-                receiptText = ((receipt.type === MESSENGER_RECEIPT_READ) ? `Read at ${ receipt.date.getHours().toString().padStart(2, '0') }:${ receipt.date.getMinutes().toString().padStart(2, '0') }` : 'Delivered');
+                if(receipt.type === MESSENGER_RECEIPT_NOT_DELIVERED)
+                {
+                    receiptText = 'Not Delivered';
+                    receiptError = true;
+                }
+                else
+                {
+                    receiptText = ((receipt.type === MESSENGER_RECEIPT_READ) ? `Read at ${ receipt.date.getHours().toString().padStart(2, '0') }:${ receipt.date.getMinutes().toString().padStart(2, '0') }` : 'Delivered');
+                }
             }
         }
     }
@@ -320,7 +329,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                     });
                 }) }
                 { receiptText && !isTyping &&
-                    <div className="phone-thread-receipt">{ receiptText }</div> }
+                    <div className={ `phone-thread-receipt${ receiptError ? ' is-error' : '' }` }>{ receiptText }</div> }
                 { isTyping &&
                     <div className="phone-thread-typing">
                         <span />

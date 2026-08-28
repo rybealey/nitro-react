@@ -1,0 +1,162 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 1b0180b56fbec367dc9e16a3e7b20d515d6f9975..be243d9adbc7a85951870c3f293b9a173da7e600 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -3,6 +3,7 @@ import { RpStatsEvent } from './messages/incoming/RpStatsEvent';
+ import { RpInventoryEvent } from './messages/incoming/RpInventoryEvent';
+ import { RpUiSettingsEvent } from './messages/incoming/RpUiSettingsEvent';
+ import { RpMessengerReceiptEvent } from './messages/incoming/RpMessengerReceiptEvent';
++import { RpAirplaneModeEvent } from './messages/incoming/RpAirplaneModeEvent';
+ import { RpMessengerFriendTypingEvent } from './messages/incoming/RpMessengerFriendTypingEvent';
+ import { RpPhotoListEvent } from './messages/incoming/RpPhotoListEvent';
+ import { RpJukeboxStateEvent } from './messages/incoming/RpJukeboxStateEvent';
+@@ -13,6 +14,7 @@ import { RpRoomZoneSaveComposer } from './messages/outgoing/RpRoomZoneSaveCompos
+ import { RpPassiveCancelComposer } from './messages/outgoing/RpPassiveCancelComposer';
+ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+ import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
++import { RpSetAirplaneModeComposer } from './messages/outgoing/RpSetAirplaneModeComposer';
+ import { RpMessengerTypingComposer } from './messages/outgoing/RpMessengerTypingComposer';
+ import { RpRequestPhotoListComposer } from './messages/outgoing/RpRequestPhotoListComposer';
+ import { RpDeletePhotoComposer } from './messages/outgoing/RpDeletePhotoComposer';
+@@ -45,6 +47,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_UI_SETTINGS, RpUiSettingsEvent);
+         this._events.set(IncomingHeader.RP_INVENTORY, RpInventoryEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_RECEIPT, RpMessengerReceiptEvent);
++        this._events.set(IncomingHeader.RP_AIRPLANE_MODE, RpAirplaneModeEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_FRIEND_TYPING, RpMessengerFriendTypingEvent);
+         this._events.set(IncomingHeader.RP_PHOTO_LIST, RpPhotoListEvent);
+         this._events.set(IncomingHeader.RP_JUKEBOX_STATE, RpJukeboxStateEvent);
+@@ -1124,6 +1127,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_SAVE_UI_SETTINGS, RpSaveUiSettingsComposer);
+         this._composers.set(OutgoingHeader.RP_USE_ITEM, RpUseItemComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
++        this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_TYPING, RpMessengerTypingComposer);
+         this._composers.set(OutgoingHeader.RP_PHOTO_LIST_REQUEST, RpRequestPhotoListComposer);
+         this._composers.set(OutgoingHeader.RP_PHOTO_DELETE, RpDeletePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 28fb12cdc38de8f337f2300744dc5040ed1f4273..da80f937b523b416e6eab7e3d5737ab69319f839 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -470,6 +470,7 @@ export class IncomingHeader
+     public static RP_UI_SETTINGS = 3902;
+     public static RP_INVENTORY = 3904;
+     public static RP_MESSENGER_RECEIPT = 3906;
++    public static RP_AIRPLANE_MODE = 3935;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
+     public static RP_PHOTO_LIST = 3909;
+     public static RP_JUKEBOX_STATE = 3917;
+diff --git a/src/nitro/communication/messages/incoming/RpAirplaneModeEvent.ts b/src/nitro/communication/messages/incoming/RpAirplaneModeEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..429824a1dfab39a6094df602d1386934338e5d1c
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpAirplaneModeEvent.ts
+@@ -0,0 +1,44 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: the server's current airplane-mode state for this player. Drives
++// the phone's Settings toggle; while on, friend requests are hidden and DMs
++// to the player bounce with a "not delivered" receipt.
++export class RpAirplaneModeParser implements IMessageParser
++{
++    private _enabled: boolean;
++
++    public flush(): boolean
++    {
++        this._enabled = false;
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._enabled = wrapper.readBoolean();
++
++        return true;
++    }
++
++    public get enabled(): boolean
++    {
++        return this._enabled;
++    }
++}
++
++export class RpAirplaneModeEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpAirplaneModeParser);
++    }
++
++    public getParser(): RpAirplaneModeParser
++    {
++        return this.parser as RpAirplaneModeParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index 13a5844ee15c0c6773de00845cceeac68b116660..f5b03590551559f83ab20a0cefe2a98fd54b892c 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -77,6 +77,7 @@ export * from './RpStatsEvent';
+ export * from './RpInventoryEvent';
+ export * from './RpUiSettingsEvent';
+ export * from './RpMessengerReceiptEvent';
++export * from './RpAirplaneModeEvent';
+ export * from './RpMessengerFriendTypingEvent';
+ export * from './RpPhotoListEvent';
+ export * from './RpJukeboxStateEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index 10f97c7d24a5dc4b37747bafdcff4a638f63eda7..53941d1443681fee11957b2f9beb447a31fd894d 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -470,6 +470,7 @@ export class OutgoingHeader
+     public static RP_SAVE_UI_SETTINGS = 3903;
+     public static RP_USE_ITEM = 3905;
+     public static RP_MESSENGER_MARK_READ = 3907;
++    public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_MESSENGER_TYPING = 3933;
+     public static RP_PHOTO_LIST_REQUEST = 3908;
+     public static RP_PHOTO_DELETE = 3910;
+diff --git a/src/nitro/communication/messages/outgoing/RpSetAirplaneModeComposer.ts b/src/nitro/communication/messages/outgoing/RpSetAirplaneModeComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..68142162ab281313443bac8e59dd55cf3ae942ca
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSetAirplaneModeComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: toggle the player's airplane mode (persisted server-side).
++export class RpSetAirplaneModeComposer implements IMessageComposer<ConstructorParameters<typeof RpSetAirplaneModeComposer>>
++{
++    private _data: ConstructorParameters<typeof RpSetAirplaneModeComposer>;
++
++    constructor(enabled: boolean)
++    {
++        this._data = [enabled];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 5e695091b2915cbf30d1bf20bfa69f0498cc2c4f..0737b2a3d24e49172b84f131d2fc0f92edc398af 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -74,6 +74,7 @@ export * from './userclassification';
+ export * from './RpSaveUiSettingsComposer';
+ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';
++export * from './RpSetAirplaneModeComposer';
+ export * from './RpMessengerTypingComposer';
+ export * from './RpRequestPhotoListComposer';
+ export * from './RpDeletePhotoComposer';
