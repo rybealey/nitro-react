@@ -4,7 +4,6 @@ export * from './useChatInputWidget';
 export * from './useChatWidget';
 export * from './useDoorbellWidget';
 export * from './useFilterWordsWidget';
-export * from './useFriendRequestWidget';
 export * from './useFurniChooserWidget';
 export * from './usePetPackageWidget';
 export * from './usePollWidget';

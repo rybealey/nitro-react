@@ -5,10 +5,14 @@ import { useFriends, useMessageEvent } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
-// Contacts app: pending friend requests up top, then friends split into
-// Online and Offline sections (each alphabetized). Message jumps into the
-// Messages app; call rings the (cosmetic) PixelRP Audio overlay; removing
-// a friend needs a second confirming tap.
+// Contacts app: a Friends / Requests segmented control. Friends splits into
+// Online and Offline sections (each alphabetized) with an inline add-contact
+// search; Requests holds incoming friend requests until they're accepted or
+// declined, and drives the tab's count badge. Message jumps into the Messages
+// app; call rings the (cosmetic) PixelRP Audio overlay; removing a friend
+// needs a second confirming tap.
+
+type ContactsTab = 'friends' | 'requests';
 
 interface PhoneContactsViewProps
 {
@@ -22,6 +26,7 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
     const { openThreadForUser = null, startCall = null, onBack = null } = props;
     const { friends = [], requests = [], requestResponse = null } = useFriends();
     const [ confirmRemoveId, setConfirmRemoveId ] = useState<number>(0);
+    const [ tab, setTab ] = useState<ContactsTab>('friends');
 
     const sortedFriends = useMemo(() =>
     {
@@ -97,49 +102,64 @@ export const PhoneContactsView: FC<PhoneContactsViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                { (requests.length > 0) &&
+                <div className="phone-contacts-tabs">
+                    <div className={ `phone-tap phone-contacts-tab${ (tab === 'friends') ? ' is-active' : '' }` } onClick={ event => setTab('friends') }>
+                        Friends
+                    </div>
+                    <div className={ `phone-tap phone-contacts-tab${ (tab === 'requests') ? ' is-active' : '' }` } onClick={ event => setTab('requests') }>
+                        <span>Requests</span>
+                        { (requests.length > 0) &&
+                            <span className="phone-contacts-tab-badge">{ requests.length }</span> }
+                    </div>
+                </div>
+                { (tab === 'friends') &&
                     <>
-                        <div className="phone-section-label">FRIEND REQUESTS</div>
-                        <div>
-                            { requests.map(request =>
-                            {
-                                return (
-                                    <div key={ request.id } className="phone-contact-row">
-                                        <PhoneAvatar id={ request.requesterUserId } figure={ request.figureString } size={ 44 } />
-                                        <div className="phone-contact-body">
-                                            <div className="phone-contact-name">{ request.name }</div>
-                                            <div className="phone-contact-handle">wants to be your friend</div>
+                        { (onlineFriends.length > 0) &&
+                            <>
+                                <div className="phone-section-label">ONLINE</div>
+                                <div>
+                                    { onlineFriends.map(friendRow) }
+                                </div>
+                            </> }
+                        { (offlineFriends.length > 0) &&
+                            <>
+                                <div className="phone-section-label">OFFLINE</div>
+                                <div>
+                                    { offlineFriends.map(friendRow) }
+                                </div>
+                            </> }
+                        { !sortedFriends.length &&
+                            <div className="phone-list-note">No contacts yet. Walk up to someone in the city and ask to be friends - or search below.</div> }
+                        <PhoneAddContactView />
+                    </> }
+                { (tab === 'requests') &&
+                    <>
+                        { requests.map(request =>
+                        {
+                            return (
+                                <div key={ request.id } className="phone-contact-row">
+                                    <PhoneAvatar id={ request.requesterUserId } figure={ request.figureString } size={ 44 } />
+                                    <div className="phone-contact-body">
+                                        <div className="phone-contact-name">{ request.name }</div>
+                                        <div className="phone-contact-handle">wants to be your friend</div>
+                                    </div>
+                                    <div className="phone-contact-actions">
+                                        <div className="phone-tap phone-request-accept" title="Accept" onClick={ event => (requestResponse && requestResponse(request.id, true)) }>
+                                            Accept
                                         </div>
-                                        <div className="phone-contact-actions">
-                                            <div className="phone-tap phone-round-btn is-accept" title="Accept" onClick={ event => (requestResponse && requestResponse(request.id, true)) }>
-                                                <PhoneIcon icon="check" size={ 17 } />
-                                            </div>
-                                            <div className="phone-tap phone-round-btn is-decline" title="Decline" onClick={ event => (requestResponse && requestResponse(request.id, false)) }>
-                                                <PhoneIcon icon="close" size={ 16 } />
-                                            </div>
+                                        <div className="phone-tap phone-round-btn is-request-decline" title="Decline" onClick={ event => (requestResponse && requestResponse(request.id, false)) }>
+                                            <PhoneIcon icon="close" size={ 16 } />
                                         </div>
                                     </div>
-                                );
-                            }) }
-                        </div>
+                                </div>
+                            );
+                        }) }
+                        { !requests.length &&
+                            <div className="phone-requests-empty">
+                                <div className="phone-requests-empty-title">No pending requests</div>
+                                <div className="phone-requests-empty-text">Friend requests from other players show up here.</div>
+                            </div> }
                     </> }
-                { (onlineFriends.length > 0) &&
-                    <>
-                        <div className="phone-section-label">ONLINE</div>
-                        <div>
-                            { onlineFriends.map(friendRow) }
-                        </div>
-                    </> }
-                { (offlineFriends.length > 0) &&
-                    <>
-                        <div className="phone-section-label">OFFLINE</div>
-                        <div>
-                            { offlineFriends.map(friendRow) }
-                        </div>
-                    </> }
-                { !sortedFriends.length &&
-                    <div className="phone-list-note">No contacts yet. Walk up to someone in the city and ask to be friends - or search below.</div> }
-                <PhoneAddContactView />
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

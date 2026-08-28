@@ -1135,6 +1135,31 @@ $phone-scale: 0.8;
         padding: 3px 4px 0;
     }
 
+    // Three-dot "friend is typing" bubble (design's typingIn + typingDot).
+    .phone-thread-typing {
+        align-self: flex-start;
+        margin-top: 8px;
+        background: var(--ph-bubble);
+        padding: 11px 14px;
+        border-radius: 17px 17px 17px 5px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+        animation: phone-typing-in 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+
+        span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--ph-faint);
+            animation: phone-typing-dot 1.3s infinite;
+
+            &:nth-child(2) { animation-delay: 0.18s; }
+            &:nth-child(3) { animation-delay: 0.36s; }
+        }
+    }
+
     .phone-thread-input {
         padding: 8px 12px 22px;
         display: flex;
@@ -1592,6 +1617,88 @@ $phone-scale: 0.8;
 
     .phone-search--inset {
         margin-top: 2px;
+    }
+
+    // ----- contacts: friends / requests tabs -----
+
+    .phone-contacts-tabs {
+        display: flex;
+        gap: 4px;
+        margin: 6px 18px 4px;
+        padding: 3px;
+        background: var(--ph-inset);
+        border-radius: 12px;
+    }
+
+    .phone-contacts-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 7px 0;
+        border-radius: 9px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--ph-muted);
+
+        &.is-active {
+            background: var(--ph-bg);
+            color: var(--ph-text);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+    }
+
+    .phone-contacts-tab-badge {
+        min-width: 19px;
+        height: 19px;
+        padding: 0 5px;
+        background: $phone-pink;
+        border-radius: 10px;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-request-accept {
+        height: 33px;
+        padding: 0 15px;
+        border-radius: 17px;
+        background: $phone-pink;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-round-btn.is-request-decline {
+        background: var(--ph-inset);
+        color: var(--ph-text);
+    }
+
+    .phone-requests-empty {
+        padding: 48px 30px;
+        text-align: center;
+
+        .phone-requests-empty-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ph-text);
+            margin-bottom: 4px;
+        }
+
+        .phone-requests-empty-text {
+            font-size: 13px;
+            color: var(--ph-faint);
+        }
     }
 
     // ----- settings app -----
@@ -2510,4 +2617,14 @@ $phone-scale: 0.8;
 @keyframes phone-camera-flash {
     from { opacity: 1; }
     to { opacity: 0; }
+}
+
+@keyframes phone-typing-dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@keyframes phone-typing-in {
+    from { opacity: 0; transform: translateY(5px) scale(0.92); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
