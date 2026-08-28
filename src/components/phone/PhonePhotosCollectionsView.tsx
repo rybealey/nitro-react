@@ -72,13 +72,16 @@ export const PhonePhotosCollectionsView: FC<{}> = props =>
 
     const people = useMemo(() =>
     {
+        const ownName = (GetSessionDataManager().userName || '').toLowerCase();
         const map: Map<string, RpPhotoListItem[]> = new Map();
 
         for(const photo of photos)
         {
             for(const name of (photo.taggedUsers || []))
             {
-                if(!name) continue;
+                // People lists the OTHER players in your shots - being in
+                // frame of your own photo doesn't put you in your own list.
+                if(!name || (name.toLowerCase() === ownName)) continue;
 
                 if(!map.has(name)) map.set(name, []);
 
