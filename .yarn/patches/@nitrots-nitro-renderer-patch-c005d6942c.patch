@@ -453,3 +453,34 @@ index 6f928ee400dee345d0194e89d39f9c1f77469fd8..f04ee048a79f6ba2b70954e17e37361f
  export * from './RpMessengerTypingComposer';
  export * from './RpRequestPhotoListComposer';
  export * from './RpDeletePhotoComposer';
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 3b9955d03b912393ed5de2aa8ad160b7b6f539ba..4dd982c6b04cecdfcbbbd9b378e0d0c162b98aa8 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -1976,6 +1976,26 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     sync.trailingExitHandoffT = 0;
+                     sync.trailingCorrectingActive = false;
+                     sync.trailingSpacingLocked = false;
++                    // livelock fix: this capture is meant to fire exactly
++                    // once per release. Without clearing the latch here,
++                    // the guard condition above (`trailingLatchSet &&
++                    // !trailingExitOffsetSet`) goes true again the instant
++                    // the 100ms decay below finishes and clears
++                    // trailingExitOffsetSet back to false — re-arming this
++                    // same capture forever (mode stays 2, trailingEligibleNow
++                    // stays false, so nothing else ever clears the latch).
++                    // Confirmed in a live capture: the pair sat in mode=2
++                    // for 26s+ straight, [sync:TRAIL_PHASE_END]/
++                    // [sync:TRAIL_RELEASE] repeating every ~100ms, the
++                    // finalize check below never seeing trailingExitOffsetSet
++                    // false at the right instant (this capture always beat
++                    // it to re-set it first), so the session could never
++                    // finish releasing or re-engage into a fresh lock —
++                    // effectively rendering raw NATIVE positions dressed up
++                    // as a still-active trailing formation. Clearing the
++                    // latch here lets the decay below run to completion
++                    // exactly once and hand off to the finalize check.
++                    sync.trailingLatchSet = false;
+ 
+                     const trailingStopReason = ((sync.mode === 2) ? 'released' : 'route_grace_expired');
+ 
