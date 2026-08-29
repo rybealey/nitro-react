@@ -224,7 +224,7 @@ export const DiamondsStoreView: FC<{}> = props =>
 
     return (
         <NitroCardView uniqueKey="diamonds-store" className={ `nitro-diamonds-store${ checkoutActive ? ' diamonds-store-tall' : '' }` } theme="primary-slim">
-            <NitroCardHeaderView headerText="Diamonds Store" onCloseClick={ () => hide() } />
+            <NitroCardHeaderView headerText="Support PixelRP" onCloseClick={ () => hide() } />
             <NitroCardTabsView>
                 <NitroCardTabsItemView isActive={ currentTab === 'store' } onClick={ () => setCurrentTab('store') }>
                     Tokens
