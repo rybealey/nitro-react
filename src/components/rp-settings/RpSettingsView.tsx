@@ -6,7 +6,8 @@ import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemVie
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
-import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon } from './IconChoices';
+import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
+import { UsernameIconGlyph } from './UsernameIconGlyph';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -136,6 +137,12 @@ export const RpSettingsView: FC<{}> = props =>
     {
         setUsernameColor(color);
         saveSettings(chromeColor, chromeOpacity, headerKey, color, usernameIcon, usernameIconColor);
+    }
+
+    const selectUsernameIcon = (icon: string) =>
+    {
+        setUsernameIcon(icon);
+        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, icon, usernameIconColor);
     }
 
     useEffect(() =>
@@ -272,6 +279,8 @@ export const RpSettingsView: FC<{}> = props =>
                                                     <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
                                             </div>
                                             <div className="chat-content">
+                                                { usernameIcon &&
+                                                    <b className="username mr-1"><UsernameIconGlyph iconClass={ usernameIcon } />{ ' ' }</b> }
                                                 <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
                                                 <span className="message">Welcome to San Francisco!</span>
                                             </div>
@@ -290,6 +299,21 @@ export const RpSettingsView: FC<{}> = props =>
                                                 className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
                                                 style={ { backgroundColor: entry.color } }
                                                 onClick={ () => selectUsernameColor(entry.color) } />
+                                        )) }
+                                    </div>
+                                </div>
+                                <div className="rp-settings-stack-section">
+                                    <div className="rp-settings-stack-head">
+                                        <Text bold>Icon</Text>
+                                        <Text small className="text-muted">An icon before your name in chat.</Text>
+                                    </div>
+                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                        { USERNAME_ICONS.map(entry => (
+                                            <div key={ entry.key } title={ entry.name }
+                                                className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
+                                                onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
+                                                <UsernameIconGlyph iconClass={ entry.iconClass } />
+                                            </div>
                                         )) }
                                     </div>
                                 </div>

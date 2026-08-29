@@ -1,6 +1,7 @@
 import { RoomChatSettings, RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatBubbleMessage, GetRoomEngine } from '../../../../api';
+import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
 
 interface ChatWidgetMessageViewProps
 {
@@ -85,6 +86,8 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                         <div className="user-image" style={ { backgroundImage: `url(${ chat.imageUrl })` } } /> }
                 </div>
                 <div className="chat-content">
+                    { chat.usernameIcon &&
+                        <b className="username mr-1"><UsernameIconGlyph iconClass={ chat.usernameIcon } />{ ' ' }</b> }
                     <b className="username mr-1"><span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ ': ' }</b>
                     <span className="message" dangerouslySetInnerHTML={ { __html: `${ chat.formattedText }` } } />
                 </div>
