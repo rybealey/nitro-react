@@ -1,0 +1,35 @@
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index e6482d71e4eccbbd932cdf68284aeed477fc2921..a061ffb9a4798ecbadc8c481070a12f991db3514 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -64,6 +64,12 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // route history, pair lifecycle, offset classification and continuity.
+     private _pixelrpOwnId: number = -1;
+     private _pixelrpSystem11: PixelRPSystem11 = new PixelRPSystem11();
++    // Avatars currently drawn with a sync offset (wire authority or System
++    // 11). Membership forces a per-frame recompute below: without it the
++    // needsUpdate early-return samples an offset avatar at animation FPS
++    // (~24Hz) while its native location is clamped, and a released offset
++    // could latch on screen until an unrelated visual update.
++    private _pixelrpSyncActive = new Set<number>();
+     private _rotationOrigin: Vector3d = null;
+     private _rotationRodLength: number = 0;
+     private _effectDirection: Vector3d;
+@@ -500,6 +506,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
+ 
+         if(locationCache.locationChanged) update = true;
++        if(this._pixelrpSyncActive.has(object.instanceId)) update = true;
+ 
+         if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
+         {
+@@ -590,6 +597,9 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                     target = this._pixelrpSystem11.getTarget(object.instanceId, nowMs);
+                 }
+ 
++                if(target) this._pixelrpSyncActive.add(object.instanceId);
++                else this._pixelrpSyncActive.delete(object.instanceId);
++
+                 if(target)
+                 {
+                     const rawScreen = this._geometry.getScreenPosition(roomLocation);

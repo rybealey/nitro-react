@@ -1,0 +1,602 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 4b73d97dfe3446e275f3ea5560a3ccb01c93cac6..d5b1c9de57801dd40f6ee6cdc404bcf19bd4ff17 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -20,6 +20,7 @@ import { RpGetCorpDetailComposer } from './messages/outgoing/RpGetCorpDetailComp
+ import { RpGetCorpsComposer } from './messages/outgoing/RpGetCorpsComposer';
+ import { RpGetUserCorpComposer } from './messages/outgoing/RpGetUserCorpComposer';
+ import { RpDiscordStatusEvent } from './messages/incoming/RpDiscordStatusEvent';
++import { RpMovementCycleEvent } from './messages/incoming/RpMovementCycleEvent';
+ import { RpGetDiscordStatusComposer } from './messages/outgoing/RpGetDiscordStatusComposer';
+ import { RpUserCorpEvent } from './messages/incoming/RpUserCorpEvent';
+ import { RpMoveItemComposer } from './messages/outgoing/RpMoveItemComposer';
+@@ -70,6 +71,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_CORP_DETAIL, RpCorpDetailEvent);
+         this._events.set(IncomingHeader.RP_USER_CORP, RpUserCorpEvent);
+         this._events.set(IncomingHeader.RP_DISCORD_STATUS, RpDiscordStatusEvent);
++        this._events.set(IncomingHeader.RP_MOVEMENT_CYCLE, RpMovementCycleEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_LIST, RpAlbumListEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_PHOTOS, RpAlbumPhotosEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_FRIEND_TYPING, RpMessengerFriendTypingEvent);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index a8e2942a2a2878f1f15904ce418e7e770029a0b2..56a30cf8c8338d1f9d588ee5d7a9d17cb1d856c1 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -475,6 +475,7 @@ export class IncomingHeader
+     public static RP_CORP_DETAIL = 3947;
+     public static RP_USER_CORP = 3950;
+     public static RP_DISCORD_STATUS = 3952;
++    public static RP_MOVEMENT_CYCLE = 3954;
+     public static RP_ALBUM_LIST = 3938;
+     public static RP_ALBUM_PHOTOS = 3944;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
+diff --git a/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts b/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6bbb2beec08d2f5e714395b2bf581bee04385163
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts
+@@ -0,0 +1,82 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP movement authority: one walk step's authoritative timing, sent by
++// the server right after the UserUpdateComposer that carries its "mv" status.
++// cycleStart travels as a delta against the packet's own serverNow sample;
++// both are in the server's monotonic millisecond clock (TickCount64).
++export class RpMovementCycleParser implements IMessageParser
++{
++    private _virtualId: number;
++    private _seq: number;
++    private _onGrid: boolean;
++    private _fromX: number;
++    private _fromY: number;
++    private _fromZ: number;
++    private _toX: number;
++    private _toY: number;
++    private _toZ: number;
++    private _cycleStart: number;
++    private _interval: number;
++    private _serverNow: number;
++
++    public flush(): boolean
++    {
++        this._virtualId = -1;
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._virtualId = wrapper.readInt();
++        this._seq = wrapper.readInt();
++        this._onGrid = (wrapper.readInt() === 1);
++        this._fromX = wrapper.readInt();
++        this._fromY = wrapper.readInt();
++        this._fromZ = (wrapper.readInt() / 100);
++        this._toX = wrapper.readInt();
++        this._toY = wrapper.readInt();
++        this._toZ = (wrapper.readInt() / 100);
++
++        const cycleStartDelta = wrapper.readInt();
++
++        this._interval = wrapper.readInt();
++
++        const serverNowHi = wrapper.readInt();
++        const serverNowLo = (wrapper.readInt() >>> 0);
++
++        this._serverNow = ((serverNowHi * 4294967296) + serverNowLo);
++        this._cycleStart = (this._serverNow + cycleStartDelta);
++
++        return true;
++    }
++
++    public get virtualId(): number { return this._virtualId; }
++    public get seq(): number { return this._seq; }
++    public get onGrid(): boolean { return this._onGrid; }
++    public get fromX(): number { return this._fromX; }
++    public get fromY(): number { return this._fromY; }
++    public get fromZ(): number { return this._fromZ; }
++    public get toX(): number { return this._toX; }
++    public get toY(): number { return this._toY; }
++    public get toZ(): number { return this._toZ; }
++    public get cycleStart(): number { return this._cycleStart; }
++    public get interval(): number { return this._interval; }
++    public get serverNow(): number { return this._serverNow; }
++}
++
++export class RpMovementCycleEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpMovementCycleParser);
++    }
++
++    public getParser(): RpMovementCycleParser
++    {
++        return this.parser as RpMovementCycleParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index e81302e20f3ae7535524aadbf53f6dbdaf2af642..7505d8855a2ad74dd0c65a5f74a71ca4c55ec90a 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -81,6 +81,7 @@ export * from './RpAirplaneModeEvent';
+ export * from './RpCorpDetailEvent';
+ export * from './RpCorpsEvent';
+ export * from './RpDiscordStatusEvent';
++export * from './RpMovementCycleEvent';
+ export * from './RpUserCorpEvent';
+ export * from './RpAlbumListEvent';
+ export * from './RpAlbumPhotosEvent';
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index ad1921c4122a1625aa37848d91510a7971f947f5..f5ac5aeab638af586304f2c95f16e2c58a3d60c4 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -1,6 +1,7 @@
++import { PixelRPMovementAuthority } from '../../room/renderer/PixelRPMovementAuthority';
+ import { AvatarGuideStatus, IConnection, IRoomCreator, IVector3D, LegacyDataType, ObjectRolling, PetType, RoomObjectType, RoomObjectUserType, RoomObjectVariable, Vector3d } from '../../api';
+ import { Disposable } from '../../core';
+-import { DiceValueMessageEvent, FloorHeightMapEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureDataEvent, FurnitureFloorAddEvent, FurnitureFloorDataParser, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateEvent, FurnitureWallAddEvent, FurnitureWallDataParser, FurnitureWallEvent, FurnitureWallRemoveEvent, FurnitureWallUpdateEvent, GetRoomEntryDataMessageComposer, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionStartedMessageEvent, IgnoreResultEvent, ItemDataUpdateMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OneWayDoorStatusMessageEvent, PetExperienceEvent, PetFigureUpdateEvent, RoomEntryTileMessageEvent, RoomEntryTileMessageParser, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomUnitChatEvent, RoomUnitChatShoutEvent, RoomUnitChatWhisperEvent, RoomUnitDanceEvent, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RoomUnitHandItemEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitNumberEvent, RoomUnitRemoveEvent, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomVisualizationSettingsEvent, UserInfoEvent, YouArePlayingGameEvent } from '../communication';
++import { DiceValueMessageEvent, FloorHeightMapEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureDataEvent, FurnitureFloorAddEvent, FurnitureFloorDataParser, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateEvent, FurnitureWallAddEvent, FurnitureWallDataParser, FurnitureWallEvent, FurnitureWallRemoveEvent, FurnitureWallUpdateEvent, GetRoomEntryDataMessageComposer, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionStartedMessageEvent, IgnoreResultEvent, ItemDataUpdateMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OneWayDoorStatusMessageEvent, PetExperienceEvent, PetFigureUpdateEvent, RoomEntryTileMessageEvent, RoomEntryTileMessageParser, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomUnitChatEvent, RoomUnitChatShoutEvent, RoomUnitChatWhisperEvent, RoomUnitDanceEvent, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RpMovementCycleEvent, RoomUnitHandItemEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitNumberEvent, RoomUnitRemoveEvent, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomVisualizationSettingsEvent, UserInfoEvent, YouArePlayingGameEvent } from '../communication';
+ import { RoomPlaneParser } from './object/RoomPlaneParser';
+ import { RoomVariableEnum } from './RoomVariableEnum';
+ import { FurnitureStackingHeightMap, LegacyWallGeometry } from './utils';
+@@ -81,6 +82,7 @@ export class RoomMessageHandler extends Disposable
+         this._connection.addMessageEvent(new RoomUnitDanceEvent(this.onRoomUnitDanceEvent.bind(this)));
+         this._connection.addMessageEvent(new RoomUnitEffectEvent(this.onRoomUnitEffectEvent.bind(this)));
+         this._connection.addMessageEvent(new RoomUnitEvent(this.onRoomUnitEvent.bind(this)));
++        this._connection.addMessageEvent(new RpMovementCycleEvent(this.onRpMovementCycleEvent.bind(this)));
+         this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
+         this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
+         this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
+@@ -622,6 +624,21 @@ export class RoomMessageHandler extends Disposable
+         this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
+     }
+ 
++    // PixelRP movement authority: feed each step's authoritative timing into
++    // the renderer-side store the canvas renders synchronized walkers from.
++    private onRpMovementCycleEvent(event: RpMovementCycleEvent): void
++    {
++        if(!event) return;
++
++        const parser = event.getParser();
++
++        if(!parser || (parser.virtualId < 0)) return;
++
++        PixelRPMovementAuthority.instance.record(parser.virtualId, parser.seq, parser.onGrid,
++            parser.fromX, parser.fromY, parser.fromZ, parser.toX, parser.toY, parser.toZ,
++            parser.cycleStart, parser.interval, parser.serverNow, Date.now());
++    }
++
+     private onRoomUnitEvent(event: RoomUnitEvent): void
+     {
+         if(!(event instanceof RoomUnitEvent) || !event.connection || !this._roomCreator) return;
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..30972745110cec8dac38a9cc8c714fc4cad1009f
+--- /dev/null
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -0,0 +1,380 @@
++export interface PixelRPAuthorityEdge
++{
++    seq: number;
++    onGrid: boolean;
++    sx: number;
++    sy: number;
++    sz: number;
++    gx: number;
++    gy: number;
++    gz: number;
++    cycleStart: number;
++    interval: number;
++}
++
++export interface PixelRPAuthorityTarget
++{
++    x: number;
++    y: number;
++    z: number;
++}
++
++enum PixelRPAuthorityState
++{
++    NATIVE = 0,
++    ARMED = 1,
++    AUTHORITATIVE = 2
++}
++
++interface PixelRPAuthorityAvatar
++{
++    id: number;
++    state: PixelRPAuthorityState;
++    edges: PixelRPAuthorityEdge[];
++    lastSeq: number;
++    armSeq: number;
++    lastPacketAt: number;
++    lastRenderedX: number;
++    lastRenderedY: number;
++    lastRenderedZ: number;
++    lastRenderedAt: number;
++    endedAt: number;
++}
++
++/**
++ * PixelRP wire-authoritative movement (the primary sync architecture; the
++ * pairwise System 11 remains only as a fallback when no wire timing exists).
++ *
++ * The server schedules every walker's steps on ONE shared wall-clock 500ms
++ * grid and broadcasts each step's edge + cycleStart + interval + serverNow
++ * (RpMovementCycleComposer). Rendering is therefore a pure function:
++ *
++ *   position = lerp(edge, (estimatedServerNow - cycleStart) / interval)
++ *
++ * One grid = one cycle origin = one shared phase for every synchronized
++ * avatar - no sessions between avatars, no pairwise relationships, no phase
++ * acquisition, no convergence. Group walks fall out for free: each avatar
++ * resolves independently from the same clock.
++ *
++ * Clock offset: ONE monotonic estimate for the whole connection (min filter
++ * over clientNow - serverNow, refreshed on a rolling window). Packet arrival
++ * latency never redefines a per-avatar origin - a late packet still
++ * describes an edge whose cycleStart is already correct, so the avatar
++ * renders at the right phase the moment it arrives.
++ *
++ * Entry state machine per avatar: NATIVE -> ARMED -> AUTHORITATIVE. The
++ * instant/off-grid first step renders natively (local prediction stays
++ * responsive); the first on-grid edge arms; the switch happens atomically at
++ * the NEXT edge boundary (or immediately when visually continuous). While
++ * ARMED nothing chases the target and nothing reclassifies per frame.
++ *
++ * Remote avatars render REMOTE_RENDER_DELAY_MS behind server truth - a
++ * fixed, bounded jitter buffer so arrival jitter never becomes phase jitter.
++ * The local player's own avatar is never delayed.
++ *
++ * Stale protection: per-avatar monotonic seq; older packets are rejected
++ * before they can rewind slot, cycle, or state.
++ */
++export class PixelRPMovementAuthority
++{
++    private static readonly EDGE_QUEUE_SIZE = 6;
++    private static readonly REMOTE_RENDER_DELAY_MS = 45;
++    // Invisible-entry threshold (tiles) and the in-session frame guard,
++    // matching System 11's discrete discipline.
++    private static readonly MAX_ENTRY_DISCREPANCY = 0.08;
++    private static readonly MAX_CONTINUITY_DISCREPANCY = 0.22;
++    // No packet for this long = the walk is over (or authority lost): return
++    // to NATIVE discretely. The natural stop is snap-free anyway - the last
++    // edge's goal IS the native resting tile.
++    private static readonly PACKET_STALE_MS = 1400;
++    // How long past the last edge's window the clamped end position is held
++    // before releasing (covers server stalls without dropping authority).
++    private static readonly END_HOLD_MS = 700;
++    private static readonly INSTRUMENT_TRANSITIONS = true;
++
++    private static _instance: PixelRPMovementAuthority = null;
++
++    private readonly _avatars = new Map<number, PixelRPAuthorityAvatar>();
++    private _clockOffset = NaN;
++    private _clockWindowStart = 0;
++    private _clockWindowMin = NaN;
++
++    public static get instance(): PixelRPMovementAuthority
++    {
++        if(!PixelRPMovementAuthority._instance) PixelRPMovementAuthority._instance = new PixelRPMovementAuthority();
++
++        return PixelRPMovementAuthority._instance;
++    }
++
++    public record(virtualId: number, seq: number, onGrid: boolean,
++        sx: number, sy: number, sz: number, gx: number, gy: number, gz: number,
++        cycleStart: number, interval: number, serverNow: number, clientNow: number): void
++    {
++        this.updateClock(clientNow, serverNow);
++
++        let avatar = this._avatars.get(virtualId);
++
++        if(!avatar)
++        {
++            avatar = {
++                id: virtualId,
++                state: PixelRPAuthorityState.NATIVE,
++                edges: [],
++                lastSeq: -1,
++                armSeq: -1,
++                lastPacketAt: clientNow,
++                lastRenderedX: NaN,
++                lastRenderedY: NaN,
++                lastRenderedZ: NaN,
++                lastRenderedAt: 0,
++                endedAt: 0
++            };
++
++            this._avatars.set(virtualId, avatar);
++        }
++
++        // Stale / out-of-order protection: an older or duplicate packet must
++        // never rewind slot, cycle or state.
++        if(seq <= avatar.lastSeq) return;
++
++        // A new walk after a gap starts a fresh entry decision.
++        if((clientNow - avatar.lastPacketAt) > PixelRPMovementAuthority.PACKET_STALE_MS)
++        {
++            avatar.edges = [];
++            avatar.state = PixelRPAuthorityState.NATIVE;
++            avatar.armSeq = -1;
++        }
++
++        avatar.lastSeq = seq;
++        avatar.lastPacketAt = clientNow;
++        // endedAt is getTarget's hold marker - it must survive this packet's
++        // arrival so the first render of a LATE edge is recognized as the
++        // sanctioned resume-from-hold correction.
++        avatar.edges.push({ seq, onGrid, sx, sy, sz, gx, gy, gz, cycleStart, interval: ((interval > 0) ? interval : 500) });
++
++        if(avatar.edges.length > PixelRPMovementAuthority.EDGE_QUEUE_SIZE)
++        {
++            avatar.edges.splice(0, (avatar.edges.length - PixelRPMovementAuthority.EDGE_QUEUE_SIZE));
++        }
++
++        if(this._avatars.size > 128)
++        {
++            for(const [ id, item ] of this._avatars)
++            {
++                if((clientNow - item.lastPacketAt) > 5000) this._avatars.delete(id);
++            }
++        }
++    }
++
++    public isAuthoritative(virtualId: number): boolean
++    {
++        const avatar = this._avatars.get(virtualId);
++
++        return !!(avatar && (avatar.state === PixelRPAuthorityState.AUTHORITATIVE));
++    }
++
++    public getTarget(virtualId: number, clientNow: number, isOwn: boolean,
++        nativeX: number, nativeY: number, nativeZ: number): PixelRPAuthorityTarget
++    {
++        const avatar = this._avatars.get(virtualId);
++
++        if(!avatar || !Number.isFinite(this._clockOffset)) return null;
++
++        if((clientNow - avatar.lastPacketAt) > PixelRPMovementAuthority.PACKET_STALE_MS)
++        {
++            this.releaseAvatar(avatar, 'packet-stale');
++            return null;
++        }
++
++        const estServerNow = (clientNow - this._clockOffset - (isOwn ? 0 : PixelRPMovementAuthority.REMOTE_RENDER_DELAY_MS));
++
++        // The edge whose window contains estServerNow (latest started edge).
++        let edge: PixelRPAuthorityEdge = null;
++
++        for(let index = (avatar.edges.length - 1); index >= 0; index--)
++        {
++            if(avatar.edges[index].cycleStart <= estServerNow) { edge = avatar.edges[index]; break; }
++        }
++
++        if(!edge || !edge.onGrid)
++        {
++            // Nothing renderable yet (all edges in the future, or only the
++            // off-grid instant first step): stay native. Off-grid edges are
++            // the local-prediction / responsiveness path by design.
++            return null;
++        }
++
++        const rawPhase = ((estServerNow - edge.cycleStart) / edge.interval);
++        const phase = Math.min(1, Math.max(0, rawPhase));
++
++        // Past the last known window: the walker is stopping (its goal is the
++        // native resting tile - a snap-free exit) or the next packet is late.
++        // Hold the clamped end briefly, then release discretely.
++        let resumedFromHold = false;
++
++        if((rawPhase > 1) && (edge === avatar.edges[avatar.edges.length - 1]))
++        {
++            if(avatar.state !== PixelRPAuthorityState.AUTHORITATIVE) return null;
++
++            if(!avatar.endedAt) avatar.endedAt = clientNow;
++
++            if((clientNow - avatar.endedAt) > PixelRPMovementAuthority.END_HOLD_MS)
++            {
++                this.releaseAvatar(avatar, 'walk-ended');
++                return null;
++            }
++        }
++        else
++        {
++            // Coming out of an end-of-window hold means the next packet was
++            // late: the first render of its edge is a single sanctioned
++            // discrete correction (bounded by END_HOLD_MS of walking), not a
++            // continuity violation.
++            resumedFromHold = (avatar.endedAt > 0);
++            avatar.endedAt = 0;
++        }
++
++        const target: PixelRPAuthorityTarget = {
++            x: (edge.sx + ((edge.gx - edge.sx) * phase)),
++            y: (edge.sy + ((edge.gy - edge.sy) * phase)),
++            z: (edge.sz + ((edge.gz - edge.sz) * phase))
++        };
++
++        if(avatar.state !== PixelRPAuthorityState.AUTHORITATIVE)
++        {
++            const displacement = this.tileDistance(nativeX, nativeY, nativeZ, target.x, target.y, target.z);
++
++            if(displacement <= PixelRPMovementAuthority.MAX_ENTRY_DISCREPANCY)
++            {
++                // Visually continuous: enter immediately.
++                this.enter(avatar, edge, phase, displacement, 'immediate-continuous', target);
++            }
++            else if(avatar.state === PixelRPAuthorityState.NATIVE)
++            {
++                // Not continuous: arm ONCE on this edge and switch at the
++                // next edge boundary. No per-frame reclassification, no
++                // chasing - native rendering continues untouched meanwhile.
++                avatar.state = PixelRPAuthorityState.ARMED;
++                avatar.armSeq = edge.seq;
++                this.logEvent('AUTH_HANDOFF_PENDING', avatar, edge, phase, displacement, 'armed-await-boundary', nativeX, nativeY, target);
++                return null;
++            }
++            else if(edge.seq > avatar.armSeq)
++            {
++                if(displacement > 2.5)
++                {
++                    // A real route step cannot explain this gap (teleport
++                    // race / desynced native object): re-arm and let native
++                    // state settle before the next boundary.
++                    avatar.armSeq = edge.seq;
++                    this.logEvent('AUTH_HANDOFF_REJECT', avatar, edge, phase, displacement, 'handoff-distance-unsafe', nativeX, nativeY, target);
++                    return null;
++                }
++
++                // Boundary passed: the single discrete switch. The target sits
++                // at (or within a frame of) a real route vertex.
++                this.enter(avatar, edge, phase, displacement, 'boundary-switch', target);
++            }
++            else
++            {
++                return null; // still ARMED within the arming edge
++            }
++        }
++        else
++        {
++            // In-session frame guard: mirrors bounded server jitter, releases
++            // on anything a real route step cannot explain.
++            const elapsed = Math.min(100, Math.max(1, (clientNow - avatar.lastRenderedAt)));
++            const proposedDelta = this.tileDistance(avatar.lastRenderedX, avatar.lastRenderedY, avatar.lastRenderedZ, target.x, target.y, target.z);
++            const maxSaneDelta = Math.min(0.27, (PixelRPMovementAuthority.MAX_CONTINUITY_DISCREPANCY + (elapsed / edge.interval)));
++
++            if(!resumedFromHold && Number.isFinite(avatar.lastRenderedX) && (proposedDelta > maxSaneDelta))
++            {
++                this.releaseAvatar(avatar, 'impossible-frame-displacement');
++                return null;
++            }
++        }
++
++        avatar.lastRenderedX = target.x;
++        avatar.lastRenderedY = target.y;
++        avatar.lastRenderedZ = target.z;
++        avatar.lastRenderedAt = clientNow;
++
++        return target;
++    }
++
++    private enter(avatar: PixelRPAuthorityAvatar, edge: PixelRPAuthorityEdge, phase: number,
++        displacement: number, reason: string, target: PixelRPAuthorityTarget): void
++    {
++        avatar.state = PixelRPAuthorityState.AUTHORITATIVE;
++        avatar.lastRenderedX = target.x;
++        avatar.lastRenderedY = target.y;
++        avatar.lastRenderedZ = target.z;
++        this.logEvent('AUTH_HANDOFF_ENTER', avatar, edge, phase, displacement, reason, NaN, NaN, target);
++    }
++
++    private releaseAvatar(avatar: PixelRPAuthorityAvatar, reason: string): void
++    {
++        if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE)
++        {
++            this.logEvent('AUTH_EXIT', avatar, avatar.edges[avatar.edges.length - 1] || null, NaN, NaN, reason, NaN, NaN, null);
++        }
++
++        avatar.state = PixelRPAuthorityState.NATIVE;
++        avatar.armSeq = avatar.lastSeq;
++        avatar.endedAt = 0;
++        avatar.lastRenderedX = NaN;
++    }
++
++    /**
++     * One stable monotonic clock-offset estimate shared by ALL avatars: the
++     * minimum observed (clientNow - serverNow) - the fastest packet - over a
++     * rolling window, so per-packet arrival latency never becomes a phase
++     * origin. A jump beyond any plausible drift (server restart / reconnect)
++     * rebases outright; that shifts every avatar's phase IDENTICALLY, never
++     * differentially.
++     */
++    private updateClock(clientNow: number, serverNow: number): void
++    {
++        const sample = (clientNow - serverNow);
++
++        if(!Number.isFinite(this._clockOffset) || (Math.abs(sample - this._clockOffset) > 5000))
++        {
++            this._clockOffset = sample;
++            this._clockWindowStart = clientNow;
++            this._clockWindowMin = sample;
++            return;
++        }
++
++        if(sample < this._clockOffset) this._clockOffset = sample;
++
++        // Rolling 30s window tracks upward drift (clock skew) without ever
++        // letting one slow packet drag the estimate.
++        this._clockWindowMin = Number.isFinite(this._clockWindowMin) ? Math.min(this._clockWindowMin, sample) : sample;
++
++        if((clientNow - this._clockWindowStart) > 30000)
++        {
++            this._clockOffset = this._clockWindowMin;
++            this._clockWindowStart = clientNow;
++            this._clockWindowMin = NaN;
++        }
++    }
++
++    private tileDistance(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number
++    {
++        return Math.max(Math.abs(ax - bx), Math.abs(ay - by), Math.abs(az - bz));
++    }
++
++    private logEvent(event: string, avatar: PixelRPAuthorityAvatar, edge: PixelRPAuthorityEdge,
++        phase: number, handoffDistance: number, reason: string,
++        nativeX: number, nativeY: number, target: PixelRPAuthorityTarget): void
++    {
++        if(!PixelRPMovementAuthority.INSTRUMENT_TRANSITIONS) return;
++
++        const slot = edge ? edge.seq : NaN;
++        const nativePosition = (Number.isFinite(nativeX) && Number.isFinite(nativeY)) ? `${ nativeX.toFixed(2) },${ nativeY.toFixed(2) }` : 'n/a';
++        const authoritativePosition = target ? `${ target.x.toFixed(2) },${ target.y.toFixed(2) }` : 'n/a';
++
++        console.log(`[${ event }] avatarId=${ avatar.id } routeSlot=${ Number.isFinite(slot) ? slot : 'n/a' } sharedPhase=${ Number.isFinite(phase) ? phase.toFixed(3) : 'n/a' } nativePosition=${ nativePosition } authoritativePosition=${ authoritativePosition } handoffDistance=${ Number.isFinite(handoffDistance) ? handoffDistance.toFixed(3) : 'n/a' } clockOffset=${ Number.isFinite(this._clockOffset) ? Math.round(this._clockOffset) : 'n/a' } reason=${ reason }`);
++    }
++}
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 248ad0b6496e8e41e29d662c2eb1ce481c18225a..e6482d71e4eccbbd932cdf68284aeed477fc2921 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -9,6 +9,7 @@ import { Nitro } from '../../nitro/Nitro';
+ import { GetTicker, NitroContainer, NitroSprite, PixiApplicationProxy } from '../../pixi-proxy';
+ import { RoomEnterEffect, RoomGeometry, RoomRotatingEffect, RoomShakingEffect } from '../utils';
+ import { RoomObjectCache, RoomObjectCacheItem } from './cache';
++import { PixelRPMovementAuthority } from './PixelRPMovementAuthority';
+ import { PixelRPSystem11 } from './PixelRPSystem11';
+ import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
+ 
+@@ -568,9 +569,26 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 }, nowMs);
+ 
+                 if(unitInfo.own) this._pixelrpOwnId = object.instanceId;
+-                else if(this._pixelrpOwnId >= 0) this._pixelrpSystem11.considerPair(this._pixelrpOwnId, object.instanceId, nowMs);
+ 
+-                const target = this._pixelrpSystem11.getTarget(object.instanceId, nowMs);
++                // Wire authority is the PRIMARY sync path: the server
++                // schedules steps on one shared grid and broadcasts each
++                // edge's cycle timing, so every synchronized walker resolves
++                // its position independently from sessionless shared state.
++                // The pairwise System 11 engages only when no authoritative
++                // timing governs this avatar (older server, packet loss).
++                let target = PixelRPMovementAuthority.instance.getTarget(object.instanceId, nowMs,
++                    unitInfo.own, roomLocation.x, roomLocation.y, roomLocation.z);
++
++                if(!target)
++                {
++                    if(!unitInfo.own && (this._pixelrpOwnId >= 0)
++                        && !PixelRPMovementAuthority.instance.isAuthoritative(this._pixelrpOwnId))
++                    {
++                        this._pixelrpSystem11.considerPair(this._pixelrpOwnId, object.instanceId, nowMs);
++                    }
++
++                    target = this._pixelrpSystem11.getTarget(object.instanceId, nowMs);
++                }
+ 
+                 if(target)
+                 {
