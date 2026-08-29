@@ -3,7 +3,7 @@ import { FC, useState } from 'react';
 import { CreateLinkEvent, GetRoomSession, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../api';
 import { Column, Flex, Grid, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
 import { useMessageEvent, useRoomEngineEvent } from '../../hooks';
-import { DEFAULT_CORP_BADGE, GetRpEmployment, RpTierNumeral, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
+import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutBadgeImageView } from '../../common';
 import { BadgesContainerView } from './views/BadgesContainerView';
 import { FriendsContainerView } from './views/FriendsContainerView';
@@ -128,7 +128,7 @@ export const UserProfileView: FC<{}> = props =>
                             <LayoutBadgeImageView badgeCode={ GetRpEmployment(userProfile.id).badge || DEFAULT_CORP_BADGE } />
                         </div>
                         <Text small bold>{ GetRpEmployment(userProfile.id).corpName }</Text>
-                        <Text small>{ GetRpEmployment(userProfile.id).rankName } { RpTierNumeral(GetRpEmployment(userProfile.id).tier) }</Text>
+                        <Text small>{ RpRankTitle(GetRpEmployment(userProfile.id).rankName, GetRpEmployment(userProfile.id).tier) }</Text>
                     </Flex> }
                 <Flex alignItems="center" className="rooms-button-container px-2 py-1">
                     <Flex alignItems="center" gap={ 1 } onClick={ event => CreateLinkEvent(`navigator/search/hotel_view/owner:${ userProfile.username }`) }>

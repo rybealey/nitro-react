@@ -3,7 +3,7 @@ import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { LuBriefcase } from 'react-icons/lu';
 import { IsRpStaff } from '../../player-hud/PlayerHudWidgetView';
-import { DEFAULT_CORP_BADGE, GetRpEmployment, RpTierNumeral } from '../../../../../api/rp-employment/RpEmploymentRegistry';
+import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle } from '../../../../../api/rp-employment/RpEmploymentRegistry';
 import { CreateLinkEvent, AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text } from '../../../../../common';
 import { useMessageEvent, useRoomSessionManagerEvent } from '../../../../../hooks';
@@ -134,7 +134,7 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                                     if(employment)
                                     {
                                         return (
-                                            <Flex center pointer className="badge-image badge-image--corp is-employed" title={ `${ employment.corpName } - ${ employment.rankName } ${ RpTierNumeral(employment.tier) }` } onClick={ event => CreateLinkEvent('rp-corporations/show') }>
+                                            <Flex center pointer className="badge-image badge-image--corp is-employed" title={ `${ employment.corpName } - ${ RpRankTitle(employment.rankName, employment.tier) }` } onClick={ event => CreateLinkEvent('rp-corporations/show') }>
                                                 <LayoutBadgeImageView badgeCode={ employment.badge || DEFAULT_CORP_BADGE } />
                                             </Flex>);
                                     }

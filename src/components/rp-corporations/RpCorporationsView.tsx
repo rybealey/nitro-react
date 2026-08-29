@@ -133,12 +133,13 @@ export const RpCorporationsView: FC<{}> = props =>
                                             { (rank.employees.length > 0) &&
                                                 <div className="rp-corps-employees">
                                                     { rank.employees.map(employee => (
-                                                        <div key={ employee.username } className="rp-corps-employee" title={ `${ rank.name } ${ TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] }` }>
+                                                        <div key={ employee.username } className="rp-corps-employee" title={ ((rank.tiers > 0) ? `${ rank.name } ${ TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] }` : rank.name) }>
                                                             <div className="rp-corps-employee-avatar">
                                                                 <LayoutAvatarImageView figure={ employee.figure } headOnly={ true } direction={ 2 } />
                                                             </div>
                                                             <span className="rp-corps-employee-name">{ employee.username }</span>
-                                                            <span className="rp-corps-employee-tier">{ TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] }</span>
+                                                            { (rank.tiers > 0) &&
+                                                                <span className="rp-corps-employee-tier">{ TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] }</span> }
                                                             <span className={ `rp-corps-employee-presence${ employee.online ? ' is-online' : '' }${ employee.onDuty ? ' is-onduty' : '' }` } />
                                                         </div>
                                                     )) }

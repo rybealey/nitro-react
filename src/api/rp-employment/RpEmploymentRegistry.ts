@@ -29,4 +29,8 @@ export const SetRpEmployment = (userId: number, employment: RpEmployment): void 
 
 export const GetRpEmployment = (userId: number): RpEmployment => (employmentByUserId.get(userId) ?? null);
 
-export const RpTierNumeral = (tier: number): string => (CORP_TIER_NUMERALS[Math.min(Math.max(tier, 1), CORP_TIER_NUMERALS.length) - 1]);
+// tier 0 = a no-tier leadership rank (top three of any corp): no numeral
+export const RpTierNumeral = (tier: number): string => ((tier < 1) ? '' : CORP_TIER_NUMERALS[Math.min(tier, CORP_TIER_NUMERALS.length) - 1]);
+
+// "Cadet II", or just "Captain" for no-tier leadership ranks
+export const RpRankTitle = (rankName: string, tier: number): string => [ rankName, RpTierNumeral(tier) ].filter(Boolean).join(' ');
