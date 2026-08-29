@@ -1,0 +1,154 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index b8f4a908d465badfb3149c62860555c4f9356bfe..4b73d97dfe3446e275f3ea5560a3ccb01c93cac6 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -19,6 +19,8 @@ import { RpCorpsEvent } from './messages/incoming/RpCorpsEvent';
+ import { RpGetCorpDetailComposer } from './messages/outgoing/RpGetCorpDetailComposer';
+ import { RpGetCorpsComposer } from './messages/outgoing/RpGetCorpsComposer';
+ import { RpGetUserCorpComposer } from './messages/outgoing/RpGetUserCorpComposer';
++import { RpDiscordStatusEvent } from './messages/incoming/RpDiscordStatusEvent';
++import { RpGetDiscordStatusComposer } from './messages/outgoing/RpGetDiscordStatusComposer';
+ import { RpUserCorpEvent } from './messages/incoming/RpUserCorpEvent';
+ import { RpMoveItemComposer } from './messages/outgoing/RpMoveItemComposer';
+ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+@@ -67,6 +69,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_CORPS, RpCorpsEvent);
+         this._events.set(IncomingHeader.RP_CORP_DETAIL, RpCorpDetailEvent);
+         this._events.set(IncomingHeader.RP_USER_CORP, RpUserCorpEvent);
++        this._events.set(IncomingHeader.RP_DISCORD_STATUS, RpDiscordStatusEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_LIST, RpAlbumListEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_PHOTOS, RpAlbumPhotosEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_FRIEND_TYPING, RpMessengerFriendTypingEvent);
+@@ -1151,6 +1154,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_GET_CORPS, RpGetCorpsComposer);
+         this._composers.set(OutgoingHeader.RP_GET_CORP_DETAIL, RpGetCorpDetailComposer);
+         this._composers.set(OutgoingHeader.RP_GET_USER_CORP, RpGetUserCorpComposer);
++        this._composers.set(OutgoingHeader.RP_GET_DISCORD_STATUS, RpGetDiscordStatusComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 862320fe3f1186aa806419cd9fc34c6dd61260f4..a8e2942a2a2878f1f15904ce418e7e770029a0b2 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -474,6 +474,7 @@ export class IncomingHeader
+     public static RP_CORPS = 3946;
+     public static RP_CORP_DETAIL = 3947;
+     public static RP_USER_CORP = 3950;
++    public static RP_DISCORD_STATUS = 3952;
+     public static RP_ALBUM_LIST = 3938;
+     public static RP_ALBUM_PHOTOS = 3944;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
+diff --git a/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts b/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..bf3ee774567ad8f7d93649a9c92b93282f26f5fa
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts
+@@ -0,0 +1,43 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: whether the session user's Discord is linked - a bare boolean by
++// design (Discord details never reach the client).
++export class RpDiscordStatusParser implements IMessageParser
++{
++    private _linked: boolean;
++
++    public flush(): boolean
++    {
++        this._linked = false;
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._linked = (wrapper.readInt() === 1);
++
++        return true;
++    }
++
++    public get linked(): boolean
++    {
++        return this._linked;
++    }
++}
++
++export class RpDiscordStatusEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpDiscordStatusParser);
++    }
++
++    public getParser(): RpDiscordStatusParser
++    {
++        return this.parser as RpDiscordStatusParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index bf123ea38e97d21881f0defeb7b3fb58b2083e14..e81302e20f3ae7535524aadbf53f6dbdaf2af642 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -80,6 +80,7 @@ export * from './RpMessengerReceiptEvent';
+ export * from './RpAirplaneModeEvent';
+ export * from './RpCorpDetailEvent';
+ export * from './RpCorpsEvent';
++export * from './RpDiscordStatusEvent';
+ export * from './RpUserCorpEvent';
+ export * from './RpAlbumListEvent';
+ export * from './RpAlbumPhotosEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index f3764e9a6513ac33b944a2abe40574f579a9190d..8cf2e26b66fd5e4a7dc1cce0caa640425b1dde6e 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -473,6 +473,7 @@ export class OutgoingHeader
+     public static RP_GET_CORPS = 3948;
+     public static RP_GET_CORP_DETAIL = 3949;
+     public static RP_GET_USER_CORP = 3951;
++    public static RP_GET_DISCORD_STATUS = 3953;
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_SAVE_PHOTO = 3936;
+diff --git a/src/nitro/communication/messages/outgoing/RpGetDiscordStatusComposer.ts b/src/nitro/communication/messages/outgoing/RpGetDiscordStatusComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..60c5f069d4c6bd4299631742f43f6fac409f138e
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpGetDiscordStatusComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: request the session user's Discord link status.
++export class RpGetDiscordStatusComposer implements IMessageComposer<ConstructorParameters<typeof RpGetDiscordStatusComposer>>
++{
++    private _data: ConstructorParameters<typeof RpGetDiscordStatusComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 26188e7ec8dfd887fc99d454f7d7faeee4d1f200..4d2968c268c2a83f42f0b89ce27ffba1ffdd1fc6 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -75,6 +75,7 @@ export * from './RpSaveUiSettingsComposer';
+ export * from './RpMoveItemComposer';
+ export * from './RpGetCorpDetailComposer';
+ export * from './RpGetCorpsComposer';
++export * from './RpGetDiscordStatusComposer';
+ export * from './RpGetUserCorpComposer';
+ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';

@@ -1,4 +1,4 @@
-import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
+import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpGetDiscordStatusComposer, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
@@ -34,6 +34,8 @@ export const RpSettingsView: FC<{}> = props =>
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
     const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
     const [ socialPage, setSocialPage ] = useState<string>(SOCIAL_PAGES[0]);
+    // null = unknown/loading; refreshed every time the Discord page opens
+    const [ discordLinked, setDiscordLinked ] = useState<boolean>(null);
     const [ usernameColor, setUsernameColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
     const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
@@ -75,6 +77,17 @@ export const RpSettingsView: FC<{}> = props =>
             disposed = true;
         }
     }, [ isVisible ]);
+
+    useMessageEvent<RpDiscordStatusEvent>(RpDiscordStatusEvent, event => setDiscordLinked(event.getParser().linked));
+
+    // Refresh link status whenever the Discord page comes on screen (also
+    // how "I've connected, check again" works after the OAuth tab).
+    useEffect(() =>
+    {
+        if(!isVisible || (currentTab !== 'Social') || (socialPage !== 'Discord')) return;
+
+        SendMessageComposer(new RpGetDiscordStatusComposer());
+    }, [ isVisible, currentTab, socialPage ]);
 
     // Snap any stored value onto the nearest of the five slider stops.
     const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
@@ -332,9 +345,18 @@ export const RpSettingsView: FC<{}> = props =>
                                     </div>
                                 </div> }
                                 { (socialPage === 'Discord') &&
-                                <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
+                                <Column center fullHeight gap={ 2 } className="rp-settings-placeholder rp-settings-discord">
                                     <Text bold>Discord</Text>
-                                    <Text className="text-muted">Link your Discord account to get verified - coming soon.</Text>
+                                    { (discordLinked === true) && <>
+                                        <Text className="rp-settings-discord-linked">Your Discord account is connected.</Text>
+                                        <Text small className="text-muted">Your name in the PixelRP server now matches your in-game name, and you carry the Verified role. Manage the connection on the website.</Text>
+                                        <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord', '_blank', 'noopener,noreferrer') }>Manage connection</div>
+                                    </> }
+                                    { (discordLinked !== true) && <>
+                                        <Text small className="text-muted">Connect your Discord account to get the Verified role and have your server nickname match your in-game name. Your Discord details are never shown in-game.</Text>
+                                        <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord/connect', '_blank', 'noopener,noreferrer') }>Connect Discord</div>
+                                        <Text small underline pointer className="text-muted" onClick={ () => SendMessageComposer(new RpGetDiscordStatusComposer()) }>I've connected - check again</Text>
+                                    </> }
                                 </Column> }
                             </>
                         </Column>

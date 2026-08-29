@@ -61,6 +61,34 @@
         }
     }
 
+    // Discord verification page: status + a chrome-tinted action button.
+    .rp-settings-discord {
+        max-width: 320px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .rp-settings-discord-linked {
+        color: #2e9e4f;
+        font-weight: 700;
+    }
+
+    .rp-settings-discord-btn {
+        padding: 6px 18px;
+        border-radius: 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        user-select: none;
+        color: $white;
+        background: var(--prp-chrome-solid);
+        transition: transform 0.1s ease;
+
+        &:hover {
+            transform: translateY(-1px);
+        }
+    }
+
     .rp-settings-subpage {
         flex: 1;
         min-width: 0;

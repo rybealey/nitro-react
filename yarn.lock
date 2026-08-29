@@ -847,7 +847,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@npm%25252525253A1.6.6%2525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%252525253A%252525253Aversion=1.6.6&hash=1a85bb%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%2525253A%2525253Aversion=1.6.6&hash=1b645f%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%25253A%25253Aversion=1.6.6&hash=51aed3%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%253A%253Aversion=1.6.6&hash=a7ee38%23~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%3A%3Aversion=1.6.6&hash=a89954#~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch":
+"@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@npm%25252525253A1.6.6%2525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%252525253A%252525253Aversion=1.6.6&hash=1a85bb%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%2525253A%2525253Aversion=1.6.6&hash=1b645f%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%25253A%25253Aversion=1.6.6&hash=51aed3%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%253A%253Aversion=1.6.6&hash=a7ee38%23~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%3A%3Aversion=1.6.6&hash=a89954#~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch::version=1.6.6&hash=fb6094":
   version: 1.6.6
   resolution: "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@npm%25252525253A1.6.6%2525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%252525253A%252525253Aversion=1.6.6&hash=1a85bb%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%2525253A%2525253Aversion=1.6.6&hash=1b645f%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%25253A%25253Aversion=1.6.6&hash=51aed3%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%253A%253Aversion=1.6.6&hash=a7ee38%23~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%3A%3Aversion=1.6.6&hash=a89954#~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch::version=1.6.6&hash=fb6094"
   dependencies:
@@ -887,6 +887,50 @@ __metadata:
     howler: "npm:^2.2.3"
     pako: "npm:^2.0.4"
   checksum: 10c0/dfb78695828c4f714a06d33f89695b6d27d55d5e53f677ec41d7beb542d45e761ebc89dd3be4ddcc764661ef4dd901b9d6e4bbfa788dbcd4ca92587ba7b45778
+  languageName: node
+  linkType: hard
+
+? "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@patch%25252525253A@nitrots/nitro-renderer@npm%2525252525253A1.6.6%252525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%25252525253A%25252525253Aversion=1.6.6&hash=1a85bb%2525252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%252525253A%252525253Aversion=1.6.6&hash=1b645f%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%2525253A%2525253Aversion=1.6.6&hash=51aed3%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%25253A%25253Aversion=1.6.6&hash=a7ee38%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%253A%253Aversion=1.6.6&hash=a89954%23~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch%3A%3Aversion=1.6.6&hash=fb6094#~/.yarn/patches/@nitrots-nitro-renderer-patch-d5443b2018.patch"
+:
+  version: 1.6.6
+  resolution: "@nitrots/nitro-renderer@patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@patch%25252525253A@nitrots/nitro-renderer@npm%2525252525253A1.6.6%252525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%25252525253A%25252525253Aversion=1.6.6&hash=1a85bb%2525252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%252525253A%252525253Aversion=1.6.6&hash=1b645f%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%2525253A%2525253Aversion=1.6.6&hash=51aed3%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%25253A%25253Aversion=1.6.6&hash=a7ee38%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%253A%253Aversion=1.6.6&hash=a89954%23~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch%3A%3Aversion=1.6.6&hash=fb6094#~/.yarn/patches/@nitrots-nitro-renderer-patch-d5443b2018.patch::version=1.6.6&hash=0267b1"
+  dependencies:
+    "@pixi/app": "npm:~6.5.0"
+    "@pixi/basis": "npm:~6.5.0"
+    "@pixi/canvas-display": "npm:~6.5.0"
+    "@pixi/canvas-extract": "npm:~6.5.0"
+    "@pixi/canvas-renderer": "npm:~6.5.0"
+    "@pixi/constants": "npm:~6.5.0"
+    "@pixi/core": "npm:~6.5.0"
+    "@pixi/display": "npm:~6.5.0"
+    "@pixi/events": "npm:~6.5.0"
+    "@pixi/extensions": "npm:~6.5.0"
+    "@pixi/extract": "npm:~6.5.0"
+    "@pixi/filter-alpha": "npm:~6.5.0"
+    "@pixi/filter-color-matrix": "npm:~6.5.0"
+    "@pixi/graphics": "npm:~6.5.0"
+    "@pixi/graphics-extras": "npm:~6.5.0"
+    "@pixi/interaction": "npm:~6.5.0"
+    "@pixi/loaders": "npm:~6.5.0"
+    "@pixi/math": "npm:~6.5.0"
+    "@pixi/math-extras": "npm:~6.5.0"
+    "@pixi/mixin-cache-as-bitmap": "npm:~6.5.0"
+    "@pixi/mixin-get-child-by-name": "npm:~6.5.0"
+    "@pixi/mixin-get-global-position": "npm:~6.5.0"
+    "@pixi/polyfill": "npm:~6.5.0"
+    "@pixi/runner": "npm:~6.5.0"
+    "@pixi/settings": "npm:~6.5.0"
+    "@pixi/sprite": "npm:~6.5.0"
+    "@pixi/sprite-tiling": "npm:~6.5.0"
+    "@pixi/spritesheet": "npm:~6.5.0"
+    "@pixi/text": "npm:~6.5.0"
+    "@pixi/ticker": "npm:~6.5.0"
+    "@pixi/tilemap": "npm:^3.2.2"
+    "@pixi/utils": "npm:~6.5.0"
+    gifuct-js: "npm:^2.1.2"
+    howler: "npm:^2.2.3"
+    pako: "npm:^2.0.4"
+  checksum: 10c0/93455a87dce5c46fb65a8282112fa92188849be1cab7e4fc7026193d654c11439db10d89f6b2348b3d4231409ba44bd7a1384bf13cdfbd90e9ab1fdc71a0cf62
   languageName: node
   linkType: hard
 
@@ -3415,7 +3459,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "nitro-react@workspace:."
   dependencies:
-    "@nitrots/nitro-renderer": "patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@npm%25252525253A1.6.6%2525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%252525253A%252525253Aversion=1.6.6&hash=1a85bb%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%2525253A%2525253Aversion=1.6.6&hash=1b645f%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%25253A%25253Aversion=1.6.6&hash=51aed3%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%253A%253Aversion=1.6.6&hash=a7ee38%23~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%3A%3Aversion=1.6.6&hash=a89954#~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch"
+    "@nitrots/nitro-renderer": "patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@patch%2525253A@nitrots/nitro-renderer@patch%252525253A@nitrots/nitro-renderer@patch%25252525253A@nitrots/nitro-renderer@npm%2525252525253A1.6.6%252525252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%25252525253A%25252525253Aversion=1.6.6&hash=1a85bb%2525252523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%252525253A%252525253Aversion=1.6.6&hash=1b645f%25252523~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%2525253A%2525253Aversion=1.6.6&hash=51aed3%252523~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch%25253A%25253Aversion=1.6.6&hash=a7ee38%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-d87968fe06.patch%253A%253Aversion=1.6.6&hash=a89954%23~/.yarn/patches/@nitrots-nitro-renderer-patch-421ab7b802.patch%3A%3Aversion=1.6.6&hash=fb6094#~/.yarn/patches/@nitrots-nitro-renderer-patch-d5443b2018.patch"
     "@tanstack/react-virtual": "npm:^3.0.0-alpha.0"
     "@types/node": "npm:^18.6.1"
     "@types/react": "npm:^18.0.15"
