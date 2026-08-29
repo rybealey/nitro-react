@@ -1,0 +1,57 @@
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index bb45ad22c15507f7115752769b5e9041c2a5e97e..8d3af6b881eba0ef270db662af16c1a1c767c531 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -132,6 +132,10 @@ export class PixelRPMovementAuthority
+     private _clockWindowStart = 0;
+     private _clockWindowMin = NaN;
+     private _clockRebases = 0;
++    // Shared-step diagnostic: most recent REAL edge seen per roomStep bucket,
++    // to surface avatars sharing a step label with different start times.
++    private readonly _stepBuckets = new Map<number, { id: number, cycleStart: number, at: number }>();
++    private readonly _mismatchLogAt = new Map<string, number>();
+ 
+     public static get instance(): PixelRPMovementAuthority
+     {
+@@ -247,6 +251,41 @@ export class PixelRPMovementAuthority
+         avatar.lastSeq = seq;
+         avatar.lastPacketAt = clientNow;
+ 
++        // [ROOMAUTH_SHARED_STEP_MISMATCH] - same roomStep, different
++        // roomStepStart. Expected deltaMs = 0 for FORMATION members (shared
++        // anchor). A nonzero delta between independent walkers is the normal
++        // un-admitted state (their anchors merely share a 500ms bucket) -
++        // throttled per pair so it reads as a formation-health signal, not
++        // spam.
++        {
++            const stepBucket = Math.floor(cycleStart / ((interval > 0) ? interval : 500));
++            const existing = this._stepBuckets.get(stepBucket);
++
++            if(existing && (existing.id !== virtualId) && (Math.abs(existing.cycleStart - cycleStart) > 4))
++            {
++                const pair = (virtualId < existing.id) ? `${ virtualId }:${ existing.id }` : `${ existing.id }:${ virtualId }`;
++                const lastLog = (this._mismatchLogAt.get(pair) || 0);
++
++                if((clientNow - lastLog) > 5000)
++                {
++                    this._mismatchLogAt.set(pair, clientNow);
++                    console.log(`[ROOMAUTH_SHARED_STEP_MISMATCH] avatarId=${ virtualId } referenceAvatarId=${ existing.id } roomStep=${ stepBucket } avatarStart=${ cycleStart } referenceStart=${ existing.cycleStart } deltaMs=${ Math.round(cycleStart - existing.cycleStart) }`);
++                }
++            }
++
++            this._stepBuckets.set(stepBucket, { id: virtualId, cycleStart, at: clientNow });
++
++            if(this._stepBuckets.size > 64)
++            {
++                for(const [ key, item ] of this._stepBuckets)
++                {
++                    if((clientNow - item.at) > 5000) this._stepBuckets.delete(key);
++                }
++            }
++
++            if(this._mismatchLogAt.size > 64) this._mismatchLogAt.clear();
++        }
++
+         const stepInterval = ((interval > 0) ? interval : 500);
+         const realEdge: PixelRPAuthorityEdge = { seq, onGrid, provisional: false, sx, sy, sz, gx, gy, gz, cycleStart, interval: stepInterval };
+ 
