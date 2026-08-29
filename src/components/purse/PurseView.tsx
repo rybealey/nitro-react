@@ -93,7 +93,7 @@ export const PurseView: FC<{}> = props =>
                     { getCurrencyElements(0, 2) }
                 </Column>
                 { !hcDisabled &&
-                    <Column center pointer gap={ 1 } className="nitro-purse-subscription rounded px-2" onClick={ event => CreateLinkEvent('habboUI/open/hccenter') }>
+                    <Column center gap={ 1 } className="nitro-purse-subscription rounded px-2">
                         <LayoutCurrencyIcon type="hc" />
                         <Text variant="white">{ getClubText }</Text>
                     </Column> }
