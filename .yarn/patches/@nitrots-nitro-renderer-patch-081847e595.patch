@@ -1,0 +1,181 @@
+diff --git a/src/nitro/room/RoomObjectEventHandler.ts b/src/nitro/room/RoomObjectEventHandler.ts
+index 5965e22d24a18de9c7cfb820052b580f3584d011..419893256482bece928bf9c59ffb22097fda12cf 100644
+--- a/src/nitro/room/RoomObjectEventHandler.ts
++++ b/src/nitro/room/RoomObjectEventHandler.ts
+@@ -4,6 +4,7 @@ import { RoomEngineDimmerStateEvent, RoomEngineObjectEvent, RoomEngineObjectPlac
+ import { RoomEnterEffect, RoomId, RoomObjectUpdateMessage } from '../../room';
+ import { BotPlaceComposer, FurnitureColorWheelComposer, FurnitureDiceActivateComposer, FurnitureDiceDeactivateComposer, FurnitureFloorUpdateComposer, FurnitureGroupInfoComposer, FurnitureMultiStateComposer, FurnitureOneWayDoorComposer, FurniturePickupComposer, FurniturePlaceComposer, FurniturePostItPlaceComposer, FurnitureRandomStateComposer, FurnitureWallMultiStateComposer, FurnitureWallUpdateComposer, GetItemDataComposer, GetResolutionAchievementsMessageComposer, PetMoveComposer, PetPlaceComposer, RemoveWallItemComposer, RoomUnitLookComposer, RoomUnitWalkComposer, SetItemDataMessageComposer, SetObjectDataMessageComposer } from '../communication';
+ import { Nitro } from '../Nitro';
++import { PixelRPMovementAuthority } from '../../room/renderer/PixelRPMovementAuthority';
+ import { ObjectAvatarSelectedMessage, ObjectDataUpdateMessage, ObjectSelectedMessage, ObjectTileCursorUpdateMessage, ObjectVisibilityUpdateMessage } from './messages';
+ import { SelectedRoomObjectData } from './utils';
+ 
+@@ -1494,6 +1495,9 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+     {
+         if(!this._roomEngine || !this._roomEngine.connection) return;
+ 
++        // pixelrp: queued provisional lookahead predates this click's repath.
++        PixelRPMovementAuthority.instance.notifyLocalWalkRequest();
++
+         this._roomEngine.connection.send(new RoomUnitWalkComposer(x, y));
+     }
+ 
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index 8d3af6b881eba0ef270db662af16c1a1c767c531..f9b6582ca8468affdac67768ae9f1db7a54a22a9 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -41,6 +41,7 @@ interface PixelRPAuthorityAvatar
+     lastRenderedAt: number;
+     lastRenderedSeq: number;
+     endedAt: number;
++    isOwn: boolean;
+     wireLogged: boolean;
+     matchLogged: boolean;
+     queueLowLogged: boolean;
+@@ -168,6 +169,7 @@ export class PixelRPMovementAuthority
+                 lastRenderedAt: 0,
+                 lastRenderedSeq: -1,
+                 endedAt: 0,
++                isOwn: false,
+                 wireLogged: false,
+                 matchLogged: false,
+                 queueLowLogged: false,
+@@ -236,10 +238,15 @@ export class PixelRPMovementAuthority
+             `movementSeq=${ seq } packetAgeMs=${ Number.isFinite(packetAge) ? Math.round(packetAge) : 'n/a' } packetGapMs=${ Number.isFinite(packetGap) ? Math.round(packetGap) : 'n/a' }${ (Number.isFinite(packetGap) && (packetGap > PixelRPMovementAuthority.PACKET_GAP_LOG_MS)) ? ' PACKET-GAP-OUTLIER' : '' }`,
+             null);
+ 
++        // Walk-end marker: a zero-length edge (from == to) at the terminal
++        // tile - the server's explicit "this walk is over" signal.
++        const isMarker = ((sx === gx) && (sy === gy));
++
+         // A "walk end" that turns out to CONTINUE was actually queue
+         // starvation: playback hit a boundary with no next edge while the
+         // server had more steps coming. Fault, never repaired with speed.
+-        if(avatar.endReleaseAt && (seq === (avatar.lastSeq + 1)))
++        // A marker is the opposite of a continuation - never an underrun.
++        if(avatar.endReleaseAt && (seq === (avatar.lastSeq + 1)) && !isMarker)
+         {
+             avatar.stats.underruns++;
+             this.logEvent('ROOMAUTH_QUEUE_UNDERRUN', avatar, null, NaN, NaN, NaN,
+@@ -251,6 +258,50 @@ export class PixelRPMovementAuthority
+         avatar.lastSeq = seq;
+         avatar.lastPacketAt = clientNow;
+ 
++        if(isMarker)
++        {
++            // The marker ends THIS walk only. Ordering already guarantees
++            // that (same monotonic seq stream, marker sequenced before any
++            // newer walk's first step, single ordered transport - and the
++            // stale rejection above drops a delayed marker once any newer
++            // packet has arrived). Belt-and-braces: never touch real edges,
++            // and ignore the marker outright if a newer real edge exists.
++            const markerEdge: PixelRPAuthorityEdge = {
++                seq, onGrid: true, provisional: false,
++                sx, sy, sz, gx, gy, gz,
++                cycleStart, interval: ((interval > 0) ? interval : 500)
++            };
++
++            if(avatar.edges.some(e => (!e.provisional && (e.seq > seq))))
++            {
++                this.logEvent('ROOMAUTH_WALK_END_STALE_IGNORED', avatar, markerEdge, NaN, NaN, NaN,
++                    `markerSeq=${ seq } newer-real-edge-present`, null);
++                return;
++            }
++
++            const dropped = avatar.edges.filter(e => (e.provisional && (e.seq >= seq))).length;
++            const renderedDead = (avatar.lastRenderedSeq >= seq);
++
++            this.logEvent('ROOMAUTH_WALK_END', avatar, markerEdge, NaN, NaN, NaN,
++                `markerSeq=${ seq } droppedProvisionals=${ dropped } renderedDeadProvisional=${ renderedDead }`, null);
++
++            if(renderedDead)
++            {
++                // A dead provisional already rendered past the true endpoint
++                // (the marker was delayed): one discrete release NOW - native
++                // holds the real resting tile - instead of walking dead tiles
++                // until the stale timer.
++                this.releaseAvatar(avatar, 'walk-end-marker-correction');
++                avatar.edges = [ markerEdge ];
++                return;
++            }
++
++            avatar.edges = avatar.edges.filter(e => (!e.provisional || (e.seq < seq)));
++            avatar.edges.push(markerEdge);
++            avatar.edges.sort((a, b) => (a.seq - b.seq));
++            return;
++        }
++
+         // [ROOMAUTH_SHARED_STEP_MISMATCH] - same roomStep, different
+         // roomStepStart. Expected deltaMs = 0 for FORMATION members (shared
+         // anchor). A nonzero delta between independent walkers is the normal
+@@ -405,6 +456,8 @@ export class PixelRPMovementAuthority
+ 
+         if(!avatar || !Number.isFinite(this._clockOffset)) return null;
+ 
++        avatar.isOwn = isOwn;
++
+         if((clientNow - avatar.lastPacketAt) > PixelRPMovementAuthority.PACKET_STALE_MS)
+         {
+             this.releaseAvatar(avatar, 'packet-stale');
+@@ -441,6 +494,17 @@ export class PixelRPMovementAuthority
+             return null;
+         }
+ 
++        if((edge.sx === edge.gx) && (edge.sy === edge.gy))
++        {
++            // The walk-end marker's window has begun: the final real edge
++            // just completed its full 500ms, so this is the exact boundary.
++            // Stop NOW - no local 100ms hold, no remote END_HOLD ambiguity.
++            // Snap-free by construction: the marker tile IS the resting tile.
++            if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE) this.releaseAvatar(avatar, 'walk-ended');
++
++            return null;
++        }
++
+         const rawPhase = ((estServerNow - edge.cycleStart) / edge.interval);
+         const phase = Math.min(1, Math.max(0, rawPhase));
+ 
+@@ -675,7 +739,10 @@ export class PixelRPMovementAuthority
+             if(stop || (reason === 'packet-stale')) this.logSummary(avatar, reason);
+         }
+ 
+-        if((reason === 'walk-ended') || (reason === 'local-hold-blocked')) avatar.endReleaseAt = Date.now();
++        const lastEdge = (avatar.edges[avatar.edges.length - 1] || null);
++        const markerEnded = !!(lastEdge && (lastEdge.sx === lastEdge.gx) && (lastEdge.sy === lastEdge.gy));
++
++        if(((reason === 'walk-ended') || (reason === 'local-hold-blocked')) && !markerEnded) avatar.endReleaseAt = Date.now();
+ 
+         avatar.state = PixelRPAuthorityState.NATIVE;
+         avatar.armSeq = avatar.lastSeq;
+@@ -684,6 +751,31 @@ export class PixelRPMovementAuthority
+         avatar.lastRenderedSeq = -1;
+     }
+ 
++    /**
++     * Local click guard: a fresh local walk request makes queued provisional
++     * lookahead suspect - the server will repath, and if the new route ends
++     * immediately (abrupt shorten) those tiles are dead. Drop the UNRENDERED
++     * provisionals for the own avatar now; real post-click packets (or the
++     * walk-end marker) re-supply the truth. Rendered edges are never touched.
++     */
++    public notifyLocalWalkRequest(): void
++    {
++        for(const avatar of this._avatars.values())
++        {
++            if(!avatar.isOwn) continue;
++
++            const before = avatar.edges.length;
++
++            avatar.edges = avatar.edges.filter(e => (!e.provisional || (e.seq <= avatar.lastRenderedSeq)));
++
++            if(before > avatar.edges.length)
++            {
++                this.logEvent('ROOMAUTH_LOCAL_CLICK_GUARD', avatar, null, NaN, NaN, NaN,
++                    `droppedProvisionals=${ before - avatar.edges.length } awaiting-post-click-route`, null);
++            }
++        }
++    }
++
+     /**
+      * One stable monotonic clock-offset estimate shared by ALL avatars: the
+      * minimum observed (clientNow - serverNow) - the fastest packet - over a
