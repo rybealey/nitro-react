@@ -1,8 +1,9 @@
-import { RoomEngineEvent, RoomEnterEffect, RoomSessionDanceEvent } from '@nitrots/nitro-renderer';
+import { RoomEngineEvent, RoomEnterEffect, RoomSessionDanceEvent, RpUserCorpEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AvatarInfoFurni, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, GetConfiguration, GetSessionDataManager, RoomWidgetUpdateRentableBotChatEvent } from '../../../../api';
 import { Column } from '../../../../common';
-import { useAvatarInfoWidget, useRoom, useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
+import { useAvatarInfoWidget, useMessageEvent, useRoom, useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
+import { SetRpEmployment } from '../../../../api/rp-employment/RpEmploymentRegistry';
 import { AvatarInfoPetTrainingPanelView } from './AvatarInfoPetTrainingPanelView';
 import { AvatarInfoRentableBotChatView } from './AvatarInfoRentableBotChatView';
 import { AvatarInfoUseProductConfirmView } from './AvatarInfoUseProductConfirmView';
@@ -101,6 +102,19 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
     // the last info sticks around as `displayedInfo` for the exit animation's
     // duration before the container unmounts. Switching targets while open
     // just swaps content in place. Duration matches the CSS animations.
+    const [ , setEmploymentVersion ] = useState(0);
+
+    // Employment lands here (always mounted in-room): room-entry snapshots
+    // and real-time hire broadcasts feed the registry, and the version bump
+    // re-renders an open infostand so its corp badge slot updates live.
+    useMessageEvent<RpUserCorpEvent>(RpUserCorpEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpEmployment(parser.userId, { corpId: parser.corpId, badge: parser.badge, corpName: parser.corpName, rankName: parser.rankName, tier: parser.tier });
+        setEmploymentVersion(value => (value + 1));
+    });
+
     const [ displayedInfo, setDisplayedInfo ] = useState(avatarInfo);
     const [ infostandClosing, setInfostandClosing ] = useState(false);
 

@@ -65,3 +65,26 @@
         }
     }    
 }
+
+    // Corporation row: employer badge + name + rank tier, below the rooms row.
+    .profile-corp-row {
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+
+        .profile-corp-badge {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+
+            .badge-image {
+                position: static;
+                width: 26px;
+                height: 26px;
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        }
+    }

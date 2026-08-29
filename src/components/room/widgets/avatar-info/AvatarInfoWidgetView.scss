@@ -132,6 +132,12 @@
             border: 1px dashed rgba(255, 255, 255, 0.28);
             background-color: rgba(255, 255, 255, 0.04);
 
+            // employed: the slot reads filled - solid hairline, normal field
+            &.is-employed {
+                border: 1px solid rgba(255, 255, 255, 0.28);
+                background-color: var(--prp-chrome-hi);
+            }
+
             .badge-corp-hint {
                 width: 16px;
                 height: 16px;

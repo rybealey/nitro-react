@@ -1,8 +1,10 @@
-import { ExtendedProfileChangedMessageEvent, RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomEngineObjectEvent, RoomObjectCategory, RoomObjectType, UserCurrentBadgesComposer, UserCurrentBadgesEvent, UserProfileEvent, UserProfileParser, UserRelationshipsComposer } from '@nitrots/nitro-renderer';
+import { ExtendedProfileChangedMessageEvent, RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomEngineObjectEvent, RoomObjectCategory, RoomObjectType, RpGetUserCorpComposer, RpUserCorpEvent, UserCurrentBadgesComposer, UserCurrentBadgesEvent, UserProfileEvent, UserProfileParser, UserRelationshipsComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { CreateLinkEvent, GetRoomSession, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../api';
 import { Column, Flex, Grid, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
 import { useMessageEvent, useRoomEngineEvent } from '../../hooks';
+import { DEFAULT_CORP_BADGE, GetRpEmployment, RpTierNumeral, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
+import { LayoutBadgeImageView } from '../../common';
 import { BadgesContainerView } from './views/BadgesContainerView';
 import { FriendsContainerView } from './views/FriendsContainerView';
 import { GroupsContainerView } from './views/GroupsContainerView';
@@ -13,6 +15,8 @@ export const UserProfileView: FC<{}> = props =>
     const [ userProfile, setUserProfile ] = useState<UserProfileParser>(null);
     const [ userBadges, setUserBadges ] = useState<string[]>([]);
     const [ userRelationships, setUserRelationships ] = useState<RelationshipStatusInfoMessageParser>(null);
+    // bumped when employment data lands so the corp row updates in real-time
+    const [ , setEmploymentVersion ] = useState(0);
 
     const onClose = () =>
     {
@@ -67,6 +71,15 @@ export const UserProfileView: FC<{}> = props =>
 
         SendMessageComposer(new UserCurrentBadgesComposer(parser.id));
         SendMessageComposer(new UserRelationshipsComposer(parser.id));
+        SendMessageComposer(new RpGetUserCorpComposer(parser.id));
+    });
+
+    useMessageEvent<RpUserCorpEvent>(RpUserCorpEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpEmployment(parser.userId, { corpId: parser.corpId, badge: parser.badge, corpName: parser.corpName, rankName: parser.rankName, tier: parser.tier });
+        setEmploymentVersion(value => (value + 1));
     });
 
     useMessageEvent<ExtendedProfileChangedMessageEvent>(ExtendedProfileChangedMessageEvent, event =>
@@ -109,6 +122,14 @@ export const UserProfileView: FC<{}> = props =>
                             <FriendsContainerView relationships={ userRelationships } friendsCount={ userProfile.friendsCount } /> }
                     </Column>
                 </Grid>
+                { GetRpEmployment(userProfile.id) &&
+                    <Flex pointer alignItems="center" gap={ 1 } className="profile-corp-row px-2 py-1" onClick={ event => CreateLinkEvent('rp-corporations/show') }>
+                        <div className="profile-corp-badge">
+                            <LayoutBadgeImageView badgeCode={ GetRpEmployment(userProfile.id).badge || DEFAULT_CORP_BADGE } />
+                        </div>
+                        <Text small bold>{ GetRpEmployment(userProfile.id).corpName }</Text>
+                        <Text small>{ GetRpEmployment(userProfile.id).rankName } { RpTierNumeral(GetRpEmployment(userProfile.id).tier) }</Text>
+                    </Flex> }
                 <Flex alignItems="center" className="rooms-button-container px-2 py-1">
                     <Flex alignItems="center" gap={ 1 } onClick={ event => CreateLinkEvent(`navigator/search/hotel_view/owner:${ userProfile.username }`) }>
                         <i className="icon icon-rooms" />

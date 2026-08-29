@@ -1,0 +1,195 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 4fa304aba446570281590e37fd63eb2b491024b0..b8f4a908d465badfb3149c62860555c4f9356bfe 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -18,6 +18,8 @@ import { RpCorpDetailEvent } from './messages/incoming/RpCorpDetailEvent';
+ import { RpCorpsEvent } from './messages/incoming/RpCorpsEvent';
+ import { RpGetCorpDetailComposer } from './messages/outgoing/RpGetCorpDetailComposer';
+ import { RpGetCorpsComposer } from './messages/outgoing/RpGetCorpsComposer';
++import { RpGetUserCorpComposer } from './messages/outgoing/RpGetUserCorpComposer';
++import { RpUserCorpEvent } from './messages/incoming/RpUserCorpEvent';
+ import { RpMoveItemComposer } from './messages/outgoing/RpMoveItemComposer';
+ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+ import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
+@@ -64,6 +66,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_AIRPLANE_MODE, RpAirplaneModeEvent);
+         this._events.set(IncomingHeader.RP_CORPS, RpCorpsEvent);
+         this._events.set(IncomingHeader.RP_CORP_DETAIL, RpCorpDetailEvent);
++        this._events.set(IncomingHeader.RP_USER_CORP, RpUserCorpEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_LIST, RpAlbumListEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_PHOTOS, RpAlbumPhotosEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_FRIEND_TYPING, RpMessengerFriendTypingEvent);
+@@ -1147,6 +1150,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_MOVE_ITEM, RpMoveItemComposer);
+         this._composers.set(OutgoingHeader.RP_GET_CORPS, RpGetCorpsComposer);
+         this._composers.set(OutgoingHeader.RP_GET_CORP_DETAIL, RpGetCorpDetailComposer);
++        this._composers.set(OutgoingHeader.RP_GET_USER_CORP, RpGetUserCorpComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 1bd44ec5e7b5d4a95b8f4aad9bfcb36dea268a79..862320fe3f1186aa806419cd9fc34c6dd61260f4 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -473,6 +473,7 @@ export class IncomingHeader
+     public static RP_AIRPLANE_MODE = 3935;
+     public static RP_CORPS = 3946;
+     public static RP_CORP_DETAIL = 3947;
++    public static RP_USER_CORP = 3950;
+     public static RP_ALBUM_LIST = 3938;
+     public static RP_ALBUM_PHOTOS = 3944;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
+diff --git a/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts b/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9cae98f10ab6026b5ed36e7b27f0017262fdabaf
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts
+@@ -0,0 +1,84 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: one player's employment state, keyed by user id (corpId 0 =
++// unemployed). Sent on room entry for everyone present, on profile open,
++// and broadcast in real-time when someone is hired.
++export class RpUserCorpParser implements IMessageParser
++{
++    private _userId: number;
++    private _corpId: number;
++    private _badge: string;
++    private _corpName: string;
++    private _rankName: string;
++    private _tier: number;
++
++    public flush(): boolean
++    {
++        this._userId = 0;
++        this._corpId = 0;
++        this._badge = '';
++        this._corpName = '';
++        this._rankName = '';
++        this._tier = 0;
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._userId = wrapper.readInt();
++        this._corpId = wrapper.readInt();
++        this._badge = wrapper.readString();
++        this._corpName = wrapper.readString();
++        this._rankName = wrapper.readString();
++        this._tier = wrapper.readInt();
++
++        return true;
++    }
++
++    public get userId(): number
++    {
++        return this._userId;
++    }
++
++    public get corpId(): number
++    {
++        return this._corpId;
++    }
++
++    public get badge(): string
++    {
++        return this._badge;
++    }
++
++    public get corpName(): string
++    {
++        return this._corpName;
++    }
++
++    public get rankName(): string
++    {
++        return this._rankName;
++    }
++
++    public get tier(): number
++    {
++        return this._tier;
++    }
++}
++
++export class RpUserCorpEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpUserCorpParser);
++    }
++
++    public getParser(): RpUserCorpParser
++    {
++        return this.parser as RpUserCorpParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index dcfb4e914e9ae00c2e4bc7c363a5e2c7ab4ea248..bf123ea38e97d21881f0defeb7b3fb58b2083e14 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -80,6 +80,7 @@ export * from './RpMessengerReceiptEvent';
+ export * from './RpAirplaneModeEvent';
+ export * from './RpCorpDetailEvent';
+ export * from './RpCorpsEvent';
++export * from './RpUserCorpEvent';
+ export * from './RpAlbumListEvent';
+ export * from './RpAlbumPhotosEvent';
+ export * from './RpMessengerFriendTypingEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index a03b4d0575bc6bf091bfebc606cff47f627915a4..f3764e9a6513ac33b944a2abe40574f579a9190d 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -472,6 +472,7 @@ export class OutgoingHeader
+     public static RP_MOVE_ITEM = 3945;
+     public static RP_GET_CORPS = 3948;
+     public static RP_GET_CORP_DETAIL = 3949;
++    public static RP_GET_USER_CORP = 3951;
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_SAVE_PHOTO = 3936;
+diff --git a/src/nitro/communication/messages/outgoing/RpGetUserCorpComposer.ts b/src/nitro/communication/messages/outgoing/RpGetUserCorpComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a6e87ecee25c339b77153ed9ced037518168d1ba
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpGetUserCorpComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: request one player's employment state (profile opened).
++export class RpGetUserCorpComposer implements IMessageComposer<ConstructorParameters<typeof RpGetUserCorpComposer>>
++{
++    private _data: ConstructorParameters<typeof RpGetUserCorpComposer>;
++
++    constructor(userId: number)
++    {
++        this._data = [userId];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 98efe05a0d548322f80cfa45f54ae2781d1750c6..26188e7ec8dfd887fc99d454f7d7faeee4d1f200 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -75,6 +75,7 @@ export * from './RpSaveUiSettingsComposer';
+ export * from './RpMoveItemComposer';
+ export * from './RpGetCorpDetailComposer';
+ export * from './RpGetCorpsComposer';
++export * from './RpGetUserCorpComposer';
+ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';
+ export * from './RpSetAirplaneModeComposer';

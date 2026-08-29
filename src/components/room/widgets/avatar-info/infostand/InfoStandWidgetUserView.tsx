@@ -3,7 +3,8 @@ import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { LuBriefcase } from 'react-icons/lu';
 import { IsRpStaff } from '../../player-hud/PlayerHudWidgetView';
-import { AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
+import { DEFAULT_CORP_BADGE, GetRpEmployment, RpTierNumeral } from '../../../../../api/rp-employment/RpEmploymentRegistry';
+import { CreateLinkEvent, AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text } from '../../../../../common';
 import { useMessageEvent, useRoomSessionManagerEvent } from '../../../../../hooks';
 import { InfoStandWidgetUserRelationshipsView } from './InfoStandWidgetUserRelationshipsView';
@@ -124,13 +125,27 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[0] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[0] } /> }
                                 </Flex>
-                                { /* reserved for corporation/employment - the employer's
-                                     logo (group badge) lands here once a player is hired */ }
-                                <Flex center pointer={ ( avatarInfo.groupId > 0) } className="badge-image badge-image--corp" onClick={ event => GetGroupInformation(avatarInfo.groupId) }>
-                                    { (avatarInfo.groupId > 0)
-                                        ? <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } />
-                                        : <LuBriefcase className="badge-corp-hint" /> }
-                                </Flex>
+                                { /* corporation slot: the employer's badge once hired;
+                                     falls back to the group badge, then the briefcase hint */ }
+                                { (() =>
+                                {
+                                    const employment = GetRpEmployment(avatarInfo.webID);
+
+                                    if(employment)
+                                    {
+                                        return (
+                                            <Flex center pointer className="badge-image badge-image--corp is-employed" title={ `${ employment.corpName } - ${ employment.rankName } ${ RpTierNumeral(employment.tier) }` } onClick={ event => CreateLinkEvent('rp-corporations/show') }>
+                                                <LayoutBadgeImageView badgeCode={ employment.badge || DEFAULT_CORP_BADGE } />
+                                            </Flex>);
+                                    }
+
+                                    return (
+                                        <Flex center pointer={ ( avatarInfo.groupId > 0) } className="badge-image badge-image--corp" onClick={ event => GetGroupInformation(avatarInfo.groupId) }>
+                                            { (avatarInfo.groupId > 0)
+                                                ? <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } />
+                                                : <LuBriefcase className="badge-corp-hint" /> }
+                                        </Flex>);
+                                })() }
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[1] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[1] } /> }
                                 </Flex>
