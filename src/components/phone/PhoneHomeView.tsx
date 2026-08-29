@@ -40,10 +40,13 @@ interface PhoneAppDef
     // Per-app icon plate gradient (from the design); disabled apps still get
     // their colour, greyed by the .is-disabled filter.
     plate?: string;
-    // Optional duotone secondary-layer colour (rendered at full opacity),
-    // used to tint one part of the glyph towards its iOS icon - e.g. Weather's
-    // yellow sun, Camera's dark lens. When unset the glyph is white on white
-    // (secondary softened) like every other iOS colour-plate icon.
+    // Optional duotone layer colours (rendered at full opacity), used to
+    // tint parts of the glyph towards its iOS icon - e.g. Weather's yellow
+    // sun, Camera's dark lens. When unset the glyph is white on white
+    // (secondary softened) like every other iOS colour-plate icon. NOTE:
+    // which stroke is primary vs secondary differs between duotone styles -
+    // in Duotone Regular the Weather sun is the PRIMARY layer.
+    pri?: string;
     sec?: string;
 }
 
@@ -62,14 +65,14 @@ const APP_DEFS: Record<string, PhoneAppDef> = {
     'App Store': { icon: 'store', plate: 'linear-gradient(160deg, #46a6ff, #1a86f5 55%, #0a6ee0)' },
     // grid
     'Contacts': { icon: 'address-book', active: true, plate: 'linear-gradient(160deg, #a9aeb8, #7b8290 55%, #545a66)' },
-    'Photos': { icon: 'images', active: true, plate: 'linear-gradient(135deg, #fc4f8e, #ff9d3a 33%, #3fd06a 66%, #37a6ff)', sec: '#ffd60a' },
+    'Photos': { icon: 'images', active: true, plate: 'linear-gradient(135deg, #d4608f, #d69a55 33%, #58b077 66%, #5490cf)', sec: '#ffd60a' },
     'Stocks': { icon: 'chart-line', plate: 'linear-gradient(160deg, #3a3a46, #211c28 60%, #0f0b14)', sec: '#30d158' },
     'Music': { icon: 'music', plate: 'linear-gradient(160deg, #fc586f, #fa2d55 55%, #d81e46)' },
     'Wallet': { icon: 'wallet', plate: 'linear-gradient(160deg, #4a4650, #2a2730 60%, #141118)', sec: '#ff9f0a' },
     'Calendar': { icon: 'calendar', plate: 'linear-gradient(160deg, #ff5a52, #f5352b 55%, #cc231b)' },
     'Tasks': { icon: 'list-check', plate: 'linear-gradient(160deg, #ff9d3a, #ff5a7d 55%, #7a5cff)' },
     'Notes': { icon: 'note-sticky', plate: 'linear-gradient(160deg, #ffd85e, #f7bf2e 55%, #e6a400)', sec: '#e09a00' },
-    'Weather': { icon: 'cloud-sun', plate: 'linear-gradient(160deg, #5bb8ff, #2f95e8 55%, #1e6fc0)', sec: '#ffd60a' },
+    'Weather': { icon: 'cloud-sun', plate: 'linear-gradient(160deg, #5bb8ff, #2f95e8 55%, #1e6fc0)', pri: '#ffd60a', sec: '#ffffff' },
     'News': { icon: 'newspaper', plate: 'linear-gradient(160deg, #ff7a7a, #fb4f4f 55%, #e23232)' },
     'Translate': { icon: 'language', plate: 'linear-gradient(160deg, #8fc7c2, #5a9a95 55%, #3a6b67)' },
     'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #c2c6ce, #9096a0 55%, #5c616b)', sec: '#5c616b' }
@@ -78,11 +81,17 @@ const APP_DEFS: Record<string, PhoneAppDef> = {
 // The phone app-tile glyphs come from the PixelRP FontAwesome Duotone Regular
 // kit (loaded in index.html), not the pixelarticons mask set the rest of the
 // phone chrome uses.
-const AppGlyph: FC<{ icon: string, sec?: string }> = ({ icon, sec }) =>
+const AppGlyph: FC<{ icon: string, pri?: string, sec?: string }> = ({ icon, pri, sec }) =>
 {
-    // A per-app secondary colour (full opacity) tints one duotone layer; the
-    // default (no sec) keeps the soft white-on-white look from .phone-app-fa.
-    const style = (sec ? ({ '--fa-secondary-color': sec, '--fa-secondary-opacity': 1 } as CSSProperties) : undefined);
+    // Per-app layer colours (full opacity) tint the duotone layers; the
+    // default (neither set) keeps the soft white-on-white look from
+    // .phone-app-fa.
+    const style = ((pri || sec)
+        ? ({
+            ...(pri ? { '--fa-primary-color': pri } : {}),
+            ...(sec ? { '--fa-secondary-color': sec, '--fa-secondary-opacity': 1 } : {})
+        } as CSSProperties)
+        : undefined);
 
     return <i className={ `phone-app-fa fa-duotone fa-regular fa-${ icon }` } style={ style } aria-hidden="true" />;
 }
@@ -331,7 +340,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
         return (
             <div key={ key } data-app-key={ key } data-zone={ zone } className={ `phone-app${ app.active ? ' phone-tap' : ' is-disabled' }${ dragging ? ' is-drag-source' : '' }` } style={ style } title={ app.active ? key : `${ key } - coming soon` } onClick={ event => onTileTap(key) } onPointerDown={ event => onTileDown(event, key) } onPointerMove={ onTileMove } onPointerUp={ onTileUp } onPointerCancel={ onTileUp }>
                 <div className="phone-app-tile" style={ app.plate ? { background: app.plate } : undefined }>
-                    <AppGlyph icon={ app.icon } sec={ app.sec } />
+                    <AppGlyph icon={ app.icon } pri={ app.pri } sec={ app.sec } />
                     { (count > 0) &&
                         <div className="phone-app-badge">{ (count > 99) ? '99+' : count }</div> }
                 </div>
@@ -371,7 +380,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
             { dragApp && ghostStyle &&
                 <div className="phone-app-ghost" style={ ghostStyle }>
                     <div className="phone-app-tile" style={ (APP_DEFS[dragApp.key]?.plate) ? { background: APP_DEFS[dragApp.key].plate } : undefined }>
-                        <AppGlyph icon={ (APP_DEFS[dragApp.key] ?? { icon: 'user' }).icon } sec={ APP_DEFS[dragApp.key]?.sec } />
+                        <AppGlyph icon={ (APP_DEFS[dragApp.key] ?? { icon: 'user' }).icon } pri={ APP_DEFS[dragApp.key]?.pri } sec={ APP_DEFS[dragApp.key]?.sec } />
                     </div>
                 </div> }
         </div>
