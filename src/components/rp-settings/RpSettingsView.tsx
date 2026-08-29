@@ -18,7 +18,7 @@ const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' 
 const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Messages' ];
 
 // Social tab sub-pages (left rail).
-const SOCIAL_PAGES: string[] = [ 'Username' ];
+const SOCIAL_PAGES: string[] = [ 'Personalization' ];
 
 // Interface tab sub-pages (left rail).
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
@@ -261,7 +261,7 @@ export const RpSettingsView: FC<{}> = props =>
                             )) }
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
-                            { (socialPage === 'Username') && <>
+                            { (socialPage === 'Personalization') && <>
                                 <div className="rp-settings-preview">
                                     <Text small className="text-muted">Preview</Text>
                                     <div className="bubble-container" style={ { position: 'relative' } }>

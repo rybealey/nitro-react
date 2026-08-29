@@ -114,9 +114,18 @@
     .rp-settings-preview {
         display: flex;
         align-items: center;
+        // label hugs the left edge, the live bubble sits on the right
+        justify-content: space-between;
         gap: 10px;
         padding: 10px 12px;
-        background: rgba(0, 0, 0, 0.05);
+        // Pinned while the page scrolls under it, so the preview stays
+        // visible while tweaking settings further down. The tint is layered
+        // over an opaque $light base (the card's content background) so
+        // scrolled content can't show through the stuck card.
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)), $light;
         border: 1px solid rgba(0, 0, 0, 0.1);
         border-radius: $border-radius;
     }
