@@ -84,8 +84,9 @@ export const MusicPlayerView: FC<{}> = props =>
             { /* also an entry point to the queue window (same as
                  double-clicking the jukebox furni) */ }
             <div className="music-player-next" title="Open the jukebox queue" onClick={ event => setIsQueueOpen(true) }>
-                <span className="music-player-kicker">UP NEXT</span>
-                <span className="music-player-next-song">{ queue[0] ? queue[0].title : 'Queue is empty' }</span>
+                <span className="music-player-kicker">{ queue[0] ? 'UP NEXT' : 'NOTHING ELSE QUEUED' }</span>
+                { queue[0] &&
+                    <span className="music-player-next-song">{ queue[0].title }</span> }
             </div>
             <div className="music-player-volume">
                 { /* react-icons svgs are React-managed, so a direct onClick is
