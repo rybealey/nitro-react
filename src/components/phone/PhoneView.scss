@@ -2382,6 +2382,19 @@ $phone-scale: 0.8;
         gap: 40px;
     }
 
+    // Search narrowing animation: cells pop in on mount and shrink-fade
+    // while leaving (the view keeps leavers mounted ~200ms to play it).
+    .phone-photos-cell {
+        animation: phone-photo-in 0.18s ease;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+
+        &.is-leaving {
+            opacity: 0;
+            transform: scale(0.7);
+            pointer-events: none;
+        }
+    }
+
     .phone-photos-search-hint {
         padding: 26px 30px;
         text-align: center;
@@ -3128,4 +3141,11 @@ $phone-scale: 0.8;
 @keyframes phone-typing-in {
     from { opacity: 0; transform: translateY(5px) scale(0.92); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes phone-photo-in {
+    from {
+        opacity: 0;
+        transform: scale(0.7);
+    }
 }

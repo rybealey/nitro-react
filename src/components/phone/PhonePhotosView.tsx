@@ -1,4 +1,4 @@
-import { FC, PointerEvent, WheelEvent, useEffect, useRef, useState } from 'react';
+import { FC, PointerEvent, WheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosCollectionsView } from './PhonePhotosCollectionsView';
 import { usePhonePhotos } from './usePhone';
@@ -83,16 +83,34 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
         ].join(' ').toLowerCase();
     }
 
-    // Every whitespace-separated token must match somewhere in the metadata.
+    // Every whitespace-separated token must match somewhere in the metadata;
+    // an empty query matches the whole library.
     const searchTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(token => token.length);
-    const searchResults = ((tab === 'search') && searchTokens.length)
-        ? photos.map((photo, index) => ({ photo, index })).filter(entry =>
-        {
-            const haystack = photoHaystack(entry.photo);
+    const matchedIds = useMemo(() =>
+    {
+        const ids = new Set<number>();
 
-            return searchTokens.every(token => (haystack.indexOf(token) >= 0));
-        })
-        : [];
+        for(const photo of photos)
+        {
+            if(!searchTokens.length || searchTokens.every(token => (photoHaystack(photo).indexOf(token) >= 0))) ids.add(photo.id);
+        }
+
+        return ids;
+    }, [ photos, searchQuery ]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Animated narrowing: leavers keep rendering with .is-leaving (shrink +
+    // fade via CSS) for the exit duration, then unmount; new matches mount
+    // immediately and pop in via the cell's mount animation.
+    const [ renderedIds, setRenderedIds ] = useState<Set<number>>(new Set());
+
+    useEffect(() =>
+    {
+        setRenderedIds(prevValue => new Set([ ...prevValue, ...matchedIds ]));
+
+        const timeout = window.setTimeout(() => setRenderedIds(new Set(matchedIds)), 200);
+
+        return () => window.clearTimeout(timeout);
+    }, [ matchedIds ]);
 
     const closeViewer = () =>
     {
@@ -280,33 +298,37 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
                             <PhoneIcon icon="search" size={ 16 } />
                             <input type="text" spellCheck={ false } placeholder="Rooms, people, sources..." value={ searchQuery } onChange={ event => setSearchQuery(event.target.value) } />
                         </div>
-                        { !searchTokens.length &&
-                            <div className="phone-photos-search-hint">
-                                Search your photos by the room they were taken in,<br />
-                                who was in frame, how they were captured<br />
-                                (camera, screenshot, saved), month or year -<br />
-                                or type &quot;shared&quot; for photos on the city feed.
-                            </div> }
-                        { (searchTokens.length > 0) && (searchResults.length > 0) &&
+                        { (photos.length > 0) &&
                             <>
                                 <div className="phone-photos-grid">
-                                    { searchResults.map(entry => (
-                                        <div key={ entry.photo.id } className="phone-tap phone-photos-cell" onClick={ event =>
-                                        {
-                                            setViewerIndex(entry.index); setChromeHidden(false);
-                                        } }>
-                                            <img src={ entry.photo.url } alt="" loading="lazy" />
-                                            { entry.photo.published &&
-                                                <div className="phone-photos-shared" title="Shared to the city feed">
-                                                    <PhoneIcon icon="users" size={ 11 } />
-                                                </div> }
-                                        </div>
-                                    )) }
+                                    { photos.map((photo, index) =>
+                                    {
+                                        if(!renderedIds.has(photo.id)) return null;
+
+                                        const leaving = !matchedIds.has(photo.id);
+
+                                        return (
+                                            <div key={ photo.id } className={ `phone-tap phone-photos-cell${ leaving ? ' is-leaving' : '' }` } onClick={ event =>
+                                            {
+                                                if(leaving) return;
+
+                                                setViewerIndex(index); setChromeHidden(false);
+                                            } }>
+                                                <img src={ photo.url } alt="" loading="lazy" />
+                                                { photo.published &&
+                                                    <div className="phone-photos-shared" title="Shared to the city feed">
+                                                        <PhoneIcon icon="users" size={ 11 } />
+                                                    </div> }
+                                            </div>
+                                        );
+                                    }) }
                                 </div>
-                                <div className="phone-photos-count">{ searchResults.length } { (searchResults.length === 1) ? 'Photo' : 'Photos' }</div>
+                                <div className="phone-photos-count">{ matchedIds.size } { (matchedIds.size === 1) ? 'Photo' : 'Photos' }</div>
+                                { (searchTokens.length > 0) && !matchedIds.size &&
+                                    <div className="phone-photos-search-hint">No photos match that search.</div> }
                             </> }
-                        { (searchTokens.length > 0) && !searchResults.length &&
-                            <div className="phone-photos-search-hint">No photos match that search.</div> }
+                        { photosLoaded && !photos.length &&
+                            <div className="phone-photos-search-hint">No photos yet - open the Camera and take some.</div> }
                     </> }
                 <div className="phone-scroll-spacer" />
                 <div className="phone-photos-tab-spacer" />
