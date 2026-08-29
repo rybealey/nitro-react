@@ -286,8 +286,7 @@ export const RpSettingsView: FC<{}> = props =>
                                     { page }
                                 </div>
                             )) }
-                            { /* future groups - links land here as their settings ship */ }
-                            <div className="rp-settings-subnav-eyebrow">Interactions</div>
+                            { /* future group - links land here as their settings ship */ }
                             <div className="rp-settings-subnav-eyebrow">Verification</div>
                             <div className={ `rp-settings-subnav-item ${ (socialPage === 'Discord') ? 'is-active' : '' }` }
                                 onClick={ () => setSocialPage('Discord') }>
