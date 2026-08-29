@@ -66,6 +66,18 @@
     .rp-inventory-slot.has-item {
         position: relative;
         background: rgba(0, 0, 0, 0.02);
+        touch-action: none;
+    }
+
+    // drag-to-organize: the picked-up item's slot dims; the slot under the
+    // pointer highlights while it's a valid landing spot (move or swap)
+    .rp-inventory-slot.is-drag-source {
+        opacity: 0.4;
+    }
+
+    .rp-inventory-slot.is-drop-target {
+        border-color: #8a6fe8;
+        background: rgba(138, 111, 232, 0.12);
     }
 
     .rp-inventory-item {

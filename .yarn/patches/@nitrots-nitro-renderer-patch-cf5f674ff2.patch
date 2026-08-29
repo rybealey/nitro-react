@@ -1,0 +1,72 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 06b589c16e56b305086e1af4a294c4cc54df3849..9e25ae3b74b1c8eb8794b250d64bed954d0743fa 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -14,6 +14,7 @@ import { DiamondsStoreEvent } from './messages/incoming/DiamondsStoreEvent';
+ import { DiamondsStorePurchaseResultEvent } from './messages/incoming/DiamondsStorePurchaseResultEvent';
+ import { RpRoomZoneSaveComposer } from './messages/outgoing/RpRoomZoneSaveComposer';
+ import { RpPassiveCancelComposer } from './messages/outgoing/RpPassiveCancelComposer';
++import { RpMoveItemComposer } from './messages/outgoing/RpMoveItemComposer';
+ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+ import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
+ import { RpSetAirplaneModeComposer } from './messages/outgoing/RpSetAirplaneModeComposer';
+@@ -1137,6 +1138,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.USER_SETTINGS_VOLUME, UserSettingsSoundComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_UI_SETTINGS, RpSaveUiSettingsComposer);
+         this._composers.set(OutgoingHeader.RP_USE_ITEM, RpUseItemComposer);
++        this._composers.set(OutgoingHeader.RP_MOVE_ITEM, RpMoveItemComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index 2c41c85a68c2b7ff770f9d1d3d4dc020f92cf7d5..aa46b3e671d436ac2cb251a38b15388fef60e9a1 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -469,6 +469,7 @@ export class OutgoingHeader
+     public static RENTABLE_GET_RENT_OR_BUYOUT_OFFER = 2518;
+     public static RP_SAVE_UI_SETTINGS = 3903;
+     public static RP_USE_ITEM = 3905;
++    public static RP_MOVE_ITEM = 3945;
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_SAVE_PHOTO = 3936;
+diff --git a/src/nitro/communication/messages/outgoing/RpMoveItemComposer.ts b/src/nitro/communication/messages/outgoing/RpMoveItemComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..57065b86fa86181ed14e6fe96f7fb245d83ce4ac
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpMoveItemComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: move/swap the backpack item in carry slot `from` into `to`.
++export class RpMoveItemComposer implements IMessageComposer<ConstructorParameters<typeof RpMoveItemComposer>>
++{
++    private _data: ConstructorParameters<typeof RpMoveItemComposer>;
++
++    constructor(from: number, to: number)
++    {
++        this._data = [from, to];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index f04ee048a79f6ba2b70954e17e37361fbc95e7ee..97bd862ffd0445af6511f3f19b6a57085a3dfff9 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -72,6 +72,7 @@ export * from './user/inventory/subscription';
+ export * from './user/settings';
+ export * from './userclassification';
+ export * from './RpSaveUiSettingsComposer';
++export * from './RpMoveItemComposer';
+ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';
+ export * from './RpSetAirplaneModeComposer';
