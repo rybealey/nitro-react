@@ -227,10 +227,10 @@ export const DiamondsStoreView: FC<{}> = props =>
             <NitroCardHeaderView headerText="Diamonds Store" onCloseClick={ () => hide() } />
             <NitroCardTabsView>
                 <NitroCardTabsItemView isActive={ currentTab === 'store' } onClick={ () => setCurrentTab('store') }>
-                    Store
+                    Tokens
                 </NitroCardTabsItemView>
                 <NitroCardTabsItemView isActive={ currentTab === 'buy' } onClick={ () => setCurrentTab('buy') }>
-                    Buy Diamonds
+                    Diamonds
                 </NitroCardTabsItemView>
             </NitroCardTabsView>
             <NitroCardContentView>
