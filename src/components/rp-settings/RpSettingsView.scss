@@ -15,13 +15,20 @@
         display: flex;
         flex-direction: column;
         gap: 2px;
-        min-width: 92px;
+        // Fixed rail so every tab's sidebar lines up; sized to the widest
+        // page label across ALL tabs ("Personalization", 88.7px at 12px
+        // bold Ubuntu) + item padding + rail padding/border, with headroom.
+        width: 124px;
+        flex-shrink: 0;
         padding-right: 10px;
         border-right: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .rp-settings-subnav-item {
         padding: 5px 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         border-radius: $border-radius;
         font-size: 12px;
         font-weight: 700;
