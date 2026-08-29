@@ -1,10 +1,10 @@
 // Corporations window: deliberately compact next to the classic business
 // roster windows - a slim badge rail plus a scrolling rank ladder.
 .nitro-card.rp-corporations-window {
-    width: 460px;
-    height: 400px;
+    width: 520px;
+    height: 440px;
 
-    // The window is fixed 460x400; the rank ladder is the ONE scroller
+    // The window is fixed 520x440; the rank ladder is the ONE scroller
     // (content-area overflow is hidden so it can't double-scroll).
     .rp-corps-layout {
         display: flex;
@@ -122,62 +122,93 @@
     }
 
     .rp-corps-employees {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
         padding: 4px 2px 2px;
     }
 
-    // Employee chip: head crop + name + tier numeral + presence dot.
+    // Employee card: mini HUD-style plate — masked portrait + name/tier +
+    // shift stats. Clicking opens the player's RP profile.
     .rp-corps-employee {
         display: flex;
         align-items: center;
-        gap: 5px;
-        padding: 2px 8px 2px 2px;
-        border-radius: 14px;
+        gap: 8px;
+        min-width: 0;
+        padding: 5px 8px 5px 5px;
+        border-radius: $border-radius;
         background: $white;
         border: 1px solid rgba(0, 0, 0, 0.12);
+        cursor: pointer;
+        transition: border-color 0.1s ease;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.3); }
     }
 
-    .rp-corps-employee-avatar {
-        width: 24px;
-        height: 24px;
+    // Circular mask over the 90x130 sprite at native size (same technique as
+    // the Player HUD portrait: no scaling, pixelated, the 2nd background-
+    // position value frames the head + shoulders). The tint doubles as the
+    // presence signal.
+    .rp-corps-employee-portrait {
+        flex-shrink: 0;
+        position: relative;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         overflow: hidden;
-        position: relative;
-        background: rgba(0, 0, 0, 0.05);
+        background: rgba(0, 0, 0, 0.15);
+
+        &.is-online { background: #2e9e4f; }
+        &.is-onduty { background: #2f7fd6; }
 
         .avatar-image {
             position: absolute;
-            width: 90px;
-            height: 130px;
-            left: 50%;
-            top: 50%;
-            margin-left: -45px;
-            margin-top: -30px;
-            background-position: center -8px;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background-size: auto;
+            background-repeat: no-repeat;
+            background-position: center -26px;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
             image-rendering: pixelated;
         }
     }
 
+    .rp-corps-employee-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rp-corps-employee-name-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+    }
+
     .rp-corps-employee-name {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .rp-corps-employee-tier {
-        font-size: 10px;
-        color: rgba(0, 0, 0, 0.5);
+        flex-shrink: 0;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.08);
+        color: rgba(0, 0, 0, 0.6);
     }
 
-    .rp-corps-employee-presence {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.2);
-
-        &.is-online { background: #2e9e4f; }
-        &.is-onduty { background: #2f7fd6; }
+    .rp-corps-employee-shifts {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
     }
 
     .rp-corps-empty {

@@ -1,8 +1,9 @@
 import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsEvent, RpGetCorpDetailComposer, RpGetCorpsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
+import { RpProfileState } from '../rp-profile/RpProfileState';
 
 // PixelRP Corporations window, opened from the side drawer's Corporations
 // button (CreateLinkEvent('rp-corporations/toggle')). Viewable by every
@@ -133,17 +134,36 @@ export const RpCorporationsView: FC<{}> = props =>
                                             </div>
                                             { (rank.employees.length > 0) &&
                                                 <div className="rp-corps-employees">
-                                                    { rank.employees.map(employee => (
-                                                        <div key={ employee.username } className="rp-corps-employee" title={ ((rank.tiers > 0) ? `${ rank.name } ${ TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] }` : rank.name) }>
-                                                            <div className="rp-corps-employee-avatar">
-                                                                <LayoutAvatarImageView figure={ employee.figure } headOnly={ true } direction={ 2 } />
+                                                    { rank.employees.map(employee =>
+                                                    {
+                                                        const tierLabel = ((rank.tiers > 0) ? TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] : null);
+
+                                                        return (
+                                                            <div key={ employee.username } className="rp-corps-employee" title={ (tierLabel ? `${ rank.name } ${ tierLabel }` : rank.name) }
+                                                                onClick={ () =>
+                                                                {
+                                                                    RpProfileState.name = employee.username;
+                                                                    RpProfileState.figure = employee.figure;
+                                                                    RpProfileState.motto = '';
+                                                                    RpProfileState.online = employee.online;
+                                                                    CreateLinkEvent('rp-profile/show');
+                                                                } }>
+                                                                { /* portrait tint IS the presence signal: gray offline, green online, blue on duty */ }
+                                                                <div className={ `rp-corps-employee-portrait${ employee.onDuty ? ' is-onduty' : (employee.online ? ' is-online' : '') }` }>
+                                                                    <LayoutAvatarImageView figure={ employee.figure } direction={ 2 } />
+                                                                </div>
+                                                                <div className="rp-corps-employee-info">
+                                                                    <div className="rp-corps-employee-name-row">
+                                                                        <span className="rp-corps-employee-name">{ employee.username }</span>
+                                                                        { tierLabel &&
+                                                                            <span className="rp-corps-employee-tier">{ tierLabel }</span> }
+                                                                    </div>
+                                                                    { /* hardcoded zeros until the server sends shift stats */ }
+                                                                    <div className="rp-corps-employee-shifts">Wk 0 / Total 0</div>
+                                                                </div>
                                                             </div>
-                                                            <span className="rp-corps-employee-name">{ employee.username }</span>
-                                                            { (rank.tiers > 0) &&
-                                                                <span className="rp-corps-employee-tier">{ TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] }</span> }
-                                                            <span className={ `rp-corps-employee-presence${ employee.online ? ' is-online' : '' }${ employee.onDuty ? ' is-onduty' : '' }` } />
-                                                        </div>
-                                                    )) }
+                                                        );
+                                                    }) }
                                                 </div> }
                                         </div>
                                     )) }
