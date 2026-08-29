@@ -1,0 +1,455 @@
+diff --git a/src/room/renderer/PixelRPSystem11.ts b/src/room/renderer/PixelRPSystem11.ts
+index 1da3e8bbd9a32829b51889ecf7aa4fd818b53768..d364dc9b0097a5008d2b90c1a2ff5d8e18b64546 100644
+--- a/src/room/renderer/PixelRPSystem11.ts
++++ b/src/room/renderer/PixelRPSystem11.ts
+@@ -75,6 +75,7 @@ interface PixelRPPendingAdoption
+     joinerId: number;
+     pairBaseline: number;
+     logicalOffset: number;
++    armSlot: number;
+     masterSequenceSeen: number;
+     joinerSequenceSeen: number;
+     lastRejectReason: string;
+@@ -118,9 +119,12 @@ interface PixelRPReengagementBlock
+  * together in that same frame.
+  *
+  * There is no phase acquisition, no convergence, no speed correction and no
+- * blend. A pair either enters shared mode losslessly (the one-time entry snap
+- * is within MAX_ENTRY_DISCREPANCY) or stays fully native and retries on the
+- * next real edge event. Only real recorded movement edges are ever rendered:
++ * blend. Entry is discrete: a pair enters shared mode immediately when the
++ * one-time snap is invisible (within MAX_ENTRY_DISCREPANCY); otherwise the
++ * classified relation is RETAINED, the JOINER stays fully native (never
++ * chasing the target), and the pair switches ONCE at the next master
++ * rollover - where the authoritative target sits on a real route vertex.
++ * Waiting never depends on native drift closing the gap. Only real recorded movement edges are ever rendered:
+  * BEHIND/ALIGNED edges resolve from MASTER's own recorded history (always
+  * present at the rollover instant), AHEAD from JOINER's queue (JOINER natively
+  * leads, so its next edge is already recorded).
+@@ -130,13 +134,29 @@ export class PixelRPSystem11
+     private static readonly DEFAULT_INTERVAL = 530;
+     private static readonly EDGE_QUEUE_SIZE = 12;
+     private static readonly EDGE_STALE_MS = 1200;
+-    private static readonly STOP_GRACE_MS = 160;
++    // 'moving' comes from the native interpolator's residual delta, so a
++    // packet gap longer than one 530ms edge reads as a stop while the server
++    // is merely late (its own stall telemetry documents >750ms cycles). The
++    // grace must outlast those stalls or every stall bounces the JOINER out
++    // of shared rendering; during the hold both avatars' lerps are clamped at
++    // tile boundaries, so the held position is stationary and coherent.
++    private static readonly STOP_GRACE_MS = 420;
+     private static readonly MAX_LOGICAL_OFFSET = 1;
+     // One-time entry snap budget (tiles). Entering shared mode moves JOINER
+     // from its native position onto the slot model; beyond this it stays
+     // native rather than visibly jumping or gradually correcting.
+     private static readonly MAX_ENTRY_DISCREPANCY = 0.08;
+-    private static readonly MAX_CONTINUITY_DISCREPANCY = 0.08;
++    // Discrete-handoff ceiling (tiles). The single boundary switch may cover
++    // up to one route step plus jitter; anything larger means the retained
++    // classification is unsafe, so it is dropped and reclassified instead of
++    // jumping.
++    private static readonly MAX_HANDOFF_DISCREPANCY = 1.25;
++    // Frame-to-frame continuity allowance while in shared mode. Must admit
++    // MASTER's own native re-anchor jitter (a packet ~100ms late teleports
++    // master's display by lateness/530 - the pair should mirror that jump
++    // TOGETHER, not drop the session), while the 0.27 hard cap still catches
++    // wrong-edge resolution, which jumps by a full tile.
++    private static readonly MAX_CONTINUITY_DISCREPANCY = 0.22;
+     // Bounded wait at the edge boundary for a required edge that has not been
+     // recorded yet (packet race at rollover). The held position is the shared
+     // boundary tile, so it is positionally continuous in both directions.
+@@ -146,8 +166,11 @@ export class PixelRPSystem11
+ 
+     private readonly _history = new Map<number, PixelRPRouteHistory>();
+     private readonly _pendingAdoptions = new Map<string, PixelRPPendingAdoption>();
+-    private _session: PixelRPSystem11Session = null;
+-    private _reengagementBlock: PixelRPReengagementBlock = null;
++    // One independent session per own<->remote pair (group walks are N pairs,
++    // each rendered purely from its own master's slot + phase - never from
++    // pairwise correction). At most one session may offset the OWN avatar.
++    private readonly _sessions = new Map<string, PixelRPSystem11Session>();
++    private readonly _reengagementBlocks = new Map<string, PixelRPReengagementBlock>();
+ 
+     public record(sample: PixelRPMovementSample, now: number): void
+     {
+@@ -234,13 +257,20 @@ export class PixelRPSystem11
+ 
+     public considerPair(ownId: number, remoteId: number, now: number): void
+     {
+-        if(this._session || (ownId < 0) || (remoteId < 0) || (ownId === remoteId)) return;
++        if((ownId < 0) || (remoteId < 0) || (ownId === remoteId)) return;
++        if(this._sessions.has(this.pairKey(ownId, remoteId))) return;
+ 
+         const own = this._history.get(ownId);
+         const remote = this._history.get(remoteId);
+ 
+         if(!own || !remote || !own.moving || !remote.moving || !own.current || !remote.current) return;
+-        if((Math.abs(own.x - remote.x) > 1.05) || (Math.abs(own.y - remote.y) > 1.05)) return;
++        // Candidate gate on DISPLAYED distance. A true one-step relation can
++        // show up to ~2 tiles on screen (1 route step + up to a full cycle of
++        // packet display lag), so this must not use a one-tile radius - that
++        // silently excluded every genuinely-late JOINER. Structural
++        // classification below is the real filter; this only bounds the
++        // candidate search.
++        if((Math.abs(own.x - remote.x) > 2.1) || (Math.abs(own.y - remote.y) > 2.1)) return;
+ 
+         const pairKey = this.pairKey(own.id, remote.id);
+         const pending = this._pendingAdoptions.get(pairKey);
+@@ -265,13 +295,24 @@ export class PixelRPSystem11
+             joiner = (master.id === own.id) ? remote : own;
+         }
+ 
+-        if(this._reengagementBlock && (this._reengagementBlock.pairKey === pairKey))
++        const block = this._reengagementBlocks.get(pairKey);
++
++        if(block)
+         {
+-            const blockedJoiner = this._history.get(this._reengagementBlock.joinerId);
++            const blockedJoiner = this._history.get(block.joinerId);
+ 
+-            if(!blockedJoiner || (blockedJoiner.sequence <= this._reengagementBlock.joinerSequence)) return;
++            if(!blockedJoiner || (blockedJoiner.sequence <= block.joinerSequence)) return;
+ 
+-            this._reengagementBlock = null;
++            this._reengagementBlocks.delete(pairKey);
++        }
++
++        // The own avatar can be rendered from at most ONE master's clock.
++        if(joiner.id === ownId)
++        {
++            for(const session of this._sessions.values())
++            {
++                if(session.joinerId === ownId) return;
++            }
+         }
+ 
+         let pairBaseline = NaN;
+@@ -299,7 +340,7 @@ export class PixelRPSystem11
+         {
+             if(pending)
+             {
+-                this.logEvent('S11_SHARED_DIVERGE', master, joiner, pairBaseline, retainedOffset,
++                this.logEvent('AUTH_HANDOFF_REJECT', master, joiner, pairBaseline, retainedOffset,
+                     PixelRPSystem11Relation.DIVERGED, NaN, NaN, 'native-route-diverged');
+             }
+ 
+@@ -309,21 +350,36 @@ export class PixelRPSystem11
+ 
+         if(!Number.isFinite(pairBaseline))
+         {
+-            this.holdPending(pairKey, master, joiner, pairBaseline, retainedOffset, pending, NaN, 'pair-baseline-unavailable');
++            this.holdPending(pairKey, master, joiner, pairBaseline, retainedOffset,
++                (pending ? pending.armSlot : NaN), pending, NaN, 'pair-baseline-unavailable');
+             return;
+         }
+ 
+-        // Relation from route data. A structurally proven relation (adjacent
+-        // current edges at baseline assignment) is retained; otherwise the
+-        // integer route gap between the two live route positions decides. The
+-        // fractional remainder is NOT classified away — it is exactly the
+-        // one-time entry snap and is gated below.
++        // Relation from route STRUCTURE first, never from fractional display
++        // distance. The two current edges prove the relation outright whenever
++        // they are identical (ALIGNED) or adjacent (BEHIND/AHEAD) - and such a
++        // proof fires at least once per cycle, on the lagging side's own
++        // rollover event. The displayed route separation (integer slots plus
++        // phase difference) is only a FALLBACK: the phase term reflects packet
++        // display lag, not route position, so rounding it can misclassify a
++        // true one-step relation (e.g. BEHIND with a 0.6-cycle display offset
++        // reads 1.6 and used to round to an unsupported 2). A proven or
++        // retained relation is kept until the routes structurally diverge -
++        // phase difference alone can never collapse BEHIND/AHEAD to ALIGNED.
+         const signedProgress = ((master.current.slot - (joiner.current.slot + pairBaseline)) + master.phase - joiner.phase);
+-        const logicalOffset = Number.isFinite(retainedOffset) ? retainedOffset : Math.round(signedProgress);
++        let structuralOffset = NaN;
++
++        if(this.edgeEquals(joiner.current, master.current)) structuralOffset = 0;
++        else if(this.edgesContiguous(joiner.current, master.current)) structuralOffset = 1;
++        else if(this.edgesContiguous(master.current, joiner.current)) structuralOffset = -1;
++
++        const logicalOffset = Number.isFinite(structuralOffset) ? structuralOffset
++            : (Number.isFinite(retainedOffset) ? retainedOffset : Math.round(signedProgress));
+ 
+         if(Math.abs(logicalOffset) > PixelRPSystem11.MAX_LOGICAL_OFFSET)
+         {
+-            this.holdPending(pairKey, master, joiner, pairBaseline, NaN, pending, signedProgress, 'logical-offset-unsupported');
++            this.holdPending(pairKey, master, joiner, pairBaseline, NaN,
++                (pending ? pending.armSlot : NaN), pending, signedProgress, 'logical-offset-unsupported');
+             return;
+         }
+ 
+@@ -333,7 +389,7 @@ export class PixelRPSystem11
+         {
+             if(pending)
+             {
+-                this.logEvent('S11_SHARED_DIVERGE', master, joiner, pairBaseline, logicalOffset,
++                this.logEvent('AUTH_HANDOFF_REJECT', master, joiner, pairBaseline, logicalOffset,
+                     PixelRPSystem11Relation.DIVERGED, signedProgress, NaN, resolution.reason);
+             }
+ 
+@@ -343,22 +399,53 @@ export class PixelRPSystem11
+ 
+         if(resolution.status === 'missing')
+         {
+-            this.holdPending(pairKey, master, joiner, pairBaseline, retainedOffset, pending, signedProgress, resolution.reason);
++            this.holdPending(pairKey, master, joiner, pairBaseline, retainedOffset,
++                (pending ? pending.armSlot : NaN), pending, signedProgress, resolution.reason);
+             return;
+         }
+ 
+         const relation = this.relationForLogicalOffset(logicalOffset);
+         const target = this.pointOnEdge(resolution.edge, master.phase);
+         const entrySnap = this.tileDistance(joiner.x, joiner.y, joiner.z, target.x, target.y, target.z);
++        const armSlot = (pending && Number.isFinite(pending.armSlot)) ? pending.armSlot : NaN;
++        const boundaryReached = (Number.isFinite(armSlot) && (master.current.slot > armSlot));
+ 
+         if(entrySnap > PixelRPSystem11.MAX_ENTRY_DISCREPANCY)
+         {
+-            this.holdPending(pairKey, master, joiner, pairBaseline, retainedOffset, pending, signedProgress, 'entry-snap-too-large');
+-            return;
++            if(!boundaryReached)
++            {
++                // Not invisibly continuous. NEVER wait for native drift to
++                // shrink the gap (that is gradual catch-up by proxy): arm a
++                // DISCRETE handoff at the next master rollover instead. The
++                // classified relation is stored so phase noise cannot collapse
++                // a proven BEHIND/AHEAD to ALIGNED while waiting, and JOINER
++                // renders purely native until the single switch.
++                if(!Number.isFinite(retainedOffset))
++                {
++                    this.logEvent('AUTH_RELATION', master, joiner, pairBaseline, logicalOffset, relation,
++                        signedProgress, entrySnap, 'route-gap-classified', target);
++                }
++
++                this.holdPending(pairKey, master, joiner, pairBaseline, logicalOffset,
++                    (Number.isFinite(armSlot) ? armSlot : master.current.slot), pending, signedProgress,
++                    'handoff-armed', 'AUTH_HANDOFF_PENDING', target, entrySnap);
++                return;
++            }
++
++            if(entrySnap > PixelRPSystem11.MAX_HANDOFF_DISCREPANCY)
++            {
++                // The boundary switch would jump further than one route step
++                // can explain: the retained classification is unsafe. Drop it
++                // for fresh reclassification and re-arm at the next boundary.
++                this.holdPending(pairKey, master, joiner, pairBaseline, NaN,
++                    master.current.slot, pending, signedProgress,
++                    'handoff-distance-unsafe', 'AUTH_HANDOFF_REJECT', target, entrySnap);
++                return;
++            }
+         }
+ 
+         this._pendingAdoptions.delete(pairKey);
+-        this._session = {
++        this._sessions.set(pairKey, {
+             masterId: master.id,
+             joinerId: joiner.id,
+             pairKey,
+@@ -373,24 +460,29 @@ export class PixelRPSystem11
+             lastRenderedZ: target.z,
+             lastRenderedAt: now,
+             stoppedSince: 0
+-        };
++        });
+ 
+-        this.logEvent('S11_SHARED_ENTER', master, joiner, pairBaseline, logicalOffset, relation,
+-            signedProgress, entrySnap, (Number.isFinite(retainedOffset) ? 'proven-relation' : 'route-gap-relation'));
++        this.logEvent('AUTH_HANDOFF_ENTER', master, joiner, pairBaseline, logicalOffset, relation,
++            signedProgress, entrySnap, (boundaryReached ? 'boundary-switch' : 'immediate-continuous'), target);
+     }
+ 
+     public getTarget(id: number, now: number): PixelRPSystem11Target
+     {
+-        const session = this._session;
++        let session: PixelRPSystem11Session = null;
+ 
+-        if(!session || (session.joinerId !== id)) return null;
++        for(const candidate of this._sessions.values())
++        {
++            if(candidate.joinerId === id) { session = candidate; break; }
++        }
++
++        if(!session) return null;
+ 
+         const master = this._history.get(session.masterId);
+         const joiner = this._history.get(session.joinerId);
+ 
+         if(!master || !joiner)
+         {
+-            this.release('history-missing');
++            this.release(session, 'history-missing');
+             return null;
+         }
+ 
+@@ -400,7 +492,7 @@ export class PixelRPSystem11
+ 
+             if((now - session.stoppedSince) > PixelRPSystem11.STOP_GRACE_MS)
+             {
+-                this.release('movement-stopped');
++                this.release(session, 'movement-stopped');
+                 return null;
+             }
+ 
+@@ -413,9 +505,7 @@ export class PixelRPSystem11
+ 
+         if(this.explicitlyDiverged(master, joiner))
+         {
+-            this.logEvent('S11_SHARED_DIVERGE', master, joiner, session.pairBaseline, session.logicalOffset,
+-                PixelRPSystem11Relation.DIVERGED, NaN, NaN, 'native-route-diverged');
+-            this.release('native-route-diverged');
++            this.release(session, 'native-route-diverged');
+             return null;
+         }
+ 
+@@ -423,9 +513,7 @@ export class PixelRPSystem11
+ 
+         if(resolution.status === 'diverged')
+         {
+-            this.logEvent('S11_SHARED_DIVERGE', master, joiner, session.pairBaseline, session.logicalOffset,
+-                PixelRPSystem11Relation.DIVERGED, NaN, NaN, resolution.reason);
+-            this.release(resolution.reason);
++            this.release(session, resolution.reason);
+             return null;
+         }
+ 
+@@ -438,7 +526,7 @@ export class PixelRPSystem11
+             // for a bounded grace, then give up cleanly.
+             if(!session.renderEdge)
+             {
+-                this.release(resolution.reason);
++                this.release(session, resolution.reason);
+                 return null;
+             }
+ 
+@@ -446,7 +534,7 @@ export class PixelRPSystem11
+ 
+             if((now - session.graceSince) > PixelRPSystem11.ROLLOVER_GRACE_MS)
+             {
+-                this.release(`rollover-grace-expired:${ resolution.reason }`);
++                this.release(session, `rollover-grace-expired:${ resolution.reason }`);
+                 return null;
+             }
+ 
+@@ -456,13 +544,13 @@ export class PixelRPSystem11
+         {
+             if((now - resolution.edge.changedAt) > PixelRPSystem11.EDGE_STALE_MS)
+             {
+-                this.release('render-edge-stale');
++                this.release(session, 'render-edge-stale');
+                 return null;
+             }
+ 
+             if(session.renderSlot !== master.current.slot)
+             {
+-                this.logEvent('S11_SHARED_ROLLOVER', master, joiner, session.pairBaseline, session.logicalOffset,
++                this.logEvent('AUTH_ROLLOVER', master, joiner, session.pairBaseline, session.logicalOffset,
+                     session.relation, NaN, NaN, `master-slot:${ session.renderSlot }->${ master.current.slot }`);
+             }
+ 
+@@ -480,7 +568,7 @@ export class PixelRPSystem11
+ 
+         if(proposedDelta > maxSaneDelta)
+         {
+-            this.release('impossible-frame-displacement');
++            this.release(session, 'impossible-frame-displacement');
+             return null;
+         }
+ 
+@@ -555,7 +643,9 @@ export class PixelRPSystem11
+     }
+ 
+     private holdPending(pairKey: string, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory,
+-        pairBaseline: number, retainedOffset: number, previous: PixelRPPendingAdoption, signedProgress: number, reason: string): void
++        pairBaseline: number, retainedOffset: number, armSlot: number, previous: PixelRPPendingAdoption,
++        signedProgress: number, reason: string, event: string = 'AUTH_HANDOFF_REJECT',
++        target: PixelRPSystem11Target = null, handoffDistance: number = NaN): void
+     {
+         this._pendingAdoptions.set(pairKey, {
+             pairKey,
+@@ -563,6 +653,7 @@ export class PixelRPSystem11
+             joinerId: joiner.id,
+             pairBaseline,
+             logicalOffset: retainedOffset,
++            armSlot,
+             masterSequenceSeen: master.sequence,
+             joinerSequenceSeen: joiner.sequence,
+             lastRejectReason: reason
+@@ -576,8 +667,8 @@ export class PixelRPSystem11
+ 
+         if(!previous || (previous.lastRejectReason !== reason))
+         {
+-            this.logEvent('S11_SHARED_REJECT', master, joiner, pairBaseline, retainedOffset,
+-                this.relationForLogicalOffset(retainedOffset), signedProgress, NaN, reason);
++            this.logEvent(event, master, joiner, pairBaseline, retainedOffset,
++                this.relationForLogicalOffset(retainedOffset), signedProgress, handoffDistance, reason, target);
+         }
+     }
+ 
+@@ -659,7 +750,11 @@ export class PixelRPSystem11
+     {
+         if(!master.current || !joiner.current) return false;
+         if(this.edgesExplicitlyDiverged(master.current, joiner.current)) return true;
+-        if((Math.abs(master.x - joiner.x) > 1.5) || (Math.abs(master.y - joiner.y) > 1.5)) return true;
++        // Gross-runaway backstop only. Displayed distance for a healthy
++        // BEHIND/AHEAD pair legitimately reaches 1 route step + up to a full
++        // cycle of display lag (~2 tiles); route-structure checks above and in
++        // resolveRenderEdge are the real divergence detectors.
++        if((Math.abs(master.x - joiner.x) > 2.6) || (Math.abs(master.y - joiner.y) > 2.6)) return true;
+ 
+         return false;
+     }
+@@ -674,25 +769,25 @@ export class PixelRPSystem11
+         return (sameStart && differentGoal);
+     }
+ 
+-    private release(reason: string): void
++    private release(session: PixelRPSystem11Session, reason: string): void
+     {
+-        const session = this._session;
+-
+-        if(!session) return;
++        if(!session || !this._sessions.has(session.pairKey)) return;
+ 
+         const master = this._history.get(session.masterId);
+         const joiner = this._history.get(session.joinerId);
+ 
+-        this._reengagementBlock = {
++        this._reengagementBlocks.set(session.pairKey, {
+             pairKey: session.pairKey,
+             joinerId: session.joinerId,
+             joinerSequence: joiner ? joiner.sequence : 0
+-        };
++        });
++
++        if(this._reengagementBlocks.size > 32) this._reengagementBlocks.clear();
+ 
+-        this.logEvent('S11_SHARED_EXIT', master, joiner, session.pairBaseline, session.logicalOffset,
++        this.logEvent('AUTH_EXIT', master, joiner, session.pairBaseline, session.logicalOffset,
+             session.relation, NaN, NaN, reason);
+ 
+-        this._session = null;
++        this._sessions.delete(session.pairKey);
+     }
+ 
+     private tileDistance(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number
+@@ -717,7 +812,8 @@ export class PixelRPSystem11
+ 
+     private logEvent(event: string, master: PixelRPRouteHistory, joiner: PixelRPRouteHistory,
+         pairBaseline: number, logicalOffset: number, relation: PixelRPSystem11Relation,
+-        signedProgress: number, targetDistance: number, reason: string): void
++        signedProgress: number, handoffDistance: number, reason: string,
++        authTarget: PixelRPSystem11Target = null): void
+     {
+         if(!PixelRPSystem11.INSTRUMENT_TRANSITIONS) return;
+ 
+@@ -727,7 +823,9 @@ export class PixelRPSystem11
+         const joinerSlot = (joiner && joiner.current) ? joiner.current.slot : NaN;
+         const sharedPhase = master ? master.phase : NaN;
+         const joinerNativePhase = joiner ? joiner.phase : NaN;
++        const nativePosition = joiner ? `${ joiner.x.toFixed(2) },${ joiner.y.toFixed(2) }` : 'n/a';
++        const authoritativePosition = authTarget ? `${ authTarget.x.toFixed(2) },${ authTarget.y.toFixed(2) }` : 'n/a';
+ 
+-        console.log(`[${ event }] masterId=${ masterId } joinerId=${ joinerId } relation=${ PixelRPSystem11Relation[relation] } masterSlot=${ Number.isFinite(masterSlot) ? masterSlot : 'n/a' } joinerSlot=${ Number.isFinite(joinerSlot) ? joinerSlot : 'n/a' } pairBaseline=${ Number.isFinite(pairBaseline) ? pairBaseline : 'n/a' } logicalOffset=${ Number.isFinite(logicalOffset) ? logicalOffset : 'n/a' } sharedPhase=${ Number.isFinite(sharedPhase) ? sharedPhase.toFixed(3) : 'n/a' } joinerNativePhase=${ Number.isFinite(joinerNativePhase) ? joinerNativePhase.toFixed(3) : 'n/a' } signedProgress=${ Number.isFinite(signedProgress) ? signedProgress.toFixed(3) : 'n/a' } targetDistance=${ Number.isFinite(targetDistance) ? targetDistance.toFixed(3) : 'n/a' } reason=${ reason }`);
++        console.log(`[${ event }] avatarId=${ joinerId } masterId=${ masterId } relation=${ PixelRPSystem11Relation[relation] } masterSlot=${ Number.isFinite(masterSlot) ? masterSlot : 'n/a' } avatarSlot=${ Number.isFinite(joinerSlot) ? joinerSlot : 'n/a' } pairBaseline=${ Number.isFinite(pairBaseline) ? pairBaseline : 'n/a' } logicalOffset=${ Number.isFinite(logicalOffset) ? logicalOffset : 'n/a' } sharedPhase=${ Number.isFinite(sharedPhase) ? sharedPhase.toFixed(3) : 'n/a' } nativePhase=${ Number.isFinite(joinerNativePhase) ? joinerNativePhase.toFixed(3) : 'n/a' } nativePosition=${ nativePosition } authoritativePosition=${ authoritativePosition } signedProgress=${ Number.isFinite(signedProgress) ? signedProgress.toFixed(3) : 'n/a' } handoffDistance=${ Number.isFinite(handoffDistance) ? handoffDistance.toFixed(3) : 'n/a' } reason=${ reason }`);
+     }
+ }
