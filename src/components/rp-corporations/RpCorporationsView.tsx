@@ -117,11 +117,12 @@ export const RpCorporationsView: FC<{}> = props =>
                         { shownDetail &&
                             <>
                                 <div className="rp-corps-head">
-                                    <div className="rp-corps-title">{ shownDetail.name }</div>
-                                    <div className="rp-corps-sub">
-                                        { shownDetail.employeeCount } { (shownDetail.employeeCount === 1) ? 'employee' : 'employees' }
-                                        { shownDetail.description ? ` - ${ shownDetail.description }` : '' }
+                                    <div className="rp-corps-title-row">
+                                        <div className="rp-corps-title">{ shownDetail.name }</div>
+                                        <div className="rp-corps-count">{ shownDetail.employeeCount } { (shownDetail.employeeCount === 1) ? 'employee' : 'employees' }</div>
                                     </div>
+                                    { shownDetail.description &&
+                                        <div className="rp-corps-sub">{ shownDetail.description }</div> }
                                 </div>
                                 <div className="rp-corps-ranks">
                                     { ranks.map(rank => (

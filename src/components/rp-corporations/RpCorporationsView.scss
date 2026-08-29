@@ -59,9 +59,23 @@
         gap: 8px;
     }
 
+    .rp-corps-title-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
     .rp-corps-title {
         font-size: 14px;
         font-weight: 700;
+    }
+
+    .rp-corps-count {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.55);
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .rp-corps-sub {
