@@ -116,6 +116,20 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
+        // The corporation/employment slot reads slightly different from the
+        // plain badge slots: dashed accent outline + a faint briefcase hint
+        // while unemployed; an employer's logo replaces the hint when hired.
+        .badge-image--corp {
+            border: 1px dashed rgba(255, 255, 255, 0.28);
+            background-color: rgba(255, 255, 255, 0.04);
+
+            .badge-corp-hint {
+                width: 16px;
+                height: 16px;
+                color: rgba(255, 255, 255, 0.22);
+            }
+        }
+
         .motto-content {
             min-height: 18px;
         }

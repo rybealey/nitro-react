@@ -1,6 +1,7 @@
 import { RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomSessionFavoriteGroupUpdateEvent, RoomSessionUserBadgesEvent, RoomSessionUserFigureUpdateEvent, UserRelationshipsComposer } from '@nitrots/nitro-renderer';
 import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
+import { LuBriefcase } from 'react-icons/lu';
 import { AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text } from '../../../../../common';
 import { useMessageEvent, useRoomSessionManagerEvent } from '../../../../../hooks';
@@ -119,9 +120,12 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[0] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[0] } /> }
                                 </Flex>
-                                <Flex center pointer={ ( avatarInfo.groupId > 0) } className="badge-image" onClick={ event => GetGroupInformation(avatarInfo.groupId) }>
-                                    { avatarInfo.groupId > 0 &&
-                                        <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } /> }
+                                { /* reserved for corporation/employment - the employer's
+                                     logo (group badge) lands here once a player is hired */ }
+                                <Flex center pointer={ ( avatarInfo.groupId > 0) } className="badge-image badge-image--corp" onClick={ event => GetGroupInformation(avatarInfo.groupId) }>
+                                    { (avatarInfo.groupId > 0)
+                                        ? <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } />
+                                        : <LuBriefcase className="badge-corp-hint" /> }
                                 </Flex>
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[1] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[1] } /> }

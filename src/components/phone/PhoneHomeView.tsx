@@ -34,7 +34,7 @@ const jiggleVars = (key: string): CSSProperties =>
 
 interface PhoneAppDef
 {
-    // FontAwesome Duotone Solid glyph name (fa-<icon>) for the app tile.
+    // FontAwesome Duotone Regular glyph name (fa-<icon>) for the app tile.
     icon: string;
     active?: boolean;
     // Per-app icon plate gradient (from the design); disabled apps still get
@@ -75,7 +75,7 @@ const APP_DEFS: Record<string, PhoneAppDef> = {
     'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #c2c6ce, #9096a0 55%, #5c616b)', sec: '#5c616b' }
 };
 
-// The phone app-tile glyphs come from the PixelRP FontAwesome Duotone Solid
+// The phone app-tile glyphs come from the PixelRP FontAwesome Duotone Regular
 // kit (loaded in index.html), not the pixelarticons mask set the rest of the
 // phone chrome uses.
 const AppGlyph: FC<{ icon: string, sec?: string }> = ({ icon, sec }) =>
@@ -84,7 +84,7 @@ const AppGlyph: FC<{ icon: string, sec?: string }> = ({ icon, sec }) =>
     // default (no sec) keeps the soft white-on-white look from .phone-app-fa.
     const style = (sec ? ({ '--fa-secondary-color': sec, '--fa-secondary-opacity': 1 } as CSSProperties) : undefined);
 
-    return <i className={ `phone-app-fa fa-duotone fa-solid fa-${ icon }` } style={ style } aria-hidden="true" />;
+    return <i className={ `phone-app-fa fa-duotone fa-regular fa-${ icon }` } style={ style } aria-hidden="true" />;
 }
 
 interface DragApp

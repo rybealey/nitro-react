@@ -1,6 +1,6 @@
 import { CSSProperties, FC } from 'react';
 
-// Phone UI glyph. Renders from the FontAwesome Duotone Solid kit (the same
+// Phone UI glyph. Renders from the FontAwesome kit in Duotone Regular (the same
 // kit as the home-screen app tiles). Call sites still pass the short names
 // the phone has always used; this map translates each to its FA icon name.
 // The `phone-pi` class is kept so existing rotate/filter rules keep targeting
@@ -50,5 +50,5 @@ export const PhoneIcon: FC<{ icon: string, size?: number, className?: string, st
     const { icon = null, size = 18, className = null, style = null } = props;
     const fa = (FA_MAP[icon] ?? icon);
 
-    return <i aria-hidden="true" className={ `phone-pi fa-duotone fa-solid fa-${ fa }${ className ? (' ' + className) : '' }` } style={ { fontSize: size, ...style } } />;
+    return <i aria-hidden="true" className={ `phone-pi fa-duotone fa-regular fa-${ fa }${ className ? (' ' + className) : '' }` } style={ { fontSize: size, ...style } } />;
 }
