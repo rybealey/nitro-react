@@ -356,6 +356,42 @@ $phone-scale: 0.8;
         padding: 0 14px;
     }
 
+    // iOS-style edit mode: every icon (label included) jiggles in place with
+    // a stable per-tile random phase/duration (--jig-delay/--jig-dur set from
+    // a hash of the app key), so the wobble is out of sync across the grid.
+    // The tile being dragged pauses its jiggle (the ghost rides the pointer).
+    .phone-home.is-editing .phone-app {
+        animation: phone-app-jiggle var(--jig-dur, 0.32s) ease-in-out var(--jig-delay, 0s) infinite;
+
+        &.is-drag-source {
+            animation: none;
+        }
+    }
+
+    @keyframes phone-app-jiggle {
+        0%, 100% { transform: rotate(-1.6deg) translate(-0.5px, 0.4px); }
+        50% { transform: rotate(1.8deg) translate(0.5px, -0.4px); }
+    }
+
+    // Done pill (edit mode): frosted glass, top right above the grid.
+    .phone-home-done {
+        position: absolute;
+        top: 30px;
+        right: 16px;
+        z-index: 90;
+        padding: 6px 14px;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
     .phone-app {
         display: flex;
         flex-direction: column;

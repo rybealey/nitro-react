@@ -2,12 +2,30 @@ import { CSSProperties, FC, PointerEvent, useRef, useState } from 'react';
 import { DOCK_CAPACITY, usePhoneBadges, usePhonePrefs } from './usePhone';
 
 // Phone home screen: terrace wallpaper, a 4-wide app grid and the dock.
-// Click-hold-drag an icon to rearrange — between grid slots, into the dock
-// (up to 4) and back out — and the layout persists per account. Messages,
-// Contacts, Camera and Photos are live apps; the rest are visible but
-// disabled (grayed out) until their features ship.
+// iOS-style rearranging: icons are NOT immediately draggable — click-hold an
+// app for a moment to enter edit mode, where every icon jiggles in place and
+// can be dragged between grid slots, into the dock (up to 4) and back out.
+// The layout persists per account as it changes; the Done pill (top right)
+// leaves edit mode with the configuration saved. Messages, Contacts, Camera
+// and Photos are live apps; the rest are visible but disabled (grayed out)
+// until their features ship.
 
 const DRAG_THRESHOLD: number = 8;
+const LONG_PRESS_MS: number = 550;
+
+// Stable per-tile pseudo-random jiggle phase/duration so the icons wobble
+// out of sync (like iOS) without re-randomizing on every render.
+const jiggleVars = (key: string): CSSProperties =>
+{
+    let hash = 0;
+
+    for(let index = 0; index < key.length; index++) hash = (((hash * 31) + key.charCodeAt(index)) >>> 0);
+
+    return ({
+        '--jig-delay': `${ -((hash % 40) / 100) }s`,
+        '--jig-dur': `${ (0.3 + ((hash % 7) / 100)) }s`
+    } as CSSProperties);
+}
 
 interface PhoneAppDef
 {
@@ -84,10 +102,20 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
     const { unreadMessages = 0, requestCount = 0 } = usePhoneBadges();
     const { gridOrder, dockOrder, setAppOrder } = usePhonePrefs();
     const [ dragApp, setDragApp ] = useState<DragApp>(null);
+    const [ editing, setEditing ] = useState(false);
     const homeRef = useRef<HTMLDivElement>(null);
     const dockRef = useRef<HTMLDivElement>(null);
     const startRef = useRef<{ key: string, x: number, y: number, left: number, top: number }>(null);
     const movedRef = useRef(false);
+    const holdTimerRef = useRef<number>(0);
+
+    const clearHoldTimer = () =>
+    {
+        if(!holdTimerRef.current) return;
+
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = 0;
+    }
 
     const badgeCount = (key: string) => ((key === 'Messages') ? unreadMessages : ((key === 'Contacts') ? requestCount : 0));
 
@@ -137,6 +165,21 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 
         movedRef.current = false;
         startRef.current = { key, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+
+        // Click-hold enters edit mode (and the held icon can be dragged in
+        // the same gesture). The pending open-on-click is suppressed via
+        // movedRef, exactly like a drag.
+        if(!editing)
+        {
+            clearHoldTimer();
+            holdTimerRef.current = window.setTimeout(() =>
+            {
+                holdTimerRef.current = 0;
+                movedRef.current = true;
+
+                setEditing(true);
+            }, LONG_PRESS_MS);
+        }
     }
 
     const onTileMove = (event: PointerEvent<HTMLDivElement>) =>
@@ -148,6 +191,12 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
         if(!dragApp)
         {
             if((Math.abs(event.clientX - start.x) <= DRAG_THRESHOLD) && (Math.abs(event.clientY - start.y) <= DRAG_THRESHOLD)) return;
+
+            // moved before the hold elapsed: this gesture is not a
+            // long-press, and outside edit mode it is not a drag either
+            clearHoldTimer();
+
+            if(!editing) return;
 
             movedRef.current = true;
 
@@ -177,6 +226,8 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 
     const onTileUp = () =>
     {
+        clearHoldTimer();
+
         startRef.current = null;
 
         setDragApp(null);
@@ -191,9 +242,23 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
             return;
         }
 
+        // while editing, taps rearrange-mode-select nothing — apps only open
+        // again after Done
+        if(editing) return;
+
         const app = APP_DEFS[key];
 
         if(app && app.active && openApp) openApp(key);
+    }
+
+    const onDone = () =>
+    {
+        clearHoldTimer();
+
+        startRef.current = null;
+
+        setDragApp(null);
+        setEditing(false);
     }
 
     const appTile = (key: string, zone: string, showLabel: boolean) =>
@@ -203,7 +268,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
         const dragging = (dragApp && (dragApp.key === key));
 
         return (
-            <div key={ key } data-app-key={ key } data-zone={ zone } className={ `phone-app${ app.active ? ' phone-tap' : ' is-disabled' }${ dragging ? ' is-drag-source' : '' }` } title={ app.active ? key : `${ key } - coming soon` } onClick={ event => onTileTap(key) } onPointerDown={ event => onTileDown(event, key) } onPointerMove={ onTileMove } onPointerUp={ onTileUp } onPointerCancel={ onTileUp }>
+            <div key={ key } data-app-key={ key } data-zone={ zone } className={ `phone-app${ app.active ? ' phone-tap' : ' is-disabled' }${ dragging ? ' is-drag-source' : '' }` } style={ editing ? jiggleVars(key) : undefined } title={ app.active ? key : `${ key } - coming soon` } onClick={ event => onTileTap(key) } onPointerDown={ event => onTileDown(event, key) } onPointerMove={ onTileMove } onPointerUp={ onTileUp } onPointerCancel={ onTileUp }>
                 <div className="phone-app-tile" style={ app.plate ? { background: app.plate } : undefined }>
                     <AppGlyph icon={ app.icon } sec={ app.sec } />
                     { (count > 0) &&
@@ -231,9 +296,11 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
     }
 
     return (
-        <div ref={ homeRef } className="phone-screen phone-home">
+        <div ref={ homeRef } className={ `phone-screen phone-home${ editing ? ' is-editing' : '' }` }>
             <div className="phone-home-wallpaper" />
             <div className="phone-home-shade" />
+            { editing &&
+                <div className="phone-home-done phone-tap" onClick={ onDone }>Done</div> }
             <div className="phone-home-grid">
                 { gridOrder.map(key => appTile(key, 'grid', true)) }
             </div>
