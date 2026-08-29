@@ -30,6 +30,9 @@ export const RoomQuickToolsView: FC<{}> = props =>
     return (
         <Flex gap={ 1 } className="nitro-room-quick-tools">
             <Flex center className="nitro-room-quick-tool">
+                <i className="cursor-pointer fa-brands fa-discord quick-tool-discord" title="Join us on Discord" aria-hidden="true" onClick={ event => window.open('https://discord.gg/pH5TQF84UZ', '_blank', 'noopener,noreferrer') } />
+            </Flex>
+            <Flex center className="nitro-room-quick-tool">
                 <Base pointer title={ LocalizeText('room.zoom.button.text') } onClick={ toggleZoom } className={ classNames('icon', (!isZoomedIn && 'icon-zoom-less'), (isZoomedIn && 'icon-zoom-more')) } />
             </Flex>
             <Flex center className="nitro-room-quick-tool">

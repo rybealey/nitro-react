@@ -42,4 +42,12 @@
         border-radius: $border-radius;
         transition: all .2s ease;
     }
+
+    // Discord quick tool: FA brands glyph in white, sized to sit like the
+    // pixel icons beside it.
+    .quick-tool-discord {
+        color: #ffffff;
+        font-size: 18px;
+        line-height: 1;
+    }
 }
