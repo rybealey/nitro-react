@@ -18,7 +18,10 @@
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 4px;
-        margin-bottom: 6px;
+        // subtle divider so the gear row reads separate from carry slots
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .rp-inventory-grid {
@@ -75,9 +78,29 @@
         opacity: 0.4;
     }
 
+    // valid landing slot: tinted with the player's chosen UI chrome color
     .rp-inventory-slot.is-drop-target {
-        border-color: #8a6fe8;
-        background: rgba(138, 111, 232, 0.12);
+        border-color: var(--prp-chrome-solid);
+        background: color-mix(in srgb, var(--prp-chrome-solid) 16%, transparent);
+    }
+
+    // Windows-style drag ghost: the item art rides the cursor at reduced
+    // opacity (fixed positioning works here - draggable windows position
+    // via left/top, no ancestor transform).
+    .rp-inventory-drag-ghost {
+        position: fixed;
+        z-index: 2000;
+        width: 40px;
+        height: 40px;
+        margin-left: -20px;
+        margin-top: -20px;
+        pointer-events: none;
+        opacity: 0.55;
+
+        .rp-inventory-item {
+            width: 100%;
+            height: 100%;
+        }
     }
 
     .rp-inventory-item {
@@ -95,8 +118,8 @@
 
     .rp-inventory-count {
         position: absolute;
-        top: 3px;
-        right: 3px;
+        bottom: 3px;
+        left: 3px;
         min-width: 15px;
         height: 15px;
         display: flex;

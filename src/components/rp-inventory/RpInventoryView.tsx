@@ -1,5 +1,5 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
-import { FC, PointerEvent, useEffect, useRef, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -30,7 +30,7 @@ export const RpInventoryView: FC<{}> = props =>
     const [ items, setItems ] = useState<Map<number, { item: string, count: number }>>(new Map());
     const [ dragFrom, setDragFrom ] = useState<number>(-1);
     const [ dropTarget, setDropTarget ] = useState<number>(-1);
-    const startRef = useRef<{ slot: number, x: number, y: number }>(null);
+    const [ ghost, setGhost ] = useState<{ x: number, y: number }>(null);
     const movedRef = useRef(false);
 
     // Live backpack contents — sent at login and after every change, so the
@@ -81,10 +81,6 @@ export const RpInventoryView: FC<{}> = props =>
     // anything new (the server enforces placement).
     const unlockedSlots = (HasHabboVip() ? CARRY_SLOTS.length : UNLOCKED_SLOTS);
 
-    // A drop may land on any unlocked slot, or swap with an occupied lapsed
-    // slot (mirrors the server's placement rule).
-    const isDropTarget = (slot: number) => ((slot !== dragFrom) && ((slot <= unlockedSlots) || !!items.get(slot)));
-
     const slotUnderPointer = (clientX: number, clientY: number): number =>
     {
         const cell = document.elementFromPoint(clientX, clientY)?.closest('[data-rp-slot]');
@@ -93,47 +89,65 @@ export const RpInventoryView: FC<{}> = props =>
         return (Number.isFinite(slot) ? slot : -1);
     }
 
-    const onItemDown = (event: PointerEvent<HTMLDivElement>, slot: number) =>
+    // Window-level drag: pointerdown arms listeners on window, so the drop
+    // always lands and state always resets no matter where the pointer ends
+    // up (the old per-element pointer-capture version could strand the
+    // highlight and drop nothing). The drop slot is computed from the
+    // pointerup position itself - no state closures involved.
+    const onItemDown = (event: ReactPointerEvent<HTMLDivElement>, slot: number) =>
     {
-        try
-        {
-            event.currentTarget.setPointerCapture(event.pointerId);
-        }
-        catch(e)
-        {}
+        if(event.button !== 0) return;
 
         movedRef.current = false;
-        startRef.current = { slot, x: event.clientX, y: event.clientY };
-    }
 
-    const onItemMove = (event: PointerEvent<HTMLDivElement>) =>
-    {
-        const start = startRef.current;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        let started = false;
 
-        if(!start) return;
+        // A drop may land on any unlocked slot, or swap with an occupied
+        // lapsed slot (mirrors the server's placement rule).
+        const isDropTarget = (over: number) => ((over !== slot) && ((over <= unlockedSlots) || !!items.get(over)));
 
-        if(dragFrom < 0)
+        const onMove = (moveEvent: globalThis.PointerEvent) =>
         {
-            if((Math.abs(event.clientX - start.x) <= DRAG_THRESHOLD) && (Math.abs(event.clientY - start.y) <= DRAG_THRESHOLD)) return;
+            if(!started)
+            {
+                if((Math.abs(moveEvent.clientX - startX) <= DRAG_THRESHOLD) && (Math.abs(moveEvent.clientY - startY) <= DRAG_THRESHOLD)) return;
 
-            movedRef.current = true;
+                started = true;
+                movedRef.current = true;
 
-            setDragFrom(start.slot);
+                setDragFrom(slot);
+            }
+
+            setGhost({ x: moveEvent.clientX, y: moveEvent.clientY });
+
+            const over = slotUnderPointer(moveEvent.clientX, moveEvent.clientY);
+
+            setDropTarget(((over >= 0) && isDropTarget(over)) ? over : -1);
         }
 
-        const over = slotUnderPointer(event.clientX, event.clientY);
+        const onUp = (upEvent: globalThis.PointerEvent) =>
+        {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
 
-        setDropTarget(((over >= 0) && isDropTarget(over)) ? over : -1);
-    }
+            if(started && (upEvent.type === 'pointerup'))
+            {
+                const over = slotUnderPointer(upEvent.clientX, upEvent.clientY);
 
-    const onItemUp = () =>
-    {
-        if((dragFrom >= 0) && (dropTarget >= 0)) SendMessageComposer(new RpMoveItemComposer(dragFrom, dropTarget));
+                if((over >= 0) && isDropTarget(over)) SendMessageComposer(new RpMoveItemComposer(slot, over));
+            }
 
-        startRef.current = null;
+            setDragFrom(-1);
+            setDropTarget(-1);
+            setGhost(null);
+        }
 
-        setDragFrom(-1);
-        setDropTarget(-1);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
     }
 
     return (
@@ -180,10 +194,7 @@ export const RpInventoryView: FC<{}> = props =>
 
                                         SendMessageComposer(new RpUseItemComposer(slot));
                                     } }
-                                    onPointerDown={ event => onItemDown(event, slot) }
-                                    onPointerMove={ onItemMove }
-                                    onPointerUp={ onItemUp }
-                                    onPointerCancel={ onItemUp }>
+                                    onPointerDown={ event => onItemDown(event, slot) }>
                                     <div className={ `rp-inventory-item ${ meta.cls }` } />
                                     { (entry.count > 1) &&
                                         <span className="rp-inventory-count">{ entry.count }</span> }
@@ -197,6 +208,10 @@ export const RpInventoryView: FC<{}> = props =>
                             </div>);
                     }) }
                 </div>
+                { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
+                    <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>
+                        <div className={ `rp-inventory-item ${ ITEMS[items.get(dragFrom).item].cls }` } />
+                    </div> }
             </NitroCardContentView>
         </NitroCardView>
     );
