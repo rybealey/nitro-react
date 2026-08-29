@@ -270,6 +270,9 @@ export const RpSettingsView: FC<{}> = props =>
                                     { page }
                                 </div>
                             )) }
+                            { /* future groups - links land here as their settings ship */ }
+                            <div className="rp-settings-subnav-eyebrow">Interactions</div>
+                            <div className="rp-settings-subnav-eyebrow">Verification</div>
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
                             <>
