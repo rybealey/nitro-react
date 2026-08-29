@@ -1,5 +1,5 @@
 import { RoomEngineEvent, RoomEnterEffect, RoomSessionDanceEvent } from '@nitrots/nitro-renderer';
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { AvatarInfoFurni, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, GetConfiguration, GetSessionDataManager, RoomWidgetUpdateRentableBotChatEvent } from '../../../../api';
 import { Column } from '../../../../common';
 import { useAvatarInfoWidget, useRoom, useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
@@ -97,23 +97,51 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
         return null;
     }
 
+    // The infostand slides in from the right on open and back out on close:
+    // the last info sticks around as `displayedInfo` for the exit animation's
+    // duration before the container unmounts. Switching targets while open
+    // just swaps content in place. Duration matches the CSS animations.
+    const [ displayedInfo, setDisplayedInfo ] = useState(avatarInfo);
+    const [ infostandClosing, setInfostandClosing ] = useState(false);
+
+    useEffect(() =>
+    {
+        if(avatarInfo)
+        {
+            setDisplayedInfo(avatarInfo);
+            setInfostandClosing(false);
+
+            return;
+        }
+
+        setInfostandClosing(true);
+
+        const timeout = window.setTimeout(() =>
+        {
+            setDisplayedInfo(null);
+            setInfostandClosing(false);
+        }, 220);
+
+        return () => window.clearTimeout(timeout);
+    }, [ avatarInfo ]);
+
     const getInfostandView = () =>
     {
-        if(!avatarInfo) return null;
+        if(!displayedInfo) return null;
 
-        switch(avatarInfo.type)
+        switch(displayedInfo.type)
         {
             case AvatarInfoFurni.FURNI:
-                return <InfoStandWidgetFurniView avatarInfo={ (avatarInfo as AvatarInfoFurni) } onClose={ () => setAvatarInfo(null) } />;
+                return <InfoStandWidgetFurniView avatarInfo={ (displayedInfo as AvatarInfoFurni) } onClose={ () => setAvatarInfo(null) } />;
             case AvatarInfoUser.OWN_USER:
             case AvatarInfoUser.PEER:
-                return <InfoStandWidgetUserView avatarInfo={ (avatarInfo as AvatarInfoUser) } setAvatarInfo={ setAvatarInfo } onClose={ () => setAvatarInfo(null) } />;
+                return <InfoStandWidgetUserView avatarInfo={ (displayedInfo as AvatarInfoUser) } setAvatarInfo={ setAvatarInfo } onClose={ () => setAvatarInfo(null) } />;
             case AvatarInfoUser.BOT:
-                return <InfoStandWidgetBotView avatarInfo={ (avatarInfo as AvatarInfoUser) } onClose={ () => setAvatarInfo(null) } />;
+                return <InfoStandWidgetBotView avatarInfo={ (displayedInfo as AvatarInfoUser) } onClose={ () => setAvatarInfo(null) } />;
             case AvatarInfoRentableBot.RENTABLE_BOT:
-                return <InfoStandWidgetRentableBotView avatarInfo={ (avatarInfo as AvatarInfoRentableBot) } onClose={ () => setAvatarInfo(null) } />;
+                return <InfoStandWidgetRentableBotView avatarInfo={ (displayedInfo as AvatarInfoRentableBot) } onClose={ () => setAvatarInfo(null) } />;
             case AvatarInfoPet.PET_INFO:
-                return <InfoStandWidgetPetView avatarInfo={ (avatarInfo as AvatarInfoPet) } onClose={ () => setAvatarInfo(null) } />
+                return <InfoStandWidgetPetView avatarInfo={ (displayedInfo as AvatarInfoPet) } onClose={ () => setAvatarInfo(null) } />
         }
     }
 
@@ -122,8 +150,8 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
             { isDecorating &&
                 <AvatarInfoWidgetDecorateView userId={ GetSessionDataManager().userId } userName={ GetSessionDataManager().userName } roomIndex={ roomSession.ownRoomIndex } setIsDecorating={ setIsDecorating } /> }
             { getMenuView() }
-            { avatarInfo &&
-                <Column alignItems="end" className="nitro-infostand-container">
+            { displayedInfo &&
+                <Column alignItems="end" className={ `nitro-infostand-container${ infostandClosing ? ' is-closing' : '' }` }>
                     { getInfostandView() }
                 </Column> }
             { (nameBubbles.length > 0) && nameBubbles.map((name, index) => <AvatarInfoWidgetNameView key={ index } nameInfo={ name } onClose={ () => removeNameBubble(index) } />) }

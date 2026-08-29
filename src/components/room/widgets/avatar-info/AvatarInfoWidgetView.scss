@@ -30,6 +30,15 @@
     z-index: $infostand-zindex;
     color: $white;
 
+    // Slide in from the right edge on open; .is-closing plays the reverse
+    // while the container sticks around for the animation's 220ms (see
+    // AvatarInfoWidgetView's displayedInfo state) before unmounting.
+    animation: infostand-slide-in 0.22s ease-out;
+
+    &.is-closing {
+        animation: infostand-slide-out 0.22s ease-in forwards;
+    }
+
     .nitro-infostand {
         // The username opens the profile; underline on hover signals it.
         .infostand-name-link:hover {
@@ -87,9 +96,15 @@
             border-radius: $border-radius;
         }
 
+        // Badge placements read as slots: every cell gets the same subtle
+        // container chrome whether or not a badge sits in it (chrome vars so
+        // player color schemes carry through).
         .badge-image {
             width: 45px;
             height: 45px;
+            border-radius: $border-radius;
+            background-color: var(--prp-chrome-hi);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .motto-content {
@@ -140,5 +155,29 @@
 
     .pet-stats {
         height: 18px;
+    }
+}
+
+@keyframes infostand-slide-in {
+    from {
+        transform: translateX(calc(100% + 10px));
+        opacity: 0.6;
+    }
+
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+@keyframes infostand-slide-out {
+    from {
+        transform: none;
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(calc(100% + 10px));
+        opacity: 0.6;
     }
 }
