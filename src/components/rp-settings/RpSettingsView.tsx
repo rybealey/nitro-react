@@ -2,7 +2,7 @@ import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { Column, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
+import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
@@ -353,9 +353,11 @@ export const RpSettingsView: FC<{}> = props =>
                                         <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord', '_blank', 'noopener,noreferrer') }>Manage connection</div>
                                     </> }
                                     { (discordLinked !== true) && <>
-                                        <Text small className="text-muted">Connect your Discord account to get the Verified role and have your server nickname match your in-game name. Your Discord details are never shown in-game.</Text>
-                                        <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord/connect', '_blank', 'noopener,noreferrer') }>Connect Discord</div>
-                                        <Text small underline pointer className="text-muted" onClick={ () => SendMessageComposer(new RpGetDiscordStatusComposer()) }>I've connected - check again</Text>
+                                        <Text small className="text-muted">Link your Discord account to get the Verified role and an in-game Discord badge. Your Discord details are never shown in-game.</Text>
+                                        <Flex center gap={ 2 }>
+                                            <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord/connect', '_blank', 'noopener,noreferrer') }>Connect Discord</div>
+                                            <Text small underline pointer className="text-muted" onClick={ () => SendMessageComposer(new RpGetDiscordStatusComposer()) }>I've connected - check again</Text>
+                                        </Flex>
                                     </> }
                                 </Column> }
                             </>
