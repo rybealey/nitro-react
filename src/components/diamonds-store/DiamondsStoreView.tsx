@@ -58,7 +58,7 @@ export const DiamondsStoreView: FC<{}> = props =>
             return;
         }
 
-        setStoreError((parser.status === 1) ? 'Not enough diamonds - top up in the Buy Diamonds tab.' : 'Your backpack is full - free a slot and try again.');
+        setStoreError((parser.status === 1) ? 'Not enough diamonds - top up in the Diamonds tab.' : 'Your backpack is full - free a slot and try again.');
         setStoreState('error');
     });
 
