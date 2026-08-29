@@ -84,38 +84,6 @@
         background: color-mix(in srgb, var(--prp-chrome-solid) 16%, transparent);
     }
 
-    // Windows-style drag ghost: the item art rides the cursor at reduced
-    // opacity (fixed positioning works here - draggable windows position
-    // via left/top, no ancestor transform).
-    .rp-inventory-drag-ghost {
-        position: fixed;
-        z-index: 2000;
-        width: 40px;
-        height: 40px;
-        margin-left: -20px;
-        margin-top: -20px;
-        pointer-events: none;
-        opacity: 0.55;
-
-        .rp-inventory-item {
-            width: 100%;
-            height: 100%;
-        }
-    }
-
-    .rp-inventory-item {
-        width: 100%;
-        height: 100%;
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: auto;
-        image-rendering: pixelated;
-
-        &.rp-item-smoothie { background-image: url('@/assets/images/rp-items/smoothie.png'); }
-        &.rp-item-vip-token-gold { background-image: url('@/assets/images/rp-items/vip-token-gold.png'); }
-        &.rp-item-vip-token-silver { background-image: url('@/assets/images/rp-items/vip-token-silver.png'); }
-    }
-
     .rp-inventory-count {
         position: absolute;
         bottom: 3px;
@@ -141,4 +109,34 @@
         color: rgba(0, 0, 0, 0.3);
         user-select: none;
     }
+}
+
+// Top level (not nested in the window): the item art is shared by the slot
+// grid and the drag ghost, and the ghost itself portals to document.body -
+// inside the card, backdrop-filter creates a containing block that makes
+// position: fixed resolve from the window corner instead of the viewport.
+.rp-inventory-item {
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: auto;
+    image-rendering: pixelated;
+
+    &.rp-item-smoothie { background-image: url('@/assets/images/rp-items/smoothie.png'); }
+    &.rp-item-vip-token-gold { background-image: url('@/assets/images/rp-items/vip-token-gold.png'); }
+    &.rp-item-vip-token-silver { background-image: url('@/assets/images/rp-items/vip-token-silver.png'); }
+}
+
+// Windows-style drag ghost: item art centered exactly under the cursor at
+// reduced opacity.
+.rp-inventory-drag-ghost {
+    position: fixed;
+    z-index: 10000;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
+    margin-top: -20px;
+    pointer-events: none;
+    opacity: 0.55;
 }

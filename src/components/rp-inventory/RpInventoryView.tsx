@@ -1,5 +1,6 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -209,9 +210,10 @@ export const RpInventoryView: FC<{}> = props =>
                     }) }
                 </div>
                 { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
-                    <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>
-                        <div className={ `rp-inventory-item ${ ITEMS[items.get(dragFrom).item].cls }` } />
-                    </div> }
+                    createPortal(
+                        <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>
+                            <div className={ `rp-inventory-item ${ ITEMS[items.get(dragFrom).item].cls }` } />
+                        </div>, document.body) }
             </NitroCardContentView>
         </NitroCardView>
     );
