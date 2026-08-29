@@ -68,6 +68,8 @@
             width: 100%;
             max-width: 68px;
             border-radius: $border-radius;
+            // same hairline as the badge slots so the panels read as one set
+            border: 1px solid rgba(255, 255, 255, 0.08);
 
             &.pet {
                 max-width: 75px;
@@ -136,6 +138,8 @@
 
         .bg-light-dark {
             background-color: var(--prp-chrome-hi) !important;
+            // same hairline as the badge slots (motto box and friends)
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .motto-input {
