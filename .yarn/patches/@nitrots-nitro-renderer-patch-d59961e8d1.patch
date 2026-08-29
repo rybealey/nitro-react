@@ -1,0 +1,16 @@
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 56a30cf8c8338d1f9d588ee5d7a9d17cb1d856c1..bee2079683789060c32f0d16f96be122cac704ac 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -475,7 +475,10 @@ export class IncomingHeader
+     public static RP_CORP_DETAIL = 3947;
+     public static RP_USER_CORP = 3950;
+     public static RP_DISCORD_STATUS = 3952;
+-    public static RP_MOVEMENT_CYCLE = 3954;
++    // NOT 3954: that value is the stock COMPETITION_ROOMS_DATA header, whose
++    // parser wins the shared-header dispatch and eats the packet. Check stock
++    // values before assigning custom wire ids.
++    public static RP_MOVEMENT_CYCLE = 3955;
+     public static RP_ALBUM_LIST = 3938;
+     public static RP_ALBUM_PHOTOS = 3944;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
