@@ -10,7 +10,7 @@ import { useStripeCheckout } from './useStripeCheckout';
 
 type DiamondsStoreTab = 'store' | 'buy';
 type BuyViewState = 'form' | 'checkout' | 'complete' | 'error';
-type StoreViewState = 'list' | 'confirm' | 'success' | 'error';
+type StoreViewState = 'list' | 'success' | 'error';
 
 // MIN must stay in lockstep with the CMS DiamondCheckoutFormRequest rule
 // (min:500) or valid-looking amounts 422 at checkout.
@@ -35,7 +35,8 @@ export const DiamondsStoreView: FC<{}> = props =>
     const { containerRef: checkoutContainerRef, mount: mountCheckout, destroy: destroyCheckout } = useStripeCheckout();
     const [ listings, setListings ] = useState<DiamondsStoreListing[]>([]);
     const [ storeState, setStoreState ] = useState<StoreViewState>('list');
-    const [ selectedListing, setSelectedListing ] = useState<DiamondsStoreListing>(null);
+    // itemKey armed for the two-step inline Buy -> Confirm flow
+    const [ confirmingKey, setConfirmingKey ] = useState<string>(null);
     const [ storeError, setStoreError ] = useState('');
     // Guards the confirm screen's Buy button against a double-click firing
     // two purchases before the server round-trips a result.
@@ -51,6 +52,7 @@ export const DiamondsStoreView: FC<{}> = props =>
         const parser = event.getParser();
 
         setPurchasePending(false);
+        setConfirmingKey(null);
 
         if(parser.status === 0)
         {
@@ -163,6 +165,7 @@ export const DiamondsStoreView: FC<{}> = props =>
         setStoreState('list');
         setStoreError('');
         setPurchasePending(false);
+        setConfirmingKey(null);
     }, [ isVisible ]);
 
     useEffect(() =>
@@ -243,38 +246,43 @@ export const DiamondsStoreView: FC<{}> = props =>
                         { listings.map(listing =>
                         {
                             const onSale = (listing.specialPrice >= 0);
+                            const confirming = (confirmingKey === listing.itemKey);
 
                             return (
-                                <div key={ listing.itemKey } className="diamonds-store-listing" onClick={ () =>
-                                {
-                                    setSelectedListing(listing);
-                                    setStoreState('confirm');
-                                } }>
+                                <div key={ listing.itemKey } className="diamonds-store-listing">
                                     <div className={ `diamonds-store-listing-icon icon-${ listing.icon }` } />
                                     <div className="diamonds-store-listing-info">
                                         <div className="diamonds-store-listing-name">{ listing.name }</div>
                                         <div className="diamonds-store-listing-desc">{ listing.description }</div>
                                     </div>
-                                    <div className="diamonds-store-listing-price">
-                                        <LayoutCurrencyIcon type={ 5 } />
-                                        { onSale && <span className="diamonds-store-price-was">{ listing.price }</span> }
-                                        <span className="diamonds-store-price-now">{ onSale ? listing.specialPrice : listing.price }</span>
-                                        { onSale && <span className="diamonds-store-sale-tag">SALE</span> }
+                                    <div className="diamonds-store-listing-side">
+                                        <div className="diamonds-store-listing-price">
+                                            <LayoutCurrencyIcon type={ 5 } />
+                                            { onSale && <span className="diamonds-store-price-was">{ listing.price }</span> }
+                                            <span className="diamonds-store-price-now">{ onSale ? listing.specialPrice : listing.price }</span>
+                                            { onSale && <span className="diamonds-store-sale-tag">SALE</span> }
+                                        </div>
+                                        { /* two-step: Buy arms, Confirm purchases - only this
+                                             container is clickable, never the row */ }
+                                        <div className={ `diamonds-store-buy-btn${ confirming ? ' is-confirming' : '' }${ purchasePending ? ' is-pending' : '' }` } onClick={ () =>
+                                        {
+                                            if(purchasePending) return;
+
+                                            if(!confirming)
+                                            {
+                                                setConfirmingKey(listing.itemKey);
+
+                                                return;
+                                            }
+
+                                            setPurchasePending(true);
+                                            SendMessageComposer(new PurchaseDiamondsStoreItemComposer(listing.itemKey));
+                                        } }>
+                                            { confirming ? 'Confirm' : 'Buy' }
+                                        </div>
                                     </div>
                                 </div>);
                         }) }
-                    </div> }
-                { (currentTab === 'store') && (storeState === 'confirm') && selectedListing &&
-                    <div className="diamonds-store-result">
-                        <div className="diamonds-store-result-message">
-                            { `Buy ${ selectedListing.name } for ${ (selectedListing.specialPrice >= 0) ? selectedListing.specialPrice : selectedListing.price } diamonds?` }
-                        </div>
-                        <Button fullWidth variant="success" disabled={ purchasePending } onClick={ () =>
-                        {
-                            setPurchasePending(true);
-                            SendMessageComposer(new PurchaseDiamondsStoreItemComposer(selectedListing.itemKey));
-                        } }>Buy</Button>
-                        <Button fullWidth variant="secondary" onClick={ () => setStoreState('list') }>Cancel</Button>
                     </div> }
                 { (currentTab === 'store') && (storeState === 'success') &&
                     <div className="diamonds-store-result">
