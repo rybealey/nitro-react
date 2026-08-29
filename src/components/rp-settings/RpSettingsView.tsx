@@ -259,6 +259,7 @@ export const RpSettingsView: FC<{}> = props =>
                 { (currentTab === 'Roleplay') &&
                     <div className="rp-settings-subnav-layout">
                         <div className="rp-settings-subnav">
+                            <div className="rp-settings-subnav-eyebrow">Functions</div>
                             { ROLEPLAY_PAGES.map(page => (
                                 <div key={ page }
                                     className={ `rp-settings-subnav-item ${ (roleplayPage === page) ? 'is-active' : '' }` }
@@ -266,6 +267,8 @@ export const RpSettingsView: FC<{}> = props =>
                                     { page }
                                 </div>
                             )) }
+                            { /* future group - links land here as their settings ship */ }
+                            <div className="rp-settings-subnav-eyebrow">Interactions</div>
                         </div>
                         <Column center fullHeight gap={ 1 } className="rp-settings-placeholder rp-settings-subpage">
                             <Text bold>{ roleplayPage }</Text>
@@ -275,7 +278,7 @@ export const RpSettingsView: FC<{}> = props =>
                 { (currentTab === 'Social') &&
                     <div className="rp-settings-subnav-layout">
                         <div className="rp-settings-subnav">
-                            <div className="rp-settings-subnav-eyebrow">Personalization</div>
+                            <div className="rp-settings-subnav-eyebrow">Username</div>
                             { SOCIAL_PAGES.map(page => (
                                 <div key={ page }
                                     className={ `rp-settings-subnav-item ${ (socialPage === page) ? 'is-active' : '' }` }
