@@ -1,0 +1,351 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 9e25ae3b74b1c8eb8794b250d64bed954d0743fa..4fa304aba446570281590e37fd63eb2b491024b0 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -14,6 +14,10 @@ import { DiamondsStoreEvent } from './messages/incoming/DiamondsStoreEvent';
+ import { DiamondsStorePurchaseResultEvent } from './messages/incoming/DiamondsStorePurchaseResultEvent';
+ import { RpRoomZoneSaveComposer } from './messages/outgoing/RpRoomZoneSaveComposer';
+ import { RpPassiveCancelComposer } from './messages/outgoing/RpPassiveCancelComposer';
++import { RpCorpDetailEvent } from './messages/incoming/RpCorpDetailEvent';
++import { RpCorpsEvent } from './messages/incoming/RpCorpsEvent';
++import { RpGetCorpDetailComposer } from './messages/outgoing/RpGetCorpDetailComposer';
++import { RpGetCorpsComposer } from './messages/outgoing/RpGetCorpsComposer';
+ import { RpMoveItemComposer } from './messages/outgoing/RpMoveItemComposer';
+ import { RpUseItemComposer } from './messages/outgoing/RpUseItemComposer';
+ import { RpMessengerMarkReadComposer } from './messages/outgoing/RpMessengerMarkReadComposer';
+@@ -58,6 +62,8 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_INVENTORY, RpInventoryEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_RECEIPT, RpMessengerReceiptEvent);
+         this._events.set(IncomingHeader.RP_AIRPLANE_MODE, RpAirplaneModeEvent);
++        this._events.set(IncomingHeader.RP_CORPS, RpCorpsEvent);
++        this._events.set(IncomingHeader.RP_CORP_DETAIL, RpCorpDetailEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_LIST, RpAlbumListEvent);
+         this._events.set(IncomingHeader.RP_ALBUM_PHOTOS, RpAlbumPhotosEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_FRIEND_TYPING, RpMessengerFriendTypingEvent);
+@@ -1139,6 +1145,8 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_SAVE_UI_SETTINGS, RpSaveUiSettingsComposer);
+         this._composers.set(OutgoingHeader.RP_USE_ITEM, RpUseItemComposer);
+         this._composers.set(OutgoingHeader.RP_MOVE_ITEM, RpMoveItemComposer);
++        this._composers.set(OutgoingHeader.RP_GET_CORPS, RpGetCorpsComposer);
++        this._composers.set(OutgoingHeader.RP_GET_CORP_DETAIL, RpGetCorpDetailComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 29b96af42755ae212b31d0a1c1601cef816a0866..1bd44ec5e7b5d4a95b8f4aad9bfcb36dea268a79 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -471,6 +471,8 @@ export class IncomingHeader
+     public static RP_INVENTORY = 3904;
+     public static RP_MESSENGER_RECEIPT = 3906;
+     public static RP_AIRPLANE_MODE = 3935;
++    public static RP_CORPS = 3946;
++    public static RP_CORP_DETAIL = 3947;
+     public static RP_ALBUM_LIST = 3938;
+     public static RP_ALBUM_PHOTOS = 3944;
+     public static RP_MESSENGER_FRIEND_TYPING = 3932;
+diff --git a/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts b/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f9f1eefa1a232c75e9dd502845dbdefef7934c63
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
+@@ -0,0 +1,133 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: one corporation in full - the rank ladder (pay per 10-minute
++// shift interval, tier ceiling) and the employees at each rank.
++export interface RpCorpEmployee
++{
++    username: string;
++    figure: string;
++    tier: number;
++    online: boolean;
++    onDuty: boolean;
++}
++
++export interface RpCorpRank
++{
++    id: number;
++    order: number;
++    name: string;
++    pay: number;
++    tiers: number;
++    employees: RpCorpEmployee[];
++}
++
++export class RpCorpDetailParser implements IMessageParser
++{
++    private _corpId: number;
++    private _name: string;
++    private _badge: string;
++    private _description: string;
++    private _employeeCount: number;
++    private _ranks: RpCorpRank[];
++
++    public flush(): boolean
++    {
++        this._corpId = 0;
++        this._name = '';
++        this._badge = '';
++        this._description = '';
++        this._employeeCount = 0;
++        this._ranks = [];
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._corpId = wrapper.readInt();
++        this._name = wrapper.readString();
++        this._badge = wrapper.readString();
++        this._description = wrapper.readString();
++        this._employeeCount = wrapper.readInt();
++        this._ranks = [];
++
++        let rankCount = wrapper.readInt();
++
++        while(rankCount > 0)
++        {
++            const id = wrapper.readInt();
++            const order = wrapper.readInt();
++            const name = wrapper.readString();
++            const pay = wrapper.readInt();
++            const tiers = wrapper.readInt();
++            const employees: RpCorpEmployee[] = [];
++
++            let employeeCount = wrapper.readInt();
++
++            while(employeeCount > 0)
++            {
++                const username = wrapper.readString();
++                const figure = wrapper.readString();
++                const tier = wrapper.readInt();
++                const online = (wrapper.readInt() === 1);
++                const onDuty = (wrapper.readInt() === 1);
++
++                employees.push({ username, figure, tier, online, onDuty });
++
++                employeeCount--;
++            }
++
++            this._ranks.push({ id, order, name, pay, tiers, employees });
++
++            rankCount--;
++        }
++
++        return true;
++    }
++
++    public get corpId(): number
++    {
++        return this._corpId;
++    }
++
++    public get name(): string
++    {
++        return this._name;
++    }
++
++    public get badge(): string
++    {
++        return this._badge;
++    }
++
++    public get description(): string
++    {
++        return this._description;
++    }
++
++    public get employeeCount(): number
++    {
++        return this._employeeCount;
++    }
++
++    public get ranks(): RpCorpRank[]
++    {
++        return this._ranks;
++    }
++}
++
++export class RpCorpDetailEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpCorpDetailParser);
++    }
++
++    public getParser(): RpCorpDetailParser
++    {
++        return this.parser as RpCorpDetailParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/RpCorpsEvent.ts b/src/nitro/communication/messages/incoming/RpCorpsEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d54b87434a102904c721ec8aeb8277ebdd5ea272
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpCorpsEvent.ts
+@@ -0,0 +1,65 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: the corporations directory for the Corporations window's rail -
++// every corporation with its badge code ('' = default) and employee count.
++export interface RpCorpEntry
++{
++    id: number;
++    name: string;
++    badge: string;
++    employees: number;
++}
++
++export class RpCorpsParser implements IMessageParser
++{
++    private _corps: RpCorpEntry[];
++
++    public flush(): boolean
++    {
++        this._corps = [];
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._corps = [];
++
++        let count = wrapper.readInt();
++
++        while(count > 0)
++        {
++            const id = wrapper.readInt();
++            const name = wrapper.readString();
++            const badge = wrapper.readString();
++            const employees = wrapper.readInt();
++
++            this._corps.push({ id, name, badge, employees });
++
++            count--;
++        }
++
++        return true;
++    }
++
++    public get corps(): RpCorpEntry[]
++    {
++        return this._corps;
++    }
++}
++
++export class RpCorpsEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpCorpsParser);
++    }
++
++    public getParser(): RpCorpsParser
++    {
++        return this.parser as RpCorpsParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index 549e6254a7ac9dfc59e9482b309ab712410b8799..dcfb4e914e9ae00c2e4bc7c363a5e2c7ab4ea248 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -78,6 +78,8 @@ export * from './RpInventoryEvent';
+ export * from './RpUiSettingsEvent';
+ export * from './RpMessengerReceiptEvent';
+ export * from './RpAirplaneModeEvent';
++export * from './RpCorpDetailEvent';
++export * from './RpCorpsEvent';
+ export * from './RpAlbumListEvent';
+ export * from './RpAlbumPhotosEvent';
+ export * from './RpMessengerFriendTypingEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index aa46b3e671d436ac2cb251a38b15388fef60e9a1..a03b4d0575bc6bf091bfebc606cff47f627915a4 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -470,6 +470,8 @@ export class OutgoingHeader
+     public static RP_SAVE_UI_SETTINGS = 3903;
+     public static RP_USE_ITEM = 3905;
+     public static RP_MOVE_ITEM = 3945;
++    public static RP_GET_CORPS = 3948;
++    public static RP_GET_CORP_DETAIL = 3949;
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_SAVE_PHOTO = 3936;
+diff --git a/src/nitro/communication/messages/outgoing/RpGetCorpDetailComposer.ts b/src/nitro/communication/messages/outgoing/RpGetCorpDetailComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b9b1d73576470cff6b9ddcc14d7a0bf5ee007e71
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpGetCorpDetailComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: request one corporation's full roster for the Corporations window.
++export class RpGetCorpDetailComposer implements IMessageComposer<ConstructorParameters<typeof RpGetCorpDetailComposer>>
++{
++    private _data: ConstructorParameters<typeof RpGetCorpDetailComposer>;
++
++    constructor(corpId: number)
++    {
++        this._data = [corpId];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpGetCorpsComposer.ts b/src/nitro/communication/messages/outgoing/RpGetCorpsComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9c31f598f226925c491dcffa12902da854648b87
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpGetCorpsComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: request the corporations directory (Corporations window opened).
++export class RpGetCorpsComposer implements IMessageComposer<ConstructorParameters<typeof RpGetCorpsComposer>>
++{
++    private _data: ConstructorParameters<typeof RpGetCorpsComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 97bd862ffd0445af6511f3f19b6a57085a3dfff9..98efe05a0d548322f80cfa45f54ae2781d1750c6 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -73,6 +73,8 @@ export * from './user/settings';
+ export * from './userclassification';
+ export * from './RpSaveUiSettingsComposer';
+ export * from './RpMoveItemComposer';
++export * from './RpGetCorpDetailComposer';
++export * from './RpGetCorpsComposer';
+ export * from './RpUseItemComposer';
+ export * from './RpMessengerMarkReadComposer';
+ export * from './RpSetAirplaneModeComposer';

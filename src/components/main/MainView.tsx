@@ -24,6 +24,7 @@ import { PhoneView } from '../phone/PhoneView';
 import { RightSideView } from '../right-side/RightSideView';
 import { RoomView } from '../room/RoomView';
 import { ToolbarView } from '../toolbar/ToolbarView';
+import { RpCorporationsView } from '../rp-corporations/RpCorporationsView';
 import { RpInventoryView } from '../rp-inventory/RpInventoryView';
 import { RpProfileView } from '../rp-profile/RpProfileView';
 import { RpSettingsView } from '../rp-settings/RpSettingsView';
@@ -101,6 +102,7 @@ export const MainView: FC<{}> = props =>
             <UserSettingsView />
             <RpSettingsView />
             <RpInventoryView />
+            <RpCorporationsView />
             <RpProfileView />
             <GroupsView />
             <CameraWidgetView />
