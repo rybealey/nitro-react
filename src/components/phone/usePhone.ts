@@ -38,9 +38,26 @@ export const DEFAULT_DOCK_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App
 export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Stocks', 'Music', 'Wallet', 'Calendar', 'Tasks', 'Notes', 'Weather', 'News', 'Translate', 'Settings' ];
 export const DOCK_CAPACITY: number = 4;
 
+// Fixed home-screen slot matrix (iOS-style): apps sit in any slot, empty
+// slots ('' entries) are allowed anywhere - the grid is NOT packed.
+export const GRID_COLS: number = 4;
+export const GRID_ROWS: number = 5;
+export const GRID_SLOTS: number = (GRID_COLS * GRID_ROWS);
+
+const packIntoSlots = (apps: string[]): string[] =>
+{
+    const slots = new Array<string>(GRID_SLOTS).fill('');
+
+    apps.slice(0, GRID_SLOTS).forEach((key, index) => (slots[index] = key));
+
+    return slots;
+}
+
 // Bump when the default roster changes enough that stored layouts should be
-// discarded and reset to the new arrangement (rather than merged).
-const PHONE_LAYOUT_VERSION: number = 2;
+// discarded and reset to the new arrangement (rather than merged). v3: the
+// grid became a fixed slot matrix with gaps; v2 dense lists migrate by
+// packing into the first slots (arrangement preserved).
+const PHONE_LAYOUT_VERSION: number = 3;
 
 export type PhoneTheme = 'auto' | 'light' | 'dark';
 
@@ -59,21 +76,42 @@ interface PhonePrefs
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
 
-// Reconcile a stored layout with the current app roster: keep the player's
-// order for apps that still exist, drop strays, slot new apps into their
-// default zone (grid overflow catches a full dock).
+// Reconcile a stored slot layout with the current app roster: keep every
+// surviving app in its exact slot, drop strays and duplicates, and place new
+// apps into their default zone (first empty grid slot catches a full dock).
 const mergeAppOrder = (storedGrid: string[], storedDock: string[]): { grid: string[], dock: string[] } =>
 {
     const known = [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ];
     const dock = storedDock.filter(key => (known.indexOf(key) >= 0)).slice(0, DOCK_CAPACITY);
-    const grid = storedGrid.filter(key => ((known.indexOf(key) >= 0) && (dock.indexOf(key) === -1)));
+    const seen = new Set<string>(dock);
+    const grid = new Array<string>(GRID_SLOTS).fill('');
+
+    storedGrid.slice(0, GRID_SLOTS).forEach((key, index) =>
+    {
+        if(!key || (known.indexOf(key) === -1) || seen.has(key)) return;
+
+        grid[index] = key;
+        seen.add(key);
+    });
 
     for(const key of known)
     {
-        if((grid.indexOf(key) >= 0) || (dock.indexOf(key) >= 0)) continue;
+        if(seen.has(key)) continue;
 
-        if((DEFAULT_DOCK_APPS.indexOf(key) >= 0) && (dock.length < DOCK_CAPACITY)) dock.push(key);
-        else grid.push(key);
+        if((DEFAULT_DOCK_APPS.indexOf(key) >= 0) && (dock.length < DOCK_CAPACITY))
+        {
+            dock.push(key);
+            seen.add(key);
+            continue;
+        }
+
+        const slot = grid.indexOf('');
+
+        if(slot >= 0)
+        {
+            grid[slot] = key;
+            seen.add(key);
+        }
     }
 
     return { grid, dock };
@@ -91,9 +129,14 @@ const readPrefs = (userId: number): PhonePrefs =>
             const readStrings = (value: unknown) => (Array.isArray(value) ? value.filter((key: unknown) => (typeof key === 'string')) : []);
             // A stored layout from an older roster version is discarded so the
             // new default arrangement shows; pins/mutes/theme are preserved.
+            // Exception: a v2 dense list migrates into the slot matrix packed
+            // top-left, keeping the player's arrangement.
+            const storedDock = (Array.isArray(parsed.dock) ? readStrings(parsed.dock) : [ ...DEFAULT_DOCK_APPS ]);
             const { grid, dock } = ((parsed.layout === PHONE_LAYOUT_VERSION)
-                ? mergeAppOrder(readStrings(parsed.grid), (Array.isArray(parsed.dock) ? readStrings(parsed.dock) : [ ...DEFAULT_DOCK_APPS ]))
-                : { grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ] });
+                ? mergeAppOrder(readStrings(parsed.grid), storedDock)
+                : ((parsed.layout === 2)
+                    ? mergeAppOrder(packIntoSlots(readStrings(parsed.grid).filter(key => (key !== ''))), storedDock)
+                    : { grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ] }));
 
             return {
                 pinned: (Array.isArray(parsed.pinned) ? parsed.pinned.filter((id: unknown) => (typeof id === 'number')) : []),
@@ -109,7 +152,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: [ ...DEFAULT_GRID_APPS ], dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right' };
+    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right' };
 }
 
 // Synchronous read of just the saved open-position, straight from storage -
@@ -144,7 +187,7 @@ const usePhonePrefsState = () =>
     const [ loadedUserId, setLoadedUserId ] = useState<number>(0);
     const [ pinnedIds, setPinnedIds ] = useState<number[]>([]);
     const [ mutedIds, setMutedIds ] = useState<number[]>([]);
-    const [ gridOrder, setGridOrder ] = useState<string[]>([ ...DEFAULT_GRID_APPS ]);
+    const [ gridOrder, setGridOrder ] = useState<string[]>(packIntoSlots(DEFAULT_GRID_APPS));
     const [ dockOrder, setDockOrder ] = useState<string[]>([ ...DEFAULT_DOCK_APPS ]);
     const [ theme, setThemeState ] = useState<PhoneTheme>('auto');
     const [ position, setPositionState ] = useState<PhonePosition>('right');
@@ -244,7 +287,7 @@ const usePhonePrefsState = () =>
         save({ position: nextPosition });
     }
 
-    // Drag-reorder of the home screen (grid + dock zones together).
+    // Drag-rearrange of the home screen (grid slot matrix + dock together).
     const setAppOrder = (grid: string[], dock: string[]) =>
     {
         setGridOrder(grid);

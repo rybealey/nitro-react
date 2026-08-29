@@ -333,6 +333,12 @@ $phone-scale: 0.8;
         right: 22px;
         display: grid;
         grid-template-columns: repeat(4, 1fr);
+        // Fixed 5-row slot matrix: rows keep their pitch even when a whole
+        // row is empty, so icons can live anywhere on the screen (iOS-style)
+        // and pointer->slot math in PhoneHomeView stays exact. Row height =
+        // tile 54 + 6 gap + label; gaps must match GRID_GAP_X/Y there.
+        grid-template-rows: repeat(5, 74px);
+        align-items: start;
         gap: 18px 12px;
     }
 
