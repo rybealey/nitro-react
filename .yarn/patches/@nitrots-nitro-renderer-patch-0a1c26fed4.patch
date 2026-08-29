@@ -1,0 +1,92 @@
+diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+index b161cadd25745f00a60d038a2b2a48b8dfd42a03..a09afb924044f4a302bb46cca4144905270811f6 100644
+--- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
++++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+@@ -37,9 +37,6 @@ export class AvatarLogic extends MovingObjectLogic
+     {
+         super();
+ 
+-        // PixelRP avatars retain packet-anchored 530ms interpolation. Keep the
+-        // shared MovingObjectLogic default native for pets and furniture.
+-        this.updateInterval = 530;
+ 
+         this._selected = false;
+         this._reportedLocation = null;
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index 577f73e028ff42283abf65f31ab2ddb4f9325cf9..29c8d4618c38b2bfe7a73fbf769f86c7b0478b2f 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -114,6 +114,12 @@ export class PixelRPMovementAuthority
+     private static readonly GAP_LOG_MS = 50;
+     private static readonly PACKET_GAP_LOG_MS = 650;
+     private static readonly HOLD_UNDERRUN_MS = 120;
++    // The LOCAL player is never intentionally frozen waiting for authority:
++    // past this brief boundary clamp (~2 frames of cadence jitter) the own
++    // avatar releases to native prediction instead of holding. Remotes keep
++    // the longer hold - their 45ms buffer plus END_HOLD absorbs jitter
++    // without visible corrections.
++    private static readonly OWN_HOLD_MAX_MS = 100;
+     private static readonly CLOCK_SHIFT_LOG_MS = 8;
+ 
+     private static _instance: PixelRPMovementAuthority = null;
+@@ -304,7 +310,20 @@ export class PixelRPMovementAuthority
+             if(avatar.state !== PixelRPAuthorityState.AUTHORITATIVE) return null;
+ 
+             if(!avatar.endedAt) avatar.endedAt = clientNow;
+-            else if(edge.seq !== avatar.lastRenderedSeq)
++
++            if(isOwn && ((clientNow - avatar.endedAt) > PixelRPMovementAuthority.OWN_HOLD_MAX_MS))
++            {
++                // Local rule: never hold the controlled avatar to wait for
++                // authority. Native prediction renders the identical resting
++                // tile (the server has not moved the avatar), and authority
++                // re-commits discretely at the next real boundary.
++                this.logEvent('ROOMAUTH_LOCAL_HOLD_BLOCKED', avatar, edge, phase, estServerNow, NaN,
++                    `holdReason=await-next-step wouldHaveHeldMs=${ Math.round(clientNow - avatar.endedAt) } action=continue-predicted`, null);
++                this.releaseAvatar(avatar, 'local-hold-blocked');
++                return null;
++            }
++
++            if(edge.seq !== avatar.lastRenderedSeq && (avatar.endedAt !== clientNow))
+             {
+                 // A LATE edge arrived while holding and its window is already
+                 // over too: advance the hold to the new edge's goal as ONE
+@@ -375,7 +394,7 @@ export class PixelRPMovementAuthority
+             if(displacement <= PixelRPMovementAuthority.MAX_ENTRY_DISCREPANCY)
+             {
+                 // Visually continuous: enter immediately.
+-                this.enter(avatar, edge, phase, estServerNow, displacement, 'immediate-continuous', target);
++                this.enter(avatar, edge, phase, estServerNow, displacement, `immediate-continuous local=${ isOwn }`, target);
+             }
+             else if(avatar.state === PixelRPAuthorityState.NATIVE)
+             {
+@@ -384,7 +403,7 @@ export class PixelRPMovementAuthority
+                 // chasing - native rendering continues untouched meanwhile.
+                 avatar.state = PixelRPAuthorityState.ARMED;
+                 avatar.armSeq = edge.seq;
+-                this.logEvent('ROOMAUTH_ARM', avatar, edge, phase, estServerNow, displacement, 'armed-await-boundary', target);
++                this.logEvent('ROOMAUTH_ARM', avatar, edge, phase, estServerNow, displacement, `armed-await-boundary local=${ isOwn }`, target);
+                 return null;
+             }
+             else if(edge.seq > avatar.armSeq)
+@@ -401,7 +420,7 @@ export class PixelRPMovementAuthority
+ 
+                 // Boundary passed: the single discrete switch. The target sits
+                 // at (or within a frame of) a real route vertex.
+-                this.enter(avatar, edge, phase, estServerNow, displacement, 'boundary-switch', target);
++                this.enter(avatar, edge, phase, estServerNow, displacement, `boundary-switch local=${ isOwn }`, target);
+             }
+             else
+             {
+@@ -489,7 +508,10 @@ export class PixelRPMovementAuthority
+             // A natural stop (walk-ended) is snap-free - the last edge's goal
+             // IS the native resting tile. Anything else is a defensive return
+             // to native rendering, never to any other sync system.
+-            const stop = (reason === 'walk-ended');
++            // 'local-hold-blocked' is also a clean stop from the player's
++            // point of view: the own avatar simply stands at its real tile
++            // under native rendering instead of an authority hold.
++            const stop = ((reason === 'walk-ended') || (reason === 'local-hold-blocked'));
+ 
+             if(!stop) avatar.stats.fallbacks++;
+             this.logEvent(stop ? 'ROOMAUTH_STOP' : 'ROOMAUTH_NATIVE_FALLBACK',
