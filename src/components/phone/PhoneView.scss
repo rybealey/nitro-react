@@ -328,6 +328,7 @@ $phone-scale: 0.8;
     .phone-home-grid {
         position: absolute;
         top: 64px;
+        transition: top 0.2s ease;
         left: 22px;
         right: 22px;
         display: grid;
@@ -360,6 +361,10 @@ $phone-scale: 0.8;
     // a stable per-tile random phase/duration (--jig-delay/--jig-dur set from
     // a hash of the app key), so the wobble is out of sync across the grid.
     // The tile being dragged pauses its jiggle (the ghost rides the pointer).
+    .phone-home.is-editing .phone-home-grid {
+        top: 92px;
+    }
+
     .phone-home.is-editing .phone-app {
         animation: phone-app-jiggle var(--jig-dur, 0.32s) ease-in-out var(--jig-delay, 0s) infinite;
 
@@ -373,10 +378,11 @@ $phone-scale: 0.8;
         50% { transform: rotate(1.8deg) translate(0.5px, -0.4px); }
     }
 
-    // Done pill (edit mode): frosted glass, top right above the grid.
+    // Done pill (edit mode): frosted glass, top right, clear of the 44px
+    // status bar (the grid slides down while editing to make room for it).
     .phone-home-done {
         position: absolute;
-        top: 30px;
+        top: 52px;
         right: 16px;
         z-index: 90;
         padding: 6px 14px;
