@@ -273,9 +273,14 @@ export const RpSettingsView: FC<{}> = props =>
                             { /* future groups - links land here as their settings ship */ }
                             <div className="rp-settings-subnav-eyebrow">Interactions</div>
                             <div className="rp-settings-subnav-eyebrow">Verification</div>
+                            <div className={ `rp-settings-subnav-item ${ (socialPage === 'Discord') ? 'is-active' : '' }` }
+                                onClick={ () => setSocialPage('Discord') }>
+                                Discord
+                            </div>
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
                             <>
+                                { ((socialPage === 'Color') || (socialPage === 'Icon')) &&
                                 <div className="rp-settings-preview">
                                     <Text small className="text-muted">Preview</Text>
                                     <div className="bubble-container" style={ { position: 'relative' } }>
@@ -294,7 +299,7 @@ export const RpSettingsView: FC<{}> = props =>
                                             <div className="pointer" />
                                         </div>
                                     </div>
-                                </div>
+                                </div> }
                                 { (socialPage === 'Color') &&
                                 <div className="rp-settings-stack-section">
                                     <div className="rp-settings-stack-head">
@@ -326,6 +331,11 @@ export const RpSettingsView: FC<{}> = props =>
                                         )) }
                                     </div>
                                 </div> }
+                                { (socialPage === 'Discord') &&
+                                <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
+                                    <Text bold>Discord</Text>
+                                    <Text className="text-muted">Link your Discord account to get verified - coming soon.</Text>
+                                </Column> }
                             </>
                         </Column>
                     </div> }
