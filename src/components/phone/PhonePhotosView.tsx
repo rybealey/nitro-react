@@ -6,7 +6,9 @@ import { usePhonePhotos } from './usePhone';
 // Photos app, iOS style. Library tab: a 3-up grid of every photo the player
 // has saved, with a full-bleed viewer (meta, navigation, delete, crop/zoom
 // editor). Collections tab: albums, shared albums, People and Places - see
-// PhonePhotosCollectionsView.
+// PhonePhotosCollectionsView. Search tab (right side of the tab bar, per the
+// design): filters the library by photo metadata - room name, tagged
+// players, source, month/year and shared state.
 
 const MIN_ZOOM: number = 1;
 const MAX_ZOOM: number = 3;
@@ -28,7 +30,8 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
 {
     const { openCamera = null, onBack = null } = props;
     const { photos = [], photosLoaded = false, requestPhotos = null, deletePhoto = null, updatePhoto = null } = usePhonePhotos();
-    const [ tab, setTab ] = useState<'library' | 'collections'>('library');
+    const [ tab, setTab ] = useState<'library' | 'collections' | 'search'>('library');
+    const [ searchQuery, setSearchQuery ] = useState<string>('');
     const [ collectionDetailOpen, setCollectionDetailOpen ] = useState(false);
     const [ viewerIndex, setViewerIndex ] = useState<number>(-1);
     const [ chromeHidden, setChromeHidden ] = useState(false);
@@ -64,6 +67,32 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
     }, [ toastText ]);
 
     const viewerPhoto = (((viewerIndex >= 0) && (viewerIndex < photos.length)) ? photos[viewerIndex] : null);
+
+    // Everything searchable about a photo, from its stored metadata.
+    const photoHaystack = (photo: (typeof photos)[number]): string =>
+    {
+        const date = new Date(photo.timestamp * 1000);
+
+        return [
+            (photo.roomName || ''),
+            (photo.source || ''),
+            ...(photo.taggedUsers ?? []),
+            date.toLocaleDateString(undefined, { month: 'long' }),
+            String(date.getFullYear()),
+            (photo.published ? 'shared feed' : '')
+        ].join(' ').toLowerCase();
+    }
+
+    // Every whitespace-separated token must match somewhere in the metadata.
+    const searchTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(token => token.length);
+    const searchResults = ((tab === 'search') && searchTokens.length)
+        ? photos.map((photo, index) => ({ photo, index })).filter(entry =>
+        {
+            const haystack = photoHaystack(entry.photo);
+
+            return searchTokens.every(token => (haystack.indexOf(token) >= 0));
+        })
+        : [];
 
     const closeViewer = () =>
     {
@@ -245,18 +274,58 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
                     </> }
                 { (tab === 'collections') &&
                     <PhonePhotosCollectionsView onDetailChange={ setCollectionDetailOpen } /> }
+                { (tab === 'search') &&
+                    <>
+                        <div className="phone-search phone-search--inset">
+                            <PhoneIcon icon="search" size={ 16 } />
+                            <input type="text" spellCheck={ false } placeholder="Rooms, people, sources..." value={ searchQuery } onChange={ event => setSearchQuery(event.target.value) } />
+                        </div>
+                        { !searchTokens.length &&
+                            <div className="phone-photos-search-hint">
+                                Search your photos by the room they were taken in,<br />
+                                who was in frame, how they were captured<br />
+                                (camera, screenshot, saved), month or year -<br />
+                                or type &quot;shared&quot; for photos on the city feed.
+                            </div> }
+                        { (searchTokens.length > 0) && (searchResults.length > 0) &&
+                            <>
+                                <div className="phone-photos-grid">
+                                    { searchResults.map(entry => (
+                                        <div key={ entry.photo.id } className="phone-tap phone-photos-cell" onClick={ event =>
+                                        {
+                                            setViewerIndex(entry.index); setChromeHidden(false);
+                                        } }>
+                                            <img src={ entry.photo.url } alt="" loading="lazy" />
+                                            { entry.photo.published &&
+                                                <div className="phone-photos-shared" title="Shared to the city feed">
+                                                    <PhoneIcon icon="users" size={ 11 } />
+                                                </div> }
+                                        </div>
+                                    )) }
+                                </div>
+                                <div className="phone-photos-count">{ searchResults.length } { (searchResults.length === 1) ? 'Photo' : 'Photos' }</div>
+                            </> }
+                        { (searchTokens.length > 0) && !searchResults.length &&
+                            <div className="phone-photos-search-hint">No photos match that search.</div> }
+                    </> }
                 <div className="phone-scroll-spacer" />
                 <div className="phone-photos-tab-spacer" />
             </div>
-            { /* bottom glass tab bar: Library | Collections */ }
+            { /* bottom glass tab bar: Library + Collections left, Search right */ }
             <div className="phone-photos-tabbar">
-                <div className={ `phone-tap phone-photos-tab${ (tab === 'library') ? ' is-active' : '' }` } onClick={ event => setTab('library') }>
-                    <PhoneIcon icon="image" size={ 19 } />
-                    <span>Library</span>
+                <div className="phone-photos-tabbar-group">
+                    <div className={ `phone-tap phone-photos-tab${ (tab === 'library') ? ' is-active' : '' }` } onClick={ event => setTab('library') }>
+                        <PhoneIcon icon="image" size={ 19 } />
+                        <span>Library</span>
+                    </div>
+                    <div className={ `phone-tap phone-photos-tab${ (tab === 'collections') ? ' is-active' : '' }` } onClick={ event => setTab('collections') }>
+                        <PhoneIcon icon="bookmark" size={ 19 } />
+                        <span>Collections</span>
+                    </div>
                 </div>
-                <div className={ `phone-tap phone-photos-tab${ (tab === 'collections') ? ' is-active' : '' }` } onClick={ event => setTab('collections') }>
-                    <PhoneIcon icon="bookmark" size={ 19 } />
-                    <span>Collections</span>
+                <div className={ `phone-tap phone-photos-tab${ (tab === 'search') ? ' is-active' : '' }` } onClick={ event => setTab('search') }>
+                    <PhoneIcon icon="search" size={ 19 } />
+                    <span>Search</span>
                 </div>
             </div>
             { viewerPhoto && !isEditing &&
