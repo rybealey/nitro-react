@@ -18,8 +18,9 @@ const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'System' ];
 // settings can be furnished one by one.
 const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Messages' ];
 
-// Social tab sub-pages (left rail).
-const SOCIAL_PAGES: string[] = [ 'Personalization' ];
+// Social tab sub-pages (left rail), grouped under the Personalization
+// eyebrow; the chat-bubble preview shows on both.
+const SOCIAL_PAGES: string[] = [ 'Color', 'Icon' ];
 
 // Interface tab sub-pages (left rail).
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
@@ -261,6 +262,7 @@ export const RpSettingsView: FC<{}> = props =>
                 { (currentTab === 'Social') &&
                     <div className="rp-settings-subnav-layout">
                         <div className="rp-settings-subnav">
+                            <div className="rp-settings-subnav-eyebrow">Personalization</div>
                             { SOCIAL_PAGES.map(page => (
                                 <div key={ page }
                                     className={ `rp-settings-subnav-item ${ (socialPage === page) ? 'is-active' : '' }` }
@@ -270,7 +272,7 @@ export const RpSettingsView: FC<{}> = props =>
                             )) }
                         </div>
                         <Column gap={ 2 } className="rp-settings-subpage">
-                            { (socialPage === 'Personalization') && <>
+                            <>
                                 <div className="rp-settings-preview">
                                     <Text small className="text-muted">Preview</Text>
                                     <div className="bubble-container" style={ { position: 'relative' } }>
@@ -290,6 +292,7 @@ export const RpSettingsView: FC<{}> = props =>
                                         </div>
                                     </div>
                                 </div>
+                                { (socialPage === 'Color') &&
                                 <div className="rp-settings-stack-section">
                                     <div className="rp-settings-stack-head">
                                         <Text bold>Color</Text>
@@ -303,7 +306,8 @@ export const RpSettingsView: FC<{}> = props =>
                                                 onClick={ () => selectUsernameColor(entry.color) } />
                                         )) }
                                     </div>
-                                </div>
+                                </div> }
+                                { (socialPage === 'Icon') &&
                                 <div className="rp-settings-stack-section">
                                     <div className="rp-settings-stack-head">
                                         <Text bold>Icon</Text>
@@ -318,8 +322,8 @@ export const RpSettingsView: FC<{}> = props =>
                                             </div>
                                         )) }
                                     </div>
-                                </div>
-                            </> }
+                                </div> }
+                            </>
                         </Column>
                     </div> }
                 { (currentTab !== 'System') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&
