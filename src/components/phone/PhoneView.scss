@@ -613,6 +613,24 @@ $phone-scale: 0.8;
             image-rendering: pixelated;
         }
 
+        // HUD-style portrait (Settings account row): the FULL figure sprite
+        // rendered exactly like the player HUD portrait — native 90x130, no
+        // resampling, masked to the head+shoulders window. -27px recentres
+        // the HUD's -26px framing (56px circle) for the 54px tile.
+        &.phone-avatar--portrait .phone-avatar-crop .avatar-image {
+            position: absolute;
+            inset: 0;
+            left: auto;
+            top: auto;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background-size: auto;
+            background-position: center -27px;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+        }
+
         // Unmasked (pinned grid): no tile at all — no pastel field, no ink
         // outline, no clipping. Just the bare head at the same size, in the
         // same footprint so the grid and presence dot don't move.

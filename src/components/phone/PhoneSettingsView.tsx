@@ -70,7 +70,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                 <div className="phone-settings-list">
                     { group(
                         <div className="phone-settings-account">
-                            <PhoneAvatar id={ ownId } figure={ ownFigure } size={ 54 } />
+                            <PhoneAvatar portrait id={ ownId } figure={ ownFigure } size={ 54 } />
                             <div className="phone-settings-account-body">
                                 <div className="phone-settings-account-name">{ ownName }</div>
                                 <div className="phone-settings-account-sub">PixelRP ID, Wallet & more</div>

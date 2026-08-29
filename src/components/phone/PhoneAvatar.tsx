@@ -18,19 +18,22 @@ interface PhoneAvatarProps
     size: number;
     online?: boolean;
     unmasked?: boolean;
+    // HUD-style portrait: the FULL figure sprite masked to the same
+    // head+shoulders framing as the player HUD, instead of the head-only crop.
+    portrait?: boolean;
     className?: string;
 }
 
 export const PhoneAvatar: FC<PhoneAvatarProps> = props =>
 {
-    const { id = 0, figure = null, size = 48, online = undefined, unmasked = false, className = null } = props;
+    const { id = 0, figure = null, size = 48, online = undefined, unmasked = false, portrait = false, className = null } = props;
     const big = (size >= 60);
 
     return (
-        <div className={ `phone-avatar${ big ? ' phone-avatar--2x' : '' }${ unmasked ? ' phone-avatar--unmasked' : '' }${ className ? (' ' + className) : '' }` } style={ { width: size, height: size, borderRadius: Math.round(size * 0.3) } }>
+        <div className={ `phone-avatar${ (big && !portrait) ? ' phone-avatar--2x' : '' }${ unmasked ? ' phone-avatar--unmasked' : '' }${ portrait ? ' phone-avatar--portrait' : '' }${ className ? (' ' + className) : '' }` } style={ { width: size, height: size, borderRadius: Math.round(size * 0.3) } }>
             <div className="phone-avatar-crop" style={ unmasked ? undefined : { backgroundColor: PhoneAvatarColor(id) } }>
                 { (id > 0) && figure &&
-                    <LayoutAvatarImageView figure={ figure } headOnly={ true } direction={ 2 } /> }
+                    <LayoutAvatarImageView figure={ figure } headOnly={ !portrait } direction={ 2 } /> }
                 { (id <= 0) &&
                     <div className="phone-avatar-group-badge">
                         <LayoutBadgeImageView isGroup={ true } badgeCode={ figure } />
