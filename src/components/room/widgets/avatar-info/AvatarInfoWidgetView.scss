@@ -45,6 +45,13 @@
             text-decoration: underline;
         }
 
+        // staff verified badge - sits beside the name, never underlined
+        .infostand-verified {
+            color: #4da3ff;
+            font-size: 12px;
+            line-height: 1;
+        }
+
         position: relative;
         min-width: 190px;
         max-width: 190px;

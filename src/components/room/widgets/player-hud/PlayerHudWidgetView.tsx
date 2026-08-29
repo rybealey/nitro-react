@@ -27,7 +27,12 @@ const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 1
 
 // Live RP stats per room unit, keyed by roomIndex. Filled by RpStatsEvent
 // (sent on room entry and on every change); cleared when the room changes.
-const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number, aggro: number, passive: boolean }> = new Map();
+const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number, aggro: number, passive: boolean, staff: boolean }> = new Map();
+
+// Staff/verified flag rides the same RpStats packet; the infostand reads it
+// through this accessor (the store lives for the room and is keyed by
+// roomIndex, so entries exist from room entry - before any infostand opens).
+export const IsRpStaff = (roomIndex: number): boolean => (rpStatsStore.get(roomIndex)?.staff === true);
 
 // Deterministic pseudo-values for the still-mocked wanted level — stable per
 // name. Everything else is overridden by live values once the server has
@@ -119,7 +124,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     {
         const parser = event.getParser();
 
-        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression, passive: parser.passive });
+        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression, passive: parser.passive, staff: parser.staff });
 
         setStatsVersion(value => (value + 1));
     });

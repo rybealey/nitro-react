@@ -1,0 +1,41 @@
+diff --git a/src/nitro/communication/messages/incoming/RpStatsEvent.ts b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
+index 4c04d83aae423f0bb46293264a5cd4324477ad23..2e0437140786ffd7e3bfa0af5cdfed02c4d593ad 100644
+--- a/src/nitro/communication/messages/incoming/RpStatsEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpStatsEvent.ts
+@@ -13,6 +13,7 @@ export class RpStatsParser implements IMessageParser
+     private _energyMax: number;
+     private _aggression: number;
+     private _passive: boolean;
++    private _staff: boolean;
+ 
+     public flush(): boolean
+     {
+@@ -23,6 +24,7 @@ export class RpStatsParser implements IMessageParser
+         this._energyMax = 0;
+         this._aggression = 0;
+         this._passive = false;
++        this._staff = false;
+ 
+         return true;
+     }
+@@ -38,6 +40,8 @@ export class RpStatsParser implements IMessageParser
+         this._energyMax = wrapper.readInt();
+         this._aggression = wrapper.readInt();
+         this._passive = (wrapper.readInt() === 1);
++        // trailing, guarded for older servers that don't send it yet
++        this._staff = (wrapper.bytesAvailable ? (wrapper.readInt() === 1) : false);
+ 
+         return true;
+     }
+@@ -76,6 +80,11 @@ export class RpStatsParser implements IMessageParser
+     {
+         return this._passive;
+     }
++
++    public get staff(): boolean
++    {
++        return this._staff;
++    }
+ }
+ 
+ export class RpStatsEvent extends MessageEvent implements IMessageEvent

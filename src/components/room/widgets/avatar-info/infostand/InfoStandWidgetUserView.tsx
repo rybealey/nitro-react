@@ -2,6 +2,7 @@ import { RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomS
 import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { LuBriefcase } from 'react-icons/lu';
+import { IsRpStaff } from '../../player-hud/PlayerHudWidgetView';
 import { AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text } from '../../../../../common';
 import { useMessageEvent, useRoomSessionManagerEvent } from '../../../../../hooks';
@@ -104,6 +105,9 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                         <Flex alignItems="center" gap={ 1 }>
                             { /* the name is the profile link (replaces the old icon) */ }
                             <Text variant="white" small wrap pointer className="infostand-name-link" onClick={ event => GetUserProfile(avatarInfo.webID) }>{ avatarInfo.name }</Text>
+                            { /* outside the name link so hover-underline never touches it */ }
+                            { IsRpStaff(avatarInfo.roomIndex) &&
+                                <i className="fa-solid fa-badge-check infostand-verified" title="PixelRP Staff" aria-hidden="true" /> }
                         </Flex>
                         <FaTimes className="cursor-pointer fa-icon" onClick={ onClose } />
                     </Flex>

@@ -11,7 +11,7 @@
     "eslint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@nitrots/nitro-renderer": "patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@npm%25253A1.6.6%2523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%253A%253Aversion=1.6.6&hash=1a85bb%23~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%3A%3Aversion=1.6.6&hash=1b645f#~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch",
+    "@nitrots/nitro-renderer": "patch:@nitrots/nitro-renderer@patch%3A@nitrots/nitro-renderer@patch%253A@nitrots/nitro-renderer@patch%25253A@nitrots/nitro-renderer@npm%2525253A1.6.6%252523~/.yarn/patches/@nitrots-nitro-renderer-npm-1.6.6-c15ae4be91.patch%25253A%25253Aversion=1.6.6&hash=1a85bb%2523~/.yarn/patches/@nitrots-nitro-renderer-patch-92f965a959.patch%253A%253Aversion=1.6.6&hash=1b645f%23~/.yarn/patches/@nitrots-nitro-renderer-patch-cf5f674ff2.patch%3A%3Aversion=1.6.6&hash=51aed3#~/.yarn/patches/@nitrots-nitro-renderer-patch-5f3f2b935c.patch",
     "@tanstack/react-virtual": "^3.0.0-alpha.0",
     "html-to-image": "^1.11.13",
     "pixelarticons": "^2.4.1",
