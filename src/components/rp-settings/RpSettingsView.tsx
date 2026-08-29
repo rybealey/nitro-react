@@ -12,7 +12,7 @@ import { UsernameIconGlyph } from './UsernameIconGlyph';
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
 // placeholders to be filled out as settings are decided.
-const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Interface', 'System' ];
+const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'System' ];
 
 // Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
 // settings can be furnished one by one.
@@ -188,9 +188,11 @@ export const RpSettingsView: FC<{}> = props =>
                 )) }
             </NitroCardTabsView>
             <NitroCardContentView className="text-black">
-                { (currentTab === 'Interface') &&
+                { (currentTab === 'System') &&
                     <div className="rp-settings-subnav-layout">
                         <div className="rp-settings-subnav">
+                            { /* sectioned links: eyebrow header per group */ }
+                            <div className="rp-settings-subnav-eyebrow">Interface</div>
                             { INTERFACE_PAGES.map(page => (
                                 <div key={ page }
                                     className={ `rp-settings-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
@@ -320,7 +322,7 @@ export const RpSettingsView: FC<{}> = props =>
                             </> }
                         </Column>
                     </div> }
-                { (currentTab !== 'Interface') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&
+                { (currentTab !== 'System') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>

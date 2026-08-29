@@ -24,6 +24,21 @@
         border-right: 1px solid rgba(0, 0, 0, 0.08);
     }
 
+    // Eyebrow header sectioning groups of subnav links (e.g. "Interface"
+    // above Windows / Components on the System tab).
+    .rp-settings-subnav-eyebrow {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(0, 0, 0, 0.4);
+        padding: 4px 10px 2px;
+
+        &:not(:first-child) {
+            margin-top: 10px;
+        }
+    }
+
     .rp-settings-subnav-item {
         padding: 5px 10px;
         white-space: nowrap;
