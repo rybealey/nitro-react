@@ -46,9 +46,18 @@ export const NotificationPlatformBubbleView: FC<NotificationPlatformBubbleViewPr
 
     if(countdownMatch)
     {
-        messageText = messageText.replace(COUNTDOWN_TOKEN, String(countdown));
+        if(countdown === 0)
+        {
+            // done counting: drop the whole "in… 0 seconds" phrase so the
+            // sentence just ends at "restarting."
+            messageText = messageText.replace(/\s*\bin\b\s*(…|\.\.\.)?\s*%countdown:\d+%\s*seconds?/, '');
+        }
+        else
+        {
+            messageText = messageText.replace(COUNTDOWN_TOKEN, String(countdown));
 
-        if(countdown === 1) messageText = messageText.replace(/\bseconds\b/, 'second');
+            if(countdown === 1) messageText = messageText.replace(/\bseconds\b/, 'second');
+        }
     }
 
     const htmlText = messageText.replace(/\r\n|\r|\n/g, '<br />');
