@@ -202,7 +202,7 @@ const PhoneAddContactView: FC<{}> = props =>
     }, [ searchValue ]);
 
     return (
-        <>
+        <div className="phone-contacts-add">
             <div className="phone-section-label">ADD CONTACT</div>
             <div className="phone-search phone-search--inset">
                 <PhoneIcon icon="search" size={ 16 } />
@@ -234,6 +234,6 @@ const PhoneAddContactView: FC<{}> = props =>
                     { !results.length &&
                         <div className="phone-list-note">Nobody found by that name.</div> }
                 </div> }
-        </>
+        </div>
     );
 }

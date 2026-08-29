@@ -297,6 +297,18 @@ $phone-scale: 0.8;
         height: 40px;
     }
 
+    // Add Contact pins to the bottom of the scrollport while a long friends
+    // list scrolls behind it (sticky against its natural end-of-list spot).
+    // Solid app background so rows never show through, padded to clear the
+    // home indicator.
+    .phone-contacts-add {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        background: var(--ph-bg);
+        padding-bottom: 14px;
+    }
+
     .phone-tap {
         cursor: pointer;
 
