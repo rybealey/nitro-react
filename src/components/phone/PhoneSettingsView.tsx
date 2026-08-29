@@ -90,7 +90,6 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
                         { item('image', '#2ba88f', 'Wallpaper') }
                     </>) }
-                    { group(item('clock', '#7a5cff', 'Screen Time')) }
                     { group(<>
                         { item('shield', '#e03131', 'Emergency SOS') }
                         { item('lock', '#3f8fbf', 'Privacy & Security') }
