@@ -96,6 +96,15 @@
             border-radius: $border-radius;
         }
 
+        // Uniform 2x3 slot matrix for the badge placements - one grid, even
+        // 4px gutters both ways (the old nested flex rows spaced unevenly).
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 45px);
+            gap: 4px;
+            justify-content: center;
+        }
+
         // Badge placements read as slots: every cell gets the same subtle
         // container chrome whether or not a badge sits in it (chrome vars so
         // player color schemes carry through).

@@ -114,7 +114,8 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                             <LayoutAvatarImageView figure={ avatarInfo.figure } direction={ 2 } />
                         </Column>
                         <Column grow alignItems="center" gap={ 0 }>
-                            <Flex gap={ 1 }>
+                            { /* one uniform 2x3 slot grid - even gaps both ways */ }
+                            <div className="badge-grid">
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[0] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[0] } showInfo={ true } /> }
                                 </Flex>
@@ -122,23 +123,19 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                                     { avatarInfo.groupId > 0 &&
                                         <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } showInfo={ true } customTitle={ avatarInfo.groupName } /> }
                                 </Flex>
-                            </Flex>
-                            <Flex center gap={ 1 }>
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[1] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[1] } showInfo={ true } /> }
                                 </Flex>
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[2] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[2] } showInfo={ true } /> }
                                 </Flex>
-                            </Flex>
-                            <Flex center gap={ 1 }>
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[3] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[3] } showInfo={ true } /> }
                                 </Flex>
                                 <Flex center className="badge-image">
                                     { avatarInfo.badges[4] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[4] } showInfo={ true } /> }
                                 </Flex>
-                            </Flex>
+                            </div>
                         </Column>
                     </Flex>
                     <hr className="m-0" />
