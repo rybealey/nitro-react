@@ -100,7 +100,7 @@ export const RpCorporationsView: FC<{}> = props =>
     return (
         <NitroCardView uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Corporations" onCloseClick={ () => setIsVisible(false) } />
-            <NitroCardContentView className="text-black">
+            <NitroCardContentView overflow="hidden" className="text-black">
                 <div className="rp-corps-layout">
                     <div className="rp-corps-rail">
                         { corps.map(corp => (

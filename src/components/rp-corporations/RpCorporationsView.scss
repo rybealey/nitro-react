@@ -4,10 +4,12 @@
     width: 460px;
     height: 400px;
 
+    // The window is fixed 460x400; the rank ladder is the ONE scroller
+    // (content-area overflow is hidden so it can't double-scroll).
     .rp-corps-layout {
         display: flex;
         gap: 10px;
-        height: 100%;
+        flex: 1;
         min-height: 0;
     }
 
