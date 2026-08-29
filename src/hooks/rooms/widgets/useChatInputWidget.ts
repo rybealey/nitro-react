@@ -193,8 +193,11 @@ const useChatInputWidgetState = () =>
                     
                     return null;
                 case ':togglefps': {
+                    // Toggle uncapped (0) <-> the configured cap. The old code
+                    // read a nonexistent key, which Pixi clamped to minFPS and
+                    // silently locked the client to 10 FPS.
                     if(GetTicker().maxFPS > 0) GetTicker().maxFPS = 0;
-                    else GetTicker().maxFPS = GetConfiguration('system.animation.fps');
+                    else GetTicker().maxFPS = (GetConfiguration<number>('system.fps.max') || 60);
 
                     return null;
                 }

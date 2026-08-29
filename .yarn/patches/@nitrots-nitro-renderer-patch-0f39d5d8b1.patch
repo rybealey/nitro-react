@@ -1,0 +1,70 @@
+diff --git a/src/nitro/Nitro.ts b/src/nitro/Nitro.ts
+index f821c6e889a7ad84f344d0c3b841a994b23c1953..f00efab65c78bc8e3fcdece0de5bb3a4b2247964 100644
+--- a/src/nitro/Nitro.ts
++++ b/src/nitro/Nitro.ts
+@@ -23,7 +23,10 @@ LegacyExternalInterface.available;
+ 
+ settings.SCALE_MODE = (!(window.devicePixelRatio % 1)) ? SCALE_MODES.NEAREST : SCALE_MODES.LINEAR;
+ settings.ROUND_PIXELS = true;
+-settings.GC_MAX_IDLE = 120;
++// Texture-GC idle threshold is a FRAME count: 120 was ~2s at the old 60fps
++// cap but only ~0.5s at 240Hz uncapped, churning texture re-uploads. 600
++// keeps eviction relaxed at any refresh rate (10s @60, 2.5s @240).
++settings.GC_MAX_IDLE = 600;
+ 
+ export class Nitro implements INitro
+ {
+diff --git a/src/nitro/room/utils/RoomCamera.ts b/src/nitro/room/utils/RoomCamera.ts
+index 0ead8274c30cb19a5f4d7834370c21335764b91a..f8b41220da0d0d4dd0b876f90a46aa6941a36da2 100644
+--- a/src/nitro/room/utils/RoomCamera.ts
++++ b/src/nitro/room/utils/RoomCamera.ts
+@@ -1,4 +1,5 @@
+ ﻿import { IVector3D, Vector3d } from '../../../api';
++import { GetTicker } from '../../../pixi-proxy';
+ 
+ export class RoomCamera
+ {
+@@ -268,8 +269,15 @@ export class RoomCamera
+                     }
+                 }
+                 this._previousMoveSpeed = _local_7;
++                // Uncapped-FPS fix: the step used to be applied once per tick
++                // with no delta scaling, so camera panning ran 2x/4x faster on
++                // 120/240Hz displays. Scale by the normalized delta (1.0 at
++                // 60fps) to keep pan speed wall-clock constant; never overshoot
++                // the remaining distance.
++                let _local_8 = (_local_7 * ((GetTicker() && GetTicker().deltaTime) || 1));
++                if(_local_8 > _local_3.length) _local_8 = _local_3.length;
+                 _local_3.divide(_local_3.length);
+-                _local_3.multiply(_local_7);
++                _local_3.multiply(_local_8);
+                 this._currentLoc = Vector3d.sum(this._currentLoc, _local_3);
+             }
+         }
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 2828cfc4ab976394bf0473b741c01cf3081029d7..4d830ed49b8ec675627264a12b14e9faf701cd6c 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -1166,7 +1166,9 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         {
+             let direction = this._effectDirection;
+ 
+-            geometry.direction = new Vector3d((direction.x + this._rotation), direction.y, direction.z);
++            // Uncapped-FPS fix: rotation accumulates per tick; scale by the
++            // normalized delta so spin speed is wall-clock constant.
++            geometry.direction = new Vector3d((direction.x + (this._rotation * ((GetTicker() && GetTicker().deltaTime) || 1))), direction.y, direction.z);
+ 
+             direction = (geometry.direction as Vector3d);
+ 
+@@ -1201,7 +1203,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+         if(this._SafeStr_4507)
+         {
+-            this._SafeStr_795++;
++            // Uncapped-FPS fix: the shake phase advanced one count per tick;
++            // accumulate normalized delta (60 counts/sec at any refresh rate)
++            // so the wobble frequency is wall-clock constant.
++            this._SafeStr_795 += ((GetTicker() && GetTicker().deltaTime) || 1);
+ 
+             const _local_4 = this._effectDirection;
+             const _local_1 = Vector3d.sum(_local_4, new Vector3d((Math.sin((((this._SafeStr_795 * 5) / 180) * 3.14159265358979)) * 2), (Math.sin(((this._SafeStr_795 / 180) * 3.14159265358979)) * 5), (Math.sin((((this._SafeStr_795 * 10) / 180) * 3.14159265358979)) * 2)));
