@@ -1,0 +1,398 @@
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index e0bca0dd48daea81b96e001b2ab4762bd5616a5a..b67590cf94b9c5da9e19478dd7bad3d7184cf89f 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -42,6 +42,21 @@ interface PixelRPAuthorityAvatar
+     endedAt: number;
+     wireLogged: boolean;
+     matchLogged: boolean;
++    offGridLogged: boolean;
++    predictLogged: boolean;
++    firstPacketAt: number;
++    lastRenderedPhase: number;
++    stats: {
++        entries: number;
++        fallbacks: number;
++        underruns: number;
++        staleRejects: number;
++        gapOutliers: number;
++        maxPacketAgeMs: number;
++        maxPacketGapMs: number;
++        maxFrameGapMs: number;
++        maxHoldMs: number;
++    };
+ }
+ 
+ /**
+@@ -95,6 +110,11 @@ export class PixelRPMovementAuthority
+     // before releasing (covers server stalls without dropping authority).
+     private static readonly END_HOLD_MS = 700;
+     private static readonly INSTRUMENT_TRANSITIONS = true;
++    // Temporary lag-hunt diagnostics (transition/anomaly-only, ROOMAUTH_*).
++    private static readonly GAP_LOG_MS = 50;
++    private static readonly PACKET_GAP_LOG_MS = 650;
++    private static readonly HOLD_UNDERRUN_MS = 120;
++    private static readonly CLOCK_SHIFT_LOG_MS = 8;
+ 
+     private static _instance: PixelRPMovementAuthority = null;
+ 
+@@ -102,6 +122,7 @@ export class PixelRPMovementAuthority
+     private _clockOffset = NaN;
+     private _clockWindowStart = 0;
+     private _clockWindowMin = NaN;
++    private _clockRebases = 0;
+ 
+     public static get instance(): PixelRPMovementAuthority
+     {
+@@ -134,7 +155,12 @@ export class PixelRPMovementAuthority
+                 lastRenderedSeq: -1,
+                 endedAt: 0,
+                 wireLogged: false,
+-                matchLogged: false
++                matchLogged: false,
++                offGridLogged: false,
++                predictLogged: false,
++                firstPacketAt: clientNow,
++                lastRenderedPhase: NaN,
++                stats: PixelRPMovementAuthority.freshStats()
+             };
+ 
+             this._avatars.set(virtualId, avatar);
+@@ -146,8 +172,9 @@ export class PixelRPMovementAuthority
+         {
+             if(seq < avatar.lastSeq)
+             {
+-                this.logEvent('AUTH_MOVE_STALE_REJECT', avatar, null, NaN, NaN, NaN,
+-                    `stale-seq:${ seq }<${ avatar.lastSeq }`, null);
++                avatar.stats.staleRejects++;
++                this.logEvent('ROOMAUTH_STALE_REJECT', avatar, null, NaN, NaN, NaN,
++                    `incomingSeq=${ seq } latestAcceptedSeq=${ avatar.lastSeq }`, null);
+             }
+ 
+             return;
+@@ -156,22 +183,42 @@ export class PixelRPMovementAuthority
+         // A new walk after a gap starts a fresh entry decision.
+         if((clientNow - avatar.lastPacketAt) > PixelRPMovementAuthority.PACKET_STALE_MS)
+         {
++            if(avatar.wireLogged && !avatar.matchLogged)
++            {
++                // State arrived but the renderer never looked it up: the id
++                // plumbing is broken for this avatar.
++                this.logEvent('ROOMAUTH_ID_REJECT', avatar, null, NaN, NaN, NaN,
++                    `lookupKey=${ avatar.id } matched=false state-expired-unrendered`, null);
++            }
++
++            this.logSummary(avatar, 'new-walk-reset');
+             avatar.edges = [];
+             avatar.state = PixelRPAuthorityState.NATIVE;
+             avatar.armSeq = -1;
+             avatar.wireLogged = false;
+             avatar.matchLogged = false;
++            avatar.offGridLogged = false;
++            avatar.predictLogged = false;
++            avatar.firstPacketAt = clientNow;
++            avatar.stats = PixelRPMovementAuthority.freshStats();
+         }
+ 
+-        // Plumbing proof, once per walk: authoritative wire state reached the
+-        // store under this unit id.
+-        if(!avatar.wireLogged)
+-        {
+-            avatar.wireLogged = true;
+-            this.logEvent('AUTH_WIRE_RECEIVE', avatar,
+-                { seq, onGrid, sx, sy, sz, gx, gy, gz, cycleStart, interval: ((interval > 0) ? interval : 500) },
+-                NaN, NaN, NaN, (onGrid ? 'on-grid' : 'off-grid-first-step'), null);
+-        }
++        // Per-packet arrival diagnostics: packetAge = how far behind the edge
++        // start this packet landed (transit + server queue, in server-clock
++        // ms); packetGap = spacing against the previous packet for this
++        // avatar (normal cadence ~500ms).
++        const packetAge = Number.isFinite(this._clockOffset) ? ((clientNow - this._clockOffset) - cycleStart) : NaN;
++        const packetGap = avatar.wireLogged ? (clientNow - avatar.lastPacketAt) : NaN;
++
++        if(Number.isFinite(packetAge)) avatar.stats.maxPacketAgeMs = Math.max(avatar.stats.maxPacketAgeMs, packetAge);
++        if(Number.isFinite(packetGap)) avatar.stats.maxPacketGapMs = Math.max(avatar.stats.maxPacketGapMs, packetGap);
++
++        avatar.wireLogged = true;
++        this.logEvent('ROOMAUTH_WIRE_RECEIVE', avatar,
++            { seq, onGrid, sx, sy, sz, gx, gy, gz, cycleStart, interval: ((interval > 0) ? interval : 500) },
++            NaN, NaN, NaN,
++            `movementSeq=${ seq } packetAgeMs=${ Number.isFinite(packetAge) ? Math.round(packetAge) : 'n/a' } packetGapMs=${ Number.isFinite(packetGap) ? Math.round(packetGap) : 'n/a' }${ (Number.isFinite(packetGap) && (packetGap > PixelRPMovementAuthority.PACKET_GAP_LOG_MS)) ? ' PACKET-GAP-OUTLIER' : '' }`,
++            null);
+ 
+         avatar.lastSeq = seq;
+         avatar.lastPacketAt = clientNow;
+@@ -229,6 +276,18 @@ export class PixelRPMovementAuthority
+             // Nothing renderable yet (all edges in the future, or only the
+             // off-grid instant first step): stay native. Off-grid edges are
+             // the local-prediction / responsiveness path by design.
++            if(edge && !edge.onGrid && !avatar.offGridLogged)
++            {
++                avatar.offGridLogged = true;
++                this.logEvent('ROOMAUTH_NATIVE_FALLBACK', avatar, edge, NaN, estServerNow, NaN, 'off-grid-prediction-edge', null);
++
++                if(isOwn && !avatar.predictLogged)
++                {
++                    avatar.predictLogged = true;
++                    this.logEvent('ROOMAUTH_PREDICT_START', avatar, edge, NaN, estServerNow, NaN, 'own-instant-first-step', null);
++                }
++            }
++
+             return null;
+         }
+ 
+@@ -259,6 +318,26 @@ export class PixelRPMovementAuthority
+             // discrete correction (bounded by END_HOLD_MS of walking), not a
+             // continuity violation.
+             resumedFromHold = (avatar.endedAt > 0);
++
++            if(resumedFromHold)
++            {
++                const heldMs = (clientNow - avatar.endedAt);
++
++                avatar.stats.maxHoldMs = Math.max(avatar.stats.maxHoldMs, heldMs);
++                this.logEvent('ROOMAUTH_BUFFER', avatar, edge, phase, estServerNow, NaN,
++                    `resume-from-hold heldMs=${ Math.round(heldMs) }`, null);
++
++                if(heldMs > PixelRPMovementAuthority.HOLD_UNDERRUN_MS)
++                {
++                    // The renderer had no authoritative edge ready for longer
++                    // than jitter can explain - this looks exactly like a
++                    // visible hitch.
++                    avatar.stats.underruns++;
++                    this.logEvent('ROOMAUTH_BUFFER_UNDERRUN', avatar, edge, phase, estServerNow, NaN,
++                        `heldMs=${ Math.round(heldMs) } bufferDelayMs=${ isOwn ? 0 : PixelRPMovementAuthority.REMOTE_RENDER_DELAY_MS } bufferSize=${ avatar.edges.length }`, null);
++                }
++            }
++
+             avatar.endedAt = 0;
+         }
+ 
+@@ -273,7 +352,8 @@ export class PixelRPMovementAuthority
+         if(!avatar.matchLogged)
+         {
+             avatar.matchLogged = true;
+-            this.logEvent('AUTH_WIRE_MATCH', avatar, edge, phase, estServerNow, NaN, 'renderer-lookup-hit', target);
++            this.logEvent('ROOMAUTH_ID_MATCH', avatar, edge, phase, estServerNow, NaN,
++                `packetAvatarId=${ avatar.id } resolvedRoomObjectId=${ virtualId } lookupKey=object.id matched=true`, target);
+         }
+ 
+         if(avatar.state !== PixelRPAuthorityState.AUTHORITATIVE)
+@@ -292,7 +372,7 @@ export class PixelRPMovementAuthority
+                 // chasing - native rendering continues untouched meanwhile.
+                 avatar.state = PixelRPAuthorityState.ARMED;
+                 avatar.armSeq = edge.seq;
+-                this.logEvent('AUTH_MOVE_ARM', avatar, edge, phase, estServerNow, displacement, 'armed-await-boundary', target);
++                this.logEvent('ROOMAUTH_ARM', avatar, edge, phase, estServerNow, displacement, 'armed-await-boundary', target);
+                 return null;
+             }
+             else if(edge.seq > avatar.armSeq)
+@@ -303,7 +383,7 @@ export class PixelRPMovementAuthority
+                     // race / desynced native object): re-arm and let native
+                     // state settle before the next boundary.
+                     avatar.armSeq = edge.seq;
+-                    this.logEvent('AUTH_MOVE_ARM', avatar, edge, phase, estServerNow, displacement, 'rearm-distance-unsafe', target);
++                    this.logEvent('ROOMAUTH_ARM', avatar, edge, phase, estServerNow, displacement, 'rearm-distance-unsafe', target);
+                     return null;
+                 }
+ 
+@@ -318,6 +398,19 @@ export class PixelRPMovementAuthority
+         }
+         else
+         {
++            // Frame-gap diagnostic: how long since this avatar's offset was
++            // last recomputed. Outliers here mean the render loop (or the
++            // per-object recompute) stalled - which IS a visible hitch.
++            const frameGap = (avatar.lastRenderedAt > 0) ? (clientNow - avatar.lastRenderedAt) : NaN;
++
++            if(Number.isFinite(frameGap) && (frameGap > PixelRPMovementAuthority.GAP_LOG_MS))
++            {
++                avatar.stats.gapOutliers++;
++                avatar.stats.maxFrameGapMs = Math.max(avatar.stats.maxFrameGapMs, frameGap);
++                this.logEvent('ROOMAUTH_GAP', avatar, edge, phase, estServerNow, NaN,
++                    `dtMs=${ Math.round(frameGap) } holdActive=${ avatar.endedAt > 0 }`, null);
++            }
++
+             // In-session frame guard: mirrors bounded server jitter, releases
+             // on anything a real route step cannot explain.
+             const elapsed = Math.min(100, Math.max(1, (clientNow - avatar.lastRenderedAt)));
+@@ -337,10 +430,15 @@ export class PixelRPMovementAuthority
+             // Atomic by construction: edge and phase both derive from the
+             // same estServerNow sample, so the frame the roomStep advances is
+             // the frame the phase wraps.
+-            this.logEvent('AUTH_MOVE_ROLLOVER', avatar, edge, phase, estServerNow, NaN,
+-                `route-slot:${ avatar.lastRenderedSeq }->${ edge.seq }`, target);
++            const oldEdge = this.findEdge(avatar, avatar.lastRenderedSeq);
++            const oldStep = oldEdge ? Math.floor(oldEdge.cycleStart / oldEdge.interval) : NaN;
++            const newStep = Math.floor(edge.cycleStart / edge.interval);
++
++            this.logEvent('ROOMAUTH_ROLLOVER', avatar, edge, phase, estServerNow, NaN,
++                `oldRoomStep=${ Number.isFinite(oldStep) ? oldStep : 'n/a' } newRoomStep=${ newStep } oldRouteSlot=${ avatar.lastRenderedSeq } newRouteSlot=${ edge.seq } oldEdge=${ oldEdge ? `(${ oldEdge.sx },${ oldEdge.sy })->(${ oldEdge.gx },${ oldEdge.gy })` : 'n/a' } oldPhase=${ Number.isFinite(avatar.lastRenderedPhase) ? avatar.lastRenderedPhase.toFixed(3) : 'n/a' } newPhase=${ phase.toFixed(3) }`, target);
+         }
+ 
++        avatar.lastRenderedPhase = phase;
+         avatar.lastRenderedSeq = edge.seq;
+         avatar.lastRenderedX = target.x;
+         avatar.lastRenderedY = target.y;
+@@ -358,7 +456,18 @@ export class PixelRPMovementAuthority
+         avatar.lastRenderedY = target.y;
+         avatar.lastRenderedZ = target.z;
+         avatar.lastRenderedSeq = edge.seq;
+-        this.logEvent('AUTH_MOVE_ENTER', avatar, edge, phase, estServerNow, displacement, reason, target);
++        avatar.stats.entries++;
++        this.logEvent('ROOMAUTH_ENTER', avatar, edge, phase, estServerNow, displacement,
++            `${ reason } finalRenderPosition=authoritativePosition`, target);
++
++        if(avatar.predictLogged)
++        {
++            const predictionAgeMs = Math.round(Date.now() - avatar.firstPacketAt);
++
++            this.logEvent((displacement <= 0.15) ? 'ROOMAUTH_PREDICT_CONFIRM' : 'ROOMAUTH_PREDICT_MISMATCH',
++                avatar, edge, phase, estServerNow, displacement,
++                `predictionAgeMs=${ predictionAgeMs } positionDifference=${ displacement.toFixed(3) }`, target);
++        }
+     }
+ 
+     private releaseAvatar(avatar: PixelRPAuthorityAvatar, reason: string): void
+@@ -368,8 +477,12 @@ export class PixelRPMovementAuthority
+             // A natural stop (walk-ended) is snap-free - the last edge's goal
+             // IS the native resting tile. Anything else is a defensive return
+             // to native rendering, never to any other sync system.
+-            this.logEvent((reason === 'walk-ended') ? 'AUTH_MOVE_STOP' : 'AUTH_MOVE_NATIVE_FALLBACK',
++            const stop = (reason === 'walk-ended');
++
++            if(!stop) avatar.stats.fallbacks++;
++            this.logEvent(stop ? 'ROOMAUTH_STOP' : 'ROOMAUTH_NATIVE_FALLBACK',
+                 avatar, avatar.edges[avatar.edges.length - 1] || null, NaN, NaN, NaN, reason, null);
++            if(stop || (reason === 'packet-stale')) this.logSummary(avatar, reason);
+         }
+ 
+         avatar.state = PixelRPAuthorityState.NATIVE;
+@@ -393,13 +506,31 @@ export class PixelRPMovementAuthority
+ 
+         if(!Number.isFinite(this._clockOffset) || (Math.abs(sample - this._clockOffset) > 5000))
+         {
++            const wasInit = !Number.isFinite(this._clockOffset);
++
++            if(!wasInit)
++            {
++                this._clockRebases++;
++                console.log(`[ROOMAUTH_CLOCK_REBASE] oldOffset=${ Math.round(this._clockOffset) } newOffset=${ Math.round(sample) } deltaMs=${ Math.round(sample - this._clockOffset) } source=sample-jump`);
++            }
++
+             this._clockOffset = sample;
+             this._clockWindowStart = clientNow;
+             this._clockWindowMin = sample;
++
++            if(wasInit) console.log(`[ROOMAUTH_CLOCK] clockOffset=${ Math.round(sample) } reason=initialized`);
+             return;
+         }
+ 
+-        if(sample < this._clockOffset) this._clockOffset = sample;
++        if(sample < this._clockOffset)
++        {
++            if((this._clockOffset - sample) > PixelRPMovementAuthority.CLOCK_SHIFT_LOG_MS)
++            {
++                console.log(`[ROOMAUTH_CLOCK] oldOffset=${ Math.round(this._clockOffset) } newOffset=${ Math.round(sample) } deltaMs=${ Math.round(sample - this._clockOffset) } reason=min-improved`);
++            }
++
++            this._clockOffset = sample;
++        }
+ 
+         // Rolling 30s window tracks upward drift (clock skew) without ever
+         // letting one slow packet drag the estimate.
+@@ -407,12 +538,46 @@ export class PixelRPMovementAuthority
+ 
+         if((clientNow - this._clockWindowStart) > 30000)
+         {
++            if(Number.isFinite(this._clockWindowMin)
++                && (Math.abs(this._clockWindowMin - this._clockOffset) > PixelRPMovementAuthority.CLOCK_SHIFT_LOG_MS))
++            {
++                console.log(`[ROOMAUTH_CLOCK] oldOffset=${ Math.round(this._clockOffset) } newOffset=${ Math.round(this._clockWindowMin) } deltaMs=${ Math.round(this._clockWindowMin - this._clockOffset) } reason=window-refresh`);
++            }
++
+             this._clockOffset = this._clockWindowMin;
+             this._clockWindowStart = clientNow;
+             this._clockWindowMin = NaN;
+         }
+     }
+ 
++    private static freshStats(): PixelRPAuthorityAvatar['stats']
++    {
++        return { entries: 0, fallbacks: 0, underruns: 0, staleRejects: 0, gapOutliers: 0,
++            maxPacketAgeMs: 0, maxPacketGapMs: 0, maxFrameGapMs: 0, maxHoldMs: 0 };
++    }
++
++    private findEdge(avatar: PixelRPAuthorityAvatar, seq: number): PixelRPAuthorityEdge
++    {
++        for(let index = (avatar.edges.length - 1); index >= 0; index--)
++        {
++            if(avatar.edges[index].seq === seq) return avatar.edges[index];
++        }
++
++        return null;
++    }
++
++    /** One-line per-walk triage: which failure category (if any) occurred. */
++    private logSummary(avatar: PixelRPAuthorityAvatar, reason: string): void
++    {
++        if(!PixelRPMovementAuthority.INSTRUMENT_TRANSITIONS) return;
++
++        const s = avatar.stats;
++
++        if(!s.entries && !s.fallbacks && !s.staleRejects && !s.underruns && !s.gapOutliers) return;
++
++        console.log(`[ROOMAUTH_SUMMARY] avatarId=${ avatar.id } authoritativeEntries=${ s.entries } nativeFallbacks=${ s.fallbacks } bufferUnderruns=${ s.underruns } staleRejects=${ s.staleRejects } clockRebases=${ this._clockRebases } gapOutliers=${ s.gapOutliers } maxPacketAgeMs=${ Math.round(s.maxPacketAgeMs) } maxPacketGapMs=${ Math.round(s.maxPacketGapMs) } maxFrameGapMs=${ Math.round(s.maxFrameGapMs) } maxHoldMs=${ Math.round(s.maxHoldMs) } reason=${ reason }`);
++    }
++
+     private tileDistance(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number
+     {
+         return Math.max(Math.abs(ax - bx), Math.abs(ay - by), Math.abs(az - bz));
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index a4ae715d6d23540f9466f750d07ab5571ff7e83e..2828cfc4ab976394bf0473b741c01cf3081029d7 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -65,6 +65,9 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // its native location is clamped, and a released offset could latch on
+     // screen until an unrelated visual update.
+     private _pixelrpSyncActive = new Set<number>();
++    // Temporary lag-hunt diagnostics: throttle map (unit id -> last log ms)
++    // for the walking-without-authority fallback log.
++    private _pixelrpFallbackLogAt = new Map<number, number>();
+     private _rotationOrigin: Vector3d = null;
+     private _rotationRodLength: number = 0;
+     private _effectDirection: Vector3d;
+@@ -561,6 +564,20 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 if(target) this._pixelrpSyncActive.add(object.instanceId);
+                 else this._pixelrpSyncActive.delete(object.instanceId);
+ 
++                if(!target && locationCache.locationChanged)
++                {
++                    // Diagnostic only: this avatar is visibly moving with NO
++                    // authoritative target - native movement is rendering it.
++                    // Throttled to one line per avatar per 2s.
++                    const lastLog = (this._pixelrpFallbackLogAt.get(object.id) || 0);
++
++                    if((nowMs - lastLog) > 2000)
++                    {
++                        this._pixelrpFallbackLogAt.set(object.id, nowMs);
++                        console.log(`[ROOMAUTH_NATIVE_FALLBACK] avatarId=${ object.id } instanceId=${ object.instanceId } position=${ roomLocation.x.toFixed(2) },${ roomLocation.y.toFixed(2) } reason=no-authority-target`);
++                    }
++                }
++
+                 if(target)
+                 {
+                     const rawScreen = this._geometry.getScreenPosition(roomLocation);
+@@ -571,6 +588,12 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                         x = Math.round(x + (targetScreen.x - rawScreen.x));
+                         y = Math.round(y + (targetScreen.y - rawScreen.y));
+                     }
++                    else
++                    {
++                        // The ONLY code path where a computed authoritative
++                        // position fails to reach the sprite write.
++                        console.log(`[ROOMAUTH_RENDER_MISMATCH] avatarId=${ object.id } authoritativePosition=${ target.x.toFixed(2) },${ target.y.toFixed(2) } finalRenderPosition=native reason=screen-projection-null`);
++                    }
+                 }
+             }
+         }
