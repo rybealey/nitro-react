@@ -1,0 +1,23 @@
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index b67590cf94b9c5da9e19478dd7bad3d7184cf89f..577f73e028ff42283abf65f31ab2ddb4f9325cf9 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -304,6 +304,18 @@ export class PixelRPMovementAuthority
+             if(avatar.state !== PixelRPAuthorityState.AUTHORITATIVE) return null;
+ 
+             if(!avatar.endedAt) avatar.endedAt = clientNow;
++            else if(edge.seq !== avatar.lastRenderedSeq)
++            {
++                // A LATE edge arrived while holding and its window is already
++                // over too: advance the hold to the new edge's goal as ONE
++                // sanctioned discrete correction and restart the hold window,
++                // instead of tripping the frame guard between held goals.
++                resumedFromHold = true;
++                avatar.stats.maxHoldMs = Math.max(avatar.stats.maxHoldMs, (clientNow - avatar.endedAt));
++                this.logEvent('ROOMAUTH_BUFFER', avatar, edge, phase, estServerNow, NaN,
++                    `hold-advance heldMs=${ Math.round(clientNow - avatar.endedAt) }`, null);
++                avatar.endedAt = clientNow;
++            }
+ 
+             if((clientNow - avatar.endedAt) > PixelRPMovementAuthority.END_HOLD_MS)
+             {
