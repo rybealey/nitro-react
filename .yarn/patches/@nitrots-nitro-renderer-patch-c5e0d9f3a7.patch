@@ -1,0 +1,271 @@
+diff --git a/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts b/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts
+index 6bbb2beec08d2f5e714395b2bf581bee04385163..66fe4b66f33cdc082ab774eaa08cccbb17441873 100644
+--- a/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpMovementCycleEvent.ts
+@@ -19,6 +19,7 @@ export class RpMovementCycleParser implements IMessageParser
+     private _cycleStart: number;
+     private _interval: number;
+     private _serverNow: number;
++    private _lookahead: { x: number, y: number, z: number }[];
+ 
+     public flush(): boolean
+     {
+@@ -51,6 +52,16 @@ export class RpMovementCycleParser implements IMessageParser
+         this._serverNow = ((serverNowHi * 4294967296) + serverNowLo);
+         this._cycleStart = (this._serverNow + cycleStartDelta);
+ 
++        // Provisional lookahead: the walker's next 0-2 real path tiles.
++        this._lookahead = [];
++
++        const lookCount = wrapper.readInt();
++
++        for(let index = 0; index < Math.min(2, lookCount); index++)
++        {
++            this._lookahead.push({ x: wrapper.readInt(), y: wrapper.readInt(), z: (wrapper.readInt() / 100) });
++        }
++
+         return true;
+     }
+ 
+@@ -66,6 +77,7 @@ export class RpMovementCycleParser implements IMessageParser
+     public get cycleStart(): number { return this._cycleStart; }
+     public get interval(): number { return this._interval; }
+     public get serverNow(): number { return this._serverNow; }
++    public get lookahead(): { x: number, y: number, z: number }[] { return (this._lookahead || []); }
+ }
+ 
+ export class RpMovementCycleEvent extends MessageEvent implements IMessageEvent
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index f5ac5aeab638af586304f2c95f16e2c58a3d60c4..2ff0e2348e89a0edba91f3fe3d0d89fb98e55ab9 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -636,7 +636,7 @@ export class RoomMessageHandler extends Disposable
+ 
+         PixelRPMovementAuthority.instance.record(parser.virtualId, parser.seq, parser.onGrid,
+             parser.fromX, parser.fromY, parser.fromZ, parser.toX, parser.toY, parser.toZ,
+-            parser.cycleStart, parser.interval, parser.serverNow, Date.now());
++            parser.cycleStart, parser.interval, parser.serverNow, Date.now(), parser.lookahead);
+     }
+ 
+     private onRoomUnitEvent(event: RoomUnitEvent): void
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index 29c8d4618c38b2bfe7a73fbf769f86c7b0478b2f..6718de2fb9745495f5b2e2598092f98055d2a88b 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -2,6 +2,7 @@ export interface PixelRPAuthorityEdge
+ {
+     seq: number;
+     onGrid: boolean;
++    provisional: boolean;
+     sx: number;
+     sy: number;
+     sz: number;
+@@ -42,6 +43,8 @@ interface PixelRPAuthorityAvatar
+     endedAt: number;
+     wireLogged: boolean;
+     matchLogged: boolean;
++    queueLowLogged: boolean;
++    endReleaseAt: number;
+     offGridLogged: boolean;
+     predictLogged: boolean;
+     firstPacketAt: number;
+@@ -139,7 +142,8 @@ export class PixelRPMovementAuthority
+ 
+     public record(virtualId: number, seq: number, onGrid: boolean,
+         sx: number, sy: number, sz: number, gx: number, gy: number, gz: number,
+-        cycleStart: number, interval: number, serverNow: number, clientNow: number): void
++        cycleStart: number, interval: number, serverNow: number, clientNow: number,
++        lookahead: { x: number, y: number, z: number }[] = []): void
+     {
+         this.updateClock(clientNow, serverNow);
+ 
+@@ -162,6 +166,8 @@ export class PixelRPMovementAuthority
+                 endedAt: 0,
+                 wireLogged: false,
+                 matchLogged: false,
++                queueLowLogged: false,
++                endReleaseAt: 0,
+                 offGridLogged: false,
+                 predictLogged: false,
+                 firstPacketAt: clientNow,
+@@ -226,18 +232,117 @@ export class PixelRPMovementAuthority
+             `movementSeq=${ seq } packetAgeMs=${ Number.isFinite(packetAge) ? Math.round(packetAge) : 'n/a' } packetGapMs=${ Number.isFinite(packetGap) ? Math.round(packetGap) : 'n/a' }${ (Number.isFinite(packetGap) && (packetGap > PixelRPMovementAuthority.PACKET_GAP_LOG_MS)) ? ' PACKET-GAP-OUTLIER' : '' }`,
+             null);
+ 
++        // A "walk end" that turns out to CONTINUE was actually queue
++        // starvation: playback hit a boundary with no next edge while the
++        // server had more steps coming. Fault, never repaired with speed.
++        if(avatar.endReleaseAt && (seq === (avatar.lastSeq + 1)))
++        {
++            avatar.stats.underruns++;
++            this.logEvent('ROOMAUTH_QUEUE_UNDERRUN', avatar, null, NaN, NaN, NaN,
++                `continuation-after-release incomingSeq=${ seq }`, null);
++        }
++
++        avatar.endReleaseAt = 0;
++
+         avatar.lastSeq = seq;
+         avatar.lastPacketAt = clientNow;
+-        // endedAt is getTarget's hold marker - it must survive this packet's
+-        // arrival so the first render of a LATE edge is recognized as the
+-        // sanctioned resume-from-hold correction.
+-        avatar.edges.push({ seq, onGrid, sx, sy, sz, gx, gy, gz, cycleStart, interval: ((interval > 0) ? interval : 500) });
++
++        const stepInterval = ((interval > 0) ? interval : 500);
++        const realEdge: PixelRPAuthorityEdge = { seq, onGrid, provisional: false, sx, sy, sz, gx, gy, gz, cycleStart, interval: stepInterval };
++
++        // A provisional (lookahead) entry for this seq may already be queued.
++        // The real packet is truth: confirm it in place when identical, or
++        // correct it. A correction to an edge that is CURRENTLY RENDERING is
++        // never applied mid-edge - the whole avatar drops to native and
++        // re-enters discretely at the next clean boundary instead.
++        const queuedIndex = avatar.edges.findIndex(e => (e.seq === seq));
++
++        if(queuedIndex >= 0)
++        {
++            const queued = avatar.edges[queuedIndex];
++            const identical = ((queued.sx === sx) && (queued.sy === sy) && (queued.gx === gx) && (queued.gy === gy)
++                && (Math.abs(queued.cycleStart - cycleStart) < 4));
++
++            if(identical)
++            {
++                avatar.edges[queuedIndex] = realEdge;
++            }
++            else if(seq <= avatar.lastRenderedSeq)
++            {
++                this.logEvent('ROOMAUTH_QUEUE_CORRECTION', avatar, realEdge, NaN, NaN, NaN,
++                    `rendered-provisional-contradicted queuedTo=${ queued.gx },${ queued.gy }`, null);
++                this.releaseAvatar(avatar, 'provisional-corrected');
++                avatar.edges = [ realEdge ];
++            }
++            else
++            {
++                // Not yet rendered: replace silently along with any stale
++                // provisional chain built on top of it.
++                avatar.edges = avatar.edges.filter(e => ((e.seq < seq) || !e.provisional));
++                const insertAt = avatar.edges.findIndex(e => (e.seq > seq));
++
++                if(insertAt < 0) avatar.edges.push(realEdge);
++                else avatar.edges.splice(insertAt, 0, realEdge);
++            }
++        }
++        else
++        {
++            avatar.edges.push(realEdge);
++        }
++
++        // Queue the lookahead as PROVISIONAL future edges: a contiguous
++        // strict-500ms chain (from = previous goal, start = previous end).
++        // This is what removes boundary packet-waiting: while edge N renders,
++        // N+1 (and usually N+2) are already queued.
++        let prevEdge = realEdge;
++
++        for(let index = 0; index < lookahead.length; index++)
++        {
++            const look = lookahead[index];
++            const lookSeq = (seq + index + 1);
++
++            if(avatar.edges.some(e => ((e.seq === lookSeq) && !e.provisional))) break;
++
++            const lookEdge: PixelRPAuthorityEdge = {
++                seq: lookSeq,
++                onGrid: true,
++                provisional: true,
++                sx: prevEdge.gx, sy: prevEdge.gy, sz: prevEdge.gz,
++                gx: look.x, gy: look.y, gz: look.z,
++                cycleStart: (prevEdge.cycleStart + prevEdge.interval),
++                interval: stepInterval
++            };
++
++            const existingIndex = avatar.edges.findIndex(e => (e.seq === lookSeq));
++
++            if(existingIndex >= 0) avatar.edges[existingIndex] = lookEdge;
++            else avatar.edges.push(lookEdge);
++
++            prevEdge = lookEdge;
++        }
++
++        avatar.edges.sort((a, b) => (a.seq - b.seq));
+ 
+         if(avatar.edges.length > PixelRPMovementAuthority.EDGE_QUEUE_SIZE)
+         {
+             avatar.edges.splice(0, (avatar.edges.length - PixelRPMovementAuthority.EDGE_QUEUE_SIZE));
+         }
+ 
++        // Queue-depth diagnostics: future edges available beyond the one
++        // currently rendering. Log transitions only.
++        const depth = avatar.edges.filter(e => (e.seq > avatar.lastRenderedSeq)).length;
++
++        if((avatar.lastRenderedSeq >= 0) && (depth <= 1) && !avatar.queueLowLogged)
++        {
++            avatar.queueLowLogged = true;
++            this.logEvent('ROOMAUTH_QUEUE_LOW', avatar, realEdge, NaN, NaN, NaN,
++                `queueDepth=${ depth } packetGapMs=${ Number.isFinite(packetGap) ? Math.round(packetGap) : 'n/a' }`, null);
++        }
++        else if(depth > 1)
++        {
++            avatar.queueLowLogged = false;
++        }
++
+         if(this._avatars.size > 128)
+         {
+             for(const [ id, item ] of this._avatars)
+@@ -352,20 +457,24 @@ export class PixelRPMovementAuthority
+ 
+             if(resumedFromHold)
+             {
+-                const heldMs = (clientNow - avatar.endedAt);
++                // Any positive time spent clamped at phase 1.0 waiting for
++                // the next edge is a visible micro-stutter. With server
++                // lookahead queued ahead of consumption the target is ZERO
++                // during healthy continuous walking.
++                const waitMs = (clientNow - avatar.endedAt);
+ 
+-                avatar.stats.maxHoldMs = Math.max(avatar.stats.maxHoldMs, heldMs);
+-                this.logEvent('ROOMAUTH_BUFFER', avatar, edge, phase, estServerNow, NaN,
+-                    `resume-from-hold heldMs=${ Math.round(heldMs) }`, null);
++                avatar.stats.maxHoldMs = Math.max(avatar.stats.maxHoldMs, waitMs);
++                this.logEvent('ROOMAUTH_BOUNDARY_WAIT', avatar, edge, phase, estServerNow, NaN,
++                    `waitMs=${ Math.round(waitMs) } local=${ isOwn } queueDepth=${ avatar.edges.filter(e => (e.seq > avatar.lastRenderedSeq)).length }`, null);
+ 
+-                if(heldMs > PixelRPMovementAuthority.HOLD_UNDERRUN_MS)
++                if(waitMs > PixelRPMovementAuthority.HOLD_UNDERRUN_MS)
+                 {
+-                    // The renderer had no authoritative edge ready for longer
+-                    // than jitter can explain - this looks exactly like a
+-                    // visible hitch.
++                    // FAULT: playback reached a boundary with no valid next
++                    // edge for longer than jitter can explain. Never repaired
++                    // with speed - diagnose the queue starvation at source.
+                     avatar.stats.underruns++;
+-                    this.logEvent('ROOMAUTH_BUFFER_UNDERRUN', avatar, edge, phase, estServerNow, NaN,
+-                        `heldMs=${ Math.round(heldMs) } bufferDelayMs=${ isOwn ? 0 : PixelRPMovementAuthority.REMOTE_RENDER_DELAY_MS } bufferSize=${ avatar.edges.length }`, null);
++                    this.logEvent('ROOMAUTH_QUEUE_UNDERRUN', avatar, edge, phase, estServerNow, NaN,
++                        `waitMs=${ Math.round(waitMs) } local=${ isOwn } bufferDelayMs=${ isOwn ? 0 : PixelRPMovementAuthority.REMOTE_RENDER_DELAY_MS } queueDepth=${ avatar.edges.length }`, null);
+                 }
+             }
+ 
+@@ -465,6 +574,14 @@ export class PixelRPMovementAuthority
+             const oldStep = oldEdge ? Math.floor(oldEdge.cycleStart / oldEdge.interval) : NaN;
+             const newStep = Math.floor(edge.cycleStart / edge.interval);
+ 
++            if(oldEdge && (Math.abs((oldEdge.cycleStart + oldEdge.interval) - edge.cycleStart) > 4))
++            {
++                // Strict-500 invariant check: consecutive rendered edges must
++                // be exactly contiguous. Never appears during normal walking.
++                this.logEvent('ROOMAUTH_STEP_TIMING', avatar, edge, phase, estServerNow, NaN,
++                    `actualDurationMs=${ Math.round(edge.cycleStart - oldEdge.cycleStart) } expectedDurationMs=${ oldEdge.interval } local=${ isOwn }`, null);
++            }
++
+             this.logEvent('ROOMAUTH_ROLLOVER', avatar, edge, phase, estServerNow, NaN,
+                 `oldRoomStep=${ Number.isFinite(oldStep) ? oldStep : 'n/a' } newRoomStep=${ newStep } oldRouteSlot=${ avatar.lastRenderedSeq } newRouteSlot=${ edge.seq } oldEdge=${ oldEdge ? `(${ oldEdge.sx },${ oldEdge.sy })->(${ oldEdge.gx },${ oldEdge.gy })` : 'n/a' } oldPhase=${ Number.isFinite(avatar.lastRenderedPhase) ? avatar.lastRenderedPhase.toFixed(3) : 'n/a' } newPhase=${ phase.toFixed(3) }`, target);
+         }
+@@ -519,6 +636,8 @@ export class PixelRPMovementAuthority
+             if(stop || (reason === 'packet-stale')) this.logSummary(avatar, reason);
+         }
+ 
++        if((reason === 'walk-ended') || (reason === 'local-hold-blocked')) avatar.endReleaseAt = Date.now();
++
+         avatar.state = PixelRPAuthorityState.NATIVE;
+         avatar.armSeq = avatar.lastSeq;
+         avatar.endedAt = 0;

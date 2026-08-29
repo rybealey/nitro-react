@@ -1,0 +1,13 @@
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index 6718de2fb9745495f5b2e2598092f98055d2a88b..bb45ad22c15507f7115752769b5e9041c2a5e97e 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -227,7 +227,7 @@ export class PixelRPMovementAuthority
+ 
+         avatar.wireLogged = true;
+         this.logEvent('ROOMAUTH_WIRE_RECEIVE', avatar,
+-            { seq, onGrid, sx, sy, sz, gx, gy, gz, cycleStart, interval: ((interval > 0) ? interval : 500) },
++            { seq, onGrid, provisional: false, sx, sy, sz, gx, gy, gz, cycleStart, interval: ((interval > 0) ? interval : 500) },
+             NaN, NaN, NaN,
+             `movementSeq=${ seq } packetAgeMs=${ Number.isFinite(packetAge) ? Math.round(packetAge) : 'n/a' } packetGapMs=${ Number.isFinite(packetGap) ? Math.round(packetGap) : 'n/a' }${ (Number.isFinite(packetGap) && (packetGap > PixelRPMovementAuthority.PACKET_GAP_LOG_MS)) ? ' PACKET-GAP-OUTLIER' : '' }`,
+             null);
