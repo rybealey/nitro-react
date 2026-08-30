@@ -8,10 +8,10 @@ import { RpProfileState } from '../rp-profile/RpProfileState';
 
 // PixelRP Corporations window, opened from the side drawer's Corporations
 // button (CreateLinkEvent('rp-corporations/toggle')). Viewable by every
-// player: a compact take on the classic business roster - corp rail on the
-// left (badge per corp, NPH17 default), the selected corp's rank ladder on
-// the right (highest rank first) with pay per 10 minutes of shift worked and
-// the employees holding each rank (tier I-V).
+// player: corp rail on the left (badge per corp, NPH17 default), then the
+// selected corp's identity header (badge plate, name, description, stat
+// chips) above its rank ladder (highest rank first) with pay per 10 minutes
+// of shift worked and the employees holding each rank (tier I-V).
 
 const DEFAULT_CORP_BADGE: string = 'NPH17';
 const TIER_NUMERALS: string[] = [ 'I', 'II', 'III', 'IV', 'V' ];
@@ -34,9 +34,8 @@ export const RpCorporationsView: FC<{}> = props =>
     const [ corps, setCorps ] = useState<RpCorpEntry[]>([]);
     const [ selectedId, setSelectedId ] = useState<number>(0);
     const [ detail, setDetail ] = useState<CorpDetail>(null);
-    // The rail's slider button opens a panel of corporation figures and
-    // display toggles. While it is open the roster drops to a single column
-    // so the cards stay readable in what is left of the width.
+    // The rail's slider button opens the display-options drawer. It overlays
+    // the roster (no reflow) and holds the show-on-cards toggles.
     const [ panelOpen, setPanelOpen ] = useState(false);
     const [ showWeekly, setShowWeekly ] = useState(true);
     const [ showTotal, setShowTotal ] = useState(true);
@@ -106,6 +105,8 @@ export const RpCorporationsView: FC<{}> = props =>
     const shownDetail = ((detail && (detail.id === selectedId)) ? detail : null);
     // highest rank first, like a real org chart
     const ranks = (shownDetail ? [ ...shownDetail.ranks ].sort((a, b) => (b.order - a.order)) : []);
+    // computed client-side: the roster already carries every employee's flag
+    const onDutyCount = (shownDetail ? shownDetail.ranks.reduce((total, rank) => (total + rank.employees.filter(employee => employee.onDuty).length), 0) : 0);
 
     return (
         <NitroCardView uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
@@ -113,11 +114,11 @@ export const RpCorporationsView: FC<{}> = props =>
             <NitroCardContentView overflow="hidden" className="text-black">
                 <div className="rp-corps-layout">
                     <div className="rp-corps-rail">
-                        { /* opens the figures/display panel; sits above the corp
+                        { /* opens the display-options drawer; sits above the corp
                              badges with a divider so it reads as a control, not
                              another corporation */ }
                         <div className={ `rp-corps-rail-tool ${ panelOpen ? 'is-active' : '' }` }
-                            title="Corporation details"
+                            title="Display options"
                             onClick={ () => setPanelOpen(value => !value) }>
                             <LuSlidersHorizontal />
                         </div>
@@ -128,106 +129,139 @@ export const RpCorporationsView: FC<{}> = props =>
                                 <LayoutBadgeImageView badgeCode={ corp.badge || DEFAULT_CORP_BADGE } />
                             </div>
                         )) }
-                        { !corps.length &&
-                            <div className="rp-corps-empty">No corporations yet.</div> }
                     </div>
-                    <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
-                        <div className="rp-corps-panel-inner">
-                            <div className="rp-corps-panel-title">Details</div>
-                            <div className="rp-corps-figures">
-                                <div className="rp-corps-figure">
-                                    <span className="rp-corps-figure-label">Employees</span>
-                                    <span className="rp-corps-figure-value">{ shownDetail ? shownDetail.employeeCount : 0 }</span>
-                                </div>
-                                <div className="rp-corps-figure">
-                                    <span className="rp-corps-figure-label">Stock</span>
-                                    <span className="rp-corps-figure-value">{ shownDetail ? shownDetail.stock : 0 }</span>
-                                </div>
-                            </div>
-                            <div className="rp-corps-panel-title">Show on cards</div>
-                            <label className="rp-corps-check">
-                                <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />
-                                <span>Weekly shifts</span>
-                            </label>
-                            <label className="rp-corps-check">
-                                <input type="checkbox" checked={ showTotal } onChange={ event => setShowTotal(event.target.checked) } />
-                                <span>Total shifts</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div className="rp-corps-detail">
+                    <div className="rp-corps-main">
                         { shownDetail &&
-                            <>
+                            // keyed by corp so switching remounts the block and
+                            // replays the fade-in
+                            <div key={ shownDetail.id } className="rp-corps-detail">
                                 <div className="rp-corps-head">
-                                    <div className="rp-corps-title-row">
-                                        <div className="rp-corps-title">{ shownDetail.name }</div>
-                                        <div className="rp-corps-count">{ shownDetail.employeeCount } { (shownDetail.employeeCount === 1) ? 'employee' : 'employees' }</div>
+                                    <div className="rp-corps-badge-plate">
+                                        <LayoutBadgeImageView badgeCode={ shownDetail.badge || DEFAULT_CORP_BADGE } />
                                     </div>
-                                    { shownDetail.description &&
-                                        <div className="rp-corps-sub">{ shownDetail.description }</div> }
-                                </div>
-                                <div className="rp-corps-ranks">
-                                    { ranks.map(rank => (
-                                        <div key={ rank.id } className="rp-corps-rank">
-                                            <div className="rp-corps-rank-row">
-                                                <span className="rp-corps-rank-name">{ rank.name }</span>
-                                                <span className="rp-corps-rank-pay">{ rank.pay }c <small>/ 10 min</small></span>
-                                            </div>
-                                            { (rank.employees.length > 0) &&
-                                                <div className={ `rp-corps-employees ${ panelOpen ? 'is-single' : '' }` }>
-                                                    { rank.employees.map(employee =>
-                                                    {
-                                                        const tierLabel = ((rank.tiers > 0) ? TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] : null);
-
-                                                        return (
-                                                            <div key={ employee.username } className="rp-corps-employee" title={ (tierLabel ? `${ rank.name } ${ tierLabel }` : rank.name) }
-                                                                onClick={ () =>
-                                                                {
-                                                                    RpProfileState.name = employee.username;
-                                                                    RpProfileState.figure = employee.figure;
-                                                                    RpProfileState.motto = '';
-                                                                    RpProfileState.online = employee.online;
-                                                                    // The roster carries no user id, but we are
-                                                                    // looking at this player's employment right
-                                                                    // now - hand it over rather than look it up.
-                                                                    RpProfileState.userId = 0;
-                                                                    // the roster carries no rank, so no verified mark
-                                                                    RpProfileState.staff = false;
-                                                                    RpProfileState.employment = {
-                                                                        corpId: shownDetail.id,
-                                                                        badge: (corps.find(entry => (entry.id === shownDetail.id))?.badge ?? ''),
-                                                                        corpName: shownDetail.name,
-                                                                        rankName: rank.name,
-                                                                        tier: ((rank.tiers > 0) ? employee.tier : 0)
-                                                                    };
-                                                                    CreateLinkEvent('rp-profile/show');
-                                                                } }>
-                                                                { /* portrait tint IS the presence signal: gray offline, green online, blue on duty */ }
-                                                                <div className={ `rp-corps-employee-portrait${ employee.onDuty ? ' is-onduty' : (employee.online ? ' is-online' : '') }` }>
-                                                                    <LayoutAvatarImageView figure={ employee.figure } direction={ 2 } />
-                                                                </div>
-                                                                <div className="rp-corps-employee-info">
-                                                                    <div className="rp-corps-employee-name-row">
-                                                                        <span className="rp-corps-employee-name">{ employee.username }</span>
-                                                                        { tierLabel &&
-                                                                            <span className="rp-corps-employee-tier">{ tierLabel }</span> }
-                                                                    </div>
-                                                                    { /* hardcoded zeros until the server sends shift stats */ }
-                                                                    { (showWeekly || showTotal) &&
-                                                                        <div className="rp-corps-employee-shifts">
-                                                                            { [ showWeekly && 'Wk 0', showTotal && 'Total 0' ].filter(Boolean).join(' / ') }
-                                                                        </div> }
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }) }
-                                                </div> }
+                                    <div className="rp-corps-head-info">
+                                        <div className="rp-corps-title">{ shownDetail.name }</div>
+                                        { shownDetail.description &&
+                                            <div className="rp-corps-sub">{ shownDetail.description }</div> }
+                                    </div>
+                                    <div className="rp-corps-chips">
+                                        <div className="rp-corps-chip">
+                                            <span className="rp-corps-chip-value">{ shownDetail.employeeCount }</span>
+                                            <span className="rp-corps-chip-label">Employees</span>
                                         </div>
-                                    )) }
+                                        <div className="rp-corps-chip">
+                                            <span className="rp-corps-chip-value">{ onDutyCount }</span>
+                                            <span className="rp-corps-chip-label">On duty</span>
+                                        </div>
+                                        <div className="rp-corps-chip">
+                                            <span className="rp-corps-chip-value">{ shownDetail.stock }</span>
+                                            <span className="rp-corps-chip-label">Stock</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </> }
+                                <div className="rp-corps-legend">
+                                    <span className="rp-corps-legend-item"><i className="rp-corps-dot is-offline" />Offline</span>
+                                    <span className="rp-corps-legend-item"><i className="rp-corps-dot is-online" />Online</span>
+                                    <span className="rp-corps-legend-item"><i className="rp-corps-dot is-onduty" />On duty</span>
+                                </div>
+                                <div className="rp-corps-body">
+                                    { /* overlay drawer: floats over the roster's left
+                                         edge, so the three-column grid never reflows */ }
+                                    <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
+                                        <div className="rp-corps-panel-title">Show on cards</div>
+                                        <label className="rp-corps-check">
+                                            <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />
+                                            <span>Weekly shifts</span>
+                                        </label>
+                                        <label className="rp-corps-check">
+                                            <input type="checkbox" checked={ showTotal } onChange={ event => setShowTotal(event.target.checked) } />
+                                            <span>Total shifts</span>
+                                        </label>
+                                    </div>
+                                    { /* clicking the roster dismisses the drawer */ }
+                                    <div className="rp-corps-ranks" onClick={ () => panelOpen && setPanelOpen(false) }>
+                                        { ranks.map(rank => (
+                                            <div key={ rank.id } className="rp-corps-rank">
+                                                <div className="rp-corps-rank-row">
+                                                    <span className="rp-corps-rank-name">{ rank.name }</span>
+                                                    <span className="rp-corps-rank-pay">{ rank.pay }c <small>/ 10 min</small></span>
+                                                </div>
+                                                { (rank.employees.length === 0) &&
+                                                    <div className="rp-corps-rank-none">No employees</div> }
+                                                { (rank.employees.length > 0) &&
+                                                    <div className="rp-corps-employees">
+                                                        { rank.employees.map(employee =>
+                                                        {
+                                                            const tierLabel = ((rank.tiers > 0) ? TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] : null);
+                                                            const rankLabel = (tierLabel ? `${ rank.name } ${ tierLabel }` : rank.name);
+                                                            const statusWord = (employee.onDuty ? 'On duty' : (employee.online ? 'Online' : 'Offline'));
+
+                                                            return (
+                                                                <div key={ employee.username } className="rp-corps-employee" title={ `${ rankLabel } - ${ statusWord }` }
+                                                                    onClick={ () =>
+                                                                    {
+                                                                        RpProfileState.name = employee.username;
+                                                                        RpProfileState.figure = employee.figure;
+                                                                        RpProfileState.motto = '';
+                                                                        RpProfileState.online = employee.online;
+                                                                        // The roster carries no user id, but we are
+                                                                        // looking at this player's employment right
+                                                                        // now - hand it over rather than look it up.
+                                                                        RpProfileState.userId = 0;
+                                                                        // the roster carries no rank, so no verified mark
+                                                                        RpProfileState.staff = false;
+                                                                        RpProfileState.employment = {
+                                                                            corpId: shownDetail.id,
+                                                                            badge: (corps.find(entry => (entry.id === shownDetail.id))?.badge ?? ''),
+                                                                            corpName: shownDetail.name,
+                                                                            rankName: rank.name,
+                                                                            tier: ((rank.tiers > 0) ? employee.tier : 0)
+                                                                        };
+                                                                        CreateLinkEvent('rp-profile/show');
+                                                                    } }>
+                                                                    { /* second presence signal beside the tint, for
+                                                                         colorblind legibility */ }
+                                                                    <span className={ `rp-corps-dot rp-corps-employee-status ${ employee.onDuty ? 'is-onduty' : (employee.online ? 'is-online' : 'is-offline') }` } />
+                                                                    { /* portrait tint doubles as the presence signal:
+                                                                         gray offline, green online, blue on duty */ }
+                                                                    <div className={ `rp-corps-employee-portrait${ employee.onDuty ? ' is-onduty' : (employee.online ? ' is-online' : '') }` }>
+                                                                        <LayoutAvatarImageView figure={ employee.figure } direction={ 2 } />
+                                                                    </div>
+                                                                    <div className="rp-corps-employee-info">
+                                                                        <div className="rp-corps-employee-name-row">
+                                                                            <span className="rp-corps-employee-name">{ employee.username }</span>
+                                                                            { tierLabel &&
+                                                                                <span className="rp-corps-employee-tier">{ tierLabel }</span> }
+                                                                        </div>
+                                                                        { /* hardcoded zeros until the server sends shift stats */ }
+                                                                        { (showWeekly || showTotal) &&
+                                                                            <div className="rp-corps-employee-shifts">
+                                                                                { [ showWeekly && 'Wk 0', showTotal && 'Total 0' ].filter(Boolean).join(' / ') }
+                                                                            </div> }
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }) }
+                                                    </div> }
+                                            </div>
+                                        )) }
+                                    </div>
+                                </div>
+                            </div> }
                         { !shownDetail && (corps.length > 0) &&
-                            <div className="rp-corps-empty">Loading...</div> }
+                            <div className="rp-corps-skeleton">
+                                <div className="rp-corps-skeleton-bar" />
+                                <div className="rp-corps-skeleton-cards">
+                                    <div className="rp-corps-skeleton-card" />
+                                    <div className="rp-corps-skeleton-card" />
+                                    <div className="rp-corps-skeleton-card" />
+                                </div>
+                            </div> }
+                        { !corps.length &&
+                            <div className="rp-corps-none">
+                                <LayoutBadgeImageView badgeCode={ DEFAULT_CORP_BADGE } />
+                                <div className="rp-corps-none-text">No corporations yet.</div>
+                            </div> }
                     </div>
                 </div>
             </NitroCardContentView>
