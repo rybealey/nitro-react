@@ -212,3 +212,48 @@ index f9b6582ca8468affdac67768ae9f1db7a54a22a9..3318c38c5d21c8981a7fa55d32096bfe
          {
              // A natural stop (walk-ended) is snap-free - the last edge's goal
              // IS the native resting tile. Anything else is a defensive return
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -393,15 +393,15 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+-        // PixelRP: depth sort with POV-atomic unit stacking. When two units
+-        // OVERLAP IN ROOM COORDINATES — raw (lerped) positions within one tile
+-        // of each other, i.e. sharing a tile or moving onto/through each
+-        // other's tile — each unit's ABOVE-GROUND stack (body + effect
+-        // overlays + bubbles, relativeDepth < 0.5) renders as one atomic
+-        // layer: the local player's stack always wins, otherwise higher
+-        // instance id sits behind (matching the numeric id bias). The trigger
+-        // deliberately IGNORES the sprites' z values: while walking, the
+-        // tile-quantized depths pass through transient windows a full tile
+-        // quantum apart (each unit's rounding flips at its own lerp midpoint),
+-        // so any z-closeness test lets the order follow the transient z and
+-        // flip every step — the walking flicker. Overlap is a property of
+-        // positions, not depths. Shadows (relativeDepth 1) are ground decals
+-        // and keep pure numeric depth so they stay under every body. Within
+-        // one unit — and for everything else — the plain numeric sort applies.
++        // PixelRP: depth sort with POV-atomic unit stacking. The override only
++        // applies when two units are nearby in raw room coordinates AND share
++        // effectively the same continuous Nitro room depth. The depth comes
++        // from RoomGeometry.getScreenPosition(...).z before the location cache
++        // quantizes it to a rounded tile. This stops a local avatar walking
++        // diagonally behind another avatar from winning merely because both
++        // axis deltas are below one tile. On a genuine depth tie, each unit's
++        // ABOVE-GROUND stack (body + effect overlays + bubbles,
++        // relativeDepth < 0.5) remains atomic: the local player's stack wins;
++        // otherwise higher instance id sits behind, matching the numeric bias.
++        // Shadows (relativeDepth 1) retain numeric depth and remain under every
++        // body. Within one unit, between clearly depth-separated units, and
++        // for everything else, Nitro's plain numeric sort applies. The 0.01
++        // tolerance is far below the depth difference between adjacent rows,
++        // while still absorbing floating-point noise on a true depth tie.
+@@ -413,3 +413,3 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+             if(aUnit && bUnit && (aUnit.id !== bUnit.id)
+                 && (Math.abs(aUnit.tx - bUnit.tx) < 1)
+-                && (Math.abs(aUnit.ty - bUnit.ty) < 1)
++                && (Math.abs(aUnit.ty - bUnit.ty) < 1) && (Math.abs(aUnit.depth - bUnit.depth) < 0.01)
+@@ -529,1 +529,1 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+-        let unitInfo: { id: number, own: boolean, tx: number, ty: number } = null;
++        let unitInfo: { id: number, own: boolean, tx: number, ty: number, depth: number } = null;
+@@ -543,1 +543,1 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+-            unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y };
++            unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
