@@ -59,12 +59,10 @@
         .avatar-image {
             image-rendering: pixelated;
             background-repeat: no-repeat;
-            // x: the head is NOT centred within the 90px sprite - it sits right
-            // of the body's centre for this direction - so `center` pushes the
-            // bust too far right. This offset centres the visible HEAD, which
-            // is what a bust crop actually shows.
-            // y: -17px eats the empty headroom so the head sits at the top
-            background-position: -13px -17px;
+            // Framing the HEAD, not the sprite: the head sits off-centre within
+            // the 90x130 sprite, so centring the sprite itself does not centre a
+            // bust. Both values were dialled in against the rendered result.
+            background-position: -9px -24px;
         }
     }
 
