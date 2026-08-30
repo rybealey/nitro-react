@@ -2,8 +2,8 @@ import { ILinkEventTracker, RpGetUserCorpComposer, RpUserCorpEvent } from '@nitr
 import { FC, useEffect, useState } from 'react';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
-import { LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
+import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
 
@@ -112,7 +112,14 @@ export const RpProfileView: FC<{}> = props =>
                         </div>
                         <div className="rp-profile-card rp-profile-org">
                             <div className="rp-profile-org-row">
-                                <LuBuilding2 className="rp-profile-org-icon" />
+                                { /* Badge art is pixel art at its own native size - the slot is
+                                     sized around it rather than scaling it, and the fallback icon
+                                     sits in the same slot so the row height never shifts. */ }
+                                <div className="rp-profile-org-icon-slot">
+                                    { employment
+                                        ? <LayoutBadgeImageView badgeCode={ employment.badge || DEFAULT_CORP_BADGE } />
+                                        : <LuBuilding2 className="rp-profile-org-icon" /> }
+                                </div>
                                 <div className="rp-profile-org-info">
                                     <div className="rp-profile-org-name">{ employment ? employment.corpName : 'Unemployed' }</div>
                                     { /* "Cadet II", or just "Captain" for the no-tier leadership ranks */ }
@@ -128,7 +135,10 @@ export const RpProfileView: FC<{}> = props =>
                         </div>
                         <div className="rp-profile-card rp-profile-org">
                             <div className="rp-profile-org-row">
-                                <LuUsers className="rp-profile-org-icon" />
+                                { /* same slot as the corporation card so both icons line up */ }
+                                <div className="rp-profile-org-icon-slot">
+                                    <LuUsers className="rp-profile-org-icon" />
+                                </div>
                                 <div className="rp-profile-org-info">
                                     <div className="rp-profile-org-name">No gang</div>
                                     <div className="rp-profile-org-role">&nbsp;</div>
