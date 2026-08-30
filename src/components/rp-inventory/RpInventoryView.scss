@@ -1,5 +1,8 @@
 .nitro-card.rp-inventory-window {
-    width: 104px;
+    // Slots are a 2-column grid of squares, so the window width IS the slot
+    // size - widening here is what makes the panel read chunkier rather than
+    // cramped.
+    width: 124px;
 
     // Narrow panel: shrink the stock header type so the title, edit chip
     // and close button share the row like the reference.
@@ -18,9 +21,11 @@
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 4px;
-        // subtle divider so the gear row reads separate from carry slots
+        // subtle divider so the gear row reads separate from carry slots.
+        // No margin-bottom: the content area is a Column with a default 8px
+        // gap, so a margin here would stack on top of it and leave the space
+        // below the line twice the space above it.
         padding-bottom: 8px;
-        margin-bottom: 8px;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
