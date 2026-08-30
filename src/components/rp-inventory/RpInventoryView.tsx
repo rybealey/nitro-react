@@ -1,10 +1,11 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { FaPen } from 'react-icons/fa';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
-import { useMessageEvent } from '../../hooks';
+import { useLocalStorage, useMessageEvent } from '../../hooks';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Inventory
 // button (CreateLinkEvent('rp-inventory/toggle')). Two gear slots (Weapon /
@@ -17,6 +18,7 @@ import { useMessageEvent } from '../../hooks';
 const DRAG_THRESHOLD: number = 6;
 const CARRY_SLOTS: number[] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
 const UNLOCKED_SLOTS: number = 10;
+type ItemUseMode = 'single' | 'double';
 
 // item key -> display name + icon class (icons live in assets/images/rp-items)
 const ITEMS: Record<string, { name: string, cls: string }> = {
@@ -32,7 +34,10 @@ export const RpInventoryView: FC<{}> = props =>
     const [ dragFrom, setDragFrom ] = useState<number>(-1);
     const [ dropTarget, setDropTarget ] = useState<number>(-1);
     const [ ghost, setGhost ] = useState<{ x: number, y: number }>(null);
+    const [ itemUseMode, setItemUseMode ] = useLocalStorage<ItemUseMode>('pixelrp.backpack.item-use-mode', 'single');
+    const [ isUseModeOpen, setIsUseModeOpen ] = useState(false);
     const movedRef = useRef(false);
+    const useModeRef = useRef<HTMLDivElement>(null);
 
     // Live backpack contents — sent at login and after every change, so the
     // map is always a full snapshot.
@@ -74,6 +79,25 @@ export const RpInventoryView: FC<{}> = props =>
 
         return () => RemoveLinkEventTracker(linkTracker);
     }, []);
+
+    useEffect(() =>
+    {
+        if(!isVisible) setIsUseModeOpen(false);
+    }, [ isVisible ]);
+
+    useEffect(() =>
+    {
+        if(!isUseModeOpen) return;
+
+        const onPointerDown = (event: globalThis.PointerEvent) =>
+        {
+            if(!useModeRef.current?.contains(event.target as Node)) setIsUseModeOpen(false);
+        }
+
+        document.addEventListener('pointerdown', onPointerDown);
+
+        return () => document.removeEventListener('pointerdown', onPointerDown);
+    }, [ isUseModeOpen ]);
 
     if(!isVisible) return null;
 
@@ -151,9 +175,50 @@ export const RpInventoryView: FC<{}> = props =>
         window.addEventListener('pointercancel', onUp);
     }
 
+    const onItemClick = (slot: number) =>
+    {
+        // A completed drag must not also consume the item.
+        if(movedRef.current)
+        {
+            movedRef.current = false;
+
+            return;
+        }
+
+        if(itemUseMode === 'single') SendMessageComposer(new RpUseItemComposer(slot));
+    }
+
+    const onItemDoubleClick = (slot: number) =>
+    {
+        if(movedRef.current)
+        {
+            movedRef.current = false;
+
+            return;
+        }
+
+        if(itemUseMode === 'double') SendMessageComposer(new RpUseItemComposer(slot));
+    }
+
+    const chooseItemUseMode = (mode: ItemUseMode) =>
+    {
+        setItemUseMode(mode);
+        setIsUseModeOpen(false);
+    }
+
     return (
         <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
+            <div ref={ useModeRef } className="rp-inventory-use-mode">
+                <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
+                    <FaPen />
+                </button>
+                { isUseModeOpen &&
+                    <div className="rp-inventory-use-mode-menu">
+                        <button type="button" className={ (itemUseMode === 'single') ? 'is-active' : '' } onClick={ () => chooseItemUseMode('single') }>Single Click</button>
+                        <button type="button" className={ (itemUseMode === 'double') ? 'is-active' : '' } onClick={ () => chooseItemUseMode('double') }>Double Click</button>
+                    </div> }
+            </div>
             <NitroCardContentView className="text-black">
                 <div className="rp-inventory-gear">
                     <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
@@ -183,18 +248,8 @@ export const RpInventoryView: FC<{}> = props =>
                                 <div key={ slot } data-rp-slot={ slot }
                                     className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
                                     title={ meta.name }
-                                    onClick={ () =>
-                                    {
-                                        // a completed drag must not also consume the item
-                                        if(movedRef.current)
-                                        {
-                                            movedRef.current = false;
-
-                                            return;
-                                        }
-
-                                        SendMessageComposer(new RpUseItemComposer(slot));
-                                    } }
+                                    onClick={ () => onItemClick(slot) }
+                                    onDoubleClick={ () => onItemDoubleClick(slot) }
                                     onPointerDown={ event => onItemDown(event, slot) }>
                                     <div className={ `rp-inventory-item ${ meta.cls }` } />
                                     { (entry.count > 1) &&
