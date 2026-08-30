@@ -45,11 +45,12 @@
         height: 56px;
         border-radius: 50%;
         overflow: hidden;
-        // Same slot treatment as the infostand's badge containers - chrome-hi
-        // field plus a hairline - so portraits and badge slots read as one set,
-        // and the chrome vars carry the player's colour scheme through. Only
+        // Slot treatment borrowed from the infostand's badge containers - a
+        // hairline over a field a step lighter than the plate, so the portrait
+        // well reads as its own space rather than blending into the HUD around
+        // it. Chrome vars, so the player's colour scheme carries through. Only
         // the fill and border are borrowed; the mask stays circular.
-        background: var(--prp-chrome-hi);
+        background: var(--prp-chrome-slot);
         border: 1px solid rgba(255, 255, 255, 0.08);
 
         // Render the avatar sprite exactly as the room engine does: at its native

@@ -55,6 +55,11 @@
     --prp-chrome-hi: #{lighten(rgba($dark, 0.6), 2.5)};
     --prp-chrome-lo: #{darken(rgba($dark, 0.6), 4)};
     --prp-chrome-hover: #{lighten(rgba($dark, 0.95), 6)};
+    /* Inset slot surface: a step lighter than the plate, and opaque, so a
+       portrait or badge well reads as its own space inside the surrounding
+       chrome instead of blending into it. Not the hover token - that one is
+       free to be retuned for hover feel without dragging slots along. */
+    --prp-chrome-slot: #{lighten(rgba($dark, 0.95), 7)};
 
     /* Pre-blended bevel band colors (what hi/lo @ .6 looked like OVER the
        .95 base) at the SAME alpha as the base — used in single-layer plate
