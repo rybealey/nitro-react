@@ -96,7 +96,12 @@ export const RpProfileView: FC<{}> = props =>
                                 <LayoutAvatarImageView figure={ RpProfileState.figure } direction={ 2 } />
                             </div>
                             <div className="rp-profile-identity-info">
-                                <div className="rp-profile-name">{ RpProfileState.name || 'Unknown' }</div>
+                                <div className="rp-profile-name">
+                                    <span className="rp-profile-name-text">{ RpProfileState.name || 'Unknown' }</span>
+                                    { /* same verified mark the infostand shows for staff */ }
+                                    { RpProfileState.staff &&
+                                        <i className="fa-solid fa-badge-check rp-profile-verified" title="PixelRP Staff" aria-hidden="true" /> }
+                                </div>
                                 <div className="rp-profile-motto">{ RpProfileState.motto || 'Welcome to my profile!' }</div>
                             </div>
                         </div>

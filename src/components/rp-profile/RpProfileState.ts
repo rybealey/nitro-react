@@ -17,4 +17,8 @@ export const RpProfileState = {
     // The corporation directory has the corp, rank and tier in hand but no
     // user id on the wire, so it seeds this directly.
     employment: null as RpEmployment | null,
+    // Verified/staff mark, same flag the infostand shows. It rides RpStatsEvent
+    // and is keyed by roomIndex, so only openers with a room unit can supply
+    // it - the corporation directory has no way to know and leaves it false.
+    staff: false as boolean,
 };

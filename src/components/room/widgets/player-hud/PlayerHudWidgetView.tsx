@@ -206,6 +206,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         RpProfileState.online = true;
                         RpProfileState.userId = GetSessionDataManager().userId;
                         RpProfileState.employment = null;
+                        RpProfileState.staff = IsRpStaff(roomSession?.ownRoomIndex ?? -1);
                         CreateLinkEvent('rp-profile/show');
                     } } />
                     <HudStars wanted={ playerStats.wanted } />
@@ -252,6 +253,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             // id and would key the employment registry wrong.
                             RpProfileState.userId = target.webID;
                             RpProfileState.employment = null;
+                            RpProfileState.staff = IsRpStaff(target.roomIndex);
                             CreateLinkEvent('rp-profile/show');
                         } } />
                         <HudStars wanted={ targetStats.wanted } />

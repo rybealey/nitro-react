@@ -150,6 +150,8 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                     // looking at this player's employment right
                                                                     // now - hand it over rather than look it up.
                                                                     RpProfileState.userId = 0;
+                                                                    // the roster carries no rank, so no verified mark
+                                                                    RpProfileState.staff = false;
                                                                     RpProfileState.employment = {
                                                                         corpId: shownDetail.id,
                                                                         badge: (corps.find(entry => (entry.id === shownDetail.id))?.badge ?? ''),

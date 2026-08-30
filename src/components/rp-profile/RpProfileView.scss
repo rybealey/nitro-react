@@ -6,8 +6,11 @@
         gap: 10px;
     }
 
+    // Left gets the extra room: it carries the corporation badge, a wrapping
+    // corp name and the rank line, while the stat rows are short labels and
+    // single-digit values that were using more width than they needed.
     .rp-profile-left {
-        flex: 1.15;
+        flex: 1.55;
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -61,6 +64,25 @@
     .rp-profile-name {
         font-size: 14px;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .rp-profile-name-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    // The infostand's mark is white for its dark panel; this card is a light
+    // surface, so it needs its own colour to stay legible.
+    .rp-profile-verified {
+        color: #3f8ae0;
+        font-size: 12px;
+        line-height: 1;
+        flex-shrink: 0;
     }
 
     .rp-profile-motto {
