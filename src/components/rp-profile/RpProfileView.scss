@@ -59,11 +59,12 @@
         .avatar-image {
             image-rendering: pixelated;
             background-repeat: no-repeat;
-            // x: `center` centres the 90px sprite in the box whatever its width
-            // (a hardcoded offset only centres for one box size, which is how
-            // this ended up off to the left). Same as the HUD portrait.
+            // x: the head is NOT centred within the 90px sprite - it sits right
+            // of the body's centre for this direction - so `center` pushes the
+            // bust too far right. This offset centres the visible HEAD, which
+            // is what a bust crop actually shows.
             // y: -17px eats the empty headroom so the head sits at the top
-            background-position: center -17px;
+            background-position: -13px -17px;
         }
     }
 
