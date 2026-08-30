@@ -4,12 +4,12 @@
     // cramped.
     width: 124px;
 
-    // Narrow panel: shrink the stock header type so the title, edit chip
-    // and close button share the row like the reference.
-    // Left-align the title so it, the edit chip and the close button share
-    // the narrow header row without colliding (stock header centers it).
+    // Narrow panel: the stock header type is still trimmed so the title, edit
+    // chip and close button share the row, but the wider panel gives it a
+    // little of that back. Left-aligned so they do not collide (stock header
+    // centers it).
     .nitro-card-header .nitro-card-header-text {
-        font-size: 12px !important;
+        font-size: 13px !important;
         margin-right: auto;
         padding-left: 6px;
     }
@@ -106,8 +106,10 @@
         font-weight: 700;
     }
 
+    // Scales with the slot: the panel widening enlarged every square, so the
+    // number rides up with it rather than shrinking away inside a bigger box.
     .rp-inventory-slot-label {
-        font-size: 8px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.3px;
         text-transform: uppercase;

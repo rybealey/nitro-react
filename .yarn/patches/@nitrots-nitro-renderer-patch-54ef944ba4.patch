@@ -1,0 +1,41 @@
+diff --git a/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts b/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
+index f9f1eefa1a232c75e9dd502845dbdefef7934c63..1303eeae8fab7d4bf23d3cfe55d1c1b10542f998 100644
+--- a/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
+@@ -28,6 +28,7 @@ export class RpCorpDetailParser implements IMessageParser
+     private _name: string;
+     private _badge: string;
+     private _description: string;
++    private _stock: number;
+     private _employeeCount: number;
+     private _ranks: RpCorpRank[];
+ 
+@@ -37,6 +38,7 @@ export class RpCorpDetailParser implements IMessageParser
+         this._name = '';
+         this._badge = '';
+         this._description = '';
++        this._stock = 0;
+         this._employeeCount = 0;
+         this._ranks = [];
+ 
+@@ -51,6 +53,7 @@ export class RpCorpDetailParser implements IMessageParser
+         this._name = wrapper.readString();
+         this._badge = wrapper.readString();
+         this._description = wrapper.readString();
++        this._stock = wrapper.readInt();
+         this._employeeCount = wrapper.readInt();
+         this._ranks = [];
+ 
+@@ -108,6 +111,12 @@ export class RpCorpDetailParser implements IMessageParser
+         return this._description;
+     }
+ 
++    // Quantity the corporation holds; a placeholder 0 until farming lands.
++    public get stock(): number
++    {
++        return this._stock;
++    }
++
+     public get employeeCount(): number
+     {
+         return this._employeeCount;
