@@ -112,8 +112,9 @@ const useChatInputWidgetState = () =>
 
                     const lockState = TargetState.toggleLock?.() ?? null;
                     const status = (lockState === null) ? 'No target selected' : `Target lock ${ lockState ? 'enabled' : 'disabled' }`;
+                    const styleId = (lockState === null) ? 0 : (lockState ? 3 : 6);
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
 
                     return null;
                 }
