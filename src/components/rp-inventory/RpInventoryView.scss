@@ -11,7 +11,11 @@
     .nitro-card-header .nitro-card-header-text {
         font-size: 13px !important;
         margin-right: auto;
-        padding-left: 6px;
+        // No left padding: the header and the content area are both
+        // container-fluid with the same gutter, and the slot grid adds none of
+        // its own - so zero here lands the title exactly on the slots' left
+        // edge, rather than guessing an offset that drifts if the gutter moves.
+        padding-left: 0;
     }
 
 
