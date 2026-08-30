@@ -1,0 +1,110 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index d5b1c9de57801dd40f6ee6cdc404bcf19bd4ff17..bb8d335ba4670c3c5f2dc350cbcc2d8803a3b25b 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -21,6 +21,7 @@ import { RpGetCorpsComposer } from './messages/outgoing/RpGetCorpsComposer';
+ import { RpGetUserCorpComposer } from './messages/outgoing/RpGetUserCorpComposer';
+ import { RpDiscordStatusEvent } from './messages/incoming/RpDiscordStatusEvent';
+ import { RpMovementCycleEvent } from './messages/incoming/RpMovementCycleEvent';
++import { RpDiscordUnlinkComposer } from './messages/outgoing/RpDiscordUnlinkComposer';
+ import { RpGetDiscordStatusComposer } from './messages/outgoing/RpGetDiscordStatusComposer';
+ import { RpUserCorpEvent } from './messages/incoming/RpUserCorpEvent';
+ import { RpMoveItemComposer } from './messages/outgoing/RpMoveItemComposer';
+@@ -1157,6 +1158,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_GET_CORP_DETAIL, RpGetCorpDetailComposer);
+         this._composers.set(OutgoingHeader.RP_GET_USER_CORP, RpGetUserCorpComposer);
+         this._composers.set(OutgoingHeader.RP_GET_DISCORD_STATUS, RpGetDiscordStatusComposer);
++        this._composers.set(OutgoingHeader.RP_DISCORD_UNLINK, RpDiscordUnlinkComposer);
+         this._composers.set(OutgoingHeader.RP_MESSENGER_MARK_READ, RpMessengerMarkReadComposer);
+         this._composers.set(OutgoingHeader.RP_SET_AIRPLANE_MODE, RpSetAirplaneModeComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_PHOTO, RpSavePhotoComposer);
+diff --git a/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts b/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts
+index bf3ee774567ad8f7d93649a9c92b93282f26f5fa..50654cdc494fb90b78d4b3f6d712b68be37203ac 100644
+--- a/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpDiscordStatusEvent.ts
+@@ -6,10 +6,12 @@ import { MessageEvent } from '../../../../events';
+ export class RpDiscordStatusParser implements IMessageParser
+ {
+     private _linked: boolean;
++    private _linkedAt: number;
+ 
+     public flush(): boolean
+     {
+         this._linked = false;
++        this._linkedAt = 0;
+ 
+         return true;
+     }
+@@ -19,6 +21,7 @@ export class RpDiscordStatusParser implements IMessageParser
+         if(!wrapper) return false;
+ 
+         this._linked = (wrapper.readInt() === 1);
++        this._linkedAt = wrapper.readInt();
+ 
+         return true;
+     }
+@@ -27,6 +30,12 @@ export class RpDiscordStatusParser implements IMessageParser
+     {
+         return this._linked;
+     }
++
++    // Unix seconds the account was linked at; 0 when unlinked.
++    public get linkedAt(): number
++    {
++        return this._linkedAt;
++    }
+ }
+ 
+ export class RpDiscordStatusEvent extends MessageEvent implements IMessageEvent
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index 8cf2e26b66fd5e4a7dc1cce0caa640425b1dde6e..1272a1b7c6b31dd03e5f7ec5c7d47f88ff6f9468 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -474,6 +474,7 @@ export class OutgoingHeader
+     public static RP_GET_CORP_DETAIL = 3949;
+     public static RP_GET_USER_CORP = 3951;
+     public static RP_GET_DISCORD_STATUS = 3953;
++    public static RP_DISCORD_UNLINK = 3956;
+     public static RP_MESSENGER_MARK_READ = 3907;
+     public static RP_SET_AIRPLANE_MODE = 3934;
+     public static RP_SAVE_PHOTO = 3936;
+diff --git a/src/nitro/communication/messages/outgoing/RpDiscordUnlinkComposer.ts b/src/nitro/communication/messages/outgoing/RpDiscordUnlinkComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f5c0be63cbcae2cb6c2da83edc297c946d24272b
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpDiscordUnlinkComposer.ts
+@@ -0,0 +1,22 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: disconnect the session user's Discord account.
++export class RpDiscordUnlinkComposer implements IMessageComposer<ConstructorParameters<typeof RpDiscordUnlinkComposer>>
++{
++    private _data: ConstructorParameters<typeof RpDiscordUnlinkComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 4d2968c268c2a83f42f0b89ce27ffba1ffdd1fc6..e99400f170d1612a212e1b8eaba7edf7bf148c40 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -75,6 +75,7 @@ export * from './RpSaveUiSettingsComposer';
+ export * from './RpMoveItemComposer';
+ export * from './RpGetCorpDetailComposer';
+ export * from './RpGetCorpsComposer';
++export * from './RpDiscordUnlinkComposer';
+ export * from './RpGetDiscordStatusComposer';
+ export * from './RpGetUserCorpComposer';
+ export * from './RpUseItemComposer';
