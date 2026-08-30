@@ -59,9 +59,11 @@
         .avatar-image {
             image-rendering: pixelated;
             background-repeat: no-repeat;
-            // x: -14px sits the figure in the middle of the sprite's slack;
+            // x: `center` centres the 90px sprite in the box whatever its width
+            // (a hardcoded offset only centres for one box size, which is how
+            // this ended up off to the left). Same as the HUD portrait.
             // y: -17px eats the empty headroom so the head sits at the top
-            background-position: -14px -17px;
+            background-position: center -17px;
         }
     }
 
