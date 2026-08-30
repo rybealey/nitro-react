@@ -424,7 +424,7 @@ export const RpSettingsView: FC<{}> = props =>
                                             <Text small className="text-muted">Disconnecting. Your Discord roles are removed shortly.</Text> }
                                     </> }
                                     { (discordLinked === false) && <>
-                                        <Text small className="text-muted">Link your Discord account to get the Verified role and an in-game Discord badge. Your Discord details are never shown in-game.</Text>
+                                        <Text small className="text-muted">Link your Discord account to get the Verified role. Your Discord details are never shown in-game.</Text>
                                         { (discordPending !== 'connect') &&
                                             <div className="rp-settings-discord-btn" onClick={ connectDiscord }>Connect Discord</div> }
                                         { (discordPending === 'connect') &&
