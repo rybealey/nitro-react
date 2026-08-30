@@ -1,11 +1,39 @@
-// Corporations window: deliberately compact next to the classic business
-// roster windows - a slim badge rail plus a scrolling rank ladder.
-.nitro-card.rp-corporations-window {
-    width: 520px;
-    height: 440px;
+// Corporations window: badge rail on the left, then the selected corp's
+// identity header (chrome-tinted badge plate, name, stat chips) above its
+// scrolling rank ladder. Fixed 640x480; the ladder is the ONE scroller
+// (content-area overflow is hidden so it can't double-scroll).
 
-    // The window is fixed 520x440; the rank ladder is the ONE scroller
-    // (content-area overflow is hidden so it can't double-scroll).
+// Presence palette - shared by the portrait tints, the card status dots and
+// the legend so the three signals can never drift apart.
+$corps-presence-offline: #b0b0b0;
+$corps-presence-online: #2e9e4f;
+$corps-presence-onduty: #2f7fd6;
+
+// Coin gold for the rank pay chips.
+$corps-coin-text: #8a6d1d;
+$corps-coin-fill: rgba(240, 195, 80, 0.18);
+$corps-coin-border: rgba(200, 160, 60, 0.45);
+
+// Loading ghosts share one shimmer treatment.
+%rp-corps-shimmer {
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: rp-corps-shimmer 1.2s linear infinite;
+}
+
+@keyframes rp-corps-shimmer {
+    to { background-position: -200% 0; }
+}
+
+@keyframes rp-corps-fade {
+    from { opacity: 0; }
+}
+
+.nitro-card.rp-corporations-window {
+    width: 640px;
+    height: 480px;
+
     .rp-corps-layout {
         display: flex;
         gap: 10px;
@@ -52,6 +80,48 @@
         }
     }
 
+    // Rail control: same square as a corp badge, but divided off below so it
+    // reads as a tool rather than another corporation.
+    .rp-corps-rail-tool {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: $border-radius;
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: rgba(0, 0, 0, 0.45);
+        cursor: pointer;
+        margin-bottom: 2px;
+        padding-bottom: 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        transition: border-color 0.1s ease, background 0.1s ease, color 0.1s ease;
+
+        svg { width: 20px; height: 20px; }
+
+        &:hover { border-color: rgba(0, 0, 0, 0.25); }
+
+        // open: tinted with the player's chosen UI chrome colour
+        &.is-active {
+            border-color: var(--prp-chrome-solid);
+            background: color-mix(in srgb, var(--prp-chrome-solid) 16%, transparent);
+            color: var(--prp-chrome-solid);
+        }
+    }
+
+    // Hosts whichever of the three states is showing (detail, skeleton, or
+    // the no-corps empty state).
+    .rp-corps-main {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
     .rp-corps-detail {
         flex: 1;
         min-width: 0;
@@ -59,82 +129,205 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        // remounted per corp (keyed), so switching replays this fade
+        animation: rp-corps-fade 0.12s ease;
     }
 
-    .rp-corps-title-row {
+    // ---- identity header ------------------------------------------------
+
+    .rp-corps-head {
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 8px;
+        align-items: center;
+        gap: 10px;
+    }
+
+    // The corp's identity moment: native 40px badge art on a plate tinted
+    // with the player's chrome colour. Art is never scaled.
+    .rp-corps-badge-plate {
+        width: 52px;
+        height: 52px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--prp-chrome-solid) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--prp-chrome-solid) 35%, transparent);
+
+        .badge-image {
+            position: static;
+            width: 40px;
+            height: 40px;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+        }
+    }
+
+    .rp-corps-head-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
     .rp-corps-title {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 700;
-    }
-
-    .rp-corps-count {
-        font-size: 11px;
-        color: rgba(0, 0, 0, 0.55);
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
         white-space: nowrap;
-        flex-shrink: 0;
     }
 
     .rp-corps-sub {
         font-size: 11px;
         color: rgba(0, 0, 0, 0.55);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    // Mini stat tiles: value over a tiny uppercase label.
+    .rp-corps-chips {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .rp-corps-chip {
+        min-width: 56px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+        padding: 5px 8px 4px;
+        border-radius: 6px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .rp-corps-chip-value {
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .rp-corps-chip-label {
+        font-size: 8px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: rgba(0, 0, 0, 0.4);
+    }
+
+    // ---- presence -------------------------------------------------------
+
+    .rp-corps-legend {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        font-size: 9px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    .rp-corps-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .rp-corps-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+
+        &.is-offline { background: $corps-presence-offline; }
+        &.is-online { background: $corps-presence-online; }
+        &.is-onduty { background: $corps-presence-onduty; }
+    }
+
+    // ---- roster body (ladder + overlay drawer) --------------------------
+
+    .rp-corps-body {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        display: flex;
     }
 
     .rp-corps-ranks {
+        flex: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
         overflow-y: auto;
         min-height: 0;
         padding-right: 2px;
     }
 
-    // Rank header: name left, pay chip right - one line per rung.
+    // Rank header: quiet section label + coin pay chip over a hairline rule.
     .rp-corps-rank-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 5px 10px;
-        border-radius: $border-radius;
-        background: rgba(0, 0, 0, 0.06);
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 0 0 3px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .rp-corps-rank-name {
-        font-size: 12px;
+        font-size: 10px;
         font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.5);
+    }
+
+    // Top of the ladder (ranks render highest-first): a short chrome bar on
+    // the name so seniority reads at a glance.
+    .rp-corps-rank:first-child .rp-corps-rank-name {
+        border-left: 3px solid var(--prp-chrome-solid);
+        padding-left: 5px;
+        color: rgba(0, 0, 0, 0.65);
     }
 
     .rp-corps-rank-pay {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
-        color: #8a6d1d;
+        padding: 1px 7px;
+        border-radius: 8px;
+        color: $corps-coin-text;
+        background: $corps-coin-fill;
+        border: 1px solid $corps-coin-border;
 
         small {
             font-weight: 400;
-            color: rgba(0, 0, 0, 0.45);
+            color: rgba(0, 0, 0, 0.4);
         }
     }
 
-    // Three across normally; one while the details panel is open, since the
-    // panel takes the width the extra columns were using.
+    .rp-corps-rank-none {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.35);
+        padding: 4px 2px 0;
+    }
+
     .rp-corps-employees {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-
-        &.is-single { grid-template-columns: minmax(0, 1fr); }
         gap: 6px;
-        padding: 4px 2px 2px;
+        padding: 6px 2px 2px;
     }
 
-    // Employee card: mini HUD-style plate — masked portrait + name/tier +
+    // Employee card: mini HUD-style plate - masked portrait + name/tier +
     // shift stats. Clicking opens the player's RP profile.
     .rp-corps-employee {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -144,9 +337,25 @@
         background: $white;
         border: 1px solid rgba(0, 0, 0, 0.12);
         cursor: pointer;
-        transition: border-color 0.1s ease;
+        transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
 
-        &:hover { border-color: rgba(0, 0, 0, 0.3); }
+        &:hover {
+            border-color: rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        }
+
+        &:active {
+            transform: none;
+            box-shadow: none;
+        }
+    }
+
+    // second presence signal, pinned to the card corner (reuses .rp-corps-dot)
+    .rp-corps-employee-status {
+        position: absolute;
+        top: 5px;
+        right: 5px;
     }
 
     // Circular mask over the 90x130 sprite at native size (same technique as
@@ -160,10 +369,10 @@
         height: 44px;
         border-radius: 50%;
         overflow: hidden;
-        background: rgba(0, 0, 0, 0.15);
+        background: $corps-presence-offline;
 
-        &.is-online { background: #2e9e4f; }
-        &.is-onduty { background: #2f7fd6; }
+        &.is-online { background: $corps-presence-online; }
+        &.is-onduty { background: $corps-presence-onduty; }
 
         .avatar-image {
             position: absolute;
@@ -215,67 +424,35 @@
         white-space: nowrap;
     }
 
-    .rp-corps-empty {
-        font-size: 11px;
-        color: rgba(0, 0, 0, 0.45);
-        padding: 8px;
-        text-align: center;
-    }
+    // ---- overlay drawer -------------------------------------------------
 
-    // Rail control: same square as a corp badge, but divided off below so it
-    // reads as a tool rather than another corporation.
-    .rp-corps-rail-tool {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        border-radius: $border-radius;
-        background: rgba(0, 0, 0, 0.04);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        color: rgba(0, 0, 0, 0.45);
-        cursor: pointer;
-        margin-bottom: 2px;
-        padding-bottom: 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        transition: border-color 0.1s ease, background 0.1s ease, color 0.1s ease;
-
-        svg { width: 20px; height: 20px; }
-
-        &:hover { border-color: rgba(0, 0, 0, 0.25); }
-
-        // open: tinted with the player's chosen UI chrome colour
-        &.is-active {
-            border-color: var(--prp-chrome-solid);
-            background: color-mix(in srgb, var(--prp-chrome-solid) 16%, transparent);
-            color: var(--prp-chrome-solid);
-        }
-    }
-
-    // Slides out from the rail. Width is the animated property (not display),
-    // so the roster reflows alongside it instead of snapping.
+    // Slides over the roster's left edge (inside the body, so it sits below
+    // the header). The three-column grid never reflows.
     .rp-corps-panel {
-        width: 0;
-        overflow: hidden;
-        flex-shrink: 0;
-        transition: width 0.16s ease, opacity 0.16s ease, margin 0.16s ease;
-        opacity: 0;
-
-        &.is-open {
-            width: 132px;
-            opacity: 1;
-            margin-right: 8px;
-            padding-right: 8px;
-            border-right: 1px solid rgba(0, 0, 0, 0.08);
-        }
-    }
-
-    .rp-corps-panel-inner {
-        width: 132px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 150px;
+        z-index: 5;
         display: flex;
         flex-direction: column;
         gap: 6px;
+        padding: 8px;
+        border-radius: 6px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+        opacity: 0;
+        transform: translateX(-8px);
+        pointer-events: none;
+        transition: opacity 0.16s ease, transform 0.16s ease;
+
+        &.is-open {
+            opacity: 1;
+            transform: none;
+            pointer-events: auto;
+        }
     }
 
     .rp-corps-panel-title {
@@ -286,30 +463,6 @@
         color: rgba(0, 0, 0, 0.35);
     }
 
-    .rp-corps-figures {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .rp-corps-figure {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 6px 8px;
-        border-radius: $border-radius;
-        background: $white;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        font-size: 11px;
-    }
-
-    .rp-corps-figure-label { color: rgba(0, 0, 0, 0.55); }
-
-    .rp-corps-figure-value {
-        font-weight: 700;
-        font-size: 12px;
-    }
-
     .rp-corps-check {
         display: flex;
         align-items: center;
@@ -318,6 +471,60 @@
         cursor: pointer;
         user-select: none;
 
-        input { cursor: pointer; }
+        input {
+            cursor: pointer;
+            accent-color: var(--prp-chrome-solid);
+        }
+    }
+
+    // ---- loading + empty states -----------------------------------------
+
+    .rp-corps-skeleton {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        animation: rp-corps-fade 0.12s ease;
+    }
+
+    .rp-corps-skeleton-bar {
+        @extend %rp-corps-shimmer;
+        height: 18px;
+        width: 45%;
+    }
+
+    .rp-corps-skeleton-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .rp-corps-skeleton-card {
+        @extend %rp-corps-shimmer;
+        height: 54px;
+    }
+
+    .rp-corps-none {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        .badge-image {
+            position: static;
+            width: 40px;
+            height: 40px;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+            opacity: 0.5;
+        }
+    }
+
+    .rp-corps-none-text {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
     }
 }
