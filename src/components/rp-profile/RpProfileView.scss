@@ -39,9 +39,13 @@
         right: 6px;
     }
 
+    // Bust crop: the full 110px figure was setting this card's whole height for
+    // no real gain, so the box now frames head and shoulders the same way the
+    // HUD portrait does. The sprite is still drawn at its native size and
+    // simply clipped - never scaled, which would resample the pixel art.
     .rp-profile-avatar {
         width: 70px;
-        height: 110px;
+        height: 64px;
         flex-shrink: 0;
         overflow: hidden;
 
@@ -49,7 +53,7 @@
             image-rendering: pixelated;
             background-repeat: no-repeat;
             // x: -18px pulls the figure left of the sprite's centered slack;
-            // y: -17px eats the empty headroom so the feet fit the box
+            // y: -17px eats the empty headroom so the head sits at the top
             background-position: -18px -17px;
         }
     }
