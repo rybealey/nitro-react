@@ -20,24 +20,38 @@
     .rp-inventory-use-mode {
         position: absolute;
         top: 5px;
-        right: 29px;
+        right: 31px;
         z-index: 20;
     }
 
+    .nitro-card-header .nitro-card-header-close,
     .rp-inventory-use-mode-toggle {
-        width: 16px;
+        width: 20px;
         height: 16px;
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0;
-        border: 1px solid #56606c;
+        padding: 0 2px;
         border-radius: 2px;
         box-shadow: 0 0 0 1px $white;
+    }
+
+    .nitro-card-header .nitro-card-header-close {
+        top: 5px;
+    }
+
+    .rp-inventory-use-mode-toggle {
+        cursor: pointer;
+        border: 2px solid #56606c;
         background: linear-gradient(#aab1ba, #747d88);
         color: $white;
-        font-size: 9px;
         line-height: 1;
+
+        svg {
+            width: 12px;
+            height: 12px;
+        }
 
         &:hover { filter: brightness(1.12); }
         &:active { filter: brightness(0.88); }
