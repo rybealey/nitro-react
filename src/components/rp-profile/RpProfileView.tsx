@@ -150,6 +150,14 @@ export const RpProfileView: FC<{}> = props =>
                                 </div>
                                 <div className="rp-profile-view-gang">View</div>
                             </div>
+                            { /* The employment card above carries a pills row; this one has
+                                 nothing to put there yet. Reserving it with the same markup,
+                                 hidden, keeps the two cards exactly the same height - and
+                                 keeps them that way if the pill styling ever changes. */ }
+                            <div className="rp-profile-org-pills" aria-hidden="true">
+                                <div className="rp-profile-pill rp-profile-pill--ghost">&nbsp;</div>
+                                <div className="rp-profile-pill rp-profile-pill--ghost">&nbsp;</div>
+                            </div>
                         </div>
                     </div>
                     <div className="rp-profile-stats">

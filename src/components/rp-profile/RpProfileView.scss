@@ -48,13 +48,20 @@
         height: 64px;
         flex-shrink: 0;
         overflow: hidden;
+        // Same hairline-and-faint-fill treatment as the infostand's badge
+        // slots, translated to this light surface: the dark panel uses white
+        // at 8%, so this uses black at 8% - matching the profile cards' own
+        // border, which keeps the whole window reading as one set.
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.02);
 
         .avatar-image {
             image-rendering: pixelated;
             background-repeat: no-repeat;
-            // x: -18px pulls the figure left of the sprite's centered slack;
+            // x: -14px sits the figure in the middle of the sprite's slack;
             // y: -17px eats the empty headroom so the head sits at the top
-            background-position: -18px -17px;
+            background-position: -14px -17px;
         }
     }
 
@@ -123,10 +130,15 @@
         gap: 7px;
     }
 
+    // Pinned to the icon slot's height so a corporation name that wraps to two
+    // lines does not make this card taller than the gang card below it. The
+    // line-heights below are tight enough that two lines plus the rank still
+    // fit inside 40px, so nothing gets truncated.
     .rp-profile-org-row {
         display: flex;
         align-items: center;
         gap: 8px;
+        min-height: 40px;
     }
 
     // Sized around the corporation badge's native art (40x40) rather than
@@ -184,6 +196,12 @@
         font-size: 10px;
         font-weight: 700;
         color: rgba(0, 0, 0, 0.55);
+    }
+
+    // Occupies the same space as a real pill without drawing anything, so the
+    // gang card matches the employment card's height exactly.
+    .rp-profile-pill--ghost {
+        visibility: hidden;
     }
 
     .rp-profile-view-gang {
