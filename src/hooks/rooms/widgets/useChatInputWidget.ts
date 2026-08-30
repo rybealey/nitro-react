@@ -2,6 +2,7 @@ import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, InfoRetrieveMessag
 import { useEffect, useState } from 'react';
 import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetConfiguration, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
 import { ClickthroughState } from '../clickthroughState';
+import { TargetState } from '../targetState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useNotification } from '../../notification';
 import { useObjectSelectedEvent } from '../engine';
@@ -103,6 +104,16 @@ const useChatInputWidgetState = () =>
                     const status = ClickthroughState.enabled ? 'enabled' : 'disabled';
 
                     GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Clickthrough ${ status }`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+
+                    return null;
+                }
+                case ':lt': {
+                    if(text.trim().toLowerCase() !== ':lt') break;
+
+                    const lockState = TargetState.toggleLock?.() ?? null;
+                    const status = (lockState === null) ? 'No target selected' : `Target lock ${ lockState ? 'enabled' : 'disabled' }`;
+
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
 
                     return null;
                 }

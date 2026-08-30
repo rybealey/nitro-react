@@ -1,5 +1,5 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
@@ -177,17 +177,30 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         setLocked(false);
     }
 
+    const toggleTargetLock = useCallback((): boolean | null =>
+    {
+        if(!target) return null;
+
+        const nextLocked = !locked;
+
+        setLocked(nextLocked);
+
+        return nextLocked;
+    }, [ target, locked ]);
+
     // Mirror the selected target for non-React consumers — the chat input reads
     // this when expanding the "@x" target-mention shorthand into a shout.
     useEffect(() =>
     {
         TargetState.name = (target ? target.name : null);
+        TargetState.toggleLock = toggleTargetLock;
 
         return () =>
         {
             TargetState.name = null;
+            TargetState.toggleLock = null;
         }
-    }, [ target ]);
+    }, [ target, toggleTargetLock ]);
 
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
@@ -240,7 +253,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                     </div>
                     <div className="hud-portrait">
                         <span className="hud-close" title="Clear target" onClick={ closeTarget }><FaTimes /></span>
-                        <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ () => setLocked(value => !value) }>
+                        <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ toggleTargetLock }>
                             { locked ? <FaLock /> : <FaLockOpen /> }
                         </span>
                         <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>
