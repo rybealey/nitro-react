@@ -146,6 +146,17 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                     RpProfileState.figure = employee.figure;
                                                                     RpProfileState.motto = '';
                                                                     RpProfileState.online = employee.online;
+                                                                    // The roster carries no user id, but we are
+                                                                    // looking at this player's employment right
+                                                                    // now - hand it over rather than look it up.
+                                                                    RpProfileState.userId = 0;
+                                                                    RpProfileState.employment = {
+                                                                        corpId: shownDetail.id,
+                                                                        badge: (corps.find(entry => (entry.id === shownDetail.id))?.badge ?? ''),
+                                                                        corpName: shownDetail.name,
+                                                                        rankName: rank.name,
+                                                                        tier: ((rank.tiers > 0) ? employee.tier : 0)
+                                                                    };
                                                                     CreateLinkEvent('rp-profile/show');
                                                                 } }>
                                                                 { /* portrait tint IS the presence signal: gray offline, green online, blue on duty */ }

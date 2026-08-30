@@ -1,8 +1,10 @@
-import { ILinkEventTracker } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RpGetUserCorpComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
-import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
 
 // PixelRP player profile window (interface shell — stats/jobs/gangs wiring
@@ -40,6 +42,15 @@ export const RpProfileView: FC<{}> = props =>
                     case 'show':
                         setVersion(value => (value + 1));
                         setIsVisible(true);
+
+                        // Ask for live employment unless the opener already
+                        // supplied it. Room entry seeds the registry for
+                        // everyone present, but a profile can be opened for
+                        // someone who is not in the room.
+                        if(!RpProfileState.employment && RpProfileState.userId)
+                        {
+                            SendMessageComposer(new RpGetUserCorpComposer(RpProfileState.userId));
+                        }
                         return;
                     case 'hide':
                         setIsVisible(false);
@@ -57,7 +68,20 @@ export const RpProfileView: FC<{}> = props =>
         return () => RemoveLinkEventTracker(linkTracker);
     }, []);
 
+    // Keeps the registry fed and re-renders an open profile when the answer
+    // to the request above arrives, or a live hire broadcast lands.
+    useMessageEvent<RpUserCorpEvent>(RpUserCorpEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpEmployment(parser.userId, { corpId: parser.corpId, badge: parser.badge, corpName: parser.corpName, rankName: parser.rankName, tier: parser.tier });
+        setVersion(value => (value + 1));
+    });
+
     if(!isVisible) return null;
+
+    // The opener's own data wins; otherwise look the viewed player up.
+    const employment = (RpProfileState.employment ?? GetRpEmployment(RpProfileState.userId));
 
     return (
         <NitroCardView uniqueKey="rp-profile" className="rp-profile-window" theme="primary-slim">
@@ -90,9 +114,11 @@ export const RpProfileView: FC<{}> = props =>
                             <div className="rp-profile-org-row">
                                 <LuBuilding2 className="rp-profile-org-icon" />
                                 <div className="rp-profile-org-info">
-                                    <div className="rp-profile-org-name">Unemployed</div>
-                                    <div className="rp-profile-org-role">&nbsp;</div>
+                                    <div className="rp-profile-org-name">{ employment ? employment.corpName : 'Unemployed' }</div>
+                                    { /* "Cadet II", or just "Captain" for the no-tier leadership ranks */ }
+                                    <div className="rp-profile-org-role">{ employment ? RpRankTitle(employment.rankName, employment.tier) : ' ' }</div>
                                 </div>
+                                { /* placeholder until shift tracking ships */ }
                                 <div className="rp-profile-org-status">Off-duty</div>
                             </div>
                             <div className="rp-profile-org-pills">

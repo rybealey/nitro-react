@@ -204,6 +204,8 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         RpProfileState.figure = ownFigure;
                         RpProfileState.motto = OwnMotto.value;
                         RpProfileState.online = true;
+                        RpProfileState.userId = GetSessionDataManager().userId;
+                        RpProfileState.employment = null;
                         CreateLinkEvent('rp-profile/show');
                     } } />
                     <HudStars wanted={ playerStats.wanted } />
@@ -246,6 +248,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             RpProfileState.figure = target.figure;
                             RpProfileState.motto = (target.motto ?? '');
                             RpProfileState.online = true;
+                            // webID is the real user id; roomIndex is the unit
+                            // id and would key the employment registry wrong.
+                            RpProfileState.userId = target.webID;
+                            RpProfileState.employment = null;
                             CreateLinkEvent('rp-profile/show');
                         } } />
                         <HudStars wanted={ targetStats.wanted } />
