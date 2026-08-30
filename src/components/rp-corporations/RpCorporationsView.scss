@@ -121,9 +121,13 @@
         }
     }
 
+    // Three across normally; one while the details panel is open, since the
+    // panel takes the width the extra columns were using.
     .rp-corps-employees {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+
+        &.is-single { grid-template-columns: minmax(0, 1fr); }
         gap: 6px;
         padding: 4px 2px 2px;
     }
@@ -216,5 +220,104 @@
         color: rgba(0, 0, 0, 0.45);
         padding: 8px;
         text-align: center;
+    }
+
+    // Rail control: same square as a corp badge, but divided off below so it
+    // reads as a tool rather than another corporation.
+    .rp-corps-rail-tool {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: $border-radius;
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: rgba(0, 0, 0, 0.45);
+        cursor: pointer;
+        margin-bottom: 2px;
+        padding-bottom: 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        transition: border-color 0.1s ease, background 0.1s ease, color 0.1s ease;
+
+        svg { width: 20px; height: 20px; }
+
+        &:hover { border-color: rgba(0, 0, 0, 0.25); }
+
+        // open: tinted with the player's chosen UI chrome colour
+        &.is-active {
+            border-color: var(--prp-chrome-solid);
+            background: color-mix(in srgb, var(--prp-chrome-solid) 16%, transparent);
+            color: var(--prp-chrome-solid);
+        }
+    }
+
+    // Slides out from the rail. Width is the animated property (not display),
+    // so the roster reflows alongside it instead of snapping.
+    .rp-corps-panel {
+        width: 0;
+        overflow: hidden;
+        flex-shrink: 0;
+        transition: width 0.16s ease, opacity 0.16s ease, margin 0.16s ease;
+        opacity: 0;
+
+        &.is-open {
+            width: 132px;
+            opacity: 1;
+            margin-right: 8px;
+            padding-right: 8px;
+            border-right: 1px solid rgba(0, 0, 0, 0.08);
+        }
+    }
+
+    .rp-corps-panel-inner {
+        width: 132px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .rp-corps-panel-title {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.35);
+    }
+
+    .rp-corps-figures {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .rp-corps-figure {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-radius: $border-radius;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        font-size: 11px;
+    }
+
+    .rp-corps-figure-label { color: rgba(0, 0, 0, 0.55); }
+
+    .rp-corps-figure-value {
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .rp-corps-check {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        cursor: pointer;
+        user-select: none;
+
+        input { cursor: pointer; }
     }
 }

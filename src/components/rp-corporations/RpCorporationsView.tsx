@@ -1,5 +1,6 @@
 import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsEvent, RpGetCorpDetailComposer, RpGetCorpsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
+import { LuSlidersHorizontal } from 'react-icons/lu';
 import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
@@ -22,6 +23,8 @@ interface CorpDetail
     badge: string;
     description: string;
     employeeCount: number;
+    // quantity the corporation holds; 0 everywhere until farming lands
+    stock: number;
     ranks: RpCorpRank[];
 }
 
@@ -31,6 +34,12 @@ export const RpCorporationsView: FC<{}> = props =>
     const [ corps, setCorps ] = useState<RpCorpEntry[]>([]);
     const [ selectedId, setSelectedId ] = useState<number>(0);
     const [ detail, setDetail ] = useState<CorpDetail>(null);
+    // The rail's slider button opens a panel of corporation figures and
+    // display toggles. While it is open the roster drops to a single column
+    // so the cards stay readable in what is left of the width.
+    const [ panelOpen, setPanelOpen ] = useState(false);
+    const [ showWeekly, setShowWeekly ] = useState(true);
+    const [ showTotal, setShowTotal ] = useState(true);
 
     useMessageEvent<RpCorpsEvent>(RpCorpsEvent, event =>
     {
@@ -45,7 +54,7 @@ export const RpCorporationsView: FC<{}> = props =>
     {
         const parser = event.getParser();
 
-        setDetail({ id: parser.corpId, name: parser.name, badge: parser.badge, description: parser.description, employeeCount: parser.employeeCount, ranks: parser.ranks });
+        setDetail({ id: parser.corpId, name: parser.name, badge: parser.badge, description: parser.description, employeeCount: parser.employeeCount, stock: parser.stock, ranks: parser.ranks });
     });
 
     useEffect(() =>
@@ -104,6 +113,14 @@ export const RpCorporationsView: FC<{}> = props =>
             <NitroCardContentView overflow="hidden" className="text-black">
                 <div className="rp-corps-layout">
                     <div className="rp-corps-rail">
+                        { /* opens the figures/display panel; sits above the corp
+                             badges with a divider so it reads as a control, not
+                             another corporation */ }
+                        <div className={ `rp-corps-rail-tool ${ panelOpen ? 'is-active' : '' }` }
+                            title="Corporation details"
+                            onClick={ () => setPanelOpen(value => !value) }>
+                            <LuSlidersHorizontal />
+                        </div>
                         { corps.map(corp => (
                             <div key={ corp.id } title={ corp.name }
                                 className={ `rp-corps-rail-item ${ (corp.id === selectedId) ? 'is-active' : '' }` }
@@ -113,6 +130,30 @@ export const RpCorporationsView: FC<{}> = props =>
                         )) }
                         { !corps.length &&
                             <div className="rp-corps-empty">No corporations yet.</div> }
+                    </div>
+                    <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
+                        <div className="rp-corps-panel-inner">
+                            <div className="rp-corps-panel-title">Details</div>
+                            <div className="rp-corps-figures">
+                                <div className="rp-corps-figure">
+                                    <span className="rp-corps-figure-label">Employees</span>
+                                    <span className="rp-corps-figure-value">{ shownDetail ? shownDetail.employeeCount : 0 }</span>
+                                </div>
+                                <div className="rp-corps-figure">
+                                    <span className="rp-corps-figure-label">Stock</span>
+                                    <span className="rp-corps-figure-value">{ shownDetail ? shownDetail.stock : 0 }</span>
+                                </div>
+                            </div>
+                            <div className="rp-corps-panel-title">Show on cards</div>
+                            <label className="rp-corps-check">
+                                <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />
+                                <span>Weekly shifts</span>
+                            </label>
+                            <label className="rp-corps-check">
+                                <input type="checkbox" checked={ showTotal } onChange={ event => setShowTotal(event.target.checked) } />
+                                <span>Total shifts</span>
+                            </label>
+                        </div>
                     </div>
                     <div className="rp-corps-detail">
                         { shownDetail &&
@@ -133,7 +174,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                 <span className="rp-corps-rank-pay">{ rank.pay }c <small>/ 10 min</small></span>
                                             </div>
                                             { (rank.employees.length > 0) &&
-                                                <div className="rp-corps-employees">
+                                                <div className={ `rp-corps-employees ${ panelOpen ? 'is-single' : '' }` }>
                                                     { rank.employees.map(employee =>
                                                     {
                                                         const tierLabel = ((rank.tiers > 0) ? TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] : null);
@@ -172,7 +213,10 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                             <span className="rp-corps-employee-tier">{ tierLabel }</span> }
                                                                     </div>
                                                                     { /* hardcoded zeros until the server sends shift stats */ }
-                                                                    <div className="rp-corps-employee-shifts">Wk 0 / Total 0</div>
+                                                                    { (showWeekly || showTotal) &&
+                                                                        <div className="rp-corps-employee-shifts">
+                                                                            { [ showWeekly && 'Wk 0', showTotal && 'Total 0' ].filter(Boolean).join(' / ') }
+                                                                        </div> }
                                                                 </div>
                                                             </div>
                                                         );
