@@ -1,0 +1,214 @@
+diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
+index f9b6582ca8468affdac67768ae9f1db7a54a22a9..3318c38c5d21c8981a7fa55d32096bfe3d656c2b 100644
+--- a/src/room/renderer/PixelRPMovementAuthority.ts
++++ b/src/room/renderer/PixelRPMovementAuthority.ts
+@@ -24,7 +24,8 @@ enum PixelRPAuthorityState
+ {
+     NATIVE = 0,
+     ARMED = 1,
+-    AUTHORITATIVE = 2
++    AUTHORITATIVE = 2,
++    AUTHORITATIVE_IDLE = 3
+ }
+ 
+ interface PixelRPAuthorityAvatar
+@@ -85,7 +86,9 @@ interface PixelRPAuthorityAvatar
+  * describes an edge whose cycleStart is already correct, so the avatar
+  * renders at the right phase the moment it arrives.
+  *
+- * Entry state machine per avatar: NATIVE -> ARMED -> AUTHORITATIVE. The
++ * Entry state machine per avatar: NATIVE -> ARMED -> AUTHORITATIVE. A clean
++ * remote walk end retains ownership as AUTHORITATIVE_IDLE so a short repath
++ * can resume directly at a safe edge boundary without a native round-trip. The
+  * instant/off-grid first step renders natively (local prediction stays
+  * responsive); the first on-grid edge arms; the switch happens atomically at
+  * the NEXT edge boundary (or immediately when visually continuous). While
+@@ -201,6 +204,11 @@ export class PixelRPMovementAuthority
+         // A new walk after a gap starts a fresh entry decision.
+         if((clientNow - avatar.lastPacketAt) > PixelRPMovementAuthority.PACKET_STALE_MS)
+         {
++            if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)
++            {
++                this.releaseAvatar(avatar, 'idle-authority-stale');
++            }
++
+             if(avatar.wireLogged && !avatar.matchLogged)
+             {
+                 // State arrived but the renderer never looked it up: the id
+@@ -340,6 +348,42 @@ export class PixelRPMovementAuthority
+         const stepInterval = ((interval > 0) ? interval : 500);
+         const realEdge: PixelRPAuthorityEdge = { seq, onGrid, provisional: false, sx, sy, sz, gx, gy, gz, cycleStart, interval: stepInterval };
+ 
++        if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)
++        {
++            const sequential = (seq === (avatar.lastRenderedSeq + 1));
++            const sameTerminal = ((sx === avatar.lastRenderedX) && (sy === avatar.lastRenderedY)
++                && (Math.abs(sz - avatar.lastRenderedZ) <= 0.01));
++            const estServerNow = (clientNow - this._clockOffset - PixelRPMovementAuthority.REMOTE_RENDER_DELAY_MS);
++            const phase = Math.min(1, Math.max(0, ((estServerNow - cycleStart) / stepInterval)));
++            const receiveTarget: PixelRPAuthorityTarget = {
++                x: (sx + ((gx - sx) * phase)),
++                y: (sy + ((gy - sy) * phase)),
++                z: (sz + ((gz - sz) * phase))
++            };
++            const receiveDisplacement = this.tileDistance(avatar.lastRenderedX, avatar.lastRenderedY,
++                avatar.lastRenderedZ, receiveTarget.x, receiveTarget.y, receiveTarget.z);
++
++            // A fresh walk can still arrive off-grid through the global/native
++            // movement path (for example when instant-first-step is disabled).
++            // IDLE must not pin the remote avatar waiting for an edge that can
++            // never be resumed under ROOMAUTH.
++            if(!onGrid)
++            {
++                this.releaseAvatar(avatar, 'idle-new-walk-off-grid', realEdge);
++            }
++            else if(!sequential || !sameTerminal)
++            {
++                this.releaseAvatar(avatar, 'idle-route-discontinuous', realEdge);
++            }
++            else if(receiveDisplacement > PixelRPMovementAuthority.MAX_ENTRY_DISCREPANCY)
++            {
++                // The confirmed first edge already arrived mid-window. Waiting
++                // for a later edge would visibly freeze the avatar, while
++                // entering now would be the forbidden mid-edge correction.
++                this.releaseAvatar(avatar, 'idle-resume-mid-edge', realEdge);
++            }
++        }
++
+         // A provisional (lookahead) entry for this seq may already be queued.
+         // The real packet is truth: confirm it in place when identical, or
+         // correct it. A correction to an edge that is CURRENTLY RENDERING is
+@@ -446,7 +490,8 @@ export class PixelRPMovementAuthority
+     {
+         const avatar = this._avatars.get(virtualId);
+ 
+-        return !!(avatar && (avatar.state === PixelRPAuthorityState.AUTHORITATIVE));
++        return !!(avatar && ((avatar.state === PixelRPAuthorityState.AUTHORITATIVE)
++            || (avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)));
+     }
+ 
+     public getTarget(virtualId: number, clientNow: number, isOwn: boolean,
+@@ -466,6 +511,23 @@ export class PixelRPMovementAuthority
+ 
+         const estServerNow = (clientNow - this._clockOffset - (isOwn ? 0 : PixelRPMovementAuthority.REMOTE_RENDER_DELAY_MS));
+ 
++        if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)
++        {
++            const terminal: PixelRPAuthorityTarget = {
++                x: avatar.lastRenderedX,
++                y: avatar.lastRenderedY,
++                z: avatar.lastRenderedZ
++            };
++            const nativeDisplacement = this.tileDistance(nativeX, nativeY, nativeZ,
++                terminal.x, terminal.y, terminal.z);
++
++            if(nativeDisplacement > 2.5)
++            {
++                this.releaseAvatar(avatar, 'idle-native-teleport-mismatch');
++                return null;
++            }
++        }
++
+         // The edge whose window contains estServerNow (latest started edge).
+         let edge: PixelRPAuthorityEdge = null;
+ 
+@@ -500,7 +562,29 @@ export class PixelRPMovementAuthority
+             // just completed its full 500ms, so this is the exact boundary.
+             // Stop NOW - no local 100ms hold, no remote END_HOLD ambiguity.
+             // Snap-free by construction: the marker tile IS the resting tile.
+-            if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE) this.releaseAvatar(avatar, 'walk-ended');
++            if((avatar.state === PixelRPAuthorityState.AUTHORITATIVE) && !isOwn)
++            {
++                avatar.state = PixelRPAuthorityState.AUTHORITATIVE_IDLE;
++                avatar.endedAt = 0;
++                avatar.lastRenderedX = edge.gx;
++                avatar.lastRenderedY = edge.gy;
++                avatar.lastRenderedZ = edge.gz;
++                avatar.lastRenderedAt = clientNow;
++                avatar.lastRenderedSeq = edge.seq;
++                avatar.lastRenderedPhase = 1;
++                this.logEvent('ROOMAUTH_IDLE_ENTER', avatar, edge, 1, estServerNow, 0,
++                    'clean-remote-walk-end', { x: edge.gx, y: edge.gy, z: edge.gz });
++            }
++            else if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE)
++            {
++                // Local avatar behavior is deliberately unchanged.
++                this.releaseAvatar(avatar, 'walk-ended');
++            }
++
++            if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)
++            {
++                return { x: avatar.lastRenderedX, y: avatar.lastRenderedY, z: avatar.lastRenderedZ };
++            }
+ 
+             return null;
+         }
+@@ -590,6 +674,46 @@ export class PixelRPMovementAuthority
+             z: (edge.sz + ((edge.gz - edge.sz) * phase))
+         };
+ 
++        if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)
++        {
++            const terminal: PixelRPAuthorityTarget = {
++                x: avatar.lastRenderedX,
++                y: avatar.lastRenderedY,
++                z: avatar.lastRenderedZ
++            };
++            const sequential = (edge.seq === (avatar.lastRenderedSeq + 1));
++            const sameTerminal = ((edge.sx === terminal.x) && (edge.sy === terminal.y)
++                && (Math.abs(edge.sz - terminal.z) <= 0.01));
++            const resumeDisplacement = this.tileDistance(terminal.x, terminal.y, terminal.z,
++                target.x, target.y, target.z);
++
++            if(edge.provisional)
++            {
++                // Missing the confirmed first edge's boundary is a broken
++                // authority sequence, not permission to hold until another
++                // packet happens to replace this provisional edge.
++                this.releaseAvatar(avatar, 'idle-provisional-edge-current', edge);
++                return null;
++            }
++
++            if(!sequential || !sameTerminal)
++            {
++                this.releaseAvatar(avatar, 'idle-route-discontinuous', edge);
++                return null;
++            }
++
++            if(resumeDisplacement > PixelRPMovementAuthority.MAX_ENTRY_DISCREPANCY)
++            {
++                this.releaseAvatar(avatar, 'idle-resume-mid-edge', edge);
++                return null;
++            }
++
++            avatar.state = PixelRPAuthorityState.AUTHORITATIVE;
++            avatar.endedAt = 0;
++            this.logEvent('ROOMAUTH_IDLE_RESUME', avatar, edge, phase, estServerNow, resumeDisplacement,
++                'confirmed-contiguous-boundary', target);
++        }
++
+         // Plumbing proof, once per walk: the renderer's unit-id lookup found
+         // this avatar's authoritative state.
+         if(!avatar.matchLogged)
+@@ -721,9 +845,19 @@ export class PixelRPMovementAuthority
+         }
+     }
+ 
+-    private releaseAvatar(avatar: PixelRPAuthorityAvatar, reason: string): void
++    private releaseAvatar(avatar: PixelRPAuthorityAvatar, reason: string, faultEdge: PixelRPAuthorityEdge = null): void
+     {
+-        if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE)
++        if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE_IDLE)
++        {
++            avatar.stats.fallbacks++;
++            this.logEvent('ROOMAUTH_IDLE_FALLBACK', avatar,
++                faultEdge || avatar.edges[avatar.edges.length - 1] || null,
++                NaN, NaN, NaN, reason,
++                Number.isFinite(avatar.lastRenderedX)
++                    ? { x: avatar.lastRenderedX, y: avatar.lastRenderedY, z: avatar.lastRenderedZ }
++                    : null);
++        }
++        else if(avatar.state === PixelRPAuthorityState.AUTHORITATIVE)
+         {
+             // A natural stop (walk-ended) is snap-free - the last edge's goal
+             // IS the native resting tile. Anything else is a defensive return
