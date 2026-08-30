@@ -68,6 +68,12 @@
         text-align: center;
     }
 
+    .rp-settings-discord-mark {
+        font-size: 34px;
+        color: #5865f2;
+        line-height: 1;
+    }
+
     .rp-settings-discord-linked {
         color: #2e9e4f;
         font-weight: 700;
@@ -87,6 +93,38 @@
         &:hover {
             transform: translateY(-1px);
         }
+    }
+
+    .rp-settings-discord-btn--danger {
+        background: #b23b3b;
+    }
+
+    .rp-settings-skeleton {
+        border-radius: 6px;
+        background: linear-gradient(90deg, rgba(0, 0, 0, 0.06) 25%, rgba(0, 0, 0, 0.12) 37%, rgba(0, 0, 0, 0.06) 63%);
+        background-size: 400% 100%;
+        animation: rp-settings-skeleton-shimmer 1.4s ease infinite;
+
+        &--line {
+            width: 70%;
+            height: 12px;
+        }
+
+        &--block {
+            width: 100%;
+            height: 34px;
+        }
+
+        &--btn {
+            width: 132px;
+            height: 26px;
+            border-radius: 14px;
+        }
+    }
+
+    @keyframes rp-settings-skeleton-shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0 50%; }
     }
 
     .rp-settings-subpage {

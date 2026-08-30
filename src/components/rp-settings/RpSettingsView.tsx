@@ -1,4 +1,4 @@
-import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpGetDiscordStatusComposer, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
+import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
@@ -36,6 +36,11 @@ export const RpSettingsView: FC<{}> = props =>
     const [ socialPage, setSocialPage ] = useState<string>(SOCIAL_PAGES[0]);
     // null = unknown/loading; refreshed every time the Discord page opens
     const [ discordLinked, setDiscordLinked ] = useState<boolean>(null);
+    const [ discordLinkedAt, setDiscordLinkedAt ] = useState<number>(0);
+    // 'connect' while the OAuth popup is open, 'unlink' while a disconnect
+    // is in flight, null otherwise.
+    const [ discordPending, setDiscordPending ] = useState<string>(null);
+    const [ confirmUnlink, setConfirmUnlink ] = useState<boolean>(false);
     const [ usernameColor, setUsernameColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
     const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
@@ -78,16 +83,41 @@ export const RpSettingsView: FC<{}> = props =>
         }
     }, [ isVisible ]);
 
-    useMessageEvent<RpDiscordStatusEvent>(RpDiscordStatusEvent, event => setDiscordLinked(event.getParser().linked));
+    useMessageEvent<RpDiscordStatusEvent>(RpDiscordStatusEvent, event =>
+    {
+        const parser = event.getParser();
 
-    // Refresh link status whenever the Discord page comes on screen (also
-    // how "I've connected, check again" works after the OAuth tab).
+        setDiscordLinked(parser.linked);
+        setDiscordLinkedAt(parser.linkedAt);
+        // Any authoritative answer ends whatever was in flight.
+        setDiscordPending(null);
+        setConfirmUnlink(false);
+    });
+
+    // Refresh link status whenever the Discord page comes on screen.
     useEffect(() =>
     {
         if(!isVisible || (currentTab !== 'Social') || (socialPage !== 'Discord')) return;
 
+        setDiscordPending(null);
+        setConfirmUnlink(false);
         SendMessageComposer(new RpGetDiscordStatusComposer());
     }, [ isVisible, currentTab, socialPage ]);
+
+    // A player who cancels at Discord's consent screen, or just closes the
+    // popup, sends nothing back - never leave the panel stuck in pending.
+    useEffect(() =>
+    {
+        if(!discordPending) return;
+
+        const timeout = setTimeout(() =>
+        {
+            setDiscordPending(null);
+            SendMessageComposer(new RpGetDiscordStatusComposer());
+        }, 90000);
+
+        return () => clearTimeout(timeout);
+    }, [ discordPending ]);
 
     // Snap any stored value onto the nearest of the five slider stops.
     const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
@@ -158,6 +188,24 @@ export const RpSettingsView: FC<{}> = props =>
         setUsernameIcon(icon);
         saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, icon, usernameIconColor);
     }
+
+    const connectDiscord = () =>
+    {
+        setDiscordPending('connect');
+        window.open('/discord/connect', '_blank', 'noopener,noreferrer');
+    }
+
+    const disconnectDiscord = () =>
+    {
+        setDiscordPending('unlink');
+        setConfirmUnlink(false);
+        SendMessageComposer(new RpDiscordUnlinkComposer());
+    }
+
+    // "Connected since 4 March 2026" - linkedAt is unix seconds, 0 when unlinked.
+    const discordLinkedSince = (discordLinkedAt > 0)
+        ? new Date(discordLinkedAt * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+        : null;
 
     useEffect(() =>
     {
@@ -347,19 +395,40 @@ export const RpSettingsView: FC<{}> = props =>
                                     </div>
                                 </div> }
                                 { (socialPage === 'Discord') &&
-                                <Column center fullHeight gap={ 2 } className="rp-settings-placeholder rp-settings-discord">
+                                <Column center fullHeight gap={ 2 } className="rp-settings-discord">
+                                    <i className="fa-brands fa-discord rp-settings-discord-mark" aria-hidden="true" />
                                     <Text bold>Discord</Text>
+                                    { (discordLinked === null) && <>
+                                        <div className="rp-settings-skeleton rp-settings-skeleton--line" />
+                                        <div className="rp-settings-skeleton rp-settings-skeleton--block" />
+                                        <div className="rp-settings-skeleton rp-settings-skeleton--btn" />
+                                    </> }
                                     { (discordLinked === true) && <>
                                         <Text className="rp-settings-discord-linked">Your Discord account is connected.</Text>
-                                        <Text small className="text-muted">Your name in the PixelRP server now matches your in-game name, and you carry the Verified role. Manage the connection on the website.</Text>
-                                        <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord', '_blank', 'noopener,noreferrer') }>Manage connection</div>
+                                        <Text small className="text-muted">Your name in the PixelRP server matches your in-game name, and you carry the Verified role.</Text>
+                                        { discordLinkedSince &&
+                                            <Text small className="text-muted">Connected since { discordLinkedSince }.</Text> }
+                                        { !confirmUnlink && (discordPending !== 'unlink') &&
+                                            <div className="rp-settings-discord-btn rp-settings-discord-btn--danger"
+                                                onClick={ () => setConfirmUnlink(true) }>Disconnect</div> }
+                                        { confirmUnlink && (discordPending !== 'unlink') && <>
+                                            <Text small className="text-muted">Disconnect this account? You will lose the Verified role.</Text>
+                                            <Flex center gap={ 2 }>
+                                                <div className="rp-settings-discord-btn rp-settings-discord-btn--danger"
+                                                    onClick={ disconnectDiscord }>Yes, disconnect</div>
+                                                <Text small underline pointer className="text-muted"
+                                                    onClick={ () => setConfirmUnlink(false) }>Cancel</Text>
+                                            </Flex>
+                                        </> }
+                                        { (discordPending === 'unlink') &&
+                                            <Text small className="text-muted">Disconnecting. Your Discord roles are removed shortly.</Text> }
                                     </> }
-                                    { (discordLinked !== true) && <>
+                                    { (discordLinked === false) && <>
                                         <Text small className="text-muted">Link your Discord account to get the Verified role and an in-game Discord badge. Your Discord details are never shown in-game.</Text>
-                                        <Flex center gap={ 2 }>
-                                            <div className="rp-settings-discord-btn" onClick={ () => window.open('/discord/connect', '_blank', 'noopener,noreferrer') }>Connect Discord</div>
-                                            <Text small underline pointer className="text-muted" onClick={ () => SendMessageComposer(new RpGetDiscordStatusComposer()) }>I've connected - check again</Text>
-                                        </Flex>
+                                        { (discordPending !== 'connect') &&
+                                            <div className="rp-settings-discord-btn" onClick={ connectDiscord }>Connect Discord</div> }
+                                        { (discordPending === 'connect') &&
+                                            <Text small className="text-muted">Waiting for Discord. Finish in the window that opened, then come back here.</Text> }
                                     </> }
                                 </Column> }
                             </>
