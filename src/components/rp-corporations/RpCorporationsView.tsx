@@ -2,7 +2,7 @@ import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsE
 import { FC, useEffect, useState } from 'react';
 import { LuSlidersHorizontal } from 'react-icons/lu';
 import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { FormatShiftTime } from '../../api/rp-employment/RpEmploymentRegistry';
+import { FormatShifts } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from '../rp-profile/RpProfileState';
@@ -267,7 +267,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                         </div>
                                                                         { (showWeekly || showTotal) &&
                                                                             <div className="rp-corps-employee-shifts">
-                                                                                { [ showWeekly && `Weekly: ${ FormatShiftTime(employee.shiftSecondsWeek + liveExtra) }`, showTotal && `Total: ${ FormatShiftTime(employee.shiftSeconds + liveExtra) }` ].filter(Boolean).join(' · ') }
+                                                                                { [ showWeekly && `Weekly: ${ FormatShifts(employee.shiftSecondsWeek + liveExtra) }`, showTotal && `Total: ${ FormatShifts(employee.shiftSeconds + liveExtra) }` ].filter(Boolean).join(' · ') }
                                                                             </div> }
                                                                     </div>
                                                                 </div>

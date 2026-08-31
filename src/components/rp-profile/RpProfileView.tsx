@@ -2,7 +2,7 @@ import { ILinkEventTracker, RpGetUserCorpComposer, RpUserCorpEvent } from '@nitr
 import { FC, useEffect, useState } from 'react';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { DEFAULT_CORP_BADGE, FormatShiftTime, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
+import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
@@ -152,7 +152,7 @@ export const RpProfileView: FC<{}> = props =>
                                     { employment &&
                                         <div className="rp-profile-org-shifts">
                                             { employment.onDuty && <span className="rp-profile-org-onduty" /> }
-                                            { `Weekly: ${ FormatShiftTime(employment.shiftSecondsWeek + profileLiveExtra) } · Total: ${ FormatShiftTime(employment.shiftSeconds + profileLiveExtra) }` }
+                                            { `Weekly: ${ FormatShifts(employment.shiftSecondsWeek + profileLiveExtra) } · Total: ${ FormatShifts(employment.shiftSeconds + profileLiveExtra) }` }
                                         </div> }
                                 </div>
                                 <div className="rp-profile-org-status">{ employment?.onDuty ? 'On-duty' : 'Off-duty' }</div>

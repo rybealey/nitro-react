@@ -41,12 +41,6 @@ export const RpTierNumeral = (tier: number): string => ((tier < 1) ? '' : CORP_T
 // "Cadet II", or just "Captain" for no-tier leadership ranks
 export const RpRankTitle = (rankName: string, tier: number): string => [ rankName, RpTierNumeral(tier) ].filter(Boolean).join(' ');
 
-// "47m" under an hour, then "12h 3m" - minutes granularity everywhere
-export const FormatShiftTime = (seconds: number): string =>
-{
-    const minutes = Math.floor(seconds / 60);
-
-    if(minutes < 60) return `${ minutes }m`;
-
-    return `${ Math.floor(minutes / 60) }h ${ minutes % 60 }m`;
-}
+// Shift counts render as FULL SHIFTS completed - 1 shift = 10 minutes of
+// working time; partial shifts don't count until they finish.
+export const FormatShifts = (seconds: number): string => `${ Math.floor(seconds / 600) }`;
