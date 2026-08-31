@@ -236,7 +236,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                         { /* hardcoded zeros until the server sends shift stats */ }
                                                                         { (showWeekly || showTotal) &&
                                                                             <div className="rp-corps-employee-shifts">
-                                                                                { [ showWeekly && 'Wk 0', showTotal && 'Total 0' ].filter(Boolean).join(' / ') }
+                                                                                { [ showWeekly && 'Week 0', showTotal && 'Total 0' ].filter(Boolean).join(' / ') }
                                                                             </div> }
                                                                     </div>
                                                                 </div>
