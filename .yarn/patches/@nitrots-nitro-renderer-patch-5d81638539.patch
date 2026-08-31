@@ -1,0 +1,39 @@
+diff --git a/src/nitro/avatar/AvatarRenderManager.ts b/src/nitro/avatar/AvatarRenderManager.ts
+index 78f709bb1aadc414803fa10c3212bb78a75698fc..b12e99213f4b78dd156e7c53410b6f867bde7b77 100644
+--- a/src/nitro/avatar/AvatarRenderManager.ts
++++ b/src/nitro/avatar/AvatarRenderManager.ts
+@@ -152,6 +152,12 @@ export class AvatarRenderManager extends NitroManager implements IAvatarRenderMa
+ 
+                 this._structure.updateActions(JSON.parse(request.responseText));
+ 
++                // Registered here, AFTER the actions JSON is parsed: the
++                // animation's per-bodypart actions (CarryItem/Talk) are
++                // resolved at registration time, so registering any earlier
++                // leaves them null and only the dx/dy offsets render.
++                this.registerBuiltInAnimations();
++
+                 this._actionsReady = true;
+ 
+                 this.checkReady();
+@@ -169,14 +175,19 @@ export class AvatarRenderManager extends NitroManager implements IAvatarRenderMa
+         }
+     }
+ 
++    private registerBuiltInAnimations(): void
++    {
++        if(!this._structure) return;
++
++        this._structure.registerAnimation(DanceSixSevenAnimation);
++    }
++
+     private loadAnimations(): void
+     {
+         if(!this._structure) return;
+ 
+         this._structure.initAnimation(HabboAvatarAnimations.animations);
+ 
+-        this._structure.registerAnimation(DanceSixSevenAnimation);
+-
+         this._animationsReady = true;
+ 
+         this.checkReady();
