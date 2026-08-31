@@ -1,4 +1,4 @@
-import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsEvent, RpGetCorpDetailComposer, RpGetCorpsComposer } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsEvent, RpGetCorpDetailComposer, RpGetCorpsComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuSlidersHorizontal } from 'react-icons/lu';
 import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
@@ -58,6 +58,16 @@ export const RpCorporationsView: FC<{}> = props =>
         const parser = event.getParser();
 
         setDetail({ id: parser.corpId, name: parser.name, badge: parser.badge, description: parser.description, employeeCount: parser.employeeCount, stock: parser.stock, ranks: parser.ranks, receivedAt: Date.now() });
+    });
+
+    // Employment changes (hire/fire/promotion) broadcast hotel-wide; while
+    // the window is open, refetch the selected corp so the roster re-renders
+    // in real-time. Rare staff actions - no debounce needed.
+    useMessageEvent<RpUserCorpEvent>(RpUserCorpEvent, event =>
+    {
+        if(!isVisible || !selectedId) return;
+
+        SendMessageComposer(new RpGetCorpDetailComposer(selectedId));
     });
 
     useEffect(() =>
