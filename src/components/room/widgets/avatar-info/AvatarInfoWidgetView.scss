@@ -147,6 +147,9 @@
 
         .motto-content {
             min-height: 18px;
+            // RP mottos can be multi-line (the [WORKING] shift motto puts the
+            // rank on its own line) - render embedded newlines
+            white-space: pre-line;
         }
 
         .bg-light-dark {

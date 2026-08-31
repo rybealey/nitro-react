@@ -101,6 +101,9 @@
         font-size: 11px;
         color: rgba(0, 0, 0, 0.5);
         overflow-wrap: break-word;
+        // RP mottos can be multi-line (the [WORKING] shift motto) - render
+        // embedded newlines
+        white-space: pre-line;
     }
 
     // level chips
