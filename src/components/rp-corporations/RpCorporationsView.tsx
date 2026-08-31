@@ -82,6 +82,11 @@ export const RpCorporationsView: FC<{}> = props =>
     {
         if(!isVisible) return;
 
+        // refresh immediately on open - without this, tickNow (set once at
+        // mount) can sit well behind receivedAt for up to 60s, driving
+        // liveExtra negative on first open
+        setTickNow(Date.now());
+
         const interval = setInterval(() => setTickNow(Date.now()), 60000);
 
         return () => clearInterval(interval);
@@ -214,7 +219,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                             const statusWord = (employee.onDuty ? 'On duty' : (employee.online ? 'Online' : 'Offline'));
                                                             // seconds accrued on the current shift since the detail
                                                             // packet arrived - 0 unless this employee is on duty
-                                                            const liveExtra = (employee.onDuty ? Math.floor((tickNow - shownDetail.receivedAt) / 1000) : 0);
+                                                            const liveExtra = (employee.onDuty ? Math.max(0, Math.floor((tickNow - shownDetail.receivedAt) / 1000)) : 0);
 
                                                             return (
                                                                 <div key={ employee.username } className="rp-corps-employee" title={ `${ rankLabel } - ${ statusWord }` }
@@ -239,7 +244,10 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                             shiftSeconds: employee.shiftSeconds,
                                                                             shiftSecondsWeek: employee.shiftSecondsWeek,
                                                                             onDuty: employee.onDuty,
-                                                                            receivedAt: Date.now()
+                                                                            // keep the same baseline the card was
+                                                                            // ticking from, not a fresh now() that
+                                                                            // would drop the card's liveExtra
+                                                                            receivedAt: shownDetail.receivedAt
                                                                         };
                                                                         CreateLinkEvent('rp-profile/show');
                                                                     } }>

@@ -35,6 +35,11 @@ export const RpProfileView: FC<{}> = props =>
     {
         if(!isVisible) return;
 
+        // refresh immediately on open - without this, tickNow (set once at
+        // mount) can sit well behind receivedAt for up to 60s, driving
+        // profileLiveExtra negative on first open
+        setTickNow(Date.now());
+
         const interval = setInterval(() => setTickNow(Date.now()), 60000);
 
         return () => clearInterval(interval);
@@ -96,7 +101,7 @@ export const RpProfileView: FC<{}> = props =>
     const employment = (RpProfileState.employment ?? GetRpEmployment(RpProfileState.userId));
     // seconds accrued on the current shift since the employment packet
     // arrived - 0 unless this player is on duty right now
-    const profileLiveExtra = (employment?.onDuty ? Math.floor((tickNow - employment.receivedAt) / 1000) : 0);
+    const profileLiveExtra = (employment?.onDuty ? Math.max(0, Math.floor((tickNow - employment.receivedAt) / 1000)) : 0);
 
     return (
         <NitroCardView uniqueKey="rp-profile" className="rp-profile-window" theme="primary-slim">
