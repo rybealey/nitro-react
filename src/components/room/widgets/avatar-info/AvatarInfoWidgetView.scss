@@ -123,6 +123,15 @@
             border-radius: $border-radius;
             background-color: var(--prp-chrome-hi);
             border: 1px solid rgba(255, 255, 255, 0.08);
+
+            // The badge ART inside the slot is ALSO a .badge-image (the
+            // shared layout component's class) - strip the slot chrome from
+            // it so it doesn't draw a second box hugging the art.
+            .badge-image {
+                border: 0;
+                border-radius: 0;
+                background-color: transparent;
+            }
         }
 
         // The corporation/employment slot reads slightly different from the
