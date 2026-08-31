@@ -200,28 +200,6 @@
         align-self: flex-start;
     }
 
-    .rp-profile-org-pills {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-
-    .rp-profile-pill {
-        background: rgba(0, 0, 0, 0.06);
-        border-radius: 4px;
-        padding: 5px 0;
-        text-align: center;
-        font-size: 10px;
-        font-weight: 700;
-        color: rgba(0, 0, 0, 0.55);
-    }
-
-    // Occupies the same space as a real pill without drawing anything, so the
-    // gang card matches the employment card's height exactly.
-    .rp-profile-pill--ghost {
-        visibility: hidden;
-    }
-
     .rp-profile-view-gang {
         background: var(--prp-chrome-solid);
         color: $white;
