@@ -1,0 +1,224 @@
+diff --git a/src/api/nitro/avatar/enum/AvatarAction.ts b/src/api/nitro/avatar/enum/AvatarAction.ts
+index 2d7ac10b62a59329c5fecc0e36ecb5849fcb5cb0..ca83683df63ca834b1b3a59657faed5a191119fa 100644
+--- a/src/api/nitro/avatar/enum/AvatarAction.ts
++++ b/src/api/nitro/avatar/enum/AvatarAction.ts
+@@ -13,6 +13,7 @@ export class AvatarAction
+     public static EXPRESSION_SNOWBOARD_OLLIE = 'sbollie';
+     public static EXPRESSION_SNOWBORD_360 = 'sb360';
+     public static EXPRESSION_WAVE = 'wave';
++    public static EXPRESSION_67 = '67';
+     public static GESTURE = 'gest';
+     public static GESTURE_AGGRAVATED = 'agr';
+     public static GESTURE_SAD = 'sad';
+@@ -77,6 +78,8 @@ export class AvatarAction
+                 return 1500;
+             case 10:
+                 return 1500;
++            case 67:
++                return 990;
+             default:
+                 return 0;
+         }
+@@ -84,11 +87,15 @@ export class AvatarAction
+ 
+     public static getExpressionId(expression: string): number
+     {
++        if(expression === AvatarAction.EXPRESSION_67) return 67;
++
+         return AvatarAction.EXPRESSION_MAP.indexOf(expression);
+     }
+ 
+     public static getExpression(expressionId: number): string
+     {
++        if(expressionId === 67) return AvatarAction.EXPRESSION_67;
++
+         if(expressionId > AvatarAction.EXPRESSION_MAP.length) return null;
+ 
+         return AvatarAction.EXPRESSION_MAP[expressionId];
+diff --git a/src/api/ui/widget/enums/AvatarExpressionEnum.ts b/src/api/ui/widget/enums/AvatarExpressionEnum.ts
+index 389f8d47eaab1c8919dd87f1ced2c477e680bb58..eb68a8396b3214af47f3ae6dd125ce5d0835b1a2 100644
+--- a/src/api/ui/widget/enums/AvatarExpressionEnum.ts
++++ b/src/api/ui/widget/enums/AvatarExpressionEnum.ts
+@@ -8,6 +8,7 @@
+     public static IDLE: AvatarExpressionEnum = new AvatarExpressionEnum(5);
+     public static JUMP: AvatarExpressionEnum = new AvatarExpressionEnum(6);
+     public static RESPECT: AvatarExpressionEnum = new AvatarExpressionEnum(7);
++    public static EXPRESSION_67: AvatarExpressionEnum = new AvatarExpressionEnum(67);
+ 
+     private _ordinal: number;
+ 
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 3a24517344a79e0370d72bcf1744e6c1e2c9bd9b..6872206ab4f4472712f3ba7d91698acd104ac039 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -771,6 +771,7 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+             case AvatarAction.EXPRESSION_SNOWBOARD_OLLIE:
+             case AvatarAction.EXPRESSION_SNOWBORD_360:
+             case AvatarAction.EXPRESSION_RIDE_JUMP:
++            case AvatarAction.EXPRESSION_67:
+                 if(_local_3 === AvatarAction.EFFECT)
+                 {
+                     if((((((_local_3 === '33') || (_local_3 === '34')) || (_local_3 === '35')) || (_local_3 === '36')) || (_local_3 === '38')) || (_local_3 === '39'))
+diff --git a/src/nitro/avatar/AvatarRenderManager.ts b/src/nitro/avatar/AvatarRenderManager.ts
+index 8249966a7cafc033b9d16310e999613c25e90b1b..78f709bb1aadc414803fa10c3212bb78a75698fc 100644
+--- a/src/nitro/avatar/AvatarRenderManager.ts
++++ b/src/nitro/avatar/AvatarRenderManager.ts
+@@ -7,6 +7,7 @@ import { AvatarAssetDownloadManager } from './AvatarAssetDownloadManager';
+ import { AvatarFigureContainer } from './AvatarFigureContainer';
+ import { AvatarImage } from './AvatarImage';
+ import { AvatarStructure } from './AvatarStructure';
++import { DanceSixSevenAnimation } from './data/DanceSixSevenAnimation';
+ import { HabboAvatarAnimations } from './data/HabboAvatarAnimations';
+ import { HabboAvatarGeometry } from './data/HabboAvatarGeometry';
+ import { HabboAvatarPartSets } from './data/HabboAvatarPartSets';
+@@ -174,6 +175,8 @@ export class AvatarRenderManager extends NitroManager implements IAvatarRenderMa
+ 
+         this._structure.initAnimation(HabboAvatarAnimations.animations);
+ 
++        this._structure.registerAnimation(DanceSixSevenAnimation);
++
+         this._animationsReady = true;
+ 
+         this.checkReady();
+diff --git a/src/nitro/avatar/data/DanceSixSevenAnimation.ts b/src/nitro/avatar/data/DanceSixSevenAnimation.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5a3a15f4c21ea43e5e2470878c2a21246f8b52cf
+--- /dev/null
++++ b/src/nitro/avatar/data/DanceSixSevenAnimation.ts
+@@ -0,0 +1,122 @@
++import { IAssetAnimation } from '../../../api';
++
++export const DanceSixSevenAnimation: { [index: string]: IAssetAnimation } = {
++    'dance.sixseven': {
++        'name': 'dance.sixseven',
++        'desc': '67 meme gesture',
++        'frames': [
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'Default', 'frame': 0, 'dx': -1, 'dy': 1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 1, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'Default', 'frame': 0, 'dx': 1, 'dy': 1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 1, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 0, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': -1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': -1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Talk', 'frame': 0, 'dx': 0, 'dy': 1, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 0, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Talk', 'frame': 1, 'dx': 0, 'dy': 0, 'dd': 1 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Talk', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 1 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 0, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Talk', 'frame': 1, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': -1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': -1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Talk', 'frame': 0, 'dx': 0, 'dy': 1, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 0, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Talk', 'frame': 1, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 1, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': 0, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'CarryItem', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'CarryItem', 'frame': 0, 'dx': 1, 'dy': -1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'Default', 'frame': 0, 'dx': -1, 'dy': 1, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 1, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'Default', 'frame': 1, 'dx': 1, 'dy': 1, 'dd': 0 }
++                ]
++            },
++            {
++                'bodyparts': [
++                    { 'id': 'leftarm', 'action': 'Default', 'frame': 0, 'dx': -1, 'dy': 0, 'dd': 0 },
++                    { 'id': 'torso', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'head', 'action': 'Default', 'frame': 0, 'dx': 0, 'dy': 0, 'dd': 0 },
++                    { 'id': 'rightarm', 'action': 'Default', 'frame': 0, 'dx': 1, 'dy': 0, 'dd': 0 }
++                ]
++            }
++        ]
++    }
++};
+diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
+index 83f1712c701ce6e796693cccd922b40db6be23cd..67a79e897c08fd1b9a72485e9b44a0f317778a80 100644
+--- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
++++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
+@@ -942,6 +942,9 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+                     case AvatarAction.DANCE:
+                         this._avatarImage.appendAction(AvatarAction.DANCE, 2);
+                         break;
++                    case AvatarAction.EXPRESSION_67:
++                        this._avatarImage.appendAction(AvatarAction.DANCE, 'sixseven');
++                        break;
+                     default:
+                         this._avatarImage.appendAction(expression);
+                         break;
