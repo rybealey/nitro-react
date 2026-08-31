@@ -337,17 +337,21 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         background: $white;
         border: 1px solid rgba(0, 0, 0, 0.12);
         cursor: pointer;
+        // Raised like a button (same bevel family as the settings colour
+        // swatches): top inner highlight, bottom inner shade, hairline drop.
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.9), inset 0 -2px rgba(0, 0, 0, 0.1), 0 1px rgba(0, 0, 0, 0.1);
         transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
 
         &:hover {
             border-color: rgba(0, 0, 0, 0.3);
             transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.9), inset 0 -2px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.12);
         }
 
+        // pressed: bevel flips to a shallow sunken look
         &:active {
             transform: none;
-            box-shadow: none;
+            box-shadow: inset 0 2px rgba(0, 0, 0, 0.08), 0 1px rgba(0, 0, 0, 0.06);
         }
     }
 
