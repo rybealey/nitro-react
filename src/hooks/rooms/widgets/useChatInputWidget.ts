@@ -108,7 +108,18 @@ const useChatInputWidgetState = () =>
                     return null;
                 }
                 case ':lt': {
-                    if(text.trim().toLowerCase() !== ':lt') break;
+                    const requestedName = text.trim().substring(firstPart.length).trim();
+
+                    if(requestedName)
+                    {
+                        const targetName = TargetState.lockByName?.(requestedName) ?? null;
+                        const status = targetName ? `You have locked target on ${ targetName }` : `No user named ${ requestedName } is in this room`;
+                        const styleId = targetName ? 3 : 0;
+
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
+
+                        return null;
+                    }
 
                     const lockState = TargetState.toggleLock?.() ?? null;
                     const status = (lockState === null) ? 'No target selected' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.name }`;

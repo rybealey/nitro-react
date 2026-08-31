@@ -5,5 +5,6 @@
 // commands reuse the HUD's lock state instead of maintaining a second copy.
 export const TargetState = {
     name: null as string | null,
-    toggleLock: null as (() => boolean | null) | null
+    toggleLock: null as (() => boolean | null) | null,
+    lockByName: null as ((name: string) => string | null) | null
 };

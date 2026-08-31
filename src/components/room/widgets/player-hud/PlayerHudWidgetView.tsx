@@ -1,7 +1,7 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
-import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
+import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetState } from '../../../../hooks/rooms/targetState';
@@ -188,19 +188,47 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         return nextLocked;
     }, [ target, locked ]);
 
+    const lockTargetByName = useCallback((name: string): string | null =>
+    {
+        if(!roomSession || !name.trim()) return null;
+
+        const requestedName = name.trim().toLowerCase();
+        const roomObjects = GetRoomEngine().getRoomObjects(roomSession.roomId, RoomObjectCategory.UNIT);
+
+        for(const roomObject of roomObjects)
+        {
+            const userData = roomSession.userDataManager.getUserDataByIndex(roomObject.id);
+
+            if(!userData || (userData.type !== RoomObjectType.USER) || (userData.name.toLowerCase() !== requestedName)) continue;
+
+            const info = AvatarInfoUtilities.getUserInfo(RoomObjectCategory.UNIT, userData);
+
+            if(!info || info.isOwnUser) return null;
+
+            setTarget(info);
+            setLocked(true);
+
+            return info.name;
+        }
+
+        return null;
+    }, [ roomSession ]);
+
     // Mirror the selected target for non-React consumers — the chat input reads
     // this when expanding the "@x" target-mention shorthand into a shout.
     useEffect(() =>
     {
         TargetState.name = (target ? target.name : null);
         TargetState.toggleLock = toggleTargetLock;
+        TargetState.lockByName = lockTargetByName;
 
         return () =>
         {
             TargetState.name = null;
             TargetState.toggleLock = null;
+            TargetState.lockByName = null;
         }
-    }, [ target, toggleTargetLock ]);
+    }, [ target, toggleTargetLock, lockTargetByName ]);
 
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
