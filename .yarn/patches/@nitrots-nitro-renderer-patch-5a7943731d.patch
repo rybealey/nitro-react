@@ -1,0 +1,81 @@
+diff --git a/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts b/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
+index 1303eeae8fab7d4bf23d3cfe55d1c1b10542f998..c086fbeb816e623d4ac829ceb80c96fa28a4ccee 100644
+--- a/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpCorpDetailEvent.ts
+@@ -10,6 +10,8 @@ export interface RpCorpEmployee
+     tier: number;
+     online: boolean;
+     onDuty: boolean;
++    shiftSeconds: number;
++    shiftSecondsWeek: number;
+ }
+ 
+ export interface RpCorpRank
+@@ -77,8 +79,10 @@ export class RpCorpDetailParser implements IMessageParser
+                 const tier = wrapper.readInt();
+                 const online = (wrapper.readInt() === 1);
+                 const onDuty = (wrapper.readInt() === 1);
++                const shiftSeconds = wrapper.readInt();
++                const shiftSecondsWeek = wrapper.readInt();
+ 
+-                employees.push({ username, figure, tier, online, onDuty });
++                employees.push({ username, figure, tier, online, onDuty, shiftSeconds, shiftSecondsWeek });
+ 
+                 employeeCount--;
+             }
+diff --git a/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts b/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts
+index 9cae98f10ab6026b5ed36e7b27f0017262fdabaf..4a97040dea4cb89392956b1a4460ccbe5757c2c7 100644
+--- a/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpUserCorpEvent.ts
+@@ -12,6 +12,9 @@ export class RpUserCorpParser implements IMessageParser
+     private _corpName: string;
+     private _rankName: string;
+     private _tier: number;
++    private _shiftSeconds: number;
++    private _shiftSecondsWeek: number;
++    private _onDuty: boolean;
+ 
+     public flush(): boolean
+     {
+@@ -21,6 +24,9 @@ export class RpUserCorpParser implements IMessageParser
+         this._corpName = '';
+         this._rankName = '';
+         this._tier = 0;
++        this._shiftSeconds = 0;
++        this._shiftSecondsWeek = 0;
++        this._onDuty = false;
+ 
+         return true;
+     }
+@@ -35,6 +41,9 @@ export class RpUserCorpParser implements IMessageParser
+         this._corpName = wrapper.readString();
+         this._rankName = wrapper.readString();
+         this._tier = wrapper.readInt();
++        this._shiftSeconds = wrapper.readInt();
++        this._shiftSecondsWeek = wrapper.readInt();
++        this._onDuty = (wrapper.readInt() === 1);
+ 
+         return true;
+     }
+@@ -68,6 +77,21 @@ export class RpUserCorpParser implements IMessageParser
+     {
+         return this._tier;
+     }
++
++    public get shiftSeconds(): number
++    {
++        return this._shiftSeconds;
++    }
++
++    public get shiftSecondsWeek(): number
++    {
++        return this._shiftSecondsWeek;
++    }
++
++    public get onDuty(): boolean
++    {
++        return this._onDuty;
++    }
+ }
+ 
+ export class RpUserCorpEvent extends MessageEvent implements IMessageEvent
