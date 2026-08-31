@@ -2,7 +2,7 @@ import { ILinkEventTracker, RpGetUserCorpComposer, RpUserCorpEvent } from '@nitr
 import { FC, useEffect, useState } from 'react';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
+import { DEFAULT_CORP_BADGE, FormatShiftTime, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
@@ -27,6 +27,18 @@ export const RpProfileView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
     const [ , setVersion ] = useState(0);
+    // drives the on-duty employee's live shift counters; only worth ticking
+    // while the profile is actually open
+    const [ tickNow, setTickNow ] = useState(Date.now());
+
+    useEffect(() =>
+    {
+        if(!isVisible) return;
+
+        const interval = setInterval(() => setTickNow(Date.now()), 60000);
+
+        return () => clearInterval(interval);
+    }, [ isVisible ]);
 
     useEffect(() =>
     {
@@ -74,7 +86,7 @@ export const RpProfileView: FC<{}> = props =>
     {
         const parser = event.getParser();
 
-        SetRpEmployment(parser.userId, { corpId: parser.corpId, badge: parser.badge, corpName: parser.corpName, rankName: parser.rankName, tier: parser.tier });
+        SetRpEmployment(parser.userId, { corpId: parser.corpId, badge: parser.badge, corpName: parser.corpName, rankName: parser.rankName, tier: parser.tier, shiftSeconds: parser.shiftSeconds, shiftSecondsWeek: parser.shiftSecondsWeek, onDuty: parser.onDuty, receivedAt: Date.now() });
         setVersion(value => (value + 1));
     });
 
@@ -82,6 +94,9 @@ export const RpProfileView: FC<{}> = props =>
 
     // The opener's own data wins; otherwise look the viewed player up.
     const employment = (RpProfileState.employment ?? GetRpEmployment(RpProfileState.userId));
+    // seconds accrued on the current shift since the employment packet
+    // arrived - 0 unless this player is on duty right now
+    const profileLiveExtra = (employment?.onDuty ? Math.floor((tickNow - employment.receivedAt) / 1000) : 0);
 
     return (
         <NitroCardView uniqueKey="rp-profile" className="rp-profile-window" theme="primary-slim">
@@ -129,6 +144,11 @@ export const RpProfileView: FC<{}> = props =>
                                     <div className="rp-profile-org-name">{ employment ? employment.corpName : 'Unemployed' }</div>
                                     { /* "Cadet II", or just "Captain" for the no-tier leadership ranks */ }
                                     <div className="rp-profile-org-role">{ employment ? RpRankTitle(employment.rankName, employment.tier) : ' ' }</div>
+                                    { employment &&
+                                        <div className="rp-profile-org-shifts">
+                                            { employment.onDuty && <span className="rp-profile-org-onduty" /> }
+                                            { `Weekly: ${ FormatShiftTime(employment.shiftSecondsWeek + profileLiveExtra) } · Total: ${ FormatShiftTime(employment.shiftSeconds + profileLiveExtra) }` }
+                                        </div> }
                                 </div>
                                 { /* placeholder until shift tracking ships */ }
                                 <div className="rp-profile-org-status">Off-duty</div>

@@ -177,6 +177,23 @@
         color: rgba(0, 0, 0, 0.45);
     }
 
+    .rp-profile-org-shifts {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    // matches the corps window's on-duty blue
+    .rp-profile-org-onduty {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #2f7fd6;
+        flex-shrink: 0;
+    }
+
     .rp-profile-org-status {
         font-size: 10px;
         color: rgba(0, 0, 0, 0.45);

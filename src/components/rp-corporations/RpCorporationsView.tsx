@@ -2,6 +2,7 @@ import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsE
 import { FC, useEffect, useState } from 'react';
 import { LuSlidersHorizontal } from 'react-icons/lu';
 import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { FormatShiftTime } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from '../rp-profile/RpProfileState';
@@ -26,6 +27,9 @@ interface CorpDetail
     // quantity the corporation holds; 0 everywhere until farming lands
     stock: number;
     ranks: RpCorpRank[];
+    // client timestamp this detail packet arrived - an on-duty employee's
+    // live shift counters tick forward from here
+    receivedAt: number;
 }
 
 export const RpCorporationsView: FC<{}> = props =>
@@ -53,7 +57,7 @@ export const RpCorporationsView: FC<{}> = props =>
     {
         const parser = event.getParser();
 
-        setDetail({ id: parser.corpId, name: parser.name, badge: parser.badge, description: parser.description, employeeCount: parser.employeeCount, stock: parser.stock, ranks: parser.ranks });
+        setDetail({ id: parser.corpId, name: parser.name, badge: parser.badge, description: parser.description, employeeCount: parser.employeeCount, stock: parser.stock, ranks: parser.ranks, receivedAt: Date.now() });
     });
 
     useEffect(() =>
@@ -69,6 +73,19 @@ export const RpCorporationsView: FC<{}> = props =>
 
         SendMessageComposer(new RpGetCorpDetailComposer(selectedId));
     }, [ isVisible, selectedId ]);
+
+    // Live counters: only worth a redraw every minute while the window is
+    // open, and only when there is something on the screen actually ticking.
+    const [ tickNow, setTickNow ] = useState(Date.now());
+
+    useEffect(() =>
+    {
+        if(!isVisible) return;
+
+        const interval = setInterval(() => setTickNow(Date.now()), 60000);
+
+        return () => clearInterval(interval);
+    }, [ isVisible ]);
 
     useEffect(() =>
     {
@@ -195,6 +212,9 @@ export const RpCorporationsView: FC<{}> = props =>
                                                             const tierLabel = ((rank.tiers > 0) ? TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] : null);
                                                             const rankLabel = (tierLabel ? `${ rank.name } ${ tierLabel }` : rank.name);
                                                             const statusWord = (employee.onDuty ? 'On duty' : (employee.online ? 'Online' : 'Offline'));
+                                                            // seconds accrued on the current shift since the detail
+                                                            // packet arrived - 0 unless this employee is on duty
+                                                            const liveExtra = (employee.onDuty ? Math.floor((tickNow - shownDetail.receivedAt) / 1000) : 0);
 
                                                             return (
                                                                 <div key={ employee.username } className="rp-corps-employee" title={ `${ rankLabel } - ${ statusWord }` }
@@ -215,7 +235,11 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                             badge: (corps.find(entry => (entry.id === shownDetail.id))?.badge ?? ''),
                                                                             corpName: shownDetail.name,
                                                                             rankName: rank.name,
-                                                                            tier: ((rank.tiers > 0) ? employee.tier : 0)
+                                                                            tier: ((rank.tiers > 0) ? employee.tier : 0),
+                                                                            shiftSeconds: employee.shiftSeconds,
+                                                                            shiftSecondsWeek: employee.shiftSecondsWeek,
+                                                                            onDuty: employee.onDuty,
+                                                                            receivedAt: Date.now()
                                                                         };
                                                                         CreateLinkEvent('rp-profile/show');
                                                                     } }>
@@ -233,10 +257,9 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                             { tierLabel &&
                                                                                 <span className="rp-corps-employee-tier">{ tierLabel }</span> }
                                                                         </div>
-                                                                        { /* hardcoded zeros until the server sends shift stats */ }
                                                                         { (showWeekly || showTotal) &&
                                                                             <div className="rp-corps-employee-shifts">
-                                                                                { [ showWeekly && 'Weekly: 0', showTotal && 'Total: 0' ].filter(Boolean).join(' · ') }
+                                                                                { [ showWeekly && `Weekly: ${ FormatShiftTime(employee.shiftSecondsWeek + liveExtra) }`, showTotal && `Total: ${ FormatShiftTime(employee.shiftSeconds + liveExtra) }` ].filter(Boolean).join(' · ') }
                                                                             </div> }
                                                                     </div>
                                                                 </div>
