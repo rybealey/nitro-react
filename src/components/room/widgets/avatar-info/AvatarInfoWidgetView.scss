@@ -148,8 +148,14 @@
         .motto-content {
             min-height: 18px;
             // RP mottos can be multi-line (the [WORKING] shift motto puts the
-            // rank on its own line) - render embedded newlines
+            // rank on its own line) - render embedded newlines. The inner div
+            // carries Bootstrap's .text-wrap (white-space: normal !important),
+            // which beats inheritance - out-important it.
             white-space: pre-line;
+
+            .text-wrap {
+                white-space: pre-line !important;
+            }
         }
 
         .bg-light-dark {
