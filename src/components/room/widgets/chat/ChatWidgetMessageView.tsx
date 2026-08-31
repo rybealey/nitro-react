@@ -76,6 +76,11 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
         setIsVisible(true);
     }, [ chat, isReady, isVisible, makeRoom ]);
 
+    // Blue action bubbles arrive as *action text*. Move that opening marker
+    // ahead of the username so the whole line reads *Username action text*.
+    const isBlueAction = ((chat.styleId === 4) && chat.text.startsWith('*') && chat.text.endsWith('*'));
+    const formattedText = isBlueAction ? chat.formattedText.substring(1) : chat.formattedText;
+
     return (
         <div ref={ elementRef } className={ `bubble-container ${ isVisible ? 'visible' : 'invisible' }` } onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>
             { (chat.styleId === 0) &&
@@ -88,8 +93,8 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                 <div className="chat-content">
                     { chat.usernameIcon &&
                         <b className="username mr-1"><UsernameIconGlyph iconClass={ chat.usernameIcon } />{ ' ' }</b> }
-                    <b className="username mr-1"><span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ ': ' }</b>
-                    <span className="message" dangerouslySetInnerHTML={ { __html: `${ chat.formattedText }` } } />
+                    <b className="username mr-1">{ isBlueAction && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ isBlueAction ? ' ' : ': ' }</b>
+                    <span className="message" dangerouslySetInnerHTML={ { __html: formattedText } } />
                 </div>
                 <div className="pointer" />
             </div>
