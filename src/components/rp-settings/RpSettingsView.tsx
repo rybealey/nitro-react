@@ -334,24 +334,25 @@ export const RpSettingsView: FC<{}> = props =>
                         <div className="rp-settings-section rp-macros-bar">
                             { /* Preset leads the row so it lines up with "Click to
                                  bind" below - both bands carry the same 4px inset.
-                                 The master switch bookends the far right. */ }
+                                 The switch sits directly after the picker; both are
+                                 the same 30px box, so they align exactly. */ }
                             <Flex alignItems="center" gap={ 2 }>
                                 <span className="rp-macros-preset-label">Preset</span>
                                 <div className="rp-macros-select">
                                     <span>{ MACRO_PROFILES[1] }</span>
                                     <i className="rp-macros-caret" />
                                 </div>
-                            </Flex>
-                            <Flex alignItems="center" gap={ 2 }>
-                                <div className="rp-macros-btn rp-macros-btn--accent">New</div>
-                                <div className="rp-macros-btn">Export</div>
-                                <div className="rp-macros-btn">Import</div>
                                 <div className="rp-macros-switch-wrap">
                                     <div className={ `rp-macros-switch ${ macrosEnabled ? 'is-on' : '' }` } role="switch"
                                         aria-checked={ macrosEnabled } aria-label="Macros enabled"
                                         onClick={ () => setMacrosEnabled(value => !value) }><span /></div>
                                     <span className={ `rp-macros-switch-label ${ macrosEnabled ? 'is-on' : 'is-off' }` }>{ macrosEnabled ? 'On' : 'Off' }</span>
                                 </div>
+                            </Flex>
+                            <Flex alignItems="center" gap={ 2 }>
+                                <div className="rp-macros-btn rp-macros-btn--accent">New</div>
+                                <div className="rp-macros-btn">Export</div>
+                                <div className="rp-macros-btn">Import</div>
                             </Flex>
                         </div>
                         { /* new-macro row: capture a key, type the command, Add.

@@ -276,11 +276,16 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         padding: 2px 4px;
     }
 
+    // each binding boxed, so a row reads as one unit rather than four loose
+    // controls drifting across the list
     .rp-macros-row {
         display: flex;
         align-items: center;
         gap: 6px;
         flex-shrink: 0;
+        padding: 4px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.18);
     }
 
     // captured key. Fixed width so the command fields line up down the column
