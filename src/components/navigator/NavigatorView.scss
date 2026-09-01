@@ -65,6 +65,12 @@
         @include prp-chrome-tab-strip;
     }
 
+    // Roleplay tab rail (shared subnav): keep sidebar-height presence even
+    // while the tab has a single link.
+    .prp-subnav-layout {
+        min-height: 260px;
+    }
+
     .list-container {
         height: 100px;
 
