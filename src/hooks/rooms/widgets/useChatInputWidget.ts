@@ -116,7 +116,9 @@ const useChatInputWidgetState = () =>
 
                     if(!requestedName)
                     {
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, 'Usage: :t <name>.', RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                        const status = TargetState.name ? `You are now targeting ${ TargetState.name }.` : 'Usage: :t <name>.';
+
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
 
                         return null;
                     }
@@ -126,19 +128,17 @@ const useChatInputWidgetState = () =>
                     // room, so this also fires for someone online elsewhere in
                     // the hotel - distinguishing the two needs a server lookup.
                     let status = `${ requestedName } is not online.`;
-                    let styleId = 0;
 
                     if(result?.status === 'selected')
                     {
                         status = `You are now targeting ${ result.name }.`;
-                        styleId = 3;
                     }
                     else if(result?.status === 'locked')
                     {
                         status = `Unlock your target on ${ result.name } before switching targets.`;
                     }
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
 
                     return null;
                 }
