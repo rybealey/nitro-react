@@ -1,6 +1,7 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
+import { FaTrash } from 'react-icons/fa';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
@@ -331,10 +332,8 @@ export const RpSettingsView: FC<{}> = props =>
                 { (currentTab === 'Macros') &&
                     <Column gap={ 2 } className="rp-macros">
                         <div className="rp-settings-section rp-macros-bar">
-                            { /* the switch sits with the title, so "is the system on"
-                                 reads apart from the action buttons opposite */ }
+                            { /* switch + preset picker on the left, actions opposite */ }
                             <Flex alignItems="center" gap={ 2 }>
-                                <Text bold>Macros</Text>
                                 <div className="rp-macros-switch-wrap">
                                     <div className={ `rp-macros-switch ${ macrosEnabled ? 'is-on' : '' }` } role="switch"
                                         aria-checked={ macrosEnabled } aria-label="Macros enabled"
@@ -358,6 +357,7 @@ export const RpSettingsView: FC<{}> = props =>
                             <div className="rp-macros-btn rp-macros-bind">Click to bind</div>
                             <input type="text" className="rp-macros-input" placeholder="Type command" aria-label="Macro command" />
                             <div className="rp-macros-btn">Add</div>
+                            <div className="rp-macros-btn rp-macros-btn--danger rp-macros-trash" title="Delete" aria-label="Delete"><FaTrash /></div>
                         </Flex>
                         <div className="rp-macros-list">
                             { /* index keys: the same binding can legitimately appear twice
