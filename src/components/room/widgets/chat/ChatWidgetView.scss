@@ -106,6 +106,15 @@
             }
         }
 
+        // RP action bubbles (:slap and the rest of the fighting system). Set
+        // by the view when a style-4 bubble is wrapped in asterisks, NOT by
+        // bubble-4 alone - style 4 can be a player-selectable chat style, and
+        // ordinary chat in it must stay unbolded. Must follow the type-N
+        // blocks above: same specificity, so source order decides.
+        &.is-action .message {
+            font-weight: 700;
+        }
+
         &.bubble-0 {
             border-image-source: url('@/assets/images/chat/chatbubbles/bubble_0_transparent.png');
 
