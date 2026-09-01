@@ -91,7 +91,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                     <Button className="flex-grow-1" onClick={ event => CreateLinkEvent(`mod-tools/open-room-chatlog/${ roomId }`) }>Chatlog</Button>
                     { /* The official Room info panel (was the bottom-left cog,
                          which no longer renders — mods reach it from here). */ }
-                    <Button className="flex-grow-1" onClick={ event => CreateLinkEvent('navigator/toggle-room-info') }>Settings</Button>
+                    <Button className="flex-grow-1" onClick={ event => CreateLinkEvent('navigator/toggle-room-info') }>Info</Button>
                 </Flex>
                 <Column className="bg-muted rounded p-2" gap={ 1 }>
                     <Flex alignItems="center" gap={ 1 }>
