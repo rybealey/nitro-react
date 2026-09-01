@@ -1,0 +1,69 @@
+// Shared sub-navigation pattern: a slim left rail of page links, grouped
+// under uppercase eyebrow headers, beside the selected page's content.
+// Used by the Settings window and Room Settings > Roleplay. The active
+// link is a chrome-colored pill - it echoes the tab strip and follows the
+// player's UI color scheme.
+.prp-subnav-layout {
+    display: flex;
+    height: 100%;
+    gap: 12px;
+}
+
+.prp-subnav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    // Fixed rail so every consumer's sidebar lines up; sized to the widest
+    // page label across the Settings tabs ("Personalization", 88.7px at
+    // 12px bold Ubuntu) + item padding + rail padding/border, with headroom.
+    width: 124px;
+    flex-shrink: 0;
+    padding-right: 10px;
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+// Eyebrow header sectioning groups of subnav links (e.g. "Interface"
+// above Windows / Components on the Settings window's System tab).
+.prp-subnav-eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(0, 0, 0, 0.4);
+    padding: 4px 10px 2px;
+
+    &:not(:first-child) {
+        margin-top: 10px;
+    }
+}
+
+.prp-subnav-item {
+    padding: 5px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: $border-radius;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+
+    &:hover {
+        color: rgba(0, 0, 0, 0.8);
+    }
+
+    &.is-active {
+        background: var(--prp-chrome-95);
+        color: $white;
+    }
+}
+
+.prp-subnav-page {
+    flex: 1;
+    min-width: 0;
+    // never scroll sideways; scroll vertically only if a page runs tall
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}

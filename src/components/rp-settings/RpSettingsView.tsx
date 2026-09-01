@@ -251,19 +251,19 @@ export const RpSettingsView: FC<{}> = props =>
             </NitroCardTabsView>
             <NitroCardContentView className="text-black">
                 { (currentTab === 'System') &&
-                    <div className="rp-settings-subnav-layout">
-                        <div className="rp-settings-subnav">
+                    <div className="prp-subnav-layout">
+                        <div className="prp-subnav">
                             { /* sectioned links: eyebrow header per group */ }
-                            <div className="rp-settings-subnav-eyebrow">Interface</div>
+                            <div className="prp-subnav-eyebrow">Interface</div>
                             { INTERFACE_PAGES.map(page => (
                                 <div key={ page }
-                                    className={ `rp-settings-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
+                                    className={ `prp-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
                                     onClick={ () => setInterfacePage(page) }>
                                     { page }
                                 </div>
                             )) }
                         </div>
-                        <Column gap={ 2 } className="rp-settings-subpage">
+                        <Column gap={ 2 } className="prp-subnav-page">
                             { (interfacePage === 'Windows') &&
                                 <div className="rp-settings-section">
                                     <div className="rp-settings-section-info">
@@ -305,43 +305,43 @@ export const RpSettingsView: FC<{}> = props =>
                         </Column>
                     </div> }
                 { (currentTab === 'Roleplay') &&
-                    <div className="rp-settings-subnav-layout">
-                        <div className="rp-settings-subnav">
-                            <div className="rp-settings-subnav-eyebrow">Functions</div>
+                    <div className="prp-subnav-layout">
+                        <div className="prp-subnav">
+                            <div className="prp-subnav-eyebrow">Functions</div>
                             { ROLEPLAY_PAGES.map(page => (
                                 <div key={ page }
-                                    className={ `rp-settings-subnav-item ${ (roleplayPage === page) ? 'is-active' : '' }` }
+                                    className={ `prp-subnav-item ${ (roleplayPage === page) ? 'is-active' : '' }` }
                                     onClick={ () => setRoleplayPage(page) }>
                                     { page }
                                 </div>
                             )) }
                             { /* future group - links land here as their settings ship */ }
-                            <div className="rp-settings-subnav-eyebrow">Interactions</div>
+                            <div className="prp-subnav-eyebrow">Interactions</div>
                         </div>
-                        <Column center fullHeight gap={ 1 } className="rp-settings-placeholder rp-settings-subpage">
+                        <Column center fullHeight gap={ 1 } className="rp-settings-placeholder prp-subnav-page">
                             <Text bold>{ roleplayPage }</Text>
                             <Text className="text-muted">Nothing here yet.</Text>
                         </Column>
                     </div> }
                 { (currentTab === 'Social') &&
-                    <div className="rp-settings-subnav-layout">
-                        <div className="rp-settings-subnav">
-                            <div className="rp-settings-subnav-eyebrow">Username</div>
+                    <div className="prp-subnav-layout">
+                        <div className="prp-subnav">
+                            <div className="prp-subnav-eyebrow">Username</div>
                             { SOCIAL_PAGES.map(page => (
                                 <div key={ page }
-                                    className={ `rp-settings-subnav-item ${ (socialPage === page) ? 'is-active' : '' }` }
+                                    className={ `prp-subnav-item ${ (socialPage === page) ? 'is-active' : '' }` }
                                     onClick={ () => setSocialPage(page) }>
                                     { page }
                                 </div>
                             )) }
                             { /* future group - links land here as their settings ship */ }
-                            <div className="rp-settings-subnav-eyebrow">Verification</div>
-                            <div className={ `rp-settings-subnav-item ${ (socialPage === 'Discord') ? 'is-active' : '' }` }
+                            <div className="prp-subnav-eyebrow">Verification</div>
+                            <div className={ `prp-subnav-item ${ (socialPage === 'Discord') ? 'is-active' : '' }` }
                                 onClick={ () => setSocialPage('Discord') }>
                                 Discord
                             </div>
                         </div>
-                        <Column gap={ 2 } className="rp-settings-subpage">
+                        <Column gap={ 2 } className="prp-subnav-page">
                             <>
                                 { ((socialPage === 'Color') || (socialPage === 'Icon')) &&
                                 <div className="rp-settings-preview">
