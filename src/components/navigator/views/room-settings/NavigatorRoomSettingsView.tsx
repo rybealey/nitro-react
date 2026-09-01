@@ -1,4 +1,4 @@
-import { RoomDataParser, RoomSettingsDataEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
+import { RoomDataParser, RoomSettingsDataEvent, RpRoomCorpEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
@@ -20,6 +20,18 @@ const TABS: string[] = [
     'Roleplay'
 ];
 
+// PixelRP: the room's HQ/corp config (rank ladder + emergency flags),
+// held by the parent for the same reason as isSafeZone above - shared
+// across the three Corporations pages and must survive tab switches.
+export interface RoomCorpState
+{
+    corpId: number;
+    ranks: { rankId: number; rankOrder: number; rankName: string; authorized: boolean }[];
+    allowMedical: boolean;
+    allowPolice: boolean;
+    allowStaff: boolean;
+}
+
 export const NavigatorRoomSettingsView: FC<{}> = props =>
 {
     const [ roomData, setRoomData ] = useState<IRoomData>(null);
@@ -27,6 +39,7 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
     // Roleplay tab state lives here (not in the tab view) because the zone
     // packet arrives right after the settings data, before the tab mounts.
     const [ isSafeZone, setIsSafeZone ] = useState(false);
+    const [ roomCorp, setRoomCorp ] = useState<RoomCorpState>(null);
 
     useMessageEvent<RpRoomZoneEvent>(RpRoomZoneEvent, event =>
     {
@@ -35,6 +48,21 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
         if(!parser) return;
 
         setIsSafeZone(parser.isSafeZone);
+    });
+
+    useMessageEvent<RpRoomCorpEvent>(RpRoomCorpEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser) return;
+
+        setRoomCorp({
+            corpId: parser.corpId,
+            ranks: parser.ranks.map(rank => ({ rankId: rank.rankId, rankOrder: rank.rankOrder, rankName: rank.rankName, authorized: rank.authorized })),
+            allowMedical: parser.allowMedical,
+            allowPolice: parser.allowPolice,
+            allowStaff: parser.allowStaff
+        });
     });
 
     useMessageEvent<RoomSettingsDataEvent>(RoomSettingsDataEvent, event =>
@@ -80,6 +108,7 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
     {
         setRoomData(null);
         setCurrentTab(TABS[0]);
+        setRoomCorp(null);
     }
 
     const handleChange = (field: string, value: string | number | boolean | string[]) =>
@@ -212,7 +241,7 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
                 { (currentTab === TABS[3]) &&
                     <NavigatorRoomSettingsVipChatTabView roomData={ roomData } handleChange={ handleChange } /> }
                 { (currentTab === TABS[4]) &&
-                    <NavigatorRoomSettingsRoleplayTabView roomData={ roomData } isSafeZone={ isSafeZone } setIsSafeZone={ setIsSafeZone } /> }
+                    <NavigatorRoomSettingsRoleplayTabView roomData={ roomData } isSafeZone={ isSafeZone } setIsSafeZone={ setIsSafeZone } roomCorp={ roomCorp } setRoomCorp={ setRoomCorp } /> }
             </NitroCardContentView>
         </NitroCardView>
     );

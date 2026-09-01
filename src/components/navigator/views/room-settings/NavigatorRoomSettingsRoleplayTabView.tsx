@@ -2,6 +2,10 @@ import { RpRoomZoneSaveComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { IRoomData, SendMessageComposer } from '../../../../api';
 import { Column, Text } from '../../../../common';
+import { RoomCorpState } from './NavigatorRoomSettingsView';
+import { RoleplayAuthorizationsView } from './RoleplayAuthorizationsView';
+import { RoleplayEmergenciesView } from './RoleplayEmergenciesView';
+import { RoleplayHeadquartersView } from './RoleplayHeadquartersView';
 
 // PixelRP roleplay room settings, laid out like the Settings window: a
 // left rail of page links under eyebrow headers (shared prp-subnav-*
@@ -23,11 +27,13 @@ interface NavigatorRoomSettingsRoleplayTabViewProps
     roomData: IRoomData;
     isSafeZone: boolean;
     setIsSafeZone: (value: boolean) => void;
+    roomCorp: RoomCorpState;
+    setRoomCorp: (value: RoomCorpState) => void;
 }
 
 export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRoleplayTabViewProps> = props =>
 {
-    const { roomData = null, isSafeZone = false, setIsSafeZone = null } = props;
+    const { roomData = null, isSafeZone = false, setIsSafeZone = null, roomCorp = null, setRoomCorp = null } = props;
     const [ activePage, setActivePage ] = useState<string>(GENERAL_PAGES[0]);
 
     const saveZone = (value: string) =>
@@ -67,11 +73,12 @@ export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRolep
                         <option value="unsafe">Unsafe</option>
                     </select>
                 </Column> }
-            { (activePage !== 'Zoning') &&
-                <Column center fullHeight gap={ 1 } className="prp-subnav-page">
-                    <Text bold>{ activePage }</Text>
-                    <Text className="text-muted">Nothing here yet.</Text>
-                </Column> }
+            { (activePage === 'Headquarters') &&
+                <RoleplayHeadquartersView roomCorp={ roomCorp } className="prp-subnav-page" /> }
+            { (activePage === 'Authorizations') &&
+                <RoleplayAuthorizationsView roomCorp={ roomCorp } className="prp-subnav-page" /> }
+            { (activePage === 'Emergencies') &&
+                <RoleplayEmergenciesView roomCorp={ roomCorp } className="prp-subnav-page" /> }
         </div>
     );
 }
