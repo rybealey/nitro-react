@@ -3,13 +3,17 @@ import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Button, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
+import { useCryptoCheckout } from './useCryptoCheckout';
 import { useStripeCheckout } from './useStripeCheckout';
 
 // The PixelRP Diamonds Store window, opened from the toolbar's Diamonds icon
 // (CreateLinkEvent('diamonds-store/toggle')).
 
 type DiamondsStoreTab = 'store' | 'buy';
-type BuyViewState = 'form' | 'checkout' | 'complete' | 'error';
+// 'crypto' - hosted Checkout was opened in a new tab; the player finishes
+// there and the webhook credits them, so in-game we just show a "check the
+// other tab" confirmation.
+type BuyViewState = 'form' | 'checkout' | 'crypto' | 'complete' | 'error';
 type StoreViewState = 'list' | 'success' | 'error';
 
 // MIN must stay in lockstep with the CMS DiamondCheckoutFormRequest rule
@@ -33,6 +37,10 @@ export const DiamondsStoreView: FC<{}> = props =>
     const [ checkoutDiamonds, setCheckoutDiamonds ] = useState(0);
     const [ checkoutError, setCheckoutError ] = useState('');
     const { containerRef: checkoutContainerRef, mount: mountCheckout, destroy: destroyCheckout } = useStripeCheckout();
+    const { launch: launchCryptoCheckout } = useCryptoCheckout();
+    // Guards the crypto button against a double-tap firing two hosted sessions
+    // (and two tabs) while the first request is still in flight.
+    const [ cryptoLaunching, setCryptoLaunching ] = useState(false);
     const [ listings, setListings ] = useState<DiamondsStoreListing[]>([]);
     const [ storeState, setStoreState ] = useState<StoreViewState>('list');
     // itemKey armed for the two-step inline Buy -> Confirm flow
@@ -126,6 +134,29 @@ export const DiamondsStoreView: FC<{}> = props =>
 
     const onCheckoutComplete = () => setBuyState('complete');
 
+    const onPayWithCrypto = () =>
+    {
+        if(!acceptedTerms || !diamondsValid || cryptoLaunching) return;
+
+        setCheckoutError('');
+        setCryptoLaunching(true);
+
+        // launchCryptoCheckout opens the new tab synchronously (inside this
+        // click gesture) before it awaits, so the pop-up isn't blocked.
+        launchCryptoCheckout(diamonds)
+            .then(() =>
+            {
+                setCheckoutDiamonds(diamonds);
+                setBuyState('crypto');
+            })
+            .catch((error: Error) =>
+            {
+                setCheckoutError(error?.message || 'Couldn\'t start crypto checkout - try again in a moment.');
+                setBuyState('error');
+            })
+            .finally(() => setCryptoLaunching(false));
+    }
+
     const onDone = () =>
     {
         setBuyState('form');
@@ -166,6 +197,7 @@ export const DiamondsStoreView: FC<{}> = props =>
         setStoreError('');
         setPurchasePending(false);
         setConfirmingKey(null);
+        setCryptoLaunching(false);
     }, [ isVisible ]);
 
     useEffect(() =>
@@ -322,10 +354,20 @@ export const DiamondsStoreView: FC<{}> = props =>
                         <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ onPurchase }>
                             { `Purchase ${ totalDisplay }` }
                         </Button>
+                        <div className="diamonds-store-crypto-divider">or</div>
+                        <div className="diamonds-store-crypto-hint">Prefer crypto? Pay with USDC stablecoin - opens in a new tab.</div>
+                        <Button fullWidth variant="secondary" disabled={ !acceptedTerms || !diamondsValid || cryptoLaunching } onClick={ onPayWithCrypto }>
+                            { cryptoLaunching ? 'Opening...' : 'Pay with crypto' }
+                        </Button>
                     </div> }
                 { (currentTab === 'buy') && (buyState === 'checkout') &&
                     <div className="diamonds-store-checkout">
                         <div ref={ checkoutContainerRef } className="diamonds-store-checkout-container" />
+                    </div> }
+                { (currentTab === 'buy') && (buyState === 'crypto') &&
+                    <div className="diamonds-store-result">
+                        <div className="diamonds-store-result-message">Crypto checkout opened in a new tab. Finish there and your diamonds arrive automatically - you can close this window.</div>
+                        <Button fullWidth variant="success" onClick={ onDone }>Done</Button>
                     </div> }
                 { (currentTab === 'buy') && (buyState === 'complete') &&
                     <div className="diamonds-store-result">
