@@ -2,7 +2,13 @@
 // to match the reference mock; the list is the ONE scroller (the content area
 // itself does not scroll, so the two can never fight).
 .nitro-card.rp-wanted-window {
+    // starting size; the corner grip writes inline width/height over these
     width: 260px;
+    height: 330px;
+    min-width: 220px;
+    min-height: 200px;
+    max-width: 96vw;
+    max-height: 92vh;
 
     // Narrow panel, same trim as the Backpack: shrink the stock header type so
     // the title and close button share the row without colliding.
@@ -17,10 +23,11 @@
         padding: 0;
     }
 
+    // fills whatever height the window is dragged to - a fixed max-height
+    // here would leave dead space below the list once the frame grows
     .rp-wanted-list {
         flex: 1;
-        min-height: 240px;
-        max-height: 320px;
+        min-height: 0;
         overflow-y: auto;
         display: flex;
         flex-direction: column;

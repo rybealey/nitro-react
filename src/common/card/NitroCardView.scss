@@ -2,8 +2,28 @@ $nitro-card-header-height: 33px;
 $nitro-card-tabs-height: 33px;
 
 .nitro-card {
-    // PixelRP: windows are fixed-size — no user resizing.
+    // Native CSS resize stays off: its grabber is unstyleable and looks wrong
+    // against the pixel-art chrome. Windows that opt in get the custom corner
+    // grip below instead (NitroCardView `resizable`).
     resize: none;
+
+    // Triangle grip filling the bottom-right corner. Dark rather than chrome
+    // toned - it sits over the light content area, not the plate.
+    .nitro-card-resize-handle {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 15px;
+        height: 15px;
+        z-index: 30;
+        cursor: nwse-resize;
+        background: linear-gradient(to top left, rgba(0, 0, 0, 0.3) 0 42%, transparent 42%);
+        transition: background .1s ease;
+
+        &:hover {
+            background: linear-gradient(to top left, rgba(0, 0, 0, 0.5) 0 42%, transparent 42%);
+        }
+    }
 
     @include media-breakpoint-down(lg) {
         max-width: 100vw !important;

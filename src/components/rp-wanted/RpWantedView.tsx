@@ -63,7 +63,7 @@ export const RpWantedView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="rp-wanted" className="rp-wanted-window" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="rp-wanted" className="rp-wanted-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Wanted List" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardContentView className="text-black">
                 <div className="rp-wanted-list">

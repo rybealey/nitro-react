@@ -141,7 +141,7 @@ export const RpCorporationsView: FC<{}> = props =>
     const onDutyCount = (shownDetail ? shownDetail.ranks.reduce((total, rank) => (total + rank.employees.filter(employee => employee.onDuty).length), 0) : 0);
 
     return (
-        <NitroCardView uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Corporations" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardContentView overflow="hidden" className="text-black">
                 <div className="rp-corps-layout">

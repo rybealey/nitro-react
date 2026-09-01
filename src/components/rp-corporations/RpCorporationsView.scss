@@ -31,8 +31,13 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
 }
 
 .nitro-card.rp-corporations-window {
+    // starting size; the corner grip writes inline width/height over these
     width: 640px;
     height: 480px;
+    min-width: 540px;
+    min-height: 380px;
+    max-width: 96vw;
+    max-height: 92vh;
 
     .rp-corps-layout {
         display: flex;

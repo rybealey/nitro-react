@@ -265,7 +265,7 @@ export const RpSettingsView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="rp-settings" className="rp-settings-window" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="rp-settings" className="rp-settings-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Settings" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardTabsView>
                 { TABS.map(tab => (
