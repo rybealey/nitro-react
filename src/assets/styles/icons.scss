@@ -146,8 +146,10 @@
     &.icon-pixelrp {
         background-image: url('@/assets/images/toolbar/icons/pixelrp-logo.png');
         background-size: contain;
-        width: 16px;
-        height: 28px;
+        // ~30% up from 16x28. Source art is 31x55, so even at this size it is
+        // still being scaled DOWN - no blur from stretching.
+        width: 21px;
+        height: 36px;
     }
 
     &.icon-camera {
