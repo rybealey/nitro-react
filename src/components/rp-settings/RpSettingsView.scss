@@ -113,12 +113,18 @@ $state-off: #b23b3b;
     }
 
     // master on/off, with its state spelled out underneath
+    // The switch stack, the caption and the picker have very different
+    // intrinsic heights (~30 / ~10 / ~27px), so left to themselves they centre
+    // against the tallest and read as misaligned. One shared height puts all
+    // three on a single axis.
     .rp-macros-switch-wrap {
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
         gap: 3px;
         flex-shrink: 0;
+        height: 30px;
     }
 
     .rp-macros-switch-label {
@@ -136,10 +142,16 @@ $state-off: #b23b3b;
     // caption for the preset picker beside it
     .rp-macros-preset-label {
         flex-shrink: 0;
-        font-size: 10px;
+        display: flex;
+        align-items: center;
+        height: 30px;
+        font-size: 13px;
         font-weight: 700;
+        line-height: 1;
         user-select: none;
-        color: rgba($white, .6);
+        // black, not white: this caption sits on the light settings page, not
+        // on one of the dark chrome controls
+        color: $black;
     }
 
     .rp-macros-switch {
@@ -214,12 +226,13 @@ $state-off: #b23b3b;
     // header strip beside the switch now, so it must not eat the free space.
     .rp-macros-select {
         width: 160px;
+        height: 30px;
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: 5px 10px;
+        padding: 0 10px;
         border-radius: 6px;
         font-size: 12px;
         font-weight: 700;
