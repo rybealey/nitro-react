@@ -124,12 +124,13 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
     // intrinsic heights (~30 / ~10 / ~27px), so left to themselves they centre
     // against the tallest and read as misaligned. One shared height puts all
     // three on a single axis.
+    // Label sits BESIDE the track, not under it. Stacked, the track occupied
+    // only the top of the 30px box and its centre line sat above the picker's;
+    // in a row both centre on the same axis.
     .rp-macros-switch-wrap {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 3px;
+        gap: 6px;
         flex-shrink: 0;
         height: 30px;
     }
@@ -283,9 +284,12 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         align-items: center;
         gap: 6px;
         flex-shrink: 0;
-        padding: 4px;
+        padding: 5px;
         border-radius: 6px;
-        border: 1px solid rgba(0, 0, 0, 0.18);
+        // a soft wash rather than an outline: a hairline box round every row
+        // reads as clutter at this density, while a fill groups the row and
+        // still lets the dark chips sit forward of it
+        background: rgba(0, 0, 0, 0.06);
     }
 
     // captured key. Fixed width so the command fields line up down the column
