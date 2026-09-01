@@ -4,6 +4,12 @@
 $state-on: #2e9e4f;
 $state-off: #b23b3b;
 
+// Macros-tab divider. Stronger than the .rp-settings-section hairline the
+// other tabs use (rgba(0,0,0,.08)), which was too faint to separate the bands
+// here. Scoped to this tab on purpose - the shared rule is left alone so the
+// other tabs keep their lighter treatment.
+$macros-divider: 1px solid rgba(0, 0, 0, 0.24);
+
 .nitro-card.rp-settings-window {
     width: 560px;
     height: 420px;
@@ -62,6 +68,7 @@ $state-off: #b23b3b;
     // top strip: title + master switch on the left, actions on the right
     .rp-macros-bar {
         padding-top: 0;
+        border-bottom: $macros-divider;
     }
 
     .rp-macros-btn {
@@ -183,8 +190,12 @@ $state-off: #b23b3b;
     }
 
     // new-macro row: bind a key, type the command, Add
+    // divider below, so the "add a macro" controls read as their own band
+    // rather than as the first entry in the list underneath. Same hairline the
+    // settings sections use.
     .rp-macros-new {
-        padding: 0 4px;
+        padding: 0 4px 9px;
+        border-bottom: $macros-divider;
     }
 
     .rp-macros-bind {
