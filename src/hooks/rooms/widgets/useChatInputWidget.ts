@@ -103,7 +103,7 @@ const useChatInputWidgetState = () =>
 
                     const status = ClickthroughState.enabled ? 'enabled' : 'disabled';
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Clickthrough ${ status }`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Clickthrough ${ status }.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
 
                     return null;
                 }
@@ -116,18 +116,21 @@ const useChatInputWidgetState = () =>
 
                     if(!requestedName)
                     {
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, 'Usage: :t <name>', RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, 'Usage: :t <name>.', RoomSessionChatEvent.CHAT_TYPE_WHISPER));
 
                         return null;
                     }
 
                     const result = TargetState.selectByName?.(requestedName) ?? null;
-                    let status = `No user named ${ requestedName } is in this room`;
+                    // Default/failure case. The lookup only sees the current
+                    // room, so this also fires for someone online elsewhere in
+                    // the hotel - distinguishing the two needs a server lookup.
+                    let status = `${ requestedName } is not online.`;
                     let styleId = 0;
 
                     if(result?.status === 'selected')
                     {
-                        status = `You are now targeting ${ result.name }`;
+                        status = `You are now targeting ${ result.name }.`;
                         styleId = 3;
                     }
                     else if(result?.status === 'locked')
@@ -145,7 +148,7 @@ const useChatInputWidgetState = () =>
                     if(requestedName)
                     {
                         const targetName = TargetState.lockByName?.(requestedName) ?? null;
-                        const status = targetName ? `You have locked target on ${ targetName }` : `No user named ${ requestedName } is in this room`;
+                        const status = targetName ? `You have locked target on ${ targetName }.` : `${ requestedName } is not online.`;
                         const styleId = targetName ? 3 : 0;
 
                         GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
@@ -154,7 +157,7 @@ const useChatInputWidgetState = () =>
                     }
 
                     const lockState = TargetState.toggleLock?.() ?? null;
-                    const status = (lockState === null) ? 'No target selected' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.name }`;
+                    const status = (lockState === null) ? 'No target selected.' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.name }.`;
                     const styleId = (lockState === null) ? 0 : (lockState ? 3 : 6);
 
                     GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
@@ -176,7 +179,7 @@ const useChatInputWidgetState = () =>
 
                         communication.removeMessageEvent(pingEvent);
 
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Pong! Your ping is ${ ping } ms`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Pong! Your ping is ${ ping } ms.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
                     });
 
                     communication.registerMessageEvent(pingEvent);
