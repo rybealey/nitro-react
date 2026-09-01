@@ -16,7 +16,7 @@ import { Column, Text } from '../../../../common';
 // room-corp settings have their home; each lands on a placeholder until
 // its feature ships.
 const GENERAL_PAGES: string[] = [ 'Zoning' ];
-const CORPORATION_PAGES: string[] = [ 'Headquarters', 'Authorizations' ];
+const CORPORATION_PAGES: string[] = [ 'Headquarters', 'Authorizations', 'Emergencies' ];
 
 interface NavigatorRoomSettingsRoleplayTabViewProps
 {
