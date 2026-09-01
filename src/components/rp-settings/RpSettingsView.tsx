@@ -3,7 +3,7 @@ import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
-import { useMessageEvent } from '../../hooks';
+import { useLocalStorage, useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
@@ -48,6 +48,10 @@ const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
 export const RpSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
+    // The one piece of the Macros tab that is real: the master switch. Kept in
+    // localStorage so it survives reopening, matching where the macros
+    // themselves will live. Nothing reads it yet.
+    const [ macrosEnabled, setMacrosEnabled ] = useLocalStorage('pixelrp.macros.enabled', true);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
@@ -331,7 +335,12 @@ export const RpSettingsView: FC<{}> = props =>
                                  reads apart from the action buttons opposite */ }
                             <Flex alignItems="center" gap={ 2 }>
                                 <Text bold>Macros</Text>
-                                <div className="rp-macros-switch is-on" role="switch" aria-checked="true" aria-label="Macros enabled"><span /></div>
+                                <div className="rp-macros-switch-wrap">
+                                    <div className={ `rp-macros-switch ${ macrosEnabled ? 'is-on' : '' }` } role="switch"
+                                        aria-checked={ macrosEnabled } aria-label="Macros enabled"
+                                        onClick={ () => setMacrosEnabled(value => !value) }><span /></div>
+                                    <span className="rp-macros-switch-label">{ macrosEnabled ? 'On' : 'Off' }</span>
+                                </div>
                                 <div className="rp-macros-select">
                                     <span>{ MACRO_PROFILES[1] }</span>
                                     <i className="rp-macros-caret" />
