@@ -12,7 +12,7 @@ import { UsernameIconGlyph } from './UsernameIconGlyph';
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
 // placeholders to be filled out as settings are decided.
-const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Macros', 'System' ];
+const TABS: string[] = [ 'General', 'Macros', 'Social', 'Roleplay', 'System' ];
 
 // Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
 // settings can be furnished one by one. Macros moved out to its own top-level
@@ -327,14 +327,16 @@ export const RpSettingsView: FC<{}> = props =>
                 { (currentTab === 'Macros') &&
                     <Column gap={ 2 } className="rp-macros">
                         <div className="rp-settings-section rp-macros-bar">
-                            <div className="rp-settings-section-info">
-                                <Text bold>Macros</Text>
-                                <Text small className="text-muted">Bind a key to a command. Never fires while you are typing.</Text>
-                            </div>
+                            { /* the switch sits with the title, so "is the system on"
+                                 reads apart from the action buttons opposite */ }
                             <Flex alignItems="center" gap={ 2 }>
+                                <Text bold>Macros</Text>
+                                <div className="rp-macros-switch is-on" role="switch" aria-checked="true" aria-label="Macros enabled"><span /></div>
+                            </Flex>
+                            <Flex alignItems="center" gap={ 2 }>
+                                <div className="rp-macros-btn rp-macros-btn--accent">New</div>
                                 <div className="rp-macros-btn">Export</div>
                                 <div className="rp-macros-btn">Import</div>
-                                <div className="rp-macros-switch is-on" role="switch" aria-checked="true" aria-label="Macros enabled"><span /></div>
                             </Flex>
                         </div>
                         <Flex alignItems="center" gap={ 2 } className="rp-macros-profile">
@@ -343,7 +345,6 @@ export const RpSettingsView: FC<{}> = props =>
                                 <i className="rp-macros-caret" />
                             </div>
                             <div className="rp-macros-btn">Add</div>
-                            <div className="rp-macros-btn rp-macros-btn--accent">New</div>
                         </Flex>
                         <div className="rp-macros-list">
                             { /* index keys: the same binding can legitimately appear twice
@@ -352,7 +353,10 @@ export const RpSettingsView: FC<{}> = props =>
                                 <div key={ index } className="rp-macros-row">
                                     <div className="rp-macros-binding">{ row.binding }</div>
                                     <div className="rp-macros-command">{ row.command }</div>
-                                    <div className="rp-macros-btn rp-macros-btn--sm">Move</div>
+                                    <div className="rp-macros-btn rp-macros-btn--sm rp-macros-move">
+                                        Move
+                                        <span className="rp-macros-move-arrows"><i className="is-up" /><i className="is-down" /></span>
+                                    </div>
                                     <div className="rp-macros-btn rp-macros-btn--sm rp-macros-btn--danger">Delete</div>
                                 </div>
                             )) }

@@ -53,11 +53,9 @@
         min-height: 0;
     }
 
-    // top strip: description on the left, actions + master switch on the right
+    // top strip: title + master switch on the left, actions on the right
     .rp-macros-bar {
         padding-top: 0;
-
-        .rp-settings-section-info { max-width: 260px; }
     }
 
     .rp-macros-btn {
@@ -81,6 +79,31 @@
         &--sm { padding: 3px 10px; font-size: 10px; }
         &--accent { background: var(--prp-chrome-hover); }
         &--danger { background: #b23b3b; }
+    }
+
+    // Move: label plus a small stacked up/down pair, hinting the row can go
+    // either way. CSS triangles rather than an icon font - they stay crisp at
+    // this size and inherit the button's colour.
+    .rp-macros-move {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .rp-macros-move-arrows {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        i {
+            width: 0;
+            height: 0;
+            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
+
+            &.is-up { border-bottom: 4px solid rgba($white, .85); }
+            &.is-down { border-top: 4px solid rgba($white, .85); }
+        }
     }
 
     // master on/off. Fixed .is-on for now - the shell has no state.
