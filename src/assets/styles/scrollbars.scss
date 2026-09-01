@@ -1,3 +1,8 @@
+// Thumbs follow the player's colour scheme (--prp-chrome-*, :root, rewritten
+// by UiChrome) rather than bootstrap's $primary blue, which matched nothing
+// else in the UI. Progression is light -> dark as you interact: the chrome
+// tones sit on the light window content areas, so darker reads as stronger.
+// GLOBAL - every scrollbar in the client, not just the settings window.
 ::-webkit-scrollbar {
     width: 0.5rem;
 
@@ -24,26 +29,26 @@
 ::-webkit-scrollbar-thumb {
 
     &:horizontal {
-        border-bottom: 0.25rem solid rgba($primary, .4);
+        border-bottom: 0.25rem solid var(--prp-chrome-hover);
 
         &:hover {
-            border-bottom: 0.25rem solid rgba($primary, .8);
+            border-bottom: 0.25rem solid var(--prp-chrome-95);
         }
     
         &:active {
-            border-bottom: 0.25rem solid $secondary;
+            border-bottom: 0.25rem solid var(--prp-chrome-solid);
         }
     }
 
     &:not(:horizontal) {
-        border-right: 0.25rem solid rgba($primary, .4);
+        border-right: 0.25rem solid var(--prp-chrome-hover);
 
         &:hover {
-            border-right: 0.25rem solid rgba($primary, .8);
+            border-right: 0.25rem solid var(--prp-chrome-95);
         }
 
         &:active {
-            border-right: 0.25rem solid $secondary;
+            border-right: 0.25rem solid var(--prp-chrome-solid);
         }
     }
 }
