@@ -80,7 +80,7 @@
         line-height: 1;
 
         span { display: flex; align-items: center; }
-        svg { width: 9px; height: 9px; }
+        svg { width: 10px; height: 10px; }
 
         .on { color: var(--hud-warning); }
         .off { color: rgba($light, .25); }
