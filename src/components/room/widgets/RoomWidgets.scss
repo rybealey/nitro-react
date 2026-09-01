@@ -48,9 +48,8 @@
     }
 
     // Icons render at their NATIVE pixel size (background-size: auto — no
-    // scaling), centered in a uniform box sized to the largest icon (45px);
-    // hover matches the toolbar buttons. Keep new icons <= 45px or bump the
-    // box, otherwise they clip.
+    // scaling), centered in a uniform box sized to the largest icon (45px).
+    // Keep new icons <= 45px or bump the box, otherwise they clip.
     .side-drawer-item {
         width: 45px;
         height: 45px;
@@ -64,6 +63,16 @@
         // shading. isolation keeps the blend off the drawer plate behind.
         position: relative;
         isolation: isolate;
+
+        // Hover: a subtle chrome-toned tile behind the icon, the same
+        // treatment the HUD buttons use. --prp-chrome-hover is rewritten by
+        // UiChrome.ts, so the highlight follows the player's colour scheme.
+        // background-COLOR specifically, never the shorthand - the icon
+        // itself is this element's background-image.
+        border-radius: $border-radius;
+        transition: background-color .1s ease;
+
+        &:hover { background-color: var(--prp-chrome-hover); }
 
         &::after {
             content: '';
@@ -91,7 +100,7 @@
         font-family: sans-serif;
         font-style: normal;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 16px;
         line-height: 1;
         text-align: center;
         user-select: none;
