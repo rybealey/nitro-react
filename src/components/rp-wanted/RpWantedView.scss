@@ -1,0 +1,42 @@
+// Wanted List: a narrow single-column roster of charged players. Fixed width
+// to match the reference mock; the list is the ONE scroller (the content area
+// itself does not scroll, so the two can never fight).
+.nitro-card.rp-wanted-window {
+    width: 260px;
+
+    // Narrow panel, same trim as the Backpack: shrink the stock header type so
+    // the title and close button share the row without colliding.
+    .nitro-card-header .nitro-card-header-text {
+        font-size: 13px !important;
+    }
+
+    .nitro-card-content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .rp-wanted-list {
+        flex: 1;
+        min-height: 240px;
+        max-height: 320px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rp-wanted-none {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .rp-wanted-none-text {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+}

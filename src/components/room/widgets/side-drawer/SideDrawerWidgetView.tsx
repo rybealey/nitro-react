@@ -12,7 +12,7 @@ const DRAWER_BUTTONS: { key: string; title: string; onClick?: () => void }[] = [
     { key: 'inventory', title: 'Inventory', onClick: () => CreateLinkEvent('rp-inventory/toggle') },
     { key: 'corporations', title: 'Corporations', onClick: () => CreateLinkEvent('rp-corporations/toggle') },
     { key: 'gangs', title: 'Gangs' },
-    { key: 'wanted', title: 'Wanted List' },
+    { key: 'wanted', title: 'Wanted List', onClick: () => CreateLinkEvent('rp-wanted/toggle') },
     { key: 'support', title: 'Support' },
     { key: 'settings', title: 'Settings', onClick: () => CreateLinkEvent('rp-settings/toggle') },
 ];
