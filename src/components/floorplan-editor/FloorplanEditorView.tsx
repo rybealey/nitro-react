@@ -1,4 +1,4 @@
-import { FloorHeightMapEvent, ILinkEventTracker, NitroPoint, RoomEngineEvent, RoomVisualizationSettingsEvent, UpdateFloorPropertiesMessageComposer } from '@nitrots/nitro-renderer';
+import { FloorHeightMapEvent, ILinkEventTracker, NitroPoint, RoomEngineEvent, RoomVisualizationSettingsEvent, RpOpenFloorplanEvent, UpdateFloorPropertiesMessageComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, LocalizeText, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Button, ButtonGroup, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -55,6 +55,8 @@ export const FloorplanEditorView: FC<{}> = props =>
     }
 
     useRoomEngineEvent<RoomEngineEvent>(RoomEngineEvent.DISPOSED, event => setIsVisible(false));
+
+    useMessageEvent<RpOpenFloorplanEvent>(RpOpenFloorplanEvent, event => setIsVisible(true));
 
     useMessageEvent<FloorHeightMapEvent>(FloorHeightMapEvent, event =>
     {

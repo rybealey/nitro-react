@@ -1,0 +1,79 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 98e2928f5603c0f8f074d39cd3b5365c3c4447fb..75457a89f8a45f41fd97688241b15728311cebdd 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -11,6 +11,7 @@ import { RpPhotoListEvent } from './messages/incoming/RpPhotoListEvent';
+ import { RpJukeboxStateEvent } from './messages/incoming/RpJukeboxStateEvent';
+ import { RpRoomZoneEvent } from './messages/incoming/RpRoomZoneEvent';
+ import { RpRoomCorpEvent } from './messages/incoming/RpRoomCorpEvent';
++import { RpOpenFloorplanEvent } from './messages/incoming/RpOpenFloorplanEvent';
+ import { DiamondsStoreEvent } from './messages/incoming/DiamondsStoreEvent';
+ import { DiamondsStorePurchaseResultEvent } from './messages/incoming/DiamondsStorePurchaseResultEvent';
+ import { RpRoomZoneSaveComposer } from './messages/outgoing/RpRoomZoneSaveComposer';
+@@ -84,6 +85,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_JUKEBOX_STATE, RpJukeboxStateEvent);
+         this._events.set(IncomingHeader.RP_ROOM_ZONE, RpRoomZoneEvent);
+         this._events.set(IncomingHeader.RP_ROOM_CORP, RpRoomCorpEvent);
++        this._events.set(IncomingHeader.RP_OPEN_FLOORPLAN, RpOpenFloorplanEvent);
+         this._events.set(IncomingHeader.DIAMONDS_STORE, DiamondsStoreEvent);
+         this._events.set(IncomingHeader.DIAMONDS_STORE_PURCHASE_RESULT, DiamondsStorePurchaseResultEvent);
+ 
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 924dcd3e875141ed8119988ce02227670cfec14a..95131057001a38792afed97f32537baa4bc76494 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -486,6 +486,7 @@ export class IncomingHeader
+     public static RP_JUKEBOX_STATE = 3917;
+     public static RP_ROOM_ZONE = 3924;
+     public static RP_ROOM_CORP = 3957;
++    public static RP_OPEN_FLOORPLAN = 3963;
+     public static DIAMONDS_STORE = 3925;
+     public static DIAMONDS_STORE_PURCHASE_RESULT = 3931;
+ }
+diff --git a/src/nitro/communication/messages/incoming/RpOpenFloorplanEvent.ts b/src/nitro/communication/messages/incoming/RpOpenFloorplanEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a5a1424c180b0d32396f46c64ef5b278dcbca19f
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpOpenFloorplanEvent.ts
+@@ -0,0 +1,30 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: pure signal telling the client to open the floor plan editor.
++// No payload - the server never sends any fields for this packet.
++export class RpOpenFloorplanParser implements IMessageParser
++{
++    public flush(): boolean
++    {
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        return true;
++    }
++}
++
++export class RpOpenFloorplanEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpOpenFloorplanParser);
++    }
++
++    public getParser(): RpOpenFloorplanParser
++    {
++        return this.parser as RpOpenFloorplanParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index d8acccf89a68ab2d112e15b735e3c6dc567d0119..c8334a43857fb6b09c89791c6a5e0e87ac57c9db 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -90,5 +90,6 @@ export * from './RpPhotoListEvent';
+ export * from './RpJukeboxStateEvent';
+ export * from './RpRoomZoneEvent';
+ export * from './RpRoomCorpEvent';
++export * from './RpOpenFloorplanEvent';
+ export * from './DiamondsStoreEvent';
+ export * from './DiamondsStorePurchaseResultEvent';
