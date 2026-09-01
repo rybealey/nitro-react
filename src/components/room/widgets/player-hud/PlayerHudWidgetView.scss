@@ -52,19 +52,16 @@
         // the fill and border are borrowed; the mask stays circular.
         background: var(--prp-chrome-slot);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        // Rim highlight: a hairline ring just outside the circle, a faint halo
-        // past that, and an even inner glow. Every layer is concentric - no
-        // x/y offset anywhere, or the rim lights one arc more than the rest and
-        // reads as a lopsided border on a circle. Kept very low alpha: it must
-        // not compete with the bars beside it. The inset shows because
-        // .avatar-image is transparent around the head.
-        box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.20),
-            0 0 10px 2px rgba(255, 255, 255, 0.11),
-            inset 0 0 7px rgba(255, 255, 255, 0.24);
+        // No rim at rest - the circle is just its hairline border. The glow is
+        // a hover affordance only, on the clickable portraits, since clicking
+        // one opens that player's profile.
         transition: box-shadow .12s ease;
 
-        // only the clickable portraits pick up a hover lift
+        // Rim highlight: a hairline ring just outside the circle, a halo past
+        // that, and an even inner glow. Every layer is concentric - no x/y
+        // offset anywhere, or the rim lights one arc more than the rest and
+        // reads as a lopsided border on a circle. The inset shows because
+        // .avatar-image is transparent around the head.
         &.cursor-pointer:hover {
             box-shadow:
                 0 0 0 1px rgba(255, 255, 255, 0.34),
