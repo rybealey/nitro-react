@@ -8,6 +8,11 @@ import { useNotification } from '../../notification';
 import { useObjectSelectedEvent } from '../engine';
 import { useRoom } from '../useRoom';
 
+// Every system whisper the client raises locally uses this bubble, matching
+// the emulator's SendWhisper - a message from the hotel must never wear the
+// player's own chat bubble, and must not vary by outcome.
+const SYSTEM_WHISPER_STYLE: number = 1;
+
 const useChatInputWidgetState = () =>
 {
     const [ selectedUsername, setSelectedUsername ] = useState('');
@@ -103,7 +108,7 @@ const useChatInputWidgetState = () =>
 
                     const status = ClickthroughState.enabled ? 'enabled' : 'disabled';
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Clickthrough ${ status }.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Clickthrough ${ status }.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
                     return null;
                 }
@@ -118,7 +123,7 @@ const useChatInputWidgetState = () =>
                     {
                         const status = TargetState.name ? `You are now targeting ${ TargetState.name }.` : 'Usage: :t <name>.';
 
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
                         return null;
                     }
@@ -138,7 +143,7 @@ const useChatInputWidgetState = () =>
                         status = `Unlock your target on ${ result.name } before switching targets.`;
                     }
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
                     return null;
                 }
@@ -149,18 +154,16 @@ const useChatInputWidgetState = () =>
                     {
                         const targetName = TargetState.lockByName?.(requestedName) ?? null;
                         const status = targetName ? `You have locked target on ${ targetName }.` : `${ requestedName } is not online.`;
-                        const styleId = targetName ? 3 : 0;
 
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
                         return null;
                     }
 
                     const lockState = TargetState.toggleLock?.() ?? null;
                     const status = (lockState === null) ? 'No target selected.' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.name }.`;
-                    const styleId = (lockState === null) ? 0 : (lockState ? 3 : 6);
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
                     return null;
                 }
@@ -179,7 +182,7 @@ const useChatInputWidgetState = () =>
 
                         communication.removeMessageEvent(pingEvent);
 
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Pong! Your ping is ${ ping } ms.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `Pong! Your ping is ${ ping } ms.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
                     });
 
                     communication.registerMessageEvent(pingEvent);
