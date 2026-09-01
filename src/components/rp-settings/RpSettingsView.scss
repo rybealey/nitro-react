@@ -135,15 +135,37 @@
         }
     }
 
-    // profile picker. A styled div, not a <select> - it becomes a real
-    // dropdown when profiles are wired up.
-    .rp-macros-profile {
+    // new-macro row: bind a key, type the command, Add
+    .rp-macros-new {
         padding: 0 4px;
     }
 
-    .rp-macros-select {
+    .rp-macros-bind {
+        flex-shrink: 0;
+        // dashed edge marks it as a capture target rather than a plain action
+        border: 1px dashed rgba($white, .35);
+    }
+
+    .rp-macros-input {
         flex: 1;
         min-width: 0;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        color: $white;
+        background: var(--prp-chrome-95);
+        border: 1px solid rgba(0, 0, 0, .35);
+        outline: none;
+
+        &::placeholder { color: rgba($white, .45); }
+    }
+
+    // profile picker. A styled div, not a <select> - it becomes a real
+    // dropdown when profiles are wired up. Sized, not flexed: it sits in the
+    // header strip beside the switch now, so it must not eat the free space.
+    .rp-macros-select {
+        width: 160px;
+        flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: space-between;

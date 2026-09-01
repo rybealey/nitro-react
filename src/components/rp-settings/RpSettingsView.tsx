@@ -12,7 +12,7 @@ import { UsernameIconGlyph } from './UsernameIconGlyph';
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
 // placeholders to be filled out as settings are decided.
-const TABS: string[] = [ 'General', 'Macros', 'Social', 'Roleplay', 'System' ];
+const TABS: string[] = [ 'General', 'Macros', 'Social', 'Roleplay', 'UI' ];
 
 // Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
 // settings can be furnished one by one. Macros moved out to its own top-level
@@ -270,7 +270,7 @@ export const RpSettingsView: FC<{}> = props =>
                 )) }
             </NitroCardTabsView>
             <NitroCardContentView className="text-black">
-                { (currentTab === 'System') &&
+                { (currentTab === 'UI') &&
                     <div className="prp-subnav-layout">
                         <div className="prp-subnav">
                             { /* sectioned links: eyebrow header per group */ }
@@ -332,6 +332,10 @@ export const RpSettingsView: FC<{}> = props =>
                             <Flex alignItems="center" gap={ 2 }>
                                 <Text bold>Macros</Text>
                                 <div className="rp-macros-switch is-on" role="switch" aria-checked="true" aria-label="Macros enabled"><span /></div>
+                                <div className="rp-macros-select">
+                                    <span>{ MACRO_PROFILES[1] }</span>
+                                    <i className="rp-macros-caret" />
+                                </div>
                             </Flex>
                             <Flex alignItems="center" gap={ 2 }>
                                 <div className="rp-macros-btn rp-macros-btn--accent">New</div>
@@ -339,11 +343,11 @@ export const RpSettingsView: FC<{}> = props =>
                                 <div className="rp-macros-btn">Import</div>
                             </Flex>
                         </div>
-                        <Flex alignItems="center" gap={ 2 } className="rp-macros-profile">
-                            <div className="rp-macros-select">
-                                <span>{ MACRO_PROFILES[1] }</span>
-                                <i className="rp-macros-caret" />
-                            </div>
+                        { /* new-macro row: capture a key, type the command, Add.
+                             The input is uncontrolled and Add is inert - still a shell. */ }
+                        <Flex alignItems="center" gap={ 2 } className="rp-macros-new">
+                            <div className="rp-macros-btn rp-macros-bind">Click to bind</div>
+                            <input type="text" className="rp-macros-input" placeholder="Type command" aria-label="Macro command" />
                             <div className="rp-macros-btn">Add</div>
                         </Flex>
                         <div className="rp-macros-list">
@@ -492,7 +496,7 @@ export const RpSettingsView: FC<{}> = props =>
                             </>
                         </Column>
                     </div> }
-                { (currentTab !== 'System') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') && (currentTab !== 'Macros') &&
+                { (currentTab !== 'UI') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') && (currentTab !== 'Macros') &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>
