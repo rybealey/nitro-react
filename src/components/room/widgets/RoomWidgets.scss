@@ -6,7 +6,8 @@
     top: 50%;
     left: 0;
     transform: translateY(-50%);
-    z-index: 2;
+    // Above chat bubbles so they never paint over the drawer.
+    z-index: $side-drawer-zindex;
 
     .nitro-side-drawer {
         background: var(--prp-chrome-plate);
@@ -30,7 +31,7 @@
         width: 0;
         max-height: 0;
         opacity: 0;
-        transition: max-height .2s ease, opacity .15s ease, margin-bottom .2s ease;
+        transition: max-height .2s ease, opacity .15s ease, margin-right .2s ease;
     }
 
     &.is-expanded {
@@ -40,7 +41,9 @@
             width: auto;
             max-height: 300px;
             opacity: 1;
-            margin-bottom: 6px;
+            // Gap between the icon stack and the collapse caret, which now
+            // sits to its right (vertically centered), not below it.
+            margin-right: 6px;
         }
     }
 

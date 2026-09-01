@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { CreateLinkEvent } from '../../../../api';
-import { Base, Column, Flex } from '../../../../common';
+import { Base, Flex } from '../../../../common';
 import { useLocalStorage } from '../../../../hooks';
 
 // Center-left edge drawer. Expanded by default; the open/collapsed state is
@@ -23,7 +23,7 @@ export const SideDrawerWidgetView: FC<{}> = props =>
 
     return (
         <Flex alignItems="center" className={ `nitro-side-drawer-container ${ isExpanded ? 'is-expanded' : '' }` }>
-            <Column center gap={ 0 } className="nitro-side-drawer">
+            <Flex alignItems="center" gap={ 0 } className="nitro-side-drawer">
                 <Base className="side-drawer-items">
                     { /* plain divs, not <Base>: OverlayTrigger anchors via an
                          injected ref, which Base drops (it only wires innerRef) */ }
@@ -36,7 +36,7 @@ export const SideDrawerWidgetView: FC<{}> = props =>
                 <Base pointer className="side-drawer-toggle" title={ isExpanded ? 'Collapse' : 'Expand' } onClick={ () => setIsExpanded(value => !value) }>
                     { isExpanded ? '‹' : '›' }
                 </Base>
-            </Column>
+            </Flex>
         </Flex>
     );
 };

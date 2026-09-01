@@ -9,6 +9,9 @@ $toolbar-memenu-zindex: 60;
 $roomtools-zindex: 50;
 $context-menu-zindex: 40;
 $infostand-zindex: 30;
+// Edge chrome above chat bubbles (they must not paint over the drawer) but
+// below the interactive popups above, which open over it.
+$side-drawer-zindex: 25;
 $quiz-zindex: 21;
 $chat-zindex: 20;
 $highscore-zindex: 19;
