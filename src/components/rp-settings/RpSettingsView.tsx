@@ -12,11 +12,31 @@ import { UsernameIconGlyph } from './UsernameIconGlyph';
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
 // placeholders to be filled out as settings are decided.
-const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'System' ];
+const TABS: string[] = [ 'General', 'Social', 'Roleplay', 'Macros', 'System' ];
 
 // Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
-// settings can be furnished one by one.
-const ROLEPLAY_PAGES: string[] = [ 'Macros', 'Messages' ];
+// settings can be furnished one by one. Macros moved out to its own top-level
+// tab, so it is deliberately not listed here any more.
+const ROLEPLAY_PAGES: string[] = [ 'Messages' ];
+
+// STATIC SHELL. The Macros tab is presentation only for now — nothing is
+// stored, nothing is bound and no key fires anything. The rows below are
+// sample bindings so the layout can be judged; when behaviour lands they are
+// replaced by the player's saved macros (localStorage), and the controls get
+// wired up. Several of the commands shown (:cuff, :escort, :ticket, :ps,
+// :uncuff) do not exist yet either.
+const MACRO_PROFILES: string[] = [ 'Default', 'Cop' ];
+
+const MACRO_SAMPLE_ROWS: { binding: string, command: string }[] = [
+    { binding: '=', command: ':cuff x' },
+    { binding: 'ARROWLEFT', command: ':escort x' },
+    { binding: 'TAB', command: ':ps x' },
+    { binding: 'Mouse Middle', command: ':ticket x' },
+    { binding: '`', command: ':inv 1' },
+    { binding: 'CAPSLOCK', command: ':ct' },
+    { binding: 'CONTROL', command: ':lt x' },
+    { binding: 'ARROWRIGHT', command: ':uncuff x' }
+];
 
 // Social tab sub-pages (left rail), grouped under the Personalization
 // eyebrow; the chat-bubble preview shows on both.
@@ -304,6 +324,40 @@ export const RpSettingsView: FC<{}> = props =>
                                 </div> }
                         </Column>
                     </div> }
+                { (currentTab === 'Macros') &&
+                    <Column gap={ 2 } className="rp-macros">
+                        <div className="rp-settings-section rp-macros-bar">
+                            <div className="rp-settings-section-info">
+                                <Text bold>Macros</Text>
+                                <Text small className="text-muted">Bind a key to a command. Never fires while you are typing.</Text>
+                            </div>
+                            <Flex alignItems="center" gap={ 2 }>
+                                <div className="rp-macros-btn">Export</div>
+                                <div className="rp-macros-btn">Import</div>
+                                <div className="rp-macros-switch is-on" role="switch" aria-checked="true" aria-label="Macros enabled"><span /></div>
+                            </Flex>
+                        </div>
+                        <Flex alignItems="center" gap={ 2 } className="rp-macros-profile">
+                            <div className="rp-macros-select">
+                                <span>{ MACRO_PROFILES[1] }</span>
+                                <i className="rp-macros-caret" />
+                            </div>
+                            <div className="rp-macros-btn">Add</div>
+                            <div className="rp-macros-btn rp-macros-btn--accent">New</div>
+                        </Flex>
+                        <div className="rp-macros-list">
+                            { /* index keys: the same binding can legitimately appear twice
+                                 while a player is mid-edit, so the binding is not unique */ }
+                            { MACRO_SAMPLE_ROWS.map((row, index) => (
+                                <div key={ index } className="rp-macros-row">
+                                    <div className="rp-macros-binding">{ row.binding }</div>
+                                    <div className="rp-macros-command">{ row.command }</div>
+                                    <div className="rp-macros-btn rp-macros-btn--sm">Move</div>
+                                    <div className="rp-macros-btn rp-macros-btn--sm rp-macros-btn--danger">Delete</div>
+                                </div>
+                            )) }
+                        </div>
+                    </Column> }
                 { (currentTab === 'Roleplay') &&
                     <div className="prp-subnav-layout">
                         <div className="prp-subnav">
@@ -434,7 +488,7 @@ export const RpSettingsView: FC<{}> = props =>
                             </>
                         </Column>
                     </div> }
-                { (currentTab !== 'System') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') &&
+                { (currentTab !== 'System') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') && (currentTab !== 'Macros') &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>

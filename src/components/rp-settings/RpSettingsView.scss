@@ -40,6 +40,162 @@
         background: #b23b3b;
     }
 
+    // ---- Macros tab -------------------------------------------------------
+    // STATIC SHELL: styled from the reference mock but rebuilt in our own
+    // chrome, so it inherits the player's colour scheme instead of the mock's
+    // fixed red. No behaviour is wired up yet.
+    // Fills the content area and owns no scroll itself - the row list below is
+    // the single scroller, so the bar and profile picker stay put. flex/min-0
+    // rather than height:100%, matching .prp-subnav-page, so the content
+    // area's own padding can't push it over.
+    .rp-macros {
+        flex: 1;
+        min-height: 0;
+    }
+
+    // top strip: description on the left, actions + master switch on the right
+    .rp-macros-bar {
+        padding-top: 0;
+
+        .rp-settings-section-info { max-width: 260px; }
+    }
+
+    .rp-macros-btn {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.6;
+        white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+        color: $white;
+        background: var(--prp-chrome-solid);
+        transition: background-color .1s ease, transform .1s ease;
+
+        &:hover {
+            background-color: var(--prp-chrome-hover);
+            transform: translateY(-1px);
+        }
+
+        &--sm { padding: 3px 10px; font-size: 10px; }
+        &--accent { background: var(--prp-chrome-hover); }
+        &--danger { background: #b23b3b; }
+    }
+
+    // master on/off. Fixed .is-on for now - the shell has no state.
+    .rp-macros-switch {
+        position: relative;
+        width: 34px;
+        height: 18px;
+        flex-shrink: 0;
+        border-radius: 9px;
+        cursor: pointer;
+        background: rgba(0, 0, 0, .25);
+        transition: background-color .15s ease;
+
+        span {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: $white;
+            transition: transform .15s ease;
+        }
+
+        &.is-on {
+            background: var(--prp-chrome-solid);
+
+            span { transform: translateX(16px); }
+        }
+    }
+
+    // profile picker. A styled div, not a <select> - it becomes a real
+    // dropdown when profiles are wired up.
+    .rp-macros-profile {
+        padding: 0 4px;
+    }
+
+    .rp-macros-select {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        user-select: none;
+        color: $white;
+        background: var(--prp-chrome-95);
+        border: 1px solid rgba(0, 0, 0, .35);
+
+        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+
+    .rp-macros-caret {
+        flex-shrink: 0;
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid rgba($white, .7);
+    }
+
+    // the one scroller on this tab
+    .rp-macros-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 2px 4px;
+    }
+
+    .rp-macros-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    // captured key. Fixed width so the command fields line up down the column
+    // however long the key name is; long ones ellipsis rather than push.
+    .rp-macros-binding {
+        width: 96px;
+        flex-shrink: 0;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: $white;
+        background: var(--prp-chrome-solid);
+    }
+
+    .rp-macros-command {
+        flex: 1;
+        min-width: 0;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: $white;
+        background: var(--prp-chrome-95);
+        border: 1px solid rgba(0, 0, 0, .35);
+    }
+
     .rp-settings-skeleton {
         border-radius: 6px;
         background: linear-gradient(90deg, rgba(0, 0, 0, 0.06) 25%, rgba(0, 0, 0, 0.12) 37%, rgba(0, 0, 0, 0.06) 63%);
