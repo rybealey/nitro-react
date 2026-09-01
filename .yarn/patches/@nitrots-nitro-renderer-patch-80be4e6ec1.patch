@@ -1,0 +1,269 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index bb8d335ba4670c3c5f2dc350cbcc2d8803a3b25b..98e2928f5603c0f8f074d39cd3b5365c3c4447fb 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -10,9 +10,13 @@ import { RpMessengerFriendTypingEvent } from './messages/incoming/RpMessengerFri
+ import { RpPhotoListEvent } from './messages/incoming/RpPhotoListEvent';
+ import { RpJukeboxStateEvent } from './messages/incoming/RpJukeboxStateEvent';
+ import { RpRoomZoneEvent } from './messages/incoming/RpRoomZoneEvent';
++import { RpRoomCorpEvent } from './messages/incoming/RpRoomCorpEvent';
+ import { DiamondsStoreEvent } from './messages/incoming/DiamondsStoreEvent';
+ import { DiamondsStorePurchaseResultEvent } from './messages/incoming/DiamondsStorePurchaseResultEvent';
+ import { RpRoomZoneSaveComposer } from './messages/outgoing/RpRoomZoneSaveComposer';
++import { RpSetRoomCorpComposer } from './messages/outgoing/RpSetRoomCorpComposer';
++import { RpSetHqRankComposer } from './messages/outgoing/RpSetHqRankComposer';
++import { RpSetEmergencyComposer } from './messages/outgoing/RpSetEmergencyComposer';
+ import { RpPassiveCancelComposer } from './messages/outgoing/RpPassiveCancelComposer';
+ import { RpCorpDetailEvent } from './messages/incoming/RpCorpDetailEvent';
+ import { RpCorpsEvent } from './messages/incoming/RpCorpsEvent';
+@@ -79,6 +83,7 @@ export class NitroMessages implements IMessageConfiguration
+         this._events.set(IncomingHeader.RP_PHOTO_LIST, RpPhotoListEvent);
+         this._events.set(IncomingHeader.RP_JUKEBOX_STATE, RpJukeboxStateEvent);
+         this._events.set(IncomingHeader.RP_ROOM_ZONE, RpRoomZoneEvent);
++        this._events.set(IncomingHeader.RP_ROOM_CORP, RpRoomCorpEvent);
+         this._events.set(IncomingHeader.DIAMONDS_STORE, DiamondsStoreEvent);
+         this._events.set(IncomingHeader.DIAMONDS_STORE_PURCHASE_RESULT, DiamondsStorePurchaseResultEvent);
+ 
+@@ -1178,6 +1183,9 @@ export class NitroMessages implements IMessageConfiguration
+         this._composers.set(OutgoingHeader.RP_JUKEBOX_SKIP, RpJukeboxSkipComposer);
+         this._composers.set(OutgoingHeader.RP_JUKEBOX_REPORT, RpJukeboxReportComposer);
+         this._composers.set(OutgoingHeader.RP_ROOM_ZONE_SAVE, RpRoomZoneSaveComposer);
++        this._composers.set(OutgoingHeader.RP_SET_ROOM_CORP, RpSetRoomCorpComposer);
++        this._composers.set(OutgoingHeader.RP_SET_HQ_RANK, RpSetHqRankComposer);
++        this._composers.set(OutgoingHeader.RP_SET_EMERGENCY, RpSetEmergencyComposer);
+         this._composers.set(OutgoingHeader.RP_PASSIVE_CANCEL, RpPassiveCancelComposer);
+         this._composers.set(OutgoingHeader.GET_DIAMONDS_STORE, GetDiamondsStoreComposer);
+         this._composers.set(OutgoingHeader.PURCHASE_DIAMONDS_STORE_ITEM, PurchaseDiamondsStoreItemComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index bee2079683789060c32f0d16f96be122cac704ac..924dcd3e875141ed8119988ce02227670cfec14a 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -485,6 +485,7 @@ export class IncomingHeader
+     public static RP_PHOTO_LIST = 3909;
+     public static RP_JUKEBOX_STATE = 3917;
+     public static RP_ROOM_ZONE = 3924;
++    public static RP_ROOM_CORP = 3957;
+     public static DIAMONDS_STORE = 3925;
+     public static DIAMONDS_STORE_PURCHASE_RESULT = 3931;
+ }
+diff --git a/src/nitro/communication/messages/incoming/RpRoomCorpEvent.ts b/src/nitro/communication/messages/incoming/RpRoomCorpEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a36ec954602ef0ace6733f5ddb84b2d491799f83
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpRoomCorpEvent.ts
+@@ -0,0 +1,84 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: room-level corp HQ context - the rank ladder for the current
++// owning corp (id, order, name, authorized-to-set-emergency flag) plus the
++// room's emergency service flags. Sent when the settings window opens and
++// echoed back after a save.
++export interface RpRoomCorpRank
++{
++    rankId: number;
++    rankOrder: number;
++    rankName: string;
++    authorized: boolean;
++}
++
++export class RpRoomCorpParser implements IMessageParser
++{
++    private _roomId: number;
++    private _corpId: number;
++    private _ranks: RpRoomCorpRank[];
++    private _allowMedical: boolean;
++    private _allowPolice: boolean;
++    private _allowStaff: boolean;
++
++    public flush(): boolean
++    {
++        this._roomId = 0;
++        this._corpId = 0;
++        this._ranks = [];
++        this._allowMedical = false;
++        this._allowPolice = false;
++        this._allowStaff = false;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._roomId = wrapper.readInt();
++        this._corpId = wrapper.readInt();
++        this._ranks = [];
++
++        let rankCount = wrapper.readInt();
++
++        while(rankCount > 0)
++        {
++            const rankId = wrapper.readInt();
++            const rankOrder = wrapper.readInt();
++            const rankName = wrapper.readString();
++            const authorized = (wrapper.readInt() === 1);
++
++            this._ranks.push({ rankId, rankOrder, rankName, authorized });
++
++            rankCount--;
++        }
++
++        this._allowMedical = (wrapper.readInt() === 1);
++        this._allowPolice = (wrapper.readInt() === 1);
++        this._allowStaff = (wrapper.readInt() === 1);
++
++        return true;
++    }
++
++    public get roomId(): number { return this._roomId; }
++    public get corpId(): number { return this._corpId; }
++    public get ranks(): RpRoomCorpRank[] { return this._ranks; }
++    public get allowMedical(): boolean { return this._allowMedical; }
++    public get allowPolice(): boolean { return this._allowPolice; }
++    public get allowStaff(): boolean { return this._allowStaff; }
++}
++
++export class RpRoomCorpEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpRoomCorpParser);
++    }
++
++    public getParser(): RpRoomCorpParser
++    {
++        return this.parser as RpRoomCorpParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index 7505d8855a2ad74dd0c65a5f74a71ca4c55ec90a..d8acccf89a68ab2d112e15b735e3c6dc567d0119 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -89,5 +89,6 @@ export * from './RpMessengerFriendTypingEvent';
+ export * from './RpPhotoListEvent';
+ export * from './RpJukeboxStateEvent';
+ export * from './RpRoomZoneEvent';
++export * from './RpRoomCorpEvent';
+ export * from './DiamondsStoreEvent';
+ export * from './DiamondsStorePurchaseResultEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index 1272a1b7c6b31dd03e5f7ec5c7d47f88ff6f9468..8929b3f82aeceed9b5e7ac9544a71d1133ee17fa 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -494,6 +494,12 @@ export class OutgoingHeader
+     public static RP_JUKEBOX_SKIP = 3921;
+     public static RP_JUKEBOX_REPORT = 3922;
+     public static RP_ROOM_ZONE_SAVE = 3923;
++    public static RP_SET_ROOM_CORP = 3958;
++    // NOT 3959/3961: those are the stock PHOTO_COMPETITION and
++    // CHAT_REVIEW_GUIDE_VOTE headers. Check stock values before assigning
++    // custom wire ids.
++    public static RP_SET_HQ_RANK = 3962;
++    public static RP_SET_EMERGENCY = 3960;
+     public static RP_PASSIVE_CANCEL = 3927;
+     public static GET_DIAMONDS_STORE = 3929;
+     public static PURCHASE_DIAMONDS_STORE_ITEM = 3930;
+diff --git a/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts b/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..caab1c14707bc07c5ff4fb2c959cd991a87caaa3
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts
+@@ -0,0 +1,24 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: toggles a room-level emergency service flag (medical/police/
++// staff category, authorized ranks only, enforced server-side). The flag
++// travels as int 0/1 - the emulator reads ReadInt() == 1.
++export class RpSetEmergencyComposer implements IMessageComposer<[ number, number ]>
++{
++    private _data: [ number, number ];
++
++    constructor(category: number, enabled: boolean)
++    {
++        this._data = [ category, enabled ? 1 : 0 ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts b/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..477a0149813ea9f1bdb35f242b7b06bc5b3dc891
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts
+@@ -0,0 +1,24 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: toggles whether a corp rank is authorized to set room-level
++// emergency flags (owner/staff only, enforced server-side). The flag
++// travels as int 0/1 - the emulator reads ReadInt() == 1.
++export class RpSetHqRankComposer implements IMessageComposer<[ number, number ]>
++{
++    private _data: [ number, number ];
++
++    constructor(rankId: number, authorized: boolean)
++    {
++        this._data = [ rankId, authorized ? 1 : 0 ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts b/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a7556fb2eb238f74ab9ca5773c5876738006d24b
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts
+@@ -0,0 +1,23 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: sets the current room's owning corp (owner/staff only,
++// enforced server-side).
++export class RpSetRoomCorpComposer implements IMessageComposer<[ number ]>
++{
++    private _data: [ number ];
++
++    constructor(corpId: number)
++    {
++        this._data = [ corpId ];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index e99400f170d1612a212e1b8eaba7edf7bf148c40..0a7fdf16e96b97216e03bc000f3f43bcbc3fbc9b 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -95,6 +95,9 @@ export * from './RpUpdatePhotoComposer';
+ export * from './RpSaveScreenshotComposer';
+ export * from './RpJukeboxComposers';
+ export * from './RpRoomZoneSaveComposer';
++export * from './RpSetRoomCorpComposer';
++export * from './RpSetHqRankComposer';
++export * from './RpSetEmergencyComposer';
+ export * from './RpPassiveCancelComposer';
+ export * from './GetDiamondsStoreComposer';
+ export * from './PurchaseDiamondsStoreItemComposer';
