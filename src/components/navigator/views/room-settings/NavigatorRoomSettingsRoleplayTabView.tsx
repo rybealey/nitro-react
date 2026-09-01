@@ -74,11 +74,11 @@ export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRolep
                     </select>
                 </Column> }
             { (activePage === 'Headquarters') &&
-                <RoleplayHeadquartersView roomCorp={ roomCorp } className="prp-subnav-page" /> }
+                <RoleplayHeadquartersView roomId={ roomData.roomId } roomCorp={ roomCorp } className="prp-subnav-page" /> }
             { (activePage === 'Authorizations') &&
-                <RoleplayAuthorizationsView roomCorp={ roomCorp } className="prp-subnav-page" /> }
+                <RoleplayAuthorizationsView roomId={ roomData.roomId } roomCorp={ roomCorp } className="prp-subnav-page" /> }
             { (activePage === 'Emergencies') &&
-                <RoleplayEmergenciesView roomCorp={ roomCorp } className="prp-subnav-page" /> }
+                <RoleplayEmergenciesView roomId={ roomData.roomId } roomCorp={ roomCorp } className="prp-subnav-page" /> }
         </div>
     );
 }

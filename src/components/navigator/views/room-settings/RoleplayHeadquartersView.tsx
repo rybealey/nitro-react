@@ -8,13 +8,14 @@ import { RoomCorpState } from './NavigatorRoomSettingsView';
 
 interface RoleplayHeadquartersViewProps
 {
+    roomId: number;
     roomCorp: RoomCorpState;
     className?: string;
 }
 
 export const RoleplayHeadquartersView: FC<RoleplayHeadquartersViewProps> = props =>
 {
-    const { roomCorp = null, className = '' } = props;
+    const { roomId, roomCorp = null, className = '' } = props;
     const [ corps, setCorps ] = useState<{ id: number; name: string }[]>([]);
     const staff = IsRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
 
@@ -32,7 +33,7 @@ export const RoleplayHeadquartersView: FC<RoleplayHeadquartersViewProps> = props
         SendMessageComposer(new RpGetCorpsComposer());
     }, []);
 
-    const onChange = (value: string) => SendMessageComposer(new RpSetRoomCorpComposer(parseInt(value)));
+    const onChange = (value: string) => SendMessageComposer(new RpSetRoomCorpComposer(roomId, parseInt(value)));
 
     return (
         <Column gap={ 1 } className={ className }>

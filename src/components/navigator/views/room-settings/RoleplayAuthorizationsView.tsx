@@ -7,13 +7,14 @@ import { RoomCorpState } from './NavigatorRoomSettingsView';
 
 interface RoleplayAuthorizationsViewProps
 {
+    roomId: number;
     roomCorp: RoomCorpState;
     className?: string;
 }
 
 export const RoleplayAuthorizationsView: FC<RoleplayAuthorizationsViewProps> = props =>
 {
-    const { roomCorp = null, className = '' } = props;
+    const { roomId, roomCorp = null, className = '' } = props;
     const staff = IsRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
 
     if(!roomCorp || (roomCorp.corpId <= 0))
@@ -26,7 +27,7 @@ export const RoleplayAuthorizationsView: FC<RoleplayAuthorizationsViewProps> = p
         );
     }
 
-    const toggle = (rankId: number, authorized: boolean) => SendMessageComposer(new RpSetHqRankComposer(rankId, authorized));
+    const toggle = (rankId: number, authorized: boolean) => SendMessageComposer(new RpSetHqRankComposer(roomId, rankId, authorized));
 
     return (
         <Column gap={ 1 } className={ className }>

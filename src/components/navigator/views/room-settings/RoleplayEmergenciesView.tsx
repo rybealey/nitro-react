@@ -6,15 +6,16 @@ import { RoomCorpState } from './NavigatorRoomSettingsView';
 
 interface RoleplayEmergenciesViewProps
 {
+    roomId: number;
     roomCorp: RoomCorpState;
     className?: string;
 }
 
 export const RoleplayEmergenciesView: FC<RoleplayEmergenciesViewProps> = props =>
 {
-    const { roomCorp = null, className = '' } = props;
+    const { roomId, roomCorp = null, className = '' } = props;
 
-    const set = (category: number, enabled: boolean) => SendMessageComposer(new RpSetEmergencyComposer(category, enabled));
+    const set = (category: number, enabled: boolean) => SendMessageComposer(new RpSetEmergencyComposer(roomId, category, enabled));
 
     const medical = roomCorp ? roomCorp.allowMedical : true;
     const police = roomCorp ? roomCorp.allowPolice : true;

@@ -1,0 +1,66 @@
+diff --git a/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts b/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts
+index caab1c14707bc07c5ff4fb2c959cd991a87caaa3..c3f1f445f1634a60318bc1548c397666cbd0a011 100644
+--- a/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts
++++ b/src/nitro/communication/messages/outgoing/RpSetEmergencyComposer.ts
+@@ -3,13 +3,13 @@ import { IMessageComposer } from '../../../../api';
+ // PixelRP: toggles a room-level emergency service flag (medical/police/
+ // staff category, authorized ranks only, enforced server-side). The flag
+ // travels as int 0/1 - the emulator reads ReadInt() == 1.
+-export class RpSetEmergencyComposer implements IMessageComposer<[ number, number ]>
++export class RpSetEmergencyComposer implements IMessageComposer<[ number, number, number ]>
+ {
+-    private _data: [ number, number ];
++    private _data: [ number, number, number ];
+ 
+-    constructor(category: number, enabled: boolean)
++    constructor(roomId: number, category: number, enabled: boolean)
+     {
+-        this._data = [ category, enabled ? 1 : 0 ];
++        this._data = [ roomId, category, enabled ? 1 : 0 ];
+     }
+ 
+     public getMessageArray()
+diff --git a/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts b/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts
+index 477a0149813ea9f1bdb35f242b7b06bc5b3dc891..f61542e2b13da4f27f0763f4c2118db613f514b2 100644
+--- a/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts
++++ b/src/nitro/communication/messages/outgoing/RpSetHqRankComposer.ts
+@@ -3,13 +3,13 @@ import { IMessageComposer } from '../../../../api';
+ // PixelRP: toggles whether a corp rank is authorized to set room-level
+ // emergency flags (owner/staff only, enforced server-side). The flag
+ // travels as int 0/1 - the emulator reads ReadInt() == 1.
+-export class RpSetHqRankComposer implements IMessageComposer<[ number, number ]>
++export class RpSetHqRankComposer implements IMessageComposer<[ number, number, number ]>
+ {
+-    private _data: [ number, number ];
++    private _data: [ number, number, number ];
+ 
+-    constructor(rankId: number, authorized: boolean)
++    constructor(roomId: number, rankId: number, authorized: boolean)
+     {
+-        this._data = [ rankId, authorized ? 1 : 0 ];
++        this._data = [ roomId, rankId, authorized ? 1 : 0 ];
+     }
+ 
+     public getMessageArray()
+diff --git a/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts b/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts
+index a7556fb2eb238f74ab9ca5773c5876738006d24b..8810ecea7c32122b13fbf29ce0f8f1e8b65e2102 100644
+--- a/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts
++++ b/src/nitro/communication/messages/outgoing/RpSetRoomCorpComposer.ts
+@@ -2,13 +2,13 @@ import { IMessageComposer } from '../../../../api';
+ 
+ // PixelRP: sets the current room's owning corp (owner/staff only,
+ // enforced server-side).
+-export class RpSetRoomCorpComposer implements IMessageComposer<[ number ]>
++export class RpSetRoomCorpComposer implements IMessageComposer<[ number, number ]>
+ {
+-    private _data: [ number ];
++    private _data: [ number, number ];
+ 
+-    constructor(corpId: number)
++    constructor(roomId: number, corpId: number)
+     {
+-        this._data = [ corpId ];
++        this._data = [ roomId, corpId ];
+     }
+ 
+     public getMessageArray()
