@@ -1,9 +1,8 @@
 import { RpCorpsEvent, RpGetCorpsComposer, RpSetRoomCorpComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { GetRoomSession, SendMessageComposer } from '../../../../api';
+import { GetSessionDataManager, SendMessageComposer } from '../../../../api';
 import { Column, Text } from '../../../../common';
 import { useMessageEvent } from '../../../../hooks';
-import { IsRpStaff } from '../../../room/widgets/player-hud/PlayerHudWidgetView';
 import { RoomCorpState } from './NavigatorRoomSettingsView';
 
 interface RoleplayHeadquartersViewProps
@@ -17,7 +16,7 @@ export const RoleplayHeadquartersView: FC<RoleplayHeadquartersViewProps> = props
 {
     const { roomId, roomCorp = null, className = '' } = props;
     const [ corps, setCorps ] = useState<{ id: number; name: string }[]>([]);
-    const staff = IsRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
+    const staff = GetSessionDataManager().isModerator;
 
     useMessageEvent<RpCorpsEvent>(RpCorpsEvent, event =>
     {

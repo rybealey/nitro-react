@@ -1,8 +1,7 @@
 import { RpSetHqRankComposer } from '@nitrots/nitro-renderer';
 import { FC } from 'react';
-import { GetRoomSession, SendMessageComposer } from '../../../../api';
+import { GetSessionDataManager, SendMessageComposer } from '../../../../api';
 import { Column, Flex, Text } from '../../../../common';
-import { IsRpStaff } from '../../../room/widgets/player-hud/PlayerHudWidgetView';
 import { RoomCorpState } from './NavigatorRoomSettingsView';
 
 interface RoleplayAuthorizationsViewProps
@@ -15,7 +14,7 @@ interface RoleplayAuthorizationsViewProps
 export const RoleplayAuthorizationsView: FC<RoleplayAuthorizationsViewProps> = props =>
 {
     const { roomId, roomCorp = null, className = '' } = props;
-    const staff = IsRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
+    const staff = GetSessionDataManager().isModerator;
 
     if(!roomCorp || (roomCorp.corpId <= 0))
     {
