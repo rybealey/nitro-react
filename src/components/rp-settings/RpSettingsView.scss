@@ -1,3 +1,9 @@
+// On/off state colours, shared by the macros switch and its label so the two
+// can never drift. Same green and red already used for the Discord link state
+// and the danger buttons below.
+$state-on: #2e9e4f;
+$state-off: #b23b3b;
+
 .nitro-card.rp-settings-window {
     width: 560px;
     height: 420px;
@@ -122,6 +128,17 @@
         line-height: 1;
         text-transform: uppercase;
         user-select: none;
+
+        &.is-on { color: $state-on; }
+        &.is-off { color: $state-off; }
+    }
+
+    // caption for the preset picker beside it
+    .rp-macros-preset-label {
+        flex-shrink: 0;
+        font-size: 10px;
+        font-weight: 700;
+        user-select: none;
         color: rgba($white, .6);
     }
 
@@ -132,7 +149,7 @@
         flex-shrink: 0;
         border-radius: 9px;
         cursor: pointer;
-        background: rgba(0, 0, 0, .25);
+        background: $state-off;
         transition: background-color .15s ease;
 
         span {
@@ -147,7 +164,7 @@
         }
 
         &.is-on {
-            background: var(--prp-chrome-solid);
+            background: $state-on;
 
             span { transform: translateX(16px); }
         }

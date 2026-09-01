@@ -338,8 +338,9 @@ export const RpSettingsView: FC<{}> = props =>
                                     <div className={ `rp-macros-switch ${ macrosEnabled ? 'is-on' : '' }` } role="switch"
                                         aria-checked={ macrosEnabled } aria-label="Macros enabled"
                                         onClick={ () => setMacrosEnabled(value => !value) }><span /></div>
-                                    <span className="rp-macros-switch-label">{ macrosEnabled ? 'On' : 'Off' }</span>
+                                    <span className={ `rp-macros-switch-label ${ macrosEnabled ? 'is-on' : 'is-off' }` }>{ macrosEnabled ? 'On' : 'Off' }</span>
                                 </div>
+                                <span className="rp-macros-preset-label">Preset</span>
                                 <div className="rp-macros-select">
                                     <span>{ MACRO_PROFILES[1] }</span>
                                     <i className="rp-macros-caret" />
