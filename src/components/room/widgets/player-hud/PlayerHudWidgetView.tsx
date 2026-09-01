@@ -4,7 +4,7 @@ import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
-import { TargetState } from '../../../../hooks/rooms/targetState';
+import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
 import { RpProfileState } from '../../../rp-profile/RpProfileState';
 
 // Health, energy and aggression are REAL — pushed by the emulator per room
@@ -188,7 +188,9 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         return nextLocked;
     }, [ target, locked ]);
 
-    const lockTargetByName = useCallback((name: string): string | null =>
+    // Shared room-unit lookup behind both :lt and :t - case-insensitive, scoped
+    // to the current room, and never your own avatar (matching click targeting).
+    const findRoomUserByName = useCallback((name: string): AvatarInfoUser =>
     {
         if(!roomSession || !name.trim()) return null;
 
@@ -205,14 +207,39 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
             if(!info || info.isOwnUser) return null;
 
-            setTarget(info);
-            setLocked(true);
-
-            return info.name;
+            return info;
         }
 
         return null;
     }, [ roomSession ]);
+
+    const lockTargetByName = useCallback((name: string): string | null =>
+    {
+        const info = findRoomUserByName(name);
+
+        if(!info) return null;
+
+        setTarget(info);
+        setLocked(true);
+
+        return info.name;
+    }, [ findRoomUserByName ]);
+
+    // :t selects WITHOUT touching the lock. A held lock is deliberate, so
+    // switching is refused rather than silently overridden - release it with
+    // :lt first.
+    const selectTargetByName = useCallback((name: string): TargetSelectResult =>
+    {
+        if(locked && target) return { status: 'locked', name: target.name };
+
+        const info = findRoomUserByName(name);
+
+        if(!info) return { status: 'missing' };
+
+        setTarget(info);
+
+        return { status: 'selected', name: info.name };
+    }, [ findRoomUserByName, locked, target ]);
 
     // Mirror the selected target for non-React consumers — the chat input reads
     // this when expanding the "@x" target-mention shorthand into a shout.
@@ -221,14 +248,16 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         TargetState.name = (target ? target.name : null);
         TargetState.toggleLock = toggleTargetLock;
         TargetState.lockByName = lockTargetByName;
+        TargetState.selectByName = selectTargetByName;
 
         return () =>
         {
             TargetState.name = null;
             TargetState.toggleLock = null;
             TargetState.lockByName = null;
+            TargetState.selectByName = null;
         }
-    }, [ target, toggleTargetLock, lockTargetByName ]);
+    }, [ target, toggleTargetLock, lockTargetByName, selectTargetByName ]);
 
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;

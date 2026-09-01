@@ -107,6 +107,38 @@ const useChatInputWidgetState = () =>
 
                     return null;
                 }
+                case ':t': {
+                    // Select a target without locking. "x" has already been
+                    // expanded to a real name upstream (the HUD target in
+                    // ChatInputView, or the selected avatar above), so by here
+                    // this is always a plain name.
+                    const requestedName = text.trim().substring(firstPart.length).trim();
+
+                    if(!requestedName)
+                    {
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, 'Usage: :t <name>', RoomSessionChatEvent.CHAT_TYPE_WHISPER));
+
+                        return null;
+                    }
+
+                    const result = TargetState.selectByName?.(requestedName) ?? null;
+                    let status = `No user named ${ requestedName } is in this room`;
+                    let styleId = 0;
+
+                    if(result?.status === 'selected')
+                    {
+                        status = `You are now targeting ${ result.name }`;
+                        styleId = 3;
+                    }
+                    else if(result?.status === 'locked')
+                    {
+                        status = `Unlock your target on ${ result.name } before switching targets.`;
+                    }
+
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, styleId));
+
+                    return null;
+                }
                 case ':lt': {
                     const requestedName = text.trim().substring(firstPart.length).trim();
 
