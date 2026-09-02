@@ -60,6 +60,13 @@
         }
     }
 
+    // pixelrp: non-clickable separator row (page_link='divider').
+    .nitro-catalog-navigation-divider {
+        height: 0;
+        margin: 4px 6px;
+        border-top: 2px solid #b6bec5;
+    }
+
     .layout-grid-item {
         font-size: $font-size-sm;
         height: 23px !important;

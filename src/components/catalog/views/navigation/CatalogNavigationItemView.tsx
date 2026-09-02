@@ -16,7 +16,14 @@ export const CatalogNavigationItemView: FC<CatalogNavigationItemViewProps> = pro
 {
     const { node = null, child = false } = props;
     const { activateNode = null } = useCatalog();
-    
+
+    // pixelrp: a page whose server-side page_link is "divider" is a non-clickable
+    // visual separator in the navigation list, not a real catalog page.
+    if(node?.pageName === 'divider')
+    {
+        return <Base className="nitro-catalog-navigation-divider" />;
+    }
+
     return (
         <Base className="nitro-catalog-navigation-section">
             <LayoutGridItem gap={ 1 } column={ false } itemActive={ node.isActive } onClick={ event => activateNode(node) } className={ child ? 'inset' : '' }>
