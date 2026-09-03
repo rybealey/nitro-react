@@ -10,6 +10,10 @@ interface ChatWidgetMessageViewProps
     bubbleWidth?: number;
 }
 
+// Chat styles whose asterisk-wrapped messages render as an action: 4 is the
+// blue combat bubble, 5 the yellow one used when a backpack item is consumed.
+const ACTION_BUBBLE_STYLES: number[] = [ 4, 5 ];
+
 export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
 {
     const { chat = null, makeRoom = null, bubbleWidth = RoomChatSettings.CHAT_BUBBLE_WIDTH_NORMAL } = props;
@@ -76,16 +80,25 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
         setIsVisible(true);
     }, [ chat, isReady, isVisible, makeRoom ]);
 
-    // Blue action bubbles arrive as *action text*. Move that opening marker
-    // ahead of the username so the whole line reads *Username action text*.
-    const isBlueAction = ((chat.styleId === 4) && chat.text.startsWith('*') && chat.text.endsWith('*'));
-    const formattedText = isBlueAction ? chat.formattedText.substring(1) : chat.formattedText;
+    // Action bubbles arrive as *action text*. Move that opening marker ahead of
+    // the username so the whole line reads *Username action text*, and mark the
+    // bubble so ChatWidgetView.scss can bold it.
+    //
+    // Two styles qualify: 4, the blue bubble every combat action uses, and 5,
+    // the yellow one a consumed backpack item announces itself with (the passive
+    // smoothie, a VIP token). They are the same KIND of message - the player
+    // doing something, narrated in the third person - so they read the same.
+    //
+    // The asterisk test is what makes this safe: either style may also be a
+    // player-selectable chat style, and ordinary chat in one must stay plain.
+    const isActionBubble = (ACTION_BUBBLE_STYLES.includes(chat.styleId) && chat.text.startsWith('*') && chat.text.endsWith('*'));
+    const formattedText = isActionBubble ? chat.formattedText.substring(1) : chat.formattedText;
 
     return (
         <div ref={ elementRef } className={ `bubble-container ${ isVisible ? 'visible' : 'invisible' }` } onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>
             { (chat.styleId === 0) &&
                 <div className="user-container-bg" style={ { backgroundColor: chat.color } } /> }
-            <div className={ `chat-bubble bubble-${ chat.styleId } type-${ chat.type }${ isBlueAction ? ' is-action' : '' }` } style={ { maxWidth: getBubbleWidth } }>
+            <div className={ `chat-bubble bubble-${ chat.styleId } type-${ chat.type }${ isActionBubble ? ' is-action' : '' }` } style={ { maxWidth: getBubbleWidth } }>
                 <div className="user-container">
                     { chat.imageUrl && (chat.imageUrl.length > 0) &&
                         <div className="user-image" style={ { backgroundImage: `url(${ chat.imageUrl })` } } /> }
@@ -93,7 +106,7 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                 <div className="chat-content">
                     { chat.usernameIcon &&
                         <b className="username mr-1"><UsernameIconGlyph iconClass={ chat.usernameIcon } />{ ' ' }</b> }
-                    <b className="username mr-1">{ isBlueAction && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ isBlueAction ? ' ' : ': ' }</b>
+                    <b className="username mr-1">{ isActionBubble && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ isActionBubble ? ' ' : ': ' }</b>
                     <span className="message" dangerouslySetInnerHTML={ { __html: formattedText } } />
                 </div>
                 <div className="pointer" />

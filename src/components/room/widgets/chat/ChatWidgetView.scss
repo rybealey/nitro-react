@@ -106,11 +106,12 @@
             }
         }
 
-        // RP action bubbles (:slap and the rest of the fighting system). Set
-        // by the view when a style-4 bubble is wrapped in asterisks, NOT by
-        // bubble-4 alone - style 4 can be a player-selectable chat style, and
-        // ordinary chat in it must stay unbolded. Must follow the type-N
-        // blocks above: same specificity, so source order decides.
+        // RP action bubbles: the fighting system's blue style-4 bubbles and the
+        // yellow style-5 one a consumed backpack item announces itself with.
+        // Set by the view when such a bubble is wrapped in asterisks, NOT by
+        // bubble-4 / bubble-5 alone - either can be a player-selectable chat
+        // style, and ordinary chat in one must stay unbolded. Must follow the
+        // type-N blocks above: same specificity, so source order decides.
         &.is-action .message {
             font-weight: 700;
         }
