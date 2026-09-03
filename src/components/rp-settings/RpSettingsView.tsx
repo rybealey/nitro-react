@@ -9,7 +9,7 @@ import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor,
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
-import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseMacroDocument, SerializeMacroDocument } from './MacroState';
+import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -61,6 +61,12 @@ export const RpSettingsView: FC<{}> = props =>
     // The order being built up during a drag. A ref, not state, because each
     // pointermove reads the previous order and a state read would lag a frame.
     const macroDragOrder = useRef<MacroBinding[]>(null);
+    // 'export' | 'import' | null. One at a time; both are the same overlay.
+    const [ macroDialog, setMacroDialog ] = useState<string>(null);
+    const [ importText, setImportText ] = useState<string>('');
+    // Shown on the Copy button for a moment after a successful copy.
+    const [ exportCopied, setExportCopied ] = useState<boolean>(false);
+    const exportTextRef = useRef<HTMLTextAreaElement>(null);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
@@ -448,6 +454,77 @@ export const RpSettingsView: FC<{}> = props =>
         captureModifier.current = null;
     };
 
+    // ---- Export / import -------------------------------------------------
+
+    const closeMacroDialog = () =>
+    {
+        setMacroDialog(null);
+        setImportText('');
+        setExportCopied(false);
+    };
+
+    const exportText = (activePreset ? SerializePresetForExport(activePreset) : '');
+
+    const copyExport = async () =>
+    {
+        try
+        {
+            await navigator.clipboard.writeText(exportText);
+            setExportCopied(true);
+            setTimeout(() => setExportCopied(false), 2000);
+        }
+        catch (error)
+        {
+            // The clipboard API needs a secure context and permission, and it
+            // is not worth a dead button when it is unavailable: select the
+            // text so the player can copy it by hand, and say so.
+            exportTextRef.current?.focus();
+            exportTextRef.current?.select();
+            notify('Could not reach the clipboard - press Ctrl+C to copy.');
+        }
+    };
+
+    const importPreset = () =>
+    {
+        const imported = ParseExportedPreset(importText);
+
+        if(!imported)
+        {
+            notify('That does not look like a macro preset.');
+
+            return;
+        }
+
+        if(!imported.macros.length)
+        {
+            notify('That preset has no macros this client can use.');
+
+            return;
+        }
+
+        if(macroDoc.presets.length >= MACRO_MAX_PRESETS)
+        {
+            notify(`You can have at most ${ MACRO_MAX_PRESETS } presets.`);
+
+            return;
+        }
+
+        const name = UniquePresetName(imported.name, macroDoc.presets.map(preset => preset.name));
+
+        commitMacros({
+            ...macroDoc,
+            active: name,
+            presets: macroDoc.presets.concat([ { name, macros: imported.macros } ])
+        });
+
+        closeMacroDialog();
+        // Say what happened: the name may have been suffixed to avoid a clash,
+        // and rows the file listed may have been dropped.
+        notify(imported.skipped > 0
+            ? `Imported ${ imported.macros.length } macros as "${ name }" - ${ imported.skipped } skipped.`
+            : `Imported ${ imported.macros.length } macros as "${ name }".`);
+    };
+
     // Binding capture. Window-level and in the capture phase so the key is
     // taken before the settings window, the chat input or anything else can
     // react to it - including a macro that is already bound to it.
@@ -758,10 +835,8 @@ export const RpSettingsView: FC<{}> = props =>
                             </Flex>
                             <Flex alignItems="center" gap={ 2 }>
                                 <div className="rp-macros-btn rp-macros-btn--accent" onClick={ newPreset }>New</div>
-                                { /* Export/Import are still shell - deliberately out
-                                     of scope for this first pass. */ }
-                                <div className="rp-macros-btn" title="Not available yet">Export</div>
-                                <div className="rp-macros-btn" title="Not available yet">Import</div>
+                                <div className="rp-macros-btn" onClick={ () => { setExportCopied(false); setMacroDialog('export'); } }>Export</div>
+                                <div className="rp-macros-btn" onClick={ () => { setImportText(''); setMacroDialog('import'); } }>Import</div>
                                 { /* Deleting the preset belongs with the other
                                      preset-level actions, and sits last so the
                                      destructive one is not next to New. */ }
@@ -815,6 +890,41 @@ export const RpSettingsView: FC<{}> = props =>
                             { activePreset && !activePreset.macros.length &&
                                 <Text className="text-muted">No macros in this preset yet.</Text> }
                         </div>
+                        { /* Export and import share one overlay - same frame,
+                             same footer, only the copy and the action differ. */ }
+                        { (macroDialog !== null) &&
+                            <div className="rp-macros-dialog">
+                                <div className="rp-macros-dialog-header">
+                                    <span>{ (macroDialog === 'export') ? 'Export preset' : 'Import preset' }</span>
+                                    <i className="rp-macros-dialog-close" title="Close" onClick={ closeMacroDialog } />
+                                </div>
+                                <div className="rp-macros-dialog-body">
+                                    <span className="rp-macros-dialog-hint">
+                                        { (macroDialog === 'export')
+                                            ? 'Copy this JSON and send it to another account.'
+                                            : 'Paste a preset here - the JSON that Export gives you.' }
+                                    </span>
+                                    { (macroDialog === 'export') &&
+                                        <textarea ref={ exportTextRef } readOnly spellCheck={ false }
+                                            className="rp-macros-dialog-text" aria-label="Preset JSON"
+                                            value={ exportText } onClick={ event => event.currentTarget.select() } /> }
+                                    { (macroDialog === 'import') &&
+                                        <textarea autoFocus spellCheck={ false }
+                                            className="rp-macros-dialog-text" aria-label="Preset JSON to import"
+                                            value={ importText } onChange={ event => setImportText(event.target.value) } /> }
+                                    <Flex justifyContent="end" gap={ 2 }>
+                                        <div className="rp-macros-btn" onClick={ closeMacroDialog }>
+                                            { (macroDialog === 'export') ? 'Close' : 'Cancel' }
+                                        </div>
+                                        { (macroDialog === 'export') &&
+                                            <div className="rp-macros-btn rp-macros-btn--accent" onClick={ copyExport }>
+                                                { exportCopied ? 'Copied' : 'Copy' }
+                                            </div> }
+                                        { (macroDialog === 'import') &&
+                                            <div className="rp-macros-btn rp-macros-btn--accent" onClick={ importPreset }>Import</div> }
+                                    </Flex>
+                                </div>
+                            </div> }
                     </Column> }
                 { (currentTab === 'Roleplay') &&
                     <div className="prp-subnav-layout">

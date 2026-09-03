@@ -293,6 +293,124 @@ export const ParseMacroDocument = (payload: string): MacroDocument =>
     }
 };
 
+// ---- The shared preset format -----------------------------------------------
+// What a player copies out of Export and pastes into Import. Deliberately NOT
+// the storage shape: storage uses short keys because the emulator validates
+// those exact field names (RpSaveMacrosEvent), while this is read by people, so
+// it spells them out. Both directions live here so the two formats have a single
+// definition and cannot drift apart across two files.
+//
+//   { "name": "Cop", "macros": [ { "key": "F1", "command": ":ct", "type": 0 } ] }
+
+// Reserved marker. Always written as 0, and ignored on import whatever it says.
+// It exists so a later format change can be told apart from exports made now.
+const EXPORT_MACRO_TYPE = 0;
+
+export const SerializePresetForExport = (preset: MacroPreset): string => JSON.stringify({
+    name: preset.name,
+    macros: preset.macros.map(macro => ({ key: macro.b, command: macro.c, type: EXPORT_MACRO_TYPE }))
+}, null, 2);
+
+export interface ImportedPreset
+{
+    name: string;
+    macros: MacroBinding[];
+    // Rows dropped because they were unusable or refused, so the UI can say so
+    // rather than silently importing fewer macros than the file listed.
+    skipped: number;
+}
+
+// null means the text is not a preset at all. Anything past that is imported as
+// far as it can be, reporting what it had to drop.
+export const ParseExportedPreset = (text: string): ImportedPreset =>
+{
+    if(!text || !text.trim().length) return null;
+
+    let parsed: any = null;
+
+    try
+    {
+        parsed = JSON.parse(text);
+    }
+    catch
+    {
+        return null;
+    }
+
+    if(!parsed || (typeof parsed !== 'object') || Array.isArray(parsed)) return null;
+    if(!Array.isArray(parsed.macros)) return null;
+
+    const name = (((typeof parsed.name === 'string') && parsed.name.trim().length)
+        ? parsed.name.trim().substring(0, MACRO_MAX_NAME_LENGTH)
+        : 'Imported');
+
+    const macros: MacroBinding[] = [];
+    let skipped = 0;
+
+    for(const entry of parsed.macros)
+    {
+        if(macros.length >= MACRO_MAX_PER_PRESET)
+        {
+            skipped++;
+
+            continue;
+        }
+
+        // "key"/"command" is the documented shape. "b"/"c" is tolerated as well
+        // because it is what the raw saved value looks like, and someone pasting
+        // that deserves it to work rather than a puzzling refusal.
+        const binding = ((entry && (typeof entry.key === 'string')) ? entry.key : ((entry && (typeof entry.b === 'string')) ? entry.b : ''));
+        const command = ((entry && (typeof entry.command === 'string')) ? entry.command : ((entry && (typeof entry.c === 'string')) ? entry.c : ''));
+
+        if(!binding.trim().length || !command.trim().length)
+        {
+            skipped++;
+
+            continue;
+        }
+
+        // A shared file could carry a binding this client refuses - Enter, or
+        // Mouse Left. Importing one would hand the player a macro that either
+        // cannot fire or breaks chat, so drop it here rather than store it.
+        if(!IsBindingAllowed(binding.trim()))
+        {
+            skipped++;
+
+            continue;
+        }
+
+        // First binding wins, matching how the active preset is flattened.
+        if(macros.some(existing => (existing.b === binding.trim())))
+        {
+            skipped++;
+
+            continue;
+        }
+
+        macros.push({ b: binding.trim(), c: command.trim().substring(0, MACRO_MAX_COMMAND_LENGTH) });
+    }
+
+    return { name, macros, skipped };
+};
+
+// An imported preset must not take a name already in use, or the picker would
+// have two entries that look identical and one would be unreachable.
+export const UniquePresetName = (name: string, taken: string[]): string =>
+{
+    if(!taken.includes(name)) return name;
+
+    for(let suffix = 2; suffix < 100; suffix++)
+    {
+        // Keep room for the suffix rather than overflowing the length cap.
+        const trimmed = name.substring(0, (MACRO_MAX_NAME_LENGTH - (` ${ suffix }`).length));
+        const candidate = `${ trimmed } ${ suffix }`;
+
+        if(!taken.includes(candidate)) return candidate;
+    }
+
+    return name;
+};
+
 export const SerializeMacroDocument = (document: MacroDocument): string => JSON.stringify({
     v: 1,
     enabled: document.enabled,
