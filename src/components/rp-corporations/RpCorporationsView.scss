@@ -324,7 +324,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         padding: 6px 2px 2px;
     }
 
-    // With the options column open the roster loses ~158px, and three cards in
+    // With the options column open the roster loses ~168px, and three cards in
     // what is left squeezes the name against the shift figures. Two across
     // keeps them readable; closed, the grid is exactly as it was.
     .rp-corps-body.is-panel-open .rp-corps-employees {
@@ -439,14 +439,19 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
 
     // Slides over the roster's left edge (inside the body, so it sits below
     // the header). The three-column grid never reflows.
-    // Display options: a column of the window rather than a card floating over
-    // the roster. Collapsed it must not contribute WIDTH or the roster keeps a
-    // dead gutter, so width and the gap to the roster both animate to zero and
-    // overflow clips the contents - the same shape the side drawer uses.
+    // Display options: a REGION of the window, not an item in it. This window
+    // gives its structural areas no surface of their own - the rail, the head
+    // and the legend are all transparent, and only content (employee cards,
+    // the badge plate, the chips) is a raised white card. So a filled panel
+    // here read as a card that had been dropped into the layout; it now uses
+    // the rail's exact treatment instead, a hairline divider and nothing else,
+    // which is what makes rail / options / roster read as one window.
     //
-    // No drop shadow now: a shadow says "above the page", and this sits in the
-    // page. It keeps the white card surface so it reads as the same family as
-    // the employee cards it sits beside.
+    // Collapsed it must not contribute WIDTH or the roster keeps a dead gutter,
+    // so the width, the gap to the roster and the divider all animate away and
+    // overflow clips the contents - the same shape the side drawer uses. The
+    // divider needs the transparent-to-colour trick rather than being dropped,
+    // or a 1px line would linger after the column has gone.
     .rp-corps-panel {
         flex-shrink: 0;
         display: flex;
@@ -454,20 +459,20 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         gap: 6px;
         width: 0;
         margin-right: 0;
-        padding: 0;
+        padding-right: 0;
         overflow: hidden;
         opacity: 0;
-        border-radius: 6px;
-        background: $white;
-        border: 1px solid transparent;
-        transition: width 0.16s ease, margin-right 0.16s ease, opacity 0.14s ease;
+        border-right: 1px solid transparent;
+        transition: width 0.16s ease, margin-right 0.16s ease, padding-right 0.16s ease, opacity 0.14s ease;
 
         &.is-open {
             width: 150px;
-            margin-right: 8px;
-            padding: 8px;
+            // Mirrors the rail: content, 8px, the hairline, then the gap the
+            // layout uses between its columns.
+            padding-right: 8px;
+            margin-right: 10px;
             opacity: 1;
-            border-color: rgba(0, 0, 0, 0.12);
+            border-right-color: rgba(0, 0, 0, 0.08);
         }
     }
 
