@@ -35,14 +35,14 @@ index 75457a89f8a45f41fd97688241b15728311cebdd..ed5c312da52d999e73bfbc66aa524c00
          this._composers.set(OutgoingHeader.RP_MOVE_ITEM, RpMoveItemComposer);
          this._composers.set(OutgoingHeader.RP_GET_CORPS, RpGetCorpsComposer);
 diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
-index 95131057001a38792afed97f32537baa4bc76494..6a083af56e4d4f5984c3d76c82e146d92cd4820f 100644
+index 95131057001a38792afed97f32537baa4bc76494..ae565bb88af8d55784f8a772646ca1db699c420a 100644
 --- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
 +++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
 @@ -468,6 +468,7 @@
      // PixelRP custom packets (wire ids match the emulator's revisions/1.6.6.json)
      public static RP_STATS = 3901;
      public static RP_UI_SETTINGS = 3902;
-+    public static RP_MACROS = 3964;
++    public static RP_MACROS = 3966;
      public static RP_INVENTORY = 3904;
      public static RP_MESSENGER_RECEIPT = 3906;
      public static RP_AIRPLANE_MODE = 3935;
@@ -111,14 +111,14 @@ index c8334a43857fb6b09c89791c6a5e0e87ac57c9db..6938b9a9b0540c4fa428a79a5d4efffd
  export * from './RpMessengerReceiptEvent';
  export * from './RpAirplaneModeEvent';
 diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
-index 8929b3f82aeceed9b5e7ac9544a71d1133ee17fa..596377c10998d3d86f7ad818b31075faf3e56493 100644
+index 8929b3f82aeceed9b5e7ac9544a71d1133ee17fa..5632420eb7c5020523c40d7919fb85da107cced0 100644
 --- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
 +++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
 @@ -468,6 +468,7 @@
      public static RENTABLE_EXTEND_RENT_OR_BUYOUT_FURNI = 1071;
      public static RENTABLE_GET_RENT_OR_BUYOUT_OFFER = 2518;
      public static RP_SAVE_UI_SETTINGS = 3903;
-+    public static RP_SAVE_MACROS = 3965;
++    public static RP_SAVE_MACROS = 3967;
      public static RP_USE_ITEM = 3905;
      public static RP_MOVE_ITEM = 3945;
      public static RP_GET_CORPS = 3948;

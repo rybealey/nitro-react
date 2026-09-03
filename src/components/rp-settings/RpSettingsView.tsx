@@ -1,6 +1,6 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { FaTrash } from 'react-icons/fa';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
@@ -9,7 +9,7 @@ import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor,
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
-import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseMacroDocument, SerializeMacroDocument } from './MacroState';
+import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseMacroDocument, SerializeMacroDocument } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -47,6 +47,14 @@ export const RpSettingsView: FC<{}> = props =>
     // Inline rename/create for presets - the design has no dialog for either.
     const [ presetDraft, setPresetDraft ] = useState<string>(null);
     const [ macroNotice, setMacroNotice ] = useState<string>('');
+    // Row index currently being dragged, or null. The list reorders live as the
+    // pointer crosses row midpoints, so this tracks where the held row is NOW.
+    const [ macroDragIndex, setMacroDragIndex ] = useState<number>(null);
+    const macroListRef = useRef<HTMLDivElement>(null);
+    const macroDragStart = useRef<{ index: number, y: number }>(null);
+    // The order being built up during a drag. A ref, not state, because each
+    // pointermove reads the previous order and a state read would lag a frame.
+    const macroDragOrder = useRef<MacroBinding[]>(null);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
@@ -179,9 +187,17 @@ export const RpSettingsView: FC<{}> = props =>
     // wholesale, and it means no mutation can half-apply.
     const commitMacros = (next: MacroDocument) =>
     {
+        applyMacrosLocally(next);
+        SendMessageComposer(new RpSaveMacrosComposer(SerializeMacroDocument(next)));
+    };
+
+    // Same as commitMacros without the save. Used while a row is being dragged:
+    // the order changes on every midpoint crossing, and sending each one would
+    // be a packet per pixel - the drop saves once.
+    const applyMacrosLocally = (next: MacroDocument) =>
+    {
         setMacroDoc(next);
         ApplyMacroState(next);
-        SendMessageComposer(new RpSaveMacrosComposer(SerializeMacroDocument(next)));
     };
 
     const activePreset = macroDoc.presets.find(preset => (preset.name === macroDoc.active)) ?? macroDoc.presets[0] ?? null;
@@ -324,6 +340,104 @@ export const RpSettingsView: FC<{}> = props =>
         const presets = macroDoc.presets.filter(preset => (preset.name !== activePreset.name));
 
         commitMacros({ ...macroDoc, active: presets[0].name, presets });
+    };
+
+    // ---- Macro row dragging ----------------------------------------------
+    // Pointer events rather than HTML5 drag-and-drop: the rows live inside a
+    // scrolling panel in a draggable window, and the native API's drag image
+    // and drop targets fight both. This is the same approach the phone's home
+    // screen uses for reordering app tiles.
+
+    const withActiveMacros = (macros: MacroBinding[]): MacroDocument => ({
+        ...macroDoc,
+        presets: macroDoc.presets.map(preset => ((preset.name === (activePreset ? activePreset.name : '')) ? { ...preset, macros } : preset))
+    });
+
+    // Which slot the pointer is over, by row midpoints. Read from the DOM so it
+    // stays correct as the list reorders under the cursor mid-drag.
+    const macroRowAt = (clientY: number): number =>
+    {
+        const list = macroListRef.current;
+
+        if(!list) return -1;
+
+        const rows = Array.from(list.querySelectorAll('[data-macro-index]')) as HTMLElement[];
+
+        for(let index = 0; index < rows.length; index++)
+        {
+            const rect = rows[index].getBoundingClientRect();
+
+            if(clientY < (rect.top + (rect.height / 2))) return index;
+        }
+
+        return (rows.length - 1);
+    };
+
+    const onMacroPointerDown = (event: ReactPointerEvent<HTMLDivElement>, index: number) =>
+    {
+        // Move and Delete live inside the row; a press on either is a click,
+        // not the start of a drag.
+        if((event.target as HTMLElement).closest('.rp-macros-btn')) return;
+        if(!activePreset) return;
+
+        try
+        {
+            event.currentTarget.setPointerCapture(event.pointerId);
+        }
+        catch(error)
+        {}
+
+        macroDragStart.current = { index, y: event.clientY };
+        macroDragOrder.current = activePreset.macros.slice();
+    };
+
+    const onMacroPointerMove = (event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        const start = macroDragStart.current;
+
+        if(!start || !macroDragOrder.current) return;
+
+        // A few pixels of slack, so a sloppy click on a row is not a reorder.
+        if(macroDragIndex === null)
+        {
+            if(Math.abs(event.clientY - start.y) <= 4) return;
+
+            setMacroDragIndex(start.index);
+
+            return;
+        }
+
+        const target = macroRowAt(event.clientY);
+
+        if((target < 0) || (target === macroDragIndex)) return;
+
+        const macros = macroDragOrder.current.slice();
+        const [ moved ] = macros.splice(macroDragIndex, 1);
+
+        macros.splice(target, 0, moved);
+        macroDragOrder.current = macros;
+        setMacroDragIndex(target);
+        applyMacrosLocally(withActiveMacros(macros));
+    };
+
+    const onMacroPointerUp = () =>
+    {
+        const wasDragging = (macroDragIndex !== null);
+        const order = macroDragOrder.current;
+
+        macroDragStart.current = null;
+        macroDragOrder.current = null;
+        setMacroDragIndex(null);
+
+        // Only the drop saves, and only if the order actually moved.
+        if(wasDragging && order) commitMacros(withActiveMacros(order));
+    };
+
+    const clearDraft = () =>
+    {
+        setCapturedBinding(null);
+        setDraftCommand('');
+        setIsCapturing(false);
     };
 
     // Binding capture. Window-level and in the capture phase so the key is
@@ -605,6 +719,12 @@ export const RpSettingsView: FC<{}> = props =>
                                      of scope for this first pass. */ }
                                 <div className="rp-macros-btn" title="Not available yet">Export</div>
                                 <div className="rp-macros-btn" title="Not available yet">Import</div>
+                                { /* Deleting the preset belongs with the other
+                                     preset-level actions, and sits last so the
+                                     destructive one is not next to New. */ }
+                                <div className="rp-macros-btn rp-macros-btn--danger rp-macros-trash"
+                                    title="Delete this preset" aria-label="Delete this preset"
+                                    onClick={ deleteActivePreset }><FaTrash /></div>
                             </Flex>
                         </div>
                         { /* new-macro row: capture a key or mouse button, type the
@@ -619,17 +739,21 @@ export const RpSettingsView: FC<{}> = props =>
                                 onChange={ event => setDraftCommand(event.target.value) }
                                 onKeyDown={ event => (event.key === 'Enter') && addMacro() } />
                             <div className="rp-macros-btn" onClick={ addMacro }>Add</div>
-                            <div className="rp-macros-btn rp-macros-btn--danger rp-macros-trash"
-                                title="Delete this preset" aria-label="Delete this preset"
-                                onClick={ deleteActivePreset }><FaTrash /></div>
+                            <div className="rp-macros-btn" title="Clear the binding and command"
+                                onClick={ clearDraft }>Clear</div>
                         </Flex>
                         { (macroNotice.length > 0) &&
                             <Text className="text-muted">{ macroNotice }</Text> }
-                        <div className="rp-macros-list">
+                        <div ref={ macroListRef } className="rp-macros-list">
                             { /* index keys: the same binding can legitimately appear twice
                                  while a player is mid-edit, so the binding is not unique */ }
                             { activePreset && activePreset.macros.map((row, index) => (
-                                <div key={ index } className="rp-macros-row">
+                                <div key={ index } data-macro-index={ index }
+                                    className={ `rp-macros-row ${ (macroDragIndex === index) ? 'is-dragging' : '' }` }
+                                    onPointerDown={ event => onMacroPointerDown(event, index) }
+                                    onPointerMove={ onMacroPointerMove }
+                                    onPointerUp={ onMacroPointerUp }
+                                    onPointerCancel={ onMacroPointerUp }>
                                     <div className="rp-macros-binding">{ row.b }</div>
                                     <div className="rp-macros-command">{ row.c }</div>
                                     <div className="rp-macros-btn rp-macros-btn--sm rp-macros-move">

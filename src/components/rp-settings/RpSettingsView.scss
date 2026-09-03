@@ -230,8 +230,10 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         border: 1px dashed rgba($white, .35);
     }
 
-    // icon-only, so it drops the pill's text padding and sits square next to
-    // Add rather than stretching to the same width
+    // Icon-only, so it drops the pill's text padding and stays square instead
+    // of stretching to a label's width. 26px matches what the sibling pills in
+    // the top bar compute to (4px padding + 11px * 1.6 line-height), so the row
+    // reads as one set rather than a short button on the end.
     .rp-macros-trash {
         flex-shrink: 0;
         display: flex;
@@ -239,7 +241,7 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         justify-content: center;
         padding: 0;
         width: 26px;
-        height: 24px;
+        height: 26px;
 
         svg { width: 11px; height: 11px; }
     }
@@ -375,6 +377,27 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         // reads as clutter at this density, while a fill groups the row and
         // still lets the dark chips sit forward of it
         background: rgba(0, 0, 0, 0.11);
+        // Rows reorder by dragging. touch-action must be none or a touch drag
+        // scrolls the list instead of moving the row.
+        cursor: grab;
+        touch-action: none;
+        transition: background-color .1s ease, opacity .1s ease;
+
+        // The row follows the pointer by reordering the list under it rather
+        // than floating, so the held row is marked by lifting it off the wash
+        // instead of by position.
+        &.is-dragging {
+            cursor: grabbing;
+            background: var(--prp-chrome-hover);
+            opacity: .85;
+            // Otherwise the row it swaps with appears to animate into place
+            // while the held row jumps, which reads as lag.
+            transition: none;
+        }
+
+        // The chips and buttons keep their own cursors; only the row's empty
+        // space should advertise the drag.
+        .rp-macros-btn { cursor: pointer; }
     }
 
     // captured key. Fixed width so the command fields line up down the column
