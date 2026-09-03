@@ -402,8 +402,11 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
 
     // captured key. Fixed width so the command fields line up down the column
     // however long the key name is; long ones ellipsis rather than push.
+    // Wide enough for a one-modifier combo ("CTRL+ARROWLEFT") and for
+    // "SHIFT+Mouse Middle"; a three-modifier binding still ellipsises, which is
+    // why the chip carries the full value as its title.
     .rp-macros-binding {
-        width: 96px;
+        width: 124px;
         flex-shrink: 0;
         padding: 4px 8px;
         border-radius: 6px;

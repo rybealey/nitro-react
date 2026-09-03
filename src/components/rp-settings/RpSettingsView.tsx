@@ -9,7 +9,7 @@ import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor,
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
-import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseMacroDocument, SerializeMacroDocument } from './MacroState';
+import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseMacroDocument, SerializeMacroDocument } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -43,6 +43,12 @@ export const RpSettingsView: FC<{}> = props =>
     // Non-null while "Click to bind" is armed and swallowing the next input.
     const [ capturedBinding, setCapturedBinding ] = useState<string>(null);
     const [ isCapturing, setIsCapturing ] = useState<boolean>(false);
+    // Modifiers held during capture, shown live on the button ("CTRL+...") so
+    // it is obvious the capture is waiting for the key they prefix.
+    const [ capturePrefix, setCapturePrefix ] = useState<string>('');
+    // The modifier being held alone, if any. Released without anything else
+    // pressed, the modifier itself becomes the binding.
+    const captureModifier = useRef<string>(null);
     const [ draftCommand, setDraftCommand ] = useState<string>('');
     // Inline rename/create for presets - the design has no dialog for either.
     const [ presetDraft, setPresetDraft ] = useState<string>(null);
@@ -438,6 +444,8 @@ export const RpSettingsView: FC<{}> = props =>
         setCapturedBinding(null);
         setDraftCommand('');
         setIsCapturing(false);
+        setCapturePrefix('');
+        captureModifier.current = null;
     };
 
     // Binding capture. Window-level and in the capture phase so the key is
@@ -449,6 +457,9 @@ export const RpSettingsView: FC<{}> = props =>
 
         const finish = (binding: string) =>
         {
+            captureModifier.current = null;
+            setCapturePrefix('');
+
             if(!binding.length) return;
 
             if(!IsBindingAllowed(binding))
@@ -467,7 +478,35 @@ export const RpSettingsView: FC<{}> = props =>
         {
             event.preventDefault();
             event.stopPropagation();
-            finish(NormalizeKeyBinding(event));
+
+            const binding = NormalizeKeyBinding(event);
+
+            // A modifier on its own does not finish the capture: it might be
+            // prefixing a key that has not been pressed yet. Hold it and wait -
+            // either a real key arrives (a combo) or it is released alone (the
+            // modifier itself).
+            if(IsModifierOnlyBinding(binding))
+            {
+                captureModifier.current = binding;
+                setCapturePrefix([
+                    (event.ctrlKey ? 'CTRL+' : ''),
+                    (event.shiftKey ? 'SHIFT+' : ''),
+                    (event.altKey ? 'ALT+' : ''),
+                    (event.metaKey ? 'META+' : '')
+                ].join(''));
+
+                return;
+            }
+
+            finish(binding);
+        };
+
+        const onKeyUp = (event: KeyboardEvent) =>
+        {
+            if(!captureModifier.current) return;
+            if(NormalizeKeyBinding(event) !== captureModifier.current) return;
+
+            finish(captureModifier.current);
         };
 
         const onMouse = (event: MouseEvent) =>
@@ -476,6 +515,8 @@ export const RpSettingsView: FC<{}> = props =>
             // place, and it is never bindable, so treat it as "cancel".
             if(event.button === 0)
             {
+                captureModifier.current = null;
+                setCapturePrefix('');
                 setIsCapturing(false);
 
                 return;
@@ -483,7 +524,7 @@ export const RpSettingsView: FC<{}> = props =>
 
             event.preventDefault();
             event.stopPropagation();
-            finish(NormalizeMouseBinding(event.button));
+            finish(NormalizeMouseBinding(event.button, event));
         };
 
         const swallow = (event: Event) =>
@@ -493,12 +534,14 @@ export const RpSettingsView: FC<{}> = props =>
         };
 
         window.addEventListener('keydown', onKey, true);
+        window.addEventListener('keyup', onKeyUp, true);
         window.addEventListener('mousedown', onMouse, true);
         window.addEventListener('contextmenu', swallow, true);
 
         return () =>
         {
             window.removeEventListener('keydown', onKey, true);
+            window.removeEventListener('keyup', onKeyUp, true);
             window.removeEventListener('mousedown', onMouse, true);
             window.removeEventListener('contextmenu', swallow, true);
         };
@@ -732,7 +775,9 @@ export const RpSettingsView: FC<{}> = props =>
                         <Flex alignItems="center" gap={ 2 } className="rp-macros-new">
                             <div className={ `rp-macros-btn rp-macros-bind ${ isCapturing ? 'is-capturing' : '' }` }
                                 onClick={ () => setIsCapturing(true) }>
-                                { isCapturing ? 'Press any key' : (capturedBinding ?? 'Click to bind') }
+                                { isCapturing
+                                    ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press any key')
+                                    : (capturedBinding ?? 'Click to bind') }
                             </div>
                             <input type="text" className="rp-macros-input" placeholder="Type command" aria-label="Macro command"
                                 maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ draftCommand }
@@ -754,7 +799,7 @@ export const RpSettingsView: FC<{}> = props =>
                                     onPointerMove={ onMacroPointerMove }
                                     onPointerUp={ onMacroPointerUp }
                                     onPointerCancel={ onMacroPointerUp }>
-                                    <div className="rp-macros-binding">{ row.b }</div>
+                                    <div className="rp-macros-binding" title={ row.b }>{ row.b }</div>
                                     <div className="rp-macros-command">{ row.c }</div>
                                     <div className="rp-macros-btn rp-macros-btn--sm rp-macros-move">
                                         Move

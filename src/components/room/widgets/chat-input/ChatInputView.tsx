@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent } from '../../../../hooks';
-import { IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
+import { IsModifierOnlyBinding, IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
 import { TargetState } from '../../../../hooks/rooms/targetState';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
@@ -16,6 +16,12 @@ export const ChatInputView: FC<{}> = props =>
     const { selectedUsername = '', floodBlocked = false, floodBlockedSeconds = 0, setIsTyping = null, setIsIdle = null, sendChat = null } = useChatInputWidget();
     const { roomSession = null } = useRoom();
     const inputRef = useRef<HTMLInputElement>();
+    // A modifier can be a binding on its own OR the prefix of a combo, and
+    // which one it is is only known once it is released. These track the
+    // modifier currently held and whether anything else was pressed while it
+    // was down; see onKeyDownEvent / onKeyUpEvent.
+    const heldModifier = useRef<string>(null);
+    const modifierUsedAsPrefix = useRef<boolean>(false);
 
     const chatModeIdWhisper = useMemo(() => LocalizeText('widgets.chatinput.mode.whisper'), []);
     const chatModeIdShout = useMemo(() => LocalizeText('widgets.chatinput.mode.shout'), []);
@@ -188,14 +194,34 @@ export const ChatInputView: FC<{}> = props =>
         // consumed here would type itself into the message as well as firing.
         if(MacroState.enabled)
         {
-            const command = MacroState.bindings.get(NormalizeKeyBinding(event));
+            const binding = NormalizeKeyBinding(event);
 
-            if(command)
+            if(IsModifierOnlyBinding(binding))
             {
-                event.preventDefault();
-                fireMacro(command);
+                // Cannot fire yet: this might be the start of CTRL+K. It fires
+                // on release instead, and only if nothing else was pressed
+                // meanwhile. Guarded against key-repeat re-arming the flag.
+                if(heldModifier.current !== binding)
+                {
+                    heldModifier.current = binding;
+                    modifierUsedAsPrefix.current = false;
+                }
+            }
+            else
+            {
+                // Something other than the modifier was pressed, so any held
+                // modifier was a prefix rather than a binding of its own.
+                modifierUsedAsPrefix.current = true;
 
-                return;
+                const command = MacroState.bindings.get(binding);
+
+                if(command)
+                {
+                    event.preventDefault();
+                    fireMacro(command);
+
+                    return;
+                }
             }
         }
 
@@ -227,6 +253,30 @@ export const ChatInputView: FC<{}> = props =>
         }
 
     }, [ floodBlocked, inputRef, chatModeIdWhisper, anotherInputHasFocus, setInputFocus, checkSpecialKeywordForInput, sendChatValue, fireMacro ]);
+
+    // Releasing a modifier that was held on its own - nothing else pressed
+    // while it was down - is what fires a modifier-only binding.
+    const onKeyUpEvent = useCallback((event: KeyboardEvent) =>
+    {
+        const held = heldModifier.current;
+
+        if(!held) return;
+        // Some other key coming up does not end the modifier's hold.
+        if(NormalizeKeyBinding(event) !== held) return;
+
+        heldModifier.current = null;
+
+        if(modifierUsedAsPrefix.current) return;
+        if(floodBlocked || !MacroState.enabled) return;
+        if(anotherInputHasFocus()) return;
+
+        const command = MacroState.bindings.get(held);
+
+        if(!command) return;
+
+        event.preventDefault();
+        fireMacro(command);
+    }, [ floodBlocked, anotherInputHasFocus, fireMacro ]);
 
     useUiEvent<RoomWidgetUpdateChatInputContentEvent>(RoomWidgetUpdateChatInputContentEvent.CHAT_INPUT_CONTENT, event =>
     {
@@ -293,12 +343,29 @@ export const ChatInputView: FC<{}> = props =>
     useEffect(() =>
     {
         document.body.addEventListener('keydown', onKeyDownEvent);
+        document.body.addEventListener('keyup', onKeyUpEvent);
 
         return () =>
         {
             document.body.removeEventListener('keydown', onKeyDownEvent);
+            document.body.removeEventListener('keyup', onKeyUpEvent);
         }
-    }, [ onKeyDownEvent ]);
+    }, [ onKeyDownEvent, onKeyUpEvent ]);
+
+    // A modifier held when the client loses focus never gets its keyup, which
+    // would leave it armed and fire on the next unrelated release.
+    useEffect(() =>
+    {
+        const forget = () =>
+        {
+            heldModifier.current = null;
+            modifierUsedAsPrefix.current = false;
+        };
+
+        window.addEventListener('blur', forget);
+
+        return () => window.removeEventListener('blur', forget);
+    }, []);
 
     // Mouse macros fire only over the room canvas, so a middle- or right-click
     // on a window, button or input keeps doing whatever that control does -
@@ -308,9 +375,13 @@ export const ChatInputView: FC<{}> = props =>
     {
         if(floodBlocked || !MacroState.enabled) return;
 
+        // Clicking anything while a modifier is held means the modifier was
+        // being used, not tapped, so it must not also fire on release.
+        if(heldModifier.current) modifierUsedAsPrefix.current = true;
+
         if(!(event.target instanceof HTMLCanvasElement)) return;
 
-        const binding = NormalizeMouseBinding(event.button);
+        const binding = NormalizeMouseBinding(event.button, event);
 
         if(!binding || !IsMouseBinding(binding)) return;
 
