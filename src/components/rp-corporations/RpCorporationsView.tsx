@@ -38,9 +38,10 @@ export const RpCorporationsView: FC<{}> = props =>
     const [ corps, setCorps ] = useState<RpCorpEntry[]>([]);
     const [ selectedId, setSelectedId ] = useState<number>(0);
     const [ detail, setDetail ] = useState<CorpDetail>(null);
-    // The rail's slider button opens the display-options drawer. It overlays
-    // the roster (no reflow) and holds the show-on-cards toggles.
-    const [ panelOpen, setPanelOpen ] = useState(false);
+    // The rail's slider button collapses the options column. It is a real
+    // column beside the roster rather than an overlay, so it starts open and
+    // the roster narrows to make room for it.
+    const [ panelOpen, setPanelOpen ] = useState(true);
     const [ showWeekly, setShowWeekly ] = useState(true);
     const [ showTotal, setShowTotal ] = useState(true);
 
@@ -150,7 +151,7 @@ export const RpCorporationsView: FC<{}> = props =>
                              badges with a divider so it reads as a control, not
                              another corporation */ }
                         <div className={ `rp-corps-rail-tool ${ panelOpen ? 'is-active' : '' }` }
-                            title="Display options"
+                            title={ panelOpen ? 'Hide display options' : 'Show display options' }
                             onClick={ () => setPanelOpen(value => !value) }>
                             <LuSlidersHorizontal />
                         </div>
@@ -196,9 +197,10 @@ export const RpCorporationsView: FC<{}> = props =>
                                     <span className="rp-corps-legend-item"><i className="rp-corps-dot is-online" />Online</span>
                                     <span className="rp-corps-legend-item"><i className="rp-corps-dot is-onduty" />On duty</span>
                                 </div>
-                                <div className="rp-corps-body">
-                                    { /* overlay drawer: floats over the roster's left
-                                         edge, so the three-column grid never reflows */ }
+                                <div className={ `rp-corps-body ${ panelOpen ? 'is-panel-open' : '' }` }>
+                                    { /* A real column, not an overlay: it sits beside
+                                         the roster and the employee grid drops from
+                                         three across to two to make room. */ }
                                     <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
                                         <div className="rp-corps-panel-title">Show on cards</div>
                                         <label className="rp-corps-check">
@@ -210,8 +212,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                             <span>Total shifts</span>
                                         </label>
                                     </div>
-                                    { /* clicking the roster dismisses the drawer */ }
-                                    <div className="rp-corps-ranks" onClick={ () => panelOpen && setPanelOpen(false) }>
+                                    <div className="rp-corps-ranks">
                                         { ranks.map(rank => (
                                             <div key={ rank.id } className="rp-corps-rank">
                                                 <div className="rp-corps-rank-row">
