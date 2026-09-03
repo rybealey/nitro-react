@@ -122,6 +122,22 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
             height: 0;
             border-left: 3px solid transparent;
             border-right: 3px solid transparent;
+            // Each arrow moves the row on its own, so both are click targets.
+            cursor: pointer;
+            opacity: .75;
+            // A border-drawn triangle is a 6x4 box - far too small to hit
+            // reliably, and it cannot take padding without deforming the
+            // triangle. An invisible expanded overlay gives it a usable target
+            // while the shape stays exactly as designed.
+            position: relative;
+
+            &::after {
+                content: '';
+                position: absolute;
+                inset: -3px -6px;
+            }
+
+            &:hover { opacity: 1; }
 
             &.is-up { border-bottom: 4px solid rgba($white, .85); }
             &.is-down { border-top: 4px solid rgba($white, .85); }
@@ -264,6 +280,66 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         border: 1px solid rgba(0, 0, 0, .35);
 
         span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+
+    // Preset picker popup. The design shows the closed picker only, so the open
+    // menu borrows the picker's own surface, radius and type - it reads as the
+    // control opening rather than as a new kind of panel. Anchored to the
+    // picker (hence the wrapper) and lifted above the rows below it.
+    .rp-macros-select-wrap {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .rp-macros-select-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        width: 160px;
+        z-index: 5;
+        padding: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border-radius: 6px;
+        background: var(--prp-chrome-95);
+        border: 1px solid rgba(0, 0, 0, .35);
+        // Eight presets is the server-side cap; past ~6 the menu would run off
+        // the band, so it scrolls rather than growing.
+        max-height: 184px;
+        overflow-y: auto;
+    }
+
+    .rp-macros-select-option {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba($white, .7);
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        &:hover { color: $white; background: var(--prp-chrome-hover); }
+
+        &.is-active { color: $white; background: rgba($white, .1); }
+    }
+
+    // Same 160px slot as the picker it replaces, so the bar does not reflow
+    // while a preset is being named.
+    .rp-macros-preset-input {
+        width: 160px;
+        flex-shrink: 0;
+    }
+
+    // Armed "Click to bind": the button is waiting to swallow the next key or
+    // mouse button, so it reads as live rather than merely hovered.
+    .rp-macros-bind.is-capturing {
+        color: $white;
+        background: var(--prp-chrome-hover);
+        box-shadow: inset 0 0 0 1px rgba($white, .35);
     }
 
     .rp-macros-caret {

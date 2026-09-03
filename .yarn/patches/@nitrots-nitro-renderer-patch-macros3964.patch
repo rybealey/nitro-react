@@ -1,0 +1,166 @@
+diff --git a/src/nitro/communication/NitroMessages.ts b/src/nitro/communication/NitroMessages.ts
+index 75457a89f8a45f41fd97688241b15728311cebdd..ed5c312da52d999e73bfbc66aa524c00d3e53157 100644
+--- a/src/nitro/communication/NitroMessages.ts
++++ b/src/nitro/communication/NitroMessages.ts
+@@ -1,6 +1,7 @@
+ import { IMessageConfiguration } from '../../api';
+ import { RpStatsEvent } from './messages/incoming/RpStatsEvent';
+ import { RpInventoryEvent } from './messages/incoming/RpInventoryEvent';
++import { RpMacrosEvent } from './messages/incoming/RpMacrosEvent';
+ import { RpUiSettingsEvent } from './messages/incoming/RpUiSettingsEvent';
+ import { RpMessengerReceiptEvent } from './messages/incoming/RpMessengerReceiptEvent';
+ import { RpAirplaneModeEvent } from './messages/incoming/RpAirplaneModeEvent';
+@@ -45,6 +46,7 @@
+ import { RpDeletePhotoComposer } from './messages/outgoing/RpDeletePhotoComposer';
+ import { RpUpdatePhotoComposer } from './messages/outgoing/RpUpdatePhotoComposer';
+ import { RpSaveScreenshotComposer } from './messages/outgoing/RpSaveScreenshotComposer';
++import { RpSaveMacrosComposer } from './messages/outgoing/RpSaveMacrosComposer';
+ import { RpSaveUiSettingsComposer } from './messages/outgoing/RpSaveUiSettingsComposer';
+ import { RpJukeboxAddComposer, RpJukeboxRemoveComposer, RpJukeboxSkipComposer, RpJukeboxReportComposer } from './messages/outgoing/RpJukeboxComposers';
+ import { GetDiamondsStoreComposer } from './messages/outgoing/GetDiamondsStoreComposer';
+@@ -70,6 +72,7 @@
+         // PIXELRP
+         this._events.set(IncomingHeader.RP_STATS, RpStatsEvent);
+         this._events.set(IncomingHeader.RP_UI_SETTINGS, RpUiSettingsEvent);
++        this._events.set(IncomingHeader.RP_MACROS, RpMacrosEvent);
+         this._events.set(IncomingHeader.RP_INVENTORY, RpInventoryEvent);
+         this._events.set(IncomingHeader.RP_MESSENGER_RECEIPT, RpMessengerReceiptEvent);
+         this._events.set(IncomingHeader.RP_AIRPLANE_MODE, RpAirplaneModeEvent);
+@@ -1159,6 +1162,7 @@
+         this._composers.set(OutgoingHeader.USER_SETTINGS_INVITES, UserSettingsRoomInvitesComposer);
+         this._composers.set(OutgoingHeader.USER_SETTINGS_VOLUME, UserSettingsSoundComposer);
+         this._composers.set(OutgoingHeader.RP_SAVE_UI_SETTINGS, RpSaveUiSettingsComposer);
++        this._composers.set(OutgoingHeader.RP_SAVE_MACROS, RpSaveMacrosComposer);
+         this._composers.set(OutgoingHeader.RP_USE_ITEM, RpUseItemComposer);
+         this._composers.set(OutgoingHeader.RP_MOVE_ITEM, RpMoveItemComposer);
+         this._composers.set(OutgoingHeader.RP_GET_CORPS, RpGetCorpsComposer);
+diff --git a/src/nitro/communication/messages/incoming/IncomingHeader.ts b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+index 95131057001a38792afed97f32537baa4bc76494..6a083af56e4d4f5984c3d76c82e146d92cd4820f 100644
+--- a/src/nitro/communication/messages/incoming/IncomingHeader.ts
++++ b/src/nitro/communication/messages/incoming/IncomingHeader.ts
+@@ -468,6 +468,7 @@
+     // PixelRP custom packets (wire ids match the emulator's revisions/1.6.6.json)
+     public static RP_STATS = 3901;
+     public static RP_UI_SETTINGS = 3902;
++    public static RP_MACROS = 3964;
+     public static RP_INVENTORY = 3904;
+     public static RP_MESSENGER_RECEIPT = 3906;
+     public static RP_AIRPLANE_MODE = 3935;
+diff --git a/src/nitro/communication/messages/incoming/RpMacrosEvent.ts b/src/nitro/communication/messages/incoming/RpMacrosEvent.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..67fc931ae96da2801105f6ba9e8458dd01cd1c42
+--- /dev/null
++++ b/src/nitro/communication/messages/incoming/RpMacrosEvent.ts
+@@ -0,0 +1,46 @@
++import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
++import { MessageEvent } from '../../../../events';
++
++// PixelRP: the player's saved macros, pushed by the server at login as one
++// JSON document (see the emulator's 62_Macros.sql for the shape). An empty
++// string means nothing has ever been saved - distinct from a saved-but-empty
++// document, so the client can tell a fresh account from a deliberately
++// cleared one and only seed defaults for the former.
++export class RpMacrosParser implements IMessageParser
++{
++    private _macros: string;
++
++    public flush(): boolean
++    {
++        this._macros = '';
++
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++
++        this._macros = wrapper.readString();
++
++        return true;
++    }
++
++    public get macros(): string
++    {
++        return this._macros;
++    }
++}
++
++export class RpMacrosEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RpMacrosParser);
++    }
++
++    public getParser(): RpMacrosParser
++    {
++        return this.parser as RpMacrosParser;
++    }
++}
+diff --git a/src/nitro/communication/messages/incoming/index.ts b/src/nitro/communication/messages/incoming/index.ts
+index c8334a43857fb6b09c89791c6a5e0e87ac57c9db..6938b9a9b0540c4fa428a79a5d4efffd5ccde008 100644
+--- a/src/nitro/communication/messages/incoming/index.ts
++++ b/src/nitro/communication/messages/incoming/index.ts
+@@ -75,6 +75,7 @@
+ export * from './userclassification';
+ export * from './RpStatsEvent';
+ export * from './RpInventoryEvent';
++export * from './RpMacrosEvent';
+ export * from './RpUiSettingsEvent';
+ export * from './RpMessengerReceiptEvent';
+ export * from './RpAirplaneModeEvent';
+diff --git a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+index 8929b3f82aeceed9b5e7ac9544a71d1133ee17fa..596377c10998d3d86f7ad818b31075faf3e56493 100644
+--- a/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
++++ b/src/nitro/communication/messages/outgoing/OutgoingHeader.ts
+@@ -468,6 +468,7 @@
+     public static RENTABLE_EXTEND_RENT_OR_BUYOUT_FURNI = 1071;
+     public static RENTABLE_GET_RENT_OR_BUYOUT_OFFER = 2518;
+     public static RP_SAVE_UI_SETTINGS = 3903;
++    public static RP_SAVE_MACROS = 3965;
+     public static RP_USE_ITEM = 3905;
+     public static RP_MOVE_ITEM = 3945;
+     public static RP_GET_CORPS = 3948;
+diff --git a/src/nitro/communication/messages/outgoing/RpSaveMacrosComposer.ts b/src/nitro/communication/messages/outgoing/RpSaveMacrosComposer.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..62f19ebdef57cad875071c365b450684ec54cc81
+--- /dev/null
++++ b/src/nitro/communication/messages/outgoing/RpSaveMacrosComposer.ts
+@@ -0,0 +1,24 @@
++import { IMessageComposer } from '../../../../api';
++
++// PixelRP: save the player's macros server-side, as one JSON document. The
++// emulator validates and re-serialises it before storing, so it is safe to
++// send the document straight from the Macros tab.
++export class RpSaveMacrosComposer implements IMessageComposer<ConstructorParameters<typeof RpSaveMacrosComposer>>
++{
++    private _data: ConstructorParameters<typeof RpSaveMacrosComposer>;
++
++    constructor(macros: string)
++    {
++        this._data = [macros];
++    }
++
++    public getMessageArray()
++    {
++        return this._data;
++    }
++
++    public dispose(): void
++    {
++        return;
++    }
++}
+diff --git a/src/nitro/communication/messages/outgoing/index.ts b/src/nitro/communication/messages/outgoing/index.ts
+index 0a7fdf16e96b97216e03bc000f3f43bcbc3fbc9b..04e1c54114a186487b6a82e2009cc275d613387c 100644
+--- a/src/nitro/communication/messages/outgoing/index.ts
++++ b/src/nitro/communication/messages/outgoing/index.ts
+@@ -71,6 +71,7 @@
+ export * from './user/inventory/subscription';
+ export * from './user/settings';
+ export * from './userclassification';
++export * from './RpSaveMacrosComposer';
+ export * from './RpSaveUiSettingsComposer';
+ export * from './RpMoveItemComposer';
+ export * from './RpGetCorpDetailComposer';

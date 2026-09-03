@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent } from '../../../../hooks';
+import { IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
 import { TargetState } from '../../../../hooks/rooms/targetState';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
@@ -130,6 +131,32 @@ export const ChatInputView: FC<{}> = props =>
         setChatValue(append);
     }, [ chatModeIdWhisper, chatModeIdShout, chatModeIdSpeak, maxChatLength, chatStyleId, setIsTyping, setIsIdle, sendChat ]);
 
+    // Runs a macro's command. Deliberately NOT sendChatValue: that clears the
+    // chat box, and a macro must never eat a half-typed message. Everything
+    // else goes through the normal sendChat, so a macro behaves exactly like
+    // typing the command - the client-side commands (:t, :lt, :ping) still work
+    // and flood blocking still applies.
+    const fireMacro = useCallback((command: string) =>
+    {
+        let text = command;
+
+        // The same "x means my HUD target" shorthand the chat box expands,
+        // applied here so ":slap x" works from a key. sendChat also expands a
+        // bare second-position x from the room selection, which covers the case
+        // where nothing is pinned in the HUD.
+        if(TargetState.name)
+        {
+            const [ commandKey, ...args ] = text.split(' ');
+
+            if(args.some(arg => (arg.toLowerCase() === 'x')))
+            {
+                text = [ commandKey, ...args.map(arg => ((arg.toLowerCase() === 'x') ? TargetState.name : arg)) ].join(' ');
+            }
+        }
+
+        sendChat(text, ChatMessageTypeEnum.CHAT_DEFAULT, '', chatStyleId);
+    }, [ sendChat, chatStyleId ]);
+
     const updateChatInput = useCallback((value: string) =>
     {
         if(!value || !value.length)
@@ -155,6 +182,22 @@ export const ChatInputView: FC<{}> = props =>
     const onKeyDownEvent = useCallback((event: KeyboardEvent) =>
     {
         if(floodBlocked || !inputRef.current || anotherInputHasFocus()) return;
+
+        // Macros are checked first, and before setInputFocus(): this handler
+        // pulls focus into the chat box on ANY key, so a bound key that was not
+        // consumed here would type itself into the message as well as firing.
+        if(MacroState.enabled)
+        {
+            const command = MacroState.bindings.get(NormalizeKeyBinding(event));
+
+            if(command)
+            {
+                event.preventDefault();
+                fireMacro(command);
+
+                return;
+            }
+        }
 
         if(document.activeElement !== inputRef.current) setInputFocus();
 
@@ -183,7 +226,7 @@ export const ChatInputView: FC<{}> = props =>
                 return;
         }
 
-    }, [ floodBlocked, inputRef, chatModeIdWhisper, anotherInputHasFocus, setInputFocus, checkSpecialKeywordForInput, sendChatValue ]);
+    }, [ floodBlocked, inputRef, chatModeIdWhisper, anotherInputHasFocus, setInputFocus, checkSpecialKeywordForInput, sendChatValue, fireMacro ]);
 
     useUiEvent<RoomWidgetUpdateChatInputContentEvent>(RoomWidgetUpdateChatInputContentEvent.CHAT_INPUT_CONTENT, event =>
     {
@@ -256,6 +299,58 @@ export const ChatInputView: FC<{}> = props =>
             document.body.removeEventListener('keydown', onKeyDownEvent);
         }
     }, [ onKeyDownEvent ]);
+
+    // Mouse macros fire only over the room canvas, so a middle- or right-click
+    // on a window, button or input keeps doing whatever that control does -
+    // otherwise a bound button would be swallowed hotel-wide. Left click is
+    // never bindable (MACRO_RESERVED_MOUSE), so walking is always safe.
+    const onMouseDownEvent = useCallback((event: MouseEvent) =>
+    {
+        if(floodBlocked || !MacroState.enabled) return;
+
+        if(!(event.target instanceof HTMLCanvasElement)) return;
+
+        const binding = NormalizeMouseBinding(event.button);
+
+        if(!binding || !IsMouseBinding(binding)) return;
+
+        const command = MacroState.bindings.get(binding);
+
+        if(!command) return;
+
+        // Middle click would otherwise start an autoscroll drag, and the room
+        // canvas has its own onmousedown property handler (RoomView) which
+        // would still treat this as a room interaction. Because this listener
+        // is registered in the CAPTURE phase it runs before that one, so
+        // stopping propagation here keeps the button from doing both things.
+        // Only a bound button is stopped; anything else is left untouched.
+        event.preventDefault();
+        event.stopPropagation();
+        fireMacro(command);
+    }, [ floodBlocked, fireMacro ]);
+
+    useEffect(() =>
+    {
+        // A bound right click must not also raise the browser context menu,
+        // which fires separately from mousedown.
+        const onContextMenu = (event: MouseEvent) =>
+        {
+            if(!MacroState.enabled) return;
+            if(!(event.target instanceof HTMLCanvasElement)) return;
+            if(!MacroState.bindings.has('Mouse Right')) return;
+
+            event.preventDefault();
+        };
+
+        document.body.addEventListener('mousedown', onMouseDownEvent, true);
+        document.body.addEventListener('contextmenu', onContextMenu, true);
+
+        return () =>
+        {
+            document.body.removeEventListener('mousedown', onMouseDownEvent, true);
+            document.body.removeEventListener('contextmenu', onContextMenu, true);
+        }
+    }, [ onMouseDownEvent ]);
 
     useEffect(() =>
     {

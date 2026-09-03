@@ -1,14 +1,15 @@
-import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
-import { RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
+import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
+import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaTrash } from 'react-icons/fa';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
-import { useLocalStorage, useMessageEvent } from '../../hooks';
+import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
+import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseMacroDocument, SerializeMacroDocument } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -20,24 +21,9 @@ const TABS: string[] = [ 'General', 'Macros', 'Social', 'Roleplay', 'UI' ];
 // tab, so it is deliberately not listed here any more.
 const ROLEPLAY_PAGES: string[] = [ 'Messages' ];
 
-// STATIC SHELL. The Macros tab is presentation only for now — nothing is
-// stored, nothing is bound and no key fires anything. The rows below are
-// sample bindings so the layout can be judged; when behaviour lands they are
-// replaced by the player's saved macros (localStorage), and the controls get
-// wired up. Several of the commands shown (:cuff, :escort, :ticket, :ps,
-// :uncuff) do not exist yet either.
-const MACRO_PROFILES: string[] = [ 'Default', 'Cop' ];
-
-const MACRO_SAMPLE_ROWS: { binding: string, command: string }[] = [
-    { binding: '=', command: ':cuff x' },
-    { binding: 'ARROWLEFT', command: ':escort x' },
-    { binding: 'TAB', command: ':ps x' },
-    { binding: 'Mouse Middle', command: ':ticket x' },
-    { binding: '`', command: ':inv 1' },
-    { binding: 'CAPSLOCK', command: ':ct' },
-    { binding: 'CONTROL', command: ':lt x' },
-    { binding: 'ARROWRIGHT', command: ':uncuff x' }
-];
+// The Macros tab is live: bindings are saved server-side (RpSaveMacrosComposer)
+// so they follow the player to any browser, and ChatInputView fires them. See
+// MacroState.ts for the document shape and the binding vocabulary.
 
 // Social tab sub-pages (left rail), grouped under the Personalization
 // eyebrow; the chat-bubble preview shows on both.
@@ -49,10 +35,18 @@ const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
 export const RpSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
-    // The one piece of the Macros tab that is real: the master switch. Kept in
-    // localStorage so it survives reopening, matching where the macros
-    // themselves will live. Nothing reads it yet.
-    const [ macrosEnabled, setMacrosEnabled ] = useLocalStorage('pixelrp.macros.enabled', true);
+    // Macros. The whole document lives here; the server is a locker (it never
+    // interprets a macro), so this is the single source of truth in the client
+    // and MacroState mirrors the ACTIVE preset for the DOM handlers that fire.
+    const [ macroDoc, setMacroDoc ] = useState<MacroDocument>(EmptyMacroDocument);
+    const [ presetOpen, setPresetOpen ] = useState<boolean>(false);
+    // Non-null while "Click to bind" is armed and swallowing the next input.
+    const [ capturedBinding, setCapturedBinding ] = useState<string>(null);
+    const [ isCapturing, setIsCapturing ] = useState<boolean>(false);
+    const [ draftCommand, setDraftCommand ] = useState<string>('');
+    // Inline rename/create for presets - the design has no dialog for either.
+    const [ presetDraft, setPresetDraft ] = useState<string>(null);
+    const [ macroNotice, setMacroNotice ] = useState<string>('');
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
@@ -166,6 +160,235 @@ export const RpSettingsView: FC<{}> = props =>
         setUsernameIconColor(uiconColor);
         ApplyUiChrome(color, opacity, header);
     });
+
+    // ---- Macros ----------------------------------------------------------
+
+    // Saved macros arrive at login. An empty payload means nothing was ever
+    // saved, which ParseMacroDocument turns into a single starter preset.
+    useMessageEvent<RpMacrosEvent>(RpMacrosEvent, event =>
+    {
+        const document = ParseMacroDocument(event.getParser().macros);
+
+        setMacroDoc(document);
+        ApplyMacroState(document);
+    });
+
+    // Every mutation goes through here: it keeps React state, the live lookup
+    // the key handlers read, and the server row in step. Saving the whole
+    // document each time is deliberate - it is small, the emulator replaces it
+    // wholesale, and it means no mutation can half-apply.
+    const commitMacros = (next: MacroDocument) =>
+    {
+        setMacroDoc(next);
+        ApplyMacroState(next);
+        SendMessageComposer(new RpSaveMacrosComposer(SerializeMacroDocument(next)));
+    };
+
+    const activePreset = macroDoc.presets.find(preset => (preset.name === macroDoc.active)) ?? macroDoc.presets[0] ?? null;
+
+    // Notices are advisory (a refused binding, a full list) and should not
+    // linger once the player has moved on.
+    const notify = (message: string) =>
+    {
+        setMacroNotice(message);
+        setTimeout(() => setMacroNotice(current => ((current === message) ? '' : current)), 4000);
+    };
+
+    const replaceActivePreset = (macros: MacroDocument['presets'][0]['macros']) =>
+    {
+        if(!activePreset) return;
+
+        commitMacros({
+            ...macroDoc,
+            presets: macroDoc.presets.map(preset => ((preset.name === activePreset.name) ? { ...preset, macros } : preset))
+        });
+    };
+
+    const addMacro = () =>
+    {
+        if(!activePreset) return;
+
+        const command = draftCommand.trim();
+
+        if(!capturedBinding)
+        {
+            notify('Bind a key first.');
+
+            return;
+        }
+
+        if(!command.length)
+        {
+            notify('Type a command first.');
+
+            return;
+        }
+
+        if(activePreset.macros.length >= MACRO_MAX_PER_PRESET)
+        {
+            notify(`A preset holds at most ${ MACRO_MAX_PER_PRESET } macros.`);
+
+            return;
+        }
+
+        // Rebinding an in-use key replaces it rather than adding a second row
+        // for the same key, which would leave one of them permanently dead.
+        const macros = activePreset.macros
+            .filter(macro => (macro.b !== capturedBinding))
+            .concat([ { b: capturedBinding, c: command.substring(0, MACRO_MAX_COMMAND_LENGTH) } ]);
+
+        replaceActivePreset(macros);
+        setCapturedBinding(null);
+        setDraftCommand('');
+    };
+
+    const deleteMacro = (index: number) =>
+    {
+        if(!activePreset) return;
+
+        replaceActivePreset(activePreset.macros.filter((macro, position) => (position !== index)));
+    };
+
+    const moveMacro = (index: number, offset: number) =>
+    {
+        if(!activePreset) return;
+
+        const target = (index + offset);
+
+        if((target < 0) || (target >= activePreset.macros.length)) return;
+
+        const macros = activePreset.macros.slice();
+        const [ moved ] = macros.splice(index, 1);
+
+        macros.splice(target, 0, moved);
+        replaceActivePreset(macros);
+    };
+
+    const selectPreset = (name: string) =>
+    {
+        setPresetOpen(false);
+
+        if(name === macroDoc.active) return;
+
+        commitMacros({ ...macroDoc, active: name });
+    };
+
+    const savePresetDraft = () =>
+    {
+        const name = (presetDraft ?? '').trim().substring(0, MACRO_MAX_NAME_LENGTH);
+
+        setPresetDraft(null);
+
+        if(!name.length) return;
+        // Names identify a preset in the document and in the picker, so a
+        // duplicate would make one of them unreachable.
+        if(macroDoc.presets.some(preset => (preset.name === name)))
+        {
+            notify('You already have a preset with that name.');
+
+            return;
+        }
+
+        commitMacros({
+            ...macroDoc,
+            active: name,
+            presets: macroDoc.presets.concat([ { name, macros: [] } ])
+        });
+    };
+
+    const newPreset = () =>
+    {
+        if(macroDoc.presets.length >= MACRO_MAX_PRESETS)
+        {
+            notify(`You can have at most ${ MACRO_MAX_PRESETS } presets.`);
+
+            return;
+        }
+
+        setPresetOpen(false);
+        setPresetDraft('');
+    };
+
+    const deleteActivePreset = () =>
+    {
+        if(!activePreset) return;
+        // The picker needs something to select, and a macro needs a preset to
+        // live in, so the last one cannot go.
+        if(macroDoc.presets.length <= 1)
+        {
+            notify('You need at least one preset.');
+
+            return;
+        }
+
+        const presets = macroDoc.presets.filter(preset => (preset.name !== activePreset.name));
+
+        commitMacros({ ...macroDoc, active: presets[0].name, presets });
+    };
+
+    // Binding capture. Window-level and in the capture phase so the key is
+    // taken before the settings window, the chat input or anything else can
+    // react to it - including a macro that is already bound to it.
+    useEffect(() =>
+    {
+        if(!isCapturing) return;
+
+        const finish = (binding: string) =>
+        {
+            if(!binding.length) return;
+
+            if(!IsBindingAllowed(binding))
+            {
+                notify(`${ binding } cannot be bound.`);
+                setIsCapturing(false);
+
+                return;
+            }
+
+            setCapturedBinding(binding);
+            setIsCapturing(false);
+        };
+
+        const onKey = (event: KeyboardEvent) =>
+        {
+            event.preventDefault();
+            event.stopPropagation();
+            finish(NormalizeKeyBinding(event));
+        };
+
+        const onMouse = (event: MouseEvent) =>
+        {
+            // Left click is how the player pressed "Click to bind" in the first
+            // place, and it is never bindable, so treat it as "cancel".
+            if(event.button === 0)
+            {
+                setIsCapturing(false);
+
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            finish(NormalizeMouseBinding(event.button));
+        };
+
+        const swallow = (event: Event) =>
+        {
+            event.preventDefault();
+            event.stopPropagation();
+        };
+
+        window.addEventListener('keydown', onKey, true);
+        window.addEventListener('mousedown', onMouse, true);
+        window.addEventListener('contextmenu', swallow, true);
+
+        return () =>
+        {
+            window.removeEventListener('keydown', onKey, true);
+            window.removeEventListener('mousedown', onMouse, true);
+            window.removeEventListener('contextmenu', swallow, true);
+        };
+    }, [ isCapturing ]);
 
     const saveSettings = (color: string, opacity: number, header: string, uname: string, icon: string, iconColor: string) =>
     {
@@ -338,45 +561,90 @@ export const RpSettingsView: FC<{}> = props =>
                                  the same 30px box, so they align exactly. */ }
                             <Flex alignItems="center" gap={ 2 }>
                                 <span className="rp-macros-preset-label">Preset</span>
-                                <div className="rp-macros-select">
-                                    <span>{ MACRO_PROFILES[1] }</span>
-                                    <i className="rp-macros-caret" />
-                                </div>
+                                { (presetDraft === null) &&
+                                    <div className="rp-macros-select-wrap">
+                                        <div className="rp-macros-select" onClick={ () => setPresetOpen(value => !value) }>
+                                            <span>{ activePreset ? activePreset.name : '' }</span>
+                                            <i className="rp-macros-caret" />
+                                        </div>
+                                        { presetOpen &&
+                                            <div className="rp-macros-select-menu">
+                                                { macroDoc.presets.map(preset => (
+                                                    <div key={ preset.name }
+                                                        className={ `rp-macros-select-option ${ (preset.name === macroDoc.active) ? 'is-active' : '' }` }
+                                                        onClick={ () => selectPreset(preset.name) }>
+                                                        { preset.name }
+                                                    </div>
+                                                )) }
+                                            </div> }
+                                    </div> }
+                                { /* Inline name entry: the design has no dialog for
+                                     creating a preset, so New swaps the picker for a
+                                     field and Enter or blur commits it. */ }
+                                { (presetDraft !== null) &&
+                                    <input autoFocus type="text" className="rp-macros-input rp-macros-preset-input"
+                                        placeholder="Preset name" aria-label="New preset name"
+                                        maxLength={ MACRO_MAX_NAME_LENGTH } value={ presetDraft }
+                                        onChange={ event => setPresetDraft(event.target.value) }
+                                        onBlur={ savePresetDraft }
+                                        onKeyDown={ event =>
+                                        {
+                                            if(event.key === 'Enter') savePresetDraft();
+                                            if(event.key === 'Escape') setPresetDraft(null);
+                                        } } /> }
                                 <div className="rp-macros-switch-wrap">
-                                    <div className={ `rp-macros-switch ${ macrosEnabled ? 'is-on' : '' }` } role="switch"
-                                        aria-checked={ macrosEnabled } aria-label="Macros enabled"
-                                        onClick={ () => setMacrosEnabled(value => !value) }><span /></div>
-                                    <span className={ `rp-macros-switch-label ${ macrosEnabled ? 'is-on' : 'is-off' }` }>{ macrosEnabled ? 'On' : 'Off' }</span>
+                                    <div className={ `rp-macros-switch ${ macroDoc.enabled ? 'is-on' : '' }` } role="switch"
+                                        aria-checked={ macroDoc.enabled } aria-label="Macros enabled"
+                                        onClick={ () => commitMacros({ ...macroDoc, enabled: !macroDoc.enabled }) }><span /></div>
+                                    <span className={ `rp-macros-switch-label ${ macroDoc.enabled ? 'is-on' : 'is-off' }` }>{ macroDoc.enabled ? 'On' : 'Off' }</span>
                                 </div>
                             </Flex>
                             <Flex alignItems="center" gap={ 2 }>
-                                <div className="rp-macros-btn rp-macros-btn--accent">New</div>
-                                <div className="rp-macros-btn">Export</div>
-                                <div className="rp-macros-btn">Import</div>
+                                <div className="rp-macros-btn rp-macros-btn--accent" onClick={ newPreset }>New</div>
+                                { /* Export/Import are still shell - deliberately out
+                                     of scope for this first pass. */ }
+                                <div className="rp-macros-btn" title="Not available yet">Export</div>
+                                <div className="rp-macros-btn" title="Not available yet">Import</div>
                             </Flex>
                         </div>
-                        { /* new-macro row: capture a key, type the command, Add.
-                             The input is uncontrolled and Add is inert - still a shell. */ }
+                        { /* new-macro row: capture a key or mouse button, type the
+                             command, Add. The trash deletes the whole preset. */ }
                         <Flex alignItems="center" gap={ 2 } className="rp-macros-new">
-                            <div className="rp-macros-btn rp-macros-bind">Click to bind</div>
-                            <input type="text" className="rp-macros-input" placeholder="Type command" aria-label="Macro command" />
-                            <div className="rp-macros-btn">Add</div>
-                            <div className="rp-macros-btn rp-macros-btn--danger rp-macros-trash" title="Delete" aria-label="Delete"><FaTrash /></div>
+                            <div className={ `rp-macros-btn rp-macros-bind ${ isCapturing ? 'is-capturing' : '' }` }
+                                onClick={ () => setIsCapturing(true) }>
+                                { isCapturing ? 'Press any key' : (capturedBinding ?? 'Click to bind') }
+                            </div>
+                            <input type="text" className="rp-macros-input" placeholder="Type command" aria-label="Macro command"
+                                maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ draftCommand }
+                                onChange={ event => setDraftCommand(event.target.value) }
+                                onKeyDown={ event => (event.key === 'Enter') && addMacro() } />
+                            <div className="rp-macros-btn" onClick={ addMacro }>Add</div>
+                            <div className="rp-macros-btn rp-macros-btn--danger rp-macros-trash"
+                                title="Delete this preset" aria-label="Delete this preset"
+                                onClick={ deleteActivePreset }><FaTrash /></div>
                         </Flex>
+                        { (macroNotice.length > 0) &&
+                            <Text className="text-muted">{ macroNotice }</Text> }
                         <div className="rp-macros-list">
                             { /* index keys: the same binding can legitimately appear twice
                                  while a player is mid-edit, so the binding is not unique */ }
-                            { MACRO_SAMPLE_ROWS.map((row, index) => (
+                            { activePreset && activePreset.macros.map((row, index) => (
                                 <div key={ index } className="rp-macros-row">
-                                    <div className="rp-macros-binding">{ row.binding }</div>
-                                    <div className="rp-macros-command">{ row.command }</div>
+                                    <div className="rp-macros-binding">{ row.b }</div>
+                                    <div className="rp-macros-command">{ row.c }</div>
                                     <div className="rp-macros-btn rp-macros-btn--sm rp-macros-move">
                                         Move
-                                        <span className="rp-macros-move-arrows"><i className="is-up" /><i className="is-down" /></span>
+                                        <span className="rp-macros-move-arrows">
+                                            <i className="is-up" title="Move up" onClick={ () => moveMacro(index, -1) } />
+                                            <i className="is-down" title="Move down" onClick={ () => moveMacro(index, 1) } />
+                                        </span>
                                     </div>
-                                    <div className="rp-macros-btn rp-macros-btn--sm rp-macros-btn--danger">Delete</div>
+                                    <div className="rp-macros-btn rp-macros-btn--sm rp-macros-btn--danger"
+                                        onClick={ () => deleteMacro(index) }>Delete</div>
                                 </div>
                             )) }
+                            { activePreset && !activePreset.macros.length &&
+                                <Text className="text-muted">No macros in this preset yet.</Text> }
                         </div>
                     </Column> }
                 { (currentTab === 'Roleplay') &&
