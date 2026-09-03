@@ -60,6 +60,33 @@ const MACRO_MODIFIER_PREFIXES: string[] = [ 'CTRL+', 'SHIFT+', 'ALT+', 'META+' ]
 // binding it would make the hotel unusable. The other buttons are fair game.
 export const MACRO_RESERVED_MOUSE: string[] = [ 'Mouse Left' ];
 
+// Shift changes what a key REPORTS: KeyboardEvent.key for Shift+1 is "!", so a
+// binding would read "SHIFT+!" when the player pressed Shift and the 1 key.
+// event.code names the physical key instead, so it is unaffected - and for the
+// digit row it is the same key on every Latin layout, where the shifted glyph
+// is not (Shift+2 is @ on US but " on UK).
+//
+// Only consulted while Shift is held; unshifted keys already report the glyph
+// the player sees on the keycap. Punctuation entries match a US layout, which
+// is a limitation rather than a bug: on another layout that physical key still
+// binds and still fires, it is only the label that may not match the keycap.
+const SHIFTED_CODE_TO_KEY: { [code: string]: string } = {
+    Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5',
+    Digit6: '6', Digit7: '7', Digit8: '8', Digit9: '9', Digit0: '0',
+    Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']',
+    Backslash: '\\', Semicolon: ';', Quote: '\'', Comma: ',',
+    Period: '.', Slash: '/', Backquote: '`'
+};
+
+// The same relationship the other way round, for repairing bindings that were
+// stored as the shifted glyph before the above existed.
+const SHIFTED_KEY_TO_KEY: { [glyph: string]: string } = {
+    '!': '1', '@': '2', '#': '3', '$': '4', '%': '5',
+    '^': '6', '&': '7', '*': '8', '(': '9', ')': '0',
+    '_': '-', '+': '=', '{': '[', '}': ']', '|': '\\',
+    ':': ';', '"': '\'', '<': ',', '>': '.', '?': '/', '~': '`'
+};
+
 const MOUSE_BUTTON_NAMES: { [index: number]: string } = {
     0: 'Mouse Left',
     1: 'Mouse Middle',
@@ -93,22 +120,47 @@ const ModifierPrefix = (event: ModifierFlags): string =>
 // Canonical form of a keyboard binding: an optional modifier prefix plus the
 // uppercased KeyboardEvent.key, which gives single characters as "`" / "=" and
 // named keys as "TAB" / "ARROWLEFT" / "CAPSLOCK" - the vocabulary the Macros tab
-// displays. Note that a shifted character reports as the shifted glyph, so
-// Shift+1 stores as "SHIFT+!"; that is consistent because binding and firing
-// both go through here, and using event.code instead would invalidate every
-// binding already saved.
+// displays. With Shift held the key is taken from event.code instead, so the
+// binding names the key the player actually pressed ("SHIFT+1", not "SHIFT+!").
 export const NormalizeKeyBinding = (event: KeyboardEvent): string =>
 {
     if(!event.key) return '';
 
     // " " would render as an invisible binding in the list.
-    const base = ((event.key === ' ') ? 'SPACE' : event.key.toUpperCase());
+    let base = ((event.key === ' ') ? 'SPACE' : event.key.toUpperCase());
 
     // A modifier held on its own is a binding in its own right, so it never
     // carries a prefix of itself.
     if(MACRO_MODIFIER_KEYS.includes(base)) return base;
 
+    // Letters are unaffected (Shift+K already reports "K"); this only rescues
+    // the keys whose glyph changes under Shift.
+    if(event.shiftKey && event.code && SHIFTED_CODE_TO_KEY[event.code])
+    {
+        base = SHIFTED_CODE_TO_KEY[event.code];
+    }
+
     return (ModifierPrefix(event) + base);
+};
+
+// Repairs a binding stored as the shifted glyph, from before NormalizeKeyBinding
+// consulted event.code: "SHIFT+!" is what the player pressed as Shift and 1, so
+// it becomes "SHIFT+1" and starts matching again.
+//
+// Only bindings that already carry a SHIFT+ prefix are touched. A BARE glyph is
+// left alone deliberately - "+" and "*" are reachable on the numpad without
+// Shift, so rewriting those would break a working binding to fix a theoretical
+// one.
+const RepairShiftedBinding = (binding: string): string =>
+{
+    if(!binding.includes('SHIFT+')) return binding;
+
+    const base = BindingBaseKey(binding);
+    const repaired = SHIFTED_KEY_TO_KEY[base];
+
+    if(!repaired) return binding;
+
+    return (binding.substring(0, (binding.length - base.length)) + repaired);
 };
 
 export const NormalizeMouseBinding = (button: number, event: ModifierFlags = null): string =>
@@ -219,7 +271,7 @@ export const ParseMacroDocument = (payload: string): MacroDocument =>
                     macros: Array.isArray(preset.macros)
                         ? preset.macros
                             .filter(macro => (macro && (typeof macro.b === 'string') && (typeof macro.c === 'string') && macro.b.length && macro.c.length))
-                            .map(macro => ({ b: macro.b, c: macro.c }))
+                            .map(macro => ({ b: RepairShiftedBinding(macro.b), c: macro.c }))
                         : []
                 }))
             : [];
