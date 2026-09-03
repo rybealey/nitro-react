@@ -8,6 +8,11 @@ import { useLocalStorage } from '../../../../hooks';
 // persisted per-browser in localStorage so it stays consistent for each player
 // across sessions. Buttons without an onClick are placeholders — behaviour
 // comes later.
+//
+// The toggle stays a CHILD of .nitro-side-drawer (the tray) because the CSS
+// anchors it absolutely to the tray's right edge as a notch — it must not sit
+// in the icon column's flex flow, or it pushes the icons off the tray's
+// center axis.
 const DRAWER_BUTTONS: { key: string; title: string; onClick?: () => void }[] = [
     { key: 'inventory', title: 'Inventory', onClick: () => CreateLinkEvent('rp-inventory/toggle') },
     { key: 'corporations', title: 'Corporations', onClick: () => CreateLinkEvent('rp-corporations/toggle') },

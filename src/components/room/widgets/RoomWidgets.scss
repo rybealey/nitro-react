@@ -1,6 +1,6 @@
 // Center-left edge drawer — chrome plate panel treatment, anchored
-// to the vertical middle of the left edge. Collapsed by default (chevron tab);
-// expanding slides the button stack out.
+// to the vertical middle of the left edge. Collapsed by default; expanding
+// slides the button stack out from under the edge notch.
 .nitro-side-drawer-container {
     position: absolute;
     top: 50%;
@@ -9,19 +9,25 @@
     // Above chat bubbles so they never paint over the drawer.
     z-index: $side-drawer-zindex;
 
+    // The tray holds ONLY the icon column, so the icons stay centered on its
+    // axis with equal gutters either side. The toggle is not in here — it
+    // hangs off the right edge (see .side-drawer-toggle), which is what keeps
+    // the stack from being pushed off-center.
     .nitro-side-drawer {
+        position: relative;
         background: var(--prp-chrome-plate);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         border-top-right-radius: $border-radius;
         border-bottom-right-radius: $border-radius;
         transition: all .2s ease;
-        // Collapsed default: a slim pull-tab. Padding widens when expanded.
-        padding: 7px 3px;
+        // Collapsed: no tray at all — the notch alone is the pull-tab.
+        padding: 0;
     }
 
-    // Collapsed, the buttons must not contribute WIDTH (or the tab is as wide as
-    // a button) — width and height both collapse to zero; overflow clips them.
+    // Collapsed, the buttons must not contribute WIDTH (or the tray is as wide
+    // as a button) — width and height both collapse to zero; overflow clips
+    // them.
     .side-drawer-items {
         display: flex;
         flex-direction: column;
@@ -31,7 +37,7 @@
         width: 0;
         max-height: 0;
         opacity: 0;
-        transition: max-height .2s ease, opacity .15s ease, margin-right .2s ease;
+        transition: max-height .2s ease, opacity .15s ease;
     }
 
     &.is-expanded {
@@ -41,9 +47,6 @@
             width: auto;
             max-height: 300px;
             opacity: 1;
-            // Gap between the icon stack and the collapse caret, which now
-            // sits to its right (vertically centered), not below it.
-            margin-right: 6px;
         }
     }
 
@@ -95,12 +98,34 @@
         &.settings { background-image: url('@/assets/images/drawer/settings.png'); &::after { mask-image: url('@/assets/images/drawer/settings.png'); -webkit-mask-image: url('@/assets/images/drawer/settings.png'); } }
     }
 
+    // Collapse/expand notch: a half-pill tab budding off the tray's OUTER
+    // edge, vertically centered. Absolute (anchored to the tray, at left:100%)
+    // so it never takes part in the icon column's layout — and so it rides
+    // outward as the tray widens, reading as the tray sliding out from under
+    // it. Deliberately shorter than one 45px icon row so it reads as a tab,
+    // not a seventh button. Painted with the CHIP bevel (3px bands) rather
+    // than the plate's (5px/4px): same surface, bands in proportion to a
+    // small tab. Collapsed, the tray has zero width, so the notch sits flush
+    // against the screen edge and becomes the pull-tab.
     .side-drawer-toggle {
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 34px;
+        background: var(--prp-chrome-chip);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border-radius: 0 6px 6px 0;
         color: rgba($white, .55);
         font-family: sans-serif;
         font-style: normal;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 13px;
         line-height: 1;
         text-align: center;
         user-select: none;
