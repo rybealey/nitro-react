@@ -7,7 +7,7 @@ import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageCo
 import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
-// PixelRP RP inventory ("Backpack"), opened from the side drawer's Inventory
+// PixelRP RP inventory ("Backpack"), opened from the side drawer's Backpack
 // button (CreateLinkEvent('rp-inventory/toggle')). Two gear slots (Weapon /
 // Armor) up top, twelve carry slots below — the last two locked (future
 // unlocks). Carry contents are LIVE: RpInventoryEvent fills them (login +

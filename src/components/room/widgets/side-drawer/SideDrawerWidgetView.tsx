@@ -14,7 +14,9 @@ import { useLocalStorage } from '../../../../hooks';
 // in the icon column's flex flow, or it pushes the icons off the tray's
 // center axis.
 const DRAWER_BUTTONS: { key: string; title: string; onClick?: () => void }[] = [
-    { key: 'inventory', title: 'Inventory', onClick: () => CreateLinkEvent('rp-inventory/toggle') },
+    // key stays 'inventory' - it names the icon file and the CSS class; only
+    // the tooltip is player-facing, and the panel itself is called Backpack.
+    { key: 'inventory', title: 'Backpack', onClick: () => CreateLinkEvent('rp-inventory/toggle') },
     { key: 'corporations', title: 'Corporations', onClick: () => CreateLinkEvent('rp-corporations/toggle') },
     { key: 'gangs', title: 'Gangs' },
     { key: 'wanted', title: 'Wanted List', onClick: () => CreateLinkEvent('rp-wanted/toggle') },
