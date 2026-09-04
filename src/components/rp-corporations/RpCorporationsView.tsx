@@ -159,8 +159,6 @@ export const RpCorporationsView: FC<{}> = props =>
     const visibleRanks = (!query ? ranks : ranks
         .map(rank => ({ ...rank, employees: rank.employees.filter(employee => employee.username.toLowerCase().includes(query)) }))
         .filter(rank => (rank.employees.length > 0)));
-    const rosterCount = ranks.reduce((total, rank) => (total + rank.employees.length), 0);
-    const matchCount = visibleRanks.reduce((total, rank) => (total + rank.employees.length), 0);
 
     return (
         <NitroCardView resizable uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
@@ -233,8 +231,6 @@ export const RpCorporationsView: FC<{}> = props =>
                                             { !!search &&
                                                 <span className="rp-corps-search-clear" title="Clear" onClick={ () => setSearch('') }>&times;</span> }
                                         </div>
-                                        { !!query &&
-                                            <div className="rp-corps-search-count">{ matchCount } of { rosterCount }</div> }
                                         <div className="rp-corps-panel-title is-spaced">Show on cards</div>
                                         <label className="rp-corps-check">
                                             <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />

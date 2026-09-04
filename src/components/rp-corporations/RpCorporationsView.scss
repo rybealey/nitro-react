@@ -3,6 +3,11 @@
 // scrolling rank ladder. Fixed 640x480; the ladder is the ONE scroller
 // (content-area overflow is hidden so it can't double-scroll).
 
+// Type scale: every size here was stepped up 1px together (2026-09-05) after
+// the window read too small. A uniform step keeps the hierarchy exactly as it
+// was while helping the smallest labels proportionally most - the 8px chip
+// label gained 12%, the 16px title only 6%. Keep it uniform if it moves again.
+
 // Presence palette - shared by the portrait tints, the card status dots and
 // the legend so the three signals can never drift apart.
 $corps-presence-offline: #b0b0b0;
@@ -178,7 +183,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-title {
-        font-size: 16px;
+        font-size: 17px;
         font-weight: 700;
         line-height: 1.2;
         overflow: hidden;
@@ -187,7 +192,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-sub {
-        font-size: 11px;
+        font-size: 12px;
         color: rgba(0, 0, 0, 0.55);
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -215,13 +220,13 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-chip-value {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
         line-height: 1;
     }
 
     .rp-corps-chip-label {
-        font-size: 8px;
+        font-size: 9px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.4px;
@@ -234,7 +239,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-        font-size: 9px;
+        font-size: 10px;
         color: rgba(0, 0, 0, 0.45);
     }
 
@@ -300,7 +305,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-rank-name {
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.5px;
         text-transform: uppercase;
@@ -316,7 +321,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-rank-pay {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         padding: 1px 7px;
         border-radius: 8px;
@@ -326,7 +331,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-rank-none {
-        font-size: 10px;
+        font-size: 11px;
         color: rgba(0, 0, 0, 0.35);
         padding: 4px 2px 0;
     }
@@ -426,7 +431,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-employee-name {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -435,7 +440,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
 
     .rp-corps-employee-tier {
         flex-shrink: 0;
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 700;
         padding: 1px 4px;
         border-radius: 6px;
@@ -444,16 +449,18 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-employee-shifts {
-        font-size: 10px;
+        font-size: 11px;
         color: rgba(0, 0, 0, 0.45);
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     // Its own line under the shift counts, not appended to them: the two
     // toggle independently, so joining them would leave a dangling
     // separator whenever only one is on.
     .rp-corps-employee-seen {
-        font-size: 10px;
+        font-size: 11px;
         color: rgba(0, 0, 0, 0.45);
         white-space: nowrap;
         overflow: hidden;
@@ -502,7 +509,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-panel-title {
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.4px;
         text-transform: uppercase;
@@ -524,7 +531,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         input {
             width: 100%;
             padding: 3px 18px 3px 6px;
-            font-size: 11px;
+            font-size: 12px;
             color: rgba(0, 0, 0, 0.75);
             background: #fff;
             border: 1px solid rgba(0, 0, 0, 0.15);
@@ -547,7 +554,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         top: 50%;
         right: 5px;
         transform: translateY(-50%);
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1;
         cursor: pointer;
         color: rgba(0, 0, 0, 0.35);
@@ -557,15 +564,8 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         }
     }
 
-    // Confirms the filter is live and how much it is hiding - without it a
-    // narrowed ladder is indistinguishable from a small corporation.
-    .rp-corps-search-count {
-        font-size: 9px;
-        color: rgba(0, 0, 0, 0.4);
-    }
-
     .rp-corps-no-matches {
-        font-size: 11px;
+        font-size: 12px;
         color: rgba(0, 0, 0, 0.4);
         padding: 2px;
     }
@@ -574,7 +574,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 11px;
+        font-size: 12px;
         cursor: pointer;
         user-select: none;
 
@@ -631,7 +631,7 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     }
 
     .rp-corps-none-text {
-        font-size: 11px;
+        font-size: 12px;
         color: rgba(0, 0, 0, 0.45);
     }
 }
