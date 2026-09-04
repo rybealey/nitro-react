@@ -2,6 +2,7 @@ import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInter
 import { FC, useCallback, useEffect, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
+import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
@@ -103,6 +104,7 @@ export const App: FC<{}> = props =>
                 // configuration stays intact.
                 RegisterRpGangMessages();
                 RegisterRpCorpMessages();
+                RegisterRpChatMessages();
 
                 GetNitroInstance().init();
 

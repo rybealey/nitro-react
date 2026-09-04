@@ -1,9 +1,10 @@
 import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer';
+import { RpRetainChatPrefixEvent } from '../../../../api/rp-chat/RpChatMessages';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
-import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent } from '../../../../hooks';
+import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent, useMessageEvent } from '../../../../hooks';
 import { IsModifierOnlyBinding, IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
 import { TargetState } from '../../../../hooks/rooms/targetState';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
@@ -57,6 +58,19 @@ export const ChatInputView: FC<{}> = props =>
             return (`${ prevValue } ${ selectedUsername }`);
         });
     }, [ selectedUsername, chatModeIdWhisper ]);
+
+    // Gang / corporation alerts (:ga, :ca) keep their prefix in the box for
+    // the next message, like a whisper keeps its recipient - but only when
+    // the server says the alert went out (an off-duty :ca is refused and
+    // leaves the box clear). Never overwrites something already being typed.
+    useMessageEvent<RpRetainChatPrefixEvent>(RpRetainChatPrefixEvent, event =>
+    {
+        const prefix = event.getParser().prefix;
+
+        if(!prefix) return;
+
+        setChatValue(prevValue => (prevValue.trim().length ? prevValue : `${ prefix } `));
+    });
 
     const sendChatValue = useCallback((value: string, shiftKey: boolean = false) =>
     {
@@ -117,13 +131,6 @@ export const ChatInputView: FC<{}> = props =>
                 text = [ commandKey, ...args.map(arg => ((arg.toLowerCase() === 'x') ? TargetState.name : arg)) ].join(' ');
             }
         }
-
-        // Gang / corporation alerts (:ga, :ca) keep their prefix in the box
-        // for the next message, like a whisper keeps its recipient, until the
-        // player clears it themselves.
-        const alertMatch = text.match(/^(:ga|:ca)\s+\S/i);
-
-        if(alertMatch) append = `${ alertMatch[1].toLowerCase() } `;
 
         setIsTyping(false);
         setIsIdle(false);
