@@ -93,7 +93,19 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
                             </svg>
                         </span>
                         <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"
-                            value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event => (event.key === 'Enter') && submit() } />
+                            value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event =>
+                            {
+                                if(event.key !== 'Enter') return;
+
+                                // The chat input listens for keydown on document.body and
+                                // only stands down while another input HAS focus. Submitting
+                                // unmounts this input, and React flushes that before the
+                                // event reaches body - so without stopping propagation the
+                                // chat guard passes and the URL goes out as a chat bubble.
+                                event.preventDefault();
+                                event.stopPropagation();
+                                submit();
+                            } } />
                         <button className="siri-add" type="button" onClick={ submit }>Add</button>
                     </div> }
                 { (phase === 'done') &&
