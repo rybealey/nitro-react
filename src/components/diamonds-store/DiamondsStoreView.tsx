@@ -23,6 +23,11 @@ const MIN_DIAMONDS = 500;
 const MAX_DIAMONDS = 100000;
 const DEFAULT_DIAMONDS = 500;
 const DIAMONDS_STEP = 100;
+// Preset pack tiles (1 diamond = 1 cent, so the tile price is n/100 dollars);
+// a fifth "Custom amount" tile reveals the stepper input for anything else.
+const DIAMOND_PACKS = [ 500, 1000, 2500, 5000 ];
+// selectedPack value meaning "the custom input drives the amount"
+const CUSTOM_PACK = -1;
 
 export const DiamondsStoreView: FC<{}> = props =>
 {
@@ -33,6 +38,7 @@ export const DiamondsStoreView: FC<{}> = props =>
     // back to a placeholder value on every keystroke. Only clamped into a
     // real number on blur.
     const [ diamondsInput, setDiamondsInput ] = useState<string>(String(DEFAULT_DIAMONDS));
+    const [ selectedPack, setSelectedPack ] = useState<number>(0);
     const [ acceptedTerms, setAcceptedTerms ] = useState(false);
     const [ buyState, setBuyState ] = useState<BuyViewState>('form');
     const [ checkoutDiamonds, setCheckoutDiamonds ] = useState(0);
@@ -97,8 +103,12 @@ export const DiamondsStoreView: FC<{}> = props =>
     // While the field is empty or holds something unparseable, there's no
     // valid amount yet - treat it as invalid rather than guessing a number.
     const parsedDiamonds = parseInt(diamondsInput, 10);
-    const diamondsValid = (diamondsInput.trim() !== '') && !isNaN(parsedDiamonds);
-    const diamonds = (diamondsValid ? parsedDiamonds : 0);
+    const customValid = (diamondsInput.trim() !== '') && !isNaN(parsedDiamonds);
+    // A selected pack IS the amount; the custom input only drives it while
+    // the Custom tile is active.
+    const isCustomPack = (selectedPack === CUSTOM_PACK);
+    const diamondsValid = (isCustomPack ? customValid : true);
+    const diamonds = (isCustomPack ? (customValid ? parsedDiamonds : 0) : DIAMOND_PACKS[selectedPack]);
 
     // 1 diamond = 1 cent.
     const totalCents = diamonds;
@@ -289,12 +299,13 @@ export const DiamondsStoreView: FC<{}> = props =>
                                         <div className="diamonds-store-listing-desc">{ listing.description }</div>
                                     </div>
                                     <div className="diamonds-store-listing-side">
-                                        <div className="diamonds-store-listing-price">
-                                            <LayoutCurrencyIcon type={ 5 } />
-                                            { onSale && <span className="diamonds-store-price-was">{ listing.price }</span> }
-                                            <span className="diamonds-store-price-now">{ onSale ? listing.specialPrice : listing.price }</span>
-                                            { onSale && <span className="diamonds-store-sale-tag">SALE</span> }
-                                        </div>
+                                        { /* the current price lives INSIDE the Buy pill; a sale
+                                             keeps its was-price + tag as a row above it */ }
+                                        { onSale &&
+                                            <div className="diamonds-store-listing-price">
+                                                <span className="diamonds-store-price-was">{ listing.price }</span>
+                                                <span className="diamonds-store-sale-tag">SALE</span>
+                                            </div> }
                                         { /* two-step: Buy arms, Confirm purchases - only this
                                              container is clickable, never the row */ }
                                         <div className={ `diamonds-store-buy-btn${ confirming ? ' is-confirming' : '' }${ purchasePending ? ' is-pending' : '' }` } onClick={ () =>
@@ -311,7 +322,7 @@ export const DiamondsStoreView: FC<{}> = props =>
                                             setPurchasePending(true);
                                             SendMessageComposer(new PurchaseDiamondsStoreItemComposer(listing.itemKey));
                                         } }>
-                                            { confirming ? 'Confirm' : 'Buy' }
+                                            <LayoutCurrencyIcon type={ 5 } /> { onSale ? listing.specialPrice : listing.price } · { confirming ? 'Confirm' : 'Buy' }
                                         </div>
                                     </div>
                                 </div>);
@@ -329,22 +340,32 @@ export const DiamondsStoreView: FC<{}> = props =>
                     </div> }
                 { (currentTab === 'buy') && (buyState === 'form') &&
                     <div className="diamonds-store-buy">
-                        <div className="diamonds-store-section-title">Buy Diamonds</div>
-                        <div className="diamonds-store-field">
-                            <label className="diamonds-store-field-label" htmlFor="diamonds-store-amount">Diamonds</label>
-                            <input id="diamonds-store-amount" className="form-control diamonds-store-input" type="number"
-                                step={ DIAMONDS_STEP } min={ MIN_DIAMONDS } max={ MAX_DIAMONDS }
-                                value={ diamondsInput } onChange={ onDiamondsChange } onBlur={ onDiamondsBlur } />
+                        { /* buying is picking: preset pack tiles with the price on
+                             the tile, plus a Custom tile revealing the stepper */ }
+                        <div className="diamonds-store-packs">
+                            { DIAMOND_PACKS.map((packAmount, index) => (
+                                <div key={ packAmount } className={ `diamonds-store-pack${ (!isCustomPack && (selectedPack === index)) ? ' is-selected' : '' }` } onClick={ () => setSelectedPack(index) }>
+                                    <LayoutCurrencyIcon type={ 5 } />
+                                    <span className="diamonds-store-pack-amount">{ packAmount.toLocaleString('en-US') }</span>
+                                    <span className="diamonds-store-pack-price">{ `$${ (packAmount / 100).toFixed(0) }` }</span>
+                                </div>
+                            )) }
+                            <div className={ `diamonds-store-pack diamonds-store-pack-custom${ isCustomPack ? ' is-selected' : '' }` } onClick={ () => setSelectedPack(CUSTOM_PACK) }>
+                                <span className="diamonds-store-pack-amount">Custom amount…</span>
+                            </div>
                         </div>
-                        <div className="diamonds-store-summary">
-                            <div className="diamonds-store-summary-row">
-                                <span>Diamonds</span>
-                                <span>{ diamonds }</span>
-                            </div>
-                            <div className="diamonds-store-summary-row diamonds-store-summary-total">
-                                <span>Total</span>
-                                <span>{ totalDisplay }</span>
-                            </div>
+                        { isCustomPack &&
+                            <div className="diamonds-store-custom-row">
+                                <input className="form-control diamonds-store-input" type="number" aria-label="Diamonds"
+                                    step={ DIAMONDS_STEP } min={ MIN_DIAMONDS } max={ MAX_DIAMONDS }
+                                    value={ diamondsInput } onChange={ onDiamondsChange } onBlur={ onDiamondsBlur } />
+                                <span className="diamonds-store-custom-hint">{ `min ${ MIN_DIAMONDS }, steps of ${ DIAMONDS_STEP }` }</span>
+                            </div> }
+                        <div className="diamonds-store-total-strip">
+                            <span className="diamonds-store-total-amount">
+                                <LayoutCurrencyIcon type={ 5 } /> { diamonds.toLocaleString('en-US') } Diamonds
+                            </span>
+                            <span className="diamonds-store-total-usd">{ totalDisplay }</span>
                         </div>
                         <div className="diamonds-store-accept-row">
                             <span>I accept that all donations are final, and are non-refundable.</span>

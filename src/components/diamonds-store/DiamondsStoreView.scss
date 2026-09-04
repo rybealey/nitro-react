@@ -2,8 +2,9 @@
     width: 420px;
     // Compact by default - only the Stripe embedded form needs the tall
     // window, so the card animates up to checkout height while it's on
-    // screen (.diamonds-store-tall) and back down after.
-    height: 340px;
+    // screen (.diamonds-store-tall) and back down after. 360 fits the pack
+    // grid with the custom stepper open without scrolling.
+    height: 360px;
     transition: height 0.25s ease;
 
     &.diamonds-store-tall {
@@ -42,53 +43,100 @@
         color: rgba(0, 0, 0, 0.55);
     }
 
-    .diamonds-store-section-title {
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        color: $black;
+    // Preset pack tiles: white raised stickers (the listing-card language),
+    // the selected one ringed in the player's chrome color. The Custom tile
+    // spans the row and reveals the stepper input below it.
+    .diamonds-store-packs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
     }
 
-    .diamonds-store-field {
+    .diamonds-store-pack {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        align-items: center;
+        gap: 3px;
+        padding: 10px 4px 8px;
+        border-radius: 8px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
+
+        &:hover { transform: translateY(-1px); }
+
+        &.is-selected {
+            border-color: var(--prp-chrome-solid);
+            box-shadow: 0 0 0 1.5px var(--prp-chrome-solid), 0 1px 2px rgba(0, 0, 0, 0.08);
+        }
     }
 
-    .diamonds-store-field-label {
-        font-size: 11px;
+    .diamonds-store-pack-amount {
+        font-size: 14px;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
+        color: #1c1c22;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .diamonds-store-pack-price {
+        font-size: 11px;
+        color: rgba(28, 28, 34, 0.55);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .diamonds-store-pack-custom {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        padding: 8px;
+
+        .diamonds-store-pack-amount { font-size: 12px; }
+    }
+
+    .diamonds-store-custom-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .diamonds-store-custom-hint {
+        flex-shrink: 0;
+        font-size: 11px;
         color: rgba(0, 0, 0, 0.5);
-        margin-bottom: 0;
+        white-space: nowrap;
     }
 
     .diamonds-store-input {
         width: 100%;
     }
 
-    .diamonds-store-summary {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 10px 12px;
-        background: rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: $border-radius;
-    }
-
-    .diamonds-store-summary-row {
+    .diamonds-store-total-strip {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        font-size: 13px;
-        color: $black;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+    }
 
-        &.diamonds-store-summary-total {
-            font-weight: 700;
-        }
+    .diamonds-store-total-amount {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #1c1c22;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .diamonds-store-total-usd {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1c1c22;
+        font-variant-numeric: tabular-nums;
     }
 
     .diamonds-store-accept-row {
@@ -203,8 +251,12 @@
     // Confirm goes solid for emphasis.
     .diamonds-store-buy-btn {
         min-width: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
         text-align: center;
-        padding: 2px 10px;
+        padding: 3px 10px;
         border-radius: 11px;
         font-size: 11px;
         font-weight: 700;
