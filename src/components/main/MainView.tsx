@@ -25,6 +25,7 @@ import { RightSideView } from '../right-side/RightSideView';
 import { RoomView } from '../room/RoomView';
 import { ToolbarView } from '../toolbar/ToolbarView';
 import { RpCorporationsView } from '../rp-corporations/RpCorporationsView';
+import { RpGangsView } from '../rp-gangs/RpGangsView';
 import { RpInventoryView } from '../rp-inventory/RpInventoryView';
 import { RpWantedView } from '../rp-wanted/RpWantedView';
 import { RpProfileView } from '../rp-profile/RpProfileView';
@@ -104,6 +105,7 @@ export const MainView: FC<{}> = props =>
             <RpSettingsView />
             <RpInventoryView />
             <RpCorporationsView />
+            <RpGangsView />
             <RpProfileView />
             <RpWantedView />
             <GroupsView />
