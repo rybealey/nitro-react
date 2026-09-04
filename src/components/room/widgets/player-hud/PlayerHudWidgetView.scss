@@ -134,6 +134,14 @@
         font-size: 12px;
         line-height: 1;
         flex-shrink: 0;
+        // the row's 6px gap is for the state chip; the tick hugs the name at
+        // the infostand's 4px
+        margin-left: -2px;
+    }
+
+    .hud-info.mirrored .hud-verified {
+        margin-left: 0;
+        margin-right: -2px;
     }
 
     .hud-state {
