@@ -94,7 +94,6 @@
         &.gangs { background-image: url('@/assets/images/drawer/gangs.png'); &::after { mask-image: url('@/assets/images/drawer/gangs.png'); -webkit-mask-image: url('@/assets/images/drawer/gangs.png'); } }
         &.corporations { background-image: url('@/assets/images/drawer/corporations.png'); &::after { mask-image: url('@/assets/images/drawer/corporations.png'); -webkit-mask-image: url('@/assets/images/drawer/corporations.png'); } }
         &.wanted { background-image: url('@/assets/images/drawer/wanted.png'); &::after { mask-image: url('@/assets/images/drawer/wanted.png'); -webkit-mask-image: url('@/assets/images/drawer/wanted.png'); } }
-        &.support { background-image: url('@/assets/images/drawer/support.png'); &::after { mask-image: url('@/assets/images/drawer/support.png'); -webkit-mask-image: url('@/assets/images/drawer/support.png'); } }
         &.settings { background-image: url('@/assets/images/drawer/settings.png'); &::after { mask-image: url('@/assets/images/drawer/settings.png'); -webkit-mask-image: url('@/assets/images/drawer/settings.png'); } }
     }
 
