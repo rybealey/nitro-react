@@ -296,7 +296,7 @@ export const PhonePhotosCollectionsView: FC<PhonePhotosCollectionsViewProps> = p
                                 <PhoneIcon icon="user" size={ 15 } />
                                 <span>People</span>
                             </div>
-                            <div className="phone-collections-row is-people">
+                            <div className={ `phone-collections-row is-people${ (people.length > 4) ? ' is-scrollable' : '' }` }>
                                 { people.map(([ name, personPhotos ]) =>
                                 {
                                     const friend = friendByName(name);
