@@ -1,7 +1,7 @@
 import { DiamondsStoreEvent, DiamondsStoreListing, DiamondsStorePurchaseResultEvent, GetDiamondsStoreComposer, ILinkEventTracker, PurchaseDiamondsStoreItemComposer } from '@nitrots/nitro-renderer';
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { Button, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
+import { Button, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { useCryptoCheckout } from './useCryptoCheckout';
 import { useStripeCheckout } from './useStripeCheckout';
@@ -346,19 +346,20 @@ export const DiamondsStoreView: FC<{}> = props =>
                             </div>
                         </div>
                         <div className="diamonds-store-accept-row">
-                            <span>I accept that all purchases are final, and are non-refundable.</span>
+                            <span>I accept that all donations are final, and are non-refundable.</span>
                             <div className={ `diamonds-store-switch${ acceptedTerms ? ' is-on' : '' }` } onClick={ () => setAcceptedTerms(prevValue => !prevValue) }>
                                 <div className="diamonds-store-switch-knob" />
                             </div>
                         </div>
-                        <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ onPurchase }>
-                            { `Purchase ${ totalDisplay }` }
-                        </Button>
-                        <div className="diamonds-store-crypto-divider">or</div>
-                        <div className="diamonds-store-crypto-hint">Prefer crypto? Pay with USDC stablecoin - opens in a new tab.</div>
-                        <Button fullWidth variant="secondary" disabled={ !acceptedTerms || !diamondsValid || cryptoLaunching } onClick={ onPayWithCrypto }>
-                            { cryptoLaunching ? 'Opening...' : 'Pay with crypto' }
-                        </Button>
+                        <Flex gap={ 2 }>
+                            <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ onPurchase }>
+                                Pay with Debit or Credit Card
+                            </Button>
+                            <Button fullWidth variant="secondary" disabled={ !acceptedTerms || !diamondsValid || cryptoLaunching } onClick={ onPayWithCrypto }>
+                                { cryptoLaunching ? 'Opening...' : 'Pay with Crypto' }
+                            </Button>
+                        </Flex>
+                        <div className="diamonds-store-crypto-hint">Prefer crypto? USDC stablecoin checkout opens in a new tab.</div>
                     </div> }
                 { (currentTab === 'buy') && (buyState === 'checkout') &&
                     <div className="diamonds-store-checkout">
