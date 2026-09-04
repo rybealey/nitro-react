@@ -63,9 +63,11 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
         }
 
         // popover semantics: clicking anything that isn't Siri dismisses it
-        // (no backdrop — the room stays clickable, and that click closes us)
+        // (no backdrop — the room stays clickable, and that click closes us).
+        // Right-clicks never dismiss: they're for the copy/paste context menu.
         const onMouseDown = (event: MouseEvent) =>
         {
+            if(event.button === 2) return;
             if(wrapRef.current && !wrapRef.current.contains(event.target as Node)) sink();
         }
 

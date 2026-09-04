@@ -324,6 +324,11 @@
         font-family: 'Ubuntu', sans-serif;
         font-size: 13px;
         outline: none;
+        // the game body is user-select: none, which inherits into inputs and
+        // kills mouse selection (so copy, and context-menu paste flows, feel
+        // dead) - opt this field back in
+        user-select: text;
+        -webkit-user-select: text;
 
         &::placeholder { color: #9aa3ab; }
     }
