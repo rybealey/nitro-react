@@ -50,4 +50,11 @@
         font-size: 18px;
         line-height: 1;
     }
+
+    // Zoom / chat-history quick tools: react-icons FA glyphs (svg sizes off
+    // its own font-size, fill follows color), matched to the Discord glyph.
+    .quick-tool-glyph {
+        color: #ffffff;
+        font-size: 18px;
+    }
 }
