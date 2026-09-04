@@ -1,5 +1,6 @@
 import { DiamondsStoreEvent, DiamondsStoreListing, DiamondsStorePurchaseResultEvent, GetDiamondsStoreComposer, ILinkEventTracker, PurchaseDiamondsStoreItemComposer } from '@nitrots/nitro-renderer';
 import { ChangeEvent, FC, useEffect, useState } from 'react';
+import { FaCoins, FaCreditCard } from 'react-icons/fa';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Button, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
@@ -352,11 +353,13 @@ export const DiamondsStoreView: FC<{}> = props =>
                             </div>
                         </div>
                         <Flex gap={ 2 }>
+                            { /* icons are decorative (the labels carry the meaning), so
+                                 they're hidden from assistive tech */ }
                             <Button fullWidth variant="success" disabled={ !acceptedTerms || !diamondsValid } onClick={ onPurchase }>
-                                Pay with Debit or Credit Card
+                                <FaCreditCard aria-hidden="true" className="me-1" /> Debit / Credit Card
                             </Button>
                             <Button fullWidth variant="secondary" disabled={ !acceptedTerms || !diamondsValid || cryptoLaunching } onClick={ onPayWithCrypto }>
-                                { cryptoLaunching ? 'Opening...' : 'Pay with Crypto' }
+                                <FaCoins aria-hidden="true" className="me-1" /> { cryptoLaunching ? 'Opening...' : 'Crypto' }
                             </Button>
                         </Flex>
                         <div className="diamonds-store-crypto-hint">Prefer crypto? USDC stablecoin checkout opens in a new tab.</div>
