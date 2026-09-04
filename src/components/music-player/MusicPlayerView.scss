@@ -194,8 +194,9 @@
     left: 50%;
     bottom: 6px;
     z-index: calc(#{$chatinput-zindex} + 5);
-    width: 420px;
-    max-width: 86vw;
+    // same footprint as the chat bar it replaces (564px fixed)
+    width: 564px;
+    max-width: 92vw;
     transform: translateX(-50%) translateY(14px) scale(0.96);
     opacity: 0;
     // Mounted inside .nitro-music-player-slide, which is pointer-events: none

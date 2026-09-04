@@ -1,8 +1,11 @@
 import { ILinkEventTracker, RpGetUserCorpComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
-import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
+import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
+import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
+import { GangCrest } from '../rp-gangs/RpGangsView';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
@@ -68,6 +71,13 @@ export const RpProfileView: FC<{}> = props =>
                         {
                             SendMessageComposer(new RpGetUserCorpComposer(RpProfileState.userId));
                         }
+
+                        // Gang membership always comes fresh from the server
+                        // (nothing seeds it on room entry yet).
+                        if(RpProfileState.userId)
+                        {
+                            SendMessageComposer(new RpGetUserGangComposer(RpProfileState.userId));
+                        }
                         return;
                     case 'hide':
                         setIsVisible(false);
@@ -95,10 +105,22 @@ export const RpProfileView: FC<{}> = props =>
         setVersion(value => (value + 1));
     });
 
+    // Gang membership: request replies AND the hotel-wide broadcast every
+    // gang mutation sends, so an open profile's gang card updates the moment
+    // any player founds (or later joins/leaves) a gang.
+    useMessageEvent<RpUserGangEvent>(RpUserGangEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpGang(parser.userId, { gangId: parser.gangId, name: parser.name, colourA: parser.colourA, colourB: parser.colourB, isOwner: parser.isOwner });
+        setVersion(value => (value + 1));
+    });
+
     if(!isVisible) return null;
 
     // The opener's own data wins; otherwise look the viewed player up.
     const employment = (RpProfileState.employment ?? GetRpEmployment(RpProfileState.userId));
+    const gang = GetRpGang(RpProfileState.userId);
     // seconds accrued on the current shift since the employment packet
     // arrived - 0 unless this player is on duty right now
     const profileLiveExtra = (employment?.onDuty ? Math.max(0, Math.floor((tickNow - employment.receivedAt) / 1000)) : 0);
@@ -162,13 +184,15 @@ export const RpProfileView: FC<{}> = props =>
                             <div className="rp-profile-org-row">
                                 { /* same slot as the corporation card so both icons line up */ }
                                 <div className="rp-profile-org-icon-slot">
-                                    <LuUsers className="rp-profile-org-icon" />
+                                    { gang
+                                        ? <GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 34 } />
+                                        : <LuUsers className="rp-profile-org-icon" /> }
                                 </div>
                                 <div className="rp-profile-org-info">
-                                    <div className="rp-profile-org-name">No gang</div>
-                                    <div className="rp-profile-org-role">&nbsp;</div>
+                                    <div className="rp-profile-org-name">{ gang ? gang.name : 'No gang' }</div>
+                                    <div className="rp-profile-org-role">{ gang ? (gang.isOwner ? 'Leader' : 'Member') : ' ' }</div>
                                 </div>
-                                <div className="rp-profile-view-gang">View</div>
+                                <div className="rp-profile-view-gang" onClick={ () => CreateLinkEvent('rp-gangs/show') }>View</div>
                             </div>
                         </div>
                     </div>

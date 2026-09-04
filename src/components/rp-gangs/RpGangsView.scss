@@ -6,6 +6,34 @@
         filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
     }
 
+    // Member view: the window's state once the player has a gang (rosters
+    // and management are later slices).
+    .gang-member-view {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 26px 8px;
+        text-align: center;
+    }
+
+    .gang-member-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1c1c22;
+    }
+
+    .gang-member-role {
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.65);
+    }
+
+    .gang-member-hint {
+        margin-top: 8px;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
     // The color pickers are tabs ATTACHED to the palette: the open tab is the
     // color being edited, so no separate EDITING label is needed.
     .gang-palette-tabs {
