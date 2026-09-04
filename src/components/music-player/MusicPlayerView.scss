@@ -182,16 +182,17 @@
 
 }
 
-// Siri — the jukebox prompt as a chat-bar popover (SiriView). Styled as the
-// chat bar's SIBLING (same #EDEDED plate, white gloss stripe, 2px black
-// border, 8px radius as .nitro-chat-input-container), springing up from
-// behind it inside a slow-turning plum/teal halo. The chat bar is 44px tall,
-// vertically centered in the 55px toolbar, so its top sits ~49px off the
-// viewport bottom: the popover floats at 62px with its tail bridging down.
+// Siri — the jukebox prompt that REPLACES the chat bar while active
+// (SiriView). Styled as the chat bar's twin (same #EDEDED plate, white gloss
+// stripe, 2px black border, 8px radius as .nitro-chat-input-container) and
+// positioned in its slot: the bar is 44px tall centered in the 55px toolbar,
+// so its footprint starts ~6px off the viewport bottom. While Siri is
+// mounted, body.siri-active fades the chat bar out (see ChatInputView.scss);
+// unmounting restores it, whatever closed Siri.
 .nitro-siri {
     position: fixed;
     left: 50%;
-    bottom: 62px;
+    bottom: 6px;
     z-index: calc(#{$chatinput-zindex} + 5);
     width: 420px;
     max-width: 86vw;

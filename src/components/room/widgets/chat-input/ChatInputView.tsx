@@ -187,7 +187,9 @@ export const ChatInputView: FC<{}> = props =>
 
     const onKeyDownEvent = useCallback((event: KeyboardEvent) =>
     {
-        if(floodBlocked || !inputRef.current || anotherInputHasFocus()) return;
+        // While Siri replaces the bar (body.siri-active), don't capture keys
+        // into the invisible input - typing would send unseen chat.
+        if(floodBlocked || !inputRef.current || anotherInputHasFocus() || document.body.classList.contains('siri-active')) return;
 
         // Macros are checked first, and before setInputFocus(): this handler
         // pulls focus into the chat box on ANY key, so a bound key that was not

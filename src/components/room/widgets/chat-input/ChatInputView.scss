@@ -26,6 +26,26 @@
         width: 200px;
     }
 
+    // While Siri (the jukebox link popover) is active it REPLACES this bar:
+    // body.siri-active is stamped by SiriView for exactly its lifetime, so
+    // the bar sinks/fades as Siri springs in and returns as it sinks away -
+    // whatever closed Siri. Transform keeps the centering translate.
+    transition: opacity 0.25s ease, transform 0.25s ease;
+
+    body.siri-active & {
+        opacity: 0;
+        transform: translate(-50%, -50%) translateY(10px);
+        pointer-events: none;
+
+        @include media-breakpoint-down(sm) {
+            transform: translateY(10px);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+
     &:before {
         content: '';
         position: absolute;

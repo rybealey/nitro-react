@@ -49,6 +49,12 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
 
     useEffect(() =>
     {
+        // Siri REPLACES the chat bar while active: the body class drives the
+        // chat bar's fade-out (ChatInputView.scss) with no coupling, and the
+        // cleanup restores it on every close path - submit, Escape, outside
+        // click, room change, unmount.
+        document.body.classList.add('siri-active');
+
         const focusTimeout = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY_MS);
 
         const onKeyDown = (event: KeyboardEvent) =>
@@ -68,6 +74,7 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
 
         return () =>
         {
+            document.body.classList.remove('siri-active');
             clearTimeout(focusTimeout);
             document.removeEventListener('keydown', onKeyDown);
             document.removeEventListener('mousedown', onMouseDown);
