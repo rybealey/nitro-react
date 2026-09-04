@@ -586,29 +586,110 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
 
     // ---- loading + empty states -----------------------------------------
 
+    // Loading ghost: the detail's own containers (.rp-corps-head, -legend,
+    // -body, -panel, -ranks) with shimmer blocks sized to the elements they
+    // stand in for, so nothing jumps when the data lands.
     .rp-corps-skeleton {
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         gap: 8px;
         animation: rp-corps-fade 0.12s ease;
+
+        // the panel column keeps its real width/divider but not the open
+        // transition (nothing to animate from while loading)
+        .rp-corps-panel { transition: none; }
+
+        .rp-corps-rank-row { border-bottom-color: rgba(0, 0, 0, 0.06); }
+
+        .rp-corps-rank:first-child .rp-corps-ghost-rank-name {
+            border-left: 3px solid rgba(0, 0, 0, 0.12);
+            border-radius: 0 6px 6px 0;
+        }
     }
 
-    .rp-corps-skeleton-bar {
+    .rp-corps-ghost {
         @extend %rp-corps-shimmer;
-        height: 18px;
-        width: 45%;
+        display: block;
+        flex-shrink: 0;
     }
 
-    .rp-corps-skeleton-cards {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
+    // 52px badge plate
+    .rp-corps-ghost-plate {
+        width: 52px;
+        height: 52px;
     }
 
-    .rp-corps-skeleton-card {
-        @extend %rp-corps-shimmer;
+    // 16px/1.2 title line
+    .rp-corps-ghost-title {
+        width: 42%;
+        height: 15px;
+        margin: 2px 0 4px;
+    }
+
+    // 11px description, two lines (the real one clamps at two)
+    .rp-corps-ghost-sub {
+        width: 88%;
+        height: 9px;
+        margin-bottom: 4px;
+
+        &.is-short { width: 60%; }
+    }
+
+    // stat chip: 56 wide, value + label tall
+    .rp-corps-ghost-chip {
+        min-width: 56px;
+        width: 62px;
+        height: 36px;
+    }
+
+    // "· Offline" legend words, right-aligned like the real row
+    .rp-corps-ghost-legend {
+        width: 40px;
+        height: 8px;
+        margin-left: 10px;
+    }
+
+    .rp-corps-ghost-panel-title {
+        width: 48px;
+        height: 8px;
+
+        &.is-spaced { margin-top: 8px; }
+    }
+
+    .rp-corps-ghost-input {
+        width: 100%;
+        height: 30px;
+    }
+
+    .rp-corps-ghost-check {
+        width: 78%;
+        height: 12px;
+    }
+
+    // uppercase rank label
+    .rp-corps-ghost-rank-name {
+        height: 10px;
+        margin: 2px 0;
+    }
+
+    // pay pill
+    .rp-corps-ghost-pay {
+        width: 42px;
+        height: 17px;
+        border-radius: 8px;
+    }
+
+    .rp-corps-ghost-none {
+        width: 74px;
+        height: 9px;
+    }
+
+    // employee card: portrait + two text lines = 54px
+    .rp-corps-ghost-employee {
         height: 54px;
+        border-radius: $border-radius;
     }
 
     .rp-corps-none {

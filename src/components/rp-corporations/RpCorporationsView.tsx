@@ -331,12 +331,56 @@ export const RpCorporationsView: FC<{}> = props =>
                                 </div>
                             </div> }
                         { !shownDetail && (corps.length > 0) &&
+                            // Ghost of the detail block above, built from the SAME
+                            // layout containers so every shimmer sits where its
+                            // content will land: badge plate, title + two-line
+                            // description, three stat chips, the legend, then the
+                            // options column (when open) beside a rank ladder.
                             <div className="rp-corps-skeleton">
-                                <div className="rp-corps-skeleton-bar" />
-                                <div className="rp-corps-skeleton-cards">
-                                    <div className="rp-corps-skeleton-card" />
-                                    <div className="rp-corps-skeleton-card" />
-                                    <div className="rp-corps-skeleton-card" />
+                                <div className="rp-corps-head">
+                                    <div className="rp-corps-ghost rp-corps-ghost-plate" />
+                                    <div className="rp-corps-head-info">
+                                        <div className="rp-corps-ghost rp-corps-ghost-title" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-sub" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-sub is-short" />
+                                    </div>
+                                    <div className="rp-corps-chips">
+                                        <div className="rp-corps-ghost rp-corps-ghost-chip" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-chip" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-chip" />
+                                    </div>
+                                </div>
+                                <div className="rp-corps-legend">
+                                    <span className="rp-corps-ghost rp-corps-ghost-legend" />
+                                    <span className="rp-corps-ghost rp-corps-ghost-legend" />
+                                    <span className="rp-corps-ghost rp-corps-ghost-legend" />
+                                </div>
+                                <div className={ `rp-corps-body ${ panelOpen ? 'is-panel-open' : '' }` }>
+                                    <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
+                                        <div className="rp-corps-ghost rp-corps-ghost-panel-title" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-input" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-panel-title is-spaced" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-check" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-check" />
+                                        <div className="rp-corps-ghost rp-corps-ghost-check" />
+                                    </div>
+                                    <div className="rp-corps-ranks">
+                                        { [ 0, 1, 2, 3, 4 ].map(index => (
+                                            <div key={ index } className="rp-corps-rank">
+                                                <div className="rp-corps-rank-row">
+                                                    <span className="rp-corps-ghost rp-corps-ghost-rank-name" style={ { width: `${ 34 - (index * 4) }%` } } />
+                                                    <span className="rp-corps-ghost rp-corps-ghost-pay" />
+                                                </div>
+                                                { (index === 0) &&
+                                                    <div className="rp-corps-employees">
+                                                        <div className="rp-corps-ghost rp-corps-ghost-employee" />
+                                                        <div className="rp-corps-ghost rp-corps-ghost-employee" />
+                                                    </div> }
+                                                { (index !== 0) &&
+                                                    <div className="rp-corps-rank-none"><span className="rp-corps-ghost rp-corps-ghost-none" /></div> }
+                                            </div>
+                                        )) }
+                                    </div>
                                 </div>
                             </div> }
                         { !corps.length &&
