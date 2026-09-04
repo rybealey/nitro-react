@@ -1,6 +1,7 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
+import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
@@ -94,12 +95,14 @@ export const App: FC<{}> = props =>
             case NitroCommunicationDemoEvent.CONNECTION_AUTHENTICATED:
                 setPercent(prevValue => (prevValue + 20));
 
-                // PixelRP: client-source packets (gangs) register against the
-                // live connection here, BEFORE MainView's children mount their
-                // useMessageEvent hooks (child effects run before the parent's,
-                // so registering in MainView would be too late). registerMessages
-                // is additive - the stock configuration stays intact.
+                // PixelRP: client-source packets (gangs, the extended corp
+                // roster) register against the live connection here, BEFORE
+                // MainView's children mount their useMessageEvent hooks (child
+                // effects run before the parent's, so registering in MainView
+                // would be too late). registerMessages is additive - the stock
+                // configuration stays intact.
                 RegisterRpGangMessages();
+                RegisterRpCorpMessages();
 
                 GetNitroInstance().init();
 

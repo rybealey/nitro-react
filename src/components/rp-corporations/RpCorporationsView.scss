@@ -435,6 +435,17 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         white-space: nowrap;
     }
 
+    // Its own line under the shift counts, not appended to them: the two
+    // toggle independently, so joining them would leave a dangling
+    // separator whenever only one is on.
+    .rp-corps-employee-seen {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     // ---- overlay drawer -------------------------------------------------
 
     // Slides over the roster's left edge (inside the body, so it sits below

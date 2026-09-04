@@ -1,8 +1,9 @@
-import { ILinkEventTracker, RpCorpDetailEvent, RpCorpEntry, RpCorpRank, RpCorpsEvent, RpGetCorpDetailComposer, RpGetCorpsComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RpCorpEntry, RpCorpsEvent, RpGetCorpDetailComposer, RpGetCorpsComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuSlidersHorizontal } from 'react-icons/lu';
 import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { FormatShifts } from '../../api/rp-employment/RpEmploymentRegistry';
+import { RpCorpDetailEvent, RpCorpRank } from '../../api/rp-corps/RpCorpDetailMessages';
+import { FormatLastOnline, FormatShifts } from '../../api/rp-employment/RpEmploymentRegistry';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from '../rp-profile/RpProfileState';
@@ -44,6 +45,9 @@ export const RpCorporationsView: FC<{}> = props =>
     const [ panelOpen, setPanelOpen ] = useState(true);
     const [ showWeekly, setShowWeekly ] = useState(true);
     const [ showTotal, setShowTotal ] = useState(true);
+    // off by default: the roster's dots already say who is around right
+    // now, so this is for the rarer "who has gone quiet" question
+    const [ showLastOnline, setShowLastOnline ] = useState(false);
 
     useMessageEvent<RpCorpsEvent>(RpCorpsEvent, event =>
     {
@@ -211,6 +215,10 @@ export const RpCorporationsView: FC<{}> = props =>
                                             <input type="checkbox" checked={ showTotal } onChange={ event => setShowTotal(event.target.checked) } />
                                             <span>Total shifts</span>
                                         </label>
+                                        <label className="rp-corps-check">
+                                            <input type="checkbox" checked={ showLastOnline } onChange={ event => setShowLastOnline(event.target.checked) } />
+                                            <span>Last online</span>
+                                        </label>
                                     </div>
                                     <div className="rp-corps-ranks">
                                         { ranks.map(rank => (
@@ -231,6 +239,9 @@ export const RpCorporationsView: FC<{}> = props =>
                                                             // seconds accrued on the current shift since the detail
                                                             // packet arrived - 0 unless this employee is on duty
                                                             const liveExtra = (employee.onDuty ? Math.max(0, Math.floor((tickNow - shownDetail.receivedAt) / 1000)) : 0);
+                                                            // users.last_online is only written on logout, so it is
+                                                            // stale for anyone connected - presence wins over it.
+                                                            const lastSeenLabel = (employee.online ? 'Now' : FormatLastOnline(employee.lastOnline, tickNow));
 
                                                             return (
                                                                 <div key={ employee.username } className="rp-corps-employee" title={ `${ rankLabel } - ${ statusWord }` }
@@ -280,6 +291,8 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                             <div className="rp-corps-employee-shifts">
                                                                                 { [ showWeekly && `Weekly: ${ FormatShifts(employee.shiftSecondsWeek + liveExtra) }`, showTotal && `Total: ${ FormatShifts(employee.shiftSeconds + liveExtra) }` ].filter(Boolean).join(' · ') }
                                                                             </div> }
+                                                                        { showLastOnline &&
+                                                                            <div className="rp-corps-employee-seen">Last online: { lastSeenLabel }</div> }
                                                                     </div>
                                                                 </div>
                                                             );
