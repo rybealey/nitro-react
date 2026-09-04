@@ -1,0 +1,99 @@
+import { RpJukeboxAddComposer } from '@nitrots/nitro-renderer';
+import { FC, useEffect, useRef, useState } from 'react';
+import { SendMessageComposer } from '../../api';
+
+// Siri — the jukebox prompt as a chat-bar popover. Springs up from behind
+// the chat bar (styled as its sibling: same gloss stripe, black border and
+// 8px radius), wrapped in a slow-turning halo in the game's plum/teal.
+// Submitting a link sends the queue packet, holds a one-second "Queued for
+// the room" beat while the halo flares, then sinks back out of view.
+// Escape or clicking anywhere outside dismisses it without queueing.
+//
+// The queue itself stays server-authoritative and visible in the music
+// player panel (UP NEXT); skipping lives there too.
+
+type SiriPhase = 'open' | 'done' | 'closing';
+
+const DONE_HOLD_MS = 1000;
+const SINK_MS = 300;
+const FOCUS_DELAY_MS = 460;
+
+export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
+{
+    const [ phase, setPhase ] = useState<SiriPhase>('open');
+    const [ url, setUrl ] = useState('');
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const phaseRef = useRef<SiriPhase>('open');
+
+    phaseRef.current = phase;
+
+    const sink = () =>
+    {
+        if(phaseRef.current === 'closing') return;
+
+        setPhase('closing');
+        setTimeout(() => (onClose && onClose()), SINK_MS);
+    }
+
+    const submit = () =>
+    {
+        if(phaseRef.current !== 'open') return;
+        if(!url.trim().length) return;
+
+        SendMessageComposer(new RpJukeboxAddComposer(url.trim()));
+        setUrl('');
+        setPhase('done');
+        setTimeout(sink, DONE_HOLD_MS);
+    }
+
+    useEffect(() =>
+    {
+        const focusTimeout = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY_MS);
+
+        const onKeyDown = (event: KeyboardEvent) =>
+        {
+            if(event.key === 'Escape') sink();
+        }
+
+        // popover semantics: clicking anything that isn't Siri dismisses it
+        // (no backdrop — the room stays clickable, and that click closes us)
+        const onMouseDown = (event: MouseEvent) =>
+        {
+            if(wrapRef.current && !wrapRef.current.contains(event.target as Node)) sink();
+        }
+
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('mousedown', onMouseDown);
+
+        return () =>
+        {
+            clearTimeout(focusTimeout);
+            document.removeEventListener('keydown', onKeyDown);
+            document.removeEventListener('mousedown', onMouseDown);
+        }
+    }, []);
+
+    return (
+        <>
+            <div ref={ wrapRef } className={ `nitro-siri siri-${ phase }` }>
+                <div className="siri-halo" />
+                <div className="siri-plate">
+                    { (phase !== 'done') &&
+                        <div className="siri-row">
+                            <span className="siri-eq"><span /><span /><span /></span>
+                            <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"
+                                value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event => (event.key === 'Enter') && submit() } />
+                            <button className="siri-add" type="button" onClick={ submit }>Add</button>
+                        </div> }
+                    { (phase === 'done') &&
+                        <div className="siri-done">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                            Queued for the room
+                        </div> }
+                </div>
+            </div>
+            <div className={ `nitro-siri-tail siri-${ phase }` } />
+        </>
+    );
+}

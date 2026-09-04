@@ -44,13 +44,31 @@
         color: rgba($light, 0.5);
     }
 
+    .music-player-title-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
     .music-player-title {
+        flex: 1;
+        min-width: 0;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
         color: $white;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    // Skip moved here from the retired queue window (rights-enforced
+    // server-side; the packet is a no-op without them).
+    .music-player-skip {
+        flex-shrink: 0;
+        cursor: pointer;
+        color: rgba($light, 0.7);
+
+        &:hover { color: $white; }
     }
 
 
@@ -164,14 +182,198 @@
 
 }
 
-.nitro-jukebox-queue {
-    width: 280px;
+// Siri — the jukebox prompt as a chat-bar popover (SiriView). Styled as the
+// chat bar's SIBLING (same #EDEDED plate, white gloss stripe, 2px black
+// border, 8px radius as .nitro-chat-input-container), springing up from
+// behind it inside a slow-turning plum/teal halo. The chat bar is 44px tall,
+// vertically centered in the 55px toolbar, so its top sits ~49px off the
+// viewport bottom: the popover floats at 62px with its tail bridging down.
+.nitro-siri {
+    position: fixed;
+    left: 50%;
+    bottom: 62px;
+    z-index: calc(#{$chatinput-zindex} + 5);
+    width: 420px;
+    max-width: 86vw;
+    transform: translateX(-50%) translateY(14px) scale(0.96);
+    opacity: 0;
 
-    .jukebox-queue-now { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-    .jukebox-queue-list { display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; margin-bottom: 8px; }
-    .jukebox-queue-row { display: flex; align-items: center; gap: 6px; }
-    .jukebox-queue-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .jukebox-queue-by { color: $muted; font-size: 11px; flex-shrink: 0; }
-    .jukebox-queue-empty { color: $muted; }
-    .jukebox-queue-add { display: flex; gap: 6px; }
+    &.siri-open,
+    &.siri-done {
+        opacity: 1;
+        animation: siri-spring 0.45s cubic-bezier(0.28, 1.4, 0.42, 1) forwards;
+    }
+
+    &.siri-closing { animation: siri-sink 0.28s ease forwards; }
+
+    .siri-halo {
+        position: absolute;
+        inset: -5px;
+        border-radius: 13px;
+        overflow: hidden;
+        filter: blur(7px);
+        opacity: 0.85;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 220%;
+            aspect-ratio: 1;
+            transform: translate(-50%, -50%);
+            background: conic-gradient(#8a3566, #1E7295, #59a9c0, #b3549c, #8a3566);
+            animation: siri-halo-spin 3.4s linear infinite;
+        }
+    }
+
+    // the queued flare: brighter halo, faster spin, for the one-second beat
+    &.siri-done .siri-halo {
+        filter: blur(10px);
+        opacity: 1;
+
+        &::before { animation-duration: 0.9s; }
+    }
+
+    .siri-plate {
+        position: relative;
+        border-radius: 8px;
+        border: 2px solid $black;
+        background: #EDEDED;
+        overflow: hidden;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: $white;
+        }
+    }
+
+    .siri-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    // live equalizer glyph: three bars breathing while Siri waits
+    .siri-eq {
+        flex-shrink: 0;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        width: 18px;
+        height: 16px;
+
+        span {
+            flex: 1;
+            border-radius: 1px;
+            background: linear-gradient(#8a3566, #1E7295);
+            animation: siri-eq-bounce 1.1s ease-in-out infinite;
+
+            &:nth-child(2) { animation-delay: 0.18s; }
+            &:nth-child(3) { animation-delay: 0.36s; }
+        }
+    }
+
+    .siri-input {
+        flex: 1;
+        height: 32px;
+        min-width: 0;
+        padding: 0 10px;
+        border: 1px solid #b9bfc6;
+        border-radius: $border-radius;
+        background: $white;
+        color: #283F5D;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 13px;
+        outline: none;
+
+        &::placeholder { color: #9aa3ab; }
+    }
+
+    .siri-add {
+        height: 32px;
+        padding: 0 16px;
+        border: 1px solid $secondary;
+        border-radius: $border-radius;
+        background: $primary;
+        color: $white;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover { filter: brightness(1.08); }
+    }
+
+    .siri-done {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 10px;
+        color: $green;
+        font-size: 13px;
+        font-weight: 700;
+    }
+}
+
+// tail bridging down to the chat bar; rendered as .nitro-siri's sibling so
+// the plate's overflow: hidden can't clip it
+.nitro-siri-tail {
+    position: fixed;
+    left: 50%;
+    bottom: 54px;
+    z-index: calc(#{$chatinput-zindex} + 4);
+    width: 14px;
+    height: 14px;
+    transform: translateX(-50%) rotate(45deg);
+    background: #EDEDED;
+    border-right: 2px solid $black;
+    border-bottom: 2px solid $black;
+    opacity: 0;
+    transition: opacity 0.22s ease 0.1s;
+    pointer-events: none;
+
+    &.siri-open,
+    &.siri-done { opacity: 1; }
+}
+
+@keyframes siri-spring {
+    from { transform: translateX(-50%) translateY(14px) scale(0.96); }
+    to { transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes siri-sink {
+    from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    to { opacity: 0; transform: translateX(-50%) translateY(14px) scale(0.96); }
+}
+
+@keyframes siri-halo-spin {
+    to { rotate: 1turn; }
+}
+
+@keyframes siri-eq-bounce {
+    0%, 100% { height: 35%; }
+    50% { height: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nitro-siri {
+        &.siri-open,
+        &.siri-done,
+        &.siri-closing { animation: none; transform: translateX(-50%); }
+
+        &.siri-closing { opacity: 0; }
+
+        .siri-halo::before { animation: none; }
+        .siri-eq span { animation: none; height: 70%; }
+    }
+
+    .nitro-siri-tail { transition: none; }
 }

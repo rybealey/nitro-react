@@ -35,8 +35,8 @@ export const FurnitureWidgetsView: FC<{}> = props =>
             <FurnitureInternalLinkView />
             <FurnitureMannequinView />
             { /* PixelRP: the stock trax playlist editor is retired — the jukebox
-                 double-click (REQUEST_PLAYLIST_EDITOR trigger) opens the YouTube
-                 queue window in MusicPlayerView instead. */ }
+                 double-click (REQUEST_PLAYLIST_EDITOR trigger) summons Siri, the
+                 chat-bar YouTube-link popover in MusicPlayerView, instead. */ }
             <FurnitureRoomLinkView />
             <FurnitureSpamWallPostItView />
             <FurnitureStackHeightView />
