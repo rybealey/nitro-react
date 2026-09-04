@@ -4,13 +4,14 @@ import { GangMember } from '../../api/rp-gangs/RpGangTypes';
 import { LayoutAvatarImageView } from '../../common';
 import { RpProfileState } from '../rp-profile/RpProfileState';
 
-// Circular mask over the figure at native size (the corporations roster's
-// portrait): no scaling, pixelated, the tint doubles as the presence signal.
-export const GangPortrait: FC<{ figure: string, online: boolean, small?: boolean }> = ({ figure, online, small = false }) =>
+// The head-only sprite at native size, unmasked and on no fill - the stock
+// group member list's crop box (40x50, head centred by offset). Presence is
+// signalled by the dot beside it, not by tinting the portrait.
+export const GangPortrait: FC<{ figure: string, online?: boolean, small?: boolean }> = ({ figure, small = false }) =>
 {
     return (
-        <div className={ `gang-portrait${ online ? ' is-online' : '' }${ small ? ' is-small' : '' }` }>
-            <LayoutAvatarImageView figure={ figure } direction={ 2 } />
+        <div className={ `gang-portrait${ small ? ' is-small' : '' }` }>
+            <LayoutAvatarImageView figure={ figure } headOnly={ true } direction={ 2 } />
         </div>
     );
 }

@@ -105,37 +105,27 @@ $gang-state-off: #b23b3b;
         &.is-online { background: $gang-online; }
     }
 
-    // Circular mask over the 90x130 sprite at native size (the corporations
-    // roster portrait): no scaling, pixelated, the tint is the presence signal.
+    // Head-only sprite at native size, no mask, no fill: the stock group
+    // member list's crop box, the head centred by offsetting the 90x130
+    // canvas. Never scaled - resampling blurs the pixel art.
     .gang-portrait {
         flex-shrink: 0;
         position: relative;
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
+        width: 40px;
+        height: 50px;
         overflow: hidden;
-        background: $gang-offline;
-
-        &.is-online { background: $gang-online; }
-
-        &.is-small {
-            width: 36px;
-            height: 36px;
-
-            .avatar-image { background-position: center -34px; }
-        }
 
         .avatar-image {
             position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            background-size: auto;
-            background-repeat: no-repeat;
-            background-position: center -30px;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
+            left: -25px;
+            top: -20px;
             image-rendering: pixelated;
+        }
+
+        &.is-small {
+            height: 44px;
+
+            .avatar-image { top: -23px; }
         }
     }
 
@@ -340,6 +330,12 @@ $gang-state-off: #b23b3b;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    // presence beside the name on list rows (the portrait carries no tint)
+    .gang-name-dot {
+        margin-left: 6px;
+        vertical-align: middle;
     }
 
     // ---- Manage: sections, roles, members -------------------------------

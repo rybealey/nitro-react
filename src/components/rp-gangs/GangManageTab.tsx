@@ -171,7 +171,7 @@ export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId, onInv
                             <div key={ member.userId } className="gang-card gang-member-row">
                                 <GangPortrait figure={ member.figure } online={ member.online } small />
                                 <div className="gang-member-info">
-                                    <div className="gang-member-name">{ member.username }</div>
+                                    <div className="gang-member-name">{ member.username }<span className={ `gang-dot gang-name-dot${ member.online ? ' is-online' : '' }` } /></div>
                                     <div className="gang-note">{ isOwner ? `Founder · ${ FormatGangDate(member.joinedAt) }` : `Joined ${ FormatGangDate(member.joinedAt) }` }</div>
                                 </div>
                                 { isOwner &&
