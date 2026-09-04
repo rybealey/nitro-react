@@ -39,7 +39,7 @@ const GangCrest: FC<{ primary: string, secondary: string, size?: number }> = ({ 
                 <rect x="0" y="0" width="12" height="24" fill={ primary } />
                 <rect x="12" y="0" width="12" height="24" fill={ secondary } />
             </g>
-            <path d="M12 2 L20 5 V12 C20 17 16.5 20.5 12 22 C7.5 20.5 4 17 4 12 V5 Z" fill="none" stroke="rgba(0, 0, 0, 0.4)" strokeWidth="1.6" strokeLinejoin="round" />
+            <path d="M12 2 L20 5 V12 C20 17 16.5 20.5 12 22 C7.5 20.5 4 17 4 12 V5 Z" fill="none" stroke="rgba(0, 0, 0, 0.4)" strokeWidth="0.8" strokeLinejoin="round" />
         </svg>
     );
 }
