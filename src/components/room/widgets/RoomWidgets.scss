@@ -99,14 +99,17 @@
     }
 
     // Collapse/expand notch: a half-pill tab budding off the tray's OUTER
-    // edge, vertically centered. Absolute (anchored to the tray, at left:100%)
-    // so it never takes part in the icon column's layout — and so it rides
-    // outward as the tray widens, reading as the tray sliding out from under
-    // it. Deliberately shorter than one 45px icon row so it reads as a tab,
-    // not a seventh button. Painted with the CHIP bevel (3px bands) rather
-    // than the plate's (5px/4px): same surface, bands in proportion to a
-    // small tab. Collapsed, the tray has zero width, so the notch sits flush
-    // against the screen edge and becomes the pull-tab.
+    // edge, vertically centered. Absolute at left:100% of the CONTAINER (the
+    // toggle is the tray's sibling, not its child — the tray's own
+    // backdrop-filter would otherwise become the tab's backdrop root and eat
+    // its blur; see SideDrawerWidgetView). The container's width is the
+    // tray's width, so the tab still rides outward as the tray widens,
+    // reading as the tray sliding out from under it. Deliberately shorter
+    // than one 45px icon row so it reads as a tab, not a seventh button.
+    // Painted with the tray's own plate surface + blur so the two read as one
+    // piece of chrome, both following the player's colour scheme. Collapsed,
+    // the tray has zero width, so the notch sits flush against the screen
+    // edge and becomes the pull-tab.
     .side-drawer-toggle {
         position: absolute;
         left: 100%;
@@ -117,7 +120,7 @@
         justify-content: center;
         width: 14px;
         height: 34px;
-        background: var(--prp-chrome-chip);
+        background: var(--prp-chrome-plate);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         border-radius: 0 6px 6px 0;
