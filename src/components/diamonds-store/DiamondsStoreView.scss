@@ -281,6 +281,20 @@
             cursor: default;
             pointer-events: none;
         }
+
+        // Stack the live label over an invisible copy of the WIDEST state
+        // ("N · Confirm"), so arming Buy -> Confirm never widens the pill
+        // and never reflows the row's name/description column.
+        .diamonds-store-buy-label {
+            display: grid;
+            justify-items: center;
+
+            > span { grid-area: 1 / 1; white-space: nowrap; }
+        }
+
+        .diamonds-store-buy-ghost {
+            visibility: hidden;
+        }
     }
 
     .diamonds-store-listing-icon {

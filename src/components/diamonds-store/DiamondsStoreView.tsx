@@ -322,7 +322,13 @@ export const DiamondsStoreView: FC<{}> = props =>
                                             setPurchasePending(true);
                                             SendMessageComposer(new PurchaseDiamondsStoreItemComposer(listing.itemKey));
                                         } }>
-                                            <LayoutCurrencyIcon type={ 5 } /> { onSale ? listing.specialPrice : listing.price } · { confirming ? 'Confirm' : 'Buy' }
+                                            <LayoutCurrencyIcon type={ 5 } />
+                                            { /* the ghost reserves the widest (Confirm) label so the
+                                                 pill never resizes and the row text never reflows */ }
+                                            <span className="diamonds-store-buy-label">
+                                                <span className="diamonds-store-buy-ghost" aria-hidden="true">{ `${ onSale ? listing.specialPrice : listing.price } · Confirm` }</span>
+                                                <span>{ `${ onSale ? listing.specialPrice : listing.price } · ${ confirming ? 'Confirm' : 'Buy' }` }</span>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>);
