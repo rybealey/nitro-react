@@ -80,7 +80,18 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
             <div className="siri-plate">
                 { (phase !== 'done') &&
                     <div className="siri-row">
-                        <span className="siri-eq"><span /><span /><span /></span>
+                        { /* layered waveform: three sine curves drifting at
+                             co-prime speeds, each breathing its own amplitude,
+                             so the composite never visibly repeats. Each path
+                             is two identical periods; the drift loops one
+                             period (-22px) for a seamless tile. */ }
+                        <span className="siri-wave">
+                            <svg width="22" height="16" viewBox="0 0 22 16">
+                                <g className="siri-wave-drift siri-wave-a"><g className="siri-wave-breathe"><path d="M0 8 C2.75 3 8.25 3 11 8 C13.75 13 19.25 13 22 8 C24.75 3 30.25 3 33 8 C35.75 13 41.25 13 44 8" /></g></g>
+                                <g className="siri-wave-drift siri-wave-b"><g className="siri-wave-breathe"><path d="M0 8 C2.75 3 8.25 3 11 8 C13.75 13 19.25 13 22 8 C24.75 3 30.25 3 33 8 C35.75 13 41.25 13 44 8" /></g></g>
+                                <g className="siri-wave-drift siri-wave-c"><g className="siri-wave-breathe"><path d="M0 8 C2.75 3 8.25 3 11 8 C13.75 13 19.25 13 22 8 C24.75 3 30.25 3 33 8 C35.75 13 41.25 13 44 8" /></g></g>
+                            </svg>
+                        </span>
                         <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"
                             value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event => (event.key === 'Enter') && submit() } />
                         <button className="siri-add" type="button" onClick={ submit }>Add</button>
