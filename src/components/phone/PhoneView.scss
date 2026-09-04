@@ -699,6 +699,17 @@ $phone-scale: 0.8;
             border: none;
         }
 
+        // Settings account portrait: a plain full circle, no ink ring (the
+        // inline radius the component sets is the squircle the other avatars
+        // use, so override it here).
+        &.phone-avatar--portrait {
+            border-radius: 50% !important;
+
+            .phone-avatar-crop {
+                border: none;
+            }
+        }
+
         .phone-avatar-group-badge {
             position: absolute;
             inset: 0;
