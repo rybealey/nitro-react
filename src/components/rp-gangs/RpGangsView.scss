@@ -1,80 +1,70 @@
 .nitro-rp-gangs {
-    width: 420px;
+    width: 440px;
 
-    // identity band under the header: a live two-color preview of the gang
-    // colors, full-bleed against the card's padding
-    .gang-banner {
-        height: 36px;
-        margin: -8px -8px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-    }
-
-    // empty emblem well: primary fill inside a secondary ring — a stand-in
-    // until the badge editor slice; reads as "your colors" at a glance
-    .gang-badge-preview {
+    .gang-crest {
         flex-shrink: 0;
-        width: 48px;
-        height: 48px;
-        border: 3px solid;
-        border-radius: $border-radius;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
     }
 
-    .gang-editing-label,
-    .gang-editing-chip {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        color: rgba(0, 0, 0, 0.55);
-    }
+    // The color pickers are tabs ATTACHED to the palette: the open tab is the
+    // color being edited, so no separate EDITING label is needed.
+    .gang-palette-tabs {
+        .gang-palette-tab {
+            flex: 1 1 0;
+            height: 32px;
+            border: 1px solid #b9bfc6;
+            border-radius: $border-radius $border-radius 0 0;
+            background: #cfd4d9;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #6b7580;
+            user-select: none;
 
-    .gang-editing-chip {
-        padding: 2px 6px;
-        border-radius: $border-radius;
-        border: 1px solid rgba(0, 0, 0, 0.15);
-        user-select: none;
-
-        &.is-active {
-            background: rgba(0, 0, 0, 0.08);
-            border-color: rgba(0, 0, 0, 0.4);
-            color: rgba(0, 0, 0, 0.8);
+            &.is-active {
+                background: $white;
+                // merge into the white palette panel below
+                border-bottom-color: $white;
+                color: #283F5D;
+            }
         }
     }
 
-    .gang-editing-swatch {
-        width: 10px;
-        height: 10px;
-        border-radius: 2px;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+    .gang-tab-swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
     }
 
     .gang-color-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));
-        gap: 4px;
-        max-height: 220px;
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: 5px;
+        max-height: 240px;
         overflow-y: auto;
-        padding: 6px;
+        padding: 10px;
         background: $white;
-        border-radius: $border-radius;
-        border: 1px solid rgba(0, 0, 0, 0.15);
+        border: 1px solid #b9bfc6;
+        border-top: none;
+        border-radius: 0 0 $border-radius $border-radius;
     }
 
     .gang-color-swatch {
         aspect-ratio: 1;
         border-radius: 3px;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 
         &:hover { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5); }
 
-        &.is-selected { box-shadow: 0 0 0 2px $white, 0 0 0 3px rgba(0, 0, 0, 0.8); }
+        &.is-selected { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 0 2px $white, 0 0 0 3.5px #283F5D; }
     }
 
     .gang-create-row {
-        // cost tab + button read as one control, like the reference art
+        // cost tab + button read as one control
         .gang-create-cost {
-            padding: 0 10px;
-            background: rgba(0, 0, 0, 0.25);
+            padding: 0 12px;
+            background: rgba(40, 63, 93, 0.85);
             border-radius: $border-radius 0 0 $border-radius;
             color: $white;
             font-weight: 700;
