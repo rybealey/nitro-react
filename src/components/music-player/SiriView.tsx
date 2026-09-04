@@ -75,25 +75,22 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
     }, []);
 
     return (
-        <>
-            <div ref={ wrapRef } className={ `nitro-siri siri-${ phase }` }>
-                <div className="siri-halo" />
-                <div className="siri-plate">
-                    { (phase !== 'done') &&
-                        <div className="siri-row">
-                            <span className="siri-eq"><span /><span /><span /></span>
-                            <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"
-                                value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event => (event.key === 'Enter') && submit() } />
-                            <button className="siri-add" type="button" onClick={ submit }>Add</button>
-                        </div> }
-                    { (phase === 'done') &&
-                        <div className="siri-done">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                            Queued for the room
-                        </div> }
-                </div>
+        <div ref={ wrapRef } className={ `nitro-siri siri-${ phase }` }>
+            <div className="siri-halo" />
+            <div className="siri-plate">
+                { (phase !== 'done') &&
+                    <div className="siri-row">
+                        <span className="siri-eq"><span /><span /><span /></span>
+                        <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"
+                            value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event => (event.key === 'Enter') && submit() } />
+                        <button className="siri-add" type="button" onClick={ submit }>Add</button>
+                    </div> }
+                { (phase === 'done') &&
+                    <div className="siri-done">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                        Queued for the room
+                    </div> }
             </div>
-            <div className={ `nitro-siri-tail siri-${ phase }` } />
-        </>
+        </div>
     );
 }

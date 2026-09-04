@@ -197,6 +197,12 @@
     max-width: 86vw;
     transform: translateX(-50%) translateY(14px) scale(0.96);
     opacity: 0;
+    // Mounted inside .nitro-music-player-slide, which is pointer-events: none
+    // whenever nothing is playing - exactly when the first song gets queued.
+    // fixed positioning escapes the container visually but pointer-events
+    // INHERIT, so without this the Add click fell through to the room and
+    // the outside-click dismiss swallowed the submit.
+    pointer-events: all;
 
     &.siri-open,
     &.siri-done {
@@ -211,9 +217,13 @@
         inset: -5px;
         border-radius: 13px;
         overflow: hidden;
-        filter: blur(7px);
-        opacity: 0.85;
+        filter: blur(9px);
+        opacity: 0.9;
+        transition: filter 0.4s ease, opacity 0.4s ease;
 
+        // Slow, even drift: doubled-up hue stops keep adjacent colors close
+        // so no seam sweeps past like a flash, and the 9s rotation reads as
+        // ambient rather than spinning.
         &::before {
             content: '';
             position: absolute;
@@ -222,17 +232,17 @@
             width: 220%;
             aspect-ratio: 1;
             transform: translate(-50%, -50%);
-            background: conic-gradient(#8a3566, #1E7295, #59a9c0, #b3549c, #8a3566);
-            animation: siri-halo-spin 3.4s linear infinite;
+            background: conic-gradient(#8a3566, #6a4a7f, #1E7295, #59a9c0, #1E7295, #b3549c, #8a3566);
+            animation: siri-halo-spin 9s linear infinite;
         }
     }
 
-    // the queued flare: brighter halo, faster spin, for the one-second beat
+    // the queued flare: the halo brightens and widens for the beat - the
+    // rotation itself never changes speed (a duration jump snaps the
+    // gradient's angle and reads as a flash)
     &.siri-done .siri-halo {
-        filter: blur(10px);
+        filter: blur(13px);
         opacity: 1;
-
-        &::before { animation-duration: 0.9s; }
     }
 
     .siri-plate {
@@ -323,27 +333,6 @@
     }
 }
 
-// tail bridging down to the chat bar; rendered as .nitro-siri's sibling so
-// the plate's overflow: hidden can't clip it
-.nitro-siri-tail {
-    position: fixed;
-    left: 50%;
-    bottom: 54px;
-    z-index: calc(#{$chatinput-zindex} + 4);
-    width: 14px;
-    height: 14px;
-    transform: translateX(-50%) rotate(45deg);
-    background: #EDEDED;
-    border-right: 2px solid $black;
-    border-bottom: 2px solid $black;
-    opacity: 0;
-    transition: opacity 0.22s ease 0.1s;
-    pointer-events: none;
-
-    &.siri-open,
-    &.siri-done { opacity: 1; }
-}
-
 @keyframes siri-spring {
     from { transform: translateX(-50%) translateY(14px) scale(0.96); }
     to { transform: translateX(-50%) translateY(0) scale(1); }
@@ -374,6 +363,4 @@
         .siri-halo::before { animation: none; }
         .siri-eq span { animation: none; height: 70%; }
     }
-
-    .nitro-siri-tail { transition: none; }
 }
