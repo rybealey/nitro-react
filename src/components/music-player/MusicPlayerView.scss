@@ -221,9 +221,12 @@
         opacity: 0.9;
         transition: filter 0.4s ease, opacity 0.4s ease;
 
-        // Slow, even drift: doubled-up hue stops keep adjacent colors close
-        // so no seam sweeps past like a flash, and the 9s rotation reads as
-        // ambient rather than spinning.
+        // A continuous slow rotation: hues are spaced EVENLY around the
+        // wheel (first = last for a seamless wrap) so the color flux is
+        // constant - doubled-up stops made stretches where nothing visibly
+        // changed and the halo read as stopping. The spin animates the
+        // transform itself, rotating the oversized gradient square behind
+        // the plate rather than sliding bands across it.
         &::before {
             content: '';
             position: absolute;
@@ -231,9 +234,8 @@
             top: 50%;
             width: 220%;
             aspect-ratio: 1;
-            transform: translate(-50%, -50%);
-            background: conic-gradient(#8a3566, #6a4a7f, #1E7295, #59a9c0, #1E7295, #b3549c, #8a3566);
-            animation: siri-halo-spin 9s linear infinite;
+            background: conic-gradient(#8a3566, #1E7295, #59a9c0, #b3549c, #8a3566);
+            animation: siri-halo-spin 14s linear infinite;
         }
     }
 
@@ -344,7 +346,8 @@
 }
 
 @keyframes siri-halo-spin {
-    to { rotate: 1turn; }
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 @keyframes siri-eq-bounce {
