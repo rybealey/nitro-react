@@ -12,18 +12,21 @@
     --hud-magenta: #d62a86;
 
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: 0;
+    left: 10px;
     z-index: 25;
     // don't block room interaction; interactive controls opt back in below
     pointer-events: none;
 
-    // Each panel (self + target) is a chip in the right-side language.
+    // Each panel (self + target) is a chip in the right-side language,
+    // draped over the top edge like the purse: flush with the viewport top,
+    // rounded on the bottom corners only, so the plates read as hanging
+    // into the room rather than floating over it.
     .hud-plate {
         background: var(--prp-chrome-plate);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        border-radius: $border-radius;
+        border-radius: 0 0 $border-radius $border-radius;
         padding: 8px 10px;
     }
 

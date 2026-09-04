@@ -265,7 +265,9 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const targetStats = target ? withLiveStats(target.roomIndex, mockStatsFor(target.name)) : null;
 
     return (
-        <Flex alignItems="end" gap={ 2 } className="nitro-player-hud-bar">
+        { /* plates hang from the top edge (purse-style), so they align at the
+             top and drop to their own heights */ }
+        <Flex alignItems="start" gap={ 2 } className="nitro-player-hud-bar">
             <Flex alignItems="center" gap={ 2 } className="hud-plate">
                 <div className="hud-portrait">
                     <HudAvatar figure={ ownFigure } gender={ selfGender } variant="self" onClick={ () =>
