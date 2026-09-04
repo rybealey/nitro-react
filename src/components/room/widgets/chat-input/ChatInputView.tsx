@@ -118,6 +118,13 @@ export const ChatInputView: FC<{}> = props =>
             }
         }
 
+        // Gang / corporation alerts (:ga, :ca) keep their prefix in the box
+        // for the next message, like a whisper keeps its recipient, until the
+        // player clears it themselves.
+        const alertMatch = text.match(/^(:ga|:ca)\s+\S/i);
+
+        if(alertMatch) append = `${ alertMatch[1].toLowerCase() } `;
+
         setIsTyping(false);
         setIsIdle(false);
 
