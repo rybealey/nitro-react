@@ -286,6 +286,8 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                 <div className="hud-info">
                     <div className="hud-name-row">
                         <span className="hud-name">{ selfName }</span>
+                        { IsRpStaff(roomSession?.ownRoomIndex ?? -1) &&
+                            <i className="fa-solid fa-badge-check hud-verified" title="PixelRP Staff" aria-hidden="true" /> }
                         { (playerStats.aggressive || playerStats.passive) &&
                             (playerStats.aggressive
                                 ? <span className="hud-state aggressive">AGGRESSIVE</span>
@@ -306,6 +308,9 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         <div className="hud-name-row">
                             { (targetStats.aggressive || targetStats.passive) &&
                                 <span className={ `hud-state ${ targetStats.aggressive ? 'aggressive' : 'passive' }` }>{ targetStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span> }
+                            { /* mirrored plate: the tick keeps its place beside the name, on the portrait side */ }
+                            { IsRpStaff(target.roomIndex) &&
+                                <i className="fa-solid fa-badge-check hud-verified" title="PixelRP Staff" aria-hidden="true" /> }
                             <span className="hud-name">{ target.name }</span>
                         </div>
                         <HudBars stats={ targetStats } mirrored />

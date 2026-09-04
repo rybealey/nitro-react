@@ -128,6 +128,14 @@
         white-space: nowrap;
     }
 
+    // staff verified badge beside the name - the infostand's mark, same size
+    .hud-verified {
+        color: $white;
+        font-size: 12px;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
     .hud-state {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
