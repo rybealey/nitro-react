@@ -142,7 +142,7 @@ export const RpGangsView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ inGang ? ' is-member' : '' }` } theme="primary-slim">
+        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ inGang ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim">
             <NitroCardHeaderView headerText="Gang" onCloseClick={ () => setIsVisible(false) } />
             { showTabs &&
                 <NitroCardTabsView>
@@ -152,7 +152,7 @@ export const RpGangsView: FC<{}> = props =>
                     { canInvite &&
                         <NitroCardTabsItemView isActive={ currentTab === 'invites' } onClick={ () => setCurrentTab('invites') }>Invites</NitroCardTabsItemView> }
                 </NitroCardTabsView> }
-            <NitroCardContentView>
+            <NitroCardContentView className="text-black">
                 { !inGang &&
                     <GangCreateView gangCost={ gangCost } buyPending={ buyPending } onBuy={ () => setBuyPending(true) } incomingInvites={ incomingInvites } nowSeconds={ nowSeconds } /> }
                 { inGang && !detail &&

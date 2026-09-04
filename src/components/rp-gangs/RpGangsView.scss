@@ -27,6 +27,21 @@ $gang-state-off: #b23b3b;
         @include prp-chrome-tab-strip;
     }
 
+    // With the dark strip directly under the header, the slim theme's 2px
+    // darker border + 2px white drop line read as a stray light bar across
+    // the top of the strip (Settings drops them the same way). Kept for the
+    // tab-less states, where the header meets the light content area.
+    &.has-tabs.theme-primary-slim .nitro-card-header {
+        border-bottom: 0;
+        box-shadow: none;
+    }
+
+    // $body-color is white; everything on the light content area reads black
+    // unless a rule says otherwise (the muted rgba(0,0,0,x) tones below).
+    .content-area {
+        color: $black;
+    }
+
     .gang-crest {
         flex-shrink: 0;
         filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
