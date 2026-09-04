@@ -258,11 +258,25 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
 
     // ---- roster body (ladder + overlay drawer) --------------------------
 
+    // The hairline capping the roster belongs to the BODY, not to the legend
+    // above it: the ladder is the one scroller and it clips at this box's top
+    // edge, so a border here is exactly where content stops - scrolled ranks
+    // meet a real boundary instead of sliding up under the legend. On the
+    // legend it would float 8px clear of where content actually begins.
+    //
+    // Same hairline as the rail and the options column (this window separates
+    // its regions with a hairline and nothing else - see .rp-corps-panel), and
+    // it spans the options column too, since rail / options / roster are meant
+    // to read as one window. padding-top matches the parent's 8px gap so the
+    // rule sits centred between the legend and the top rank rather than
+    // pressed against the rank name.
     .rp-corps-body {
         position: relative;
         flex: 1;
         min-height: 0;
         display: flex;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .rp-corps-ranks {
