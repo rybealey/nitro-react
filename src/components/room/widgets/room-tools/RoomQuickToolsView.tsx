@@ -1,7 +1,6 @@
 import { FC, useState } from 'react';
-import { FaComments, FaSearchMinus, FaSearchPlus } from 'react-icons/fa';
 import { CreateLinkEvent, GetRoomEngine, LocalizeText } from '../../../../api';
-import { Flex } from '../../../../common';
+import { Base, classNames, Flex } from '../../../../common';
 import { useRoom } from '../../../../hooks';
 
 // Zoom and chat logs, reachable by every player. Rendered inside the
@@ -33,15 +32,11 @@ export const RoomQuickToolsView: FC<{}> = props =>
             <Flex center className="nitro-room-quick-tool">
                 <i className="cursor-pointer fa-brands fa-discord quick-tool-discord" title="Join us on Discord" aria-hidden="true" onClick={ event => window.open('https://discord.gg/pH5TQF84UZ', '_blank', 'noopener,noreferrer') } />
             </Flex>
-            { /* the magnifier shows the zoom you'd get by clicking: minus
-                 (zoom out) at full scale, plus (zoom back in) once zoomed out */ }
             <Flex center className="nitro-room-quick-tool">
-                { isZoomedIn
-                    ? <FaSearchPlus className="cursor-pointer quick-tool-glyph" role="button" aria-label={ LocalizeText('room.zoom.button.text') } title={ LocalizeText('room.zoom.button.text') } onClick={ toggleZoom } />
-                    : <FaSearchMinus className="cursor-pointer quick-tool-glyph" role="button" aria-label={ LocalizeText('room.zoom.button.text') } title={ LocalizeText('room.zoom.button.text') } onClick={ toggleZoom } /> }
+                <Base pointer title={ LocalizeText('room.zoom.button.text') } onClick={ toggleZoom } className={ classNames('icon', (!isZoomedIn && 'icon-zoom-less'), (isZoomedIn && 'icon-zoom-more')) } />
             </Flex>
             <Flex center className="nitro-room-quick-tool">
-                <FaComments className="cursor-pointer quick-tool-glyph" role="button" aria-label={ LocalizeText('room.chathistory.button.text') } title={ LocalizeText('room.chathistory.button.text') } onClick={ () => CreateLinkEvent('chat-history/toggle') } />
+                <Base pointer title={ LocalizeText('room.chathistory.button.text') } onClick={ () => CreateLinkEvent('chat-history/toggle') } className="icon icon-chat-history" />
             </Flex>
         </Flex>
     );
