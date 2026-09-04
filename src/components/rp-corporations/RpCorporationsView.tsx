@@ -48,6 +48,7 @@ export const RpCorporationsView: FC<{}> = props =>
     // off by default: the roster's dots already say who is around right
     // now, so this is for the rarer "who has gone quiet" question
     const [ showLastOnline, setShowLastOnline ] = useState(false);
+    const [ search, setSearch ] = useState('');
 
     useMessageEvent<RpCorpsEvent>(RpCorpsEvent, event =>
     {
@@ -88,6 +89,11 @@ export const RpCorporationsView: FC<{}> = props =>
 
         SendMessageComposer(new RpGetCorpDetailComposer(selectedId));
     }, [ isVisible, selectedId ]);
+
+    // A query is about the corp you were looking at, so switching corps (or
+    // reopening the window) drops it. Without this you would land on a corp
+    // whose roster looks empty for no visible reason.
+    useEffect(() => setSearch(''), [ selectedId, isVisible ]);
 
     // Live counters: only worth a redraw every minute while the window is
     // open, and only when there is something on the screen actually ticking.
@@ -144,6 +150,17 @@ export const RpCorporationsView: FC<{}> = props =>
     const ranks = (shownDetail ? [ ...shownDetail.ranks ].sort((a, b) => (b.order - a.order)) : []);
     // computed client-side: the roster already carries every employee's flag
     const onDutyCount = (shownDetail ? shownDetail.ranks.reduce((total, rank) => (total + rank.employees.filter(employee => employee.onDuty).length), 0) : 0);
+    // Note the chips above are deliberately NOT filtered: they describe the
+    // corporation, so a search narrows the ladder below and not the headcount.
+    const query = search.trim().toLowerCase();
+    // Ranks that match nothing drop out entirely rather than showing an empty
+    // header: leaving all seven in place would mean scrolling past every one
+    // of them to reach the single person you searched for.
+    const visibleRanks = (!query ? ranks : ranks
+        .map(rank => ({ ...rank, employees: rank.employees.filter(employee => employee.username.toLowerCase().includes(query)) }))
+        .filter(rank => (rank.employees.length > 0)));
+    const rosterCount = ranks.reduce((total, rank) => (total + rank.employees.length), 0);
+    const matchCount = visibleRanks.reduce((total, rank) => (total + rank.employees.length), 0);
 
     return (
         <NitroCardView resizable uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
@@ -206,7 +223,19 @@ export const RpCorporationsView: FC<{}> = props =>
                                          the roster and the employee grid drops from
                                          three across to two to make room. */ }
                                     <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
-                                        <div className="rp-corps-panel-title">Show on cards</div>
+                                        <div className="rp-corps-panel-title">Find</div>
+                                        <div className="rp-corps-search">
+                                            { /* No autoFocus: this window opens over a live room and
+                                                 stealing the keyboard would swallow chat. */ }
+                                            <input type="text" spellCheck={ false } placeholder="Username..."
+                                                value={ search } onChange={ event => setSearch(event.target.value) }
+                                                onKeyDown={ event => (event.key === 'Escape') && setSearch('') } />
+                                            { !!search &&
+                                                <span className="rp-corps-search-clear" title="Clear" onClick={ () => setSearch('') }>&times;</span> }
+                                        </div>
+                                        { !!query &&
+                                            <div className="rp-corps-search-count">{ matchCount } of { rosterCount }</div> }
+                                        <div className="rp-corps-panel-title is-spaced">Show on cards</div>
                                         <label className="rp-corps-check">
                                             <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />
                                             <span>Weekly shifts</span>
@@ -221,7 +250,9 @@ export const RpCorporationsView: FC<{}> = props =>
                                         </label>
                                     </div>
                                     <div className="rp-corps-ranks">
-                                        { ranks.map(rank => (
+                                        { !!query && !visibleRanks.length &&
+                                            <div className="rp-corps-no-matches">Nobody in { shownDetail.name } matches &ldquo;{ search.trim() }&rdquo;.</div> }
+                                        { visibleRanks.map(rank => (
                                             <div key={ rank.id } className="rp-corps-rank">
                                                 <div className="rp-corps-rank-row">
                                                     <span className="rp-corps-rank-name">{ rank.name }</span>

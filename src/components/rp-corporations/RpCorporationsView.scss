@@ -507,6 +507,67 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         letter-spacing: 0.4px;
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.35);
+
+        // Two titled groups share this 150px column, so the second one needs
+        // air above it or Find and Show on cards read as one list.
+        &.is-spaced {
+            margin-top: 4px;
+        }
+    }
+
+    // Compact by design: the stock .form-control is built for a full-width
+    // form and towers over the 11px checkboxes below it, so this input takes
+    // the window's own type scale instead.
+    .rp-corps-search {
+        position: relative;
+
+        input {
+            width: 100%;
+            padding: 3px 18px 3px 6px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.75);
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+            outline: none;
+
+            &::placeholder {
+                color: rgba(0, 0, 0, 0.3);
+            }
+
+            &:focus {
+                border-color: var(--prp-chrome-solid);
+            }
+        }
+    }
+
+    // Sits inside the input's right padding, so it never reflows the field.
+    .rp-corps-search-clear {
+        position: absolute;
+        top: 50%;
+        right: 5px;
+        transform: translateY(-50%);
+        font-size: 13px;
+        line-height: 1;
+        cursor: pointer;
+        color: rgba(0, 0, 0, 0.35);
+
+        &:hover {
+            color: rgba(0, 0, 0, 0.6);
+        }
+    }
+
+    // Confirms the filter is live and how much it is hiding - without it a
+    // narrowed ladder is indistinguishable from a small corporation.
+    .rp-corps-search-count {
+        font-size: 9px;
+        color: rgba(0, 0, 0, 0.4);
+    }
+
+    .rp-corps-no-matches {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.4);
+        padding: 2px;
     }
 
     .rp-corps-check {
