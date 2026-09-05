@@ -1,7 +1,6 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, GetGuestRoomResultEvent, NitroPoint, PetFigureData, RoomChatSettings, RoomChatSettingsEvent, RoomDragEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionChatEvent, RoomUserData, SystemChatStyleEnum, TextureUtils, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, GetSessionDataManager, IRoomChatSettings, LocalizeText, PlaySound, RoomChatFormatter } from '../../../api';
-import MentionSound from '../../../assets/sounds/mention.mp3';
+import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, GetSessionDataManager, IRoomChatSettings, LocalizeText, PlayMentionSound, PlaySound, RoomChatFormatter } from '../../../api';
 import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
@@ -146,7 +145,7 @@ const useChatWidgetState = () =>
 
             if(ownName && new RegExp(`@${ ownName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }\\b`, 'i').test(text))
             {
-                new Audio(MentionSound).play().catch(() => {});
+                PlayMentionSound();
             }
         }
 
