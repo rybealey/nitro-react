@@ -1498,10 +1498,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..4ac3b40
+index 0000000..dd3bccb
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,460 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1911,34 +1911,56 @@ index 0000000..4ac3b40
 + */
 +if(typeof window !== 'undefined')
 +{
-+    const win = (window as any);
-+
-+    win.pixelrpMovementDebug = (...ids: number[]) =>
++    const install = (target: any) =>
 +    {
-+        PixelRPMovementV2.instance.setDebug(ids);
++        target.pixelrpMovementDebug = (...ids: number[]) =>
++        {
++            PixelRPMovementV2.instance.setDebug(ids);
 +
-+        const msg = (ids.length ? `[MV2] tracing units ${ids.join(', ')}` : '[MV2] tracing off');
++            const msg = (ids.length ? `[MV2] tracing units ${ids.join(', ')}` : '[MV2] tracing off');
 +
-+        console.info(msg);
++            console.info(msg);
 +
-+        return msg;
++            return msg;
++        };
++
++        target.pixelrpMovementDebugAll = (on = true) =>
++        {
++            PixelRPMovementV2.instance.setDebugAll(on);
++
++            const msg = (on ? '[MV2] tracing ALL units' : '[MV2] tracing off');
++
++            console.info(msg);
++
++            return msg;
++        };
++
++        // The store itself, so `pixelrpMovementV2.stats` answers "are 4110s
++        // even arriving?" without tracing anything, and `.trackedUnits` gives
++        // the exact virtual ids to pass to pixelrpMovementDebug().
++        target.pixelrpMovementV2 = PixelRPMovementV2.instance;
 +    };
 +
-+    win.pixelrpMovementDebugAll = (on = true) =>
++    install(window);
++
++    // ALSO INSTALL ON THE PARENT FRAME. The client is served inside
++    // <iframe id="nitro"> by the CMS, and DevTools' console evaluates against
++    // the TOP frame by default - where none of these exist, so every call is a
++    // ReferenceError and nothing ever switches on. The iframe's own console
++    // output already surfaces in the main console, so the parent only needs the
++    // handles, not the logging.
++    //
++    // Same-origin in this deployment (both on the hotel's own host), but the
++    // access is guarded: a cross-origin parent throws on property access, and
++    // the in-frame handles above still work via the context dropdown.
++    try
 +    {
-+        PixelRPMovementV2.instance.setDebugAll(on);
-+
-+        const msg = (on ? '[MV2] tracing ALL units' : '[MV2] tracing off');
-+
-+        console.info(msg);
-+
-+        return msg;
-+    };
-+
-+    // The store itself, so `pixelrpMovementV2.stats` answers "are 4110s even
-+    // arriving?" without tracing anything, and `.trackedUnits` gives the exact
-+    // virtual ids to pass to pixelrpMovementDebug().
-+    win.pixelrpMovementV2 = PixelRPMovementV2.instance;
++        if(window.parent && (window.parent !== window)) install(window.parent);
++    }
++    catch (e)
++    {
++        // Cross-origin parent - nothing to install, and nothing to report.
++    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
 index 2276481..db05a34 100644
