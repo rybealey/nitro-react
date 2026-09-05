@@ -242,19 +242,18 @@ $player-teal: #1E7295;
         }
     }
 
-    .jukebox-player-unmute {
-        align-self: center;
-        padding: 4px 10px;
-        border-radius: $border-radius;
-        background: $player-teal;
-        border: 1px solid $secondary;
-        color: $white;
-        font-size: 11px;
+    // "Phone" chip where the mute sits: the phone is the source right now
+    .music-player-source {
+        flex-shrink: 0;
+        padding: 2px 7px;
+        border-radius: 8px;
+        background: rgba($player-teal, 0.14);
+        box-shadow: inset 0 0 0 1px rgba($player-ink, 0.14);
+        font-size: 9px;
         font-weight: 700;
-        cursor: pointer;
-        white-space: nowrap;
-
-        &:hover { filter: brightness(1.08); }
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: rgba($player-ink, 0.7);
     }
 }
 
@@ -470,4 +469,27 @@ $player-teal: #1E7295;
 
     .siri-wave .siri-wave-drift,
     .siri-wave .siri-wave-breathe { animation: none; }
+}
+
+// Blocked-autoplay fallback: the one audio engine plays muted and offers this
+// tap wherever the player is (no room panel needed - the phone may be the
+// source). Same plate as the room panel's Siri-style controls.
+.jukebox-unmute-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 64px;
+    transform: translateX(-50%);
+    z-index: 85;
+    padding: 6px 14px;
+    border-radius: 14px;
+    background: #1E7295;
+    border: 1px solid #185D79;
+    color: #ffffff;
+    font-family: 'Ubuntu', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+
+    &:hover { filter: brightness(1.08); }
 }

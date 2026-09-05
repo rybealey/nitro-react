@@ -22,6 +22,7 @@ import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
 import { PhoneView } from '../phone/PhoneView';
 import { RightSideView } from '../right-side/RightSideView';
+import { JukeboxAudioEngine } from '../music-player/JukeboxAudioEngine';
 import { RoomView } from '../room/RoomView';
 import { ToolbarView } from '../toolbar/ToolbarView';
 import { RpCorporationsView } from '../rp-corporations/RpCorporationsView';
@@ -101,6 +102,7 @@ export const MainView: FC<{}> = props =>
             <PhoneView />
             <DiamondsStoreView />
             <RightSideView />
+            <JukeboxAudioEngine />
             <UserSettingsView />
             <RpSettingsView />
             <RpInventoryView />

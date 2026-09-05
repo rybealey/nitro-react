@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { RpJukeboxReportComposer } from '@nitrots/nitro-renderer';
 import { SendMessageComposer } from '../../api';
-import { JukeboxCurrent } from './useJukebox';
+import { JukeboxCurrent } from './JukeboxStore';
 
 // The player renders into a visually-hidden (1x1, opacity 0) container —
 // audio-only by operator decision; playback still streams through the
@@ -235,7 +235,7 @@ export const JukeboxYoutubePlayer: FC<JukeboxYoutubePlayerProps> = props =>
                 <div ref={ containerRef } className="jukebox-player-frame" />
             </div>
             { needsUnmute &&
-                <div className="jukebox-player-unmute" onClick={ unmute }>Tap to unmute</div> }
+                <div className="jukebox-unmute-toast" onClick={ unmute }>Tap to unmute the music</div> }
         </>
     );
 }

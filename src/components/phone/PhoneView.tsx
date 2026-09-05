@@ -7,6 +7,7 @@ import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAccountView } from './PhoneAccountView';
 import { PhoneAppearanceView } from './PhoneAppearanceView';
 import { PhoneCalendarView } from './PhoneCalendarView';
+import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneCallView } from './PhoneCallView';
 import { PhoneCameraView } from './PhoneCameraView';
 import { PhoneContactsView } from './PhoneContactsView';
@@ -23,7 +24,7 @@ import { ReadPhonePosition, useAirplane, usePhonePhotos, usePhonePrefs, usePhone
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -32,13 +33,14 @@ const APP_SCREENS: Record<string, PhoneScreen> = {
     'Camera': 'camera',
     'Photos': 'photos',
     'Settings': 'settings',
-    'Calendar': 'calendar'
+    'Calendar': 'calendar',
+    'Music': 'music'
 };
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'appearance') return 'slide-right';
@@ -410,6 +412,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
                                 <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } /> }
+                            { (screen === 'music') &&
+                                <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
                                 <PhoneCalendarView onBack={ () => go('home') } /> }
                             { (screen === 'account') &&
