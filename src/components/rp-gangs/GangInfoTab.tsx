@@ -18,7 +18,15 @@ interface RosterGroup
 // gang's primary colour) and the roster grouped by role - leader first, the
 // custom roles in their order, plain members last - like the corporation
 // rank ladder. Leave Gang lives here because plain members only see this tab.
-export const GangInfoTab: FC<{ detail: GangDetail }> = ({ detail }) =>
+interface GangInfoTabProps
+{
+    detail: GangDetail;
+    // someone else's gang: no Leave / Disband, and a way back to your own
+    readOnly?: boolean;
+    onBack?: () => void;
+}
+
+export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, onBack = null }) =>
 {
     const { showConfirm = null } = useNotification();
     const isLeader = HasGangPermission(detail.permissions, GANG_PERM_LEADER);
@@ -51,7 +59,10 @@ export const GangInfoTab: FC<{ detail: GangDetail }> = ({ detail }) =>
                     <div className="gang-title">{ detail.name }</div>
                     <div className="gang-sub">Led by { detail.ownerName } · { detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' } · founded { FormatGangDate(detail.createdAt) }</div>
                 </div>
-                <Button variant="danger" onClick={ leave }>{ isLeader ? 'Disband Gang' : 'Leave Gang' }</Button>
+                { !readOnly &&
+                    <Button variant="danger" onClick={ leave }>{ isLeader ? 'Disband Gang' : 'Leave Gang' }</Button> }
+                { readOnly && onBack &&
+                    <span className="gang-chrome-btn" onClick={ onBack }>My gang</span> }
             </div>
             <div className="gang-card gang-level">
                 <div className="gang-level-label">Level { detail.level }</div>

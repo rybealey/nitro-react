@@ -32,6 +32,9 @@ export const RpGangsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
     const [ currentTab, setCurrentTab ] = useState<GangTab>('info');
+    // > 0 while looking at ANOTHER gang (rp-gangs/view/<id>, from a target's
+    // crest or a profile's gang card): read-only Info, no tabs.
+    const [ viewGangId, setViewGangId ] = useState(0);
     const [ detail, setDetail ] = useState<GangDetail>(null);
     const [ incomingInvites, setIncomingInvites ] = useState<GangIncomingInvite[]>([]);
     const [ gangCost, setGangCost ] = useState<number>(0);
@@ -63,7 +66,7 @@ export const RpGangsView: FC<{}> = props =>
                 setCurrentTab('info');
             }
 
-            if(isVisible) SendMessageComposer(new RpGetGangDetailComposer());
+            if(isVisible) SendMessageComposer(new RpGetGangDetailComposer(viewGangId));
         }
 
         setVersion(value => (value + 1));
@@ -74,7 +77,10 @@ export const RpGangsView: FC<{}> = props =>
         const parser = event.getParser();
 
         setDetail(parser.detail);
-        setIncomingInvites([]);
+
+        // our own gang arriving means no invites can be pending; another
+        // gang's detail says nothing about them
+        if(parser.detail && (parser.detail.gangId === (GetRpGang(ownUserId)?.gangId ?? 0))) setIncomingInvites([]);
     });
 
     useMessageEvent<RpGangInvitesEvent>(RpGangInvitesEvent, event =>
@@ -87,7 +93,7 @@ export const RpGangsView: FC<{}> = props =>
         if(!isVisible) return;
 
         SendMessageComposer(new RpGetUserGangComposer(ownUserId));
-        SendMessageComposer(new RpGetGangDetailComposer());
+        SendMessageComposer(new RpGetGangDetailComposer(viewGangId));
 
         // one clock for every "expires in" countdown on screen
         setNowSeconds(Math.floor(Date.now() / 1000));
@@ -95,7 +101,7 @@ export const RpGangsView: FC<{}> = props =>
         const interval = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1000)), 1000);
 
         return () => clearInterval(interval);
-    }, [ isVisible, ownUserId ]);
+    }, [ isVisible, ownUserId, viewGangId ]);
 
     useEffect(() =>
     {
@@ -109,14 +115,29 @@ export const RpGangsView: FC<{}> = props =>
                 switch(parts[1])
                 {
                     case 'show':
+                        setViewGangId(0);
                         setIsVisible(true);
                         return;
                     case 'hide':
                         setIsVisible(false);
                         return;
                     case 'toggle':
+                        setViewGangId(0);
                         setIsVisible(prevValue => !prevValue);
                         return;
+                    // rp-gangs/view/<gangId>: someone else's gang, read-only
+                    case 'view':
+                    {
+                        const gangId = parseInt(parts[2]);
+
+                        if(!gangId) return;
+
+                        setDetail(null);
+                        setViewGangId(gangId);
+                        setCurrentTab('info');
+                        setIsVisible(true);
+                        return;
+                    }
                 }
             },
             eventUrlPrefix: 'rp-gangs/'
@@ -129,9 +150,12 @@ export const RpGangsView: FC<{}> = props =>
 
     const ownGang = GetRpGang(ownUserId);
     const inGang = !!ownGang;
+    // looking at a gang that isn't ours (our own id through /view just shows the normal window)
+    const viewingOther = ((viewGangId > 0) && (viewGangId !== (ownGang?.gangId ?? 0)));
+    const viewDetail = ((viewingOther && detail && (detail.gangId === viewGangId)) ? detail : null);
     const canManage = (!!detail && (HasGangPermission(detail.permissions, GANG_PERM_ADMIN) || HasGangPermission(detail.permissions, GANG_PERM_KICK)));
     const canInvite = (!!detail && HasGangPermission(detail.permissions, GANG_PERM_INVITE));
-    const showTabs = (inGang && (canManage || canInvite));
+    const showTabs = (inGang && !viewingOther && (canManage || canInvite));
 
     // a permission that went away (role changed under us) drops the viewer back to Info
     useEffect(() =>
@@ -142,7 +166,7 @@ export const RpGangsView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ inGang ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim">
+        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ (inGang || viewingOther) ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim">
             <NitroCardHeaderView headerText="Gang" onCloseClick={ () => setIsVisible(false) } />
             { showTabs &&
                 <NitroCardTabsView>
@@ -153,15 +177,19 @@ export const RpGangsView: FC<{}> = props =>
                         <NitroCardTabsItemView isActive={ currentTab === 'invites' } onClick={ () => setCurrentTab('invites') }>Invites</NitroCardTabsItemView> }
                 </NitroCardTabsView> }
             <NitroCardContentView className="text-black">
-                { !inGang &&
+                { viewingOther && !viewDetail &&
+                    <div className="gang-empty">Loading…</div> }
+                { viewingOther && viewDetail &&
+                    <GangInfoTab detail={ viewDetail } readOnly onBack={ inGang ? () => { setDetail(null); setViewGangId(0); } : null } /> }
+                { !viewingOther && !inGang &&
                     <GangCreateView gangCost={ gangCost } buyPending={ buyPending } onBuy={ () => setBuyPending(true) } incomingInvites={ incomingInvites } nowSeconds={ nowSeconds } /> }
-                { inGang && !detail &&
+                { !viewingOther && inGang && !detail &&
                     <div className="gang-empty">Loading { ownGang.name }…</div> }
-                { inGang && detail && (currentTab === 'info') &&
+                { !viewingOther && inGang && detail && (currentTab === 'info') &&
                     <GangInfoTab detail={ detail } /> }
-                { inGang && detail && (currentTab === 'manage') && canManage &&
+                { !viewingOther && inGang && detail && (currentTab === 'manage') && canManage &&
                     <GangManageTab detail={ detail } ownUserId={ ownUserId } onInvite={ () => setCurrentTab('invites') } /> }
-                { inGang && detail && (currentTab === 'invites') && canInvite &&
+                { !viewingOther && inGang && detail && (currentTab === 'invites') && canInvite &&
                     <GangInvitesTab detail={ detail } nowSeconds={ nowSeconds } /> }
             </NitroCardContentView>
         </NitroCardView>

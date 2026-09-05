@@ -1,7 +1,7 @@
 import { ILinkEventTracker, RpGetUserCorpComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { LuBuilding2, LuUsers } from 'react-icons/lu';
-import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, CreateLinkEvent, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
@@ -192,7 +192,7 @@ export const RpProfileView: FC<{}> = props =>
                                     <div className="rp-profile-org-name">{ gang ? gang.name : 'No gang' }</div>
                                     <div className="rp-profile-org-role">{ gang ? (gang.isOwner ? 'Leader' : 'Member') : ' ' }</div>
                                 </div>
-                                <div className="rp-profile-view-gang" onClick={ () => CreateLinkEvent('rp-gangs/show') }>View</div>
+                                <div className="rp-profile-view-gang" onClick={ () => CreateLinkEvent((gang && (gang.gangId !== (GetRpGang(GetSessionDataManager().userId)?.gangId ?? 0))) ? `rp-gangs/view/${ gang.gangId }` : 'rp-gangs/show') }>View</div>
                             </div>
                         </div>
                     </div>

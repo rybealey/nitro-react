@@ -346,7 +346,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             { locked ? <FaLock /> : <FaLockOpen /> }
                         </span>
                         { targetGang &&
-                            <span className="hud-gang" title={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` }>
+                            <span className="hud-gang" title={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` } onClick={ () => CreateLinkEvent(`rp-gangs/view/${ targetGang.gangId }`) }>
                                 <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 40 } />
                             </span> }
                         <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>

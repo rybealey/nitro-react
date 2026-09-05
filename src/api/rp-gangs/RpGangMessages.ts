@@ -248,12 +248,14 @@ export class RpBuyGangComposer extends RpGangComposer
     }
 }
 
-// the Gang window's state: detail when in a gang, else the incoming invites
+// The Gang window's state: detail when in a gang, else the incoming invites.
+// With a gangId, that gang's detail instead - a read-only look at someone
+// else's gang (no permission bits, no invites for a non-member).
 export class RpGetGangDetailComposer extends RpGangComposer
 {
-    constructor()
+    constructor(gangId: number = 0)
     {
-        super();
+        super(gangId);
     }
 }
 

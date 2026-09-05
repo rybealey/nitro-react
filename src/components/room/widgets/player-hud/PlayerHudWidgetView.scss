@@ -325,9 +325,9 @@
         &.locked { color: var(--hud-success); }
     }
 
-    // Target's gang crest: a third floating chip, past the close/lock column,
-    // exactly the portrait's 56px tall so the two read as one row. Same chip
-    // treatment as close/lock; not clickable - it's a badge.
+    // Target's gang crest: the bare crest past the close/lock column, the
+    // portrait's 56px tall so the two read as one row. No plate - it isn't a
+    // control chip; the hover lift says it opens the gang's Info view.
     .hud-gang {
         position: absolute;
         top: 0;
@@ -337,14 +337,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--prp-chrome-92);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        border: 1px solid rgba(0, 0, 0, .45);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .45), inset 0px 3px var(--prp-chrome-hi), inset 0 -2px var(--prp-chrome-lo);
-        border-radius: $border-radius;
+        cursor: pointer;
         pointer-events: auto;
+        transition: transform .1s ease, filter .1s ease;
 
-        .gang-crest { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
+        .gang-crest {
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55));
+            transition: transform .1s ease;
+        }
+
+        &:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.12);
+        }
+
+        &:active { transform: none; }
     }
 }
