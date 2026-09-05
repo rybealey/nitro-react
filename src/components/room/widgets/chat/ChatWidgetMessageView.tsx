@@ -12,7 +12,9 @@ interface ChatWidgetMessageViewProps
 
 // Chat styles whose asterisk-wrapped messages render as an action: 4 is the
 // blue combat bubble, 5 the yellow one used when a backpack item is consumed.
-const ACTION_BUBBLE_STYLES: number[] = [ 4, 5 ];
+// 4 = fight/action blue, 5 = consume yellow, 23 = the staff action bubble
+// (:superhire and friends) - all render "*Name does a thing*"
+const ACTION_BUBBLE_STYLES: number[] = [ 4, 5, 23 ];
 
 export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
 {
