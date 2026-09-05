@@ -112,7 +112,8 @@ export const DiamondsStoreView: FC<{}> = props =>
 
     // 1 diamond = 1 cent.
     const totalCents = diamonds;
-    const totalDisplay = `$${ (totalCents / 100).toFixed(2) }`;
+    // prices are in US dollars, and say so - the hotel is not US-only
+    const totalDisplay = `$${ (totalCents / 100).toFixed(2) } USD`;
 
     const onDiamondsChange = (event: ChangeEvent<HTMLInputElement>) =>
     {
@@ -353,7 +354,7 @@ export const DiamondsStoreView: FC<{}> = props =>
                                 <div key={ packAmount } className={ `diamonds-store-pack${ (!isCustomPack && (selectedPack === index)) ? ' is-selected' : '' }` } onClick={ () => setSelectedPack(index) }>
                                     <LayoutCurrencyIcon type={ 5 } />
                                     <span className="diamonds-store-pack-amount">{ packAmount.toLocaleString('en-US') }</span>
-                                    <span className="diamonds-store-pack-price">{ `$${ (packAmount / 100).toFixed(0) }` }</span>
+                                    <span className="diamonds-store-pack-price">{ `$${ (packAmount / 100).toFixed(0) } USD` }</span>
                                 </div>
                             )) }
                             <div className={ `diamonds-store-pack diamonds-store-pack-custom${ isCustomPack ? ' is-selected' : '' }` } onClick={ () => setSelectedPack(CUSTOM_PACK) }>
