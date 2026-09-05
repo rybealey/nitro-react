@@ -320,6 +320,77 @@ export interface ImportedPreset
     skipped: number;
 }
 
+// Other hotels spell bindings their own way. HabRP exports the raw
+// KeyboardEvent.key ("4", "`", "q", "Shift+1"); other clients write
+// event.code ("Digit4", "KeyQ", "Backquote") or friendly names ("Space",
+// "Esc", "Ctrl+Q"). All of those become this client's canonical form - fixed
+// modifier order, uppercased base, the digit-row glyph repaired under Shift -
+// so a pasted file just works instead of importing bindings that never fire.
+const IMPORT_MODIFIER_WORDS: { [word: string]: keyof ModifierFlags } = {
+    CTRL: 'ctrlKey', CONTROL: 'ctrlKey',
+    SHIFT: 'shiftKey',
+    ALT: 'altKey', OPTION: 'altKey',
+    META: 'metaKey', CMD: 'metaKey', COMMAND: 'metaKey', WIN: 'metaKey', WINDOWS: 'metaKey', SUPER: 'metaKey'
+};
+
+const IMPORT_KEY_ALIASES: { [name: string]: string } = {
+    ' ': 'SPACE', SPACEBAR: 'SPACE',
+    ESC: 'ESCAPE', RETURN: 'ENTER', DEL: 'DELETE', INS: 'INSERT',
+    PGUP: 'PAGEUP', PGDN: 'PAGEDOWN', PGDOWN: 'PAGEDOWN',
+    UP: 'ARROWUP', DOWN: 'ARROWDOWN', LEFT: 'ARROWLEFT', RIGHT: 'ARROWRIGHT',
+    BACKQUOTE: '`', MINUS: '-', EQUAL: '=', BRACKETLEFT: '[', BRACKETRIGHT: ']',
+    BACKSLASH: '\\', SEMICOLON: ';', QUOTE: '\'', COMMA: ',', PERIOD: '.', SLASH: '/',
+    MOUSE1: 'Mouse Left', MOUSE2: 'Mouse Right', MOUSE3: 'Mouse Middle', MOUSE4: 'Mouse 4', MOUSE5: 'Mouse 5',
+    MOUSELEFT: 'Mouse Left', MOUSERIGHT: 'Mouse Right', MOUSEMIDDLE: 'Mouse Middle',
+    MMB: 'Mouse Middle', RMB: 'Mouse Right', LMB: 'Mouse Left'
+};
+
+export const NormalizeImportedBinding = (raw: string): string =>
+{
+    let rest = (raw ?? '').trim();
+
+    if(!rest.length) return '';
+
+    // already in this client's shape (a preset exported from here)
+    if(rest.startsWith('Mouse ')) return rest;
+
+    const flags: ModifierFlags = { ctrlKey: false, shiftKey: false, altKey: false, metaKey: false };
+
+    // Peel "Ctrl+", "shift +", "CMD+" prefixes in any order and case. A prefix
+    // only counts when something follows it, so "+" alone stays a key.
+    for(;;)
+    {
+        const match = rest.match(/^([A-Za-z]+)\s*\+\s*(.+)$/s);
+
+        if(!match) break;
+
+        const flag = IMPORT_MODIFIER_WORDS[match[1].toUpperCase()];
+
+        if(!flag) break;
+
+        flags[flag] = true;
+        rest = match[2];
+    }
+
+    let base = rest;
+
+    // event.code spellings: "Digit4" -> "4", "KeyQ" -> "Q", "Numpad7" -> "7", "F1" stays
+    const codeMatch = base.match(/^(?:Digit|Key|Numpad)([A-Za-z0-9])$/);
+
+    if(codeMatch) base = codeMatch[1];
+
+    const alias = (IMPORT_KEY_ALIASES[base.toUpperCase()] ?? IMPORT_KEY_ALIASES[base]);
+
+    if(alias) base = alias;
+
+    // a bare modifier word is a binding in its own right ("Shift")
+    if(!base.startsWith('Mouse ')) base = base.toUpperCase();
+
+    if(MACRO_MODIFIER_KEYS.includes(base)) return base;
+
+    return RepairShiftedBinding(ModifierPrefix(flags) + base);
+};
+
 // null means the text is not a preset at all. Anything past that is imported as
 // far as it can be, reporting what it had to drop.
 export const ParseExportedPreset = (text: string): ImportedPreset =>
@@ -337,7 +408,10 @@ export const ParseExportedPreset = (text: string): ImportedPreset =>
         return null;
     }
 
-    if(!parsed || (typeof parsed !== 'object') || Array.isArray(parsed)) return null;
+    // a bare array of macros is a preset with no name
+    if(Array.isArray(parsed)) parsed = { macros: parsed };
+
+    if(!parsed || (typeof parsed !== 'object')) return null;
     if(!Array.isArray(parsed.macros)) return null;
 
     const name = (((typeof parsed.name === 'string') && parsed.name.trim().length)
@@ -359,8 +433,10 @@ export const ParseExportedPreset = (text: string): ImportedPreset =>
         // "key"/"command" is the documented shape. "b"/"c" is tolerated as well
         // because it is what the raw saved value looks like, and someone pasting
         // that deserves it to work rather than a puzzling refusal.
-        const binding = ((entry && (typeof entry.key === 'string')) ? entry.key : ((entry && (typeof entry.b === 'string')) ? entry.b : ''));
+        const rawBinding = ((entry && (typeof entry.key === 'string')) ? entry.key : ((entry && (typeof entry.b === 'string')) ? entry.b : ''));
         const command = ((entry && (typeof entry.command === 'string')) ? entry.command : ((entry && (typeof entry.c === 'string')) ? entry.c : ''));
+        // another hotel's spelling of the key becomes ours (see NormalizeImportedBinding)
+        const binding = NormalizeImportedBinding(rawBinding);
 
         if(!binding.trim().length || !command.trim().length)
         {

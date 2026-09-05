@@ -484,9 +484,24 @@ export const RpSettingsView: FC<{}> = props =>
         }
     };
 
-    const importPreset = () =>
+    const importFileRef = useRef<HTMLInputElement>(null);
+
+    // Reads a picked or dropped file straight into the importer - the fastest
+    // path for someone bringing their macros over from another hotel.
+    const importFile = (file: File) =>
     {
-        const imported = ParseExportedPreset(importText);
+        if(!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = () => importPreset(String(reader.result ?? ''));
+        reader.onerror = () => notify('Could not read that file.');
+        reader.readAsText(file);
+    };
+
+    const importPreset = (text: string = importText) =>
+    {
+        const imported = ParseExportedPreset(text);
 
         if(!imported)
         {
@@ -902,7 +917,7 @@ export const RpSettingsView: FC<{}> = props =>
                                     <span className="rp-macros-dialog-hint">
                                         { (macroDialog === 'export')
                                             ? 'Copy this JSON and send it to another account.'
-                                            : 'Paste a preset here - the JSON that Export gives you.' }
+                                            : 'Paste a preset, or drop the file here. Exports from other hotels (HabRP and the like) work as they are.' }
                                     </span>
                                     { (macroDialog === 'export') &&
                                         <textarea ref={ exportTextRef } readOnly spellCheck={ false }
@@ -911,8 +926,15 @@ export const RpSettingsView: FC<{}> = props =>
                                     { (macroDialog === 'import') &&
                                         <textarea autoFocus spellCheck={ false }
                                             className="rp-macros-dialog-text" aria-label="Preset JSON to import"
-                                            value={ importText } onChange={ event => setImportText(event.target.value) } /> }
+                                            value={ importText } onChange={ event => setImportText(event.target.value) }
+                                            onDragOver={ event => event.preventDefault() }
+                                            onDrop={ event => { event.preventDefault(); importFile(event.dataTransfer.files?.[0]); } } /> }
+                                    { (macroDialog === 'import') &&
+                                        <input ref={ importFileRef } type="file" accept=".json,application/json,text/plain" hidden
+                                            onChange={ event => { importFile(event.target.files?.[0]); event.target.value = ''; } } /> }
                                     <Flex justifyContent="end" gap={ 2 }>
+                                        { (macroDialog === 'import') &&
+                                            <div className="rp-macros-btn me-auto" onClick={ () => importFileRef.current?.click() }>Open file…</div> }
                                         <div className="rp-macros-btn" onClick={ closeMacroDialog }>
                                             { (macroDialog === 'export') ? 'Close' : 'Cancel' }
                                         </div>
@@ -921,7 +943,7 @@ export const RpSettingsView: FC<{}> = props =>
                                                 { exportCopied ? 'Copied' : 'Copy' }
                                             </div> }
                                         { (macroDialog === 'import') &&
-                                            <div className="rp-macros-btn rp-macros-btn--accent" onClick={ importPreset }>Import</div> }
+                                            <div className="rp-macros-btn rp-macros-btn--accent" onClick={ () => importPreset() }>Import</div> }
                                     </Flex>
                                 </div>
                             </div> }
