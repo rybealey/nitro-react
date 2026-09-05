@@ -424,7 +424,9 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         flex-direction: column;
         border-radius: 8px;
         overflow: hidden;
-        background: var(--prp-chrome-95);
+        // Opaque: the list of macros underneath must not show through the
+        // JSON (the surface-opacity setting scales -95, not -solid)
+        background: var(--prp-chrome-solid);
         border: 1px solid rgba(0, 0, 0, .45);
         // Lifts it off the rows without needing to dim them.
         box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
