@@ -41,13 +41,15 @@ export const MACRO_DEFAULT_PRESET_NAME = 'Default';
 
 // Keys we refuse to bind ON THEIR OWN. Because a bound key is swallowed before
 // the chat input sees it, binding any of these bare would leave the player
-// unable to send or dismiss anything - Enter especially would make chat
+// unable to send or delete anything - Enter especially would make chat
 // unusable with no obvious way to undo it from inside the client. With a
 // modifier they are fine: only the exact combo is swallowed, so CTRL+ENTER
 // leaves plain Enter alone. Tab is deliberately not reserved at all: the Macros
 // design uses it as an example binding, and swallowing it also stops it tabbing
-// focus out of the client.
-export const MACRO_RESERVED_KEYS: string[] = [ 'ENTER', 'NUMPADENTER', 'ESCAPE', 'BACKSPACE' ];
+// focus out of the client. Escape is bindable too (a common macro key on
+// other hotels): nothing in the client needs it to send or type, and the
+// windows it dismisses all have close buttons.
+export const MACRO_RESERVED_KEYS: string[] = [ 'ENTER', 'NUMPADENTER', 'BACKSPACE' ];
 
 // Modifiers are bindable on their own AND act as prefixes for other keys, so
 // they need both spellings. Held alone a modifier is a binding; held with
