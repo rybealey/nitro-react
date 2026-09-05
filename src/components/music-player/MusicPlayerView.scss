@@ -223,25 +223,6 @@ $player-teal: #1E7295;
         }
     }
 
-    // Audio-only playback: the iframe stays mounted and playing but is
-    // visually collapsed to a 1x1 transparent box (never display:none -
-    // that risks pausing playback in some browsers).
-    .jukebox-player-hidden {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        opacity: 0;
-        overflow: hidden;
-        pointer-events: none;
-
-        .jukebox-player-frame,
-        .jukebox-player-frame iframe {
-            width: 1px;
-            height: 1px;
-            border: 0;
-        }
-    }
-
     // "Phone" chip where the mute sits: the phone is the source right now
     .music-player-source {
         flex-shrink: 0;
@@ -492,4 +473,28 @@ $player-teal: #1E7295;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 
     &:hover { filter: brightness(1.08); }
+}
+
+// Audio-only playback: the iframe stays mounted and playing but is visually
+// collapsed to a 1x1 transparent box pinned off in a corner (never
+// display:none - that risks pausing playback in some browsers). Top level:
+// the one JukeboxAudioEngine mounts it at the app root, not inside the room
+// panel, so it must be hidden wherever it lands.
+.jukebox-player-hidden {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: -1;
+
+    .jukebox-player-frame,
+    .jukebox-player-frame iframe {
+        width: 1px;
+        height: 1px;
+        border: 0;
+    }
 }
