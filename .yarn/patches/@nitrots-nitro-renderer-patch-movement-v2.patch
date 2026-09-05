@@ -299,7 +299,7 @@ index 6938b9a..58e5f45 100644
  export * from './RpAlbumListEvent';
  export * from './RpAlbumPhotosEvent';
 diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
-index 2ff0e23..66fa296 100644
+index 2ff0e23..09de3d7 100644
 --- a/src/nitro/room/RoomMessageHandler.ts
 +++ b/src/nitro/room/RoomMessageHandler.ts
 @@ -1,7 +1,7 @@
@@ -371,7 +371,7 @@ index 2ff0e23..66fa296 100644
 +            parser.fromX, parser.fromY, parser.fromZ,
 +            parser.toX, parser.toY, parser.toZ,
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
-+            clientNow, parser.lookahead);
++            clientNow, parser.lookahead, parser.startDelayMs);
 +
 +        // TEMPORARY: Pending -> Moving joins only, edge 0, once per session.
 +        //
@@ -429,7 +429,7 @@ index 4198932..5965e22 100644
      }
  
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..5bafb69 100644
+index ac3907b..ec7370e 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -1,5 +1,6 @@
@@ -439,7 +439,7 @@ index ac3907b..5bafb69 100644
  import { ObjectMoveUpdateMessage } from '../../messages';
  
  export class MovingObjectLogic extends RoomObjectLogicBase
-@@ -64,6 +65,73 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +65,123 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -466,7 +466,57 @@ index ac3907b..5bafb69 100644
 +
 +            if(locationOffset) vector.add(locationOffset);
 +
++            // TEMPORARY join-handoff forensics, once per join. Captured HERE,
++            // immediately before V2's first write, because this is the last
++            // instant at which the object still holds whatever the previous
++            // writer left. getLocation() hands back the LIVE vector, so the
++            // components are copied out rather than the reference kept.
++            const handoff = PixelRPMovementV2.instance.shouldLogJoinHandoff(this.object.id, pixelrpV2.edgeIndex);
++            let beforeX = 0;
++            let beforeY = 0;
++            let beforeZ = 0;
++            let beforeDir = -1;
++
++            if(handoff)
++            {
++                const previous = this.object.getLocation();
++
++                beforeX = previous.x;
++                beforeY = previous.y;
++                beforeZ = previous.z;
++
++                const direction = this.object.getDirection();
++
++                if(direction) beforeDir = direction.x;
++            }
++
++            PixelRPMovementV2.instance.ownWrite = true;
 +            this.object.setLocation(vector);
++            PixelRPMovementV2.instance.ownWrite = false;
++
++            if(handoff)
++            {
++                const after = this.object.getLocation();
++                const afterDirection = this.object.getDirection();
++
++                console.log('[MV2/JOIN-HANDOFF]', {
++                    unit: this.object.id,
++                    edgeFrom: `${pixelrpV2.sx},${pixelrpV2.sy},${pixelrpV2.sz}`,
++                    edgeTo: `${pixelrpV2.gx},${pixelrpV2.gy},${pixelrpV2.gz}`,
++                    actualBeforeV2: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
++                    deltaFrom: `${(beforeX - pixelrpV2.sx).toFixed(3)},${(beforeY - pixelrpV2.sy).toFixed(3)},${(beforeZ - pixelrpV2.sz).toFixed(3)}`,
++                    interpAtStart: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
++                    actualAfterV2: `${after.x.toFixed(3)},${after.y.toFixed(3)},${after.z.toFixed(3)}`,
++                    phase: pixelrpV2.phase.toFixed(4),
++                    dirBefore: beforeDir,
++                    dirAfter: (afterDirection ? afterDirection.x : -1),
++                    // A non-null offset legitimately shifts the rendered
++                    // position, so deltaFrom must be read against it.
++                    locationOffset: (locationOffset ? `${locationOffset.x},${locationOffset.y},${locationOffset.z}` : 'none'),
++                    startDelayMs: PixelRPMovementV2.instance.joinDelayOf(this.object.id),
++                    tickerNow: Math.round(this.time)
++                });
++            }
 +
 +            // Keep native's baseline consistent so a release to native (stale,
 +            // displacement, missing 4110) continues from where V2 left off
@@ -513,6 +563,43 @@ index ac3907b..5bafb69 100644
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
+diff --git a/src/room/object/RoomObject.ts b/src/room/object/RoomObject.ts
+index f900839..088425b 100644
+--- a/src/room/object/RoomObject.ts
++++ b/src/room/object/RoomObject.ts
+@@ -1,6 +1,7 @@
+ import { IRoomObjectController, IRoomObjectEventHandler, IRoomObjectModel, IRoomObjectMouseHandler, IRoomObjectUpdateMessage, IRoomObjectVisualization, IVector3D, Vector3d } from '../../api';
+ import { Disposable } from '../../core';
+ import { RoomObjectModel } from './RoomObjectModel';
++import { PixelRPMovementV2 } from '../renderer/PixelRPMovementV2';
+ 
+ export class RoomObject extends Disposable implements IRoomObjectController
+ {
+@@ -75,6 +76,24 @@ export class RoomObject extends Disposable implements IRoomObjectController
+ 
+         if((vector.x === this._location.x) && (vector.y === this._location.y) && (vector.z === this._location.z)) return;
+ 
++        // TEMPORARY join forensics. Every positional write in the engine funnels
++        // through here, so this one hook catches the native lerp, a UserUpdate,
++        // a displacement and anything else alike - filtered to a joining unit
++        // inside +-20ms of its Pending -> Moving boundary, and excluding V2's
++        // own write so it does not drown out the writer it is looking for.
++        const pixelrpStore = PixelRPMovementV2.instance;
++
++        if(!pixelrpStore.ownWrite && pixelrpStore.isJoinWriterWatch(this._id, performance.now()))
++        {
++            console.log('[MV2/JOIN-WRITER]', {
++                unit: this._id,
++                from: `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)},${this._location.z.toFixed(3)}`,
++                to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
++                at: Math.round(performance.now()),
++                by: ((new Error().stack || '').split('\n').slice(2, 6).map(l => l.trim()).join(' <- '))
++            });
++        }
++
+         this._location.x = vector.x;
+         this._location.y = vector.y;
+         this._location.z = vector.z;
 diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
 deleted file mode 100644
 index 3318c38..0000000
@@ -1540,10 +1627,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..214ae93
+index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,478 @@
+@@ -0,0 +1,535 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1613,6 +1700,11 @@ index 0000000..214ae93
 +    revision: number;
 +    edges: PixelRPV2Edge[];
 +    lastPacketAtClient: number;
++    /** TEMPORARY join forensics - ms this session waited in Pending. 0 = not a join. */
++    joinDelayMs: number;
++    /** performance.now() at which edge 0 of a joined session starts. */
++    joinBoundaryClient: number;
++    joinHandoffLogged: boolean;
 +}
 +
 +export class PixelRPMovementV2
@@ -1781,7 +1873,8 @@ index 0000000..214ae93
 +        interval: number,
 +        serverNow: number,
 +        clientNowPerf: number,
-+        lookahead: { x: number, y: number, z: number }[] = []): void
++        lookahead: { x: number, y: number, z: number }[] = [],
++        startDelayMs = 0): void
 +    {
 +        this.updateClock(clientNowPerf, serverNow);
 +
@@ -1789,7 +1882,10 @@ index 0000000..214ae93
 +
 +        if(!unit)
 +        {
-+            unit = { id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf };
++            unit = {
++                id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf,
++                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true
++            };
 +
 +            this._units.set(virtualId, unit);
 +        }
@@ -1818,6 +1914,16 @@ index 0000000..214ae93
 +        }
 +
 +        unit.lastPacketAtClient = clientNowPerf;
++
++        // TEMPORARY join forensics. Edge 0 of a session that waited in Pending
++        // is the handoff under investigation; arm the one-shot log and the
++        // writer watch window around the boundary this edge starts on.
++        if((edgeIndex === 0) && (startDelayMs > 0))
++        {
++            unit.joinDelayMs = startDelayMs;
++            unit.joinBoundaryClient = (cycleStart + this._clockOffset);
++            unit.joinHandoffLogged = false;
++        }
 +
 +        const step = ((interval > 0) ? interval : 500);
 +
@@ -1887,6 +1993,44 @@ index 0000000..214ae93
 +        }
 +
 +        unit.edges.push(edge);
++    }
++
++    // ---- TEMPORARY join-handoff forensics ---------------------------------
++
++    /**
++     * Set by MovingObjectLogic around its own setLocation, so the writer watch
++     * in RoomObject.setLocation can tell V2's write apart from everyone else's.
++     * Without it V2 would be the loudest entry in its own investigation.
++     */
++    public ownWrite = false;
++
++    /** True exactly once, on the first frame V2 renders edge 0 of a join. */
++    public shouldLogJoinHandoff(virtualId: number, edgeIndex: number): boolean
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit || unit.joinHandoffLogged || (unit.joinDelayMs <= 0) || (edgeIndex !== 0)) return false;
++
++        unit.joinHandoffLogged = true;
++
++        return true;
++    }
++
++    public joinDelayOf(virtualId: number): number
++    {
++        const unit = this._units.get(virtualId);
++
++        return (unit ? unit.joinDelayMs : 0);
++    }
++
++    /** Within +-20ms of a joiner's Pending -> Moving boundary. */
++    public isJoinWriterWatch(virtualId: number, nowPerf: number): boolean
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit || (unit.joinDelayMs <= 0)) return false;
++
++        return (Math.abs(nowPerf - unit.joinBoundaryClient) <= 20);
 +    }
 +
 +    /** Teleport / roller / forced move: drop timed state, hand back to native. */
