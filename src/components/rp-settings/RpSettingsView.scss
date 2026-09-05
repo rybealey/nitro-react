@@ -406,106 +406,6 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
 
     // captured key. Fixed width so the command fields line up down the column
     // however long the key name is; long ones ellipsis rather than push.
-    // ---- Export / import overlay ------------------------------------------
-    // Deliberately not a separate window: it belongs to the preset being
-    // exported, and a NitroCard would detach from it and need its own drag and
-    // z-index handling. Anchored below the top bar so Export/Import stay
-    // visible, which is also what shows the player which panel it came from.
-    .rp-macros-dialog {
-        position: absolute;
-        top: 34px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 30px);
-        max-width: 300px;
-        // Above the rows and the preset picker's popup menu (z-index 5).
-        z-index: 10;
-        display: flex;
-        flex-direction: column;
-        border-radius: 8px;
-        overflow: hidden;
-        // Opaque: the list of macros underneath must not show through the
-        // JSON (the surface-opacity setting scales -95, not -solid)
-        background: var(--prp-chrome-solid);
-        border: 1px solid rgba(0, 0, 0, .45);
-        // Lifts it off the rows without needing to dim them.
-        box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
-    }
-
-    .rp-macros-dialog-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 7px 10px;
-        font-size: 12px;
-        font-weight: 700;
-        color: $white;
-        background: var(--prp-chrome-hover);
-    }
-
-    // Drawn rather than an icon font, to match the caret and the move arrows.
-    .rp-macros-dialog-close {
-        position: relative;
-        width: 12px;
-        height: 12px;
-        flex-shrink: 0;
-        cursor: pointer;
-        opacity: .7;
-
-        &:hover { opacity: 1; }
-
-        &::before,
-        &::after {
-            content: '';
-            position: absolute;
-            top: 5px;
-            left: 1px;
-            width: 10px;
-            height: 2px;
-            border-radius: 1px;
-            background: $white;
-        }
-
-        &::before { transform: rotate(45deg); }
-        &::after { transform: rotate(-45deg); }
-    }
-
-    .rp-macros-dialog-body {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 10px;
-    }
-
-    .rp-macros-dialog-hint {
-        font-size: 11px;
-        font-weight: 400;
-        color: rgba($white, .65);
-    }
-
-    // Monospace so the JSON's indentation lines up, and nowrap + auto overflow
-    // so a long command scrolls sideways instead of reflowing and hiding the
-    // structure. Fixed height: the panel must not resize as content changes.
-    .rp-macros-dialog-text {
-        height: 150px;
-        resize: none;
-        padding: 8px;
-        border: 1px solid rgba(0, 0, 0, .45);
-        border-radius: 6px;
-        font-family: 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
-        line-height: 1.45;
-        white-space: pre;
-        overflow: auto;
-        color: $white;
-        background: rgba(0, 0, 0, .28);
-
-        &:focus {
-            outline: none;
-            border-color: var(--prp-chrome-hover);
-        }
-    }
 
     // Wide enough for a one-modifier combo ("CTRL+ARROWLEFT") and for
     // "SHIFT+Mouse Middle"; a three-modifier binding still ellipsises, which is
@@ -745,3 +645,133 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         @include prp-chrome-tab-strip;
     }
 }
+
+// ---- Export / import dialog ----------------------------------------------
+// Not a NitroCard (it belongs to the preset being exported and closes with
+// the panel) but it IS its own draggable surface: the settings view portals
+// it to <body> and drags it by the header, so it can sit anywhere on screen.
+.rp-macros-dialog {
+    // Portaled to <body> and positioned in viewport px by the settings view,
+    // so it can be dragged anywhere on screen - out of the settings window,
+    // which is why these rules live at top level rather than under it.
+    position: fixed;
+    width: 300px;
+    max-width: calc(100vw - 16px);
+    // above every draggable window, under the toolbar's own popups
+    z-index: $chatinput-zindex + 5;
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    // Opaque: the list of macros underneath must not show through the
+    // JSON (the surface-opacity setting scales -95, not -solid)
+    background: var(--prp-chrome-solid);
+    border: 1px solid rgba(0, 0, 0, .45);
+    // Lifts it off the rows without needing to dim them.
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+
+.rp-macros-dialog-header {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: $white;
+    background: var(--prp-chrome-hover);
+}
+
+// Drawn rather than an icon font, to match the caret and the move arrows.
+.rp-macros-dialog-close {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+    opacity: .7;
+
+    &:hover { opacity: 1; }
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 1px;
+        width: 10px;
+        height: 2px;
+        border-radius: 1px;
+        background: $white;
+    }
+
+    &::before { transform: rotate(45deg); }
+    &::after { transform: rotate(-45deg); }
+}
+
+.rp-macros-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+}
+
+.rp-macros-dialog-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba($white, .65);
+}
+
+// Monospace so the JSON's indentation lines up, and nowrap + auto overflow
+// so a long command scrolls sideways instead of reflowing and hiding the
+// structure. Fixed height: the panel must not resize as content changes.
+.rp-macros-dialog-text {
+    height: 150px;
+    resize: none;
+    padding: 8px;
+    border: 1px solid rgba(0, 0, 0, .45);
+    border-radius: 6px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: pre;
+    overflow: auto;
+    color: $white;
+    background: rgba(0, 0, 0, .28);
+
+    &:focus {
+        outline: none;
+        border-color: var(--prp-chrome-hover);
+    }
+}
+
+.rp-macros-dialog-header:active { cursor: grabbing; }
+
+// The panel's button recipe, restated here because the dialog no longer
+// lives inside .rp-settings-window. On the opaque chrome-solid dialog a
+// chrome-solid button would vanish, so these sit on a light tint instead.
+.rp-macros-dialog .rp-macros-btn {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    color: $white;
+    background: rgba($light, .12);
+    transition: background-color .1s ease, transform .1s ease;
+
+    &:hover {
+        background-color: rgba($light, .22);
+        transform: translateY(-1px);
+    }
+
+    &--accent { background: var(--prp-chrome-hover); }
+}
+

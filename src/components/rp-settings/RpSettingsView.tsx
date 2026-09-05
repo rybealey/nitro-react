@@ -1,6 +1,7 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FaTrash } from 'react-icons/fa';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
@@ -484,19 +485,51 @@ export const RpSettingsView: FC<{}> = props =>
         }
     };
 
-    const importFileRef = useRef<HTMLInputElement>(null);
+    // The dialog is portaled to <body> and dragged by its header - anywhere
+    // on screen, not just within the settings window. Position in viewport px.
+    const [ dialogPos, setDialogPos ] = useState<{ x: number, y: number }>(null);
+    const macrosRef = useRef<HTMLDivElement>(null);
+    const dialogDragRef = useRef<{ startX: number, startY: number, x: number, y: number }>(null);
 
-    // Reads a picked or dropped file straight into the importer - the fastest
-    // path for someone bringing their macros over from another hotel.
-    const importFile = (file: File) =>
+    const DIALOG_WIDTH = 300;
+
+    // Opens over the macros panel, just under its top bar - the spot it used
+    // to be anchored to - so it still reads as belonging to the panel.
+    const openMacroDialog = (kind: 'export' | 'import') =>
     {
-        if(!file) return;
+        const rect = macrosRef.current?.getBoundingClientRect();
 
-        const reader = new FileReader();
+        setDialogPos(rect
+            ? { x: Math.max(8, Math.round(rect.left + ((rect.width - DIALOG_WIDTH) / 2))), y: Math.round(rect.top + 34) }
+            : { x: Math.round((window.innerWidth - DIALOG_WIDTH) / 2), y: 120 });
+        setMacroDialog(kind);
+    };
 
-        reader.onload = () => importPreset(String(reader.result ?? ''));
-        reader.onerror = () => notify('Could not read that file.');
-        reader.readAsText(file);
+    const onDialogPointerDown = (event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        if((event.target as HTMLElement).closest('.rp-macros-dialog-close')) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        dialogDragRef.current = { startX: event.clientX, startY: event.clientY, x: dialogPos.x, y: dialogPos.y };
+        event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+    const onDialogPointerMove = (event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        const drag = dialogDragRef.current;
+
+        if(!drag) return;
+
+        setDialogPos({ x: (drag.x + (event.clientX - drag.startX)), y: (drag.y + (event.clientY - drag.startY)) });
+    };
+
+    const onDialogPointerUp = (event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        dialogDragRef.current = null;
+
+        try { event.currentTarget.releasePointerCapture(event.pointerId); }
+        catch(e) { }
     };
 
     const importPreset = (text: string = importText) =>
@@ -802,7 +835,7 @@ export const RpSettingsView: FC<{}> = props =>
                         </Column>
                     </div> }
                 { (currentTab === 'Macros') &&
-                    <Column gap={ 2 } className="rp-macros">
+                    <Column gap={ 2 } className="rp-macros" innerRef={ macrosRef }>
                         <div className="rp-settings-section rp-macros-bar">
                             { /* Preset leads the row so it lines up with "Click to
                                  bind" below - both bands carry the same 4px inset.
@@ -850,8 +883,8 @@ export const RpSettingsView: FC<{}> = props =>
                             </Flex>
                             <Flex alignItems="center" gap={ 2 }>
                                 <div className="rp-macros-btn rp-macros-btn--accent" onClick={ newPreset }>New</div>
-                                <div className="rp-macros-btn" onClick={ () => { setExportCopied(false); setMacroDialog('export'); } }>Export</div>
-                                <div className="rp-macros-btn" onClick={ () => { setImportText(''); setMacroDialog('import'); } }>Import</div>
+                                <div className="rp-macros-btn" onClick={ () => { setExportCopied(false); openMacroDialog('export'); } }>Export</div>
+                                <div className="rp-macros-btn" onClick={ () => { setImportText(''); openMacroDialog('import'); } }>Import</div>
                                 { /* Deleting the preset belongs with the other
                                      preset-level actions, and sits last so the
                                      destructive one is not next to New. */ }
@@ -907,9 +940,10 @@ export const RpSettingsView: FC<{}> = props =>
                         </div>
                         { /* Export and import share one overlay - same frame,
                              same footer, only the copy and the action differ. */ }
-                        { (macroDialog !== null) &&
-                            <div className="rp-macros-dialog">
-                                <div className="rp-macros-dialog-header">
+                        { (macroDialog !== null) && dialogPos && createPortal(
+                            <div className="rp-macros-dialog" style={ { left: dialogPos.x, top: dialogPos.y } }>
+                                <div className="rp-macros-dialog-header" onPointerDown={ onDialogPointerDown } onPointerMove={ onDialogPointerMove }
+                                    onPointerUp={ onDialogPointerUp } onPointerCancel={ onDialogPointerUp }>
                                     <span>{ (macroDialog === 'export') ? 'Export preset' : 'Import preset' }</span>
                                     <i className="rp-macros-dialog-close" title="Close" onClick={ closeMacroDialog } />
                                 </div>
@@ -917,7 +951,7 @@ export const RpSettingsView: FC<{}> = props =>
                                     <span className="rp-macros-dialog-hint">
                                         { (macroDialog === 'export')
                                             ? 'Copy this JSON and send it to another account.'
-                                            : 'Paste a preset, or drop the file here. Exports from other hotels (HabRP and the like) work as they are.' }
+                                            : 'Paste a preset here. Exports from other hotels (HabRP and the like) work as they are.' }
                                     </span>
                                     { (macroDialog === 'export') &&
                                         <textarea ref={ exportTextRef } readOnly spellCheck={ false }
@@ -926,15 +960,8 @@ export const RpSettingsView: FC<{}> = props =>
                                     { (macroDialog === 'import') &&
                                         <textarea autoFocus spellCheck={ false }
                                             className="rp-macros-dialog-text" aria-label="Preset JSON to import"
-                                            value={ importText } onChange={ event => setImportText(event.target.value) }
-                                            onDragOver={ event => event.preventDefault() }
-                                            onDrop={ event => { event.preventDefault(); importFile(event.dataTransfer.files?.[0]); } } /> }
-                                    { (macroDialog === 'import') &&
-                                        <input ref={ importFileRef } type="file" accept=".json,application/json,text/plain" hidden
-                                            onChange={ event => { importFile(event.target.files?.[0]); event.target.value = ''; } } /> }
+                                            value={ importText } onChange={ event => setImportText(event.target.value) } /> }
                                     <Flex justifyContent="end" gap={ 2 }>
-                                        { (macroDialog === 'import') &&
-                                            <div className="rp-macros-btn me-auto" onClick={ () => importFileRef.current?.click() }>Open file…</div> }
                                         <div className="rp-macros-btn" onClick={ closeMacroDialog }>
                                             { (macroDialog === 'export') ? 'Close' : 'Cancel' }
                                         </div>
@@ -946,7 +973,7 @@ export const RpSettingsView: FC<{}> = props =>
                                             <div className="rp-macros-btn rp-macros-btn--accent" onClick={ () => importPreset() }>Import</div> }
                                     </Flex>
                                 </div>
-                            </div> }
+                            </div>, document.body) }
                     </Column> }
                 { (currentTab === 'Roleplay') &&
                     <div className="prp-subnav-layout">
