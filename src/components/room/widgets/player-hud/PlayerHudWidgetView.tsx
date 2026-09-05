@@ -5,6 +5,9 @@ import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, Ge
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
+import { RpGetUserGangComposer, RpUserGangEvent } from '../../../../api/rp-gangs/RpGangMessages';
+import { GetRpGang, SetRpGang } from '../../../../api/rp-gangs/RpGangRegistry';
+import { GangCrest } from '../../../rp-gangs/GangCrest';
 import { RpProfileState } from '../../../rp-profile/RpProfileState';
 
 // Health, energy and aggression are REAL — pushed by the emulator per room
@@ -120,6 +123,20 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const { roomSession } = useRoom();
 
     // Live RP stats: store by roomIndex and bump a version so the HUD re-renders.
+    // Target's gang, for the crest chip beside the plate. Membership is keyed
+    // by user id (webID) in the gang registry: asked for when the target
+    // changes, and refreshed by the hotel-wide broadcast every gang mutation
+    // sends, so the chip appears/disappears live.
+    const [ , setGangVersion ] = useState(0);
+
+    useMessageEvent<RpUserGangEvent>(RpUserGangEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpGang(parser.userId, { gangId: parser.gangId, name: parser.name, colourA: parser.colourA, colourB: parser.colourB, isOwner: parser.isOwner });
+        setGangVersion(value => (value + 1));
+    });
+
     useMessageEvent<RpStatsEvent>(RpStatsEvent, event =>
     {
         const parser = event.getParser();
@@ -190,6 +207,13 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     // Shared room-unit lookup behind both :lt and :t - case-insensitive, scoped
     // to the current room, and never your own avatar (matching click targeting).
+    useEffect(() =>
+    {
+        if(!target?.webID) return;
+
+        SendMessageComposer(new RpGetUserGangComposer(target.webID));
+    }, [ target?.webID ]);
+
     const findRoomUserByName = useCallback((name: string): AvatarInfoUser =>
     {
         if(!roomSession || !name.trim()) return null;
@@ -263,6 +287,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const selfGender = GetSessionDataManager().gender;
     const playerStats = withLiveStats(roomSession?.ownRoomIndex ?? -1, DEFAULT_STATS);
     const targetStats = target ? withLiveStats(target.roomIndex, mockStatsFor(target.name)) : null;
+    const targetGang = (target ? GetRpGang(target.webID) : null);
 
     return (
         // plates hang from the top edge (purse-style), so they align at the
@@ -320,6 +345,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ toggleTargetLock }>
                             { locked ? <FaLock /> : <FaLockOpen /> }
                         </span>
+                        { targetGang &&
+                            <span className="hud-gang" title={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` }>
+                                <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 40 } />
+                            </span> }
                         <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>
                         {
                             RpProfileState.name = target.name;
