@@ -2619,6 +2619,335 @@ $phone-scale: 0.8;
         .phone-notes-swipe-content, .phone-notes-line, .phone-notes-tool, .phone-notes-iconbtn, .phone-notes-fab, .phone-notes-check, .phone-notes-btn { transition: none; }
     }
 
+    // ----- Weather app -----
+    // White type on a sky that IS the condition; cards are glass over it.
+    $wx-glass: rgba(255, 255, 255, .14);
+    $wx-glass-brd: rgba(255, 255, 255, .16);
+    $wx-hair: rgba(255, 255, 255, .18);
+    $wx-s2: rgba(255, 255, 255, .72);
+    $wx-s3: rgba(255, 255, 255, .55);
+    $wx-precip: #8fd3ff;
+    $wx-warn: #f2c65d;
+
+    .phone-weather {
+        color: #ffffff;
+        background: #586880;
+        overflow: hidden;
+        font-family: 'Ubuntu', sans-serif;
+    }
+
+    .phone-weather-sky {
+        position: absolute;
+        inset: 0;
+        animation: phone-cal-fade .7s ease both;
+
+        &.sky-fog { background: linear-gradient(180deg, #586880 0%, #75849a 48%, #98a2b0 100%); }
+        &.sky-clear { background: linear-gradient(180deg, #2a78d2 0%, #57a3ea 52%, #8fc7f1 100%); }
+        &.sky-night { background: linear-gradient(180deg, #0d1430 0%, #1b284f 55%, #2b3a6a 100%); }
+        &.sky-cloudy { background: linear-gradient(180deg, #55677e 0%, #7a8ca3 50%, #a1aebd 100%); }
+        &.sky-cloudy-night { background: linear-gradient(180deg, #141a2c 0%, #26314a 55%, #364460 100%); }
+        &.sky-rain { background: linear-gradient(180deg, #3a4658 0%, #526278 52%, #6d7c92 100%); }
+        &.sky-snow { background: linear-gradient(180deg, #6f7f93 0%, #98a6b8 50%, #c3ccd6 100%); }
+    }
+
+    .phone-weather-stars {
+        position: absolute;
+        inset: 0;
+        background-image:
+            radial-gradient(circle, rgba(255, 255, 255, .7) 0 1px, transparent 1.6px),
+            radial-gradient(circle, rgba(255, 255, 255, .45) 0 .8px, transparent 1.4px),
+            radial-gradient(circle, rgba(255, 255, 255, .55) 0 1.2px, transparent 1.9px);
+        background-size: 120px 90px, 70px 110px, 160px 130px;
+        background-position: 30px 60px, 10px 40px, 80px 100px;
+        opacity: .9;
+        animation: phone-weather-twinkle 5s ease-in-out infinite alternate;
+    }
+
+    .phone-weather-glyph { color: #ffffff; --fa-secondary-color: #ffffff; --fa-secondary-opacity: .55; }
+
+    // top row: back, compact title (scrolled), live pill
+    .phone-weather-top {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 3;
+        height: 74px;
+        padding: 44px 18px 0;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background .3s ease, box-shadow .3s ease;
+
+        &.is-compact {
+            background: rgba(20, 26, 40, .28);
+            backdrop-filter: blur(16px) saturate(1.4);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            box-shadow: 0 1px 0 $wx-hair;
+        }
+    }
+
+    .phone-weather-back { display: flex; color: #ffffff; margin-left: -8px; width: 30px; height: 30px; align-items: center; justify-content: center; }
+
+    .phone-weather-compact {
+        position: absolute;
+        left: 60px;
+        right: 60px;
+        top: 44px;
+        height: 30px;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity .25s ease, transform .25s ease;
+        pointer-events: none;
+
+        .is-compact & { opacity: 1; transform: none; }
+    }
+
+    .phone-weather-compact-city { font-size: 13px; font-weight: 600; line-height: 1.2; }
+    .phone-weather-compact-cond { font-size: 11px; color: $wx-s2; line-height: 1.2; }
+
+    .phone-weather-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+        padding: 0 9px;
+        border-radius: 11px;
+        background: $wx-glass;
+        border: 1px solid $wx-glass-brd;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        color: $wx-s2;
+        white-space: nowrap;
+        animation: phone-cal-fade .4s ease .2s both;
+    }
+
+    .phone-weather-pill-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #34d17a;
+        box-shadow: 0 0 0 3px rgba(52, 209, 122, .2);
+        animation: phone-weather-pulse 2.4s ease-in-out infinite;
+
+        .is-warn & { background: $wx-warn; box-shadow: 0 0 0 3px rgba(242, 198, 93, .2); }
+    }
+
+    .phone-weather-scroll {
+        position: absolute;
+        inset: 0;
+        overflow-y: auto;
+        padding: 74px 0 30px;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar { display: none; }
+    }
+
+    .phone-weather-body { transition: opacity .3s ease; &.is-stale { opacity: .72; } }
+
+    .phone-weather-notice {
+        margin: 6px 18px 0;
+        padding: 10px 12px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        border-radius: 16px;
+        background: rgba(242, 198, 93, .16);
+        border: 1px solid rgba(242, 198, 93, .45);
+        color: #ffffff;
+        font-size: 12px;
+        line-height: 1.4;
+        animation: phone-cal-rise .3s cubic-bezier(.2, .8, .2, 1) both;
+
+        .phone-pi { color: #f7d77a; margin-top: 1px; }
+        b { font-weight: 700; }
+        div div { color: $wx-s2; margin-top: 1px; }
+    }
+
+    .phone-weather-notice-text { flex: 1; min-width: 0; }
+
+    // hero
+    .phone-weather-hero { text-align: center; padding: 14px 18px 10px; animation: phone-cal-rise .4s cubic-bezier(.2, .8, .2, 1) both; }
+
+    .phone-weather-kicker {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: $wx-s3;
+
+        .phone-pi { color: $wx-s3; }
+        &.is-center { justify-content: center; color: $wx-s2; letter-spacing: 1.5px; .phone-pi { color: $wx-s2; } }
+    }
+
+    .phone-weather-city { font-size: 24px; font-weight: 500; letter-spacing: -.3px; margin-top: 2px; }
+    .phone-weather-temp { font-size: 76px; font-family: 'Barlow', 'Ubuntu', sans-serif; font-weight: 400; line-height: 1; letter-spacing: -3px; margin: 2px 0 0 10px; font-variant-numeric: tabular-nums; &.is-empty { color: $wx-s3; } }
+    .phone-weather-cond { font-size: 16px; font-weight: 500; margin-top: 2px; &.is-soft { color: $wx-s2; font-size: 14px; } }
+    .phone-weather-hilo { font-size: 15px; font-weight: 500; color: $wx-s2; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+    // glass cards
+    .phone-weather-card {
+        margin: 10px 18px 0;
+        padding: 11px 14px 12px;
+        border-radius: 16px;
+        background: $wx-glass;
+        border: 1px solid $wx-glass-brd;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        animation: phone-cal-rise .38s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .phone-weather-summary { font-size: 13px; line-height: 1.45; padding-bottom: 10px; border-bottom: 1px solid $wx-hair; }
+
+    .phone-weather-hours {
+        display: flex;
+        gap: 2px;
+        padding-top: 10px;
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar { display: none; }
+        &.is-shimmer { justify-content: space-between; padding-top: 18px; margin-top: 12px; border-top: 1px solid $wx-hair; }
+    }
+
+    .phone-weather-hour {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        width: 48px;
+        flex: none;
+        animation: phone-cal-rise .3s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .phone-weather-hour-label { font-size: 12px; font-weight: 600; color: $wx-s2; .is-now & { color: #ffffff; } }
+    .phone-weather-hour-precip { font-size: 10px; font-weight: 700; color: $wx-precip; margin: -5px 0 -3px; }
+    .phone-weather-hour-temp { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .phone-weather-days { margin-top: 4px; }
+
+    .phone-weather-day {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        animation: phone-cal-rise .3s cubic-bezier(.2, .8, .2, 1) both;
+
+        &.has-top { border-top: 1px solid $wx-hair; }
+        &.is-shimmer { animation: none; }
+    }
+
+    .phone-weather-day-label { width: 44px; font-size: 15px; font-weight: 600; flex: none; }
+    .phone-weather-day-lo { width: 28px; text-align: right; font-size: 15px; font-weight: 600; color: $wx-s2; font-variant-numeric: tabular-nums; flex: none; }
+    .phone-weather-day-hi { width: 28px; text-align: right; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; flex: none; }
+
+    .phone-weather-bar {
+        position: relative;
+        flex: 1;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(0, 0, 0, .22);
+    }
+
+    .phone-weather-bar-fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #6fb9e8, #9cd2a1 55%, #f2c65d);
+        transform-origin: left center;
+        animation: phone-weather-fill .6s cubic-bezier(.2, .8, .2, 1) .25s both;
+    }
+
+    .phone-weather-bar-now {
+        position: absolute;
+        top: -1.5px;
+        width: 7px;
+        height: 7px;
+        margin-left: -3.5px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, .35);
+        animation: phone-notes-pop-in .3s cubic-bezier(.2, .8, .2, 1) .7s both;
+    }
+
+    // detail tiles
+    .phone-weather-tiles {
+        margin: 10px 18px 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .phone-weather-tile {
+        position: relative;
+        padding: 11px 13px 12px;
+        height: 128px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        border-radius: 16px;
+        background: $wx-glass;
+        border: 1px solid $wx-glass-brd;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        animation: phone-cal-rise .36s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .phone-weather-tile-value { font-size: 26px; font-weight: 500; letter-spacing: -.5px; margin-top: 6px; font-variant-numeric: tabular-nums; small { font-size: 14px; font-weight: 600; color: $wx-s2; letter-spacing: 0; } }
+    .phone-weather-tile-sub { margin-top: auto; font-size: 11.5px; line-height: 1.35; color: $wx-s2; }
+
+    .phone-weather-uv { position: relative; height: 5px; border-radius: 3px; margin-top: 8px; background: linear-gradient(90deg, #4cc26b, #f2c65d 45%, #f08a4b 70%, #d94b6a 88%, #9b5de5); }
+    .phone-weather-uv-dot { position: absolute; top: -2px; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); transition: left .6s ease; }
+
+    .phone-weather-arc {
+        display: block;
+        width: 100%;
+        height: 34px;
+        margin-top: 4px;
+
+        path { fill: none; stroke: rgba(255, 255, 255, .35); stroke-width: 1.5; stroke-dasharray: 3 3; }
+        line { stroke: rgba(255, 255, 255, .35); stroke-width: 1; }
+        circle { fill: #ffffff; }
+    }
+
+    .phone-weather-compass {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: 1.5px dashed rgba(255, 255, 255, .3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        span { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 7px; font-weight: 700; }
+        .phone-pi { color: #ffffff; transition: transform .6s ease; }
+    }
+
+    .phone-weather-foot { padding: 14px 26px 30px; text-align: center; font-size: 10.5px; line-height: 1.5; color: $wx-s3; animation: phone-cal-fade .4s ease .4s both; }
+
+    // loading
+    .phone-weather-shimmer {
+        border-radius: 6px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, .14) 25%, rgba(255, 255, 255, .28) 50%, rgba(255, 255, 255, .14) 75%);
+        background-size: 200% 100%;
+        animation: phone-weather-shimmer 1.4s linear infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-weather-sky, .phone-weather-stars, .phone-weather-pill, .phone-weather-pill-dot, .phone-weather-notice, .phone-weather-hero, .phone-weather-card, .phone-weather-hour, .phone-weather-day, .phone-weather-bar-fill, .phone-weather-bar-now, .phone-weather-tile, .phone-weather-foot, .phone-weather-shimmer { animation: none; }
+        .phone-weather-top, .phone-weather-compact, .phone-weather-body, .phone-weather-uv-dot, .phone-weather-compass .phone-pi { transition: none; }
+    }
+
     .phone-music-siri { position: relative; margin-top: 14px; }
 
     .phone-music-siri-halo {
@@ -4330,6 +4659,10 @@ $phone-scale: 0.8;
 @keyframes phone-cal-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes phone-notes-pop-in { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
 @keyframes phone-notes-check-pop { 0% { transform: scale(1); } 45% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes phone-weather-fill { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes phone-weather-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(52, 209, 122, .2); } 50% { box-shadow: 0 0 0 5px rgba(52, 209, 122, 0); } }
+@keyframes phone-weather-twinkle { from { opacity: .6; } to { opacity: 1; } }
+@keyframes phone-weather-shimmer { to { background-position: -200% 0; } }
 
 @keyframes phone-music-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
 @keyframes phone-music-eq { 0%, 100% { height: 4px; } 50% { height: 12px; } }
