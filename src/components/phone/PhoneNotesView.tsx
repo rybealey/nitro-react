@@ -1170,7 +1170,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
     );
 
     return (
-        <div className="phone-notes">
+        <div className="phone-screen phone-app-screen phone-notes">
             <div key={ `${ screen }-${ (screen === 'list') ? listFolder : openNoteId }` } className={ `phone-notes-anim is-${ slide }` }>
                 { (screen === 'folders') && foldersScreen }
                 { (screen === 'list') && listScreen }

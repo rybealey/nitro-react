@@ -2155,6 +2155,8 @@ $phone-scale: 0.8;
         --notes-accent-ink: #1a0a14;
         position: relative;
         height: 100%;
+        // clear the status bar and notch like .phone-app-scroll does
+        padding-top: 44px;
         display: flex;
         flex-direction: column;
         background: var(--ph-group);
