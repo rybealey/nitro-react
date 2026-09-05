@@ -140,10 +140,10 @@ index 66fe4b6..0000000
 -}
 diff --git a/src/nitro/communication/messages/incoming/RpMovementV2Event.ts b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
 new file mode 100644
-index 0000000..517d47b
+index 0000000..9670f16
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,141 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -182,12 +182,15 @@ index 0000000..517d47b
 +    private _toY: number;
 +    private _toZ: number;
 +    private _lookahead: { x: number, y: number, z: number }[];
++    /** TEMPORARY DIAGNOSTIC - ms spent in Pending to join the room phase. */
++    private _startDelayMs: number;
 +
 +    public flush(): boolean
 +    {
 +        this._ok = false;
 +        this._virtualId = -1;
 +        this._lookahead = [];
++        this._startDelayMs = 0;
 +
 +        return true;
 +    }
@@ -236,6 +239,8 @@ index 0000000..517d47b
 +            this._lookahead.push({ x: wrapper.readInt(), y: wrapper.readInt(), z: (wrapper.readInt() / 100) });
 +        }
 +
++        this._startDelayMs = wrapper.readInt();
++
 +        this._ok = true;
 +
 +        return true;
@@ -259,6 +264,7 @@ index 0000000..517d47b
 +    public get toY(): number { return this._toY; }
 +    public get toZ(): number { return this._toZ; }
 +    public get lookahead(): { x: number, y: number, z: number }[] { return (this._lookahead || []); }
++    public get startDelayMs(): number { return this._startDelayMs; }
 +
 +    /** flags bit 0x0004 - teleport / roller / forced move. */
 +    public get isDisplacement(): boolean { return (this._flags & 0x0004) !== 0; }
@@ -293,7 +299,7 @@ index 6938b9a..58e5f45 100644
  export * from './RpAlbumListEvent';
  export * from './RpAlbumPhotosEvent';
 diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
-index 2ff0e23..06c1e30 100644
+index 2ff0e23..66fa296 100644
 --- a/src/nitro/room/RoomMessageHandler.ts
 +++ b/src/nitro/room/RoomMessageHandler.ts
 @@ -1,7 +1,7 @@
@@ -315,7 +321,7 @@ index 2ff0e23..06c1e30 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,41 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,77 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -327,6 +333,9 @@ index 2ff0e23..06c1e30 100644
 +    // clock domain as GetTickerTime()/Ticker.lastTime, which is what
 +    // MovingObjectLogic interpolates on. Date.now() would be off by
 +    // performance.timeOrigin.
++    /** TEMPORARY: unit -> last walk session already logged, so JOIN fires once. */
++    private readonly _pixelrpJoinLogged = new Map<number, number>();
++
 +    private onRpMovementV2Event(event: RpMovementV2Event): void
      {
          if(!event) return;
@@ -335,10 +344,7 @@ index 2ff0e23..06c1e30 100644
  
 -        if(!parser || (parser.virtualId < 0)) return;
 +        if(!parser || !parser.ok || (parser.virtualId < 0)) return;
- 
--        PixelRPMovementAuthority.instance.record(parser.virtualId, parser.seq, parser.onGrid,
--            parser.fromX, parser.fromY, parser.fromZ, parser.toX, parser.toY, parser.toZ,
--            parser.cycleStart, parser.interval, parser.serverNow, Date.now(), parser.lookahead);
++
 +        const store = PixelRPMovementV2.instance;
 +
 +        if(parser.isDisplacement)
@@ -351,16 +357,52 @@ index 2ff0e23..06c1e30 100644
 +        if(parser.isWalkEnd)
 +        {
 +            store.forget(parser.virtualId);
-+
+ 
+-        PixelRPMovementAuthority.instance.record(parser.virtualId, parser.seq, parser.onGrid,
+-            parser.fromX, parser.fromY, parser.fromZ, parser.toX, parser.toY, parser.toZ,
+-            parser.cycleStart, parser.interval, parser.serverNow, Date.now(), parser.lookahead);
 +            return;
 +        }
++
++        const clientNow = performance.now();
 +
 +        store.recordEdge(
 +            parser.virtualId, parser.walkSessionId, parser.routeRevision, parser.edgeIndex,
 +            parser.fromX, parser.fromY, parser.fromZ,
 +            parser.toX, parser.toY, parser.toZ,
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
-+            performance.now(), parser.lookahead);
++            clientNow, parser.lookahead);
++
++        // TEMPORARY: Pending -> Moving joins only, edge 0, once per session.
++        //
++        // phaseNow is the whole point. It is how far through its own 500ms cycle
++        // edge 0 already is at the instant it arrives. Anything meaningfully
++        // above 0 means the client starts rendering the first edge part-way
++        // along, which puts the avatar straight onto a position it has not
++        // walked to - the jump on join. Sampled AFTER recordEdge so the clock
++        // offset already includes this packet.
++        if((parser.edgeIndex === 0) && (parser.startDelayMs > 0))
++        {
++            const last = this._pixelrpJoinLogged.get(parser.virtualId);
++
++            if(last !== parser.walkSessionId)
++            {
++                this._pixelrpJoinLogged.set(parser.virtualId, parser.walkSessionId);
++
++                const estServerNow = (clientNow - store.clockOffset);
++                const interval = ((parser.intervalMs > 0) ? parser.intervalMs : 500);
++
++                console.log('[MV2/JOIN]', {
++                    unit: parser.virtualId,
++                    cycleStart: parser.cycleStart,
++                    estServerNow: Math.round(estServerNow),
++                    phaseNow: ((estServerNow - parser.cycleStart) / interval).toFixed(3),
++                    startDelayMs: parser.startDelayMs,
++                    from: `${parser.fromX},${parser.fromY}`,
++                    to: `${parser.toX},${parser.toY}`
++                });
++            }
++        }
      }
  
      private onRoomUnitEvent(event: RoomUnitEvent): void
@@ -1498,10 +1540,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..2b78a35
+index 0000000..214ae93
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,482 @@
+@@ -0,0 +1,478 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1624,7 +1666,7 @@ index 0000000..2b78a35
 +     * SET THIS BACK TO false once the timelines are compared. It must not
 +     * reach production.
 +     */
-+    private _debugAll = true;
++    private _debugAll = false;
 +
 +    public setDebug(ids: number[]): void
 +    {
@@ -1959,11 +2001,7 @@ index 0000000..2b78a35
 +
 +    install(window);
 +
-+    console.info(
-+        '[MV2] Movement V2 timing trace is ON by default (beta diagnostic). ' +
-+        'pixelrpMovementDebugAll(false) turns it off; ' +
-+        'pixelrpMovementDebug(a, b) narrows it to two units; ' +
-+        'pixelrpMovementV2.trackedUnits lists the ids.');
++
 +
 +    // ALSO INSTALL ON THE PARENT FRAME. The client is served inside
 +    // <iframe id="nitro"> by the CMS, and DevTools' console evaluates against
