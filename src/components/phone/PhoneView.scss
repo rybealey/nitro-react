@@ -2210,6 +2210,34 @@ $phone-scale: 0.8;
 
     .phone-calendar-editor-note { padding: 10px 26px 0; text-align: center; font-size: 11px; line-height: 1.5; color: var(--ph-soft); }
 
+    // motion: a date change slides the week strip (when the week rolls) and
+    // the day's content in from the side you moved towards; event cards rise
+    // in with a short stagger (delay set inline per card) and press on tap;
+    // sheets slide up under a fading scrim. All off under reduced motion.
+    .phone-calendar-week,
+    .phone-calendar-day {
+        animation: phone-cal-slide-right .26s cubic-bezier(.2, .8, .2, 1) both;
+
+        &.is-from-left { animation-name: phone-cal-slide-left; }
+    }
+
+    .phone-calendar-event {
+        animation: phone-cal-rise .32s cubic-bezier(.2, .8, .2, 1) both;
+        transition: transform .1s ease, filter .1s ease;
+
+        &:active { transform: scale(.98); filter: brightness(.96); }
+    }
+
+    .phone-calendar-birthday { animation: phone-cal-rise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: 60ms; }
+
+    .phone-calendar-scrim { animation: phone-cal-fade .2s ease both; }
+    .phone-calendar-sheet { animation: phone-cal-sheet-up .3s cubic-bezier(.2, .8, .2, 1) both; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-calendar-week, .phone-calendar-day, .phone-calendar-event, .phone-calendar-birthday, .phone-calendar-scrim, .phone-calendar-sheet { animation: none; }
+        .phone-calendar-event { transition: none; }
+    }
+
     // ---- Account: inline birthday picker ---------------------------------
     // The Birthday row expands in place (no sheet): month chips 4x3, a
     // 7-across day grid, Cancel / Save. Days the month doesn't have grey out.
@@ -3522,3 +3550,9 @@ $phone-scale: 0.8;
         transform: scale(0.7);
     }
 }
+
+@keyframes phone-cal-slide-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes phone-cal-slide-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes phone-cal-rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes phone-cal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes phone-cal-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }

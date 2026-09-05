@@ -68,6 +68,14 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const [ draft, setDraft ] = useState<Draft>(null);
     const [ confirmDelete, setConfirmDelete ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
+    // which way the last date change went, so the day slides in from that side
+    const [ slideDir, setSlideDir ] = useState<'left' | 'right'>('right');
+
+    const selectDay = (day: Date) =>
+    {
+        setSlideDir((day.getTime() >= selected.getTime()) ? 'right' : 'left');
+        setSelected(day);
+    }
 
     const ownId = GetSessionDataManager().userId;
     const ownName = (GetSessionDataManager().userName || 'You');
@@ -170,15 +178,15 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                     </div>
                     <div className="phone-calendar-header-actions">
                         { !isToday &&
-                            <div className="phone-tap phone-calendar-today" onClick={ event => setSelected(today) }>Today</div> }
+                            <div className="phone-tap phone-calendar-today" onClick={ event => selectDay(today) }>Today</div> }
                         { canEdit &&
                             <div className="phone-tap phone-calendar-add" title="New event" onClick={ newDraft }>
                                 <PhoneIcon icon="plus" size={ 16 } />
                             </div> }
                     </div>
                 </div>
-                <div className="phone-calendar-week">
-                    <div className="phone-tap phone-calendar-week-nav" onClick={ event => setSelected(addDays(selected, -7)) }><PhoneIcon icon="chevron-left" size={ 16 } /></div>
+                <div key={ week[0].getTime() } className={ `phone-calendar-week is-from-${ slideDir }` }>
+                    <div className="phone-tap phone-calendar-week-nav" onClick={ event => selectDay(addDays(selected, -7)) }><PhoneIcon icon="chevron-left" size={ 16 } /></div>
                     { week.map(day =>
                     {
                         const isSelected = sameDay(day, selected);
@@ -186,15 +194,18 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         const weekend = ((day.getDay() === 0) || (day.getDay() === 6));
 
                         return (
-                            <div key={ day.getTime() } className={ `phone-tap phone-calendar-daycell${ isSelected ? ' is-selected' : '' }${ weekend ? ' is-weekend' : '' }${ sameDay(day, today) ? ' is-today' : '' }` } onClick={ event => setSelected(day) }>
+                            <div key={ day.getTime() } className={ `phone-tap phone-calendar-daycell${ isSelected ? ' is-selected' : '' }${ weekend ? ' is-weekend' : '' }${ sameDay(day, today) ? ' is-today' : '' }` } onClick={ event => selectDay(day) }>
                                 <span className="phone-calendar-dayletter">{ WEEKDAYS[day.getDay()].charAt(0) }</span>
                                 <span className="phone-calendar-daynum">{ day.getDate() }</span>
                                 <span className={ `phone-calendar-daydot${ busy ? ' is-busy' : '' }` } />
                             </div>
                         );
                     }) }
-                    <div className="phone-tap phone-calendar-week-nav" onClick={ event => setSelected(addDays(selected, 7)) }><PhoneIcon icon="chevron-right" size={ 16 } /></div>
+                    <div className="phone-tap phone-calendar-week-nav" onClick={ event => selectDay(addDays(selected, 7)) }><PhoneIcon icon="chevron-right" size={ 16 } /></div>
                 </div>
+                { /* keyed by the day: a date change remounts this block and the
+                     slide-in animation runs from the side you moved towards */ }
+                <div key={ selected.getTime() } className={ `phone-calendar-day is-from-${ slideDir }` }>
                 { (dayBirthdays.length > 0) &&
                     <div className="phone-calendar-allday">
                         <div className="phone-calendar-allday-label">all-day</div>
@@ -219,13 +230,13 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             <span className="phone-calendar-hour-line" />
                         </div>
                     )) }
-                    { dayEvents.map(item =>
+                    { dayEvents.map((item, index) =>
                     {
                         const top = (hourOffset(item.startsAt) * HOUR_PX) + 2;
                         const height = Math.max(26, (((item.endsAt - item.startsAt) / 3600) * HOUR_PX) - 4);
 
                         return (
-                            <div key={ item.id } className="phone-tap phone-calendar-event" style={ { top: `${ top }px`, height: `${ height }px`, background: `${ item.colour }26`, borderLeftColor: item.colour } } onClick={ event => { setConfirmDelete(false); setOpenEventId(item.id); } }>
+                            <div key={ item.id } className="phone-tap phone-calendar-event" style={ { top: `${ top }px`, height: `${ height }px`, background: `${ item.colour }26`, borderLeftColor: item.colour, animationDelay: `${ 90 + (index * 45) }ms` } } onClick={ event => { setConfirmDelete(false); setOpenEventId(item.id); } }>
                                 <div className="phone-calendar-event-title">{ item.title }</div>
                                 { item.roomName &&
                                     <div className="phone-calendar-event-room"><PhoneIcon icon="map-pin-home" size={ 10 } />{ item.roomName }</div> }
@@ -234,6 +245,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                     }) }
                     { isToday && (new Date(now).getHours() >= firstHour) &&
                         <div className="phone-calendar-now" style={ { top: `${ ((new Date(now).getHours() + (new Date(now).getMinutes() / 60)) - firstHour) * HOUR_PX }px` } } /> }
+                </div>
                 </div>
                 <div className="phone-scroll-spacer" />
             </div>
@@ -282,9 +294,9 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             <div className="phone-calendar-field">
                                 <span className="phone-calendar-field-label">Date</span>
                                 <div className="phone-calendar-field-value phone-calendar-datenav">
-                                    <span className="phone-tap" onClick={ event => setSelected(addDays(selected, -1)) }><PhoneIcon icon="chevron-left" size={ 14 } /></span>
+                                    <span className="phone-tap" onClick={ event => selectDay(addDays(selected, -1)) }><PhoneIcon icon="chevron-left" size={ 14 } /></span>
                                     <span>{ `${ WEEKDAYS[selected.getDay()] } ${ selected.getDate() } ${ MONTHS[selected.getMonth()] }` }</span>
-                                    <span className="phone-tap" onClick={ event => setSelected(addDays(selected, 1)) }><PhoneIcon icon="chevron-right" size={ 14 } /></span>
+                                    <span className="phone-tap" onClick={ event => selectDay(addDays(selected, 1)) }><PhoneIcon icon="chevron-right" size={ 14 } /></span>
                                 </div>
                             </div>
                             <div className="phone-calendar-field">
