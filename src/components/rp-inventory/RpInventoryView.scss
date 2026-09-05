@@ -109,8 +109,14 @@
         padding: 0;
     }
 
+    // Every slot is exactly the square its aspect-ratio makes; nothing inside
+    // may size it. The window's height is the sum of these, so a slot that
+    // grew by a pixel when an item landed in it resized the whole panel.
     .rp-inventory-slot {
+        position: relative;
         aspect-ratio: 1;
+        min-height: 0;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -121,6 +127,15 @@
         transition: border-color 0.1s ease;
 
         &:hover { border-color: rgba(0, 0, 0, 0.25); }
+
+        // the item art fills the square from outside the flow, so an occupied
+        // slot has the same in-flow content (none) as an empty one
+        > .rp-inventory-item {
+            position: absolute;
+            inset: 0;
+            width: auto;
+            height: auto;
+        }
     }
 
     // Gear symbols and the placeholder numbers below are deliberately large:
@@ -147,7 +162,6 @@
 
     // occupied slot: pixel icon at native size, count badge top-right
     .rp-inventory-slot.has-item {
-        position: relative;
         background: rgba(0, 0, 0, 0.02);
         touch-action: none;
     }
