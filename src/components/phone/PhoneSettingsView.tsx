@@ -13,11 +13,12 @@ interface PhoneSettingsViewProps
 {
     onBack: () => void;
     openAppearance: () => void;
+    openAccount: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null, openAppearance = null } = props;
+    const { onBack = null, openAppearance = null, openAccount = null } = props;
     const { theme } = usePhonePrefs();
     const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
@@ -69,7 +70,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                 </div>
                 <div className="phone-settings-list">
                     { group(
-                        <div className="phone-settings-account">
+                        <div className="phone-settings-account phone-tap" onClick={ event => (openAccount && openAccount()) }>
                             <PhoneAvatar portrait id={ ownId } figure={ ownFigure } size={ 54 } />
                             <div className="phone-settings-account-body">
                                 <div className="phone-settings-account-name">{ ownName }</div>

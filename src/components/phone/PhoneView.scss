@@ -1954,6 +1954,93 @@ $phone-scale: 0.8;
         }
     }
 
+    // ---- Account: inline birthday picker ---------------------------------
+    // The Birthday row expands in place (no sheet): month chips 4x3, a
+    // 7-across day grid, Cancel / Save. Days the month doesn't have grey out.
+    .phone-settings-item-value.is-draft { color: $phone-pink; font-weight: 700; }
+
+    .phone-settings-item--danger .phone-settings-item-label { color: #e03131; }
+
+    .phone-birthday-picker {
+        border-top: 1px solid var(--ph-hairline);
+        padding: 12px 14px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .phone-birthday-label {
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--ph-faint);
+    }
+
+    .phone-birthday-months {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .phone-birthday-month {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: var(--ph-inset);
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ph-text);
+        user-select: none;
+
+        &.is-picked { background: $phone-pink; color: #ffffff; }
+    }
+
+    .phone-birthday-days {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .phone-birthday-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 13px;
+        color: var(--ph-text);
+        user-select: none;
+
+        &.is-picked { background: $phone-pink; color: #ffffff; font-weight: 700; }
+
+        &.is-out { color: var(--ph-faint); opacity: 0.35; cursor: default; }
+    }
+
+    .phone-birthday-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 2px;
+    }
+
+    .phone-birthday-btn {
+        padding: 8px 16px;
+        border-radius: 14px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ph-soft);
+        background: var(--ph-inset);
+        user-select: none;
+
+        &.is-primary { color: #ffffff; background: $phone-pink; padding: 8px 18px; }
+    }
+
+    .phone-settings-account.is-static { cursor: default; }
+
     .phone-settings-footnote {
         padding: 12px 26px 0;
         text-align: center;
