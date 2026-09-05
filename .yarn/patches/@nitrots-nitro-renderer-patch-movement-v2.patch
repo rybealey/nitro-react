@@ -387,7 +387,7 @@ index 4198932..5965e22 100644
      }
  
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..9086318 100644
+index ac3907b..5bafb69 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -1,5 +1,6 @@
@@ -397,7 +397,7 @@ index ac3907b..9086318 100644
  import { ObjectMoveUpdateMessage } from '../../messages';
  
  export class MovingObjectLogic extends RoomObjectLogicBase
-@@ -64,6 +65,47 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +65,73 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -438,6 +438,32 @@ index ac3907b..9086318 100644
 +            this._changeTime = this.time;
 +
 +            this._lastUpdateTime = this.time;
++
++            // Diagnostics: off unless pixelrpMovementDebug named this unit, and
++            // then throttled to the first frame of each edge plus ~250ms.
++            // getLocation() is read back AFTER setLocation, so a mismatch
++            // between `interp` and `actual` means something other than this
++            // hook is writing the position.
++            if(PixelRPMovementV2.instance.shouldLogRender(this.object.id, this.time, pixelrpV2.edgeIndex))
++            {
++                const actual = this.object.getLocation();
++
++                console.log('[MV2/render]', {
++                    unit: this.object.id,
++                    session: pixelrpV2.session,
++                    revision: pixelrpV2.revision,
++                    edge: pixelrpV2.edgeIndex,
++                    cycleStart: pixelrpV2.cycleStart,
++                    estServerNow: Math.round(pixelrpV2.estServerNow),
++                    clockOffset: Math.round(PixelRPMovementV2.instance.clockOffset),
++                    phase: pixelrpV2.phase.toFixed(3),
++                    from: `${pixelrpV2.sx},${pixelrpV2.sy}`,
++                    to: `${pixelrpV2.gx},${pixelrpV2.gy}`,
++                    interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)}`,
++                    actual: `${actual.x.toFixed(3)},${actual.y.toFixed(3)}`,
++                    tickerNow: Math.round(this.time)
++                });
++            }
 +
 +            return;
 +        }
@@ -1472,10 +1498,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..e80e3a2
+index 0000000..2cc4180
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,395 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1530,6 +1556,12 @@ index 0000000..e80e3a2
 +    gx: number; gy: number; gz: number;
 +    /** 0..1, clamped. */
 +    phase: number;
++    /** Diagnostics only - lets the render hook name the edge it drew. */
++    edgeIndex: number;
++    session: number;
++    revision: number;
++    cycleStart: number;
++    estServerNow: number;
 +}
 +
 +interface PixelRPV2Unit
@@ -1565,6 +1597,56 @@ index 0000000..e80e3a2
 +
 +    /** Spike instrumentation only. */
 +    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0 };
++
++    /**
++     * Paired timing trace, off by default. The render path runs at 60fps per
++     * avatar, so a log there must be throttled or it is useless AND expensive;
++     * packet arrival is already only ~2/sec, so that one is logged in full.
++     */
++    private static readonly DEBUG_THROTTLE_MS = 250;
++
++    private readonly _debug = new Set<number>();
++    private readonly _debugAt = new Map<number, number>();
++    private readonly _debugEdge = new Map<number, number>();
++
++    public setDebug(ids: number[]): void
++    {
++        this._debug.clear();
++        this._debugAt.clear();
++        this._debugEdge.clear();
++
++        for(const id of ids) this._debug.add(id);
++    }
++
++    public isDebugged(virtualId: number): boolean
++    {
++        return this._debug.has(virtualId);
++    }
++
++    /**
++     * True when the render hook should log this frame: always on the first
++     * frame of a new edge, otherwise at most once per DEBUG_THROTTLE_MS.
++     */
++    public shouldLogRender(virtualId: number, tickerNow: number, edgeIndex: number): boolean
++    {
++        if(!this._debug.has(virtualId)) return false;
++
++        if(this._debugEdge.get(virtualId) !== edgeIndex)
++        {
++            this._debugEdge.set(virtualId, edgeIndex);
++            this._debugAt.set(virtualId, tickerNow);
++
++            return true;
++        }
++
++        const last = this._debugAt.get(virtualId);
++
++        if((last !== undefined) && ((tickerNow - last) < PixelRPMovementV2.DEBUG_THROTTLE_MS)) return false;
++
++        this._debugAt.set(virtualId, tickerNow);
++
++        return true;
++    }
 +
 +    public get hasClock(): boolean { return Number.isFinite(this._clockOffset); }
 +
@@ -1693,6 +1775,24 @@ index 0000000..e80e3a2
 +        {
 +            unit.edges.splice(0, (unit.edges.length - PixelRPMovementV2.MAX_EDGES));
 +        }
++
++        if(this._debug.has(virtualId))
++        {
++            const estServerNow = (clientNowPerf - this._clockOffset);
++
++            console.log('[MV2/rx]', {
++                unit: virtualId,
++                session, revision, edge: edgeIndex,
++                cycleStart,
++                gridPhase: (((cycleStart % step) + step) % step),
++                estServerNow: Math.round(estServerNow),
++                clockOffset: Math.round(this._clockOffset),
++                phaseNow: (((estServerNow - cycleStart) / step).toFixed(3)),
++                from: `${sx},${sy}`, to: `${gx},${gy}`,
++                lookahead: lookahead.length,
++                queued: unit.edges.length
++            });
++        }
 +    }
 +
 +    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge): void
@@ -1769,9 +1869,33 @@ index 0000000..e80e3a2
 +        return {
 +            sx: edge.sx, sy: edge.sy, sz: edge.sz,
 +            gx: edge.gx, gy: edge.gy, gz: edge.gz,
-+            phase
++            phase,
++            edgeIndex: edge.edgeIndex,
++            session: edge.session,
++            revision: edge.revision,
++            cycleStart: edge.cycleStart,
++            estServerNow
 +        };
 +    }
++}
++
++/**
++ * Console entry point, so two avatars can be traced without a rebuild:
++ *
++ *     pixelrpMovementDebug(12, 15)   // trace virtual ids 12 and 15
++ *     pixelrpMovementDebug()         // off
++ *
++ * The virtual ids are the same ones :movementtrace prints server-side, so the
++ * two halves of the comparison line up by unit id.
++ */
++if(typeof window !== 'undefined')
++{
++    (window as any).pixelrpMovementDebug = (...ids: number[]) =>
++    {
++        PixelRPMovementV2.instance.setDebug(ids);
++
++        return (ids.length ? `[MV2] tracing units ${ids.join(', ')}` : '[MV2] tracing off');
++    };
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
 index 2276481..db05a34 100644
