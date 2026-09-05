@@ -18,9 +18,8 @@ interface PhoneCalendarViewProps
 const MONTHS: string[] = [ 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December' ];
 const WEEKDAYS: string[] = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ];
 const HOUR_PX = 44;
-// hotel events are evenings: the timeline opens at 3 PM unless a day has
-// something earlier
-const DEFAULT_FIRST_HOUR = 15;
+// the timeline covers the whole day, midnight to midnight
+const FIRST_HOUR = 0;
 const COLOURS: string[] = [ '#3f8fbf', '#8a3566', '#2ba88f', '#f0954a', '#e93a7d', '#8a8a90' ];
 const ACCENT = '#f5352b';
 
@@ -118,7 +117,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
 
     const dayEvents = eventsOn(selected);
     const dayBirthdays = birthdaysOn(selected);
-    const firstHour = Math.min(DEFAULT_FIRST_HOUR, ...dayEvents.map(item => new Date(item.startsAt * 1000).getHours()));
+    const firstHour = FIRST_HOUR;
     const hours = Array.from({ length: (24 - firstHour) + 1 }, (_, index) => (firstHour + index));
     const hourOffset = (unix: number) => ((new Date(unix * 1000).getHours() + (new Date(unix * 1000).getMinutes() / 60)) - firstHour);
 
@@ -243,7 +242,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             </div>
                         );
                     }) }
-                    { isToday && (new Date(now).getHours() >= firstHour) &&
+                    { isToday &&
                         <div className="phone-calendar-now" style={ { top: `${ ((new Date(now).getHours() + (new Date(now).getMinutes() / 60)) - firstHour) * HOUR_PX }px` } } /> }
                 </div>
                 </div>

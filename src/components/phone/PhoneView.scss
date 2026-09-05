@@ -1956,7 +1956,8 @@ $phone-scale: 0.8;
 
     // ---- Calendar app -----------------------------------------------------
     // iOS-style day view. The app's accent is its tile red (selection, now
-    // line, actions); birthdays keep the phone pink.
+    // line, actions); birthdays keep the phone pink. The
+    // timeline runs the full day, 12 AM to 12 AM.
     $cal-red: #f5352b;
 
     .phone-calendar-back, .phone-calendar-kicker { color: $cal-red; }
