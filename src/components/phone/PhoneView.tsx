@@ -9,6 +9,7 @@ import { PhoneAppearanceView } from './PhoneAppearanceView';
 import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
+import { PhoneWeatherView } from './PhoneWeatherView';
 import { PhoneCallView } from './PhoneCallView';
 import { PhoneCameraView } from './PhoneCameraView';
 import { PhoneContactsView } from './PhoneContactsView';
@@ -25,7 +26,7 @@ import { ReadPhonePosition, useAirplane, usePhonePhotos, usePhonePrefs, usePhone
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -36,13 +37,14 @@ const APP_SCREENS: Record<string, PhoneScreen> = {
     'Settings': 'settings',
     'Calendar': 'calendar',
     'Music': 'music',
-    'Notes': 'notes'
+    'Notes': 'notes',
+    'Weather': 'weather'
 };
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'appearance') return 'slide-right';
@@ -317,6 +319,9 @@ export const PhoneView: FC<{}> = props =>
                     case 'notes':
                         show('notes');
                         return;
+                    case 'weather':
+                        show('weather');
+                        return;
                 }
             },
             eventUrlPrefix: 'phone/'
@@ -383,7 +388,8 @@ export const PhoneView: FC<{}> = props =>
 
     if(!isVisible) return null;
 
-    const onLightScreen = ((screen !== 'home') && (screen !== 'camera'));
+    // Weather paints its own sky, so its status bar stays white like the home screen's
+    const onLightScreen = ((screen !== 'home') && (screen !== 'camera') && (screen !== 'weather'));
 
     return (
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER } minVisible={ 48 }>
@@ -423,6 +429,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneCalendarView onBack={ () => go('home') } /> }
                             { (screen === 'notes') &&
                                 <PhoneNotesView onBack={ () => go('home') } /> }
+                            { (screen === 'weather') &&
+                                <PhoneWeatherView onBack={ () => go('home') } /> }
                             { (screen === 'account') &&
                                 <PhoneAccountView onBack={ () => go('settings') } /> }
                             { (screen === 'appearance') &&
