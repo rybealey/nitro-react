@@ -2096,14 +2096,33 @@ $phone-scale: 0.8;
         .phone-calendar-event-room { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--ph-soft); margin-top: 2px; }
     }
 
+    // Thin red line at the current time with the time itself in the hour
+    // gutter; it slides down as the clock ticks (the transition eases each
+    // 30s reading into place).
     .phone-calendar-now {
         position: absolute;
-        left: 50px;
+        left: 54px;
         right: 18px;
         border-top: 1.5px solid $cal-red;
         pointer-events: none;
+        z-index: 2;
+        transition: top 1.2s linear;
 
         &::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: $cal-red; }
+
+        .phone-calendar-now-label {
+            position: absolute;
+            right: calc(100% + 8px);
+            top: -8px;
+            padding: 1px 5px;
+            border-radius: 6px;
+            background: $cal-red;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 700;
+            white-space: nowrap;
+            line-height: 1.4;
+        }
     }
 
     // sheets (event detail, staff editor)
@@ -2236,7 +2255,7 @@ $phone-scale: 0.8;
 
     @media (prefers-reduced-motion: reduce) {
         .phone-calendar-week, .phone-calendar-day, .phone-calendar-event, .phone-calendar-birthday, .phone-calendar-scrim, .phone-calendar-sheet { animation: none; }
-        .phone-calendar-event { transition: none; }
+        .phone-calendar-event, .phone-calendar-now { transition: none; }
     }
 
     // ---- Account: inline birthday picker ---------------------------------

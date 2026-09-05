@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { CreateRoomSession, GetSessionDataManager, SendMessageComposer } from '../../api';
 import { CalendarBirthday, CalendarEvent, RpCalendarEvent, RpDeleteCalendarEventComposer, RpGetCalendarComposer, RpSaveCalendarEventComposer } from '../../api/rp-phone/RpCalendarMessages';
 import { useMessageEvent, useRoom } from '../../hooks';
@@ -92,17 +92,34 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
         setConfirmDelete(false);
     });
 
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const nowRef = useRef<HTMLDivElement>(null);
+
     useEffect(() =>
     {
         SendMessageComposer(new RpGetCalendarComposer());
 
-        const interval = setInterval(() => setNow(Date.now()), 60000);
+        // the now line glides down the day: re-read the clock every 30s and
+        // let the CSS transition carry it between readings
+        const interval = setInterval(() => setNow(Date.now()), 30000);
 
         return () => clearInterval(interval);
     }, []);
 
     const today = startOfDay(new Date(now));
     const isToday = sameDay(selected, today);
+
+    // opening on today (or coming back to it) lands the view on the now line,
+    // the way a day view should - not on midnight
+    useEffect(() =>
+    {
+        if(!isToday || !scrollRef.current || !nowRef.current) return;
+
+        const container = scrollRef.current;
+        const target = (nowRef.current.offsetTop + (container.querySelector<HTMLElement>('.phone-calendar-timeline')?.offsetTop ?? 0)) - (container.clientHeight * 0.45);
+
+        container.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
+    }, [ isToday, selected ]);
 
     // the week strip shows the Sunday-to-Saturday week around the selected day
     const week = useMemo(() =>
@@ -164,7 +181,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
 
     return (
         <div className="phone-screen phone-app-screen phone-calendar">
-            <div className="phone-app-scroll">
+            <div ref={ scrollRef } className="phone-app-scroll">
                 <div className="phone-app-header">
                     <div className="phone-app-header-lead">
                         <div className="phone-tap phone-thread-back phone-calendar-back" onClick={ event => (onBack && onBack()) }>
@@ -243,7 +260,9 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         );
                     }) }
                     { isToday &&
-                        <div className="phone-calendar-now" style={ { top: `${ ((new Date(now).getHours() + (new Date(now).getMinutes() / 60)) - firstHour) * HOUR_PX }px` } } /> }
+                        <div ref={ nowRef } className="phone-calendar-now" style={ { top: `${ ((new Date(now).getHours() + ((new Date(now).getMinutes() + (new Date(now).getSeconds() / 60)) / 60)) - firstHour) * HOUR_PX }px` } }>
+                            <span className="phone-calendar-now-label">{ new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }</span>
+                        </div> }
                 </div>
                 </div>
                 <div className="phone-scroll-spacer" />
