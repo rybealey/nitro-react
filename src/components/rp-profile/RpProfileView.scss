@@ -106,6 +106,17 @@
         white-space: pre-line;
     }
 
+    // birthday (phone Settings > Account), day + month only
+    .rp-profile-birthday {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.5);
+
+        svg { flex-shrink: 0; color: #e93a7d; }
+    }
+
     // level chips
     .rp-profile-levels {
         display: grid;

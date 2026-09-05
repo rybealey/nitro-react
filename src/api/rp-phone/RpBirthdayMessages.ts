@@ -7,14 +7,17 @@ const RP_BIRTHDAY = 3987; // server -> client
 const RP_SAVE_BIRTHDAY = 3989; // client -> server
 const RP_GET_BIRTHDAY = 3992; // client -> server
 
-// The player's own birthday: month 1-12 and day, or 0/0 when not set. No year.
+// One player's birthday, keyed by user id: month 1-12 and day, or 0/0 when
+// not set. No year. Own on the phone's Account screen, anyone's on a profile.
 export class RpBirthdayParser implements IMessageParser
 {
+    private _userId: number;
     private _month: number;
     private _day: number;
 
     public flush(): boolean
     {
+        this._userId = 0;
         this._month = 0;
         this._day = 0;
 
@@ -25,12 +28,14 @@ export class RpBirthdayParser implements IMessageParser
     {
         if(!wrapper) return false;
 
+        this._userId = wrapper.readInt();
         this._month = wrapper.readInt();
         this._day = wrapper.readInt();
 
         return true;
     }
 
+    public get userId(): number { return this._userId; }
     public get month(): number { return this._month; }
     public get day(): number { return this._day; }
 }
@@ -68,11 +73,12 @@ class RpPhoneComposer implements IMessageComposer<number[]>
     }
 }
 
+// userId 0 = your own
 export class RpGetBirthdayComposer extends RpPhoneComposer
 {
-    constructor()
+    constructor(userId: number = 0)
     {
-        super();
+        super(userId);
     }
 }
 

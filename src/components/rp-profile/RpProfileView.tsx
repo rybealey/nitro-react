@@ -6,6 +6,8 @@ import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEm
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
 import { GangCrest } from '../rp-gangs/RpGangsView';
+import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
+import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
 import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
@@ -77,6 +79,7 @@ export const RpProfileView: FC<{}> = props =>
                         if(RpProfileState.userId)
                         {
                             SendMessageComposer(new RpGetUserGangComposer(RpProfileState.userId));
+                            SendMessageComposer(new RpGetBirthdayComposer(RpProfileState.userId));
                         }
                         return;
                     case 'hide':
@@ -116,7 +119,17 @@ export const RpProfileView: FC<{}> = props =>
         setVersion(value => (value + 1));
     });
 
+    useMessageEvent<RpBirthdayEvent>(RpBirthdayEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpBirthday(parser.userId, parser.month, parser.day);
+        setVersion(value => (value + 1));
+    });
+
     if(!isVisible) return null;
+
+    const birthday = GetRpBirthday(RpProfileState.userId);
 
     // The opener's own data wins; otherwise look the viewed player up.
     const employment = (RpProfileState.employment ?? GetRpEmployment(RpProfileState.userId));
@@ -145,6 +158,11 @@ export const RpProfileView: FC<{}> = props =>
                                         <i className="fa-solid fa-badge-check rp-profile-verified" title="PixelRP Staff" aria-hidden="true" /> }
                                 </div>
                                 <div className="rp-profile-motto">{ RpProfileState.motto || 'Welcome to my profile!' }</div>
+                                { birthday &&
+                                    <div className="rp-profile-birthday" title="Birthday">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21h16M5 21v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6M12 13V9M12 9a2 2 0 0 0 2-2c0-1.2-2-3-2-3s-2 1.8-2 3a2 2 0 0 0 2 2zM5 17c2 1.2 3 1.2 5 0s3-1.2 5 0 3 1.2 4 0" /></svg>
+                                        { FormatBirthday(birthday.month, birthday.day) }
+                                    </div> }
                             </div>
                         </div>
                         <div className="rp-profile-levels">

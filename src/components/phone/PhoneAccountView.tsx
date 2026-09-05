@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpBirthdayEvent, RpGetBirthdayComposer, RpSaveBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
+import { FormatBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
 import { useMessageEvent } from '../../hooks';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
@@ -19,8 +20,6 @@ interface PhoneAccountViewProps
 const MONTHS: string[] = [ 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December' ];
 const DAYS_IN_MONTH: number[] = [ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
 
-export const FormatBirthday = (month: number, day: number): string => ((month >= 1) && (month <= 12) && (day >= 1)) ? `${ day } ${ MONTHS[month - 1] }` : '';
-
 export const PhoneAccountView: FC<PhoneAccountViewProps> = props =>
 {
     const { onBack = null } = props;
@@ -38,6 +37,11 @@ export const PhoneAccountView: FC<PhoneAccountViewProps> = props =>
     useMessageEvent<RpBirthdayEvent>(RpBirthdayEvent, event =>
     {
         const parser = event.getParser();
+
+        SetRpBirthday(parser.userId, parser.month, parser.day);
+
+        // a profile may have asked about someone else; this screen is ours only
+        if(parser.userId !== ownId) return;
 
         setMonth(parser.month);
         setDay(parser.day);
