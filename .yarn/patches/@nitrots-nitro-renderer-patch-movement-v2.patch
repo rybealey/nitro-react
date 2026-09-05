@@ -1498,10 +1498,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..dd3bccb
+index 0000000..2b78a35
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,460 @@
+@@ -0,0 +1,482 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1608,7 +1608,23 @@ index 0000000..dd3bccb
 +    private readonly _debug = new Set<number>();
 +    private readonly _debugAt = new Map<number, number>();
 +    private readonly _debugEdge = new Map<number, number>();
-+    private _debugAll = false;
++
++    /**
++     * ON BY DEFAULT, DELIBERATELY AND TEMPORARILY.
++     *
++     * This is a beta-only phase-alignment investigation, and every round of it
++     * so far has been lost to the switch rather than the measurement - the
++     * client is iframed, so the console could not reach the enable function at
++     * all. A diagnostic nobody can turn on measures nothing.
++     *
++     * Cost is bounded: [MV2/rx] follows the packet rate (~2/sec per moving
++     * avatar) and [MV2/render] is throttled to 250ms per avatar, so this is a
++     * handful of console lines per walker per second, not per frame.
++     *
++     * SET THIS BACK TO false once the timelines are compared. It must not
++     * reach production.
++     */
++    private _debugAll = true;
 +
 +    public setDebug(ids: number[]): void
 +    {
@@ -1942,6 +1958,12 @@ index 0000000..dd3bccb
 +    };
 +
 +    install(window);
++
++    console.info(
++        '[MV2] Movement V2 timing trace is ON by default (beta diagnostic). ' +
++        'pixelrpMovementDebugAll(false) turns it off; ' +
++        'pixelrpMovementDebug(a, b) narrows it to two units; ' +
++        'pixelrpMovementV2.trackedUnits lists the ids.');
 +
 +    // ALSO INSTALL ON THE PARENT FRAME. The client is served inside
 +    // <iframe id="nitro"> by the CMS, and DevTools' console evaluates against
