@@ -48,7 +48,23 @@ const FA_MAP: Record<string, string> = {
     'volume-2': 'volume-high',
     'volume-x': 'volume-xmark',
     'wallet': 'wallet',
-    'wifi': 'wifi'
+    'wifi': 'wifi',
+    'folder': 'folder',
+    'folder-plus': 'folder-plus',
+    'folder-open': 'folder-open',
+    'list': 'list',
+    'list-check': 'list-check',
+    'heading': 'heading',
+    'share': 'arrow-up-from-bracket',
+    'undo': 'arrow-rotate-left',
+    'ellipsis': 'ellipsis',
+    'user-group': 'user-group',
+    'note': 'note-sticky',
+    'pin': 'thumbtack',
+    'circle': 'circle',
+    'circle-check': 'circle-check',
+    'arrow-right-from-bracket': 'arrow-right-from-bracket',
+    'pen': 'pen'
 };
 
 export const PhoneIcon: FC<{ icon: string, size?: number, className?: string, style?: CSSProperties }> = props =>
