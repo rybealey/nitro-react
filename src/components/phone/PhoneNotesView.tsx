@@ -25,9 +25,16 @@ type LineKind = 'text' | 'head' | 'bullet' | 'check' | 'done';
 
 interface Line
 {
+    // stable per editor session, so React keys (and enter animations) follow
+    // the line rather than its position
+    id: number;
     kind: LineKind;
     text: string;
 }
+
+let nextLineId = 1;
+
+const newLine = (kind: LineKind, text: string): Line => ({ id: nextLineId++, kind, text });
 
 // the list screen shows every note when no folder is picked
 const ALL_NOTES = -1;
@@ -37,19 +44,23 @@ const MAX_TITLE = 80;
 const MAX_BODY = 20000;
 const MAX_HISTORY = 60;
 
-const parseBody = (body: string): Line[] =>
+// previous lines lend their ids by position, so a live update from a
+// collaborator redraws in place instead of re-entering every line
+const parseBody = (body: string, previous: Line[] = []): Line[] =>
 {
-    const lines = (body || '').split('\n').map(raw =>
+    const lines = (body || '').split('\n').map((raw, index) =>
     {
-        if(raw.startsWith('[x] ')) return ({ kind: 'done', text: raw.substring(4) } as Line);
-        if(raw.startsWith('[ ] ')) return ({ kind: 'check', text: raw.substring(4) } as Line);
-        if(raw.startsWith('- ')) return ({ kind: 'bullet', text: raw.substring(2) } as Line);
-        if(raw.startsWith('# ')) return ({ kind: 'head', text: raw.substring(2) } as Line);
+        const id = (previous[index] ? previous[index].id : nextLineId++);
 
-        return ({ kind: 'text', text: raw } as Line);
+        if(raw.startsWith('[x] ')) return ({ id, kind: 'done', text: raw.substring(4) } as Line);
+        if(raw.startsWith('[ ] ')) return ({ id, kind: 'check', text: raw.substring(4) } as Line);
+        if(raw.startsWith('- ')) return ({ id, kind: 'bullet', text: raw.substring(2) } as Line);
+        if(raw.startsWith('# ')) return ({ id, kind: 'head', text: raw.substring(2) } as Line);
+
+        return ({ id, kind: 'text', text: raw } as Line);
     });
 
-    return (lines.length ? lines : [ { kind: 'text', text: '' } ]);
+    return (lines.length ? lines : [ newLine('text', '') ]);
 }
 
 const serializeLine = (line: Line): string =>
@@ -121,9 +132,9 @@ const FaceStack: FC<{ people: { userId: number, username: string }[], size?: num
 }
 
 // A list row that slides left to reveal Pin / Move / Delete.
-const SwipeRow: FC<{ open: boolean, onOpenChange: (open: boolean) => void, onTap: () => void, actions: { icon: string, label: string, tone: string, onClick: () => void }[], children: ReactNode, first: boolean }> = props =>
+const SwipeRow: FC<{ open: boolean, onOpenChange: (open: boolean) => void, onTap: () => void, actions: { icon: string, label: string, tone: string, onClick: () => void }[], children: ReactNode, first: boolean, index?: number }> = props =>
 {
-    const { open, onOpenChange, onTap, actions, children, first } = props;
+    const { open, onOpenChange, onTap, actions, children, first, index = 0 } = props;
     const startX = useRef<number>(null);
     const dragged = useRef(false);
     const [ drag, setDrag ] = useState<number>(0);
@@ -178,7 +189,7 @@ const SwipeRow: FC<{ open: boolean, onOpenChange: (open: boolean) => void, onTap
     const offset = ((startX.current !== null) && dragged.current) ? drag : (open ? -width : 0);
 
     return (
-        <div className={ `phone-notes-swipe${ first ? '' : ' has-top' }` }>
+        <div className={ `phone-notes-swipe${ first ? '' : ' has-top' }` } style={ { animationDelay: `${ Math.min(index, 10) * 30 }ms` } }>
             <div className="phone-notes-swipe-actions">
                 { actions.map(action => (
                     <div key={ action.label } className={ `phone-notes-swipe-action is-${ action.tone } phone-tap` } onClick={ event => { event.stopPropagation(); onOpenChange(false); action.onClick(); } }>
@@ -214,7 +225,7 @@ const LineRow: FC<{ index: number, line: Line, caretPeople: NotePerson[], regist
     const tint = (caretPeople.length ? PhoneAvatarColor(caretPeople[0].userId) : null);
 
     return (
-        <div className={ `phone-notes-line is-${ line.kind }${ tint ? ' has-caret' : '' }` } style={ tint ? { background: `${ tint }26` } : undefined }>
+        <div className={ `phone-notes-line is-${ line.kind }${ tint ? ' has-caret' : '' }` } style={ { animationDelay: `${ Math.min(index, 12) * 22 }ms`, ...(tint ? { background: `${ tint }26` } : {}) } }>
             { ((line.kind === 'check') || (line.kind === 'done')) &&
                 <div className={ `phone-notes-check phone-tap${ (line.kind === 'done') ? ' is-done' : '' }` } onClick={ event => onToggleDone(index) }>
                     { (line.kind === 'done') && <PhoneIcon icon="check" size={ 11 } /> }
@@ -254,13 +265,13 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
     const [ openNoteId, setOpenNoteId ] = useState(0);
     const [ detail, setDetail ] = useState<NoteDetail>(null);
     const [ title, setTitle ] = useState('');
-    const [ lines, setLines ] = useState<Line[]>([ { kind: 'text', text: '' } ]);
+    const [ lines, setLines ] = useState<Line[]>(() => [ newLine('text', '') ]);
     const [ focusedLine, setFocusedLine ] = useState(0);
 
     const openNoteIdRef = useRef(0);
     const dirtyRef = useRef(false);
     const saveTimer = useRef<number>(0);
-    const draftRef = useRef<{ title: string, lines: Line[] }>({ title: '', lines: [ { kind: 'text', text: '' } ] });
+    const draftRef = useRef<{ title: string, lines: Line[] }>({ title: '', lines: [] });
     const awaitingCreate = useRef(false);
     const rowRefs = useRef<HTMLTextAreaElement[]>([]);
     const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -335,7 +346,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
         if(dirtyRef.current) return;
 
         setTitle(note.title);
-        setLines(parseBody(note.body));
+        setLines(previous => parseBody(note.body, previous));
     });
 
     // the open note vanished (deleted, or you were removed) - step back
@@ -633,7 +644,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             const kind: LineKind = ((line.kind === 'done') ? 'check' : ((line.kind === 'head') ? 'text' : line.kind));
 
             next[index].text = before;
-            next.splice((index + 1), 0, { kind, text: after });
+            next.splice((index + 1), 0, newLine(kind, after));
             applyLines(next, { index: (index + 1), caret: 0 });
 
             return;
@@ -719,7 +730,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
 
         if(lines[last].text.length)
         {
-            applyLines([ ...lines, { kind: 'text', text: '' } ], { index: (last + 1), caret: 0 });
+            applyLines([ ...lines, newLine('text', '') ], { index: (last + 1), caret: 0 });
         }
         else
         {
@@ -809,8 +820,8 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
         { icon: ((note.ownerId === ownId) ? 'trash' : 'arrow-right-from-bracket'), label: ((note.ownerId === ownId) ? 'Delete' : 'Leave'), tone: 'del', onClick: () => deleteNote(note.id) }
     ]);
 
-    const noteRow = (note: NoteSummary, first: boolean) => (
-        <SwipeRow key={ note.id } first={ first } open={ openSwipeId === note.id } onOpenChange={ open => setOpenSwipeId(open ? note.id : 0) } onTap={ () => openNote(note.id) } actions={ noteActions(note) }>
+    const noteRow = (note: NoteSummary, first: boolean, index: number) => (
+        <SwipeRow key={ note.id } first={ first } index={ index } open={ openSwipeId === note.id } onOpenChange={ open => setOpenSwipeId(open ? note.id : 0) } onTap={ () => openNote(note.id) } actions={ noteActions(note) }>
             <div className="phone-notes-item">
                 <div className="phone-notes-item-text">
                     <div className="phone-notes-item-title">
@@ -841,7 +852,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             <>
                 <div className="phone-notes-section">{ label }</div>
                 <div className="phone-notes-card">
-                    { list.map((note, index) => noteRow(note, (index === 0))) }
+                    { list.map((note, index) => noteRow(note, (index === 0), index)) }
                 </div>
             </>
         );
@@ -898,8 +909,8 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                                 <span className="phone-notes-row-count">{ notes.length }</span>
                                 <PhoneIcon icon="chevron-right" size={ 14 } className="phone-notes-row-chev" />
                             </div>
-                            { folders.map(folder => (
-                                <div key={ folder.id } className="phone-notes-row has-top phone-tap" onClick={ event => openList(folder.id) }>
+                            { folders.map((folder, index) => (
+                                <div key={ folder.id } className="phone-notes-row has-top phone-tap" style={ { animationDelay: `${ Math.min(index + 1, 10) * 30 }ms` } } onClick={ event => openList(folder.id) }>
                                     <PhoneIcon icon="folder" size={ 17 } className="phone-notes-row-icon" />
                                     <div className="phone-notes-row-label">{ folder.name }</div>
                                     <span className="phone-notes-row-count">{ folder.count }</span>
@@ -914,7 +925,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                                 <div className="phone-notes-section">Shared with you</div>
                                 <div className="phone-notes-card">
                                     { sharedUnfiled.map((note, index) => (
-                                        <SwipeRow key={ note.id } first={ index === 0 } open={ openSwipeId === note.id } onOpenChange={ open => setOpenSwipeId(open ? note.id : 0) } onTap={ () => openNote(note.id) } actions={ noteActions(note) }>
+                                        <SwipeRow key={ note.id } first={ index === 0 } index={ index } open={ openSwipeId === note.id } onOpenChange={ open => setOpenSwipeId(open ? note.id : 0) } onTap={ () => openNote(note.id) } actions={ noteActions(note) }>
                                             <div className="phone-notes-row">
                                                 <PhoneIcon icon="user-group" size={ 17 } className="phone-notes-row-icon" />
                                                 <div className="phone-notes-row-label">{ note.title.trim().length ? note.title : 'New note' }</div>
@@ -997,7 +1008,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                     onChange={ event => changeTitle(event.target.value) } onKeyDown={ onTitleKey } onFocus={ event => { setFocusedLine(-1); sendPresence(-1); } } />
                 <div className="phone-notes-lines">
                     { lines.map((line, index) => (
-                        <LineRow key={ index } index={ index } line={ line } caretPeople={ editingOthers.filter(person => person.caretLine === index) } register={ register } onChange={ changeLine } onKeyDown={ onLineKey } onFocus={ onLineFocus } onToggleDone={ toggleDone } />
+                        <LineRow key={ line.id } index={ index } line={ line } caretPeople={ editingOthers.filter(person => person.caretLine === index) } register={ register } onChange={ changeLine } onKeyDown={ onLineKey } onFocus={ onLineFocus } onToggleDone={ toggleDone } />
                     )) }
                 </div>
                 <div className="phone-notes-body-tail" onClick={ onBodyTap } />
