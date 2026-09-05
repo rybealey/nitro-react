@@ -1954,6 +1954,262 @@ $phone-scale: 0.8;
         }
     }
 
+    // ---- Calendar app -----------------------------------------------------
+    // iOS-style day view. The app's accent is its tile red (selection, now
+    // line, actions); birthdays keep the phone pink.
+    $cal-red: #f5352b;
+
+    .phone-calendar-back, .phone-calendar-kicker { color: $cal-red; }
+
+    .phone-calendar-header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .phone-calendar-today {
+        padding: 6px 12px;
+        border-radius: 12px;
+        background: var(--ph-inset);
+        font-size: 12px;
+        font-weight: 700;
+        color: $cal-red;
+    }
+
+    .phone-calendar-add {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: $cal-red;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-calendar-week {
+        display: flex;
+        align-items: flex-start;
+        padding: 6px 6px 8px;
+        border-bottom: 1px solid var(--ph-hairline);
+    }
+
+    .phone-calendar-week-nav {
+        width: 22px;
+        display: flex;
+        justify-content: center;
+        padding-top: 22px;
+        color: var(--ph-faint);
+    }
+
+    .phone-calendar-daycell {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        min-height: 44px;
+
+        .phone-calendar-dayletter { font-size: 10px; font-weight: 700; letter-spacing: .5px; color: var(--ph-faint); }
+
+        .phone-calendar-daynum {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ph-text);
+        }
+
+        &.is-weekend .phone-calendar-daynum { color: var(--ph-faint); }
+        &.is-today .phone-calendar-daynum { color: $cal-red; }
+        &.is-selected .phone-calendar-daynum { background: $cal-red; color: #ffffff; }
+
+        .phone-calendar-daydot { width: 4px; height: 4px; border-radius: 50%; background: transparent; }
+        .phone-calendar-daydot.is-busy { background: $cal-red; }
+        &.is-selected .phone-calendar-daydot.is-busy { background: transparent; }
+    }
+
+    .phone-calendar-allday {
+        display: flex;
+        gap: 10px;
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--ph-hairline);
+    }
+
+    .phone-calendar-allday-label {
+        width: 38px;
+        flex: none;
+        text-align: right;
+        padding-top: 7px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--ph-faint);
+    }
+
+    .phone-calendar-allday-list { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+    .phone-calendar-birthday {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba($phone-pink, .12);
+        border-left: 3px solid $phone-pink;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--ph-text);
+
+        .phone-pi { color: $phone-pink; }
+    }
+
+    .phone-calendar-empty {
+        padding: 22px 30px 0;
+        text-align: center;
+
+        .phone-calendar-empty-title { font-size: 14px; font-weight: 700; color: var(--ph-text); }
+        .phone-calendar-empty-sub { font-size: 12px; line-height: 1.5; color: var(--ph-soft); margin-top: 4px; }
+    }
+
+    .phone-calendar-timeline { position: relative; margin-top: 8px; }
+
+    .phone-calendar-hour {
+        position: absolute;
+        left: 0;
+        right: 0;
+
+        .phone-calendar-hour-label { position: absolute; left: 18px; top: -7px; width: 34px; text-align: right; font-size: 10px; font-weight: 700; color: var(--ph-faint); }
+        .phone-calendar-hour-line { position: absolute; left: 56px; right: 18px; top: 0; border-top: 1px solid var(--ph-hairline); }
+    }
+
+    .phone-calendar-event {
+        position: absolute;
+        left: 60px;
+        right: 18px;
+        border-radius: 8px;
+        border-left: 3px solid;
+        padding: 6px 8px;
+        overflow: hidden;
+
+        .phone-calendar-event-title { font-size: 12px; font-weight: 700; color: var(--ph-text); line-height: 1.2; }
+        .phone-calendar-event-room { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--ph-soft); margin-top: 2px; }
+    }
+
+    .phone-calendar-now {
+        position: absolute;
+        left: 50px;
+        right: 18px;
+        border-top: 1.5px solid $cal-red;
+        pointer-events: none;
+
+        &::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: $cal-red; }
+    }
+
+    // sheets (event detail, staff editor)
+    .phone-calendar-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: 5; }
+
+    .phone-calendar-sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 6;
+        max-height: 88%;
+        overflow-y: auto;
+        background: var(--ph-bg);
+        border-radius: 22px 22px 0 0;
+        border-top: 1.5px solid var(--ph-hairline);
+        padding: 14px 18px 22px;
+        box-shadow: 0 -12px 30px rgba(0, 0, 0, .3);
+
+        &.is-editor { padding: 0 0 18px; }
+    }
+
+    .phone-calendar-grabber { width: 36px; height: 4px; border-radius: 2px; background: var(--ph-input-border); margin: 0 auto 12px; }
+
+    .phone-calendar-sheet-head { display: flex; gap: 10px; align-items: flex-start; }
+    .phone-calendar-sheet-bar { width: 4px; align-self: stretch; border-radius: 2px; flex: none; }
+    .phone-calendar-sheet-headtext { flex: 1; min-width: 0; }
+    .phone-calendar-sheet-title { font-size: 19px; font-weight: 700; color: var(--ph-text); line-height: 1.15; }
+    .phone-calendar-sheet-when { font-size: 12px; color: var(--ph-soft); margin-top: 4px; }
+
+    .phone-calendar-chip {
+        padding: 6px 12px;
+        border-radius: 12px;
+        background: var(--ph-inset);
+        font-size: 12px;
+        font-weight: 700;
+        color: $cal-red;
+        flex: none;
+        white-space: nowrap;
+    }
+
+    .phone-calendar-sheet-body { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ph-hairline); }
+    .phone-calendar-sheet-row { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ph-text); .phone-pi { color: var(--ph-soft); } }
+    .phone-calendar-at { width: 14px; flex: none; color: var(--ph-soft); font-weight: 700; text-align: center; }
+    .phone-calendar-faint { color: var(--ph-faint); }
+    .phone-calendar-sheet-desc { font-size: 12.5px; line-height: 1.5; color: var(--ph-soft); margin-top: 2px; white-space: pre-line; }
+
+    .phone-calendar-primary {
+        margin-top: 16px;
+        height: 44px;
+        border-radius: 14px;
+        background: $cal-red;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-calendar-delete { margin-top: 12px; padding: 6px; text-align: center; font-size: 13px; font-weight: 700; color: #e03131; }
+
+    // editor
+    .phone-calendar-editor-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 10px; }
+    .phone-calendar-editor-cancel { font-size: 13px; font-weight: 700; color: var(--ph-soft); }
+    .phone-calendar-editor-title { font-size: 15px; font-weight: 700; color: var(--ph-text); }
+    .phone-calendar-editor-post { font-size: 13px; font-weight: 700; color: var(--ph-faint); &.is-ready { color: $cal-red; } }
+
+    .phone-calendar-form { margin: 0 14px; border: 1.5px solid var(--ph-hairline); border-radius: 16px; overflow: hidden; }
+
+    .phone-calendar-input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 14px;
+        color: var(--ph-text);
+        padding: 0;
+
+        &::placeholder { color: var(--ph-faint); }
+
+        &--title { width: 100%; padding: 12px 14px; font-size: 17px; font-weight: 700; box-sizing: border-box; }
+        &--notes { width: 100%; min-height: 64px; padding: 11px 14px; border-top: 1px solid var(--ph-hairline); resize: none; font-size: 13px; line-height: 1.45; box-sizing: border-box; }
+    }
+
+    .phone-calendar-field {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        padding: 0 14px;
+        border-top: 1px solid var(--ph-hairline);
+
+        .phone-calendar-field-label { width: 64px; flex: none; font-size: 12px; font-weight: 700; color: var(--ph-soft); }
+        .phone-calendar-field-value { flex: 1; min-width: 0; font-size: 14px; color: var(--ph-text); }
+        .phone-calendar-chip { padding: 4px 10px; font-size: 11px; }
+    }
+
+    .phone-calendar-datenav { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ph-text); .phone-tap { color: $cal-red; display: flex; } }
+
+    .phone-calendar-swatches { display: flex; gap: 10px; }
+    .phone-calendar-swatch { width: 22px; height: 22px; border-radius: 50%; &.is-picked { box-shadow: 0 0 0 2px var(--ph-bg), 0 0 0 4px currentColor; } }
+
+    .phone-calendar-editor-note { padding: 10px 26px 0; text-align: center; font-size: 11px; line-height: 1.5; color: var(--ph-soft); }
+
     // ---- Account: inline birthday picker ---------------------------------
     // The Birthday row expands in place (no sheet): month chips 4x3, a
     // 7-across day grid, Cancel / Save. Days the month doesn't have grey out.

@@ -73,7 +73,7 @@ const APP_DEFS: Record<string, PhoneAppDef> = {
     'Stocks': { icon: 'chart-line', plate: 'linear-gradient(160deg, #3a3a46, #211c28 60%, #0f0b14)', sec: '#30d158' },
     'Music': { icon: 'music', plate: 'linear-gradient(160deg, #fc586f, #fa2d55 55%, #d81e46)' },
     'Wallet': { icon: 'wallet', plate: 'linear-gradient(160deg, #4a4650, #2a2730 60%, #141118)', sec: '#ff9f0a' },
-    'Calendar': { icon: 'calendar', plate: 'linear-gradient(160deg, #ff5a52, #f5352b 55%, #cc231b)' },
+    'Calendar': { icon: 'calendar', active: true, plate: 'linear-gradient(160deg, #ff5a52, #f5352b 55%, #cc231b)' },
     'Tasks': { icon: 'list-check', plate: 'linear-gradient(160deg, #9b8cff, #7a5cff 55%, #5a3fd6)' },
     'Notes': { icon: 'note-sticky', plate: 'linear-gradient(160deg, #ffd85e, #f7bf2e 55%, #e6a400)', sec: '#e09a00' },
     'Weather': { icon: 'cloud-sun', plate: 'linear-gradient(160deg, #5bb8ff, #2f95e8 55%, #1e6fc0)', sec: '#ffd60a', faStyle: 'solid' },

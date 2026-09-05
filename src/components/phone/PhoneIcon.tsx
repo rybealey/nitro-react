@@ -11,6 +11,7 @@ const FA_MAP: Record<string, string> = {
     'battery-full': 'battery-full',
     'bookmark': 'thumbtack',
     'cake': 'cake-candles',
+    'calendar': 'calendar',
     'camera': 'camera',
     'cellular-signal-3': 'signal',
     'check': 'check',

@@ -4,6 +4,7 @@ import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, 
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
 import { RegisterRpPhoneMessages } from './api/rp-phone/RpBirthdayMessages';
+import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
@@ -107,6 +108,7 @@ export const App: FC<{}> = props =>
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
                 RegisterRpPhoneMessages();
+                RegisterRpCalendarMessages();
 
                 GetNitroInstance().init();
 
