@@ -1498,10 +1498,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..2cc4180
+index 0000000..4ac3b40
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,395 @@
+@@ -0,0 +1,438 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1608,19 +1608,40 @@ index 0000000..2cc4180
 +    private readonly _debug = new Set<number>();
 +    private readonly _debugAt = new Map<number, number>();
 +    private readonly _debugEdge = new Map<number, number>();
++    private _debugAll = false;
 +
 +    public setDebug(ids: number[]): void
 +    {
 +        this._debug.clear();
 +        this._debugAt.clear();
 +        this._debugEdge.clear();
++        this._debugAll = false;
 +
 +        for(const id of ids) this._debug.add(id);
 +    }
 +
++    /**
++     * Trace EVERY unit. The id-free entry point: knowing which virtual ids to
++     * name is itself a step that can go wrong, and when nothing is logging you
++     * cannot tell "wrong ids" from "code not loaded" without removing it.
++     */
++    public setDebugAll(on: boolean): void
++    {
++        this._debug.clear();
++        this._debugAt.clear();
++        this._debugEdge.clear();
++        this._debugAll = on;
++    }
++
 +    public isDebugged(virtualId: number): boolean
 +    {
-+        return this._debug.has(virtualId);
++        return this._debugAll || this._debug.has(virtualId);
++    }
++
++    /** Units the store currently holds timed edges for, for the console. */
++    public get trackedUnits(): number[]
++    {
++        return Array.from(this._units.keys());
 +    }
 +
 +    /**
@@ -1629,7 +1650,7 @@ index 0000000..2cc4180
 +     */
 +    public shouldLogRender(virtualId: number, tickerNow: number, edgeIndex: number): boolean
 +    {
-+        if(!this._debug.has(virtualId)) return false;
++        if(!this.isDebugged(virtualId)) return false;
 +
 +        if(this._debugEdge.get(virtualId) !== edgeIndex)
 +        {
@@ -1776,7 +1797,7 @@ index 0000000..2cc4180
 +            unit.edges.splice(0, (unit.edges.length - PixelRPMovementV2.MAX_EDGES));
 +        }
 +
-+        if(this._debug.has(virtualId))
++        if(this.isDebugged(virtualId))
 +        {
 +            const estServerNow = (clientNowPerf - this._clockOffset);
 +
@@ -1890,12 +1911,34 @@ index 0000000..2cc4180
 + */
 +if(typeof window !== 'undefined')
 +{
-+    (window as any).pixelrpMovementDebug = (...ids: number[]) =>
++    const win = (window as any);
++
++    win.pixelrpMovementDebug = (...ids: number[]) =>
 +    {
 +        PixelRPMovementV2.instance.setDebug(ids);
 +
-+        return (ids.length ? `[MV2] tracing units ${ids.join(', ')}` : '[MV2] tracing off');
++        const msg = (ids.length ? `[MV2] tracing units ${ids.join(', ')}` : '[MV2] tracing off');
++
++        console.info(msg);
++
++        return msg;
 +    };
++
++    win.pixelrpMovementDebugAll = (on = true) =>
++    {
++        PixelRPMovementV2.instance.setDebugAll(on);
++
++        const msg = (on ? '[MV2] tracing ALL units' : '[MV2] tracing off');
++
++        console.info(msg);
++
++        return msg;
++    };
++
++    // The store itself, so `pixelrpMovementV2.stats` answers "are 4110s even
++    // arriving?" without tracing anything, and `.trackedUnits` gives the exact
++    // virtual ids to pass to pixelrpMovementDebug().
++    win.pixelrpMovementV2 = PixelRPMovementV2.instance;
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
 index 2276481..db05a34 100644
