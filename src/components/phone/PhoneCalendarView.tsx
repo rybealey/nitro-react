@@ -182,6 +182,8 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     return (
         <div className="phone-screen phone-app-screen phone-calendar">
             <div ref={ scrollRef } className="phone-app-scroll">
+                { /* header + week strip float over the timeline as it scrolls */ }
+                <div className="phone-calendar-sticky">
                 <div className="phone-app-header">
                     <div className="phone-app-header-lead">
                         <div className="phone-tap phone-thread-back phone-calendar-back" onClick={ event => (onBack && onBack()) }>
@@ -218,6 +220,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         );
                     }) }
                     <div className="phone-tap phone-calendar-week-nav" onClick={ event => selectDay(addDays(selected, 7)) }><PhoneIcon icon="chevron-right" size={ 16 } /></div>
+                </div>
                 </div>
                 { /* keyed by the day: a date change remounts this block and the
                      slide-in animation runs from the side you moved towards */ }
