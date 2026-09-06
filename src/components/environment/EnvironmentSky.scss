@@ -22,12 +22,14 @@
     &.is-fading { animation: env-sky-out 2s ease both; }
 }
 
+// the one lift a sky gets: a soft glow low in the frame, fading to nothing on
+// every side so it never draws a line against the base gradient
 .env-sky-horizon {
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 62%;
-    height: 26%;
+    left: -10%;
+    right: -10%;
+    top: 50%;
+    height: 50%;
 }
 
 // two low bands of fog drifting the opposite way from each other

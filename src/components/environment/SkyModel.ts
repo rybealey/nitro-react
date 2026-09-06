@@ -152,7 +152,8 @@ export const ComputeSky = (snapshot: WeatherSnapshot, now: number): SkyLook =>
     return {
         kind,
         gradient: `linear-gradient(180deg, ${ css(stops.top) } 0%, ${ css(stops.mid) } 52%, ${ css(stops.bottom) } 100%)`,
-        horizon: `radial-gradient(60% 100% at 50% 100%, ${ cssA(horizon, glow) } 0%, rgba(0, 0, 0, 0) 100%)`,
+        // an ellipse that fades out on every side, so the glow has no edge where it meets the sky
+        horizon: `radial-gradient(ellipse 60% 50% at 50% 50%, ${ cssA(horizon, glow) } 0%, ${ cssA(horizon, glow * .45) } 45%, rgba(0, 0, 0, 0) 100%)`,
         daylight,
         stars: (((kind === 'clear') || (kind === 'partly')) && (daylight < .3)),
         fog: ((kind === 'fog') || (kind === 'cloud') || (kind === 'snow')),
