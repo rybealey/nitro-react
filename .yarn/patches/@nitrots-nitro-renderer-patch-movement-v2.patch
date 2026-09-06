@@ -2270,10 +2270,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..3d47fb9
+index 0000000..e3bb6a9
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1610 @@
+@@ -0,0 +1,1713 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2492,6 +2492,7 @@ index 0000000..3d47fb9
 +    // A step anomaly with no phase anomaly did not come from the maths; it
 +    // came from the edge under the unit being changed or removed. These
 +    // record the two ways that happens.
++    restageLines: number;
 +    correctionCount: number;
 +    lastCorrectionIndex: number;
 +    lastCorrectionAt: number;
@@ -2554,7 +2555,7 @@ index 0000000..3d47fb9
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0 };
 +
 +    /**
 +     * What drove the current update pass, for diagnostics only. RoomEngine
@@ -2762,6 +2763,7 @@ index 0000000..3d47fb9
 +                handoffLines: 0, stepLines: 0,
 +                lastWriteSX: 0, lastWriteSY: 0, lastWriteRevision: -1,
 +                lastWriteServerNow: NaN, lastWriteOffset: NaN, lastWriteNow: NaN,
++                restageLines: 0,
 +                correctionCount: 0, lastCorrectionIndex: -1, lastCorrectionAt: NaN,
 +                trimCount: 0, lastTrimHighestDropped: -1, lastTrimAt: NaN,
 +                progSession: -1, progRevision: -1, progEdge: -1, progValue: 0, clampLines: 0,
@@ -2833,7 +2835,30 @@ index 0000000..3d47fb9
 +            unit.correctionCount++;
 +            unit.lastCorrectionIndex = edgeIndex;
 +            unit.lastCorrectionAt = clientNowPerf;
-+            unit.edges = unit.edges.filter(e => (e.edgeIndex < edgeIndex));
++
++            // CLIENT DEFENCE: an edge that has ALREADY STARTED is immutable.
++            //
++            // A higher revision may replace FUTURE geometry only. Indexes
++            // below the incoming one are historical; the incoming index
++            // itself is only replaceable while it is still in the future.
++            // Once its cycleStart has passed the avatar is part-way along
++            // that tile, and swapping the geometry underneath it moves the
++            // avatar sideways mid-edge - the teleport this defends against.
++            //
++            // The server is the real fix (a late beat let a blocked-at-commit
++            // re-plan restage the elapsing index); this is the backstop that
++            // makes the invariant hold regardless of what arrives on the wire.
++            const startedNow = (clientNowPerf - this._clockOffset);
++
++            unit.edges = unit.edges.filter(e =>
++            {
++                if(e.edgeIndex < edgeIndex) return true;
++
++                // At or after the incoming index: keep it only if it has
++                // already begun, in which case it outranks the correction.
++                return (e.cycleStart <= startedNow);
++            });
++
 +            this.stats.corrections++;
 +        }
 +        else if(revision < unit.revision)
@@ -2865,10 +2890,14 @@ index 0000000..3d47fb9
 +
 +        const step = ((interval > 0) ? interval : 500);
 +
++        // The instant this packet describes, in server time - the reference
++        // for "has this edge already started?".
++        const startedNow = (clientNowPerf - this._clockOffset);
++
 +        this.upsert(unit, {
 +            session, revision, edgeIndex, provisional: false,
 +            sx, sy, sz, gx, gy, gz, cycleStart, interval: step
-+        });
++        }, startedNow);
 +        this.stats.edges++;
 +
 +        // Lookahead: a contiguous chain. from = previous goal, start = previous
@@ -2888,7 +2917,7 @@ index 0000000..3d47fb9
 +                interval: step
 +            };
 +
-+            this.upsert(unit, edge);
++            this.upsert(unit, edge, startedNow);
 +            prev = edge;
 +        }
 +
@@ -2930,14 +2959,72 @@ index 0000000..3d47fb9
 +        }
 +    }
 +
-+    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge): void
++    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge, startedNow: number): void
 +    {
 +        const index = unit.edges.findIndex(e => (e.edgeIndex === edge.edgeIndex));
 +
 +        if(index >= 0)
 +        {
++            const existing = unit.edges[index];
++
++            // ONCE AN EDGE HAS BEGUN, ITS GEOMETRY IS IMMUTABLE.
++            //
++            // Refused here rather than at the filter above, because this is
++            // the single point every replacement passes through - a
++            // correction, a real edge confirming a provisional guess, or a
++            // lookahead re-advertising a tile. Refusing at the choke point
++            // means no future path can reintroduce the same defect.
++            //
++            // Only an ACTUAL geometry change is refused. A packet restating
++            // an already-started edge with identical from/to is harmless and
++            // common (a real edge confirming the provisional guess that was
++            // already being rendered), so it still upgrades provisional to
++            // confirmed without moving anything.
++            const alreadyStarted = (Number.isFinite(startedNow) && (existing.cycleStart <= startedNow));
++
++            if(alreadyStarted)
++            {
++                const geometryDiffers = ((existing.sx !== edge.sx) || (existing.sy !== edge.sy) || (existing.sz !== edge.sz)
++                    || (existing.gx !== edge.gx) || (existing.gy !== edge.gy) || (existing.gz !== edge.gz));
++
++                if(geometryDiffers)
++                {
++                    this.stats.illegalActiveRestages++;
++
++                    if(unit.restageLines < 40)
++                    {
++                        unit.restageLines++;
++
++                        console.error('[MV2/ILLEGAL-ACTIVE-RESTAGE] ' + JSON.stringify({
++                            unit: unit.id,
++                            session: edge.session,
++                            edgeIndex: edge.edgeIndex,
++                            previousRouteRevision: existing.revision,
++                            routeRevision: edge.revision,
++                            oldFrom: `${existing.sx},${existing.sy},${existing.sz}`,
++                            oldTo: `${existing.gx},${existing.gy},${existing.gz}`,
++                            newFrom: `${edge.sx},${edge.sy},${edge.sz}`,
++                            newTo: `${edge.gx},${edge.gy},${edge.gz}`,
++                            cycleStart: existing.cycleStart,
++                            interval: existing.interval,
++                            estServerNow: Math.round(startedNow),
++                            msIntoEdge: Math.round(startedNow - existing.cycleStart),
++                            phaseAtRefusal: Number(Math.min(1, Math.max(0, ((startedNow - existing.cycleStart) / existing.interval))).toFixed(6)),
++                            incomingProvisional: edge.provisional,
++                            action: 'REFUSED - existing geometry kept, edge is already in flight'
++                        }));
++                    }
++
++                    // Keep the geometry the avatar is actually walking. The
++                    // revision is NOT adopted for this edge: adopting it would
++                    // claim the new route describes this tile, which it does
++                    // not.
++                    return;
++                }
++            }
++
 +            // A confirmed real edge always beats a provisional guess.
-+            if(unit.edges[index].provisional || !edge.provisional) unit.edges[index] = edge;
++            if(existing.provisional || !edge.provisional) unit.edges[index] = edge;
 +
 +            return;
 +        }
@@ -3560,10 +3647,25 @@ index 0000000..3d47fb9
 +            const ey = (active.gy - active.sy);
 +            const along = ((sx * ex) + (sy * ey));
 +
++            // AN EDGE BOUNDARY IS NOT A REVERSAL.
++            //
++            // Crossing from one edge to the next takes phase from ~0.99 to
++            // ~0.00 and changes the edge vector the step is judged against, so
++            // the tiny residual step at the boundary routinely projects
++            // negative onto the NEW edge. That is a normal handoff, not
++            // movement against the route, and calling it reverse-direction
++            // buried the real reversals in noise. Handoffs have their own
++            // report, [MV2/EDGE-HANDOFF], which measures the thing that
++            // actually matters there: whether the two edges join up.
++            //
++            // A genuinely large step at a boundary is still reported, since
++            // size is meaningful regardless of which edge is being entered.
++            const atBoundary = ((unit.lastWriteSession === active.session) && (unit.lastWriteEdge !== active.edgeIndex));
++
 +            const tooBig = (stepTiles > PixelRPMovementV2.STEP_ANOMALY_TILES);
 +            // Judged only once the step is big enough for its direction to
 +            // mean anything; float noise on a still avatar has no direction.
-+            const wrongWay = ((stepTiles > 0.001) && (along < 0));
++            const wrongWay = (!atBoundary && (stepTiles > 0.001) && (along < 0));
 +
 +            if(tooBig || wrongWay)
 +            {
@@ -3623,6 +3725,7 @@ index 0000000..3d47fb9
 +                // rather than collapsed behind a disclosure triangle.
 +                console.warn('[MV2/STEP-ANOMALY] ' + JSON.stringify({
 +                    cause: (tooBig && wrongWay) ? 'large-step+reverse' : (tooBig ? 'large-step' : 'reverse-direction'),
++                    atEdgeBoundary: atBoundary,
 +                    verdict,
 +
 +                    unit: virtualId,
