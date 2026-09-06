@@ -3,7 +3,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { NEWS_CATEGORIES, NewsPost, RpDeleteNewsPostComposer, RpGetNewsComposer, RpNewsEvent, RpPinNewsPostComposer, RpSaveNewsPostComposer } from '../../api/rp-phone/RpNewsMessages';
 import { useMessageEvent } from '../../hooks';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
-import { PhoneAvatarColor } from './PhoneAvatar';
+import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
 // News app: a staff-run noticeboard for the city. Everyone reads the Today
@@ -129,8 +129,8 @@ const longTime = (unix: number, now: number): string =>
 const paragraphs = (body: string): string[] => (body || '').split(/\n\s*\n/).map(part => part.trim()).filter(part => part.length);
 const firstParagraph = (body: string): string => (paragraphs(body)[0] ?? '');
 
-const Face: FC<{ userId: number, name: string, size?: number }> = ({ userId, name, size = 18 }) => (
-    <div className="phone-news-face" style={ { width: size, height: size, fontSize: Math.round(size * 0.45), background: PhoneAvatarColor(userId) } }>{ (name || '?').charAt(0).toUpperCase() }</div>
+const Face: FC<{ userId: number, name: string, figure?: string, size?: number }> = ({ userId, name, figure = null, size = 18 }) => (
+    <PhoneFace id={ userId } figure={ figure } name={ name } size={ size } className="phone-news-face" />
 );
 
 // a textarea that grows with its text
@@ -334,7 +334,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
 
     const byline = (post: NewsPost, size: number, long: boolean = false) => (
         <div className="phone-news-byline">
-            <Face userId={ post.authorId } name={ post.authorName } size={ size } />
+            <Face userId={ post.authorId } name={ post.authorName } figure={ post.authorFigure } size={ size } />
             <span className="phone-news-byline-name">{ post.authorName }</span>
             <span>· { long ? longTime(post.createdAt, now) : relativeTime(post.createdAt, now) }</span>
         </div>

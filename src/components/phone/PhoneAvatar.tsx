@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { CSSProperties, FC } from 'react';
 import { LayoutAvatarImageView, LayoutBadgeImageView } from '../../common';
 
 // Rounded avatar tile used across the phone apps: the participant's avatar
@@ -10,6 +10,23 @@ import { LayoutAvatarImageView, LayoutBadgeImageView } from '../../common';
 const TILE_COLORS: string[] = [ '#ff9dbf', '#7fb0d0', '#f5b96a', '#7fc98f', '#ffb0cf', '#b58fd0', '#c98aa0', '#f0954a' ];
 
 export const PhoneAvatarColor = (id: number): string => TILE_COLORS[ Math.abs(id) % TILE_COLORS.length ];
+
+// A tiny round head (Notes collaborators, News bylines): the head-only
+// figure render scaled to `size` over the user's pastel, with the initial as
+// the fallback when no figure is known.
+export const PhoneFace: FC<{ id: number, figure: string, name: string, size?: number, className?: string }> = props =>
+{
+    const { id = 0, figure = null, name = '', size = 18, className = null } = props;
+    const style = { width: size, height: size, fontSize: Math.round(size * 0.45), background: PhoneAvatarColor(id), '--face-scale': (size / 44) } as CSSProperties;
+
+    return (
+        <div className={ `phone-face${ className ? (' ' + className) : '' }` } title={ name } style={ style }>
+            { figure
+                ? <LayoutAvatarImageView figure={ figure } headOnly={ true } direction={ 2 } />
+                : <span>{ (name || '?').charAt(0).toUpperCase() }</span> }
+        </div>
+    );
+}
 
 interface PhoneAvatarProps
 {

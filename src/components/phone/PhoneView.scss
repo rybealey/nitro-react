@@ -642,6 +642,32 @@ $phone-scale: 0.8;
 
     // ----- avatar tile -----
 
+    // tiny round head: the head-only render centred on (45,46) like the
+    // avatar tile, scaled so the head fills a 44px circle at scale 1
+    .phone-face {
+        position: relative;
+        flex: none;
+        border-radius: 50%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 700;
+        font-family: 'Ubuntu', sans-serif;
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            margin-left: -45px;
+            margin-top: -46px;
+            transform: scale(var(--face-scale, 1));
+            transform-origin: 45px 46px;
+            image-rendering: pixelated;
+        }
+    }
+
     .phone-avatar {
         position: relative;
         flex: none;
@@ -2436,6 +2462,9 @@ $phone-scale: 0.8;
 
         &.is-extra { background: var(--ph-send-idle); color: var(--ph-text); }
     }
+
+    // sheet rows show the head without the stack ring
+    .phone-notes-person .phone-face { box-shadow: none; }
 
     .phone-notes-stack {
         display: flex;

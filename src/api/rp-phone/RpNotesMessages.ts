@@ -26,6 +26,7 @@ export interface NoteSummary
     id: number;
     ownerId: number;
     ownerName: string;
+    ownerFigure: string;
     // the VIEWER's folder for this note (owner's or their share row); 0 = none
     folderId: number;
     title: string;
@@ -40,6 +41,7 @@ export interface NotePerson
 {
     userId: number;
     username: string;
+    figure: string;
     online: boolean;
     // has the note open in their editor
     editing: boolean;
@@ -52,6 +54,7 @@ export interface NoteDetail
     id: number;
     ownerId: number;
     ownerName: string;
+    ownerFigure: string;
     folderId: number;
     title: string;
     body: string;
@@ -97,7 +100,7 @@ export class RpNotesParser implements IMessageParser
 
         for(let i = 0; i < noteCount; i++)
         {
-            this._notes.push({ id: wrapper.readInt(), ownerId: wrapper.readInt(), ownerName: wrapper.readString(), folderId: wrapper.readInt(), title: wrapper.readString(), preview: wrapper.readString(), pinned: (wrapper.readInt() === 1), updatedAt: wrapper.readInt(), shareCount: wrapper.readInt() });
+            this._notes.push({ id: wrapper.readInt(), ownerId: wrapper.readInt(), ownerName: wrapper.readString(), ownerFigure: wrapper.readString(), folderId: wrapper.readInt(), title: wrapper.readString(), preview: wrapper.readString(), pinned: (wrapper.readInt() === 1), updatedAt: wrapper.readInt(), shareCount: wrapper.readInt() });
         }
 
         return true;
@@ -120,7 +123,7 @@ export class RpNotesEvent extends MessageEvent implements IMessageEvent
     }
 }
 
-const readPerson = (wrapper: IMessageDataWrapper): NotePerson => ({ userId: wrapper.readInt(), username: wrapper.readString(), online: (wrapper.readInt() === 1), editing: (wrapper.readInt() === 1), caretLine: wrapper.readInt() });
+const readPerson = (wrapper: IMessageDataWrapper): NotePerson => ({ userId: wrapper.readInt(), username: wrapper.readString(), figure: wrapper.readString(), online: (wrapper.readInt() === 1), editing: (wrapper.readInt() === 1), caretLine: wrapper.readInt() });
 
 export class RpNoteParser implements IMessageParser
 {
@@ -141,6 +144,7 @@ export class RpNoteParser implements IMessageParser
             id: wrapper.readInt(),
             ownerId: wrapper.readInt(),
             ownerName: wrapper.readString(),
+            ownerFigure: wrapper.readString(),
             folderId: wrapper.readInt(),
             title: wrapper.readString(),
             body: wrapper.readString(),

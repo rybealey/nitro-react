@@ -2,7 +2,7 @@ import { FC, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, useEff
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { NoteDetail, NoteFolder, NotePerson, NoteSummary, RpDeleteNoteComposer, RpGetNotesComposer, RpMoveNoteComposer, RpNoteEvent, RpNoteOpenComposer, RpNoteShareComposer, RpNotesEvent, RpPinNoteComposer, RpSaveNoteComposer, RpSaveNoteFolderComposer } from '../../api/rp-phone/RpNotesMessages';
 import { useMessageEvent } from '../../hooks';
-import { PhoneAvatarColor } from './PhoneAvatar';
+import { PhoneAvatarColor, PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
 // Notes app: Folders -> a folder's list -> the editor. Notes are yours or
@@ -111,11 +111,11 @@ const relativeTime = (unix: number, now: number): string =>
     return shortDate(unix);
 }
 
-const Face: FC<{ userId: number, name: string, size?: number }> = ({ userId, name, size = 18 }) => (
-    <div className="phone-notes-face" title={ name } style={ { width: size, height: size, fontSize: Math.round(size * 0.45), background: PhoneAvatarColor(userId) } }>{ (name || '?').charAt(0).toUpperCase() }</div>
+const Face: FC<{ userId: number, name: string, figure?: string, size?: number }> = ({ userId, name, figure = null, size = 18 }) => (
+    <PhoneFace id={ userId } figure={ figure } name={ name } size={ size } className="phone-notes-face" />
 );
 
-const FaceStack: FC<{ people: { userId: number, username: string }[], size?: number }> = ({ people, size = 18 }) =>
+const FaceStack: FC<{ people: { userId: number, username: string, figure?: string }[], size?: number }> = ({ people, size = 18 }) =>
 {
     if(!people.length) return null;
 
@@ -124,7 +124,7 @@ const FaceStack: FC<{ people: { userId: number, username: string }[], size?: num
 
     return (
         <div className="phone-notes-stack">
-            { shown.map(person => <Face key={ person.userId } userId={ person.userId } name={ person.username } size={ size } />) }
+            { shown.map(person => <Face key={ person.userId } userId={ person.userId } name={ person.username } figure={ person.figure } size={ size } />) }
             { (extra > 0) &&
                 <div className="phone-notes-face is-extra" style={ { width: size, height: size, fontSize: Math.round(size * 0.42) } }>+{ extra }</div> }
         </div>
@@ -834,7 +834,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                     </div>
                 </div>
                 { (note.ownerId !== ownId) &&
-                    <FaceStack people={ [ { userId: note.ownerId, username: note.ownerName } ] } /> }
+                    <FaceStack people={ [ { userId: note.ownerId, username: note.ownerName, figure: note.ownerFigure } ] } /> }
                 { (note.ownerId === ownId) && (note.shareCount > 0) &&
                     <div className="phone-notes-item-shared" title={ `Shared with ${ note.shareCount }` }>
                         <PhoneIcon icon="user-group" size={ 12 } />
@@ -929,7 +929,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                                             <div className="phone-notes-row">
                                                 <PhoneIcon icon="user-group" size={ 17 } className="phone-notes-row-icon" />
                                                 <div className="phone-notes-row-label">{ note.title.trim().length ? note.title : 'New note' }</div>
-                                                <FaceStack people={ [ { userId: note.ownerId, username: note.ownerName } ] } />
+                                                <FaceStack people={ [ { userId: note.ownerId, username: note.ownerName, figure: note.ownerFigure } ] } />
                                                 <PhoneIcon icon="chevron-right" size={ 14 } className="phone-notes-row-chev" />
                                             </div>
                                         </SwipeRow>
@@ -1055,7 +1055,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             <div className="phone-notes-people">
                 { detail.people.map((person, index) => (
                     <div key={ person.userId } className={ `phone-notes-person${ index ? ' has-top' : '' }` }>
-                        <Face userId={ person.userId } name={ person.username } size={ 32 } />
+                        <Face userId={ person.userId } name={ person.username } figure={ person.figure } size={ 32 } />
                         <div className="phone-notes-person-text">
                             <div className="phone-notes-person-name">{ (person.userId === ownId) ? `${ person.username } (you)` : person.username }{ (person.userId === detail.ownerId) ? <span className="phone-notes-person-owner">Owner</span> : null }</div>
                             <div className={ `phone-notes-person-status${ person.editing ? ' is-live' : '' }` }>{ statusFor(person) }</div>
@@ -1075,7 +1075,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                     <div className="phone-notes-people is-friends">
                         { detail.friends.filter(friend => !detail.people.some(person => person.userId === friend.userId)).map((friend, index) => (
                             <div key={ friend.userId } className={ `phone-notes-person${ index ? ' has-top' : '' }` }>
-                                <Face userId={ friend.userId } name={ friend.username } size={ 32 } />
+                                <Face userId={ friend.userId } name={ friend.username } figure={ friend.figure } size={ 32 } />
                                 <div className="phone-notes-person-text">
                                     <div className="phone-notes-person-name">{ friend.username }</div>
                                     <div className="phone-notes-person-status">{ friend.online ? 'Online' : 'Offline' }</div>

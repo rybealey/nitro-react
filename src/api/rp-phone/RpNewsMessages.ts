@@ -16,6 +16,7 @@ export interface NewsPost
     id: number;
     authorId: number;
     authorName: string;
+    authorFigure: string;
     category: string;
     title: string;
     body: string;
@@ -51,7 +52,7 @@ export class RpNewsParser implements IMessageParser
 
         for(let i = 0; i < count; i++)
         {
-            this._posts.push({ id: wrapper.readInt(), authorId: wrapper.readInt(), authorName: wrapper.readString(), category: wrapper.readString(), title: wrapper.readString(), body: wrapper.readString(), image: wrapper.readString(), pinned: (wrapper.readInt() === 1), createdAt: wrapper.readInt(), updatedAt: wrapper.readInt() });
+            this._posts.push({ id: wrapper.readInt(), authorId: wrapper.readInt(), authorName: wrapper.readString(), authorFigure: wrapper.readString(), category: wrapper.readString(), title: wrapper.readString(), body: wrapper.readString(), image: wrapper.readString(), pinned: (wrapper.readInt() === 1), createdAt: wrapper.readInt(), updatedAt: wrapper.readInt() });
         }
 
         return true;
