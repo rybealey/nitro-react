@@ -298,6 +298,60 @@ index 6938b9a..58e5f45 100644
  export * from './RpUserCorpEvent';
  export * from './RpAlbumListEvent';
  export * from './RpAlbumPhotosEvent';
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index a9b94a1..3b45b33 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -18,6 +18,7 @@ import { RoomObjectEventHandler } from './RoomObjectEventHandler';
+ import { RoomObjectLogicFactory } from './RoomObjectLogicFactory';
+ import { RoomVariableEnum } from './RoomVariableEnum';
+ import { RoomCamera, RoomData, RoomFurnitureData, RoomInstanceData, RoomObjectBadgeImageAssetListener, SpriteDataCollector } from './utils';
++import { PixelRPMovementV2 } from '../../room/renderer/PixelRPMovementV2';
+ 
+ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreator, IRoomEngineServices, IRoomManagerListener, IRoomContentListener, IUpdateReceiver, IDisposable
+ {
+@@ -797,12 +798,39 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+ 
+     public runUpdate(): void
+     {
+-        this.update(1);
++        // Diagnostics only: this entry point is NOT a rAF frame (the room
++        // previewer and Interval drive it), so GetTickerTime() can be stale
++        // here. V2 samples its own clock; this just lets a log line say where
++        // the pass came from.
++        PixelRPMovementV2.instance.updateSource = 'runUpdate';
++
++        try
++        {
++            this.update(1);
++        }
++        finally
++        {
++            PixelRPMovementV2.instance.updateSource = 'ticker';
++        }
+     }
+ 
+     public runVisibilityUpdate(): void
+     {
+-        if(!document.hidden) this.update(1, true);
++        if(document.hidden) return;
++
++        // Also not a rAF frame, and the worst case for a stale ticker: rAF is
++        // suspended while the tab is hidden, so Ticker.lastTime here is from
++        // whenever the tab was last visible.
++        PixelRPMovementV2.instance.updateSource = 'visibilitychange';
++
++        try
++        {
++            this.update(1, true);
++        }
++        finally
++        {
++            PixelRPMovementV2.instance.updateSource = 'ticker';
++        }
+     }
+ 
+     public update(time: number, update: boolean = false): void
 diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
 index 2ff0e23..09de3d7 100644
 --- a/src/nitro/room/RoomMessageHandler.ts
@@ -487,7 +541,7 @@ index 4198932..20c6fde 100644
          return true;
      }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..fa6c2a7 100644
+index ac3907b..d8d5920 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -1,11 +1,22 @@
@@ -513,7 +567,7 @@ index ac3907b..fa6c2a7 100644
  
      private _liftAmount: number;
  
-@@ -64,6 +75,277 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +75,285 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -527,6 +581,25 @@ index ac3907b..fa6c2a7 100644
 +        // furniture does not.
 +        const pixelrpUnit = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined));
 +
++        // V2'S ONE CLOCK, SAMPLED ONCE FOR THIS PASS.
++        //
++        // RoomEngine.update overwrites its time argument with GetTickerTime(),
++        // which is PIXI's Ticker.lastTime and only advances on a rAF frame.
++        // The engine is also driven from three places that are NOT rAF frames
++        // - a visibilitychange listener, RoomPreviewer.runUpdate and Interval
++        // - and on those passes the ticker still reads whatever the last
++        // rendered frame left, stale by however long rAF was suspended.
++        // Evaluating an edge against that renders a moment already gone,
++        // putting the avatar back where it was for a frame before the next
++        // real frame snaps it forward.
++        //
++        // V2's contract has always been performance.now() as its only clock.
++        // That is sampled HERE, once, and every V2 calculation in this pass -
++        // ownership, edge selection, phase, the assertions - uses this single
++        // value. Native keeps using this.time: its timing is stock Nitro and
++        // is not ours to change.
++        const pixelrpNow = (pixelrpUnit ? performance.now() : 0);
++
 +        // pixelrp Movement V2 - OPTION B SPIKE.
 +        // ONE interpolator. When the server has given this unit a timed edge,
 +        // the phase comes from the authoritative cycleStart instead of packet
@@ -537,7 +610,7 @@ index ac3907b..fa6c2a7 100644
 +        // this.time is GetTickerTime() = performance.now(), the SAME domain the
 +        // V2 store samples on packet arrival, so no conversion happens here.
 +        const pixelrpV2 = pixelrpUnit
-+            ? PixelRPMovementV2.instance.getActive(this.object.id, this.time)
++            ? PixelRPMovementV2.instance.getActive(this.object.id, pixelrpNow)
 +            : null;
 +
 +        if(pixelrpV2)
@@ -582,23 +655,10 @@ index ac3907b..fa6c2a7 100644
 +            this.object.setLocation(vector);
 +            store.writer = PixelRPV2Writer.OTHER;
 +
-+            // TEMPORARY assertion: under a mapping frozen for the whole edge,
-+            // phase advances exactly as the ticker does. Any divergence means
-+            // the mapping moved under an active edge - the cause of the
-+            // occasional render step at twice its neighbours.
-+            const pixelrpPhaseWarning = store.checkPhaseRate(pixelrpV2, this.object.id, this.time);
-+
-+            if(pixelrpPhaseWarning)
-+            {
-+                console.warn('[MV2/PHASE-RATE]', {
-+                    unit: this.object.id,
-+                    detail: pixelrpPhaseWarning,
-+                    activeOffset: pixelrpV2.activeOffset.toFixed(3),
-+                    liveOffset: store.clockOffset.toFixed(3),
-+                    holding: pixelrpV2.holding,
-+                    tickerNow: Math.round(this.time)
-+                });
-+            }
++            // TEMPORARY assertions on this write: that it did not move the
++            // unit backward along the edge, and that phase advanced exactly as
++            // the clock did.
++            store.noteV2Write(pixelrpV2, this.object.id, pixelrpNow, vector.x, vector.y, vector.z);
 +
 +            if(report)
 +            {
@@ -671,12 +731,12 @@ index ac3907b..fa6c2a7 100644
 +
 +                    // ---- the native `mv` that could have started it -------
 +                    mvArrivedAt: (report.mvAt ? Math.round(report.mvAt) : 'none'),
-+                    mvBeforeFirstMovingMs: (report.mvAt ? Math.round(this.time - report.mvAt) : 'n/a'),
++                    mvBeforeFirstMovingMs: (report.mvAt ? Math.round(pixelrpNow - report.mvAt) : 'n/a'),
 +                    mvFrom: (report.mvFrom || 'none'),
 +                    mvTo: (report.mvTo || 'none'),
 +
 +                    // ---- first moving frame ------------------------------
-+                    firstMovingTicker: Math.round(this.time),
++                    firstMovingTicker: Math.round(pixelrpNow),
 +                    edgeFrom: `${pixelrpV2.sx},${pixelrpV2.sy},${pixelrpV2.sz}`,
 +                    edgeTo: `${pixelrpV2.gx},${pixelrpV2.gy},${pixelrpV2.gz}`,
 +                    v2Interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
@@ -704,7 +764,8 @@ index ac3907b..fa6c2a7 100644
 +                    // position, so every delta must be read against it.
 +                    locationOffset: (locationOffset ? `${locationOffset.x},${locationOffset.y},${locationOffset.z}` : 'none'),
 +                    startDelayMs: report.joinDelayMs,
-+                    boundaryDeltaMs: Math.round(store.joinBoundaryDelta(this.object.id, this.time))
++                    boundaryDeltaMs: Math.round(store.joinBoundaryDelta(this.object.id, pixelrpNow)),
++                    updateSource: store.updateSource
 +                });
 +            }
 +
@@ -726,7 +787,7 @@ index ac3907b..fa6c2a7 100644
 +            // getLocation() is read back AFTER setLocation, so a mismatch
 +            // between `interp` and `actual` means something other than this
 +            // hook is writing the position.
-+            if(PixelRPMovementV2.instance.shouldLogRender(this.object.id, this.time, pixelrpV2.edgeIndex))
++            if(PixelRPMovementV2.instance.shouldLogRender(this.object.id, pixelrpNow, pixelrpV2.edgeIndex))
 +            {
 +                const actual = this.object.getLocation();
 +
@@ -743,7 +804,8 @@ index ac3907b..fa6c2a7 100644
 +                    to: `${pixelrpV2.gx},${pixelrpV2.gy}`,
 +                    interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)}`,
 +                    actual: `${actual.x.toFixed(3)},${actual.y.toFixed(3)}`,
-+                    tickerNow: Math.round(this.time)
++                    updateSource: PixelRPMovementV2.instance.updateSource,
++                    tickerNow: Math.round(pixelrpNow)
 +                });
 +            }
 +
@@ -761,7 +823,7 @@ index ac3907b..fa6c2a7 100644
 +        // interpolation below, which is one positional write by a writer that
 +        // does not own the unit. Native is not merely skipped here, it is
 +        // unreachable: the method returns.
-+        if(pixelrpUnit && pixelrpStore.owns(this.object.id))
++        if(pixelrpUnit && pixelrpStore.owns(this.object.id, pixelrpNow))
 +        {
 +            this._lastUpdateTime = this.time;
 +
@@ -791,7 +853,7 @@ index ac3907b..fa6c2a7 100644
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
-@@ -87,7 +369,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -87,7 +377,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
              if(locationOffset) vector.add(locationOffset);
  
@@ -801,7 +863,7 @@ index ac3907b..fa6c2a7 100644
  
              if(difference === this._updateInterval)
              {
-@@ -97,22 +381,180 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -97,22 +389,184 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -820,7 +882,7 @@ index ac3907b..fa6c2a7 100644
 +
 +            pixelrpStore.notePending(
 +                this.object.id,
-+                this.time,
++                pixelrpNow,
 +                location.x, location.y, location.z,
 +                (direction ? direction.x : -1),
 +                (screen ? screen.x : NaN),
@@ -939,7 +1001,11 @@ index ac3907b..fa6c2a7 100644
 +        // ahead of the Pending -> Moving handoff.
 +        //
 +        // Facing is still applied, so the avatar still turns on the packet.
-+        let pixelrpOwned = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined) && PixelRPMovementV2.instance.owns(this.object.id));
++        // One sample for this packet pass, for the same reason update() takes
++        // one: every V2 question asked here must be asked of the same instant.
++        const pixelrpNow = performance.now();
++
++        let pixelrpOwned = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined) && PixelRPMovementV2.instance.owns(this.object.id, pixelrpNow));
 +
 +        // HARD DISPLACEMENT: end ownership FIRST, then let the write through.
 +        //
@@ -960,7 +1026,7 @@ index ac3907b..fa6c2a7 100644
 +            const current = this.object.getLocation();
 +            const dx = (message.location.x - current.x);
 +            const dy = (message.location.y - current.y);
-+
+ 
 +            if(((dx * dx) + (dy * dy)) > (MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES * MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES))
 +            {
 +                PixelRPMovementV2.instance.releaseForDisplacement(this.object.id, `userupdate jumped ${Math.sqrt((dx * dx) + (dy * dy)).toFixed(2)} tiles`);
@@ -968,7 +1034,7 @@ index ac3907b..fa6c2a7 100644
 +                pixelrpOwned = false;
 +            }
 +        }
- 
++
 +        if(pixelrpOwned)
 +        {
 +            if(this.object) this.object.setDirection(message.direction);
@@ -984,7 +1050,7 @@ index ac3907b..fa6c2a7 100644
          if(message.location) this._location.assign(message.location);
  
          if(message instanceof ObjectMoveUpdateMessage) return this.processMoveMessage(message);
-@@ -126,6 +568,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -126,6 +580,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
          this._locationDelta.assign(message.targetLocation);
          this._locationDelta.subtract(this._location);
@@ -1005,7 +1071,7 @@ index ac3907b..fa6c2a7 100644
 +        {
 +            PixelRPMovementV2.instance.noteNativeMove(
 +                this.object.id,
-+                this.time,
++                performance.now(),
 +                `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)}`,
 +                `${message.targetLocation.x.toFixed(3)},${message.targetLocation.y.toFixed(3)}`);
 +        }
@@ -1047,7 +1113,7 @@ index 1dc732f..f2b8ce9 100644
      private _reportedLocation: Vector3d;
      private _postureIndex: number;
 diff --git a/src/room/object/RoomObject.ts b/src/room/object/RoomObject.ts
-index f900839..100c4d3 100644
+index f900839..c008cf7 100644
 --- a/src/room/object/RoomObject.ts
 +++ b/src/room/object/RoomObject.ts
 @@ -1,6 +1,7 @@
@@ -1058,7 +1124,7 @@ index f900839..100c4d3 100644
  
  export class RoomObject extends Disposable implements IRoomObjectController
  {
-@@ -75,6 +76,75 @@ export class RoomObject extends Disposable implements IRoomObjectController
+@@ -75,6 +76,76 @@ export class RoomObject extends Disposable implements IRoomObjectController
  
          if((vector.x === this._location.x) && (vector.y === this._location.y) && (vector.z === this._location.z)) return;
  
@@ -1088,7 +1154,7 @@ index f900839..100c4d3 100644
 +        // any floor item whose id happened to equal a walking avatar's
 +        // virtualId - a false positive that says nothing about the avatar,
 +        // because the two live in different id spaces.
-+        if((pixelrpStore.writer !== PixelRPV2Writer.V2_INTERP) && pixelrpStore.isRoomUnit(this) && pixelrpStore.owns(this._id))
++        if((pixelrpStore.writer !== PixelRPV2Writer.V2_INTERP) && pixelrpStore.isRoomUnit(this) && pixelrpStore.owns(this._id, pixelrpNow))
 +        {
 +            pixelrpStore.stats.ownershipViolations++;
 +
@@ -1105,6 +1171,7 @@ index f900839..100c4d3 100644
 +                    to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
 +                    movedTiles: Math.sqrt((vdx * vdx) + (vdy * vdy)).toFixed(4),
 +                    at: Math.round(pixelrpNow),
++                    updateSource: pixelrpStore.updateSource,
 +                    // Kept as a fallback for a caller the tags do not cover:
 +                    // if `by` reads "other", this is what names it.
 +                    stack: ((new Error().stack || '').split('\n').slice(2, 7).map(l => l.trim()).join(' <- '))
@@ -2186,10 +2253,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..4bc4462
+index 0000000..c2d90f6
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1010 @@
+@@ -0,0 +1,1156 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2331,13 +2398,30 @@ index 0000000..4bc4462
 +    /** NaN until the first activation. */
 +    activeOffset: number;
 +
-+    // ---- TEMPORARY assertion state: phase must track the ticker ----------
++    /**
++     * MONOTONIC INVARIANT: the newest V2 clock reading this unit has been
++     * evaluated against. V2 time may never move backwards for a unit, so a
++     * pass driven from outside the rAF frame - where the sampled clock can
++     * read older than the last one - cannot rewind an avatar. Reset when the
++     * session is replaced; a displaced or forgotten unit is deleted outright,
++     * which resets it by construction.
++     */
++    lastNow: number;
++
++    // ---- TEMPORARY assertion state: phase must track the clock -----------
 +    lastPhase: number;
 +    lastPhaseTicker: number;
 +    lastPhaseEdge: number;
 +    lastPhaseClamped: boolean;
 +    phaseWarnings: number;
 +    clockLines: number;
++
++    // ---- TEMPORARY: the previous V2 positional write --------------------
++    lastWriteSession: number;
++    lastWriteEdge: number;
++    lastWriteX: number; lastWriteY: number; lastWriteZ: number;
++    lastWriteValid: boolean;
++    backwardLines: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -2394,7 +2478,15 @@ index 0000000..4bc4462
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0 };
++
++    /**
++     * What drove the current update pass, for diagnostics only. RoomEngine
++     * sets it around the entry points that are NOT a rAF frame, so a log line
++     * can say whether it came from the ticker, a visibilitychange, the room
++     * previewer or an interval.
++     */
++    public updateSource = 'ticker';
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2558,8 +2650,12 @@ index 0000000..4bc4462
 +                mvAt: 0, mvFrom: '', mvTo: '', mvSeq: 0,
 +                writerLines: 0,
 +                activeSession: -1, activeEdgeIndex: -1, activeOffset: NaN,
++                lastNow: NaN,
 +                lastPhase: NaN, lastPhaseTicker: NaN, lastPhaseEdge: -1,
-+                lastPhaseClamped: true, phaseWarnings: 0, clockLines: 0
++                lastPhaseClamped: true, phaseWarnings: 0, clockLines: 0,
++                lastWriteSession: -1, lastWriteEdge: -1,
++                lastWriteX: 0, lastWriteY: 0, lastWriteZ: 0,
++                lastWriteValid: false, backwardLines: 0
 +            };
 +
 +            this._units.set(virtualId, unit);
@@ -2585,6 +2681,14 @@ index 0000000..4bc4462
 +            unit.lastPhaseClamped = true;
 +            unit.phaseWarnings = 0;
 +            unit.clockLines = 0;
++
++            // The monotonic clock and the previous write belong to the walk
++            // that just ended, not to this one.
++            unit.lastNow = NaN;
++            unit.lastWriteValid = false;
++            unit.lastWriteSession = -1;
++            unit.lastWriteEdge = -1;
++            unit.backwardLines = 0;
 +        }
 +        else if(session < unit.session)
 +        {
@@ -2865,13 +2969,54 @@ index 0000000..4bc4462
 +     * so the avatar holds at the real terminal tile. It never speeds up and
 +     * never skips - there is no catch-up path to write.
 +     */
-+    public getActive(virtualId: number, tickerNow: number): PixelRPV2Active
++    /**
++     * `nowPerf` MUST be a performance.now() sample taken once for the whole
++     * pass by the caller - never GetTickerTime(). PIXI's Ticker.lastTime only
++     * advances on a rAF frame, so on a pass driven by visibilitychange, the
++     * previewer or an interval it is stale by however long rAF was suspended,
++     * and evaluating an edge against it renders a moment that has already
++     * gone by.
++     */
++    public getActive(virtualId: number, nowPerf: number): PixelRPV2Active
 +    {
 +        if(!Number.isFinite(this._clockOffset)) return null;
 +
 +        const unit = this._units.get(virtualId);
 +
 +        if(!unit || !unit.edges.length) return null;
++
++        // MONOTONIC GUARD. V2 time never moves backwards for a unit. This is a
++        // safety invariant, not smoothing: it does not move anything forward,
++        // change a rate or catch anything up. It only refuses to evaluate an
++        // edge against a clock reading older than one already used, which
++        // would place the avatar back where it had been and snap it forward
++        // again on the next frame.
++        let tickerNow = nowPerf;
++
++        if(Number.isFinite(unit.lastNow) && (nowPerf < unit.lastNow))
++        {
++            this.stats.clockRewinds++;
++
++            if(unit.backwardLines < 40)
++            {
++                unit.backwardLines++;
++
++                console.warn('[MV2/BACKWARD-WRITE]', {
++                    cause: 'clock-rewind-clamped',
++                    unit: virtualId,
++                    session: unit.session,
++                    edgeIndex: unit.activeEdgeIndex,
++                    previousTickerNow: unit.lastNow.toFixed(3),
++                    tickerNow: nowPerf.toFixed(3),
++                    rewoundByMs: (unit.lastNow - nowPerf).toFixed(3),
++                    updateSource: this.updateSource
++                });
++            }
++
++            tickerNow = unit.lastNow;
++        }
++
++        unit.lastNow = tickerNow;
 +
 +        // The mapping this frame is drawn under. Frozen at the last edge
 +        // activation; NaN only before the very first one.
@@ -3068,7 +3213,7 @@ index 0000000..4bc4462
 +        });
 +    }
 +
-+    public owns(virtualId: number): boolean
++    public owns(virtualId: number, nowPerf: number): boolean
 +    {
 +        if(!Number.isFinite(this._clockOffset)) return false;
 +
@@ -3082,7 +3227,7 @@ index 0000000..4bc4462
 +        // correction could not land. The hold allowance is folded in because
 +        // a unit waiting for a start still ahead of it has no reason to be
 +        // receiving anything.
-+        if((performance.now() - unit.lastPacketAtClient) > (PixelRPMovementV2.STALE_MS + PixelRPMovementV2.MAX_HOLD_MS)) return false;
++        if((nowPerf - unit.lastPacketAtClient) > (PixelRPMovementV2.STALE_MS + PixelRPMovementV2.MAX_HOLD_MS)) return false;
 +
 +        return true;
 +    }
@@ -3093,7 +3238,75 @@ index 0000000..4bc4462
 +     * something moved the mapping under an active edge, which is the bug this
 +     * change exists to remove. Returns a description, or null when fine.
 +     */
-+    public checkPhaseRate(active: PixelRPV2Active, virtualId: number, tickerNow: number): string
++    /**
++     * TEMPORARY assertions on a v2-interp positional write, both of them, in
++     * one lookup: that the write did not move the unit BACKWARD along the
++     * authoritative edge, and that phase advanced exactly as the clock did.
++     *
++     * With the monotonic guard in place a backward write cannot happen, so
++     * this firing means the guard was bypassed or an edge was restaged under
++     * the unit. The clamp itself is reported separately by getActive, so the
++     * guard doing its job stays visible rather than silently hiding the bug.
++     */
++    public noteV2Write(active: PixelRPV2Active, virtualId: number, nowPerf: number, x: number, y: number, z: number): void
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit) return;
++
++        const sameEdgeAsWrite = (unit.lastWriteValid
++            && (unit.lastWriteSession === active.session)
++            && (unit.lastWriteEdge === active.edgeIndex));
++
++        if(sameEdgeAsWrite && Number.isFinite(unit.lastPhase) && (active.phase < (unit.lastPhase - 0.000001)))
++        {
++            this.stats.backwardWrites++;
++
++            if(unit.backwardLines < 40)
++            {
++                unit.backwardLines++;
++
++                console.warn('[MV2/BACKWARD-WRITE]', {
++                    cause: 'phase-decreased',
++                    unit: virtualId,
++                    session: active.session,
++                    edgeIndex: active.edgeIndex,
++                    previousTickerNow: unit.lastPhaseTicker.toFixed(3),
++                    tickerNow: nowPerf.toFixed(3),
++                    previousPhase: unit.lastPhase.toFixed(6),
++                    phase: active.phase.toFixed(6),
++                    previousPosition: `${unit.lastWriteX.toFixed(3)},${unit.lastWriteY.toFixed(3)},${unit.lastWriteZ.toFixed(3)}`,
++                    requestedPosition: `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`,
++                    cycleStart: active.cycleStart,
++                    updateSource: this.updateSource
++                });
++            }
++        }
++
++        unit.lastWriteSession = active.session;
++        unit.lastWriteEdge = active.edgeIndex;
++        unit.lastWriteX = x;
++        unit.lastWriteY = y;
++        unit.lastWriteZ = z;
++        unit.lastWriteValid = true;
++
++        const phaseWarning = this.checkPhaseRate(active, virtualId, nowPerf);
++
++        if(phaseWarning)
++        {
++            console.warn('[MV2/PHASE-RATE]', {
++                unit: virtualId,
++                detail: phaseWarning,
++                activeOffset: active.activeOffset.toFixed(3),
++                liveOffset: this._clockOffset.toFixed(3),
++                holding: active.holding,
++                updateSource: this.updateSource,
++                tickerNow: Math.round(nowPerf)
++            });
++        }
++    }
++
++    private checkPhaseRate(active: PixelRPV2Active, virtualId: number, tickerNow: number): string
 +    {
 +        const unit = this._units.get(virtualId);
 +
