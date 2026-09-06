@@ -172,7 +172,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     useUnitsPrefs();
 
     const [ staffLevel, setStaffLevel ] = useState(0);
-    const [ byline, setByline ] = useState<NewsByline>({ id: 0, name: 'Trina', figure: '' });
+    const [ newsroom, setNewsroom ] = useState<NewsByline>({ id: 0, name: 'Trina', figure: '' });
     const [ posts, setPosts ] = useState<NewsPost[]>([]);
     const [ loaded, setLoaded ] = useState(false);
     const [ screen, setScreen ] = useState<Screen>('feed');
@@ -203,7 +203,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
         const parser = event.getParser();
 
         setStaffLevel(parser.staffLevel);
-        setByline(parser.byline);
+        setNewsroom(parser.byline);
         setPosts(parser.posts);
         setLoaded(true);
     });
@@ -486,10 +486,10 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
                     <GrowingInput className="phone-news-field-body" value={ draft.body } placeholder="Write the story. A blank line starts a new paragraph." maxLength={ MAX_BODY } onChange={ value => setDraft({ ...draft, body: value }) } />
                 </div>
                 <div className="phone-news-pinrow phone-news-authorrow">
-                    <PhoneFace id={ draft.anonymous ? byline.id : ownId } figure={ draft.anonymous ? byline.figure : GetSessionDataManager().figure } name={ draft.anonymous ? byline.name : (GetSessionDataManager().userName || '') } size={ 30 } />
+                    <PhoneFace id={ draft.anonymous ? newsroom.id : ownId } figure={ draft.anonymous ? newsroom.figure : GetSessionDataManager().figure } name={ draft.anonymous ? newsroom.name : (GetSessionDataManager().userName || '') } size={ 30 } />
                     <div className="phone-news-authorrow-text">
-                        <div className="phone-news-pinrow-title">Publish as { byline.name }</div>
-                        <div className="phone-news-pinrow-sub">{ draft.anonymous ? `Readers see ${ byline.name }. Staff still see it was you.` : 'Readers see your own name and face.' }</div>
+                        <div className="phone-news-pinrow-title">Publish as { newsroom.name }</div>
+                        <div className="phone-news-pinrow-sub">{ draft.anonymous ? `Readers see ${ newsroom.name }. Staff still see it was you.` : 'Readers see your own name and face.' }</div>
                     </div>
                     <div className={ `phone-news-switch phone-tap${ draft.anonymous ? ' is-on' : '' }` } onClick={ event => setDraft({ ...draft, anonymous: !draft.anonymous }) }><div className="phone-news-switch-knob" /></div>
                 </div>
