@@ -1,5 +1,6 @@
 import { CreateLinkEvent, GetRoomSession, GetSessionDataManager, OwnMotto } from '..';
 import { GetFriendById } from '../friends';
+import { ResolveRpStaff } from './RpStaffFlag';
 import { RpProfileState } from '../../components/rp-profile/RpProfileState';
 
 // PixelRP: the vanilla extended-profile window is retired. Every profile
@@ -15,6 +16,13 @@ export function GetUserProfile(userId: number): void
     const userData = (GetRoomSession()?.userDataManager?.getUserData(userId) ?? null);
     const friend = GetFriendById(userId);
 
+    // Whoever we resolve, the profile is THIS user's: the id drives the live
+    // employment, gang and birthday lookups, and nothing from the last opened
+    // profile may linger (the HUD openers set all of these too).
+    RpProfileState.userId = userId;
+    RpProfileState.employment = null;
+    RpProfileState.staff = false;
+
     if(userData)
     {
         RpProfileState.name = userData.name;
@@ -22,6 +30,7 @@ export function GetUserProfile(userId: number): void
         RpProfileState.motto = (userData.custom ?? '');
         // resolved from the current room, so they're in the hotel right now
         RpProfileState.online = true;
+        RpProfileState.staff = ResolveRpStaff(userData.roomIndex);
     }
     else if(sessionData && (userId === sessionData.userId))
     {
@@ -31,6 +40,7 @@ export function GetUserProfile(userId: number): void
         // is cached in OwnMotto (useSessionInfo).
         RpProfileState.motto = OwnMotto.value;
         RpProfileState.online = true;
+        RpProfileState.staff = ResolveRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
     }
     else if(friend)
     {

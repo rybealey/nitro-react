@@ -2,6 +2,7 @@ import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, R
 import { FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
+import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
@@ -36,6 +37,9 @@ const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, ene
 // through this accessor (the store lives for the room and is keyed by
 // roomIndex, so entries exist from room entry - before any infostand opens).
 export const IsRpStaff = (roomIndex: number): boolean => (rpStatsStore.get(roomIndex)?.staff === true);
+
+// the shared profile opener (api layer) asks for the flag through this hook
+SetRpStaffResolver(IsRpStaff);
 
 // Deterministic pseudo-values for the still-mocked wanted level — stable per
 // name. Everything else is overridden by live values once the server has
