@@ -1,6 +1,6 @@
 import { FC, KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
-import { NEWS_CATEGORIES, NewsPost, RpDeleteNewsPostComposer, RpGetNewsComposer, RpNewsEvent, RpPinNewsPostComposer, RpSaveNewsPostComposer } from '../../api/rp-phone/RpNewsMessages';
+import { NEWS_CATEGORIES, NewsByline, NewsPost, RpDeleteNewsPostComposer, RpGetNewsComposer, RpNewsEvent, RpPinNewsPostComposer, RpSaveNewsPostComposer } from '../../api/rp-phone/RpNewsMessages';
 import { useMessageEvent } from '../../hooks';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneFace } from './PhoneAvatar';
@@ -160,6 +160,8 @@ interface Draft
     body: string;
     image: string;
     pinned: boolean;
+    // publish under the newsroom byline (Trina) instead of your own name
+    anonymous: boolean;
 }
 
 export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
@@ -170,6 +172,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     useUnitsPrefs();
 
     const [ staffLevel, setStaffLevel ] = useState(0);
+    const [ byline, setByline ] = useState<NewsByline>({ id: 0, name: 'Trina', figure: '' });
     const [ posts, setPosts ] = useState<NewsPost[]>([]);
     const [ loaded, setLoaded ] = useState(false);
     const [ screen, setScreen ] = useState<Screen>('feed');
@@ -200,6 +203,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
         const parser = event.getParser();
 
         setStaffLevel(parser.staffLevel);
+        setByline(parser.byline);
         setPosts(parser.posts);
         setLoaded(true);
     });
@@ -219,7 +223,9 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
 
     const canPost = (staffLevel >= 1);
     const isSenior = (staffLevel >= 2);
-    const canManage = (post: NewsPost) => (canPost && ((post.authorId === ownId) || isSenior));
+    // the real writer edits; on a Trina story that is writerId (staff receive it), else the shown author
+    const writerOf = (post: NewsPost) => (post.anonymous ? post.writerId : post.authorId);
+    const canManage = (post: NewsPost) => (canPost && ((writerOf(post) === ownId) || isSenior));
 
     const openStory = (id: number) =>
     {
@@ -239,8 +245,8 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     const openCompose = (existing: NewsPost = null) =>
     {
         setDraft(existing
-            ? { id: existing.id, category: existing.category, title: existing.title, body: existing.body, image: existing.image, pinned: existing.pinned }
-            : { id: 0, category: NEWS_CATEGORIES[NEWS_CATEGORIES.length - 1], title: '', body: '', image: '', pinned: false });
+            ? { id: existing.id, category: existing.category, title: existing.title, body: existing.body, image: existing.image, pinned: existing.pinned, anonymous: existing.anonymous }
+            : { id: 0, category: NEWS_CATEGORIES[0], title: '', body: '', image: '', pinned: false, anonymous: true });
         setReturnTo(screen);
         setSheet(null);
         setSearch('');
@@ -261,7 +267,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     {
         if(!canSubmit) return;
 
-        SendMessageComposer(new RpSaveNewsPostComposer(draft.id, draft.category, draft.title.trim(), draft.body.trim(), draft.image, draft.pinned));
+        SendMessageComposer(new RpSaveNewsPostComposer(draft.id, draft.category, draft.title.trim(), draft.body.trim(), draft.image, draft.pinned, draft.anonymous));
 
         if(draft.image) pushRecent(draft.image);
 
@@ -479,6 +485,14 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
                     <div className="phone-news-rule" />
                     <GrowingInput className="phone-news-field-body" value={ draft.body } placeholder="Write the story. A blank line starts a new paragraph." maxLength={ MAX_BODY } onChange={ value => setDraft({ ...draft, body: value }) } />
                 </div>
+                <div className="phone-news-pinrow phone-news-authorrow">
+                    <PhoneFace id={ draft.anonymous ? byline.id : ownId } figure={ draft.anonymous ? byline.figure : GetSessionDataManager().figure } name={ draft.anonymous ? byline.name : (GetSessionDataManager().userName || '') } size={ 30 } />
+                    <div className="phone-news-authorrow-text">
+                        <div className="phone-news-pinrow-title">Publish as { byline.name }</div>
+                        <div className="phone-news-pinrow-sub">{ draft.anonymous ? `Readers see ${ byline.name }. Staff still see it was you.` : 'Readers see your own name and face.' }</div>
+                    </div>
+                    <div className={ `phone-news-switch phone-tap${ draft.anonymous ? ' is-on' : '' }` } onClick={ event => setDraft({ ...draft, anonymous: !draft.anonymous }) }><div className="phone-news-switch-knob" /></div>
+                </div>
                 <div className="phone-news-pinrow">
                     <div>
                         <div className="phone-news-pinrow-title">Pin to top of Today</div>
@@ -506,7 +520,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     const menuSheet = open && sheetShell(
         <>
             <div className="phone-news-sheet-title">{ open.title }</div>
-            <div className="phone-news-sheet-sub">Posted by { open.authorName } · { longTime(open.createdAt, now) }</div>
+            <div className="phone-news-sheet-sub">{ open.anonymous ? <>Published as <b>{ open.authorName }</b>{ open.writerName ? ` · written by ${ open.writerName }` : '' }</> : `Posted by ${ open.authorName }` } · { longTime(open.createdAt, now) }</div>
             <div className="phone-news-menu">
                 { canManage(open) &&
                     <div className="phone-news-menu-item phone-tap" onClick={ event => openCompose(open) }><PhoneIcon icon="pen" size={ 15 } /><span>Edit story</span></div> }

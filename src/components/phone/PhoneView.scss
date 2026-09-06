@@ -3450,6 +3450,10 @@ $phone-scale: 0.8;
         border-radius: 16px;
     }
 
+    .phone-news-pinrow.phone-news-authorrow { gap: 10px; margin-top: 12px; margin-bottom: -4px; }
+    .phone-news-authorrow-text { flex: 1; min-width: 0; }
+    .phone-news-sheet-sub b { color: var(--ph-text); font-weight: 700; }
+
     .phone-news-pinrow-title { font-size: 14px; font-weight: 700; color: var(--ph-text); }
     .phone-news-pinrow-sub { font-size: 11px; color: var(--ph-faint); }
 

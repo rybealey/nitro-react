@@ -9,7 +9,7 @@ const RP_SAVE_NEWS_POST = 4013; // staff
 const RP_DELETE_NEWS_POST = 4014; // author / senior staff
 const RP_PIN_NEWS_POST = 4015; // staff
 
-export const NEWS_CATEGORIES: string[] = [ 'City Hall', 'Events', 'Crime', 'Business', 'Hotel' ];
+export const NEWS_CATEGORIES: string[] = [ 'City Hall', 'Events', 'Crime', 'Business' ];
 
 export interface NewsPost
 {
@@ -25,16 +25,30 @@ export interface NewsPost
     pinned: boolean;
     createdAt: number;
     updatedAt: number;
+    // published under the newsroom byline: authorX above is Trina
+    anonymous: boolean;
+    // the real writer, sent to staff only (0 / '' for readers)
+    writerId: number;
+    writerName: string;
+}
+
+export interface NewsByline
+{
+    id: number;
+    name: string;
+    figure: string;
 }
 
 export class RpNewsParser implements IMessageParser
 {
     private _staffLevel: number;
+    private _byline: NewsByline;
     private _posts: NewsPost[];
 
     public flush(): boolean
     {
         this._staffLevel = 0;
+        this._byline = { id: 0, name: 'Trina', figure: '' };
         this._posts = [];
 
         return true;
@@ -45,6 +59,7 @@ export class RpNewsParser implements IMessageParser
         if(!wrapper) return false;
 
         this._staffLevel = wrapper.readInt();
+        this._byline = { id: wrapper.readInt(), name: wrapper.readString(), figure: wrapper.readString() };
 
         const count = wrapper.readInt();
 
@@ -52,7 +67,7 @@ export class RpNewsParser implements IMessageParser
 
         for(let i = 0; i < count; i++)
         {
-            this._posts.push({ id: wrapper.readInt(), authorId: wrapper.readInt(), authorName: wrapper.readString(), authorFigure: wrapper.readString(), category: wrapper.readString(), title: wrapper.readString(), body: wrapper.readString(), image: wrapper.readString(), pinned: (wrapper.readInt() === 1), createdAt: wrapper.readInt(), updatedAt: wrapper.readInt() });
+            this._posts.push({ id: wrapper.readInt(), authorId: wrapper.readInt(), authorName: wrapper.readString(), authorFigure: wrapper.readString(), category: wrapper.readString(), title: wrapper.readString(), body: wrapper.readString(), image: wrapper.readString(), pinned: (wrapper.readInt() === 1), createdAt: wrapper.readInt(), updatedAt: wrapper.readInt(), anonymous: (wrapper.readInt() === 1), writerId: wrapper.readInt(), writerName: wrapper.readString() });
         }
 
         return true;
@@ -60,6 +75,7 @@ export class RpNewsParser implements IMessageParser
 
     // 0 reader, 1 staff (post, pin, own stories), 2 senior (edit or delete anyone's)
     public get staffLevel(): number { return this._staffLevel; }
+    public get byline(): NewsByline { return this._byline; }
     public get posts(): NewsPost[] { return this._posts; }
 }
 
@@ -107,9 +123,9 @@ export class RpGetNewsComposer extends RpNewsComposer
 // id 0 creates; pinning replaces the current pin
 export class RpSaveNewsPostComposer extends RpNewsComposer
 {
-    constructor(id: number, category: string, title: string, body: string, image: string, pinned: boolean)
+    constructor(id: number, category: string, title: string, body: string, image: string, pinned: boolean, anonymous: boolean)
     {
-        super(id, category, title, body, image, (pinned ? 1 : 0));
+        super(id, category, title, body, image, (pinned ? 1 : 0), (anonymous ? 1 : 0));
     }
 }
 
