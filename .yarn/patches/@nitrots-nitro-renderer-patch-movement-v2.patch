@@ -407,18 +407,54 @@ index 2ff0e23..09de3d7 100644
  
      private onRoomUnitEvent(event: RoomUnitEvent): void
 diff --git a/src/nitro/room/RoomObjectEventHandler.ts b/src/nitro/room/RoomObjectEventHandler.ts
-index 4198932..5965e22 100644
+index 4198932..20c6fde 100644
 --- a/src/nitro/room/RoomObjectEventHandler.ts
 +++ b/src/nitro/room/RoomObjectEventHandler.ts
-@@ -4,7 +4,6 @@ import { RoomEngineDimmerStateEvent, RoomEngineObjectEvent, RoomEngineObjectPlac
+@@ -4,9 +4,9 @@ import { RoomEngineDimmerStateEvent, RoomEngineObjectEvent, RoomEngineObjectPlac
  import { RoomEnterEffect, RoomId, RoomObjectUpdateMessage } from '../../room';
  import { BotPlaceComposer, FurnitureColorWheelComposer, FurnitureDiceActivateComposer, FurnitureDiceDeactivateComposer, FurnitureFloorUpdateComposer, FurnitureGroupInfoComposer, FurnitureMultiStateComposer, FurnitureOneWayDoorComposer, FurniturePickupComposer, FurniturePlaceComposer, FurniturePostItPlaceComposer, FurnitureRandomStateComposer, FurnitureWallMultiStateComposer, FurnitureWallUpdateComposer, GetItemDataComposer, GetResolutionAchievementsMessageComposer, PetMoveComposer, PetPlaceComposer, RemoveWallItemComposer, RoomUnitLookComposer, RoomUnitWalkComposer, SetItemDataMessageComposer, SetObjectDataMessageComposer } from '../communication';
  import { Nitro } from '../Nitro';
 -import { PixelRPMovementAuthority } from '../../room/renderer/PixelRPMovementAuthority';
  import { ObjectAvatarSelectedMessage, ObjectDataUpdateMessage, ObjectSelectedMessage, ObjectTileCursorUpdateMessage, ObjectVisibilityUpdateMessage } from './messages';
  import { SelectedRoomObjectData } from './utils';
++import { PixelRPMovementV2, PixelRPV2Writer } from '../../room/renderer/PixelRPMovementV2';
  
-@@ -1495,9 +1494,6 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMouseListener, IRoomObjectEventManager
+ {
+@@ -1120,7 +1120,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+ 
+             if(!_local_6)
+             {
++                // TEMPORARY join forensics: a forced positional write, not an interpolation step.
++                PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
+                 roomObject.setLocation(selectedData.loc);
++                PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
+                 roomObject.setDirection(selectedData.dir);
+             }
+ 
+@@ -1298,7 +1301,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+             return false;
+         }
+ 
++        // TEMPORARY join forensics: a forced positional write, not an interpolation step.
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
+         roomObject.setLocation(_local_9);
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
+ 
+         if(_local_8) roomObject.setDirection(_local_8);
+ 
+@@ -1314,7 +1320,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+ 
+         if(!_local_10) return false;
+ 
++        // TEMPORARY join forensics: a forced positional write, not an interpolation step.
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
+         k.setLocation(_local_10);
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
+         k.setDirection(_local_9);
+ 
+         return true;
+@@ -1495,9 +1504,6 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
      {
          if(!this._roomEngine || !this._roomEngine.connection) return;
  
@@ -428,18 +464,48 @@ index 4198932..5965e22 100644
          this._roomEngine.connection.send(new RoomUnitWalkComposer(x, y));
      }
  
+@@ -2132,7 +2138,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+ 
+                 if(roomObject && (selectedData.operation !== RoomObjectOperationType.OBJECT_MOVE_TO))
+                 {
++                    // TEMPORARY join forensics: a forced positional write, not an interpolation step.
++                    PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
+                     roomObject.setLocation(selectedData.loc);
++                    PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
+                     roomObject.setDirection(selectedData.dir);
+                 }
+ 
+@@ -2219,7 +2228,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+     {
+         if(!wallGeometry.isRoomTile(x, y)) return false;
+ 
++        // TEMPORARY join forensics: a forced positional write, not an interpolation step.
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
+         roomObject.setLocation(new Vector3d(x, y, wallGeometry.getHeight(x, y)));
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
+ 
+         return true;
+     }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..ec7370e 100644
+index ac3907b..ba76fdc 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
-@@ -1,5 +1,6 @@
+@@ -1,11 +1,14 @@
  import { IRoomObjectController, IRoomObjectUpdateMessage, IVector3D, RoomObjectVariable, Vector3d } from '../../../../api';
  import { RoomObjectLogicBase } from '../../../../room';
-+import { PixelRPMovementV2 } from '../../../../room/renderer/PixelRPMovementV2';
++import { PixelRPMovementV2, PixelRPV2Writer } from '../../../../room/renderer/PixelRPMovementV2';
  import { ObjectMoveUpdateMessage } from '../../messages';
  
  export class MovingObjectLogic extends RoomObjectLogicBase
-@@ -64,6 +65,123 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+ {
+     public static DEFAULT_UPDATE_INTERVAL: number = 500;
+     private static TEMP_VECTOR: Vector3d = new Vector3d();
++    /** TEMPORARY forensics: separate scratch, so projecting cannot clobber the interp result. */
++    private static PIXELRP_SCREEN_VECTOR: Vector3d = new Vector3d();
+ 
+     private _liftAmount: number;
+ 
+@@ -64,6 +67,213 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -466,18 +532,22 @@ index ac3907b..ec7370e 100644
 +
 +            if(locationOffset) vector.add(locationOffset);
 +
-+            // TEMPORARY join-handoff forensics, once per join. Captured HERE,
-+            // immediately before V2's first write, because this is the last
-+            // instant at which the object still holds whatever the previous
-+            // writer left. getLocation() hands back the LIVE vector, so the
-+            // components are copied out rather than the reference kept.
-+            const handoff = PixelRPMovementV2.instance.shouldLogJoinHandoff(this.object.id, pixelrpV2.edgeIndex);
++            // TEMPORARY join-handoff forensics, once per join, on the FIRST
++            // frame edge 0 is active. `report` carries the Pending tail that
++            // notePending() gathered on the frames before this one - which is
++            // the whole point of this round. The previous version read the
++            // position here and called it "before V2", but by then V2 had
++            // already owned earlier frames of the same edge, so it was
++            // measuring V2 against itself.
++            const store = PixelRPMovementV2.instance;
++            const report = store.takeJoinReport(this.object.id, pixelrpV2.edgeIndex);
++
 +            let beforeX = 0;
 +            let beforeY = 0;
 +            let beforeZ = 0;
 +            let beforeDir = -1;
 +
-+            if(handoff)
++            if(report)
 +            {
 +                const previous = this.object.getLocation();
 +
@@ -490,31 +560,95 @@ index ac3907b..ec7370e 100644
 +                if(direction) beforeDir = direction.x;
 +            }
 +
-+            PixelRPMovementV2.instance.ownWrite = true;
++            store.writer = PixelRPV2Writer.V2_INTERP;
 +            this.object.setLocation(vector);
-+            PixelRPMovementV2.instance.ownWrite = false;
++            store.writer = PixelRPV2Writer.OTHER;
 +
-+            if(handoff)
++            if(report)
 +            {
 +                const after = this.object.getLocation();
 +                const afterDirection = this.object.getDirection();
 +
-+                console.log('[MV2/JOIN-HANDOFF]', {
++                // Screen pixels for each of the three positions that matter.
++                const pendScreen = this.pixelrpScreenOf(report.pendX, report.pendY, report.pendZ);
++                const beforeScreen = this.pixelrpScreenOf(beforeX, beforeY, beforeZ);
++                const afterScreen = this.pixelrpScreenOf(after.x, after.y, after.z);
++
++                // THE measurement: last true Pending frame -> first V2 frame.
++                const jumpX = (after.x - report.pendX);
++                const jumpY = (after.y - report.pendY);
++                const jumpTiles = Math.sqrt((jumpX * jumpX) + (jumpY * jumpY));
++
++                let jumpPixels = NaN;
++
++                if(pendScreen && afterScreen)
++                {
++                    const pxX = (afterScreen.x - pendScreen.x);
++                    const pxY = (afterScreen.y - pendScreen.y);
++
++                    jumpPixels = Math.sqrt((pxX * pxX) + (pxY * pxY));
++                }
++
++                // How far the avatar moved DURING Pending, i.e. before V2 ever
++                // wrote. Non-zero here is hypothesis B outright.
++                const driftX = (report.pendX - report.pendFirstX);
++                const driftY = (report.pendY - report.pendFirstY);
++                const driftTiles = Math.sqrt((driftX * driftX) + (driftY * driftY));
++
++                console.log('[MV2/JOIN-TRANSITION]', {
 +                    unit: this.object.id,
++                    verdict: MovingObjectLogic.pixelrpVerdict(report.pendFrames, report.pendNativeFrames, driftTiles, jumpTiles),
++
++                    // ---- Pending, the frame before the handoff ------------
++                    pendingFrames: report.pendFrames,
++                    nativeWroteFrames: report.pendNativeFrames,
++                    lastPendingTicker: Math.round(report.pendTicker),
++                    lastPendingLoc: `${report.pendX.toFixed(3)},${report.pendY.toFixed(3)},${report.pendZ.toFixed(3)}`,
++                    // Two readings on purpose. `...AtFrame` is what was on
++                    // screen during that frame; `...Reprojected` is the same
++                    // tile under the CURRENT geometry, which is the only pair
++                    // jumpPixels can be computed from without camera motion
++                    // contaminating it. They differ only if the room moved.
++                    lastPendingScreenAtFrame: `${Number.isFinite(report.pendScreenX) ? report.pendScreenX.toFixed(2) : 'n/a'},${Number.isFinite(report.pendScreenY) ? report.pendScreenY.toFixed(2) : 'n/a'}`,
++                    lastPendingScreenReprojected: MovingObjectLogic.pixelrpFmt(pendScreen),
++                    lastPendingDir: report.pendDir,
++                    lastPendingNativeWrote: report.pendNativeWrote,
++                    lastPendingNativeDelta: report.pendNativeDelta.toFixed(4),
++
++                    // ---- drift accumulated across the whole Pending run ---
++                    firstPendingTicker: Math.round(report.pendFirstTicker),
++                    firstPendingLoc: `${report.pendFirstX.toFixed(3)},${report.pendFirstY.toFixed(3)},${report.pendFirstZ.toFixed(3)}`,
++                    pendingDriftTiles: driftTiles.toFixed(4),
++
++                    // ---- the native `mv` that could have started it -------
++                    mvArrivedAt: (report.mvAt ? Math.round(report.mvAt) : 'none'),
++                    mvBeforeFirstMovingMs: (report.mvAt ? Math.round(this.time - report.mvAt) : 'n/a'),
++                    mvFrom: (report.mvFrom || 'none'),
++                    mvTo: (report.mvTo || 'none'),
++
++                    // ---- first moving frame ------------------------------
++                    firstMovingTicker: Math.round(this.time),
 +                    edgeFrom: `${pixelrpV2.sx},${pixelrpV2.sy},${pixelrpV2.sz}`,
 +                    edgeTo: `${pixelrpV2.gx},${pixelrpV2.gy},${pixelrpV2.gz}`,
-+                    actualBeforeV2: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
-+                    deltaFrom: `${(beforeX - pixelrpV2.sx).toFixed(3)},${(beforeY - pixelrpV2.sy).toFixed(3)},${(beforeZ - pixelrpV2.sz).toFixed(3)}`,
-+                    interpAtStart: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
-+                    actualAfterV2: `${after.x.toFixed(3)},${after.y.toFixed(3)},${after.z.toFixed(3)}`,
++                    v2Interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
++                    actualBeforeSet: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
++                    actualBeforeScreen: MovingObjectLogic.pixelrpFmt(beforeScreen),
++                    actualAfterSet: `${after.x.toFixed(3)},${after.y.toFixed(3)},${after.z.toFixed(3)}`,
++                    actualAfterScreen: MovingObjectLogic.pixelrpFmt(afterScreen),
++
++                    // ---- the deltas ---------------------------------------
++                    jumpTiles: jumpTiles.toFixed(4),
++                    jumpXY: `${jumpX.toFixed(3)},${jumpY.toFixed(3)}`,
++                    jumpPixels: (Number.isFinite(jumpPixels) ? jumpPixels.toFixed(2) : 'n/a'),
++
 +                    phase: pixelrpV2.phase.toFixed(4),
 +                    dirBefore: beforeDir,
 +                    dirAfter: (afterDirection ? afterDirection.x : -1),
 +                    // A non-null offset legitimately shifts the rendered
-+                    // position, so deltaFrom must be read against it.
++                    // position, so every delta must be read against it.
 +                    locationOffset: (locationOffset ? `${locationOffset.x},${locationOffset.y},${locationOffset.z}` : 'none'),
-+                    startDelayMs: PixelRPMovementV2.instance.joinDelayOf(this.object.id),
-+                    tickerNow: Math.round(this.time)
++                    startDelayMs: report.joinDelayMs,
++                    boundaryDeltaMs: Math.round(store.joinBoundaryDelta(this.object.id, this.time))
 +                });
 +            }
 +
@@ -560,11 +694,159 @@ index ac3907b..ec7370e 100644
 +            return;
 +        }
 +
++        // TEMPORARY join forensics. Reaching here means getActive() returned
++        // null, so V2 has no active edge for this object - which, for a unit
++        // armed for join forensics, is precisely the Pending state. Whether
++        // native's own lerp moves the avatar on these frames is the single
++        // observation that separates hypothesis B from hypothesis C.
++        const pixelrpStore = PixelRPMovementV2.instance;
++        const pixelrpArmed = ((this.object && (this.object.id !== undefined)) && pixelrpStore.isJoinArmed(this.object.id));
++        const pixelrpNativeDelta = this._locationDelta.length;
++
++        let pixelrpPrevX = 0;
++        let pixelrpPrevY = 0;
++        let pixelrpPrevZ = 0;
++
++        if(pixelrpArmed)
++        {
++            const previous = this.object.getLocation();
++
++            pixelrpPrevX = previous.x;
++            pixelrpPrevY = previous.y;
++            pixelrpPrevZ = previous.z;
++        }
++
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
+@@ -87,7 +297,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+ 
+             if(locationOffset) vector.add(locationOffset);
+ 
++            pixelrpStore.writer = PixelRPV2Writer.NATIVE_INTERP;
+             this.object.setLocation(vector);
++            pixelrpStore.writer = PixelRPV2Writer.OTHER;
+ 
+             if(difference === this._updateInterval)
+             {
+@@ -97,9 +309,87 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+             }
+         }
+ 
++        // Recorded AFTER the native branch has had its turn, so the position
++        // stored is what this frame actually leaves on screen - the true final
++        // Pending position, which the previous diagnostic never sampled.
++        if(pixelrpArmed)
++        {
++            const location = this.object.getLocation();
++            const direction = this.object.getDirection();
++            const screen = this.pixelrpScreenOf(location.x, location.y, location.z);
++
++            const moved = ((Math.abs(location.x - pixelrpPrevX) > 0.0001)
++                || (Math.abs(location.y - pixelrpPrevY) > 0.0001)
++                || (Math.abs(location.z - pixelrpPrevZ) > 0.0001));
++
++            pixelrpStore.notePending(
++                this.object.id,
++                this.time,
++                location.x, location.y, location.z,
++                (direction ? direction.x : -1),
++                (screen ? screen.x : NaN),
++                (screen ? screen.y : NaN),
++                moved,
++                pixelrpNativeDelta);
++        }
++
+         this._lastUpdateTime = this.time;
+     }
+ 
++    // ---- TEMPORARY join forensics helpers ---------------------------------
++
++    /**
++     * Real screen pixels, via the geometry RoomSpriteCanvas publishes each
++     * frame. Null when no canvas has rendered yet or the point is clipped, in
++     * which case the report simply says n/a rather than inventing a number.
++     */
++    private pixelrpScreenOf(x: number, y: number, z: number): { x: number, y: number, z: number }
++    {
++        const geometry = PixelRPMovementV2.instance.geometry;
++
++        if(!geometry) return null;
++
++        const vector = MovingObjectLogic.PIXELRP_SCREEN_VECTOR;
++
++        vector.x = x;
++        vector.y = y;
++        vector.z = z;
++
++        try
++        {
++            return geometry.getScreenPosition(vector);
++        }
++        catch (e)
++        {
++            return null;
++        }
++    }
++
++    private static pixelrpFmt(point: { x: number, y: number }): string
++    {
++        return (point ? `${point.x.toFixed(2)},${point.y.toFixed(2)}` : 'n/a');
++    }
++
++    /**
++     * A first read of the three hypotheses, so the line states what it found
++     * instead of leaving it to be reconstructed by eye:
++     *   A - a real positional jump at the handoff
++     *   B - native interpolation ran during Pending, then V2 took over
++     *   C - only a sub-hundredth-of-a-tile sampling correction
++     * The raw numbers are all in the same line, so a wrong call here is
++     * visible rather than load-bearing.
++     */
++    private static pixelrpVerdict(pendFrames: number, nativeFrames: number, driftTiles: number, jumpTiles: number): string
++    {
++        if(!pendFrames) return 'UNKNOWN - no Pending frame observed (edge 0 was already active when it arrived)';
++
++        if((nativeFrames > 0) && (driftTiles > 0.02)) return `B - native moved ${driftTiles.toFixed(3)} tiles across ${nativeFrames}/${pendFrames} Pending frames, then V2 took over`;
++
++        if(jumpTiles > 0.05) return `A - real jump of ${jumpTiles.toFixed(3)} tiles at the handoff`;
++
++        return `C - timing/sample correction only (${jumpTiles.toFixed(4)} tiles)`;
++    }
++
+     public setObject(object: IRoomObjectController): void
+     {
+         super.setObject(object);
+@@ -126,6 +416,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+ 
+         this._locationDelta.assign(message.targetLocation);
+         this._locationDelta.subtract(this._location);
++
++        // TEMPORARY join forensics. THE question this round has to answer:
++        // this is the ordinary `mv` UserUpdate handing native Nitro a target
++        // and a _changeTime. From this moment native will interpolate on
++        // every frame V2 does not claim - so if this lands before edge 0's
++        // cycleStart, native owns the avatar first and V2 inherits a position
++        // that is already part-way along. Timestamped here, read back in the
++        // transition report.
++        //
++        // Only units the store already knows are recorded. For a joiner the
++        // 4110 precedes the `mv` (it carries startDelayMs precisely so the
++        // client learns of the edge early), so this holds; if it ever does
++        // not, the report says mvArrivedAt: none, which is itself the finding.
++        if(this.object.id !== undefined)
++        {
++            PixelRPMovementV2.instance.noteNativeMove(
++                this.object.id,
++                this.time,
++                `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)}`,
++                `${message.targetLocation.x.toFixed(3)},${message.targetLocation.y.toFixed(3)}`);
++        }
+     }
+ 
+     protected getLocationOffset(): IVector3D
 diff --git a/src/room/object/RoomObject.ts b/src/room/object/RoomObject.ts
-index f900839..088425b 100644
+index f900839..e5cb63f 100644
 --- a/src/room/object/RoomObject.ts
 +++ b/src/room/object/RoomObject.ts
 @@ -1,6 +1,7 @@
@@ -575,31 +857,71 @@ index f900839..088425b 100644
  
  export class RoomObject extends Disposable implements IRoomObjectController
  {
-@@ -75,6 +76,24 @@ export class RoomObject extends Disposable implements IRoomObjectController
+@@ -75,6 +76,39 @@ export class RoomObject extends Disposable implements IRoomObjectController
  
          if((vector.x === this._location.x) && (vector.y === this._location.y) && (vector.z === this._location.z)) return;
  
 +        // TEMPORARY join forensics. Every positional write in the engine funnels
-+        // through here, so this one hook catches the native lerp, a UserUpdate,
-+        // a displacement and anything else alike - filtered to a joining unit
-+        // inside +-20ms of its Pending -> Moving boundary, and excluding V2's
-+        // own write so it does not drown out the writer it is looking for.
++        // through here, so this one hook catches the native lerp, V2's own
++        // interpolation, a UserUpdate and a displacement alike - filtered to a
++        // joining unit across the window around its Pending -> Moving boundary.
++        //
++        // The writer is now the tag the CALL SITE set, not a parsed stack. On
++        // a minified build native interpolation and V2 interpolation are the
++        // same method of the same class, so a stack could never separate the
++        // two writers this investigation exists to tell apart. V2's own write
++        // is included rather than excluded: the ordering of v2-interp against
++        // native-interp across the boundary IS the sequence being measured.
 +        const pixelrpStore = PixelRPMovementV2.instance;
++        const pixelrpNow = performance.now();
 +
-+        if(!pixelrpStore.ownWrite && pixelrpStore.isJoinWriterWatch(this._id, performance.now()))
++        if(pixelrpStore.isJoinWriterWatch(this._id, pixelrpNow))
 +        {
++            const dx = (vector.x - this._location.x);
++            const dy = (vector.y - this._location.y);
++
 +            console.log('[MV2/JOIN-WRITER]', {
 +                unit: this._id,
++                by: pixelrpStore.writer,
++                // Negative = before the Pending -> Moving boundary. Any
++                // native-interp line at a negative offset is native moving the
++                // avatar while it is still meant to be standing.
++                atBoundaryMs: Math.round(pixelrpStore.joinBoundaryDelta(this._id, pixelrpNow)),
 +                from: `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)},${this._location.z.toFixed(3)}`,
 +                to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
-+                at: Math.round(performance.now()),
-+                by: ((new Error().stack || '').split('\n').slice(2, 6).map(l => l.trim()).join(' <- '))
++                stepTiles: Math.sqrt((dx * dx) + (dy * dy)).toFixed(4),
++                at: Math.round(pixelrpNow)
 +            });
 +        }
 +
          this._location.x = vector.x;
          this._location.y = vector.y;
          this._location.z = vector.z;
+diff --git a/src/room/object/logic/RoomObjectLogicBase.ts b/src/room/object/logic/RoomObjectLogicBase.ts
+index e70d315..5e746fb 100644
+--- a/src/room/object/logic/RoomObjectLogicBase.ts
++++ b/src/room/object/logic/RoomObjectLogicBase.ts
+@@ -1,6 +1,7 @@
+ import { IEventDispatcher, IRoomGeometry, IRoomObjectController, IRoomObjectEventHandler, IRoomObjectUpdateMessage } from '../../../api';
+ import { Disposable } from '../../../core';
+ import { RoomSpriteMouseEvent } from '../../../events';
++import { PixelRPMovementV2, PixelRPV2Writer } from '../../renderer/PixelRPMovementV2';
+ 
+ export class RoomObjectLogicBase extends Disposable implements IRoomObjectEventHandler
+ {
+@@ -40,7 +41,12 @@ export class RoomObjectLogicBase extends Disposable implements IRoomObjectEventH
+     {
+         if(!message || !this._object) return;
+ 
++        // TEMPORARY join forensics: name this call site, so a UserUpdate
++        // snapping the avatar is distinguishable from an interpolation step.
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.USER_UPDATE;
+         this._object.setLocation(message.location);
++        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
++
+         this._object.setDirection(message.direction);
+     }
+ 
 diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
 deleted file mode 100644
 index 3318c38..0000000
@@ -1627,10 +1949,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..19b0227
+index 0000000..9331fdf
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,535 @@
+@@ -0,0 +1,708 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1693,7 +2015,21 @@ index 0000000..19b0227
 +    estServerNow: number;
 +}
 +
-+interface PixelRPV2Unit
++/**
++ * TEMPORARY join forensics. Which call site wrote a position, named at the
++ * site itself. A minified stack cannot tell native interpolation apart from
++ * V2 interpolation - both are `MovingObjectLogic.update` - so the writer is
++ * declared rather than inferred.
++ */
++export const PixelRPV2Writer = {
++    V2_INTERP: 'v2-interp',
++    NATIVE_INTERP: 'native-interp',
++    USER_UPDATE: 'logicbase-userupdate',
++    DISPLACEMENT: 'displacement',
++    OTHER: 'other'
++};
++
++export interface PixelRPV2Unit
 +{
 +    id: number;
 +    session: number;
@@ -1705,6 +2041,37 @@ index 0000000..19b0227
 +    /** performance.now() at which edge 0 of a joined session starts. */
 +    joinBoundaryClient: number;
 +    joinHandoffLogged: boolean;
++
++    // ---- TEMPORARY: the Pending tail ------------------------------------
++    // Flat fields, mutated in place: this is touched once per avatar per
++    // frame while Pending, so it must not allocate.
++    //
++    // "Pending" here is the client-side truth of it: every frame on which
++    // getActive() returns null because edge 0 has not reached its cycleStart
++    // yet. The LAST such frame is the real handoff predecessor - the frame
++    // the previous diagnostic missed by reading position after V2 was
++    // already active.
++    pendFrames: number;
++    pendNativeFrames: number;
++    pendTicker: number;
++    pendX: number; pendY: number; pendZ: number;
++    pendDir: number;
++    pendScreenX: number; pendScreenY: number;
++    pendNativeWrote: boolean;
++    pendNativeDelta: number;
++    /** First Pending frame of this arming, so drift ACROSS Pending is visible. */
++    pendFirstTicker: number;
++    pendFirstX: number; pendFirstY: number; pendFirstZ: number;
++    pendFirstScreenX: number; pendFirstScreenY: number;
++
++    // ---- TEMPORARY: the native `mv` that could start native interpolation --
++    mvAt: number;
++    mvFrom: string;
++    mvTo: string;
++    mvSeq: number;
++
++    /** Bound on writer-watch output, so one bad join cannot flood. */
++    writerLines: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -1884,7 +2251,15 @@ index 0000000..19b0227
 +        {
 +            unit = {
 +                id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf,
-+                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true
++                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true,
++                pendFrames: 0, pendNativeFrames: 0,
++                pendTicker: 0, pendX: 0, pendY: 0, pendZ: 0, pendDir: -1,
++                pendScreenX: NaN, pendScreenY: NaN,
++                pendNativeWrote: false, pendNativeDelta: 0,
++                pendFirstTicker: 0, pendFirstX: 0, pendFirstY: 0, pendFirstZ: 0,
++                pendFirstScreenX: NaN, pendFirstScreenY: NaN,
++                mvAt: 0, mvFrom: '', mvTo: '', mvSeq: 0,
++                writerLines: 0
 +            };
 +
 +            this._units.set(virtualId, unit);
@@ -1923,6 +2298,16 @@ index 0000000..19b0227
 +            unit.joinDelayMs = startDelayMs;
 +            unit.joinBoundaryClient = (cycleStart + this._clockOffset);
 +            unit.joinHandoffLogged = false;
++
++            // Fresh arming: the Pending tail from any previous join must not
++            // leak into this one.
++            unit.pendFrames = 0;
++            unit.pendNativeFrames = 0;
++            unit.pendTicker = 0;
++            unit.pendFirstTicker = 0;
++            unit.pendNativeWrote = false;
++            unit.pendNativeDelta = 0;
++            unit.writerLines = 0;
 +        }
 +
 +        const step = ((interval > 0) ? interval : 500);
@@ -1998,22 +2383,107 @@ index 0000000..19b0227
 +    // ---- TEMPORARY join-handoff forensics ---------------------------------
 +
 +    /**
-+     * Set by MovingObjectLogic around its own setLocation, so the writer watch
-+     * in RoomObject.setLocation can tell V2's write apart from everyone else's.
-+     * Without it V2 would be the loudest entry in its own investigation.
++     * The call site currently writing a position, set by that site around its
++     * own setLocation and cleared straight after. RoomObject.setLocation reads
++     * it instead of unwinding a minified stack - native interpolation and V2
++     * interpolation are the SAME frame of the SAME method there, so a stack
++     * cannot separate them and this is the only honest way to name the writer.
 +     */
-+    public ownWrite = false;
++    public writer: string = PixelRPV2Writer.OTHER;
 +
-+    /** True exactly once, on the first frame V2 renders edge 0 of a join. */
-+    public shouldLogJoinHandoff(virtualId: number, edgeIndex: number): boolean
++    /**
++     * A geometry reference, published once per frame by RoomSpriteCanvas, so
++     * the forensics can quote real screen pixels rather than a hand-rolled
++     * projection. Diagnostics only - nothing reads it on the render path.
++     */
++    public geometry: { getScreenPosition(vector: { x: number, y: number, z: number }): { x: number, y: number, z: number } } = null;
++
++    /** True while this unit is armed for join forensics and has not fired. */
++    public isJoinArmed(virtualId: number): boolean
 +    {
 +        const unit = this._units.get(virtualId);
 +
-+        if(!unit || unit.joinHandoffLogged || (unit.joinDelayMs <= 0) || (edgeIndex !== 0)) return false;
++        return (!!unit && (unit.joinDelayMs > 0) && !unit.joinHandoffLogged);
++    }
++
++    /**
++     * Record one frame on which V2 had NO active edge for an armed unit - a
++     * true Pending frame. Called AFTER the native branch has had its turn, so
++     * the position stored is what the frame actually left on screen.
++     *
++     * `nativeWrote` is the load-bearing field: it is native Nitro's own lerp
++     * reporting that it moved this avatar while V2 was still waiting for edge
++     * 0 to start. That is hypothesis B, observed rather than inferred.
++     */
++    public notePending(
++        virtualId: number,
++        ticker: number,
++        x: number, y: number, z: number,
++        dir: number,
++        screenX: number, screenY: number,
++        nativeWrote: boolean,
++        nativeDelta: number): void
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit || (unit.joinDelayMs <= 0) || unit.joinHandoffLogged) return;
++
++        if(unit.pendFrames === 0)
++        {
++            unit.pendFirstTicker = ticker;
++            unit.pendFirstX = x;
++            unit.pendFirstY = y;
++            unit.pendFirstZ = z;
++            unit.pendFirstScreenX = screenX;
++            unit.pendFirstScreenY = screenY;
++        }
++
++        unit.pendFrames++;
++
++        if(nativeWrote) unit.pendNativeFrames++;
++
++        unit.pendTicker = ticker;
++        unit.pendX = x;
++        unit.pendY = y;
++        unit.pendZ = z;
++        unit.pendDir = dir;
++        unit.pendScreenX = screenX;
++        unit.pendScreenY = screenY;
++        unit.pendNativeWrote = nativeWrote;
++        unit.pendNativeDelta = nativeDelta;
++    }
++
++    /**
++     * The native `mv` (UserUpdate) arriving for this unit. Timestamped so the
++     * report can say whether native was handed a target BEFORE edge 0 became
++     * active - the precondition for native interpolation starting early.
++     */
++    public noteNativeMove(virtualId: number, ticker: number, fromLabel: string, toLabel: string): void
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit) return;
++
++        unit.mvAt = ticker;
++        unit.mvFrom = fromLabel;
++        unit.mvTo = toLabel;
++        unit.mvSeq++;
++    }
++
++    /**
++     * Fires exactly once, on the FIRST frame edge 0 of a join becomes active,
++     * handing back everything gathered during Pending. Returns null on every
++     * other frame.
++     */
++    public takeJoinReport(virtualId: number, edgeIndex: number): PixelRPV2Unit
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit || unit.joinHandoffLogged || (unit.joinDelayMs <= 0) || (edgeIndex !== 0)) return null;
 +
 +        unit.joinHandoffLogged = true;
 +
-+        return true;
++        return unit;
 +    }
 +
 +    public joinDelayOf(virtualId: number): number
@@ -2023,14 +2493,39 @@ index 0000000..19b0227
 +        return (unit ? unit.joinDelayMs : 0);
 +    }
 +
-+    /** Within +-20ms of a joiner's Pending -> Moving boundary. */
++    /**
++     * The writer watch window: from 600ms BEFORE a joiner's Pending -> Moving
++     * boundary to 250ms after.
++     *
++     * The old window was +-20ms, which is ~2 frames - enough to see the
++     * handoff itself and nothing of what led to it. Native interpolation of a
++     * 500ms edge would begin and largely finish before that window opened, so
++     * the one writer worth catching was never caught. 600ms covers a whole
++     * native cycle; the per-join line cap keeps the cost bounded either way.
++     */
 +    public isJoinWriterWatch(virtualId: number, nowPerf: number): boolean
 +    {
 +        const unit = this._units.get(virtualId);
 +
 +        if(!unit || (unit.joinDelayMs <= 0)) return false;
 +
-+        return (Math.abs(nowPerf - unit.joinBoundaryClient) <= 20);
++        const delta = (nowPerf - unit.joinBoundaryClient);
++
++        if((delta < -600) || (delta > 250)) return false;
++
++        if(unit.writerLines >= 90) return false;
++
++        unit.writerLines++;
++
++        return true;
++    }
++
++    /** Where a writer-watch line sits relative to the boundary, signed ms. */
++    public joinBoundaryDelta(virtualId: number, nowPerf: number): number
++    {
++        const unit = this._units.get(virtualId);
++
++        return (unit ? (nowPerf - unit.joinBoundaryClient) : NaN);
 +    }
 +
 +    /** Teleport / roller / forced move: drop timed state, hand back to native. */
@@ -2167,18 +2662,20 @@ index 0000000..19b0227
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 2276481..db05a34 100644
+index 2276481..10044cc 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -9,7 +9,6 @@ import { Nitro } from '../../nitro/Nitro';
+@@ -9,8 +9,8 @@ import { Nitro } from '../../nitro/Nitro';
  import { GetTicker, NitroContainer, NitroSprite, PixiApplicationProxy } from '../../pixi-proxy';
  import { RoomEnterEffect, RoomGeometry, RoomRotatingEffect, RoomShakingEffect } from '../utils';
  import { RoomObjectCache, RoomObjectCacheItem } from './cache';
 -import { PixelRPMovementAuthority } from './PixelRPMovementAuthority';
  import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
++import { PixelRPMovementV2 } from './PixelRPMovementV2';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
-@@ -64,10 +63,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ {
+@@ -64,10 +64,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // early-return samples an offset avatar at animation FPS (~24Hz) while
      // its native location is clamped, and a released offset could latch on
      // screen until an unrelated visual update.
@@ -2189,7 +2686,20 @@ index 2276481..db05a34 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -504,7 +500,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -347,6 +344,12 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+         if(!this._container || !this._geometry) return;
+ 
++        // TEMPORARY join forensics: publish the live geometry so the movement
++        // diagnostics can quote real screen pixels instead of re-deriving the
++        // isometric projection by hand. Diagnostics only - nothing on the
++        // render path reads it back.
++        PixelRPMovementV2.instance.geometry = this._geometry;
++
+         if((this._width !== this._renderedWidth) || (this._height !== this._renderedHeight)) update = true;
+ 
+         if((this._display.x !== this._screenOffsetX) || (this._display.y !== this._screenOffsetY))
+@@ -504,7 +507,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
  
          if(locationCache.locationChanged) update = true;
@@ -2197,7 +2707,7 @@ index 2276481..db05a34 100644
  
          if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
          {
-@@ -542,60 +537,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -542,60 +544,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
              unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
  
