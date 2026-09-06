@@ -541,7 +541,7 @@ index 4198932..20c6fde 100644
          return true;
      }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..d8d5920 100644
+index ac3907b..8a1a112 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -1,11 +1,22 @@
@@ -567,7 +567,7 @@ index ac3907b..d8d5920 100644
  
      private _liftAmount: number;
  
-@@ -64,6 +75,285 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +75,300 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -633,19 +633,21 @@ index ac3907b..d8d5920 100644
 +            const store = PixelRPMovementV2.instance;
 +            const report = store.takeJoinReport(this.object.id, pixelrpV2.edgeIndex);
 +
-+            let beforeX = 0;
-+            let beforeY = 0;
-+            let beforeZ = 0;
++            // The position this frame INHERITED, read before V2 writes over
++            // it. Needed on every frame now, not just once per join: the
++            // edge-handoff and single-step checks both measure against it.
++            // getLocation() hands back the live vector, so the components are
++            // copied rather than the reference kept.
++            const previous = this.object.getLocation();
++
++            const beforeX = previous.x;
++            const beforeY = previous.y;
++            const beforeZ = previous.z;
++
 +            let beforeDir = -1;
 +
 +            if(report)
 +            {
-+                const previous = this.object.getLocation();
-+
-+                beforeX = previous.x;
-+                beforeY = previous.y;
-+                beforeZ = previous.z;
-+
 +                const direction = this.object.getDirection();
 +
 +                if(direction) beforeDir = direction.x;
@@ -658,7 +660,7 @@ index ac3907b..d8d5920 100644
 +            // TEMPORARY assertions on this write: that it did not move the
 +            // unit backward along the edge, and that phase advanced exactly as
 +            // the clock did.
-+            store.noteV2Write(pixelrpV2, this.object.id, pixelrpNow, vector.x, vector.y, vector.z);
++            store.noteV2Write(pixelrpV2, this.object.id, pixelrpNow, beforeX, beforeY, beforeZ, vector.x, vector.y, vector.z);
 +
 +            if(report)
 +            {
@@ -782,8 +784,13 @@ index ac3907b..d8d5920 100644
 +
 +            this._lastUpdateTime = this.time;
 +
-+            // Diagnostics: off unless pixelrpMovementDebug named this unit, and
-+            // then throttled to the first frame of each edge plus ~250ms.
++            // Diagnostics. Normally off unless pixelrpMovementDebug named the
++            // unit, and throttled to the first frame of each edge plus ~250ms
++            // - which on a 500ms edge is two lines and stops halfway. For a
++            // join the store opens an UNTHROTTLED window instead, covering all
++            // of edge 0, the edge 0 -> edge 1 handoff and the first 150ms of
++            // edge 1, so the second half of an edge is no longer a blind spot.
++            //
 +            // getLocation() is read back AFTER setLocation, so a mismatch
 +            // between `interp` and `actual` means something other than this
 +            // hook is writing the position.
@@ -802,8 +809,16 @@ index ac3907b..d8d5920 100644
 +                    phase: pixelrpV2.phase.toFixed(3),
 +                    from: `${pixelrpV2.sx},${pixelrpV2.sy}`,
 +                    to: `${pixelrpV2.gx},${pixelrpV2.gy}`,
++                    before: `${beforeX.toFixed(3)},${beforeY.toFixed(3)}`,
 +                    interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)}`,
 +                    actual: `${actual.x.toFixed(3)},${actual.y.toFixed(3)}`,
++                    // Per-frame step. One frame of a 500ms edge is ~0.033
++                    // tiles, so this column is where a teleport shows up as a
++                    // single outlier row.
++                    stepTiles: Math.sqrt((((vector.x - beforeX)) ** 2) + (((vector.y - beforeY)) ** 2)).toFixed(4),
++                    holding: pixelrpV2.holding,
++                    msIntoEdge: Math.round(pixelrpV2.phase * pixelrpV2.interval),
++                    activeOffset: pixelrpV2.activeOffset.toFixed(3),
 +                    updateSource: PixelRPMovementV2.instance.updateSource,
 +                    tickerNow: Math.round(pixelrpNow)
 +                });
@@ -853,7 +868,7 @@ index ac3907b..d8d5920 100644
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
-@@ -87,7 +377,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -87,7 +392,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
              if(locationOffset) vector.add(locationOffset);
  
@@ -863,7 +878,7 @@ index ac3907b..d8d5920 100644
  
              if(difference === this._updateInterval)
              {
-@@ -97,22 +389,184 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -97,22 +404,184 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -1026,7 +1041,7 @@ index ac3907b..d8d5920 100644
 +            const current = this.object.getLocation();
 +            const dx = (message.location.x - current.x);
 +            const dy = (message.location.y - current.y);
- 
++
 +            if(((dx * dx) + (dy * dy)) > (MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES * MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES))
 +            {
 +                PixelRPMovementV2.instance.releaseForDisplacement(this.object.id, `userupdate jumped ${Math.sqrt((dx * dx) + (dy * dy)).toFixed(2)} tiles`);
@@ -1043,14 +1058,14 @@ index ac3907b..d8d5920 100644
 +        {
 +            super.processUpdateMessage(message);
 +        }
-+
+ 
 +        // Native's baseline is kept current either way, so that if V2 ever
 +        // releases this unit (walk end, displacement, staleness) native
 +        // resumes from the right tile instead of an old one.
          if(message.location) this._location.assign(message.location);
  
          if(message instanceof ObjectMoveUpdateMessage) return this.processMoveMessage(message);
-@@ -126,6 +580,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -126,6 +595,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
          this._locationDelta.assign(message.targetLocation);
          this._locationDelta.subtract(this._location);
@@ -2253,10 +2268,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..c2d90f6
+index 0000000..66e0947
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1156 @@
+@@ -0,0 +1,1357 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2420,8 +2435,22 @@ index 0000000..c2d90f6
 +    lastWriteSession: number;
 +    lastWriteEdge: number;
 +    lastWriteX: number; lastWriteY: number; lastWriteZ: number;
++    /** Goal of the edge that was active on the previous write - the handoff's expected end. */
++    lastWriteGX: number; lastWriteGY: number; lastWriteGZ: number;
 +    lastWriteValid: boolean;
 +    backwardLines: number;
++
++    // ---- TEMPORARY: the unthrottled join trace window --------------------
++    // Armed with the join, covering the WHOLE of edge 0, the edge 0 -> edge 1
++    // handoff, and the first 150ms of edge 1. The ordinary render trace is
++    // throttled to one line per 250ms, which on a 500ms edge is two lines and
++    // stops mid-edge; the teleport is not in that half.
++    traceActive: boolean;
++    traceEdge1Now: number;
++    traceLines: number;
++
++    handoffLines: number;
++    stepLines: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -2495,6 +2524,19 @@ index 0000000..c2d90f6
 +     */
 +    private static readonly DEBUG_THROTTLE_MS = 250;
 +
++    /**
++     * Frame cap for one join's unthrottled trace. Edge 0 plus the handoff plus
++     * 150ms of edge 1 is about 650ms, which at 60fps is ~39 frames; 120 leaves
++     * room for a high refresh rate display without ever becoming a flood.
++     */
++    private static readonly MAX_TRACE_LINES = 120;
++
++    /** How far into edge 1 the join trace window runs. */
++    private static readonly TRACE_INTO_EDGE1_MS = 150;
++
++    /** A single V2 step larger than this is reported. One frame of a 500ms edge is ~0.033. */
++    private static readonly STEP_ANOMALY_TILES = 0.05;
++
 +    private readonly _debug = new Set<number>();
 +    private readonly _debugAt = new Map<number, number>();
 +    private readonly _debugEdge = new Map<number, number>();
@@ -2556,6 +2598,18 @@ index 0000000..c2d90f6
 +     */
 +    public shouldLogRender(virtualId: number, tickerNow: number, edgeIndex: number): boolean
 +    {
++        // Inside the join trace window every frame is logged, throttle and
++        // debug flag alike bypassed. The window is short and line-capped, so
++        // this is bounded: about 40 frames for one join, once per join.
++        const unit = this._units.get(virtualId);
++
++        if(unit && unit.traceActive && (unit.traceLines < PixelRPMovementV2.MAX_TRACE_LINES))
++        {
++            unit.traceLines++;
++
++            return true;
++        }
++
 +        if(!this.isDebugged(virtualId)) return false;
 +
 +        if(this._debugEdge.get(virtualId) !== edgeIndex)
@@ -2655,7 +2709,10 @@ index 0000000..c2d90f6
 +                lastPhaseClamped: true, phaseWarnings: 0, clockLines: 0,
 +                lastWriteSession: -1, lastWriteEdge: -1,
 +                lastWriteX: 0, lastWriteY: 0, lastWriteZ: 0,
-+                lastWriteValid: false, backwardLines: 0
++                lastWriteGX: 0, lastWriteGY: 0, lastWriteGZ: 0,
++                lastWriteValid: false, backwardLines: 0,
++                traceActive: false, traceEdge1Now: NaN, traceLines: 0,
++                handoffLines: 0, stepLines: 0
 +            };
 +
 +            this._units.set(virtualId, unit);
@@ -2689,6 +2746,13 @@ index 0000000..c2d90f6
 +            unit.lastWriteSession = -1;
 +            unit.lastWriteEdge = -1;
 +            unit.backwardLines = 0;
++            unit.handoffLines = 0;
++            unit.stepLines = 0;
++
++            // Arm the unthrottled window for this join.
++            unit.traceActive = true;
++            unit.traceEdge1Now = NaN;
++            unit.traceLines = 0;
 +        }
 +        else if(session < unit.session)
 +        {
@@ -3177,6 +3241,21 @@ index 0000000..c2d90f6
 +     */
 +    private readonly _roomUnits = new WeakSet<object>();
 +
++    /** Real screen pixels via the published geometry, or null when unavailable. */
++    private projectScreen(x: number, y: number, z: number): { x: number, y: number, z: number }
++    {
++        if(!this.geometry) return null;
++
++        try
++        {
++            return this.geometry.getScreenPosition({ x, y, z });
++        }
++        catch (e)
++        {
++            return null;
++        }
++    }
++
 +    public markRoomUnit(object: object): void
 +    {
 +        if(object) this._roomUnits.add(object);
@@ -3248,11 +3327,145 @@ index 0000000..c2d90f6
 +     * the unit. The clamp itself is reported separately by getActive, so the
 +     * guard doing its job stays visible rather than silently hiding the bug.
 +     */
-+    public noteV2Write(active: PixelRPV2Active, virtualId: number, nowPerf: number, x: number, y: number, z: number): void
++    public noteV2Write(
++        active: PixelRPV2Active,
++        virtualId: number,
++        nowPerf: number,
++        beforeX: number, beforeY: number, beforeZ: number,
++        x: number, y: number, z: number): void
 +    {
 +        const unit = this._units.get(virtualId);
 +
 +        if(!unit) return;
++
++        // ---- EDGE -> EDGE CONTINUITY ------------------------------------
++        // The outgoing edge ends exactly where the incoming one starts, so a
++        // handoff must not move the avatar at all. Any jump here is a break in
++        // the authoritative chain rather than in the interpolation.
++        if(unit.lastWriteValid
++            && (unit.lastWriteSession === active.session)
++            && (unit.lastWriteEdge !== active.edgeIndex)
++            && (unit.handoffLines < 40))
++        {
++            unit.handoffLines++;
++
++            const jx = (x - beforeX);
++            const jy = (y - beforeY);
++            const jumpTiles = Math.sqrt((jx * jx) + (jy * jy));
++
++            const beforeScreen = this.projectScreen(beforeX, beforeY, beforeZ);
++            const afterScreen = this.projectScreen(x, y, z);
++
++            let jumpPixels = NaN;
++
++            if(beforeScreen && afterScreen)
++            {
++                const px = (afterScreen.x - beforeScreen.x);
++                const py = (afterScreen.y - beforeScreen.y);
++
++                jumpPixels = Math.sqrt((px * px) + (py * py));
++            }
++
++            console.log('[MV2/EDGE-HANDOFF]', {
++                unit: virtualId,
++                session: active.session,
++                outgoingEdgeIndex: unit.lastWriteEdge,
++                outgoingExpectedEnd: `${unit.lastWriteGX.toFixed(3)},${unit.lastWriteGY.toFixed(3)},${unit.lastWriteGZ.toFixed(3)}`,
++                actualBeforeHandoff: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
++                incomingEdgeIndex: active.edgeIndex,
++                incomingFrom: `${active.sx.toFixed(3)},${active.sy.toFixed(3)},${active.sz.toFixed(3)}`,
++                actualAfterHandoff: `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`,
++                jumpTiles: jumpTiles.toFixed(4),
++                jumpPixels: (Number.isFinite(jumpPixels) ? jumpPixels.toFixed(2) : 'n/a'),
++                previousPhase: (Number.isFinite(unit.lastPhase) ? unit.lastPhase.toFixed(6) : 'n/a'),
++                newPhase: active.phase.toFixed(6),
++                // Does the incoming edge actually start where the outgoing one
++                // ended? A non-zero value is a gap in the chain itself.
++                chainGapTiles: Math.sqrt((((active.sx - unit.lastWriteGX)) ** 2) + (((active.sy - unit.lastWriteGY)) ** 2)).toFixed(4),
++                cycleStart: active.cycleStart,
++                tickerNow: Math.round(nowPerf),
++                updateSource: this.updateSource
++            });
++        }
++
++        // ---- A SINGLE STEP THAT IS TOO BIG, OR THE WRONG WAY -------------
++        // One frame of a 500ms edge is about 0.033 tiles. Anything past the
++        // threshold, or any movement against the edge's own direction, is the
++        // teleport frame itself.
++        if(unit.lastWriteValid && (unit.stepLines < 40))
++        {
++            const sx = (x - beforeX);
++            const sy = (y - beforeY);
++            const stepTiles = Math.sqrt((sx * sx) + (sy * sy));
++
++            const ex = (active.gx - active.sx);
++            const ey = (active.gy - active.sy);
++            const along = ((sx * ex) + (sy * ey));
++
++            const tooBig = (stepTiles > PixelRPMovementV2.STEP_ANOMALY_TILES);
++            // Judged only once the step is big enough for its direction to
++            // mean anything; float noise on a still avatar has no direction.
++            const wrongWay = ((stepTiles > 0.001) && (along < 0));
++
++            if(tooBig || wrongWay)
++            {
++                unit.stepLines++;
++
++                const beforeScreen = this.projectScreen(beforeX, beforeY, beforeZ);
++                const afterScreen = this.projectScreen(x, y, z);
++
++                let stepPixels = NaN;
++
++                if(beforeScreen && afterScreen)
++                {
++                    const px = (afterScreen.x - beforeScreen.x);
++                    const py = (afterScreen.y - beforeScreen.y);
++
++                    stepPixels = Math.sqrt((px * px) + (py * py));
++                }
++
++                console.warn('[MV2/STEP-ANOMALY]', {
++                    cause: (tooBig && wrongWay) ? 'large-step+reverse' : (tooBig ? 'large-step' : 'reverse-direction'),
++                    unit: virtualId,
++                    session: active.session,
++                    edgeIndex: active.edgeIndex,
++                    holding: active.holding,
++                    stepTiles: stepTiles.toFixed(4),
++                    stepPixels: (Number.isFinite(stepPixels) ? stepPixels.toFixed(2) : 'n/a'),
++                    stepXY: `${sx.toFixed(4)},${sy.toFixed(4)}`,
++                    edgeDirection: `${ex.toFixed(0)},${ey.toFixed(0)}`,
++                    alongEdge: along.toFixed(5),
++                    previousPhase: (Number.isFinite(unit.lastPhase) ? unit.lastPhase.toFixed(6) : 'n/a'),
++                    phase: active.phase.toFixed(6),
++                    previousPosition: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
++                    requestedPosition: `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`,
++                    edgeFrom: `${active.sx},${active.sy}`,
++                    edgeTo: `${active.gx},${active.gy}`,
++                    cycleStart: active.cycleStart,
++                    tickerNow: Math.round(nowPerf),
++                    updateSource: this.updateSource
++                });
++            }
++        }
++
++        // ---- trace window bookkeeping ------------------------------------
++        if(unit.traceActive)
++        {
++            if((active.edgeIndex >= 1) && !Number.isFinite(unit.traceEdge1Now)) unit.traceEdge1Now = nowPerf;
++
++            if((Number.isFinite(unit.traceEdge1Now) && ((nowPerf - unit.traceEdge1Now) > PixelRPMovementV2.TRACE_INTO_EDGE1_MS))
++                || (unit.traceLines >= PixelRPMovementV2.MAX_TRACE_LINES))
++            {
++                unit.traceActive = false;
++
++                console.log('[MV2/TRACE-END]', {
++                    unit: virtualId,
++                    session: active.session,
++                    lines: unit.traceLines,
++                    lastEdge: active.edgeIndex
++                });
++            }
++        }
 +
 +        const sameEdgeAsWrite = (unit.lastWriteValid
 +            && (unit.lastWriteSession === active.session)
@@ -3288,6 +3501,9 @@ index 0000000..c2d90f6
 +        unit.lastWriteX = x;
 +        unit.lastWriteY = y;
 +        unit.lastWriteZ = z;
++        unit.lastWriteGX = active.gx;
++        unit.lastWriteGY = active.gy;
++        unit.lastWriteGZ = active.gz;
 +        unit.lastWriteValid = true;
 +
 +        const phaseWarning = this.checkPhaseRate(active, virtualId, nowPerf);
