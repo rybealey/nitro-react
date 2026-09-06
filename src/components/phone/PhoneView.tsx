@@ -394,7 +394,8 @@ export const PhoneView: FC<{}> = props =>
     if(!isVisible) return null;
 
     // Weather paints its own sky, so its status bar stays white like the home screen's
-    const onLightScreen = ((screen !== 'home') && (screen !== 'camera') && (screen !== 'weather'));
+    // Weather paints its own sky and Music is always dark, so their status bars stay white like the home screen's
+    const onLightScreen = ((screen !== 'home') && (screen !== 'camera') && (screen !== 'weather') && (screen !== 'music'));
 
     return (
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER } minVisible={ 48 }>
