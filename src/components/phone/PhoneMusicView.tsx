@@ -1,6 +1,8 @@
-import { RpJukeboxAddComposer } from '@nitrots/nitro-renderer';
-import React, { FC, useEffect, useState } from 'react';
+import { RpJukeboxAddComposer, RpJukeboxRemoveComposer, RpJukeboxSkipComposer } from '@nitrots/nitro-renderer';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
+import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
+import { useMessageEvent } from '../../hooks';
 import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
@@ -13,6 +15,8 @@ import { PhoneIcon } from './PhoneIcon';
 // sound comes from the one JukeboxAudioEngine at the app root, so it keeps
 // going when the phone is closed and never doubles up in a jukebox room.
 // Requests go through the same Siri-style sheet as the room jukebox.
+// Staff (RpTunesAccess) can skip the playing song - hotel-wide, so it asks
+// once - and remove any request; players can remove their own.
 
 interface PhoneMusicViewProps
 {
@@ -34,25 +38,38 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ view, setView ] = useState<'now' | 'queue'>('now');
     const [ slide, setSlide ] = useState<'right' | 'left'>('right');
     const [ requesting, setRequesting ] = useState(false);
+    const [ confirmSkip, setConfirmSkip ] = useState(false);
     const [ volumeOpen, setVolumeOpen ] = useState(false);
+    const [ canManage, setCanManage ] = useState(false);
+    const [ toast, setToast ] = useState<string>(null);
     const [ url, setUrl ] = useState('');
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
+    const toastTimer = useRef<number>(0);
 
     const ownName = (GetSessionDataManager().userName || 'You');
 
-    // one clock for the progress bar
+    // one clock for the progress bar; and ask whether we get the staff controls
     useEffect(() =>
     {
+        SendMessageComposer(new RpGetTunesAccessComposer());
+
         const interval = setInterval(() => setNow(Date.now()), 1000);
 
-        return () => clearInterval(interval);
+        return () =>
+        {
+            clearInterval(interval);
+            window.clearTimeout(toastTimer.current);
+        }
     }, []);
 
-    // a fresh track: the request confirmation is stale
+    useMessageEvent<RpTunesAccessEvent>(RpTunesAccessEvent, event => setCanManage(event.getParser().canManage));
+
+    // a fresh track: the request confirmation is stale, and so is a pending skip
     useEffect(() =>
     {
         setSent(false);
+        setConfirmSkip(false);
     }, [ current?.videoId, queue.length ]);
 
     const elapsed = (current ? Math.min(Math.max(0, (now - current.startedAtMs) / 1000), (current.durationSec || Infinity)) : 0);
@@ -73,6 +90,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         setRequesting(true);
     }
 
+    const showToast = (text: string) =>
+    {
+        window.clearTimeout(toastTimer.current);
+        setToast(text);
+        toastTimer.current = window.setTimeout(() => setToast(null), 2200);
+    }
+
     const submit = () =>
     {
         if(!url.trim().length) return;
@@ -82,6 +106,28 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         setSent(true);
         setTimeout(() => setRequesting(false), 900);
     }
+
+    // skip moves the whole hotel on, so it goes through the confirm sheet
+    const skipNow = () =>
+    {
+        SendMessageComposer(new RpJukeboxSkipComposer());
+        setConfirmSkip(false);
+
+        if(current) showToast(`Skipped ${ current.title }.`);
+    }
+
+    // queue positions are the server's indices: the removal is by index
+    const removeAt = (index: number) =>
+    {
+        const entry = queue[index];
+
+        if(!entry) return;
+
+        SendMessageComposer(new RpJukeboxRemoveComposer(index));
+        showToast(`Removed ${ entry.title } from the queue.`);
+    }
+
+    const canRemove = (entry: { queuedBy: string }) => (canManage || (entry.queuedBy === ownName));
 
     // The request sheet is shared in spirit with the room jukebox panel and
     // deliberately untouched by the restyle: same plate, halo and Add.
@@ -117,6 +163,34 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         </>
     );
 
+    const skipSheet = current && (
+        <>
+            <div className="phone-calendar-scrim" onClick={ event => setConfirmSkip(false) } />
+            <div className="phone-calendar-sheet phone-music-darksheet">
+                <div className="phone-calendar-grabber" />
+                <div className="phone-music-darksheet-track">
+                    <img src={ `https://i.ytimg.com/vi/${ current.videoId }/mqdefault.jpg` } alt="" draggable={ false } />
+                    <div className="phone-music-darksheet-tracktext">
+                        <div className="phone-music-darksheet-tracktitle">{ current.title }</div>
+                        <div className="phone-music-darksheet-tracksub">{ current.author ? `${ current.author } · ` : '' }requested by { byName(current.queuedBy) }{ duration > 0 ? ` · ${ formatClock(duration - elapsed) } left` : '' }</div>
+                    </div>
+                </div>
+                <div className="phone-music-darksheet-title">Skip this song for everyone?</div>
+                <div className="phone-music-darksheet-sub">
+                    Every phone and jukebox in the hotel moves on { queue.length ? <>to <b>{ queue[0].title }</b></> : 'to silence' } right away.
+                    { (current.queuedBy !== ownName) && ` ${ current.queuedBy } is told it was skipped by staff.` }
+                </div>
+                <div className="phone-music-darksheet-actions">
+                    <div className="phone-music-darkbtn phone-tap" onClick={ event => setConfirmSkip(false) }>Cancel</div>
+                    <div className="phone-music-darkbtn is-primary phone-tap" onClick={ skipNow }>
+                        <PhoneIcon icon="forward-step" size={ 15 } />
+                        Skip
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+
     const topBar = (leftIcon: string, onLeft: () => void, title: string, right: React.ReactNode = null) => (
         <div className="phone-music-top">
             <div className="phone-tap phone-music-topbtn" onClick={ onLeft }>
@@ -124,6 +198,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             </div>
             <div className="phone-music-toptitle">{ title }</div>
             <div className="phone-music-topbtn">{ right }</div>
+        </div>
+    );
+
+    // the queue lives top-right for everyone, which frees the transport's right slot
+    const queueButton = (
+        <div className="phone-tap phone-music-topbtn phone-music-queuebtn" title="Queue" onClick={ event => go('queue') }>
+            <PhoneIcon icon="list-music" size={ 22 } />
+            { (queue.length > 0) && <span className="phone-music-badge">{ queue.length }</span> }
         </div>
     );
 
@@ -145,12 +227,20 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <div className="phone-music-row-by">Requested by { byName(entry.queuedBy) }</div>
             </div>
             { playing && eq }
+            { playing && canManage &&
+                <div className="phone-tap phone-music-rowbtn" title="Skip for everyone" onClick={ event => setConfirmSkip(true) }>
+                    <PhoneIcon icon="forward-step" size={ 18 } />
+                </div> }
+            { !playing && canRemove(entry) &&
+                <div className="phone-tap phone-music-rowbtn" title={ canManage ? 'Remove from the queue' : 'Remove your request' } onClick={ event => removeAt(index) }>
+                    <PhoneIcon icon="xmark" size={ 17 } />
+                </div> }
         </div>
     );
 
     const nowScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-down', () => (onBack && onBack()), 'PIXELRP RADIO') }
+            { topBar('chevron-down', () => (onBack && onBack()), 'PIXELRP RADIO', queueButton) }
             { !current &&
                 <>
                     <div className="phone-music-coverwrap">
@@ -196,7 +286,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div>
                     </div>
                     { /* the play/pause is this player's own switch: it never
-                         touches the stream everyone else hears */ }
+                         touches the stream everyone else hears. Skip is staff
+                         only and DOES move everyone on. */ }
                     <div className="phone-music-transport">
                         <div className={ `phone-tap phone-music-sidebtn${ volumeOpen ? ' is-on' : '' }` } title="Volume" onClick={ event => setVolumeOpen(!volumeOpen) }>
                             <PhoneIcon icon={ volume === 0 ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
@@ -204,11 +295,17 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => SetJukeboxPhoneOn(!phoneOn) }>
                             <PhoneIcon icon={ phoneOn ? 'pause' : 'play' } size={ 26 } />
                         </div>
-                        <div className="phone-tap phone-music-sidebtn" title="Queue" onClick={ event => go('queue') }>
-                            <PhoneIcon icon="list-music" size={ 22 } />
-                            { (queue.length > 0) && <span className="phone-music-badge">{ queue.length }</span> }
-                        </div>
+                        { canManage &&
+                            <div className="phone-tap phone-music-sidebtn is-skip" title="Skip for everyone" onClick={ event => setConfirmSkip(true) }>
+                                <PhoneIcon icon="forward-step" size={ 24 } />
+                            </div> }
+                        { !canManage && <div className="phone-music-sidebtn is-blank" /> }
                     </div>
+                    { canManage &&
+                        <div className="phone-music-staffline">
+                            <PhoneIcon icon="shield-halved" size={ 10 } />
+                            STAFF · SKIP MOVES EVERYONE ON
+                        </div> }
                     { volumeOpen &&
                         <div className="phone-music-volume">
                             <PhoneIcon icon="volume-low" size={ 13 } />
@@ -244,7 +341,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <div className="phone-music-section">Next in queue</div>
                 { (queue.length === 0) &&
                     <div className="phone-music-emptyline">Nothing queued yet. Add a song and it plays next.</div> }
-                { queue.map((entry, index) => queueRow(entry, index + 1)) }
+                { queue.map((entry, index) => queueRow(entry, index)) }
                 { (queue.length > 0) &&
                     <div className="phone-music-count">{ queue.length } { (queue.length === 1) ? 'song' : 'songs' } · in the order requested</div> }
             </div>
@@ -252,7 +349,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <PhoneIcon icon="plus" size={ 16 } />
                 Add a song
             </div>
-            <div className="phone-music-note">One request at a time per player. The room jukebox and the phone share this queue.</div>
+            <div className="phone-music-note">{ canManage ? 'Staff can remove any request. Players can only remove their own.' : 'One request at a time per player. Remove yours to request another.' }</div>
         </div>
     );
 
@@ -261,7 +358,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             <div key={ view } className={ `phone-music-anim is-${ slide }` }>
                 { (view === 'now') ? nowScreen : queueScreen }
             </div>
+            { toast &&
+                <div key={ toast } className="phone-music-toast">
+                    <PhoneIcon icon="check" size={ 15 } />
+                    <span>{ toast }</span>
+                </div> }
             { requesting && requestSheet }
+            { confirmSkip && !requesting && skipSheet }
         </div>
     );
 }

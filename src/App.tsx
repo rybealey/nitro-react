@@ -8,6 +8,7 @@ import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
 import { RegisterRpWeatherMessages } from './api/rp-phone/RpWeatherMessages';
 import { RegisterRpNewsMessages } from './api/rp-phone/RpNewsMessages';
+import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
@@ -115,6 +116,7 @@ export const App: FC<{}> = props =>
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();
                 RegisterRpNewsMessages();
+                RegisterRpTunesMessages();
 
                 GetNitroInstance().init();
 
