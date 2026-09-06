@@ -28,9 +28,9 @@ const LockIcon = () => (
     </svg>
 );
 
-// Roles first, members second. Role rows drag to reorder (the order is the
-// Info roster's ladder), carry permission pills and Edit; the Leader and the
-// implicit Member rows are fixed. Member rows get a role dropdown and Kick.
+// One ladder like the Info roster: each role is a card whose band drags to
+// reorder, carries permission pills and Edit, and whose members sit under it
+// with a role dropdown and Kick. Leader and the implicit Member are fixed.
 // What an admin may touch is gated by the viewer's permission bits.
 export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId, onInvite }) =>
 {
@@ -52,8 +52,7 @@ export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId, onInv
 
     const roles: GangRole[] = (localOrder ? localOrder.map(id => detail.roles.find(role => (role.id === id))).filter((role): role is GangRole => !!role) : detail.roles);
     const roleName = (roleId: number) => (detail.roles.find(role => (role.id === roleId))?.name ?? 'Member');
-    const countFor = (roleId: number) => detail.members.filter(member => ((member.roleId === roleId) && (member.userId !== detail.ownerId))).length;
-    const hasAdminRole = (roleId: number) => HasGangPermission(detail.roles.find(role => (role.id === roleId))?.flags ?? 0, GANG_PERM_ADMIN);
+        const hasAdminRole = (roleId: number) => HasGangPermission(detail.roles.find(role => (role.id === roleId))?.flags ?? 0, GANG_PERM_ADMIN);
 
     const onDragStart = (event: DragEvent<HTMLDivElement>, roleId: number) =>
     {
@@ -91,19 +90,16 @@ export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId, onInv
         showConfirm(`Kick ${ username } from ${ detail.name }?`, () => SendMessageComposer(new RpGangKickComposer(userId)), () => {}, 'Kick', 'Cancel', 'Kick member');
     }
 
-    const members = [ ...detail.members ].sort((a, b) =>
-    {
-        // leader on top, then by role order, then alphabetically
-        if(a.userId === detail.ownerId) return -1;
-        if(b.userId === detail.ownerId) return 1;
+    const byName = (a: { username: string }, b: { username: string }) => a.username.localeCompare(b.username);
+    const membersOf = (roleId: number) => detail.members.filter(member => ((member.roleId === roleId) && (member.userId !== detail.ownerId))).sort(byName);
+    const owner = detail.members.filter(member => (member.userId === detail.ownerId));
 
-        const orderA = ((a.roleId === 0) ? Number.MAX_SAFE_INTEGER : roles.findIndex(role => (role.id === a.roleId)));
-        const orderB = ((b.roleId === 0) ? Number.MAX_SAFE_INTEGER : roles.findIndex(role => (role.id === b.roleId)));
-
-        if(orderA !== orderB) return (orderA - orderB);
-
-        return a.username.localeCompare(b.username);
-    });
+    // the ladder: leader, every role in order, then the plain members
+    const groups: { key: string, name: string, role: GangRole, pills: string[], members: typeof detail.members }[] = [
+        { key: 'leader', name: 'Leader', role: null, pills: [ 'All permissions' ], members: owner },
+        ...roles.map(role => ({ key: `role-${ role.id }`, name: role.name, role, pills: GangPermissionLabels(role.flags), members: membersOf(role.id) })),
+        { key: 'member', name: 'Member', role: null, pills: [], members: membersOf(0) }
+    ];
 
     return (
         <>
@@ -118,77 +114,65 @@ export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId, onInv
                 { canInvite &&
                     <Button variant="success" onClick={ onInvite }>Invite Member</Button> }
             </div>
-            <div className="gang-section">
+            <div className="gang-section gang-section-grow">
                 <div className="gang-section-head">
-                    <span className="gang-section-label">Roles</span>
+                    <span className="gang-section-label">Roles &amp; members</span>
                     { canAdmin &&
                         <span className="gang-chrome-btn" onClick={ () => setEditing({ role: null }) }>Add Role</span> }
                 </div>
                 { editing &&
                     <GangRoleEditor key={ editing.role?.id ?? 0 } role={ editing.role } isLeader={ isLeader } onClose={ () => setEditing(null) } /> }
-                <div className="gang-list">
-                    <div className="gang-card gang-role-row is-fixed">
-                        <LockIcon />
-                        <span className="gang-role-name">Leader</span>
-                        <div className="gang-role-pills"><span className="gang-pill">All permissions</span></div>
-                        <span className="gang-role-count">{ detail.ownerName }</span>
-                    </div>
-                    { roles.map(role => (
-                        <div key={ role.id } className={ `gang-card gang-role-row${ canAdmin ? ' is-draggable' : '' }${ (dragId === role.id) ? ' is-dragging' : '' }` }
-                            draggable={ canAdmin } onDragStart={ event => onDragStart(event, role.id) } onDragOver={ event => onDragOver(event, role.id) } onDragEnd={ onDragEnd } onDrop={ event => event.preventDefault() }>
-                            { canAdmin ? <GripIcon /> : <LockIcon /> }
-                            <span className="gang-role-name">{ role.name }</span>
-                            <div className="gang-role-pills">
-                                { GangPermissionLabels(role.flags).map(label => <span key={ label } className="gang-pill">{ label }</span>) }
+                { /* one ladder, like Info: every role is a card whose band carries
+                     the role controls and whose members sit underneath it */ }
+                <div className="gang-list gang-list-scroll gang-ladder">
+                    { groups.map(group => (
+                        <div key={ group.key } className={ `gang-card gang-group-card${ (group.role && canAdmin) ? ' is-draggable' : '' }${ (group.role && (dragId === group.role.id)) ? ' is-dragging' : '' }` }
+                            onDragOver={ event => (group.role ? onDragOver(event, group.role.id) : undefined) } onDrop={ event => event.preventDefault() }>
+                            <div className="gang-group-band" draggable={ !!group.role && canAdmin } onDragStart={ event => (group.role ? onDragStart(event, group.role.id) : undefined) } onDragEnd={ onDragEnd }>
+                                { (group.role && canAdmin) ? <GripIcon /> : <LockIcon /> }
+                                <span className="gang-role-name">{ group.name }</span>
+                                <div className="gang-role-pills">
+                                    { group.pills.map(label => <span key={ label } className="gang-pill">{ label }</span>) }
+                                </div>
+                                <span className="gang-role-count">{ group.key === 'leader' ? detail.ownerName : `${ group.members.length } ${ (group.members.length === 1) ? 'member' : 'members' }` }</span>
+                                { group.role && canAdmin && (isLeader || !hasAdminRole(group.role.id)) &&
+                                    <span className="gang-chrome-btn is-small" onClick={ () => setEditing({ role: group.role }) }>Edit</span> }
                             </div>
-                            <span className="gang-role-count">{ countFor(role.id) } { (countFor(role.id) === 1) ? 'member' : 'members' }</span>
-                            { canAdmin && (isLeader || !hasAdminRole(role.id)) &&
-                                <span className="gang-chrome-btn is-small" onClick={ () => setEditing({ role }) }>Edit</span> }
+                            { (group.members.length === 0) &&
+                                <div className="gang-group-empty">No members yet</div> }
+                            { group.members.map(member =>
+                            {
+                                const isOwner = (member.userId === detail.ownerId);
+                                const isSelf = (member.userId === ownUserId);
+                                // admins may not touch the leader, themselves, or anyone in/into an admin role
+                                const roleLocked = (!canAdmin || isOwner || (isSelf && !isLeader) || (!isLeader && hasAdminRole(member.roleId)));
+                                const kickable = (canKick && !isOwner && !isSelf && (isLeader || !hasAdminRole(member.roleId)));
+
+                                return (
+                                    <div key={ member.userId } className="gang-member-line">
+                                        <GangPortrait figure={ member.figure } online={ member.online } small />
+                                        <div className="gang-member-info">
+                                            <div className="gang-member-name">{ member.username }<span className={ `gang-dot gang-name-dot${ member.online ? ' is-online' : '' }` } /></div>
+                                            <div className="gang-note">{ isOwner ? `Founder · ${ FormatGangDate(member.joinedAt) }` : `Joined ${ FormatGangDate(member.joinedAt) }` }</div>
+                                        </div>
+                                        { isOwner &&
+                                            <span className="gang-role-select is-static">Leader</span> }
+                                        { !isOwner && roleLocked &&
+                                            <span className="gang-role-select is-static">{ roleName(member.roleId) }</span> }
+                                        { !isOwner && !roleLocked &&
+                                            <select className="gang-role-select" value={ member.roleId } onChange={ event => SendMessageComposer(new RpGangSetMemberRoleComposer(member.userId, parseInt(event.target.value))) }>
+                                                <option value={ 0 }>Member</option>
+                                                { detail.roles.filter(role => (isLeader || !HasGangPermission(role.flags, GANG_PERM_ADMIN))).map(role => <option key={ role.id } value={ role.id }>{ role.name }</option>) }
+                                            </select> }
+                                        { kickable &&
+                                            <Button variant="danger" onClick={ () => kick(member.userId, member.username) }>Kick</Button> }
+                                    </div>
+                                );
+                            }) }
                         </div>
                     )) }
-                    <div className="gang-card gang-role-row is-fixed">
-                        <LockIcon />
-                        <span className="gang-role-name">Member</span>
-                        <div className="gang-role-pills" />
-                        <span className="gang-role-count">{ countFor(0) } { (countFor(0) === 1) ? 'member' : 'members' }</span>
-                    </div>
                 </div>
-            </div>
-            <div className="gang-section gang-section-grow">
-                <div className="gang-section-head">
-                    <span className="gang-section-label">Members</span>
-                </div>
-                <div className="gang-list gang-list-scroll">
-                    { members.map(member =>
-                    {
-                        const isOwner = (member.userId === detail.ownerId);
-                        const isSelf = (member.userId === ownUserId);
-                        // admins may not touch the leader, themselves, or anyone in/into an admin role
-                        const roleLocked = (!canAdmin || isOwner || (isSelf && !isLeader) || (!isLeader && hasAdminRole(member.roleId)));
-                        const kickable = (canKick && !isOwner && !isSelf && (isLeader || !hasAdminRole(member.roleId)));
-
-                        return (
-                            <div key={ member.userId } className="gang-card gang-member-row">
-                                <GangPortrait figure={ member.figure } online={ member.online } small />
-                                <div className="gang-member-info">
-                                    <div className="gang-member-name">{ member.username }<span className={ `gang-dot gang-name-dot${ member.online ? ' is-online' : '' }` } /></div>
-                                    <div className="gang-note">{ isOwner ? `Founder · ${ FormatGangDate(member.joinedAt) }` : `Joined ${ FormatGangDate(member.joinedAt) }` }</div>
-                                </div>
-                                { isOwner &&
-                                    <span className="gang-role-select is-static">Leader</span> }
-                                { !isOwner && roleLocked &&
-                                    <span className="gang-role-select is-static">{ roleName(member.roleId) }</span> }
-                                { !isOwner && !roleLocked &&
-                                    <select className="gang-role-select" value={ member.roleId } onChange={ event => SendMessageComposer(new RpGangSetMemberRoleComposer(member.userId, parseInt(event.target.value))) }>
-                                        <option value={ 0 }>Member</option>
-                                        { detail.roles.filter(role => (isLeader || !HasGangPermission(role.flags, GANG_PERM_ADMIN))).map(role => <option key={ role.id } value={ role.id }>{ role.name }</option>) }
-                                    </select> }
-                                { kickable &&
-                                    <Button variant="danger" onClick={ () => kick(member.userId, member.username) }>Kick</Button> }
-                            </div>
-                        );
-                    }) }
-                </div>
+                <div className="gang-ladder-note">{ canAdmin ? 'Drag a role\u2019s band to reorder the ladder. Members change role from the dropdown on their row.' : 'Only the leader and administrators can change roles.' }</div>
             </div>
         </>
     );

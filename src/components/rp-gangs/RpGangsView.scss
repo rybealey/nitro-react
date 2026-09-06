@@ -444,6 +444,61 @@ $gang-state-off: #b23b3b;
         flex-shrink: 0;
     }
 
+    // Manage ladder: a role's card - grey band with the role controls on top,
+    // its members beneath
+    .gang-ladder { gap: 8px; }
+
+    .gang-group-card {
+        padding: 0;
+        overflow: hidden;
+        flex-shrink: 0;
+        transition: opacity .15s ease, box-shadow .15s ease;
+
+        &.is-draggable .gang-group-band { cursor: grab; }
+        &.is-dragging { opacity: 0.5; border-style: dashed; }
+    }
+
+    .gang-group-band {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 7px 10px 7px 8px;
+        background: #f3f3f5;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .gang-group-empty {
+        padding: 8px 10px;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.4);
+    }
+
+    .gang-member-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        animation: gang-line-in .22s ease both;
+
+        & + .gang-member-line { border-top: 1px solid rgba(0, 0, 0, 0.06); }
+    }
+
+    .gang-ladder-note {
+        flex-shrink: 0;
+        padding-top: 4px;
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+        text-align: center;
+    }
+
+    @keyframes gang-line-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    @media (prefers-reduced-motion: reduce) {
+        .gang-member-line { animation: none; }
+        .gang-group-card { transition: none; }
+    }
+
     // role dropdown: the settings-window select shape
     .gang-role-select {
         width: 112px;
