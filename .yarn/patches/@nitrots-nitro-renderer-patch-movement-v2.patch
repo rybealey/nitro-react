@@ -2270,10 +2270,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..e3bb6a9
+index 0000000..f74f398
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1713 @@
+@@ -0,0 +1,1756 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2493,6 +2493,7 @@ index 0000000..e3bb6a9
 +    // came from the edge under the unit being changed or removed. These
 +    // record the two ways that happens.
 +    restageLines: number;
++    zLines: number;
 +    correctionCount: number;
 +    lastCorrectionIndex: number;
 +    lastCorrectionAt: number;
@@ -2555,7 +2556,7 @@ index 0000000..e3bb6a9
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0, zMismatches: 0 };
 +
 +    /**
 +     * What drove the current update pass, for diagnostics only. RoomEngine
@@ -2763,7 +2764,7 @@ index 0000000..e3bb6a9
 +                handoffLines: 0, stepLines: 0,
 +                lastWriteSX: 0, lastWriteSY: 0, lastWriteRevision: -1,
 +                lastWriteServerNow: NaN, lastWriteOffset: NaN, lastWriteNow: NaN,
-+                restageLines: 0,
++                restageLines: 0, zLines: 0,
 +                correctionCount: 0, lastCorrectionIndex: -1, lastCorrectionAt: NaN,
 +                trimCount: 0, lastTrimHighestDropped: -1, lastTrimAt: NaN,
 +                progSession: -1, progRevision: -1, progEdge: -1, progValue: 0, clampLines: 0,
@@ -3582,6 +3583,48 @@ index 0000000..e3bb6a9
 +        const unit = this._units.get(virtualId);
 +
 +        if(!unit) return;
++
++        // ---- HEIGHT AT THE MOMENT OWNERSHIP IS TAKEN --------------------
++        //
++        // The first V2 write of a session is where a disagreement about Z
++        // becomes visible: whatever the avatar was standing at is replaced by
++        // the edge's own source height in a single frame. X and Y are
++        // interpolated from the same edge across the full 500ms, so a Z that
++        // does not match the tile is not a slow correction - it is a drop or a
++        // lift with no travel time at all, which reads as a pop, and beside a
++        // stationary neighbour reads as a speed-up.
++        //
++        // A real height CHANGE along an edge is fine and expected: it is
++        // lerped across the edge exactly as X and Y are. What is reported here
++        // is the edge disagreeing with where the avatar already stood.
++        if(!unit.lastWriteValid && (Math.abs(beforeZ - active.sz) > 0.05))
++        {
++            this.stats.zMismatches++;
++
++            if(unit.zLines < 40)
++            {
++                unit.zLines++;
++
++                console.error('[MV2/Z-MISMATCH] ' + JSON.stringify({
++                    unit: virtualId,
++                    tile: `${active.sx},${active.sy}`,
++                    actualZ: Number(beforeZ.toFixed(4)),
++                    edgeFromZ: Number(active.sz.toFixed(4)),
++                    edgeToZ: Number(active.gz.toFixed(4)),
++                    deltaZ: Number((active.sz - beforeZ).toFixed(4)),
++                    session: active.session,
++                    revision: active.revision,
++                    edgeIndex: active.edgeIndex,
++                    holding: active.holding,
++                    phase: Number(active.phase.toFixed(6)),
++                    // A drop applied at phase 0 has no travel time at all; the
++                    // same drop expressed as edgeFromZ -> edgeToZ would be
++                    // spread over the whole edge.
++                    appliedInstantly: (active.phase <= 0),
++                    updateSource: this.updateSource
++                }));
++            }
++        }
 +
 +        // ---- EDGE -> EDGE CONTINUITY ------------------------------------
 +        // The outgoing edge ends exactly where the incoming one starts, so a
