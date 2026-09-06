@@ -3099,9 +3099,9 @@ $phone-scale: 0.8;
     .phone-weather-compass {
         position: absolute;
         right: 12px;
-        bottom: 12px;
-        width: 52px;
-        height: 52px;
+        top: 30px;
+        width: 46px;
+        height: 46px;
         border-radius: 50%;
         border: 1.5px dashed rgba(255, 255, 255, .3);
         display: flex;

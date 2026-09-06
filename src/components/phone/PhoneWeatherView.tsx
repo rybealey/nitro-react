@@ -2,7 +2,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RpGetWeatherComposer, RpWeatherEvent, WeatherDay, WeatherHour, WeatherSnapshot } from '../../api/rp-phone/RpWeatherMessages';
 import { useMessageEvent } from '../../hooks';
-import { FormatClockLabel, FormatHourLabel, FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { DistanceUnit, FormatClockLabel, FormatDistance, FormatHourLabel, FormatSpeed, FormatTemp, SpeedUnit, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneIcon } from './PhoneIcon';
 
 // Weather app: the real San Francisco's real weather, on the phone. The
@@ -217,7 +217,8 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
     const tiles = (s: WeatherSnapshot) =>
     {
         const uv = (s.uvTenths / 10);
-        const visibility = (s.visibilityTenths / 10);
+        const visibility = FormatDistance(s.visibilityTenths / 10);
+        const farSight = (DistanceUnit() === 'km') ? 16 : 10;
 
         return (
             <div className="phone-weather-tiles">
@@ -225,11 +226,11 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
                     <div className="phone-weather-uv"><div className="phone-weather-uv-dot" style={ { left: `${ Math.min(100, (uv / 11) * 100) }%` } } /></div>) }
                 { tile('sunset', s.isDay ? 'Sunset' : 'Sunrise', FormatClockLabel(s.isDay ? s.sunset : s.sunrise), s.isDay ? `Sunrise ${ FormatClockLabel(s.sunrise) }` : `Sunset ${ FormatClockLabel(s.sunset) }`, 1,
                     <svg className="phone-weather-arc" viewBox="0 0 120 34"><path d="M4 30 Q60 -18 116 30" /><line x1="0" y1="30" x2="120" y2="30" /><circle cx={ s.isDay ? 60 : 18 } cy={ s.isDay ? 6 : 24.5 } r="3.5" /></svg>) }
-                { tile('wind', 'Wind', <>{ s.wind } <small>mph</small></>, `Gusts to ${ s.gusts } mph, from the ${ compassPoint(s.windDir) }.`, 2,
+                { tile('wind', 'Wind', <>{ FormatSpeed(s.wind) } <small>{ SpeedUnit() }</small></>, `Gusts to ${ FormatSpeed(s.gusts) } ${ SpeedUnit() }, from the ${ compassPoint(s.windDir) }.`, 2,
                     <div className="phone-weather-compass"><span>N</span><PhoneIcon icon="arrow-up" size={ 22 } style={ { transform: `rotate(${ (s.windDir + 180) % 360 }deg)` } } /></div>) }
                 { tile('temperature-half', 'Feels like', `${ FormatTemp(s.feelsLike) }°`, (s.feelsLike < (s.temp - 2)) ? 'The wind is making it feel cooler.' : ((s.feelsLike > (s.temp + 2)) ? 'Humidity is making it feel warmer.' : 'Similar to the actual temperature.'), 3) }
                 { tile('droplet', 'Humidity', `${ s.humidity }%`, `Dew point ${ FormatTemp(s.dewPoint) }° right now.`, 4) }
-                { tile('eye', 'Visibility', <>{ visibility >= 10 ? '10+' : visibility.toFixed(visibility < 3 ? 1 : 0) } <small>mi</small></>, (visibility < 3) ? ((kindOf(s.code) === 'fog') ? 'Fog is cutting visibility.' : 'Reduced visibility right now.') : 'Perfectly clear view.', 5) }
+                { tile('eye', 'Visibility', <>{ visibility >= farSight ? `${ farSight }+` : visibility.toFixed(visibility < 3 ? 1 : 0) } <small>{ DistanceUnit() }</small></>, (visibility < 3) ? ((kindOf(s.code) === 'fog') ? 'Fog is cutting visibility.' : 'Reduced visibility right now.') : 'Perfectly clear view.', 5) }
             </div>
         );
     }

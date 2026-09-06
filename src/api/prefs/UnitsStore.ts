@@ -132,3 +132,9 @@ export const FormatClockLabel = (label: string): string =>
 export const FormatTemp = (fahrenheit: number): number => (celsius ? Math.round((fahrenheit - 32) * 5 / 9) : fahrenheit);
 
 export const TempUnit = (): string => (celsius ? '°C' : '°F');
+
+// speed and distance follow the temperature choice: metric with Celsius
+export const FormatSpeed = (mph: number): number => (celsius ? Math.round(mph * 1.609) : mph);
+export const SpeedUnit = (): string => (celsius ? 'km/h' : 'mph');
+export const FormatDistance = (miles: number): number => (celsius ? (miles * 1.609) : miles);
+export const DistanceUnit = (): string => (celsius ? 'km' : 'mi');
