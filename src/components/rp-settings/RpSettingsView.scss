@@ -487,7 +487,7 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
     // Environment > Weather: the sky right now beside its reading
     .rp-settings-env-preview {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
         padding: 10px 4px;
     }

@@ -19,13 +19,17 @@ const useRoomState = () =>
 
         if(original) setOriginalRoomBackgroundColor(newColor);
 
+        // pixelrp: with no toner colour the backdrop is see-through, so the
+        // sky behind rooms (EnvironmentSky) shows where the black used to be
         if(!hue && !saturation && !lightness)
         {
             roomBackground.tint = 0;
+            roomBackground.alpha = 0;
         }
         else
         {
             roomBackground.tint = newColor;
+            roomBackground.alpha = 1;
         }
     }
 
@@ -49,6 +53,7 @@ const useRoomState = () =>
         if(!roomBackground) return;
 
         roomBackground.tint = originalRoomBackgroundColor;
+        roomBackground.alpha = (originalRoomBackgroundColor ? 1 : 0);
     });
 
     useRoomEngineEvent<RoomObjectHSLColorEnabledEvent>(RoomObjectHSLColorEnabledEvent.ROOM_BACKGROUND_COLOR, event =>
@@ -229,6 +234,8 @@ const useRoomState = () =>
         const master = (canvas.master as NitroContainer);
 
         background.tint = 0;
+        // pixelrp: transparent until a background toner sets a colour (see updateRoomBackgroundColor)
+        background.alpha = 0;
         background.width = width;
         background.height = height;
 
