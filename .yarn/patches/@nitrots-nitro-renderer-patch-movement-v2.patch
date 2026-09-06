@@ -541,7 +541,7 @@ index 4198932..20c6fde 100644
          return true;
      }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..8a1a112 100644
+index ac3907b..66c9d2c 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -1,11 +1,22 @@
@@ -567,7 +567,7 @@ index ac3907b..8a1a112 100644
  
      private _liftAmount: number;
  
-@@ -64,6 +75,300 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +75,302 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -807,6 +807,8 @@ index ac3907b..8a1a112 100644
 +                    estServerNow: Math.round(pixelrpV2.estServerNow),
 +                    clockOffset: Math.round(PixelRPMovementV2.instance.clockOffset),
 +                    phase: pixelrpV2.phase.toFixed(3),
++                    computedPhase: pixelrpV2.computedPhase.toFixed(3),
++                    progressClamped: pixelrpV2.progressClamped,
 +                    from: `${pixelrpV2.sx},${pixelrpV2.sy}`,
 +                    to: `${pixelrpV2.gx},${pixelrpV2.gy}`,
 +                    before: `${beforeX.toFixed(3)},${beforeY.toFixed(3)}`,
@@ -868,7 +870,7 @@ index ac3907b..8a1a112 100644
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
-@@ -87,7 +392,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -87,7 +394,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
              if(locationOffset) vector.add(locationOffset);
  
@@ -878,7 +880,7 @@ index ac3907b..8a1a112 100644
  
              if(difference === this._updateInterval)
              {
-@@ -97,22 +404,184 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -97,22 +406,184 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -1065,7 +1067,7 @@ index ac3907b..8a1a112 100644
          if(message.location) this._location.assign(message.location);
  
          if(message instanceof ObjectMoveUpdateMessage) return this.processMoveMessage(message);
-@@ -126,6 +595,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -126,6 +597,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
          this._locationDelta.assign(message.targetLocation);
          this._locationDelta.subtract(this._location);
@@ -2268,10 +2270,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..75cec70
+index 0000000..3d47fb9
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1491 @@
+@@ -0,0 +1,1610 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2324,8 +2326,22 @@ index 0000000..75cec70
 +{
 +    sx: number; sy: number; sz: number;
 +    gx: number; gy: number; gz: number;
-+    /** 0..1, clamped. */
++    /**
++     * 0..1. The progress interpolation actually uses - the authoritative
++     * phase, held to the monotonic invariant so it can never decrease within
++     * one authoritative edge.
++     */
 +    phase: number;
++    /**
++     * The raw phase derived from the clock, before the invariant. Diagnostics
++     * only: comparing it with `phase` shows the invariant doing work, and the
++     * phase-rate assertion is measured against THIS, since the question it
++     * asks is whether the clock mapping moved - not whether the invariant
++     * caught it afterwards.
++     */
++    computedPhase: number;
++    /** True when the invariant held progress against a lower computed phase. */
++    progressClamped: boolean;
 +    /**
 +     * The edge is accepted but has not reached its cycleStart yet, so phase is
 +     * pinned at 0 and the unit stands exactly on edge.from. V2 still OWNS the
@@ -2452,6 +2468,19 @@ index 0000000..75cec70
 +    handoffLines: number;
 +    stepLines: number;
 +
++    // ---- MONOTONIC PROGRESS INVARIANT -----------------------------------
++    // The progress already reached on ONE exact authoritative edge, keyed by
++    // the triple that identifies it. Progress never carries across a change in
++    // any part of that key.
++    progSession: number;
++    progRevision: number;
++    progEdge: number;
++    progValue: number;
++    clampLines: number;
++
++    /** Raw clock-derived phase at the previous write, for the rate assertion. */
++    lastComputedPhase: number;
++
 +    // ---- state of the PREVIOUS V2 write, for the anomaly report ---------
 +    lastWriteSX: number; lastWriteSY: number;
 +    lastWriteRevision: number;
@@ -2525,7 +2554,7 @@ index 0000000..75cec70
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0 };
 +
 +    /**
 +     * What drove the current update pass, for diagnostics only. RoomEngine
@@ -2734,7 +2763,9 @@ index 0000000..75cec70
 +                lastWriteSX: 0, lastWriteSY: 0, lastWriteRevision: -1,
 +                lastWriteServerNow: NaN, lastWriteOffset: NaN, lastWriteNow: NaN,
 +                correctionCount: 0, lastCorrectionIndex: -1, lastCorrectionAt: NaN,
-+                trimCount: 0, lastTrimHighestDropped: -1, lastTrimAt: NaN
++                trimCount: 0, lastTrimHighestDropped: -1, lastTrimAt: NaN,
++                progSession: -1, progRevision: -1, progEdge: -1, progValue: 0, clampLines: 0,
++                lastComputedPhase: NaN
 +            };
 +
 +            this._units.set(virtualId, unit);
@@ -2775,6 +2806,14 @@ index 0000000..75cec70
 +            unit.traceActive = true;
 +            unit.traceEdge1Now = NaN;
 +            unit.traceLines = 0;
++
++            // A new walk starts its own progress; nothing carries in.
++            unit.progSession = -1;
++            unit.progRevision = -1;
++            unit.progEdge = -1;
++            unit.progValue = 0;
++            unit.clampLines = 0;
++            unit.lastComputedPhase = NaN;
 +        }
 +        else if(session < unit.session)
 +        {
@@ -3248,12 +3287,87 @@ index 0000000..75cec70
 +
 +        if(raw > 1) this.stats.starvations++;
 +
-+        const phase = Math.min(1, Math.max(0, raw));
++        const computedPhase = Math.min(1, Math.max(0, raw));
++
++        // ================= MONOTONIC PROGRESS INVARIANT ==================
++        //
++        // Within ONE authoritative edge - the same WalkSessionId, the same
++        // RouteRevision and the same EdgeIndex - projected progress along that
++        // edge must never decrease. An avatar part-way along a tile cannot
++        // move back towards the tile it left while the server still says it is
++        // walking that same edge; a write that does is impossible, not merely
++        // ugly.
++        //
++        //     effectiveProgress = max(lastProgressForThisExactEdge, computed)
++        //
++        // This is NOT smoothing, slowdown or catch-up. It only ever refuses a
++        // DECREASE. It never advances progress, never changes the rate, and
++        // never limits an increase - so a genuinely large clock delta still
++        // produces its full step, which is what keeps a legitimate large step
++        // legitimate.
++        //
++        // The key is the whole triple, so progress is abandoned the moment any
++        // part of it changes: a new session, a redirect raising the revision,
++        // or the next edge index. Nothing carries across edges, which is what
++        // keeps redirect semantics and lookahead intact - a correction is a
++        // new revision and therefore starts clean.
++        let phase = computedPhase;
++        let progressClamped = false;
++
++        if((unit.progSession === edge.session) && (unit.progRevision === edge.revision) && (unit.progEdge === edge.edgeIndex))
++        {
++            if(computedPhase < unit.progValue)
++            {
++                phase = unit.progValue;
++                progressClamped = true;
++                this.stats.progressClamps++;
++
++                if(unit.clampLines < 40)
++                {
++                    unit.clampLines++;
++
++                    // Logged so the invariant holding something back stays
++                    // visible. Silently absorbing it would make the fix
++                    // indistinguishable from the bug never having happened.
++                    console.warn('[MV2/PROGRESS-CLAMP] ' + JSON.stringify({
++                        unit: virtualId,
++                        session: edge.session,
++                        routeRevision: edge.revision,
++                        edgeIndex: edge.edgeIndex,
++                        heldProgress: Number(unit.progValue.toFixed(6)),
++                        computedProgress: Number(computedPhase.toFixed(6)),
++                        wouldHaveMovedBackBy: Number((unit.progValue - computedPhase).toFixed(6)),
++                        backwardTiles: Number(((unit.progValue - computedPhase) * Math.sqrt((((edge.gx - edge.sx)) ** 2) + (((edge.gy - edge.sy)) ** 2))).toFixed(5)),
++                        estServerNow: Math.round(estServerNow),
++                        cycleStart: edge.cycleStart,
++                        interval: edge.interval,
++                        activeOffset: Number(unit.activeOffset.toFixed(3)),
++                        liveOffset: Number(this._clockOffset.toFixed(3)),
++                        holding,
++                        queuedIndexes: (unit.edges.length ? `${unit.edges[0].edgeIndex}..${unit.edges[unit.edges.length - 1].edgeIndex}` : 'none'),
++                        msSinceCorrection: (Number.isFinite(unit.lastCorrectionAt) ? Math.round(tickerNow - unit.lastCorrectionAt) : null),
++                        msSinceTrim: (Number.isFinite(unit.lastTrimAt) ? Math.round(tickerNow - unit.lastTrimAt) : null),
++                        updateSource: this.updateSource
++                    }));
++                }
++            }
++        }
++        else
++        {
++            // A different authoritative edge. Progress does not carry across.
++            unit.progSession = edge.session;
++            unit.progRevision = edge.revision;
++            unit.progEdge = edge.edgeIndex;
++        }
++
++        unit.progValue = phase;
 +
 +        return {
 +            sx: edge.sx, sy: edge.sy, sz: edge.sz,
 +            gx: edge.gx, gy: edge.gy, gz: edge.gz,
 +            phase,
++            computedPhase,
++            progressClamped,
 +            holding,
 +            edgeIndex: edge.edgeIndex,
 +            session: edge.session,
@@ -3529,7 +3643,10 @@ index 0000000..75cec70
 +                    serverDelta: (Number.isFinite(serverDelta) ? Number(serverDelta.toFixed(3)) : null),
 +
 +                    phase: Number(active.phase.toFixed(6)),
++                    computedPhase: Number(active.computedPhase.toFixed(6)),
++                    progressClamped: active.progressClamped,
 +                    previousPhase: (Number.isFinite(unit.lastPhase) ? Number(unit.lastPhase.toFixed(6)) : null),
++                    previousComputedPhase: (Number.isFinite(unit.lastComputedPhase) ? Number(unit.lastComputedPhase.toFixed(6)) : null),
 +                    phaseDelta: (Number.isFinite(phaseDelta) ? Number(phaseDelta.toFixed(6)) : null),
 +                    expectedPhaseDelta: (Number.isFinite(expectedPhaseDelta) ? Number(expectedPhaseDelta.toFixed(6)) : null),
 +                    phaseOverrun: (Number.isFinite(phaseOverrun) ? Number(phaseOverrun.toFixed(6)) : null),
@@ -3662,10 +3779,13 @@ index 0000000..75cec70
 +
 +        if(!unit) return null;
 +
-+        const clamped = (active.holding || (active.phase <= 0) || (active.phase >= 1));
++        // Measured against the RAW clock-derived phase: the question here is
++        // whether the clock mapping moved under an active edge, which the
++        // monotonic invariant would otherwise hide by holding progress flat.
++        const clamped = (active.holding || (active.computedPhase <= 0) || (active.computedPhase >= 1));
 +
 +        const sameEdge = ((unit.lastPhaseEdge === active.edgeIndex) && Number.isFinite(unit.lastPhaseTicker));
-+        const comparable = (sameEdge && !clamped && !unit.lastPhaseClamped);
++        const comparable = (sameEdge && !clamped && !unit.lastPhaseClamped && Number.isFinite(unit.lastComputedPhase));
 +
 +        let warning: string = null;
 +
@@ -3673,7 +3793,7 @@ index 0000000..75cec70
 +        {
 +            const tickerDelta = (tickerNow - unit.lastPhaseTicker);
 +            const expected = (tickerDelta / active.interval);
-+            const actual = (active.phase - unit.lastPhase);
++            const actual = (active.computedPhase - unit.lastComputedPhase);
 +            const error = (actual - expected);
 +
 +            // 0.002 of a 500ms edge is 1ms. Frame pacing cannot produce this:
@@ -3691,6 +3811,7 @@ index 0000000..75cec70
 +        }
 +
 +        unit.lastPhase = active.phase;
++        unit.lastComputedPhase = active.computedPhase;
 +        unit.lastPhaseTicker = tickerNow;
 +        unit.lastPhaseEdge = active.edgeIndex;
 +        unit.lastPhaseClamped = clamped;
