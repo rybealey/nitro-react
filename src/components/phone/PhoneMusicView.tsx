@@ -5,7 +5,7 @@ import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState }
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
-// Music app: the hotel station on your phone, in a streaming-app idiom - an
+// Tunes app: the hotel station on your phone, in a streaming-app idiom - an
 // always-dark ground, big square cover, one green for "playing" and the
 // primary action, flat rows for the queue. Now Playing shows the track the
 // whole hotel hears (state is server-authoritative and pushed to everyone);
@@ -159,8 +159,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div>
                     </div>
                     <div className="phone-music-titles">
-                        <div className="phone-music-title">The station is quiet</div>
-                        <div className="phone-music-sub is-wrap">Nothing is queued anywhere in the hotel. Request a song and it starts right away for everyone.</div>
+                        <div className="phone-music-titles-text">
+                            <div className="phone-music-title">The station is quiet</div>
+                            <div className="phone-music-sub is-wrap">Nothing is queued anywhere in the hotel. Request a song and it starts right away for everyone.</div>
+                        </div>
                     </div>
                     <div className="phone-music-pill phone-tap" onClick={ openRequest }>
                         <PhoneIcon icon="plus" size={ 16 } />
