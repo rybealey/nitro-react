@@ -14,11 +14,12 @@ interface PhoneSettingsViewProps
     onBack: () => void;
     openAppearance: () => void;
     openAccount: () => void;
+    openGeneral: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null, openAppearance = null, openAccount = null } = props;
+    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null } = props;
     const { theme } = usePhonePrefs();
     const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
@@ -86,7 +87,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('battery', '#3fbf5a', 'Battery') }
                     </>) }
                     { group(<>
-                        { item('sliders', '#8a8a90', 'General') }
+                        { item('sliders', '#8a8a90', 'General', { inert: false, onTap: () => (openGeneral && openGeneral()) }) }
                         { item('human', '#3f6fbf', 'Accessibility') }
                         { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
                         { item('image', '#2ba88f', 'Wallpaper') }

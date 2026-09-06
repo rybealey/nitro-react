@@ -2,6 +2,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { CreateRoomSession, GetSessionDataManager, SendMessageComposer } from '../../api';
 import { CalendarBirthday, CalendarEvent, RpCalendarEvent, RpDeleteCalendarEventComposer, RpGetCalendarComposer, RpSaveCalendarEventComposer } from '../../api/rp-phone/RpCalendarMessages';
 import { useMessageEvent, useRoom } from '../../hooks';
+import { FormatClock, FormatHour, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneIcon } from './PhoneIcon';
 
 // Calendar app: an iOS-style day view. Staff-scheduled in-game events sit on
@@ -26,8 +27,9 @@ const ACCENT = '#f5352b';
 const startOfDay = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const addDays = (date: Date, days: number): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 const sameDay = (a: Date, b: Date): boolean => ((a.getFullYear() === b.getFullYear()) && (a.getMonth() === b.getMonth()) && (a.getDate() === b.getDate()));
-const formatTime = (unix: number): string => new Date(unix * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-const hourLabel = (hour: number): string => `${ ((hour + 11) % 12) + 1 } ${ (hour >= 12) ? 'PM' : 'AM' }`;
+// both follow Settings > General (24-hour by default)
+const formatTime = (unix: number): string => FormatClock(new Date(unix * 1000));
+const hourLabel = (hour: number): string => FormatHour(hour);
 // "16:30" -> unix seconds on the given day
 const timeOn = (day: Date, hhmm: string): number =>
 {
@@ -58,6 +60,8 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
 {
     const { onBack = null } = props;
     const { roomSession = null } = useRoom();
+    // re-render when the clock format changes
+    useUnitsPrefs();
     const [ canEdit, setCanEdit ] = useState(false);
     const [ events, setEvents ] = useState<CalendarEvent[]>([]);
     const [ birthdays, setBirthdays ] = useState<CalendarBirthday[]>([]);
@@ -245,7 +249,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                 <div className="phone-calendar-timeline" style={ { height: `${ ((hours.length - 1) * HOUR_PX) + 16 }px` } }>
                     { hours.map(hour => (
                         <div key={ hour } className="phone-calendar-hour" style={ { top: `${ (hour - firstHour) * HOUR_PX }px` } }>
-                            <span className="phone-calendar-hour-label">{ (hour === 24) ? '12 AM' : hourLabel(hour) }</span>
+                            <span className="phone-calendar-hour-label">{ hourLabel(hour) }</span>
                             <span className="phone-calendar-hour-line" />
                         </div>
                     )) }
@@ -264,7 +268,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                     }) }
                     { isToday &&
                         <div ref={ nowRef } className="phone-calendar-now" style={ { top: `${ ((new Date(now).getHours() + ((new Date(now).getMinutes() + (new Date(now).getSeconds() / 60)) / 60)) - firstHour) * HOUR_PX }px` } }>
-                            <span className="phone-calendar-now-label">{ new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }</span>
+                            <span className="phone-calendar-now-label">{ FormatClock(new Date(now)) }</span>
                         </div> }
                 </div>
                 </div>

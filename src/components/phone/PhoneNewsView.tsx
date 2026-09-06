@@ -2,6 +2,7 @@ import { FC, KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { NEWS_CATEGORIES, NewsPost, RpDeleteNewsPostComposer, RpGetNewsComposer, RpNewsEvent, RpPinNewsPostComposer, RpSaveNewsPostComposer } from '../../api/rp-phone/RpNewsMessages';
 import { useMessageEvent } from '../../hooks';
+import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneAvatarColor } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -117,7 +118,7 @@ const longTime = (unix: number, now: number): string =>
 {
     const date = new Date(unix * 1000);
     const today = startOfDay(new Date(now));
-    const clock = `${ date.getHours().toString().padStart(2, '0') }:${ date.getMinutes().toString().padStart(2, '0') }`;
+    const clock = FormatClock(date);
 
     if(startOfDay(date) === today) return `Today, ${ clock }`;
     if(startOfDay(date) === (today - 86400000)) return `Yesterday, ${ clock }`;
@@ -165,6 +166,8 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
 {
     const { onBack = null } = props;
     const ownId = GetSessionDataManager().userId;
+    // re-render when the clock format changes
+    useUnitsPrefs();
 
     const [ staffLevel, setStaffLevel ] = useState(0);
     const [ posts, setPosts ] = useState<NewsPost[]>([]);

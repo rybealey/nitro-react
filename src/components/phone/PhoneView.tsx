@@ -9,6 +9,7 @@ import { PhoneAppearanceView } from './PhoneAppearanceView';
 import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
+import { PhoneGeneralView } from './PhoneGeneralView';
 import { PhoneWeatherView } from './PhoneWeatherView';
 import { PhoneNewsView } from './PhoneNewsView';
 import { PhoneCallView } from './PhoneCallView';
@@ -21,13 +22,14 @@ import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
 import { ReadPhonePosition, useAirplane, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
+import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 
 // The PixelRP phone — the player's window to their social life, replacing
 // the classic Habbo friends list + messenger windows. Opened from the
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -53,6 +55,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'appearance') && (to === 'settings')) return 'slide-left';
     if(to === 'account') return 'slide-right';
     if((from === 'account') && (to === 'settings')) return 'slide-left';
+    if(to === 'general') return 'slide-right';
+    if((from === 'general') && (to === 'settings')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -74,6 +78,7 @@ export const PhoneView: FC<{}> = props =>
     const { ensureLoaded } = usePhonePrefs();
     const { resolvedDark = false } = usePhoneTheme();
     const { enabled: airplaneOn = false } = useAirplane();
+    const { clock24 } = useUnitsPrefs();
     const { saveScreenshot = null } = usePhonePhotos();
     const displayRef = useRef<HTMLDivElement>(null);
     const powerTimer = useRef<number>(0);
@@ -272,7 +277,8 @@ export const PhoneView: FC<{}> = props =>
         {
             const now = new Date();
 
-            setClock(`${ now.getHours().toString().padStart(2, '0') }:${ now.getMinutes().toString().padStart(2, '0') }`);
+            // the status bar follows Settings > General; 12-hour drops the suffix like a real phone
+            setClock(FormatClock(now, false));
         }
 
         updateClock();
@@ -280,7 +286,7 @@ export const PhoneView: FC<{}> = props =>
         const interval = window.setInterval(updateClock, 15000);
 
         return () => window.clearInterval(interval);
-    }, [ isVisible, ensureLoaded ]);
+    }, [ isVisible, ensureLoaded, clock24 ]);
 
     useEffect(() =>
     {
@@ -428,7 +434,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } /> }
                             { (screen === 'music') &&
                                 <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
@@ -439,6 +445,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneWeatherView onBack={ () => go('home') } /> }
                             { (screen === 'news') &&
                                 <PhoneNewsView onBack={ () => go('home') } /> }
+                            { (screen === 'general') &&
+                                <PhoneGeneralView onBack={ () => go('settings') } /> }
                             { (screen === 'account') &&
                                 <PhoneAccountView onBack={ () => go('settings') } /> }
                             { (screen === 'appearance') &&

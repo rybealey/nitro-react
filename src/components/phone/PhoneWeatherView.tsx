@@ -2,6 +2,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RpGetWeatherComposer, RpWeatherEvent, WeatherDay, WeatherHour, WeatherSnapshot } from '../../api/rp-phone/RpWeatherMessages';
 import { useMessageEvent } from '../../hooks';
+import { FormatClockLabel, FormatHourLabel, FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneIcon } from './PhoneIcon';
 
 // Weather app: the real San Francisco's real weather, on the phone. The
@@ -93,13 +94,13 @@ const summarize = (snapshot: WeatherSnapshot): string =>
 
     let sentence = opening[current];
 
-    if(change) sentence += ` for now, ${ arriving[group(kindOf(change.code))] } around ${ change.label }.`;
+    if(change) sentence += ` for now, ${ arriving[group(kindOf(change.code))] } around ${ FormatHourLabel(change.label) }.`;
     else sentence += (snapshot.isDay ? ' for the rest of the day.' : ' through the night.');
 
     const wet = snapshot.hourly.slice(0, 12).filter(hour => hour.precip >= 40);
 
-    if(wet.length && (current !== 'wet')) sentence += ` ${ wet[0].precip }% chance of rain by ${ wet[0].label === 'Now' ? 'now' : wet[0].label }.`;
-    else sentence += ` Highs near ${ snapshot.hi }°.`;
+    if(wet.length && (current !== 'wet')) sentence += ` ${ wet[0].precip }% chance of rain by ${ wet[0].label === 'Now' ? 'now' : FormatHourLabel(wet[0].label) }.`;
+    else sentence += ` Highs near ${ FormatTemp(snapshot.hi) }°.`;
 
     return sentence;
 }
@@ -141,6 +142,8 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
     const [ compact, setCompact ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
     const scrollRef = useRef<HTMLDivElement>(null);
+    // re-render when the clock or unit changes
+    useUnitsPrefs();
 
     useEffect(() =>
     {
@@ -174,18 +177,19 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
     const summary = useMemo(() => (snapshot ? summarize(snapshot) : ''), [ snapshot ]);
 
     // the 10-day bars share one scale so they compare, like a real forecast
-    const rangeLo = (snapshot ? Math.min(...snapshot.daily.map(day => day.lo)) : 0);
-    const rangeHi = (snapshot ? Math.max(...snapshot.daily.map(day => day.hi)) : 1);
+    // bars are scaled in the displayed unit
+    const rangeLo = (snapshot ? Math.min(...snapshot.daily.map(day => FormatTemp(day.lo))) : 0);
+    const rangeHi = (snapshot ? Math.max(...snapshot.daily.map(day => FormatTemp(day.hi))) : 1);
 
     const hourlyStrip = (hours: WeatherHour[]) => (
         <div className="phone-weather-hours">
             { hours.slice(0, 24).map((hour, index) => (
                 <div key={ `${ hour.label }-${ index }` } className={ `phone-weather-hour${ (index === 0) ? ' is-now' : '' }` } style={ { animationDelay: `${ Math.min(index, 8) * 35 }ms` } }>
-                    <div className="phone-weather-hour-label">{ hour.label }</div>
+                    <div className="phone-weather-hour-label">{ FormatHourLabel(hour.label) }</div>
                     <PhoneIcon icon={ iconFor(hour.code, hour.isDay) } size={ 22 } className="phone-weather-glyph" />
                     { (hour.precip > 0) && (kindOf(hour.code) !== 'clear') &&
                         <div className="phone-weather-hour-precip">{ hour.precip }%</div> }
-                    <div className="phone-weather-hour-temp">{ hour.temp }°</div>
+                    <div className="phone-weather-hour-temp">{ FormatTemp(hour.temp) }°</div>
                 </div>
             )) }
         </div>
@@ -195,9 +199,9 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
         <div key={ `${ day.label }-${ index }` } className={ `phone-weather-day${ index ? ' has-top' : '' }` } style={ { animationDelay: `${ 120 + Math.min(index, 9) * 30 }ms` } }>
             <div className="phone-weather-day-label">{ day.label }</div>
             <PhoneIcon icon={ iconFor(day.code, true) } size={ 20 } className="phone-weather-glyph" />
-            <div className="phone-weather-day-lo">{ day.lo }°</div>
-            <RangeBar lo={ day.lo } hi={ day.hi } rangeLo={ rangeLo } rangeHi={ rangeHi } now={ (index === 0) ? snapshot.temp : undefined } />
-            <div className="phone-weather-day-hi">{ day.hi }°</div>
+            <div className="phone-weather-day-lo">{ FormatTemp(day.lo) }°</div>
+            <RangeBar lo={ FormatTemp(day.lo) } hi={ FormatTemp(day.hi) } rangeLo={ rangeLo } rangeHi={ rangeHi } now={ (index === 0) ? FormatTemp(snapshot.temp) : undefined } />
+            <div className="phone-weather-day-hi">{ FormatTemp(day.hi) }°</div>
         </div>
     ));
 
@@ -219,12 +223,12 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
             <div className="phone-weather-tiles">
                 { tile('sun', 'UV index', <>{ Math.round(uv) } <small>{ uvLabel(uv) }</small></>, (uv < 3) ? 'Low for the rest of the day.' : ((uv < 6) ? 'Use sun protection until late afternoon.' : 'Strong sun. Cover up outside.'), 0,
                     <div className="phone-weather-uv"><div className="phone-weather-uv-dot" style={ { left: `${ Math.min(100, (uv / 11) * 100) }%` } } /></div>) }
-                { tile('sunset', s.isDay ? 'Sunset' : 'Sunrise', s.isDay ? s.sunset : s.sunrise, s.isDay ? `Sunrise ${ s.sunrise }` : `Sunset ${ s.sunset }`, 1,
+                { tile('sunset', s.isDay ? 'Sunset' : 'Sunrise', FormatClockLabel(s.isDay ? s.sunset : s.sunrise), s.isDay ? `Sunrise ${ FormatClockLabel(s.sunrise) }` : `Sunset ${ FormatClockLabel(s.sunset) }`, 1,
                     <svg className="phone-weather-arc" viewBox="0 0 120 34"><path d="M4 30 Q60 -18 116 30" /><line x1="0" y1="30" x2="120" y2="30" /><circle cx={ s.isDay ? 60 : 18 } cy={ s.isDay ? 6 : 24.5 } r="3.5" /></svg>) }
                 { tile('wind', 'Wind', <>{ s.wind } <small>mph</small></>, `Gusts to ${ s.gusts } mph, from the ${ compassPoint(s.windDir) }.`, 2,
                     <div className="phone-weather-compass"><span>N</span><PhoneIcon icon="arrow-up" size={ 22 } style={ { transform: `rotate(${ (s.windDir + 180) % 360 }deg)` } } /></div>) }
-                { tile('temperature-half', 'Feels like', `${ s.feelsLike }°`, (s.feelsLike < (s.temp - 2)) ? 'The wind is making it feel cooler.' : ((s.feelsLike > (s.temp + 2)) ? 'Humidity is making it feel warmer.' : 'Similar to the actual temperature.'), 3) }
-                { tile('droplet', 'Humidity', `${ s.humidity }%`, `Dew point ${ s.dewPoint }° right now.`, 4) }
+                { tile('temperature-half', 'Feels like', `${ FormatTemp(s.feelsLike) }°`, (s.feelsLike < (s.temp - 2)) ? 'The wind is making it feel cooler.' : ((s.feelsLike > (s.temp + 2)) ? 'Humidity is making it feel warmer.' : 'Similar to the actual temperature.'), 3) }
+                { tile('droplet', 'Humidity', `${ s.humidity }%`, `Dew point ${ FormatTemp(s.dewPoint) }° right now.`, 4) }
                 { tile('eye', 'Visibility', <>{ visibility >= 10 ? '10+' : visibility.toFixed(visibility < 3 ? 1 : 0) } <small>mi</small></>, (visibility < 3) ? ((kindOf(s.code) === 'fog') ? 'Fog is cutting visibility.' : 'Reduced visibility right now.') : 'Perfectly clear view.', 5) }
             </div>
         );
@@ -278,7 +282,7 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
                 { snapshot &&
                     <div className="phone-weather-compact">
                         <div className="phone-weather-compact-city">San Francisco</div>
-                        <div className="phone-weather-compact-cond">{ snapshot.temp }° | { condition }</div>
+                        <div className="phone-weather-compact-cond">{ FormatTemp(snapshot.temp) }° | { condition }</div>
                     </div> }
                 <div className={ `phone-weather-pill${ offline ? ' is-warn' : (snapshot ? '' : ' is-warn') }` }>
                     <span className="phone-weather-pill-dot" />
@@ -300,9 +304,9 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
                         <div className="phone-weather-hero">
                             <div className="phone-weather-kicker is-center"><PhoneIcon icon="location-dot" size={ 11 } />SAN FRANCISCO, CA</div>
                             <div className="phone-weather-city">San Francisco</div>
-                            <div className="phone-weather-temp">{ snapshot.temp }°</div>
+                            <div className="phone-weather-temp">{ FormatTemp(snapshot.temp) }°</div>
                             <div className="phone-weather-cond">{ condition }</div>
-                            <div className="phone-weather-hilo">H:{ snapshot.hi }°&nbsp;&nbsp;L:{ snapshot.lo }°</div>
+                            <div className="phone-weather-hilo">H:{ FormatTemp(snapshot.hi) }°&nbsp;&nbsp;L:{ FormatTemp(snapshot.lo) }°</div>
                         </div>
                         <div className="phone-weather-card" style={ { animationDelay: '60ms' } }>
                             <div className="phone-weather-summary">{ summary }</div>

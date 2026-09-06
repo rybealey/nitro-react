@@ -89,11 +89,11 @@ export const SanFranciscoMinutes = (now: number): number =>
     }
 }
 
-export const SanFranciscoClock = (now: number): string =>
+export const SanFranciscoClock = (now: number, hour24: boolean = true): string =>
 {
     try
     {
-        return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit' }).format(new Date(now));
+        return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: (hour24 ? '2-digit' : 'numeric'), minute: '2-digit', hour12: !hour24 }).format(new Date(now));
     }
     catch(e)
     {

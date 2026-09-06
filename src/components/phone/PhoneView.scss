@@ -4082,6 +4082,59 @@ $phone-scale: 0.8;
         }
     }
 
+    // General: uppercase label above a card, like the phone's other section labels
+    .phone-settings-section-label {
+        margin: 6px 20px 4px;
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--ph-faint);
+    }
+
+    // two-way pill (Settings > General): a track with the chosen half raised
+    .phone-segmented {
+        position: relative;
+        display: flex;
+        padding: 2px;
+        border-radius: 11px;
+        background: var(--ph-inset);
+        flex: none;
+    }
+
+    .phone-segmented-thumb {
+        position: absolute;
+        top: 2px;
+        bottom: 2px;
+        left: 2px;
+        width: calc(50% - 2px);
+        border-radius: 9px;
+        background: var(--ph-bg);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+        transition: transform .22s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .phone-segmented-option {
+        position: relative;
+        min-width: 44px;
+        padding: 5px 10px;
+        border-radius: 9px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: var(--ph-soft);
+        transition: color .15s ease;
+        z-index: 1;
+
+        &.is-on { color: var(--ph-text); }
+        &:active { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-segmented-thumb, .phone-segmented-option { transition: none; }
+    }
+
     // Colored rounded icon chip carrying a white glyph.
     .phone-settings-icon {
         width: 28px;
