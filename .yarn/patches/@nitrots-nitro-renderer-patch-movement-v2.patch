@@ -487,7 +487,7 @@ index 4198932..20c6fde 100644
          return true;
      }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..ba76fdc 100644
+index ac3907b..bcd03fa 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
 @@ -1,11 +1,14 @@
@@ -505,7 +505,7 @@ index ac3907b..ba76fdc 100644
  
      private _liftAmount: number;
  
-@@ -64,6 +67,213 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +67,251 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -564,19 +564,48 @@ index ac3907b..ba76fdc 100644
 +            this.object.setLocation(vector);
 +            store.writer = PixelRPV2Writer.OTHER;
 +
++            // TEMPORARY assertion: under a mapping frozen for the whole edge,
++            // phase advances exactly as the ticker does. Any divergence means
++            // the mapping moved under an active edge - the cause of the
++            // occasional render step at twice its neighbours.
++            const pixelrpPhaseWarning = store.checkPhaseRate(pixelrpV2, this.object.id, this.time);
++
++            if(pixelrpPhaseWarning)
++            {
++                console.warn('[MV2/PHASE-RATE]', {
++                    unit: this.object.id,
++                    detail: pixelrpPhaseWarning,
++                    activeOffset: pixelrpV2.activeOffset.toFixed(3),
++                    liveOffset: store.clockOffset.toFixed(3),
++                    holding: pixelrpV2.holding,
++                    tickerNow: Math.round(this.time)
++                });
++            }
++
 +            if(report)
 +            {
 +                const after = this.object.getLocation();
 +                const afterDirection = this.object.getDirection();
 +
-+                // Screen pixels for each of the three positions that matter.
-+                const pendScreen = this.pixelrpScreenOf(report.pendX, report.pendY, report.pendZ);
++                // The reference the jump is measured FROM. With exclusive
++                // ownership there is normally no Pending frame at all - V2
++                // takes the position the instant it accepts the edge - so the
++                // predecessor is the object's own position immediately before
++                // V2's first write. When native did get frames (which now
++                // means the invariant was broken) the last of those is the
++                // honest reference instead.
++                const hasPending = (report.pendFrames > 0);
++                const refX = (hasPending ? report.pendX : beforeX);
++                const refY = (hasPending ? report.pendY : beforeY);
++                const refZ = (hasPending ? report.pendZ : beforeZ);
++
++                const pendScreen = this.pixelrpScreenOf(refX, refY, refZ);
 +                const beforeScreen = this.pixelrpScreenOf(beforeX, beforeY, beforeZ);
 +                const afterScreen = this.pixelrpScreenOf(after.x, after.y, after.z);
 +
-+                // THE measurement: last true Pending frame -> first V2 frame.
-+                const jumpX = (after.x - report.pendX);
-+                const jumpY = (after.y - report.pendY);
++                // THE measurement: predecessor position -> first V2 frame.
++                const jumpX = (after.x - refX);
++                const jumpY = (after.y - refY);
 +                const jumpTiles = Math.sqrt((jumpX * jumpX) + (jumpY * jumpY));
 +
 +                let jumpPixels = NaN;
@@ -603,7 +632,9 @@ index ac3907b..ba76fdc 100644
 +                    pendingFrames: report.pendFrames,
 +                    nativeWroteFrames: report.pendNativeFrames,
 +                    lastPendingTicker: Math.round(report.pendTicker),
-+                    lastPendingLoc: `${report.pendX.toFixed(3)},${report.pendY.toFixed(3)},${report.pendZ.toFixed(3)}`,
++                    referenceFrom: (hasPending ? 'last-pending-frame' : 'position-before-v2-took-ownership'),
++                    referenceLoc: `${refX.toFixed(3)},${refY.toFixed(3)},${refZ.toFixed(3)}`,
++                    lastPendingLoc: (hasPending ? `${report.pendX.toFixed(3)},${report.pendY.toFixed(3)},${report.pendZ.toFixed(3)}` : 'none'),
 +                    // Two readings on purpose. `...AtFrame` is what was on
 +                    // screen during that frame; `...Reprojected` is the same
 +                    // tile under the CURRENT geometry, which is the only pair
@@ -642,6 +673,13 @@ index ac3907b..ba76fdc 100644
 +                    jumpPixels: (Number.isFinite(jumpPixels) ? jumpPixels.toFixed(2) : 'n/a'),
 +
 +                    phase: pixelrpV2.phase.toFixed(4),
++                    // True = V2 accepted the edge before its cycleStart and is
++                    // pinning the avatar at edge.from. This is the intended
++                    // shape of a join now: ownership taken early, position
++                    // held, then interpolation from phase 0 at cycleStart.
++                    holdingAtFrom: pixelrpV2.holding,
++                    activeOffset: pixelrpV2.activeOffset.toFixed(3),
++                    liveOffset: store.clockOffset.toFixed(3),
 +                    dirBefore: beforeDir,
 +                    dirAfter: (afterDirection ? afterDirection.x : -1),
 +                    // A non-null offset legitimately shifts the rendered
@@ -719,7 +757,7 @@ index ac3907b..ba76fdc 100644
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
-@@ -87,7 +297,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -87,7 +335,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
              if(locationOffset) vector.add(locationOffset);
  
@@ -729,7 +767,7 @@ index ac3907b..ba76fdc 100644
  
              if(difference === this._updateInterval)
              {
-@@ -97,9 +309,87 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -97,9 +347,96 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -805,19 +843,61 @@ index ac3907b..ba76fdc 100644
 +     */
 +    private static pixelrpVerdict(pendFrames: number, nativeFrames: number, driftTiles: number, jumpTiles: number): string
 +    {
-+        if(!pendFrames) return 'UNKNOWN - no Pending frame observed (edge 0 was already active when it arrived)';
++        // With exclusive ownership the intended outcome is no native Pending
++        // frames at all: V2 accepts the edge, pins the avatar at edge.from and
++        // holds it there until cycleStart. Zero frames is the PASS, not an
++        // unknown - the previous wording predates the fix.
++        if(!pendFrames)
++        {
++            if(jumpTiles > 0.02) return `PASS-WITH-SNAP - V2 owned from acceptance, but taking ownership moved the avatar ${jumpTiles.toFixed(3)} tiles (edge.from disagreed with where it stood)`;
 +
-+        if((nativeFrames > 0) && (driftTiles > 0.02)) return `B - native moved ${driftTiles.toFixed(3)} tiles across ${nativeFrames}/${pendFrames} Pending frames, then V2 took over`;
++            return `PASS - V2 owned from acceptance, no native Pending frames, no snap (${jumpTiles.toFixed(4)} tiles)`;
++        }
 +
-+        if(jumpTiles > 0.05) return `A - real jump of ${jumpTiles.toFixed(3)} tiles at the handoff`;
++        if((nativeFrames > 0) && (driftTiles > 0.02)) return `FAIL/B - native still moved ${driftTiles.toFixed(3)} tiles across ${nativeFrames}/${pendFrames} Pending frames before V2 took over`;
 +
-+        return `C - timing/sample correction only (${jumpTiles.toFixed(4)} tiles)`;
++        if(jumpTiles > 0.05) return `FAIL/A - real jump of ${jumpTiles.toFixed(3)} tiles at the handoff`;
++
++        return `C - timing/sample correction only (${jumpTiles.toFixed(4)} tiles) across ${pendFrames} Pending frames`;
 +    }
 +
      public setObject(object: IRoomObjectController): void
      {
          super.setObject(object);
-@@ -126,6 +416,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -111,8 +448,31 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+     {
+         if(!message) return;
+ 
+-        super.processUpdateMessage(message);
++        // EXCLUSIVE OWNERSHIP.
++        //
++        // A UserUpdate carries facing, posture and the walk animation as well
++        // as a tile, and all of those must keep working. But while V2 owns
++        // this unit the POSITION must not be written here:
++        // RoomObjectLogicBase.processUpdateMessage would snap the avatar onto
++        // the packet's tile, making the `mv` a second positional writer racing
++        // the interpolator. That race is what put a native write one frame
++        // ahead of the Pending -> Moving handoff.
++        //
++        // Facing is still applied, so the avatar still turns on the packet.
++        const pixelrpOwned = ((this.object && (this.object.id !== undefined)) && PixelRPMovementV2.instance.owns(this.object.id));
++
++        if(pixelrpOwned)
++        {
++            if(this.object) this.object.setDirection(message.direction);
++        }
++        else
++        {
++            super.processUpdateMessage(message);
++        }
+ 
++        // Native's baseline is kept current either way, so that if V2 ever
++        // releases this unit (walk end, displacement, staleness) native
++        // resumes from the right tile instead of an old one.
+         if(message.location) this._location.assign(message.location);
+ 
+         if(message instanceof ObjectMoveUpdateMessage) return this.processMoveMessage(message);
+@@ -126,6 +486,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
          this._locationDelta.assign(message.targetLocation);
          this._locationDelta.subtract(this._location);
@@ -846,18 +926,18 @@ index ac3907b..ba76fdc 100644
  
      protected getLocationOffset(): IVector3D
 diff --git a/src/room/object/RoomObject.ts b/src/room/object/RoomObject.ts
-index f900839..e5cb63f 100644
+index f900839..839eb0a 100644
 --- a/src/room/object/RoomObject.ts
 +++ b/src/room/object/RoomObject.ts
 @@ -1,6 +1,7 @@
  import { IRoomObjectController, IRoomObjectEventHandler, IRoomObjectModel, IRoomObjectMouseHandler, IRoomObjectUpdateMessage, IRoomObjectVisualization, IVector3D, Vector3d } from '../../api';
  import { Disposable } from '../../core';
  import { RoomObjectModel } from './RoomObjectModel';
-+import { PixelRPMovementV2 } from '../renderer/PixelRPMovementV2';
++import { PixelRPMovementV2, PixelRPV2Writer } from '../renderer/PixelRPMovementV2';
  
  export class RoomObject extends Disposable implements IRoomObjectController
  {
-@@ -75,6 +76,39 @@ export class RoomObject extends Disposable implements IRoomObjectController
+@@ -75,6 +76,67 @@ export class RoomObject extends Disposable implements IRoomObjectController
  
          if((vector.x === this._location.x) && (vector.y === this._location.y) && (vector.z === this._location.z)) return;
  
@@ -874,6 +954,34 @@ index f900839..e5cb63f 100644
 +        // native-interp across the boundary IS the sequence being measured.
 +        const pixelrpStore = PixelRPMovementV2.instance;
 +        const pixelrpNow = performance.now();
++
++        // TEMPORARY assertion: EXCLUSIVE OWNERSHIP.
++        //
++        // While V2 owns a unit - from the moment it accepts a future edge to
++        // the end of that movement session - nothing else may write its
++        // position. Every positional write in the engine funnels through here,
++        // so this catches any that slip through regardless of where it came
++        // from. Zero of these lines is the pass condition; each one names the
++        // writer that broke the invariant and by how far it moved the avatar.
++        if(((pixelrpStore.writer === PixelRPV2Writer.NATIVE_INTERP) || (pixelrpStore.writer === PixelRPV2Writer.USER_UPDATE)) && pixelrpStore.owns(this._id))
++        {
++            pixelrpStore.stats.ownershipViolations++;
++
++            if(pixelrpStore.stats.ownershipViolations <= 40)
++            {
++                const vdx = (vector.x - this._location.x);
++                const vdy = (vector.y - this._location.y);
++
++                console.warn('[MV2/OWNERSHIP-VIOLATION]', {
++                    unit: this._id,
++                    by: pixelrpStore.writer,
++                    from: `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)},${this._location.z.toFixed(3)}`,
++                    to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
++                    movedTiles: Math.sqrt((vdx * vdx) + (vdy * vdy)).toFixed(4),
++                    at: Math.round(pixelrpNow)
++                });
++            }
++        }
 +
 +        if(pixelrpStore.isJoinWriterWatch(this._id, pixelrpNow))
 +        {
@@ -1949,10 +2057,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..9331fdf
+index 0000000..424e22b
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,708 @@
+@@ -0,0 +1,961 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2007,12 +2115,22 @@ index 0000000..9331fdf
 +    gx: number; gy: number; gz: number;
 +    /** 0..1, clamped. */
 +    phase: number;
++    /**
++     * The edge is accepted but has not reached its cycleStart yet, so phase is
++     * pinned at 0 and the unit stands exactly on edge.from. V2 still OWNS the
++     * position while holding - that exclusivity is the point, since it is what
++     * keeps native from writing the frame before the edge starts.
++     */
++    holding: boolean;
 +    /** Diagnostics only - lets the render hook name the edge it drew. */
 +    edgeIndex: number;
 +    session: number;
 +    revision: number;
 +    cycleStart: number;
 +    estServerNow: number;
++    /** The frozen client->server mapping this edge is being drawn under. */
++    activeOffset: number;
++    interval: number;
 +}
 +
 +/**
@@ -2072,6 +2190,25 @@ index 0000000..9331fdf
 +
 +    /** Bound on writer-watch output, so one bad join cannot flood. */
 +    writerLines: number;
++
++    // ---- The frozen clock mapping for the edge currently being drawn -----
++    // A live clockOffset is a moving target: correcting it mid-edge shifts
++    // estimatedServerNow, which advances phase discontinuously and shows up as
++    // a single render step of roughly twice its neighbours. The mapping is
++    // therefore snapshotted when an edge becomes active and held for that
++    // whole edge; only an edge BOUNDARY may adopt a newer estimate.
++    activeSession: number;
++    activeEdgeIndex: number;
++    /** NaN until the first activation. */
++    activeOffset: number;
++
++    // ---- TEMPORARY assertion state: phase must track the ticker ----------
++    lastPhase: number;
++    lastPhaseTicker: number;
++    lastPhaseEdge: number;
++    lastPhaseClamped: boolean;
++    phaseWarnings: number;
++    clockLines: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -2079,6 +2216,37 @@ index 0000000..9331fdf
 +    /** Drop a unit's timed state after this long with no packet -> native. */
 +    private static readonly STALE_MS = 1400;
 +    private static readonly MAX_EDGES = 8;
++
++    /**
++     * How much of a clock correction one edge boundary may absorb.
++     *
++     * Adopting a newer offset at a boundary shifts phase by (delta / interval)
++     * of a tile in a single frame. At 8ms of a 500ms edge that is 1.6% of a
++     * tile - about half a pixel horizontally - which is below what can be
++     * seen. Anything larger is spread across consecutive boundaries at this
++     * rate rather than taken in one visible step. Nothing here touches the
++     * server timeline: cycleStart, the 500ms interval and the room phase grid
++     * are all untouched, and within an edge the rate stays exactly one tile
++     * per interval.
++     */
++    private static readonly CLOCK_STEP_MS = 8;
++
++    /**
++     * Past this the offset is not jitter, it is a different clock (a resume, a
++     * long stall, a server restart). Holding a stale mapping then is worse
++     * than one corrective step, so it is taken whole and logged.
++     */
++    private static readonly CLOCK_RESYNC_MS = 250;
++
++    /**
++     * A future edge may be held this long before staleness reclaims the unit.
++     * A held edge has no reason to receive packets, so the ordinary staleness
++     * rule would drop the unit mid-hold and hand it straight back to native -
++     * exactly the snap this change exists to remove. Server starts align to
++     * the 500ms room grid, so a real hold is under one interval; this is
++     * generous by design.
++     */
++    private static readonly MAX_HOLD_MS = 2000;
 +
 +    private static _instance: PixelRPMovementV2 = null;
 +
@@ -2097,7 +2265,7 @@ index 0000000..9331fdf
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2259,7 +2427,10 @@ index 0000000..9331fdf
 +                pendFirstTicker: 0, pendFirstX: 0, pendFirstY: 0, pendFirstZ: 0,
 +                pendFirstScreenX: NaN, pendFirstScreenY: NaN,
 +                mvAt: 0, mvFrom: '', mvTo: '', mvSeq: 0,
-+                writerLines: 0
++                writerLines: 0,
++                activeSession: -1, activeEdgeIndex: -1, activeOffset: NaN,
++                lastPhase: NaN, lastPhaseTicker: NaN, lastPhaseEdge: -1,
++                lastPhaseClamped: true, phaseWarnings: 0, clockLines: 0
 +            };
 +
 +            this._units.set(virtualId, unit);
@@ -2271,6 +2442,20 @@ index 0000000..9331fdf
 +            unit.session = session;
 +            unit.revision = revision;
 +            unit.edges = [];
++
++            // A new walk starts from a hold at edge.from, so there is no
++            // position to keep continuous and the freshest clock estimate can
++            // be taken whole. Re-anchoring here is also what keeps a long
++            // session's frozen mapping from being inherited by the next one.
++            unit.activeSession = -1;
++            unit.activeEdgeIndex = -1;
++            unit.activeOffset = NaN;
++            unit.lastPhase = NaN;
++            unit.lastPhaseTicker = NaN;
++            unit.lastPhaseEdge = -1;
++            unit.lastPhaseClamped = true;
++            unit.phaseWarnings = 0;
++            unit.clockLines = 0;
 +        }
 +        else if(session < unit.session)
 +        {
@@ -2559,15 +2744,11 @@ index 0000000..9331fdf
 +
 +        if(!unit || !unit.edges.length) return null;
 +
-+        if((tickerNow - unit.lastPacketAtClient) > PixelRPMovementV2.STALE_MS)
-+        {
-+            this.stats.staleDrops++;
-+            this._units.delete(virtualId);
++        // The mapping this frame is drawn under. Frozen at the last edge
++        // activation; NaN only before the very first one.
++        if(!Number.isFinite(unit.activeOffset)) unit.activeOffset = this._clockOffset;
 +
-+            return null;
-+        }
-+
-+        const estServerNow = (tickerNow - this._clockOffset);
++        let estServerNow = (tickerNow - unit.activeOffset);
 +
 +        let edge: PixelRPV2Edge = null;
 +
@@ -2576,9 +2757,112 @@ index 0000000..9331fdf
 +            if(unit.edges[i].cycleStart <= estServerNow) { edge = unit.edges[i]; break; }
 +        }
 +
-+        if(!edge) return null;
++        // EXCLUSIVE OWNERSHIP BEFORE EDGE START.
++        //
++        // No edge has started, but the unit holds one that is going to: the
++        // server delivered edge 0 ahead of its cycleStart so the client would
++        // know about the walk before it began. V2 takes the position NOW and
++        // pins it to edge.from until the edge starts, instead of returning
++        // null and letting native own those frames. Returning null here is
++        // what let native interpolate one frame ahead of the handoff.
++        const holding = !edge;
 +
-+        const raw = ((estServerNow - edge.cycleStart) / edge.interval);
++        if(holding)
++        {
++            edge = unit.edges[0];
++
++            // Only hold for a start that is actually imminent. A far-future
++            // edge must not pin an avatar in place: server starts align to the
++            // 500ms room grid, so a genuine hold is well under one interval,
++            // and anything beyond the allowance is left to native rather than
++            // frozen on a tile.
++            if((edge.cycleStart - estServerNow) > PixelRPMovementV2.MAX_HOLD_MS) return null;
++        }
++
++        if((tickerNow - unit.lastPacketAtClient) > PixelRPMovementV2.STALE_MS)
++        {
++            // A held edge has no reason to be receiving packets, so staleness
++            // must not reclaim a unit that is simply waiting for a start that
++            // is still in front of it.
++            const waiting = (holding && ((edge.cycleStart - estServerNow) <= PixelRPMovementV2.MAX_HOLD_MS));
++
++            if(!waiting)
++            {
++                this.stats.staleDrops++;
++                this._units.delete(virtualId);
++
++                return null;
++            }
++        }
++
++        // EDGE BOUNDARY: the one place a newer clock estimate may be adopted.
++        // Within an edge the mapping never moves, so phase is a pure function
++        // of ticker elapsed time and the rate stays exactly one tile per
++        // interval.
++        if((edge.session !== unit.activeSession) || (edge.edgeIndex !== unit.activeEdgeIndex))
++        {
++            const previousOffset = unit.activeOffset;
++            const drift = (this._clockOffset - unit.activeOffset);
++
++            if(Math.abs(drift) > PixelRPMovementV2.CLOCK_RESYNC_MS)
++            {
++                // Not jitter - a different clock. One corrective step beats
++                // drawing the rest of the walk against a mapping that is
++                // wrong by a quarter second.
++                unit.activeOffset = this._clockOffset;
++                this.stats.clockResyncs++;
++            }
++            else if(drift > PixelRPMovementV2.CLOCK_STEP_MS)
++            {
++                unit.activeOffset += PixelRPMovementV2.CLOCK_STEP_MS;
++            }
++            else if(drift < -PixelRPMovementV2.CLOCK_STEP_MS)
++            {
++                unit.activeOffset -= PixelRPMovementV2.CLOCK_STEP_MS;
++            }
++            else
++            {
++                unit.activeOffset = this._clockOffset;
++            }
++
++            unit.activeSession = edge.session;
++            unit.activeEdgeIndex = edge.edgeIndex;
++
++            const adopted = (unit.activeOffset - previousOffset);
++
++            if(adopted !== 0)
++            {
++                this.stats.clockAdoptions++;
++
++                // TEMPORARY: every mapping change, with the positional step it
++                // implies. At an edge boundary this is expected and bounded;
++                // it must never appear anywhere else.
++                if(this.isDebugged(virtualId) || (Math.abs(adopted) > PixelRPMovementV2.CLOCK_STEP_MS))
++                {
++                    if(unit.clockLines < 40)
++                    {
++                        unit.clockLines++;
++
++                        console.log('[MV2/CLOCK-EDGE]', {
++                            unit: virtualId,
++                            at: 'edge-boundary',
++                            edge: edge.edgeIndex,
++                            adoptedMs: adopted.toFixed(3),
++                            pendingDriftMs: (this._clockOffset - unit.activeOffset).toFixed(3),
++                            stepTiles: (adopted / edge.interval).toFixed(5),
++                            resync: (Math.abs(drift) > PixelRPMovementV2.CLOCK_RESYNC_MS)
++                        });
++                    }
++                }
++
++                // The mapping moved, so this frame's estimate must be taken
++                // under the NEW one - otherwise the boundary frame is drawn
++                // against the old mapping and the step lands one frame late.
++                estServerNow = (tickerNow - unit.activeOffset);
++            }
++        }
++
++        const raw = (holding ? 0 : ((estServerNow - edge.cycleStart) / edge.interval));
 +
 +        if(raw > 1) this.stats.starvations++;
 +
@@ -2588,12 +2872,89 @@ index 0000000..9331fdf
 +            sx: edge.sx, sy: edge.sy, sz: edge.sz,
 +            gx: edge.gx, gy: edge.gy, gz: edge.gz,
 +            phase,
++            holding,
 +            edgeIndex: edge.edgeIndex,
 +            session: edge.session,
 +            revision: edge.revision,
 +            cycleStart: edge.cycleStart,
-+            estServerNow
++            estServerNow,
++            activeOffset: unit.activeOffset,
++            interval: edge.interval
 +        };
++    }
++
++    /**
++     * Does V2 own this unit's position right now?
++     *
++     * Deliberately cheap and side-effect free: no phase maths, no staleness
++     * reclaim. Used by the writers that must stand down while V2 owns the
++     * unit, and by the assertion that catches them if they do not.
++     */
++    public owns(virtualId: number): boolean
++    {
++        if(!Number.isFinite(this._clockOffset)) return false;
++
++        const unit = this._units.get(virtualId);
++
++        if(!unit || !unit.edges.length) return false;
++
++        // Ownership expires with staleness, as getActive's does. Without this
++        // a unit whose packets stopped would keep suppressing UserUpdates for
++        // as long as the store happened to remember it, so a server
++        // correction could not land. The hold allowance is folded in because
++        // a unit waiting for a start still ahead of it has no reason to be
++        // receiving anything.
++        if((performance.now() - unit.lastPacketAtClient) > (PixelRPMovementV2.STALE_MS + PixelRPMovementV2.MAX_HOLD_MS)) return false;
++
++        return true;
++    }
++
++    /**
++     * TEMPORARY assertion. Within one edge, phase must advance exactly as the
++     * ticker does - that is what a frozen mapping buys. A mismatch means
++     * something moved the mapping under an active edge, which is the bug this
++     * change exists to remove. Returns a description, or null when fine.
++     */
++    public checkPhaseRate(active: PixelRPV2Active, virtualId: number, tickerNow: number): string
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit) return null;
++
++        const clamped = (active.holding || (active.phase <= 0) || (active.phase >= 1));
++
++        const sameEdge = ((unit.lastPhaseEdge === active.edgeIndex) && Number.isFinite(unit.lastPhaseTicker));
++        const comparable = (sameEdge && !clamped && !unit.lastPhaseClamped);
++
++        let warning: string = null;
++
++        if(comparable)
++        {
++            const tickerDelta = (tickerNow - unit.lastPhaseTicker);
++            const expected = (tickerDelta / active.interval);
++            const actual = (active.phase - unit.lastPhase);
++            const error = (actual - expected);
++
++            // 0.002 of a 500ms edge is 1ms. Frame pacing cannot produce this:
++            // both sides derive from the same tickerNow, so under a frozen
++            // mapping the error is zero to floating-point precision.
++            if(Math.abs(error) > 0.002)
++            {
++                if(unit.phaseWarnings < 40)
++                {
++                    unit.phaseWarnings++;
++
++                    warning = `edge ${active.edgeIndex}: phaseDelta ${actual.toFixed(5)} vs tickerDelta ${tickerDelta.toFixed(2)}ms (expected ${expected.toFixed(5)}), error ${error.toFixed(5)} = ${(error * active.interval).toFixed(2)}ms`;
++                }
++            }
++        }
++
++        unit.lastPhase = active.phase;
++        unit.lastPhaseTicker = tickerNow;
++        unit.lastPhaseEdge = active.edgeIndex;
++        unit.lastPhaseClamped = clamped;
++
++        return warning;
 +    }
 +}
 +
