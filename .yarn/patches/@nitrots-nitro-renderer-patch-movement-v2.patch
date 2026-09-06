@@ -487,10 +487,10 @@ index 4198932..20c6fde 100644
          return true;
      }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..bcd03fa 100644
+index ac3907b..fa6c2a7 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
-@@ -1,11 +1,14 @@
+@@ -1,11 +1,22 @@
  import { IRoomObjectController, IRoomObjectUpdateMessage, IVector3D, RoomObjectVariable, Vector3d } from '../../../../api';
  import { RoomObjectLogicBase } from '../../../../room';
 +import { PixelRPMovementV2, PixelRPV2Writer } from '../../../../room/renderer/PixelRPMovementV2';
@@ -502,13 +502,31 @@ index ac3907b..bcd03fa 100644
      private static TEMP_VECTOR: Vector3d = new Vector3d();
 +    /** TEMPORARY forensics: separate scratch, so projecting cannot clobber the interp result. */
 +    private static PIXELRP_SCREEN_VECTOR: Vector3d = new Vector3d();
++
++    /**
++     * How far a UserUpdate may land from the rendered position before it is
++     * read as a hard displacement rather than a walking step. A walk step is
++     * one tile; a diagonal is about 1.41. Two and a half tiles is clear of
++     * both and well short of any real teleport.
++     */
++    private static readonly PIXELRP_DISPLACEMENT_TILES = 2.5;
  
      private _liftAmount: number;
  
-@@ -64,6 +67,251 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +75,277 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
++        // ONLY ROOM UNITS MAY CONSULT V2.
++        //
++        // Object ids are namespaced per category, so a floor item's id and a
++        // walking avatar's virtualId can be the same number. V2's store is
++        // keyed by virtualId - user space - so a furniture item querying it
++        // with its own id can be handed a walking avatar's edge and dragged
++        // onto that avatar every frame. Avatars, pets and bots opt in;
++        // furniture does not.
++        const pixelrpUnit = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined));
++
 +        // pixelrp Movement V2 - OPTION B SPIKE.
 +        // ONE interpolator. When the server has given this unit a timed edge,
 +        // the phase comes from the authoritative cycleStart instead of packet
@@ -518,7 +536,7 @@ index ac3907b..bcd03fa 100644
 +        //
 +        // this.time is GetTickerTime() = performance.now(), the SAME domain the
 +        // V2 store samples on packet arrival, so no conversion happens here.
-+        const pixelrpV2 = (this.object && (this.object.id !== undefined))
++        const pixelrpV2 = pixelrpUnit
 +            ? PixelRPMovementV2.instance.getActive(this.object.id, this.time)
 +            : null;
 +
@@ -732,12 +750,28 @@ index ac3907b..bcd03fa 100644
 +            return;
 +        }
 +
-+        // TEMPORARY join forensics. Reaching here means getActive() returned
-+        // null, so V2 has no active edge for this object - which, for a unit
-+        // armed for join forensics, is precisely the Pending state. Whether
-+        // native's own lerp moves the avatar on these frames is the single
-+        // observation that separates hypothesis B from hypothesis C.
 +        const pixelrpStore = PixelRPMovementV2.instance;
++
++        // THE OWNERSHIP RULE, stated structurally rather than guarded.
++        //
++        // While V2 owns this unit it is the ONLY positional writer, and that
++        // has to hold even on a frame getActive() declined to draw - a hold
++        // whose start is further out than the allowance, a mapping not yet
++        // established. Previously those frames fell through to native
++        // interpolation below, which is one positional write by a writer that
++        // does not own the unit. Native is not merely skipped here, it is
++        // unreachable: the method returns.
++        if(pixelrpUnit && pixelrpStore.owns(this.object.id))
++        {
++            this._lastUpdateTime = this.time;
++
++            return;
++        }
++
++        // TEMPORARY join forensics. Reaching here means V2 neither drew this
++        // frame nor owns the unit, so native legitimately has it. For a unit
++        // armed for join forensics these are the Pending frames; any native
++        // write recorded on them now means the rule above was bypassed.
 +        const pixelrpArmed = ((this.object && (this.object.id !== undefined)) && pixelrpStore.isJoinArmed(this.object.id));
 +        const pixelrpNativeDelta = this._locationDelta.length;
 +
@@ -757,7 +791,7 @@ index ac3907b..bcd03fa 100644
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
-@@ -87,7 +335,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -87,7 +369,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
              if(locationOffset) vector.add(locationOffset);
  
@@ -767,7 +801,7 @@ index ac3907b..bcd03fa 100644
  
              if(difference === this._updateInterval)
              {
-@@ -97,9 +347,96 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -97,22 +381,180 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -861,10 +895,35 @@ index ac3907b..bcd03fa 100644
 +        return `C - timing/sample correction only (${jumpTiles.toFixed(4)} tiles) across ${pendFrames} Pending frames`;
 +    }
 +
++    /**
++     * Whether this logic drives a ROOM UNIT - an avatar, pet or bot, the
++     * things the server addresses by virtualId and describes with 4110 edges.
++     * Furniture shares this base class but is a different id space entirely,
++     * so it must never consult or be owned by V2.
++     */
++    protected get pixelrpIsRoomUnit(): boolean
++    {
++        return false;
++    }
++
      public setObject(object: IRoomObjectController): void
      {
          super.setObject(object);
-@@ -111,8 +448,31 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+ 
+-        if(object) this._location.assign(object.getLocation());
++        if(object)
++        {
++            this._location.assign(object.getLocation());
++
++            // Registered by IDENTITY, because ids collide across categories
++            // and a reference does not. This is what lets the writer check in
++            // RoomObject.setLocation tell a room unit from a floor item that
++            // happens to share its number.
++            if(this.pixelrpIsRoomUnit) PixelRPMovementV2.instance.markRoomUnit(object);
++        }
+     }
+ 
+     public processUpdateMessage(message: IRoomObjectUpdateMessage): void
      {
          if(!message) return;
  
@@ -880,8 +939,36 @@ index ac3907b..bcd03fa 100644
 +        // ahead of the Pending -> Moving handoff.
 +        //
 +        // Facing is still applied, so the avatar still turns on the packet.
-+        const pixelrpOwned = ((this.object && (this.object.id !== undefined)) && PixelRPMovementV2.instance.owns(this.object.id));
++        let pixelrpOwned = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined) && PixelRPMovementV2.instance.owns(this.object.id));
 +
++        // HARD DISPLACEMENT: end ownership FIRST, then let the write through.
++        //
++        // A walking update carries the tile the unit is on or next to, so it
++        // is always within about a tile of where the unit is rendered. A
++        // teleport, roller or forced move is not - it lands somewhere else
++        // entirely, and it must be applied rather than swallowed.
++        //
++        // This is a client-side backstop, and it exists because the server
++        // does not currently mark these: RpMovementV2Flags.Displacement is
++        // defined but never set, so a teleport reaches the client as an
++        // ordinary status update indistinguishable in kind from a walk step.
++        // Distance is the one thing that does distinguish them. When the
++        // server starts setting the flag the 4110 path already calls
++        // displace() and this backstop simply stops finding anything.
++        if(pixelrpOwned && message.location)
++        {
++            const current = this.object.getLocation();
++            const dx = (message.location.x - current.x);
++            const dy = (message.location.y - current.y);
++
++            if(((dx * dx) + (dy * dy)) > (MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES * MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES))
++            {
++                PixelRPMovementV2.instance.releaseForDisplacement(this.object.id, `userupdate jumped ${Math.sqrt((dx * dx) + (dy * dy)).toFixed(2)} tiles`);
++
++                pixelrpOwned = false;
++            }
++        }
+ 
 +        if(pixelrpOwned)
 +        {
 +            if(this.object) this.object.setDirection(message.direction);
@@ -890,14 +977,14 @@ index ac3907b..bcd03fa 100644
 +        {
 +            super.processUpdateMessage(message);
 +        }
- 
++
 +        // Native's baseline is kept current either way, so that if V2 ever
 +        // releases this unit (walk end, displacement, staleness) native
 +        // resumes from the right tile instead of an old one.
          if(message.location) this._location.assign(message.location);
  
          if(message instanceof ObjectMoveUpdateMessage) return this.processMoveMessage(message);
-@@ -126,6 +486,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -126,6 +568,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
  
          this._locationDelta.assign(message.targetLocation);
          this._locationDelta.subtract(this._location);
@@ -925,8 +1012,42 @@ index ac3907b..bcd03fa 100644
      }
  
      protected getLocationOffset(): IVector3D
+diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+index a09afb9..31dfe73 100644
+--- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
++++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+@@ -8,6 +8,12 @@ import { MovingObjectLogic } from '../MovingObjectLogic';
+ 
+ export class AvatarLogic extends MovingObjectLogic
+ {
++    /** An avatar is a room unit: the server addresses it by virtualId. */
++    protected get pixelrpIsRoomUnit(): boolean
++    {
++        return true;
++    }
++
+     private static MAX_HAND_ID: number = 999999999;
+     private static MAX_HAND_USE_ID: number = 999;
+     private static EFFECT_TYPE_SPLASH: number = 28;
+diff --git a/src/nitro/room/object/logic/pet/PetLogic.ts b/src/nitro/room/object/logic/pet/PetLogic.ts
+index 1dc732f..f2b8ce9 100644
+--- a/src/nitro/room/object/logic/pet/PetLogic.ts
++++ b/src/nitro/room/object/logic/pet/PetLogic.ts
+@@ -7,6 +7,12 @@ import { MovingObjectLogic } from '../MovingObjectLogic';
+ 
+ export class PetLogic extends MovingObjectLogic
+ {
++    /** A pet is a room unit, addressed by virtualId exactly as an avatar is. */
++    protected get pixelrpIsRoomUnit(): boolean
++    {
++        return true;
++    }
++
+     private _selected: boolean;
+     private _reportedLocation: Vector3d;
+     private _postureIndex: number;
 diff --git a/src/room/object/RoomObject.ts b/src/room/object/RoomObject.ts
-index f900839..839eb0a 100644
+index f900839..100c4d3 100644
 --- a/src/room/object/RoomObject.ts
 +++ b/src/room/object/RoomObject.ts
 @@ -1,6 +1,7 @@
@@ -937,7 +1058,7 @@ index f900839..839eb0a 100644
  
  export class RoomObject extends Disposable implements IRoomObjectController
  {
-@@ -75,6 +76,67 @@ export class RoomObject extends Disposable implements IRoomObjectController
+@@ -75,6 +76,75 @@ export class RoomObject extends Disposable implements IRoomObjectController
  
          if((vector.x === this._location.x) && (vector.y === this._location.y) && (vector.z === this._location.z)) return;
  
@@ -963,7 +1084,11 @@ index f900839..839eb0a 100644
 +        // so this catches any that slip through regardless of where it came
 +        // from. Zero of these lines is the pass condition; each one names the
 +        // writer that broke the invariant and by how far it moved the avatar.
-+        if(((pixelrpStore.writer === PixelRPV2Writer.NATIVE_INTERP) || (pixelrpStore.writer === PixelRPV2Writer.USER_UPDATE)) && pixelrpStore.owns(this._id))
++        // Scoped to ROOM UNITS by identity. Without that scope this fired for
++        // any floor item whose id happened to equal a walking avatar's
++        // virtualId - a false positive that says nothing about the avatar,
++        // because the two live in different id spaces.
++        if((pixelrpStore.writer !== PixelRPV2Writer.V2_INTERP) && pixelrpStore.isRoomUnit(this) && pixelrpStore.owns(this._id))
 +        {
 +            pixelrpStore.stats.ownershipViolations++;
 +
@@ -975,10 +1100,14 @@ index f900839..839eb0a 100644
 +                console.warn('[MV2/OWNERSHIP-VIOLATION]', {
 +                    unit: this._id,
 +                    by: pixelrpStore.writer,
++                    type: this._type,
 +                    from: `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)},${this._location.z.toFixed(3)}`,
 +                    to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
 +                    movedTiles: Math.sqrt((vdx * vdx) + (vdy * vdy)).toFixed(4),
-+                    at: Math.round(pixelrpNow)
++                    at: Math.round(pixelrpNow),
++                    // Kept as a fallback for a caller the tags do not cover:
++                    // if `by` reads "other", this is what names it.
++                    stack: ((new Error().stack || '').split('\n').slice(2, 7).map(l => l.trim()).join(' <- '))
 +                });
 +            }
 +        }
@@ -2057,10 +2186,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..424e22b
+index 0000000..4bc4462
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,961 @@
+@@ -0,0 +1,1010 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2890,6 +3019,55 @@ index 0000000..424e22b
 +     * reclaim. Used by the writers that must stand down while V2 owns the
 +     * unit, and by the assertion that catches them if they do not.
 +     */
++    /**
++     * The room objects V2 is allowed to own, held BY IDENTITY.
++     *
++     * Object ids are namespaced per category - RoomInstance keeps one manager
++     * per category, each with its own id space - so a floor item's id and a
++     * walking avatar's virtualId are routinely the same number. V2's store is
++     * keyed by virtualId, which is user-space, so an id alone cannot say
++     * whether a given object is the unit an edge describes. Object references
++     * can. A WeakSet holds no object alive, so a disposed room object leaves
++     * on its own.
++     */
++    private readonly _roomUnits = new WeakSet<object>();
++
++    public markRoomUnit(object: object): void
++    {
++        if(object) this._roomUnits.add(object);
++    }
++
++    public isRoomUnit(object: object): boolean
++    {
++        return (!!object && this._roomUnits.has(object));
++    }
++
++    /**
++     * End V2's ownership for a hard displacement - teleport, roller, forced
++     * move - so the positional write that follows is legitimate rather than a
++     * second writer racing the interpolator.
++     *
++     * Ownership is given up BEFORE the write, never around it: that ordering
++     * is the rule. Everything queued for the unit goes with it, because a
++     * displaced avatar's remaining edges describe a route it is no longer on.
++     */
++    public releaseForDisplacement(virtualId: number, reason: string): void
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit) return;
++
++        this.stats.displacements++;
++        this._units.delete(virtualId);
++
++        console.log('[MV2/RELEASE]', {
++            unit: virtualId,
++            reason,
++            edgesDropped: unit.edges.length,
++            session: unit.session
++        });
++    }
++
 +    public owns(virtualId: number): boolean
 +    {
 +        if(!Number.isFinite(this._clockOffset)) return false;
