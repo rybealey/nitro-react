@@ -10,6 +10,9 @@ import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor,
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
+import { SetEnvironmentWeather, useEnvironmentPrefs, useWeatherSnapshot } from '../../api/environment/EnvironmentStore';
+import { EnvironmentSkyPreview } from '../environment/EnvironmentSky';
+import { SanFranciscoClock, SkyConditionLabel } from '../environment/SkyModel';
 import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
@@ -32,6 +35,8 @@ const SOCIAL_PAGES: string[] = [ 'Color', 'Icon' ];
 
 // Interface tab sub-pages (left rail).
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
+// Environment pages, same rail under their own eyebrow: the sky behind rooms.
+const ENVIRONMENT_PAGES: string[] = [ 'Weather' ];
 
 export const RpSettingsView: FC<{}> = props =>
 {
@@ -85,6 +90,8 @@ export const RpSettingsView: FC<{}> = props =>
     const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
     const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
+    const { weatherOn: environmentWeatherOn } = useEnvironmentPrefs();
+    const weatherSnapshot = useWeatherSnapshot();
     // Own avatar head + chest color for the preview bubble, built the same way
     // the chat widget builds them (useChatWidget's setFigureImage).
     const [ previewFigure, setPreviewFigure ] = useState<{ imageUrl: string, color: string }>(null);
@@ -792,6 +799,14 @@ export const RpSettingsView: FC<{}> = props =>
                                     { page }
                                 </div>
                             )) }
+                            <div className="prp-subnav-eyebrow">Environment</div>
+                            { ENVIRONMENT_PAGES.map(page => (
+                                <div key={ page }
+                                    className={ `prp-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setInterfacePage(page) }>
+                                    { page }
+                                </div>
+                            )) }
                         </div>
                         <Column gap={ 2 } className="prp-subnav-page">
                             { (interfacePage === 'Windows') &&
@@ -809,6 +824,23 @@ export const RpSettingsView: FC<{}> = props =>
                                         )) }
                                     </div>
                                 </div> }
+                            { (interfacePage === 'Weather') &&
+                                <>
+                                    <div className="rp-settings-section">
+                                        <div className="rp-settings-section-info">
+                                            <Text bold>Weather</Text>
+                                            <Text small className="text-muted">Paint the space behind rooms with the sky over San Francisco right now: time of day and conditions, as the Weather app reports them.</Text>
+                                        </div>
+                                        <div className={ `rp-macros-switch rp-settings-env-switch${ environmentWeatherOn ? ' is-on' : '' }` } title={ environmentWeatherOn ? 'Turn weather skies off' : 'Turn weather skies on' } onClick={ () => SetEnvironmentWeather(!environmentWeatherOn) }><span /></div>
+                                    </div>
+                                    <div className="rp-settings-env-preview">
+                                        <EnvironmentSkyPreview dimmed={ !environmentWeatherOn } />
+                                        <div className="rp-settings-env-preview-text">
+                                            <Text bold>{ environmentWeatherOn ? `Right now: ${ SkyConditionLabel(weatherSnapshot) }${ weatherSnapshot ? ` · ${ weatherSnapshot.temp }°` : '' } · ${ SanFranciscoClock(Date.now()) }` : 'Classic black background' }</Text>
+                                            <Text small className="text-muted">{ environmentWeatherOn ? 'Follows the Weather app: San Francisco time and conditions, refreshed every 10 minutes. Skies stay darker than the room so nothing competes with play.' : 'Turn Weather on to paint the sky behind rooms from the Weather app: San Francisco time and conditions.' }</Text>
+                                        </div>
+                                    </div>
+                                </> }
                             { (interfacePage === 'Components') &&
                                 <div className="rp-settings-section">
                                     <div className="rp-settings-section-info">

@@ -484,6 +484,36 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         max-width: 210px;
     }
 
+    // Environment > Weather: the sky right now beside its reading
+    .rp-settings-env-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 4px;
+    }
+
+    .rp-settings-env-preview-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    // the macros switch recipe, reachable from the UI tab too
+    .rp-settings-env-switch {
+        position: relative;
+        width: 34px;
+        height: 18px;
+        flex-shrink: 0;
+        border-radius: 9px;
+        cursor: pointer;
+        background: #b23b3b;
+        transition: background-color .15s ease;
+
+        span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
+        &.is-on { background: #2e9e4f; span { transform: translateX(16px); } }
+    }
+
     // Color scheme swatches: 4-per-row grid of rounded chips; the selected
     // one gets a white inner keyline + accent ring so it reads on any hue.
     .rp-settings-swatches {

@@ -303,8 +303,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     </div>
                     { canManage &&
                         <div className="phone-music-staffline">
-                            <PhoneIcon icon="shield-halved" size={ 10 } />
-                            STAFF · SKIP MOVES EVERYONE ON
+                            <PhoneIcon icon="shield-halved" size={ 11 } />
+                            <span>Staff: skip moves everyone on</span>
                         </div> }
                     { volumeOpen &&
                         <div className="phone-music-volume">

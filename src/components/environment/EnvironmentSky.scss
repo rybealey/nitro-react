@@ -1,0 +1,132 @@
+// The sky behind rooms (see EnvironmentSky.tsx). Fixed under everything;
+// the room canvas is transparent so it shows through. Every effect is a
+// faint white at a few percent over a dark gradient, and all of it stops
+// under reduced motion.
+
+.env-sky {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: #000;
+    overflow: hidden;
+
+    &.is-off { background: #000; }
+}
+
+.env-sky-layer {
+    position: absolute;
+    inset: 0;
+
+    &.is-current { animation: env-sky-in 2s ease both; }
+    &.is-fading { animation: env-sky-out 2s ease both; }
+}
+
+.env-sky-horizon {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 62%;
+    height: 26%;
+}
+
+// two low bands of fog drifting the opposite way from each other
+.env-sky-fog {
+    position: absolute;
+    left: -20%;
+    right: -20%;
+    filter: blur(8px);
+
+    &.is-a {
+        top: 38%;
+        height: 22%;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .05) 30%, rgba(255, 255, 255, .08) 55%, rgba(255, 255, 255, 0) 100%);
+        animation: env-fog-a 90s ease-in-out infinite alternate;
+    }
+
+    &.is-b {
+        top: 58%;
+        height: 18%;
+        background: linear-gradient(90deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, .05) 80%, rgba(255, 255, 255, 0) 100%);
+        animation: env-fog-b 120s ease-in-out infinite alternate;
+    }
+}
+
+.env-sky-rain {
+    position: absolute;
+    inset: -10% 0 0 0;
+    background: repeating-linear-gradient(112deg, rgba(255, 255, 255, 0) 0 22px, rgba(255, 255, 255, .045) 22px 23px);
+    animation: env-rain 1.6s linear infinite;
+}
+
+.env-sky-stars {
+    position: absolute;
+    inset: 0 0 35% 0;
+    background-image:
+        radial-gradient(circle, rgba(255, 255, 255, .7) 0 1px, transparent 1.6px),
+        radial-gradient(circle, rgba(255, 255, 255, .45) 0 .8px, transparent 1.4px),
+        radial-gradient(circle, rgba(255, 255, 255, .55) 0 1.2px, transparent 1.9px);
+    background-size: 220px 160px, 130px 190px, 300px 240px;
+    background-position: 30px 60px, 10px 40px, 80px 100px;
+    animation: env-twinkle 6s ease-in-out infinite alternate;
+}
+
+.env-sky-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(70% 70% at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .35) 100%);
+}
+
+// Settings > UI > Environment thumbnail
+.env-sky-preview {
+    position: relative;
+    width: 150px;
+    height: 84px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex: none;
+    background: #000;
+
+    .env-sky-layer { animation: none; }
+    &.is-dimmed { filter: grayscale(1) brightness(.35); }
+}
+
+.env-sky-preview-room {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 108px;
+    height: 78px;
+    transform: translate(-50%, -44%);
+}
+
+.env-sky-preview-wall {
+    position: absolute;
+    top: 0;
+    width: 54px;
+    height: 52px;
+
+    &.is-left { left: 0; background: #d8d3c6; clip-path: polygon(0 25px, 100% 0, 100% 27px, 0 52px); }
+    &.is-right { left: 54px; background: #b9b3a4; clip-path: polygon(0 0, 100% 25px, 100% 52px, 0 27px); }
+}
+
+.env-sky-preview-floor {
+    position: absolute;
+    left: 0;
+    top: 25px;
+    width: 108px;
+    height: 54px;
+    background: #a9a77b;
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+@keyframes env-sky-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes env-sky-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes env-fog-a { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+@keyframes env-fog-b { from { transform: translateX(3%); } to { transform: translateX(-3%); } }
+@keyframes env-rain { from { transform: translateY(-46px); } to { transform: translateY(0); } }
+@keyframes env-twinkle { from { opacity: .6; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .env-sky-layer, .env-sky-fog, .env-sky-rain, .env-sky-stars { animation: none; }
+}
