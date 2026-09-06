@@ -338,7 +338,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
         </div>
     );
 
-    const byline = (post: NewsPost, size: number, long: boolean = false) => (
+    const renderByline = (post: NewsPost, size: number, long: boolean = false) => (
         <div className="phone-news-byline">
             <Face userId={ post.authorId } name={ post.authorName } figure={ post.authorFigure } size={ size } />
             <span className="phone-news-byline-name">{ post.authorName }</span>
@@ -362,7 +362,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
                 </div> }
             <div className="phone-news-top-body">
                 <div className="phone-news-dek">{ firstParagraph(post.body) }</div>
-                { byline(post, 18) }
+                { renderByline(post, 18) }
             </div>
         </div>
     );
@@ -435,7 +435,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
                 <div className="phone-news-article">
                     <div className="phone-news-article-title">{ open.title }</div>
                     <div className="phone-news-article-meta">
-                        { byline(open, 22, true) }
+                        { renderByline(open, 22, true) }
                         <span className="phone-news-staff"><PhoneIcon icon="shield-halved" size={ 10 } />STAFF</span>
                     </div>
                     <div className="phone-news-rule" />
