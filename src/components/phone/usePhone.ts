@@ -137,6 +137,9 @@ interface PhonePrefs
     wallpaper: string;
     access: PhoneAccess;
     notify: PhoneNotify;
+    // Every app the player has ever installed. Removing an app leaves it
+    // here, which is what makes putting it back free once apps are priced.
+    owned: string[];
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
@@ -214,7 +217,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 position: (((parsed.position === 'left') || (parsed.position === 'right') || (parsed.position === 'center')) ? parsed.position : 'right'),
                 wallpaper: CleanWallpaper(parsed.wallpaper),
                 access: readAccess(parsed.access),
-                notify: readNotify(parsed.notify)
+                notify: readNotify(parsed.notify),
+                owned: readStrings(parsed.owned)
             };
         }
     }
@@ -222,7 +226,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS }, notify: { ...DEFAULT_NOTIFY } };
+    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS }, notify: { ...DEFAULT_NOTIFY }, owned: [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ] };
 }
 
 // Synchronous read of just the saved open-position, straight from storage -
@@ -264,6 +268,7 @@ const usePhonePrefsState = () =>
     const [ wallpaper, setWallpaperState ] = useState<string>(DEFAULT_WALLPAPER);
     const [ access, setAccessState ] = useState<PhoneAccess>({ ...DEFAULT_ACCESS });
     const [ notify, setNotifyState ] = useState<PhoneNotify>({ ...DEFAULT_NOTIFY });
+    const [ owned, setOwnedState ] = useState<string[]>([ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ]);
 
     const ensureLoaded = () =>
     {
@@ -283,6 +288,8 @@ const usePhonePrefsState = () =>
         setWallpaperState(prefs.wallpaper);
         setAccessState(prefs.access);
         setNotifyState(prefs.notify);
+        // A phone from before the Store owns whatever is already on it.
+        setOwnedState(prefs.owned.length ? prefs.owned : [ ...prefs.grid.filter(key => !!key), ...prefs.dock ]);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
@@ -303,7 +310,8 @@ const usePhonePrefsState = () =>
                 position: (prefs.position ?? position),
                 wallpaper: (prefs.wallpaper ?? wallpaper),
                 access: (prefs.access ?? access),
-                notify: (prefs.notify ?? notify)
+                notify: (prefs.notify ?? notify),
+                owned: (prefs.owned ?? owned)
             }));
         }
 
@@ -411,7 +419,46 @@ const usePhonePrefsState = () =>
         save({ grid, dock });
     }
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, notify, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, setNotify, ensureLoaded };
+    // ---- App Store -----------------------------------------------------
+    // Installed means "on the home screen": the layout IS the install state,
+    // so an install is a tile landing in the first free slot and a removal is
+    // that slot emptying. Ownership is remembered separately so a removed app
+    // comes back free (see PhoneAppStore).
+
+    const isInstalled = (key: string) => ((gridOrder.indexOf(key) >= 0) || (dockOrder.indexOf(key) >= 0));
+
+    const installApp = (key: string) =>
+    {
+        if(isInstalled(key)) return;
+
+        const grid = [ ...gridOrder ];
+        const slot = grid.indexOf('');
+
+        // A full home screen is the one way an install can fail.
+        if(slot < 0) return;
+
+        grid[slot] = key;
+
+        const nextOwned = ((owned.indexOf(key) >= 0) ? owned : [ ...owned, key ]);
+
+        setGridOrder(grid);
+        setOwnedState(nextOwned);
+        save({ grid, owned: nextOwned });
+    }
+
+    const removeApp = (key: string) =>
+    {
+        const grid = gridOrder.map(entry => ((entry === key) ? '' : entry));
+        const dock = dockOrder.filter(entry => (entry !== key));
+
+        setGridOrder(grid);
+        setDockOrder(dock);
+        save({ grid, dock });
+    }
+
+    const hasFreeSlot = (gridOrder.indexOf('') >= 0);
+
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, notify, owned, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, setNotify, ensureLoaded, isInstalled, installApp, removeApp, hasFreeSlot };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);

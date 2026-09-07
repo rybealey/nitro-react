@@ -68,7 +68,7 @@ export const APP_DEFS: Record<string, PhoneAppDef> = {
     'Phone': { icon: 'phone', plate: 'linear-gradient(160deg, #6ee86f, #34c759 55%, #1aa63f)' },
     'Messages': { icon: 'comment-dots', active: true, plate: 'linear-gradient(160deg, #5bf07a, #23c33f 55%, #12a636)' },
     'Camera': { icon: 'camera', active: true, plate: 'linear-gradient(160deg, #cfd3da, #8b9099 55%, #565b63)', sec: '#3f4650' },
-    'App Store': { icon: 'store', plate: 'linear-gradient(160deg, #46a6ff, #1a86f5 55%, #0a6ee0)' },
+    'App Store': { icon: 'store', active: true, plate: 'linear-gradient(160deg, #46a6ff, #1a86f5 55%, #0a6ee0)' },
     // grid
     'Contacts': { icon: 'address-book', active: true, plate: 'linear-gradient(160deg, #b08862, #8a6544 55%, #5f4128)' },
     'Photos': { icon: 'images', active: true, plate: 'linear-gradient(135deg, #d4608f, #d69a55 33%, #58b077 66%, #5490cf)', sec: '#c9992b' },

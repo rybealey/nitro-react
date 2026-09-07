@@ -4209,6 +4209,155 @@ $phone-scale: 0.8;
         color: #ffffff;
     }
 
+    // ---- App Store ------------------------------------------------------
+    // Rows and cards are the phone's grouped-list vocabulary; the only new
+    // pieces are the app plate at store sizes and the GET pill.
+    .phone-store-plate {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        color: #ffffff;
+        border: 1px solid rgba(26, 10, 20, .14);
+        box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .45), inset 0 -1.5px 0 rgba(0, 0, 0, .22), 0 1px 3px rgba(0, 0, 0, .14);
+
+        // The tile's glyph rule is scoped to .phone-app-tile, so the plate
+        // sets its own size and the glyph just fills it.
+        .phone-app-fa {
+            font-size: 1em;
+            line-height: 1;
+            color: #ffffff;
+            --fa-primary-color: #ffffff;
+            --fa-secondary-color: #ffffff;
+            --fa-primary-opacity: 1;
+            --fa-secondary-opacity: 0.45;
+            filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+        }
+
+        svg.phone-app-fa { width: 1em; height: 1em; }
+    }
+
+    // The pill that gets an app. Reads as a price when one is set, so it is
+    // sized from its text rather than fixed.
+    .phone-store-get {
+        height: 27px;
+        padding: 0 15px;
+        border-radius: 14px;
+        background: var(--ph-inset);
+        color: #1a86f5;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(12.5px * var(--ph-text-scale, 1));
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+
+        &.is-buy { background: #1a86f5; color: #ffffff; }
+        &.is-inert { opacity: .45; }
+    }
+
+    .phone-store-hero {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        padding: 6px 18px 0;
+
+        .phone-store-hero-body { flex: 1; min-width: 0; }
+
+        .phone-store-hero-name {
+            font-family: 'Ubuntu', sans-serif;
+            font-weight: 700;
+            font-size: calc(22px * var(--ph-text-scale, 1));
+            letter-spacing: -.4px;
+            line-height: 1.15;
+            color: var(--ph-text);
+        }
+
+        .phone-store-hero-sub {
+            font-size: calc(12.5px * var(--ph-text-scale, 1));
+            color: var(--ph-soft);
+            margin-top: 1px;
+        }
+
+        .phone-store-get { margin-top: 9px; align-self: flex-start; }
+
+        // Open + Remove side by side; the row owns the gap, not the pills.
+        .phone-store-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 9px;
+
+            .phone-store-get { margin-top: 0; }
+        }
+    }
+
+    .phone-store-meta {
+        display: flex;
+        margin: 12px 18px 0;
+        border-top: 1px solid var(--ph-hairline);
+        border-bottom: 1px solid var(--ph-hairline);
+
+        div {
+            flex: 1;
+            padding: 8px 0;
+            text-align: center;
+
+            &.is-mid { border-left: 1px solid var(--ph-hairline); border-right: 1px solid var(--ph-hairline); }
+        }
+
+        span {
+            display: block;
+            font-weight: 700;
+            font-size: calc(8.5px * var(--ph-text-scale, 1));
+            letter-spacing: 1.1px;
+            text-transform: uppercase;
+            color: var(--ph-faint);
+            margin-bottom: 2px;
+        }
+
+        b {
+            display: block;
+            font-weight: 700;
+            font-size: calc(11px * var(--ph-text-scale, 1));
+            color: var(--ph-text);
+        }
+    }
+
+    .phone-store-about {
+        padding: 12px 18px 0;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        line-height: 1.5;
+        color: var(--ph-text);
+    }
+
+    // Corporation software, opened by someone who does not work there.
+    .phone-store-locked {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 40px 34px 0;
+        gap: 14px;
+
+        .phone-store-locked-title {
+            font-family: 'Ubuntu', sans-serif;
+            font-weight: 700;
+            font-size: calc(17px * var(--ph-text-scale, 1));
+            color: var(--ph-text);
+        }
+
+        .phone-store-locked-sub {
+            font-size: calc(13px * var(--ph-text-scale, 1));
+            line-height: 1.5;
+            color: var(--ph-soft);
+        }
+
+        .phone-store-plate { filter: saturate(.25) brightness(.9); }
+    }
+
     // ---- Wallpaper sub-screen -------------------------------------------
     // Six built-in wallpapers as phone-shaped tiles (the glass dock ghosted at
     // the foot so they read as the home screen), then the player's photos.

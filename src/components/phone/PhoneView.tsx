@@ -4,6 +4,7 @@ import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, GetLocalStorage, PlaySound, RemoveLinkEventTracker, SetLocalStorage, SoundNames, WindowSaveOptions } from '../../api';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
+import { PhoneAppStoreView } from './PhoneAppStoreView';
 import { PhoneAccountView } from './PhoneAccountView';
 import { PhoneAccessibilityView } from './PhoneAccessibilityView';
 import { PhoneAppearanceView } from './PhoneAppearanceView';
@@ -36,7 +37,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet' | 'appstore';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -50,13 +51,14 @@ const APP_SCREENS: Record<string, PhoneScreen> = {
     'Notes': 'notes',
     'Weather': 'weather',
     'News': 'news',
-    'Wallet': 'wallet'
+    'Wallet': 'wallet',
+    'App Store': 'appstore'
 };
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather') || (to === 'news') || (to === 'wallet'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather') || (to === 'news') || (to === 'wallet') || (to === 'appstore'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'appearance') return 'slide-right';
@@ -502,6 +504,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneNewsView onBack={ () => go('home') } /> }
                             { (screen === 'wallet') &&
                                 <PhoneWalletView onBack={ () => go('home') } /> }
+                            { (screen === 'appstore') &&
+                                <PhoneAppStoreView onBack={ () => go('home') } openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app])) } /> }
                             { (screen === 'general') &&
                                 <PhoneGeneralView onBack={ () => go('settings') } /> }
                             { (screen === 'wallpaper') &&
