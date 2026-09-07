@@ -21,6 +21,8 @@ export interface CalendarEvent
     colour: string;
     hostName: string;
     postedBy: string;
+    // all-day: shown in the day's all-day row with birthdays, not on the timeline
+    allDay: boolean;
 }
 
 export interface CalendarBirthday
@@ -61,7 +63,7 @@ export class RpCalendarParser implements IMessageParser
 
         for(let i = 0; i < eventCount; i++)
         {
-            this._events.push({ id: wrapper.readInt(), title: wrapper.readString(), description: wrapper.readString(), startsAt: wrapper.readInt(), endsAt: wrapper.readInt(), roomId: wrapper.readInt(), roomName: wrapper.readString(), colour: wrapper.readString(), hostName: wrapper.readString(), postedBy: wrapper.readString() });
+            this._events.push({ id: wrapper.readInt(), title: wrapper.readString(), description: wrapper.readString(), startsAt: wrapper.readInt(), endsAt: wrapper.readInt(), roomId: wrapper.readInt(), roomName: wrapper.readString(), colour: wrapper.readString(), hostName: wrapper.readString(), postedBy: wrapper.readString(), allDay: (wrapper.readInt() === 1) });
         }
 
         const birthdayCount = wrapper.readInt();
@@ -122,12 +124,12 @@ export class RpGetCalendarComposer extends RpCalendarComposer
     }
 }
 
-// id 0 posts a new event; times are unix seconds
+// id 0 posts a new event; times are unix seconds (an all-day event sends the day's bounds)
 export class RpSaveCalendarEventComposer extends RpCalendarComposer
 {
-    constructor(id: number, title: string, description: string, startsAt: number, endsAt: number, roomId: number, colour: string, hostName: string)
+    constructor(id: number, title: string, description: string, startsAt: number, endsAt: number, roomId: number, colour: string, hostName: string, allDay: boolean)
     {
-        super(id, title, description, startsAt, endsAt, roomId, colour, hostName);
+        super(id, title, description, startsAt, endsAt, roomId, colour, hostName, (allDay ? 1 : 0));
     }
 }
 

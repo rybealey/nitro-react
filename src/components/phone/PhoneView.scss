@@ -3738,6 +3738,13 @@ $phone-scale: 0.8;
 
     .phone-calendar-allday-list { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
+    // an all-day event in that row: the birthday chip's shape in the event's colour
+    .phone-calendar-allday-event { justify-content: space-between; border-left-width: 3px; border-left-style: solid; }
+    .phone-calendar-allday-room { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; color: var(--ph-soft); .phone-pi { color: var(--ph-soft); } }
+
+    // the editor's all-day switch sits at the field's value edge
+    .phone-calendar-field .phone-calendar-switch { margin-left: auto; }
+
     .phone-calendar-birthday {
         display: flex;
         align-items: center;
@@ -3924,6 +3931,7 @@ $phone-scale: 0.8;
     // in with a short stagger (delay set inline per card) and press on tap;
     // sheets slide up under a fading scrim. All off under reduced motion.
     .phone-calendar-week,
+    .phone-calendar-allday,
     .phone-calendar-day {
         animation: phone-cal-slide-right .26s cubic-bezier(.2, .8, .2, 1) both;
 
@@ -3943,7 +3951,7 @@ $phone-scale: 0.8;
     .phone-calendar-sheet { animation: phone-cal-sheet-up .3s cubic-bezier(.2, .8, .2, 1) both; }
 
     @media (prefers-reduced-motion: reduce) {
-        .phone-calendar-week, .phone-calendar-day, .phone-calendar-event, .phone-calendar-birthday, .phone-calendar-scrim, .phone-calendar-sheet { animation: none; }
+        .phone-calendar-week, .phone-calendar-allday, .phone-calendar-day, .phone-calendar-event, .phone-calendar-birthday, .phone-calendar-scrim, .phone-calendar-sheet { animation: none; }
         .phone-calendar-event, .phone-calendar-now { transition: none; }
     }
 
