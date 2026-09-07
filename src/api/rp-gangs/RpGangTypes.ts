@@ -1,3 +1,4 @@
+import { HotelDate } from '../prefs/HotelTime';
 // Shapes of the gang detail packets (RpGangDetailEvent / RpGangInvitesEvent)
 // and the permission bits the emulator's GangManager hands out. The leader
 // holds every bit; Administrator implies invite + kick and unlocks the role
@@ -91,8 +92,8 @@ export const FormatGangDate = (unixSeconds: number): string =>
 {
     if(!unixSeconds) return '';
 
-    const date = new Date(unixSeconds * 1000);
-    const sameYear = (date.getFullYear() === new Date().getFullYear());
+    const date = HotelDate(unixSeconds * 1000);
+    const sameYear = (date.getFullYear() === HotelDate().getFullYear());
 
     return date.toLocaleDateString('en-GB', sameYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
 }

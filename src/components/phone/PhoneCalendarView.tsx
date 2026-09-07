@@ -2,6 +2,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { CreateRoomSession, GetSessionDataManager, SendMessageComposer } from '../../api';
 import { CalendarBirthday, CalendarEvent, RpCalendarEvent, RpDeleteCalendarEventComposer, RpGetCalendarComposer, RpSaveCalendarEventComposer } from '../../api/rp-phone/RpCalendarMessages';
 import { useMessageEvent, useRoom } from '../../hooks';
+import { HotelDate, HotelInstant } from '../../api/prefs/HotelTime';
 import { FormatClock, FormatHour, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -28,18 +29,18 @@ const startOfDay = (date: Date): Date => new Date(date.getFullYear(), date.getMo
 const addDays = (date: Date, days: number): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 const sameDay = (a: Date, b: Date): boolean => ((a.getFullYear() === b.getFullYear()) && (a.getMonth() === b.getMonth()) && (a.getDate() === b.getDate()));
 // both follow Settings > General (24-hour by default)
-const formatTime = (unix: number): string => FormatClock(new Date(unix * 1000));
+const formatTime = (unix: number): string => FormatClock(unix * 1000);
 const hourLabel = (hour: number): string => FormatHour(hour);
 // "16:30" -> unix seconds on the given day
 const timeOn = (day: Date, hhmm: string): number =>
 {
     const [ hours, minutes ] = hhmm.split(':').map(part => parseInt(part));
 
-    return Math.floor(new Date(day.getFullYear(), day.getMonth(), day.getDate(), (hours || 0), (minutes || 0)).getTime() / 1000);
+    return Math.floor(HotelInstant(new Date(day.getFullYear(), day.getMonth(), day.getDate(), (hours || 0), (minutes || 0))) / 1000);
 }
 const hhmm = (unix: number): string =>
 {
-    const date = new Date(unix * 1000);
+    const date = HotelDate(unix * 1000);
 
     return `${ date.getHours().toString().padStart(2, '0') }:${ date.getMinutes().toString().padStart(2, '0') }`;
 }
@@ -66,7 +67,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const [ events, setEvents ] = useState<CalendarEvent[]>([]);
     const [ birthdays, setBirthdays ] = useState<CalendarBirthday[]>([]);
     const [ loaded, setLoaded ] = useState(false);
-    const [ selected, setSelected ] = useState<Date>(() => startOfDay(new Date()));
+    const [ selected, setSelected ] = useState<Date>(() => startOfDay(HotelDate()));
     const [ openEventId, setOpenEventId ] = useState(0);
     const [ draft, setDraft ] = useState<Draft>(null);
     const [ confirmDelete, setConfirmDelete ] = useState(false);
@@ -110,7 +111,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
         return () => clearInterval(interval);
     }, []);
 
-    const today = startOfDay(new Date(now));
+    const today = startOfDay(HotelDate(now));
     const isToday = sameDay(selected, today);
 
     // opening on today (or coming back to it) lands the view on the now line,
@@ -133,21 +134,21 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
         return Array.from({ length: 7 }, (_, index) => addDays(sunday, index));
     }, [ selected ]);
 
-    const eventsOn = (day: Date) => events.filter(item => sameDay(new Date(item.startsAt * 1000), day)).sort((a, b) => (a.startsAt - b.startsAt));
+    const eventsOn = (day: Date) => events.filter(item => sameDay(HotelDate(item.startsAt * 1000), day)).sort((a, b) => (a.startsAt - b.startsAt));
     const birthdaysOn = (day: Date) => birthdays.filter(item => ((item.month === (day.getMonth() + 1)) && (item.day === day.getDate())));
 
     const dayEvents = eventsOn(selected);
     const dayBirthdays = birthdaysOn(selected);
     const firstHour = FIRST_HOUR;
     const hours = Array.from({ length: (24 - firstHour) + 1 }, (_, index) => (firstHour + index));
-    const hourOffset = (unix: number) => ((new Date(unix * 1000).getHours() + (new Date(unix * 1000).getMinutes() / 60)) - firstHour);
+    const hourOffset = (unix: number) => ((HotelDate(unix * 1000).getHours() + (HotelDate(unix * 1000).getMinutes() / 60)) - firstHour);
 
     const openEvent = events.find(item => (item.id === openEventId)) ?? null;
 
     const newDraft = () => setDraft({ id: 0, title: '', description: '', starts: '19:00', ends: '20:30', roomId: (roomSession?.roomId ?? 0), colour: COLOURS[0], hostName: ownName });
     const editDraft = (item: CalendarEvent) =>
     {
-        setSelected(startOfDay(new Date(item.startsAt * 1000)));
+        setSelected(startOfDay(HotelDate(item.startsAt * 1000)));
         setDraft({ id: item.id, title: item.title, description: item.description, starts: hhmm(item.startsAt), ends: hhmm(item.endsAt), roomId: item.roomId, colour: item.colour, hostName: item.hostName });
         setOpenEventId(0);
     }
@@ -267,8 +268,8 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         );
                     }) }
                     { isToday &&
-                        <div ref={ nowRef } className="phone-calendar-now" style={ { top: `${ ((new Date(now).getHours() + ((new Date(now).getMinutes() + (new Date(now).getSeconds() / 60)) / 60)) - firstHour) * HOUR_PX }px` } }>
-                            <span className="phone-calendar-now-label">{ FormatClock(new Date(now)) }</span>
+                        <div ref={ nowRef } className="phone-calendar-now" style={ { top: `${ ((HotelDate(now).getHours() + ((HotelDate(now).getMinutes() + (HotelDate(now).getSeconds() / 60)) / 60)) - firstHour) * HOUR_PX }px` } }>
+                            <span className="phone-calendar-now-label">{ FormatClock(now) }</span>
                         </div> }
                 </div>
                 </div>
@@ -285,7 +286,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             <div className="phone-calendar-sheet-bar" style={ { background: openEvent.colour } } />
                             <div className="phone-calendar-sheet-headtext">
                                 <div className="phone-calendar-sheet-title">{ openEvent.title }</div>
-                                <div className="phone-calendar-sheet-when">{ `${ WEEKDAYS[new Date(openEvent.startsAt * 1000).getDay()] } ${ new Date(openEvent.startsAt * 1000).getDate() } ${ MONTHS[new Date(openEvent.startsAt * 1000).getMonth()] } · ${ formatTime(openEvent.startsAt) } – ${ formatTime(openEvent.endsAt) }` }</div>
+                                <div className="phone-calendar-sheet-when">{ `${ WEEKDAYS[HotelDate(openEvent.startsAt * 1000).getDay()] } ${ HotelDate(openEvent.startsAt * 1000).getDate() } ${ MONTHS[HotelDate(openEvent.startsAt * 1000).getMonth()] } · ${ formatTime(openEvent.startsAt) } – ${ formatTime(openEvent.endsAt) }` }</div>
                             </div>
                             { canEdit &&
                                 <div className="phone-tap phone-calendar-chip" onClick={ event => editDraft(openEvent) }>Edit</div> }

@@ -2,6 +2,7 @@ import { FC, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, useEff
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { NoteDetail, NoteFolder, NotePerson, NoteSummary, RpDeleteNoteComposer, RpGetNotesComposer, RpMoveNoteComposer, RpNoteEvent, RpNoteOpenComposer, RpNoteShareComposer, RpNotesEvent, RpPinNoteComposer, RpSaveNoteComposer, RpSaveNoteFolderComposer } from '../../api/rp-phone/RpNotesMessages';
 import { useMessageEvent } from '../../hooks';
+import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatarColor, PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -90,8 +91,8 @@ const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.get
 
 const shortDate = (unix: number): string =>
 {
-    const date = new Date(unix * 1000);
-    const today = startOfDay(new Date());
+    const date = HotelDate(unix * 1000);
+    const today = startOfDay(HotelDate());
     const day = startOfDay(date);
 
     if(day === today) return 'Today';

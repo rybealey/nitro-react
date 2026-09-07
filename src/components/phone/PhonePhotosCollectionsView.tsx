@@ -3,6 +3,7 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { useFriends } from '../../hooks';
 import { PhoneAvatar, PhoneAvatarColor } from './PhoneAvatar';
+import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneIcon } from './PhoneIcon';
 import { usePhoneAlbums, usePhonePhotos } from './usePhone';
 
@@ -29,7 +30,7 @@ interface ViewerItem
 
 const FormatViewerDate = (timestamp: number): string =>
 {
-    const date = new Date(timestamp * 1000);
+    const date = HotelDate(timestamp * 1000);
 
     return `${ date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) } · ${ date.getHours().toString().padStart(2, '0') }:${ date.getMinutes().toString().padStart(2, '0') }`;
 }
