@@ -85,9 +85,6 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                     ) }
                     { group(<>
                         { item('plane-up', '#f0954a', 'Airplane Mode', { chevron: false, inert: false, switchOn: airplane, onTap: () => setAirplane(!airplane) }) }
-                        { item('wifi', '#3f8fbf', 'Wi-Fi', { value: 'Pixel' }) }
-                        { item('cellular-signal-3', '#3fbf5a', 'Cellular', { value: '5G LTE' }) }
-                        { item('battery', '#3fbf5a', 'Battery') }
                     </>) }
                     { group(<>
                         { item('sliders', '#8a8a90', 'General', { inert: false, onTap: () => (openGeneral && openGeneral()) }) }
