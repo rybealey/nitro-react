@@ -1,6 +1,7 @@
 import { FC, PointerEvent, useMemo, useRef, useState, WheelEvent } from 'react';
 import { GetGroupChatData, MessengerFriend, MessengerThread, MessengerThreadChat } from '../../api';
 import { useFriends, useMessenger } from '../../hooks';
+import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { ParsePhotoMessage, usePhonePrefs } from './usePhone';
@@ -12,11 +13,12 @@ import { ParsePhotoMessage, usePhonePrefs } from './usePhone';
 const SWIPE_WIDTH: number = 192; // 3 actions x 64px
 const LONG_PRESS_MS: number = 420;
 
-export const FormatThreadTime = (date: Date): string =>
+export const FormatThreadTime = (instant: Date): string =>
 {
-    if(!date) return '';
+    if(!instant) return '';
 
-    const now = new Date();
+    const date = HotelDate(instant);
+    const now = HotelDate();
     const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
     const dayDiff = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
 

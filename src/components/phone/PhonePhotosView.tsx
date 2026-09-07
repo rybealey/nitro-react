@@ -1,4 +1,5 @@
 import { FC, PointerEvent, WheelEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosCollectionsView } from './PhonePhotosCollectionsView';
 import { usePhonePhotos } from './usePhone';
@@ -15,7 +16,7 @@ const MAX_ZOOM: number = 3;
 
 const FormatPhotoDate = (timestamp: number): string =>
 {
-    const date = new Date(timestamp * 1000);
+    const date = HotelDate(timestamp * 1000);
 
     return `${ date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) } · ${ date.getHours().toString().padStart(2, '0') }:${ date.getMinutes().toString().padStart(2, '0') }`;
 }
@@ -71,7 +72,7 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
     // Everything searchable about a photo, from its stored metadata.
     const photoHaystack = (photo: (typeof photos)[number]): string =>
     {
-        const date = new Date(photo.timestamp * 1000);
+        const date = HotelDate(photo.timestamp * 1000);
 
         return [
             (photo.roomName || ''),

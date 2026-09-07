@@ -1,6 +1,7 @@
 import { FC, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
 import { MESSENGER_RECEIPT_NOT_DELIVERED, MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
+import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { MakePhotoMessage, ParsePhotoMessage, usePhonePhotos, usePhonePrefs } from './usePhone';
@@ -123,7 +124,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                 }
                 else
                 {
-                    receiptText = ((receipt.type === MESSENGER_RECEIPT_READ) ? `Read at ${ receipt.date.getHours().toString().padStart(2, '0') }:${ receipt.date.getMinutes().toString().padStart(2, '0') }` : 'Delivered');
+                    receiptText = ((receipt.type === MESSENGER_RECEIPT_READ) ? `Read at ${ HotelDate(receipt.date).getHours().toString().padStart(2, '0') }:${ HotelDate(receipt.date).getMinutes().toString().padStart(2, '0') }` : 'Delivered');
                 }
             }
         }
@@ -277,7 +278,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
             </div>
             <div ref={ messagesBox } className="phone-app-scroll phone-thread-messages">
                 { firstDate &&
-                    <div className="phone-thread-daystamp">{ `${ firstDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase() } ${ firstDate.getHours().toString().padStart(2, '0') }:${ firstDate.getMinutes().toString().padStart(2, '0') }` }</div> }
+                    <div className="phone-thread-daystamp">{ `${ HotelDate(firstDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase() } ${ HotelDate(firstDate).getHours().toString().padStart(2, '0') }:${ HotelDate(firstDate).getMinutes().toString().padStart(2, '0') }` }</div> }
                 { thread.groups.map((group, groupIndex) =>
                 {
                     const mine = (group.userId === ownUserId);

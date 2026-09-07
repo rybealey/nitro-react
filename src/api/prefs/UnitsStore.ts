@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { HotelDate } from './HotelTime';
 
 // Phone > Settings > General: how the phone writes times and temperatures.
 // Per device like the other phone preferences. Defaults: 24-hour, Celsius.
@@ -73,9 +74,11 @@ export const useUnitsPrefs = (): { clock24: boolean, celsius: boolean } =>
 
 const pad = (value: number): string => value.toString().padStart(2, '0');
 
-// "22:03" or "10:03 PM"; suffix false gives the status-bar form "10:03"
-export const FormatClock = (date: Date, suffix: boolean = true): string =>
+// "22:03" or "10:03 PM"; suffix false gives the status-bar form "10:03".
+// Takes a real instant and renders it on the hotel (San Francisco) clock.
+export const FormatClock = (instant: Date | number, suffix: boolean = true): string =>
 {
+    const date = HotelDate(instant);
     const hours = date.getHours();
     const minutes = date.getMinutes();
 

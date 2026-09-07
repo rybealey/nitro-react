@@ -2,6 +2,7 @@ import { FC, KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { NEWS_CATEGORIES, NewsByline, NewsPost, RpDeleteNewsPostComposer, RpGetNewsComposer, RpNewsEvent, RpPinNewsPostComposer, RpSaveNewsPostComposer } from '../../api/rp-phone/RpNewsMessages';
 import { useMessageEvent } from '../../hooks';
+import { HotelDate } from '../../api/prefs/HotelTime';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
@@ -103,8 +104,8 @@ const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.get
 const relativeTime = (unix: number, now: number): string =>
 {
     const seconds = Math.max(0, Math.floor(now / 1000) - unix);
-    const date = new Date(unix * 1000);
-    const today = startOfDay(new Date(now));
+    const date = HotelDate(unix * 1000);
+    const today = startOfDay(HotelDate(now));
 
     if(seconds < 60) return 'just now';
     if(seconds < 3600) return `${ Math.floor(seconds / 60) } min ago`;
@@ -116,9 +117,9 @@ const relativeTime = (unix: number, now: number): string =>
 
 const longTime = (unix: number, now: number): string =>
 {
-    const date = new Date(unix * 1000);
-    const today = startOfDay(new Date(now));
-    const clock = FormatClock(date);
+    const date = HotelDate(unix * 1000);
+    const today = startOfDay(HotelDate(now));
+    const clock = FormatClock(unix * 1000);
 
     if(startOfDay(date) === today) return `Today, ${ clock }`;
     if(startOfDay(date) === (today - 86400000)) return `Yesterday, ${ clock }`;
@@ -310,7 +311,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     const top = (sorted[0] ?? null);
     const rest = sorted.slice(1);
     const open = (posts.find(post => post.id === openId) ?? null);
-    const today = new Date(now);
+    const today = HotelDate(now);
     const dateKicker = `${ WEEKDAYS[today.getDay()] }, ${ today.getDate() } ${ MONTHS[today.getMonth()] }`.toUpperCase();
 
     const query = search.trim().toLowerCase();

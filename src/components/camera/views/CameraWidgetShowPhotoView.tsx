@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import { GetUserProfile, IPhotoData, LocalizeText } from '../../../api';
+import { HotelDate } from '../../../api/prefs/HotelTime';
 import { Flex, Grid, Text } from '../../../common';
 
 export interface CameraWidgetShowPhotoViewProps
@@ -57,7 +58,7 @@ export const CameraWidgetShowPhotoView: FC<CameraWidgetShowPhotoViewProps> = pro
                 <Text center>{ currentImage.m }</Text> }
             <Flex alignItems="center" justifyContent="between">
                 <Text>{ (currentImage.n || '') }</Text>
-                <Text>{ new Date(currentImage.t * 1000).toLocaleDateString() }</Text>
+                <Text>{ HotelDate(currentImage.t * 1000).toLocaleDateString() }</Text>
             </Flex>
             { (currentPhotos.length > 1) &&
                 <Flex className="picture-preview-buttons">
