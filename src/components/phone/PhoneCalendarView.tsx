@@ -5,6 +5,7 @@ import { useMessageEvent, useRoom } from '../../hooks';
 import { HotelDate, HotelInstant } from '../../api/prefs/HotelTime';
 import { FormatClock, FormatHour, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneIcon } from './PhoneIcon';
+import { usePhoneNotifications } from './usePhoneNotifications';
 
 // Calendar app: an iOS-style day view. Staff-scheduled in-game events sit on
 // an hourly timeline; birthdays (yours and your friends') sit in the all-day
@@ -71,6 +72,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const [ loaded, setLoaded ] = useState(false);
     const [ selected, setSelected ] = useState<Date>(() => startOfDay(HotelDate()));
     const [ openEventId, setOpenEventId ] = useState(0);
+    const { markSeen = null } = usePhoneNotifications();
     const [ draft, setDraft ] = useState<Draft>(null);
     const [ confirmDelete, setConfirmDelete ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
@@ -148,6 +150,16 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const hourOffset = (unix: number) => ((HotelDate(unix * 1000).getHours() + (HotelDate(unix * 1000).getMinutes() / 60)) - firstHour);
 
     const openEvent = events.find(item => (item.id === openEventId)) ?? null;
+
+    // Opening an event's sheet is what clears whatever the player was told
+    // about it - that it was posted, that it moved, that it starts soon.
+    const showEvent = (eventId: number) =>
+    {
+        if(markSeen) markSeen('calendar', eventId);
+
+        setConfirmDelete(false);
+        setOpenEventId(eventId);
+    }
 
     const newDraft = () => setDraft({ id: 0, title: '', description: '', starts: '19:00', ends: '20:30', allDay: false, roomId: (roomSession?.roomId ?? 0), colour: COLOURS[0], hostName: ownName });
     const editDraft = (item: CalendarEvent) =>
@@ -241,7 +253,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         <div className="phone-calendar-allday-label">all-day</div>
                         <div className="phone-calendar-allday-list">
                             { allDayEvents.map(item => (
-                                <div key={ item.id } className="phone-tap phone-calendar-birthday phone-calendar-allday-event" style={ { background: `${ item.colour }26`, borderLeftColor: item.colour } } onClick={ event => { setConfirmDelete(false); setOpenEventId(item.id); } }>
+                                <div key={ item.id } className="phone-tap phone-calendar-birthday phone-calendar-allday-event" style={ { background: `${ item.colour }26`, borderLeftColor: item.colour } } onClick={ event => showEvent(item.id) }>
                                     <span>{ item.title }</span>
                                     { item.roomName &&
                                         <span className="phone-calendar-allday-room"><PhoneIcon icon="map-pin-home" size={ 10 } />{ item.roomName }</span> }
@@ -277,7 +289,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         const height = Math.max(26, (((item.endsAt - item.startsAt) / 3600) * HOUR_PX) - 4);
 
                         return (
-                            <div key={ item.id } className="phone-tap phone-calendar-event" style={ { top: `${ top }px`, height: `${ height }px`, background: `${ item.colour }26`, borderLeftColor: item.colour, animationDelay: `${ 90 + (index * 45) }ms` } } onClick={ event => { setConfirmDelete(false); setOpenEventId(item.id); } }>
+                            <div key={ item.id } className="phone-tap phone-calendar-event" style={ { top: `${ top }px`, height: `${ height }px`, background: `${ item.colour }26`, borderLeftColor: item.colour, animationDelay: `${ 90 + (index * 45) }ms` } } onClick={ event => showEvent(item.id) }>
                                 <div className="phone-calendar-event-title">{ item.title }</div>
                                 { item.roomName &&
                                     <div className="phone-calendar-event-room"><PhoneIcon icon="map-pin-home" size={ 10 } />{ item.roomName }</div> }

@@ -8,7 +8,8 @@ import { useAirplane, usePhonePrefs } from './usePhone';
 // Settings app, iOS grouped-list style: a real account row (the player's own
 // avatar + name) on top, then the familiar system groups. Every row is a
 // visible-but-inert placeholder except Appearance, which opens its own
-// sub-screen and drives the phone's live light/dark theme.
+// sub-screen and drives the phone's live light/dark theme, and Notifications,
+// which decides which banners and badges the phone will show at all.
 
 interface PhoneSettingsViewProps
 {
@@ -18,12 +19,13 @@ interface PhoneSettingsViewProps
     openGeneral: () => void;
     openWallpaper: () => void;
     openAccessibility: () => void;
+    openNotifications: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null, openAccessibility = null } = props;
-    const { theme, wallpaper } = usePhonePrefs();
+    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null, openAccessibility = null, openNotifications = null } = props;
+    const { theme, wallpaper, notify } = usePhonePrefs();
     const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
     const ownId = GetSessionDataManager().userId;
@@ -31,6 +33,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
     const ownName = (GetSessionDataManager().userName || 'You');
 
     const appearanceLabel = ((theme === 'auto') ? 'Automatic' : ((theme === 'dark') ? 'Dark' : 'Light'));
+    const notifyLabel = (notify.allow ? 'On' : 'Off');
 
     // One list row. Inert rows (the placeholders) are greyed and take no tap;
     // live rows get the tap affordance + handler.
@@ -87,6 +90,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('plane-up', '#f0954a', 'Airplane Mode', { chevron: false, inert: false, switchOn: airplane, onTap: () => setAirplane(!airplane) }) }
                     </>) }
                     { group(<>
+                        { item('bell', '#e03131', 'Notifications', { value: notifyLabel, inert: false, onTap: () => (openNotifications && openNotifications()) }) }
                         { item('sliders', '#8a8a90', 'General', { inert: false, onTap: () => (openGeneral && openGeneral()) }) }
                         { item('human', '#3f6fbf', 'Accessibility', { inert: false, onTap: () => (openAccessibility && openAccessibility()) }) }
                         { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
@@ -101,7 +105,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('wallet', '#1a0a14', 'Wallet') }
                     </>) }
                 </div>
-                <div className="phone-settings-footnote">Placeholder services aside, General, Accessibility, Appearance and Wallpaper are live - they only change your phone.</div>
+                <div className="phone-settings-footnote">Placeholder services aside, Notifications, General, Accessibility, Appearance and Wallpaper are live - they only change your phone.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

@@ -4386,6 +4386,9 @@ $phone-scale: 0.8;
 
         .phone-home-dock { background: rgba(20, 12, 24, .82); }
         .phone-calendar-scrim { background: rgba(0, 0, 0, .6); }
+        // A banner sits over the wallpaper, which is far busier than an app
+        // screen - without the blur it needs a solid ground of its own.
+        .phone-notify-glass, .phone-notify-sheet-glass, .phone-notify-behind, .phone-notify-more { background: var(--ph-bg); }
     }
 
     // Switch Labels: I on, O off, in the switch track.
@@ -4858,6 +4861,355 @@ $phone-scale: 0.8;
         font-weight: 600;
         z-index: 56;
         animation: phone-fade 0.2s ease both;
+    }
+
+    // ----- notifications -----
+    // The banner, the stack it arrives in and the Center it ends up in. One
+    // material throughout: the phone's own glass (--ph-glass2 + the blur), so
+    // a notification reads the same over a wallpaper, over a light app screen
+    // and in dark mode. The blur sits on its own layer under the content
+    // rather than on the card itself, so the card's text is never inside the
+    // filtered region.
+
+    .phone-notify-stack {
+        position: absolute;
+        top: 48px;
+        left: 8px;
+        right: 8px;
+        z-index: 44;
+    }
+
+    .phone-notify-pile {
+        position: relative;
+    }
+
+    // The collapsed cards under the newest one: edges only, no content.
+    .phone-notify-behind {
+        position: absolute;
+        height: 60px;
+        border-radius: 20px;
+        background: var(--ph-glass);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+        animation: phone-notify-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .phone-notify-card {
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid var(--ph-glass-brd);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 8px 24px rgba(0, 0, 0, 0.28);
+        cursor: pointer;
+        animation: phone-notify-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+        // In the Center they are rows in a card, not floating panels.
+        &.is-row {
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            animation: none;
+
+            & + .is-row {
+                border-top: 1px solid $phone-hairline;
+            }
+
+            .phone-notify-body {
+                padding: 10px 14px;
+            }
+
+            .phone-notify-title {
+                font-size: calc(13px * var(--ph-text-scale, 1));
+            }
+        }
+
+        // An unread row carries the same dot the rest of the phone uses for
+        // "you have not looked at this yet".
+        &.is-unseen .phone-notify-app::before {
+            content: '';
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            margin-right: 5px;
+            border-radius: 50%;
+            background: $phone-pink;
+            vertical-align: middle;
+        }
+    }
+
+    .phone-notify-glass {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: 20px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+    }
+
+    .phone-notify-body {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px 12px 11px;
+    }
+
+    .phone-notify-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .phone-notify-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .phone-notify-app {
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: $phone-faint-text;
+    }
+
+    .phone-notify-when {
+        flex: none;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(9.5px * var(--ph-text-scale, 1));
+        letter-spacing: 0.3px;
+        color: $phone-faint-text;
+    }
+
+    .phone-notify-title {
+        margin-top: 2px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(13.5px * var(--ph-text-scale, 1));
+        line-height: 1.2;
+        color: var(--ph-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .phone-notify-sub {
+        margin-top: 1px;
+        font-family: 'Barlow', sans-serif;
+        font-size: calc(12.5px * var(--ph-text-scale, 1));
+        line-height: 1.35;
+        color: var(--ph-soft);
+        // two lines, then it is the app's job to tell the rest
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .phone-notify-close {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin: -2px -2px 0 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $phone-faint-text;
+        opacity: 0.7;
+
+        &:hover {
+            opacity: 1;
+            background: var(--ph-inset);
+        }
+    }
+
+    // The app's icon plate at notification size: the home screen's gradient
+    // without the hardware bevel, which would read as an app you could press.
+    .phone-notify-plate {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+
+        .phone-app-fa {
+            font-size: calc(17px * var(--ph-text-scale, 1));
+        }
+
+        svg.phone-app-fa {
+            width: 17px;
+            height: 17px;
+        }
+    }
+
+    // A person's head with the app on its corner, the way a phone shows a text.
+    .phone-notify-lead {
+        position: relative;
+        flex: none;
+
+        .phone-notify-lead-chip {
+            position: absolute;
+            right: -4px;
+            bottom: -3px;
+            border-radius: 6px;
+            border: 1.5px solid var(--ph-bg);
+            overflow: hidden;
+            line-height: 0;
+
+            .phone-app-fa {
+                font-size: calc(10px * var(--ph-text-scale, 1));
+            }
+
+            svg.phone-app-fa {
+                width: 10px;
+                height: 10px;
+            }
+        }
+    }
+
+    // "2 more" under the stack: the rest are in the Center, one tap away.
+    .phone-notify-more {
+        position: relative;
+        width: max-content;
+        margin: 8px auto 0;
+        padding: 4px 12px;
+        border-radius: 11px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(10.5px * var(--ph-text-scale, 1));
+        letter-spacing: 0.4px;
+        color: var(--ph-soft);
+    }
+
+    // ----- notification center -----
+
+    .phone-notify-center {
+        position: absolute;
+        inset: 0;
+        z-index: 47;
+    }
+
+    .phone-notify-scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(11, 8, 16, 0.5);
+        animation: phone-fade 0.2s ease both;
+    }
+
+    .phone-notify-sheet {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        max-height: 100%;
+        padding-top: 44px;
+        border-radius: 0 0 30px 30px;
+        border-bottom: 1px solid var(--ph-glass-brd);
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+        animation: phone-notify-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .phone-notify-sheet-glass {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: 0 0 30px 30px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+    }
+
+    .phone-notify-sheet-body {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .phone-notify-sheet-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 18px 10px;
+    }
+
+    .phone-notify-sheet-title {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(24px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        line-height: 1.1;
+        color: var(--ph-text);
+    }
+
+    .phone-notify-sweep {
+        flex: none;
+        padding: 5px 11px;
+        border-radius: 11px;
+        background: var(--ph-inset);
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        color: var(--ph-soft);
+    }
+
+    .phone-notify-list {
+        background: $phone-screen-bg;
+        border-top: 1px solid $phone-hairline;
+        overflow-y: auto;
+        min-height: 0;
+        // roughly six rows, then it scrolls rather than covering the screen
+        max-height: 400px;
+    }
+
+    .phone-notify-empty {
+        padding: 10px 26px 18px;
+        text-align: center;
+        font-family: 'Barlow', sans-serif;
+        font-size: calc(12.5px * var(--ph-text-scale, 1));
+        line-height: 1.5;
+        color: var(--ph-soft);
+    }
+
+    .phone-notify-grabber {
+        flex: none;
+        padding: 7px 0 6px;
+        display: flex;
+        justify-content: center;
+
+        span {
+            width: 44px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--ph-input-border);
+        }
+    }
+
+    // Settings > Notifications: with the master switch off the per-app rows
+    // stay readable but plainly not in charge of anything.
+    .phone-notify-settings-off {
+        opacity: 0.45;
+    }
+
+    @keyframes phone-notify-in {
+        from { transform: translateY(-130%); opacity: 0; }
+        to { transform: none; opacity: 1; }
     }
 
     // ----- photos app -----
