@@ -1,0 +1,491 @@
+// Clothing Store (:zara). The avatar editor's shape - category rail, grid,
+// spotlight preview - at the editor's 620px width, taller so a shelf tile
+// fits a name and a price. Values follow the editor (rail cells 40px,
+// $pale-sky preview, spotlight at .3, 70x30 shadow, arrows 12px up) and the
+// grid tokens ($grid-bg-color well, white active border).
+
+.nitro-clothing-store {
+    width: 620px;
+    height: 460px;
+
+    // Chrome tab strip, matching Settings / Gang; the slim header's 2px
+    // border reads as a stray line above the dark strip, so it goes.
+    &.theme-primary .nitro-card-tabs,
+    &.theme-primary-slim .nitro-card-tabs {
+        @include prp-chrome-tab-strip;
+    }
+
+    &.theme-primary-slim .nitro-card-header {
+        border-bottom: 0;
+    }
+
+    // the LTD tab is the shop's own LTD category icon
+    .clothing-store-tab-ltd {
+        display: flex;
+        align-items: center;
+        height: 18px;
+
+        img {
+            display: block;
+            image-rendering: pixelated;
+        }
+    }
+
+    .content-area {
+        color: $black;
+        overflow: hidden;
+    }
+
+    .clothing-store-body {
+        display: flex;
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+    }
+
+    // ---- category rail: the editor's wardrobe sprite icons
+    .clothing-store-rail {
+        flex: none;
+        width: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .clothing-store-rail-item {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        cursor: pointer;
+
+        &:hover { background: rgba(0, 0, 0, 0.04); }
+        &.is-active { background: rgba(0, 0, 0, 0.06); }
+
+        img {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        &:not(.is-active) img { opacity: 0.55; }
+    }
+
+    // ---- middle: search + shelf
+    .clothing-store-middle {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .clothing-store-search {
+        flex: none;
+        position: relative;
+
+        svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 13px;
+            height: 13px;
+            color: #6c757d;
+            pointer-events: none;
+        }
+
+        input {
+            width: 100%;
+            height: 28px;
+            padding: 0 10px 0 30px;
+            font-size: 12.6px;
+            color: $black;
+            background: $white;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            outline: none;
+
+            &:focus { border-color: var(--prp-chrome-solid); }
+        }
+    }
+
+    .clothing-store-shelf {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 2px;
+    }
+
+    .clothing-store-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        align-content: start;
+    }
+
+    .clothing-store-empty {
+        padding: 24px 8px;
+        text-align: center;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    // ---- shelf tile
+    .clothing-store-tile {
+        position: relative;
+        height: 112px;
+        display: flex;
+        flex-direction: column;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 6px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.1s ease;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.3); }
+
+        // on the mannequin: the chrome border (2px, box stays the same size)
+        &.is-active {
+            border: 2px solid var(--prp-chrome-solid);
+
+            .clothing-store-tile-well { height: 59px; background: $grid-active-bg-color; }
+        }
+
+        &.is-sold-out {
+            cursor: default;
+
+            .clothing-store-tile-art { filter: grayscale(1); opacity: 0.5; }
+        }
+    }
+
+    .clothing-store-tile-well {
+        position: relative;
+        flex: none;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: $grid-bg-color;
+    }
+
+    // limited editions sit on the unique-item grid colours
+    .clothing-store-tile.is-ltd .clothing-store-tile-well {
+        background: linear-gradient(#b5e4e0 0, #b5e4e0 calc(100% - 9px), #8f9ea4 calc(100% - 9px), #8f9ea4 calc(100% - 7px), #b3c6cd calc(100% - 7px));
+    }
+
+    .clothing-store-tile.is-ltd.is-active .clothing-store-tile-well {
+        background: #d3ece9;
+    }
+
+    .clothing-store-tile-art {
+        width: 100%;
+        height: 100%;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    .clothing-store-tile-ltd {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+
+        img { display: block; image-rendering: pixelated; }
+    }
+
+    .clothing-store-tile-on {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        padding: 1px 5px;
+        border-radius: 8px;
+        background: var(--prp-chrome-solid);
+        color: $white;
+        font-size: 8.5px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+
+        svg { width: 8px; height: 8px; }
+    }
+
+    .clothing-store-tile-owned {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: $success;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $white;
+
+        svg { width: 9px; height: 9px; }
+    }
+
+    .clothing-store-tile-body {
+        padding: 5px 6px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+    }
+
+    .clothing-store-tile-name {
+        font-size: 11px;
+        font-weight: 700;
+        color: #1c1c22;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .clothing-store-tile-price {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #1c1c22;
+        font-variant-numeric: tabular-nums;
+
+        &.is-owned { color: $success; }
+        &.is-muted { color: rgba(28, 28, 34, 0.62); font-weight: 700; }
+    }
+
+    .clothing-store-tile-stock,
+    .clothing-store-tile-note {
+        font-size: 9.5px;
+        color: rgba(28, 28, 34, 0.62);
+        margin-top: 1px;
+    }
+
+    // ---- right: preview + fitting list
+    .clothing-store-side {
+        flex: none;
+        width: 170px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .clothing-store-preview {
+        position: relative;
+        flex: none;
+        height: 236px;
+        border-radius: 4px;
+        overflow: hidden;
+        background-color: $pale-sky;
+        z-index: 1;
+
+        .avatar-image {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 14px;
+            margin: 0 auto;
+            z-index: 4;
+        }
+
+        .clothing-store-spotlight {
+            position: absolute;
+            top: -10px;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .clothing-store-shadow {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 15px;
+            width: 70px;
+            height: 30px;
+            margin: 0 auto;
+            border-radius: 100%;
+            background-color: rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        .clothing-store-arrows {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 5;
+        }
+    }
+
+    .clothing-store-fitting {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .clothing-store-fitting-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding: 0 2px;
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(0, 0, 0, 0.5);
+
+        span:first-child {
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        .clothing-store-reset {
+            cursor: pointer;
+            text-decoration: underline;
+
+            &:hover { color: $black; }
+        }
+    }
+
+    .clothing-store-fitting-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 6px;
+        padding: 3px 6px;
+    }
+
+    .clothing-store-fitting-hint {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 6px 10px;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    .clothing-store-fitting-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 3px 2px;
+
+        .clothing-store-fitting-name {
+            min-width: 0;
+            font-size: 11px;
+            color: #1c1c22;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .clothing-store-fitting-note {
+            font-size: 9.5px;
+            color: rgba(28, 28, 34, 0.62);
+        }
+
+        .clothing-store-fitting-price {
+            flex: none;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #1c1c22;
+
+            &.is-owned { color: $success; }
+        }
+    }
+
+    .clothing-store-balance {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2px;
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.5);
+
+        span:last-child {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-weight: 700;
+            color: #1c1c22;
+        }
+    }
+
+    .clothing-store-notice {
+        padding: 0 2px;
+        font-size: 10px;
+        line-height: 1.3;
+        color: rgba(0, 0, 0, 0.6);
+
+        &.is-error { color: $danger; }
+    }
+
+    // .btn.btn-success recipe, with the total riding on the right
+    .clothing-store-buy {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 28px;
+        border-radius: 3.2px;
+        border: 1px solid $success;
+        background: $success;
+        color: $white;
+        font-size: 12.6px;
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.15), inset 0 -2px rgba(0, 0, 0, 0.1), 0 1px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        user-select: none;
+
+        &:hover { filter: brightness(1.08); }
+
+        &.is-armed {
+            background: var(--prp-header-top);
+            border-color: var(--prp-header-top);
+        }
+
+        &.is-disabled {
+            background: #8a9099;
+            border-color: #8a9099;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        &.is-pending {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .clothing-store-buy-total {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding-left: 6px;
+            border-left: 1px solid rgba(255, 255, 255, 0.35);
+            font-weight: 700;
+        }
+    }
+}
