@@ -149,7 +149,7 @@ export class AvatarEditorUtilities
 
             // pixelrp: HC/VIP no longer gates editor clothing - every
             // selectable set shows for everyone (sellable sets still need
-            // ownership / staff full-wardrobe via FIGURE_SET_IDS).
+            // ownership via FIGURE_SET_IDS).
             if(partSet.isSelectable && isValidGender)
             {
                 let isValid = true;
