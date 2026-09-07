@@ -52,6 +52,8 @@ interface Draft
     description: string;
     starts: string;
     ends: string;
+    // all-day: no times, sits in the all-day row
+    allDay: boolean;
     roomId: number;
     colour: string;
     hostName: string;
@@ -138,6 +140,8 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const birthdaysOn = (day: Date) => birthdays.filter(item => ((item.month === (day.getMonth() + 1)) && (item.day === day.getDate())));
 
     const dayEvents = eventsOn(selected);
+    const allDayEvents = dayEvents.filter(item => item.allDay);
+    const timedEvents = dayEvents.filter(item => !item.allDay);
     const dayBirthdays = birthdaysOn(selected);
     const firstHour = FIRST_HOUR;
     const hours = Array.from({ length: (24 - firstHour) + 1 }, (_, index) => (firstHour + index));
@@ -145,21 +149,25 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
 
     const openEvent = events.find(item => (item.id === openEventId)) ?? null;
 
-    const newDraft = () => setDraft({ id: 0, title: '', description: '', starts: '19:00', ends: '20:30', roomId: (roomSession?.roomId ?? 0), colour: COLOURS[0], hostName: ownName });
+    const newDraft = () => setDraft({ id: 0, title: '', description: '', starts: '19:00', ends: '20:30', allDay: false, roomId: (roomSession?.roomId ?? 0), colour: COLOURS[0], hostName: ownName });
     const editDraft = (item: CalendarEvent) =>
     {
         setSelected(startOfDay(HotelDate(item.startsAt * 1000)));
-        setDraft({ id: item.id, title: item.title, description: item.description, starts: hhmm(item.startsAt), ends: hhmm(item.endsAt), roomId: item.roomId, colour: item.colour, hostName: item.hostName });
+        setDraft({ id: item.id, title: item.title, description: item.description, starts: (item.allDay ? '19:00' : hhmm(item.startsAt)), ends: (item.allDay ? '20:30' : hhmm(item.endsAt)), allDay: item.allDay, roomId: item.roomId, colour: item.colour, hostName: item.hostName });
         setOpenEventId(0);
     }
 
-    const canPost = (!!draft && (draft.title.trim().length > 0) && (timeOn(selected, draft.ends) > timeOn(selected, draft.starts)));
+    const canPost = (!!draft && (draft.title.trim().length > 0) && (draft.allDay || (timeOn(selected, draft.ends) > timeOn(selected, draft.starts))));
 
     const post = () =>
     {
         if(!canPost) return;
 
-        SendMessageComposer(new RpSaveCalendarEventComposer(draft.id, draft.title.trim(), draft.description.trim(), timeOn(selected, draft.starts), timeOn(selected, draft.ends), draft.roomId, draft.colour, draft.hostName.trim()));
+        // an all-day event spans the hotel day: midnight to a second before the next
+        const startsAt = (draft.allDay ? timeOn(selected, '00:00') : timeOn(selected, draft.starts));
+        const endsAt = (draft.allDay ? (startsAt + 86399) : timeOn(selected, draft.ends));
+
+        SendMessageComposer(new RpSaveCalendarEventComposer(draft.id, draft.title.trim(), draft.description.trim(), startsAt, endsAt, draft.roomId, draft.colour, draft.hostName.trim(), draft.allDay));
     }
 
     const remove = (item: CalendarEvent) =>
@@ -182,7 +190,8 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
         setOpenEventId(0);
     }
 
-    const titleFor = (day: Date) => (sameDay(day, today) ? `Today, ${ day.getDate() }` : `${ WEEKDAYS[day.getDay()] } ${ day.getDate() }`);
+    // short weekday so 'Wednesday 16' never wraps beside the header buttons
+    const titleFor = (day: Date) => (sameDay(day, today) ? `Today, ${ day.getDate() }` : `${ WEEKDAYS[day.getDay()].slice(0, 3) } ${ day.getDate() }`);
 
     return (
         <div className="phone-screen phone-app-screen phone-calendar">
@@ -226,14 +235,18 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                     }) }
                     <div className="phone-tap phone-calendar-week-nav" onClick={ event => selectDay(addDays(selected, 7)) }><PhoneIcon icon="chevron-right" size={ 16 } /></div>
                 </div>
-                </div>
-                { /* keyed by the day: a date change remounts this block and the
-                     slide-in animation runs from the side you moved towards */ }
-                <div key={ selected.getTime() } className={ `phone-calendar-day is-from-${ slideDir }` }>
-                { (dayBirthdays.length > 0) &&
-                    <div className="phone-calendar-allday">
+                { /* the all-day row stays pinned with the header; the timeline scrolls under it */ }
+                { ((allDayEvents.length > 0) || (dayBirthdays.length > 0)) &&
+                    <div key={ `allday-${ selected.getTime() }` } className={ `phone-calendar-allday is-from-${ slideDir }` }>
                         <div className="phone-calendar-allday-label">all-day</div>
                         <div className="phone-calendar-allday-list">
+                            { allDayEvents.map(item => (
+                                <div key={ item.id } className="phone-tap phone-calendar-birthday phone-calendar-allday-event" style={ { background: `${ item.colour }26`, borderLeftColor: item.colour } } onClick={ event => { setConfirmDelete(false); setOpenEventId(item.id); } }>
+                                    <span>{ item.title }</span>
+                                    { item.roomName &&
+                                        <span className="phone-calendar-allday-room"><PhoneIcon icon="map-pin-home" size={ 10 } />{ item.roomName }</span> }
+                                </div>
+                            )) }
                             { dayBirthdays.map(item => (
                                 <div key={ item.userId } className="phone-calendar-birthday">
                                     <PhoneIcon icon="cake" size={ 12 } />
@@ -242,6 +255,10 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             )) }
                         </div>
                     </div> }
+                </div>
+                { /* keyed by the day: a date change remounts this block and the
+                     slide-in animation runs from the side you moved towards */ }
+                <div key={ selected.getTime() } className={ `phone-calendar-day is-from-${ slideDir }` }>
                 { loaded && (dayEvents.length === 0) && (dayBirthdays.length === 0) &&
                     <div className="phone-calendar-empty">
                         <div className="phone-calendar-empty-title">Nothing on the { selected.getDate() }{ ([ 1, 21, 31 ].includes(selected.getDate()) ? 'st' : ([ 2, 22 ].includes(selected.getDate()) ? 'nd' : ([ 3, 23 ].includes(selected.getDate()) ? 'rd' : 'th'))) }</div>
@@ -254,7 +271,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             <span className="phone-calendar-hour-line" />
                         </div>
                     )) }
-                    { dayEvents.map((item, index) =>
+                    { timedEvents.map((item, index) =>
                     {
                         const top = (hourOffset(item.startsAt) * HOUR_PX) + 2;
                         const height = Math.max(26, (((item.endsAt - item.startsAt) / 3600) * HOUR_PX) - 4);
@@ -286,7 +303,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             <div className="phone-calendar-sheet-bar" style={ { background: openEvent.colour } } />
                             <div className="phone-calendar-sheet-headtext">
                                 <div className="phone-calendar-sheet-title">{ openEvent.title }</div>
-                                <div className="phone-calendar-sheet-when">{ `${ WEEKDAYS[HotelDate(openEvent.startsAt * 1000).getDay()] } ${ HotelDate(openEvent.startsAt * 1000).getDate() } ${ MONTHS[HotelDate(openEvent.startsAt * 1000).getMonth()] } · ${ formatTime(openEvent.startsAt) } – ${ formatTime(openEvent.endsAt) }` }</div>
+                                <div className="phone-calendar-sheet-when">{ `${ WEEKDAYS[HotelDate(openEvent.startsAt * 1000).getDay()] } ${ HotelDate(openEvent.startsAt * 1000).getDate() } ${ MONTHS[HotelDate(openEvent.startsAt * 1000).getMonth()] } · ${ openEvent.allDay ? 'All day' : `${ formatTime(openEvent.startsAt) } – ${ formatTime(openEvent.endsAt) }` }` }</div>
                             </div>
                             { canEdit &&
                                 <div className="phone-tap phone-calendar-chip" onClick={ event => editDraft(openEvent) }>Edit</div> }
@@ -326,13 +343,20 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                                 </div>
                             </div>
                             <div className="phone-calendar-field">
-                                <span className="phone-calendar-field-label">Starts</span>
-                                <input className="phone-calendar-input" type="time" value={ draft.starts } onChange={ event => setDraft({ ...draft, starts: event.target.value }) } />
+                                <span className="phone-calendar-field-label">All-day</span>
+                                <div className={ `phone-news-switch phone-tap phone-calendar-switch${ draft.allDay ? ' is-on' : '' }` } onClick={ event => setDraft({ ...draft, allDay: !draft.allDay }) }><div className="phone-news-switch-knob" /></div>
                             </div>
-                            <div className="phone-calendar-field">
-                                <span className="phone-calendar-field-label">Ends</span>
-                                <input className="phone-calendar-input" type="time" value={ draft.ends } onChange={ event => setDraft({ ...draft, ends: event.target.value }) } />
-                            </div>
+                            { !draft.allDay &&
+                                <>
+                                    <div className="phone-calendar-field">
+                                        <span className="phone-calendar-field-label">Starts</span>
+                                        <input className="phone-calendar-input" type="time" value={ draft.starts } onChange={ event => setDraft({ ...draft, starts: event.target.value }) } />
+                                    </div>
+                                    <div className="phone-calendar-field">
+                                        <span className="phone-calendar-field-label">Ends</span>
+                                        <input className="phone-calendar-input" type="time" value={ draft.ends } onChange={ event => setDraft({ ...draft, ends: event.target.value }) } />
+                                    </div>
+                                </> }
                             <div className="phone-calendar-field">
                                 <span className="phone-calendar-field-label">Room</span>
                                 <input className="phone-calendar-input" type="number" min={ 0 } placeholder="Room id" value={ draft.roomId || '' } onChange={ event => setDraft({ ...draft, roomId: (parseInt(event.target.value) || 0) }) } />
