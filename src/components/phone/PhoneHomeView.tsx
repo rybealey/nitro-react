@@ -1,4 +1,5 @@
 import { CSSProperties, FC, PointerEvent, useRef, useState } from 'react';
+import { WallpaperStyle } from './PhoneWallpapers';
 import { DOCK_CAPACITY, GRID_COLS, GRID_ROWS, usePhoneBadges, usePhonePrefs } from './usePhone';
 
 // Phone home screen: terrace wallpaper, a fixed 4x5 slot grid and the dock.
