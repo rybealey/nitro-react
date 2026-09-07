@@ -119,7 +119,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 {
     const { openApp = null } = props;
     const { unreadMessages = 0, requestCount = 0 } = usePhoneBadges();
-    const { gridOrder, dockOrder, setAppOrder } = usePhonePrefs();
+    const { gridOrder, dockOrder, setAppOrder, wallpaper } = usePhonePrefs();
     const [ dragApp, setDragApp ] = useState<DragApp>(null);
     const [ editing, setEditing ] = useState(false);
     const homeRef = useRef<HTMLDivElement>(null);
@@ -372,7 +372,10 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 
     return (
         <div ref={ homeRef } className={ `phone-screen phone-home${ editing ? ' is-editing' : '' }` }>
-            <div className="phone-home-wallpaper" />
+            <div className="phone-home-wallpaper">
+                { (wallpaper !== 'lobby') &&
+                    <div className="phone-home-wallpaper-pick" style={ WallpaperStyle(wallpaper) } /> }
+            </div>
             <div className="phone-home-shade" />
             { editing &&
                 <div className="phone-home-done phone-tap" onClick={ onDone }>Done</div> }

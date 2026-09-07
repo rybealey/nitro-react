@@ -1,4 +1,5 @@
 import { RpAirplaneModeEvent, RpAlbumListEvent, RpAlbumListItem, RpAlbumMemberComposer, RpAlbumPhoto, RpAlbumPhotoComposer, RpAlbumPhotosEvent, RpCreateAlbumComposer, RpDeleteAlbumComposer, RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestAlbumPhotosComposer, RpRequestAlbumsComposer, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpSetAirplaneModeComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
+import { CleanWallpaper, DEFAULT_WALLPAPER } from './PhoneWallpapers';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetConfiguration, GetSessionDataManager, SendMessageComposer } from '../../api';
@@ -72,6 +73,8 @@ interface PhonePrefs
     dock: string[];
     theme: PhoneTheme;
     position: PhonePosition;
+    // a built-in wallpaper key, or 'photo:<url>' (see PhoneWallpapers)
+    wallpaper: string;
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
@@ -146,7 +149,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 grid,
                 dock,
                 theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto'),
-                position: (((parsed.position === 'left') || (parsed.position === 'right') || (parsed.position === 'center')) ? parsed.position : 'right')
+                position: (((parsed.position === 'left') || (parsed.position === 'right') || (parsed.position === 'center')) ? parsed.position : 'right'),
+                wallpaper: CleanWallpaper(parsed.wallpaper)
             };
         }
     }
@@ -154,7 +158,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right' };
+    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER };
 }
 
 // Synchronous read of just the saved open-position, straight from storage -
@@ -193,6 +197,7 @@ const usePhonePrefsState = () =>
     const [ dockOrder, setDockOrder ] = useState<string[]>([ ...DEFAULT_DOCK_APPS ]);
     const [ theme, setThemeState ] = useState<PhoneTheme>('auto');
     const [ position, setPositionState ] = useState<PhonePosition>('right');
+    const [ wallpaper, setWallpaperState ] = useState<string>(DEFAULT_WALLPAPER);
 
     const ensureLoaded = () =>
     {
@@ -209,6 +214,7 @@ const usePhonePrefsState = () =>
         setDockOrder(prefs.dock);
         setThemeState(prefs.theme);
         setPositionState(prefs.position);
+        setWallpaperState(prefs.wallpaper);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
@@ -226,7 +232,8 @@ const usePhonePrefsState = () =>
                 grid: (prefs.grid ?? gridOrder),
                 dock: (prefs.dock ?? dockOrder),
                 theme: (prefs.theme ?? theme),
-                position: (prefs.position ?? position)
+                position: (prefs.position ?? position),
+                wallpaper: (prefs.wallpaper ?? wallpaper)
             }));
         }
 
@@ -289,6 +296,16 @@ const usePhonePrefsState = () =>
         save({ position: nextPosition });
     }
 
+    // Wallpaper (Settings app): a built-in key or a captured photo; the home
+    // screen repaints at once.
+    const setWallpaper = (nextWallpaper: string) =>
+    {
+        const clean = CleanWallpaper(nextWallpaper);
+
+        setWallpaperState(clean);
+        save({ wallpaper: clean });
+    }
+
     // Drag-rearrange of the home screen (grid slot matrix + dock together).
     const setAppOrder = (grid: string[], dock: string[]) =>
     {
@@ -297,7 +314,7 @@ const usePhonePrefsState = () =>
         save({ grid, dock });
     }
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, ensureLoaded };
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, ensureLoaded };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);
