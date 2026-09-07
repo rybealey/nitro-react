@@ -145,7 +145,10 @@ $nitro-card-tabs-height: 33px;
             // scheme (Settings > Interface); default = brand orange.
             background: var(--prp-header-grad);
             border-bottom: 2px solid var(--prp-header-border);
-            box-shadow: 0 2px white;
+            // No white drop line under the border: it read as a pale bar against
+            // the light content area and an obvious one against the dark tab
+            // strips (Shop, Navigator, Inventory, Catalog, Camera, Groups,
+            // Avatar Editor, Mod Tools, furniture widgets).
             width: 100%;
             margin: 0;
             padding-top:2px;
