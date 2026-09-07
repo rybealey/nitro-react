@@ -59,7 +59,8 @@ const BuildSetIndex = (): Map<number, ResolvedPart> =>
 
         if(!setType) continue;
 
-        for(const partSet of setType.partSets) index.set(partSet.id, { type, partSet });
+        // partSets is nitro's AdvancedMap, not an array
+        for(const partSet of setType.partSets.getValues()) index.set(partSet.id, { type, partSet });
     }
 
     return index;
