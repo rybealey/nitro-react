@@ -2,6 +2,7 @@ import { FC, ReactNode } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
+import { WallpaperName } from './PhoneWallpapers';
 import { useAirplane, usePhonePrefs } from './usePhone';
 
 // Settings app, iOS grouped-list style: a real account row (the player's own
@@ -15,12 +16,13 @@ interface PhoneSettingsViewProps
     openAppearance: () => void;
     openAccount: () => void;
     openGeneral: () => void;
+    openWallpaper: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null } = props;
-    const { theme } = usePhonePrefs();
+    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null } = props;
+    const { theme, wallpaper } = usePhonePrefs();
     const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
     const ownId = GetSessionDataManager().userId;
@@ -90,7 +92,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('sliders', '#8a8a90', 'General', { inert: false, onTap: () => (openGeneral && openGeneral()) }) }
                         { item('human', '#3f6fbf', 'Accessibility') }
                         { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
-                        { item('image', '#2ba88f', 'Wallpaper') }
+                        { item('image', '#2ba88f', 'Wallpaper', { value: WallpaperName(wallpaper), inert: false, onTap: () => (openWallpaper && openWallpaper()) }) }
                     </>) }
                     { group(<>
                         { item('shield', '#e03131', 'Emergency SOS') }
@@ -101,7 +103,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('wallet', '#1a0a14', 'Wallet') }
                     </>) }
                 </div>
-                <div className="phone-settings-footnote">Placeholder services aside, Appearance is live - it only re-skins your phone.</div>
+                <div className="phone-settings-footnote">Placeholder services aside, General, Appearance and Wallpaper are live - they only change your phone.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

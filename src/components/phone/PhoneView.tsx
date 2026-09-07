@@ -10,6 +10,7 @@ import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
 import { PhoneGeneralView } from './PhoneGeneralView';
+import { PhoneWallpaperView } from './PhoneWallpaperView';
 import { PhoneWeatherView } from './PhoneWeatherView';
 import { PhoneNewsView } from './PhoneNewsView';
 import { PhoneCallView } from './PhoneCallView';
@@ -29,7 +30,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -57,6 +58,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'account') && (to === 'settings')) return 'slide-left';
     if(to === 'general') return 'slide-right';
     if((from === 'general') && (to === 'settings')) return 'slide-left';
+    if(to === 'wallpaper') return 'slide-right';
+    if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -434,7 +437,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } /> }
                             { (screen === 'music') &&
                                 <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
@@ -447,6 +450,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneNewsView onBack={ () => go('home') } /> }
                             { (screen === 'general') &&
                                 <PhoneGeneralView onBack={ () => go('settings') } /> }
+                            { (screen === 'wallpaper') &&
+                                <PhoneWallpaperView onBack={ () => go('settings') } /> }
                             { (screen === 'account') &&
                                 <PhoneAccountView onBack={ () => go('settings') } /> }
                             { (screen === 'appearance') &&
