@@ -30,6 +30,7 @@ import { RpCorporationsView } from '../rp-corporations/RpCorporationsView';
 import { RpGangsView } from '../rp-gangs/RpGangsView';
 import { RpInventoryView } from '../rp-inventory/RpInventoryView';
 import { RpWantedView } from '../rp-wanted/RpWantedView';
+import { RpClothingStoreView } from '../rp-clothing-store/RpClothingStoreView';
 import { RpProfileView } from '../rp-profile/RpProfileView';
 import { RpSettingsView } from '../rp-settings/RpSettingsView';
 import { UserSettingsView } from '../user-settings/UserSettingsView';
@@ -113,6 +114,7 @@ export const MainView: FC<{}> = props =>
             <RpGangsView />
             <RpProfileView />
             <RpWantedView />
+            <RpClothingStoreView />
             <GroupsView />
             <CameraWidgetView />
             <HelpView />

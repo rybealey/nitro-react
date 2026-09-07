@@ -1,4 +1,5 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
+import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FaPen } from 'react-icons/fa';
@@ -27,6 +28,25 @@ const ITEMS: Record<string, { name: string, cls: string }> = {
     vip_token_14: { name: 'VIP Token (14 days)', cls: 'rp-item-vip-token-silver' },
 };
 
+interface ItemMeta { name: string; cls: string; iconUrl?: string }
+
+// Clothing Store tokens (clothing:<id>:<edition>) are named from the last
+// shelf received and wear the piece's own catalog icon.
+const resolveItem = (item: string): ItemMeta =>
+{
+    if(ITEMS[item]) return ITEMS[item];
+
+    const token = ParseClothingToken(item);
+
+    if(!token) return null;
+
+    const listing = GetClothingCatalog().get(token.clothingId);
+    const name = (listing ? ClothingShelfName(listing) : `#${ token.clothingId }`);
+    const edition = ((listing && listing.ltdTotal > 0 && token.edition > 0) ? ` (LTD ${ token.edition } of ${ listing.ltdTotal })` : '');
+
+    return { name: `Clothing Token · ${ name }${ edition }`, cls: 'rp-item-clothing-token', iconUrl: ClothingIconUrl(listing) };
+}
+
 export const RpInventoryView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
@@ -48,7 +68,13 @@ export const RpInventoryView: FC<{}> = props =>
         for(const entry of event.getParser().items) next.set(entry.slot, { item: entry.item, count: entry.count });
 
         setItems(next);
+
+        // a clothing token needs the shelf to be named; fetch it once
+        if(!IsClothingCatalogLoaded() && event.getParser().items.some(entry => !!ParseClothingToken(entry.item))) SendMessageComposer(new RpGetClothingStoreComposer());
     });
+
+    // the shelf arriving names any tokens already on screen
+    useMessageEvent<RpClothingStoreEvent>(RpClothingStoreEvent, event => setItems(prevValue => new Map(prevValue)));
 
     useEffect(() =>
     {
@@ -240,7 +266,7 @@ export const RpInventoryView: FC<{}> = props =>
                         }
 
                         const entry = items.get(slot);
-                        const meta = (entry ? ITEMS[entry.item] : null);
+                        const meta = (entry ? resolveItem(entry.item) : null);
 
                         if(entry && meta)
                         {
@@ -251,7 +277,7 @@ export const RpInventoryView: FC<{}> = props =>
                                     onClick={ () => onItemClick(slot) }
                                     onDoubleClick={ () => onItemDoubleClick(slot) }
                                     onPointerDown={ event => onItemDown(event, slot) }>
-                                    <div className={ `rp-inventory-item ${ meta.cls }` } />
+                                    <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
                                     { (entry.count > 1) &&
                                         <span className="rp-inventory-count">{ entry.count }</span> }
                                 </div>);
@@ -267,7 +293,7 @@ export const RpInventoryView: FC<{}> = props =>
                 { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
                     createPortal(
                         <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>
-                            <div className={ `rp-inventory-item ${ ITEMS[items.get(dragFrom).item].cls }` } />
+                            <div className={ `rp-inventory-item ${ resolveItem(items.get(dragFrom).item)?.cls || '' }` } style={ resolveItem(items.get(dragFrom).item)?.iconUrl ? { backgroundImage: `url(${ resolveItem(items.get(dragFrom).item).iconUrl })` } : undefined } />
                         </div>, document.body) }
             </NitroCardContentView>
         </NitroCardView>
