@@ -17,11 +17,12 @@ interface PhoneSettingsViewProps
     openAccount: () => void;
     openGeneral: () => void;
     openWallpaper: () => void;
+    openAccessibility: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null } = props;
+    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null, openAccessibility = null } = props;
     const { theme, wallpaper } = usePhonePrefs();
     const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
@@ -90,7 +91,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                     </>) }
                     { group(<>
                         { item('sliders', '#8a8a90', 'General', { inert: false, onTap: () => (openGeneral && openGeneral()) }) }
-                        { item('human', '#3f6fbf', 'Accessibility') }
+                        { item('human', '#3f6fbf', 'Accessibility', { inert: false, onTap: () => (openAccessibility && openAccessibility()) }) }
                         { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
                         { item('image', '#2ba88f', 'Wallpaper', { value: WallpaperName(wallpaper), inert: false, onTap: () => (openWallpaper && openWallpaper()) }) }
                     </>) }
@@ -103,7 +104,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('wallet', '#1a0a14', 'Wallet') }
                     </>) }
                 </div>
-                <div className="phone-settings-footnote">Placeholder services aside, General, Appearance and Wallpaper are live - they only change your phone.</div>
+                <div className="phone-settings-footnote">Placeholder services aside, General, Accessibility, Appearance and Wallpaper are live - they only change your phone.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>
