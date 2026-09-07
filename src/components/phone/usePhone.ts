@@ -65,6 +65,37 @@ export type PhoneTheme = 'auto' | 'light' | 'dark';
 // Where the phone pops up on the client when opened.
 export type PhonePosition = 'left' | 'center' | 'right';
 
+// Settings > Accessibility. textSize indexes TEXT_SIZE_SCALES; the rest are
+// switches. Applied as classes and a --ph-text-scale variable on the display.
+export interface PhoneAccess
+{
+    textSize: number;
+    bold: boolean;
+    contrast: boolean;
+    opaque: boolean;
+    switchLabels: boolean;
+    reduceMotion: boolean;
+}
+
+export const TEXT_SIZE_NAMES: string[] = [ 'Smaller', 'Default', 'Large', 'Larger', 'Largest' ];
+export const TEXT_SIZE_SCALES: number[] = [ 0.9, 1, 1.1, 1.2, 1.3 ];
+export const DEFAULT_ACCESS: PhoneAccess = { textSize: 1, bold: false, contrast: false, opaque: false, switchLabels: false, reduceMotion: false };
+
+const readAccess = (value: unknown): PhoneAccess =>
+{
+    const raw = ((value && (typeof value === 'object')) ? (value as Record<string, unknown>) : {});
+    const size = (typeof raw.textSize === 'number') ? Math.round(raw.textSize) : DEFAULT_ACCESS.textSize;
+
+    return {
+        textSize: Math.min(TEXT_SIZE_SCALES.length - 1, Math.max(0, size)),
+        bold: (raw.bold === true),
+        contrast: (raw.contrast === true),
+        opaque: (raw.opaque === true),
+        switchLabels: (raw.switchLabels === true),
+        reduceMotion: (raw.reduceMotion === true)
+    };
+}
+
 interface PhonePrefs
 {
     pinned: number[];
@@ -75,6 +106,7 @@ interface PhonePrefs
     position: PhonePosition;
     // a built-in wallpaper key, or 'photo:<url>' (see PhoneWallpapers)
     wallpaper: string;
+    access: PhoneAccess;
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
@@ -150,7 +182,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 dock,
                 theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto'),
                 position: (((parsed.position === 'left') || (parsed.position === 'right') || (parsed.position === 'center')) ? parsed.position : 'right'),
-                wallpaper: CleanWallpaper(parsed.wallpaper)
+                wallpaper: CleanWallpaper(parsed.wallpaper),
+                access: readAccess(parsed.access)
             };
         }
     }
@@ -158,7 +191,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER };
+    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS } };
 }
 
 // Synchronous read of just the saved open-position, straight from storage -
@@ -198,6 +231,7 @@ const usePhonePrefsState = () =>
     const [ theme, setThemeState ] = useState<PhoneTheme>('auto');
     const [ position, setPositionState ] = useState<PhonePosition>('right');
     const [ wallpaper, setWallpaperState ] = useState<string>(DEFAULT_WALLPAPER);
+    const [ access, setAccessState ] = useState<PhoneAccess>({ ...DEFAULT_ACCESS });
 
     const ensureLoaded = () =>
     {
@@ -215,6 +249,7 @@ const usePhonePrefsState = () =>
         setThemeState(prefs.theme);
         setPositionState(prefs.position);
         setWallpaperState(prefs.wallpaper);
+        setAccessState(prefs.access);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
@@ -233,7 +268,8 @@ const usePhonePrefsState = () =>
                 dock: (prefs.dock ?? dockOrder),
                 theme: (prefs.theme ?? theme),
                 position: (prefs.position ?? position),
-                wallpaper: (prefs.wallpaper ?? wallpaper)
+                wallpaper: (prefs.wallpaper ?? wallpaper),
+                access: (prefs.access ?? access)
             }));
         }
 
@@ -306,6 +342,20 @@ const usePhonePrefsState = () =>
         save({ wallpaper: clean });
     }
 
+    // Accessibility (Settings app): merge one or more fields; the phone
+    // re-renders with the new classes at once.
+    const setAccess = (changes: Partial<PhoneAccess>) =>
+    {
+        setAccessState(prevValue =>
+        {
+            const next = readAccess({ ...prevValue, ...changes });
+
+            save({ access: next });
+
+            return next;
+        });
+    }
+
     // Drag-rearrange of the home screen (grid slot matrix + dock together).
     const setAppOrder = (grid: string[], dock: string[]) =>
     {
@@ -314,7 +364,7 @@ const usePhonePrefsState = () =>
         save({ grid, dock });
     }
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, ensureLoaded };
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, ensureLoaded };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);

@@ -1,10 +1,11 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { toPng } from 'html-to-image';
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, GetLocalStorage, PlaySound, RemoveLinkEventTracker, SetLocalStorage, SoundNames, WindowSaveOptions } from '../../api';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAccountView } from './PhoneAccountView';
+import { PhoneAccessibilityView } from './PhoneAccessibilityView';
 import { PhoneAppearanceView } from './PhoneAppearanceView';
 import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
@@ -22,7 +23,7 @@ import { PhoneIcon } from './PhoneIcon';
 import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
-import { ReadPhonePosition, useAirplane, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
+import { ReadPhonePosition, TEXT_SIZE_SCALES, useAirplane, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 
 // The PixelRP phone — the player's window to their social life, replacing
@@ -30,7 +31,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -60,6 +61,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'general') && (to === 'settings')) return 'slide-left';
     if(to === 'wallpaper') return 'slide-right';
     if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
+    if(to === 'accessibility') return 'slide-right';
+    if((from === 'accessibility') && (to === 'settings')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -78,7 +81,7 @@ export const PhoneView: FC<{}> = props =>
     const [ shotToast, setShotToast ] = useState<string>(null);
     const { visibleThreads = [], getMessageThread = null, setActiveThreadId = null } = useMessenger();
     const { requestFriend = null, getFriend = null } = useFriends();
-    const { ensureLoaded } = usePhonePrefs();
+    const { ensureLoaded, access } = usePhonePrefs();
     const { resolvedDark = false } = usePhoneTheme();
     const { enabled: airplaneOn = false } = useAirplane();
     const { clock24 } = useUnitsPrefs();
@@ -410,7 +413,7 @@ export const PhoneView: FC<{}> = props =>
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER } minVisible={ 48 }>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
-                    <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }` }>
+                    <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }${ access.bold ? ' is-a11y-bold' : '' }${ access.contrast ? ' is-a11y-contrast' : '' }${ access.opaque ? ' is-a11y-opaque' : '' }${ access.switchLabels ? ' is-a11y-labels' : '' }${ access.reduceMotion ? ' is-a11y-still' : '' }` } style={ { '--ph-text-scale': TEXT_SIZE_SCALES[access.textSize] } as CSSProperties }>
                         <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
@@ -437,7 +440,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } /> }
                             { (screen === 'music') &&
                                 <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
@@ -452,6 +455,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneGeneralView onBack={ () => go('settings') } /> }
                             { (screen === 'wallpaper') &&
                                 <PhoneWallpaperView onBack={ () => go('settings') } /> }
+                            { (screen === 'accessibility') &&
+                                <PhoneAccessibilityView onBack={ () => go('settings') } /> }
                             { (screen === 'account') &&
                                 <PhoneAccountView onBack={ () => go('settings') } /> }
                             { (screen === 'appearance') &&
