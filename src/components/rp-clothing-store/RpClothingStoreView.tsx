@@ -200,8 +200,20 @@ export const RpClothingStoreView: FC<{}> = props =>
     const armTimer = useRef<ReturnType<typeof setTimeout>>(null);
     const { purse = null } = usePurse();
 
-    if(!figureRef.current) figureRef.current = new FigureData();
-    if(!baseRef.current) baseRef.current = new FigureData();
+    // FigureData only allocates its maps in loadAvatarData, and the first
+    // render reads getFigureString() before the show effect runs - so both
+    // start loaded with whatever the player wears.
+    if(!figureRef.current)
+    {
+        figureRef.current = new FigureData();
+        figureRef.current.loadAvatarData(GetSessionDataManager().figure, GetSessionDataManager().gender);
+    }
+
+    if(!baseRef.current)
+    {
+        baseRef.current = new FigureData();
+        baseRef.current.loadAvatarData(GetSessionDataManager().figure, GetSessionDataManager().gender);
+    }
 
     const figure = figureRef.current;
     const base = baseRef.current;
