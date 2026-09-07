@@ -8,7 +8,13 @@
 // today; the shape is here so an app can be priced in either currency without
 // reworking the Store, and so that a paid app already knows the rule that
 // matters - you buy it once. Removing an app keeps it in `owned`, so putting
-// it back is always free.
+// it back is always free. What is paid is a SINK: the coins or diamonds leave
+// the economy, they are not credited to anyone.
+//
+// Before any app can actually carry a price, `owned` has to move off the
+// client. It lives in localStorage today (usePhone), which a player can edit,
+// so it is only trustworthy while everything is free - the moment an app costs
+// something, ownership is the receipt and the server has to hold it.
 //
 // A CORPORATION app is listed for everyone but only runs for that
 // corporation's employees; anyone else gets the unauthorised screen. Nothing
