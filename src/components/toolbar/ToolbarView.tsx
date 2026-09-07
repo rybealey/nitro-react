@@ -3,7 +3,7 @@ import { FC, useState } from 'react';
 import { CreateLinkEvent, GetSessionDataManager, HasHabboVip } from '../../api';
 import { Base, Flex, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
-import { usePhoneBadges } from '../phone/usePhone';
+import { usePhoneAppBadges } from '../phone/usePhoneNotifications';
 import { ToolbarMeView } from './ToolbarMeView';
 
 export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
@@ -14,7 +14,9 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
     const [ useGuideTool, setUseGuideTool ] = useState(false);
     const { getFullCount = 0 } = useInventoryUnseenTracker();
     const { getTotalUnseen = 0 } = useAchievements();
-    const { unreadMessages = 0, requestCount = 0 } = usePhoneBadges();
+    // Every app's badge added up: the phone button carries whatever the phone
+    // itself would show, so a closed phone still says how much is waiting.
+    const { total: phoneBadge } = usePhoneAppBadges();
     const isMod = GetSessionDataManager().isModerator;
     
     useMessageEvent<PerkAllowancesMessageEvent>(PerkAllowancesMessageEvent, event =>
@@ -94,8 +96,8 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                     <Flex gap={ 2 }>
                         <Base pointer title="Diamonds" className="navigation-item icon-diamonds" onClick={ event => CreateLinkEvent('diamonds-store/toggle') } />
                         <Base pointer title="Phone" className="navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
-                            { ((unreadMessages + requestCount) > 0) &&
-                                <LayoutItemCountView count={ (unreadMessages + requestCount) } /> }
+                            { (phoneBadge > 0) &&
+                                <LayoutItemCountView count={ phoneBadge } /> }
                         </Base>
                     </Flex>
                 </Flex>

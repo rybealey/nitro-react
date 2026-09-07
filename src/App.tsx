@@ -8,6 +8,7 @@ import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
 import { RegisterRpWeatherMessages } from './api/rp-phone/RpWeatherMessages';
 import { RegisterRpNewsMessages } from './api/rp-phone/RpNewsMessages';
+import { RegisterRpNotificationMessages } from './api/rp-phone/RpNotificationMessages';
 import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
@@ -117,6 +118,7 @@ export const App: FC<{}> = props =>
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();
                 RegisterRpNewsMessages();
+                RegisterRpNotificationMessages();
                 RegisterRpTunesMessages();
                 RegisterRpClothingMessages();
 

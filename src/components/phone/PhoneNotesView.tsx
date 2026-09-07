@@ -5,6 +5,7 @@ import { useMessageEvent } from '../../hooks';
 import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatarColor, PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
+import { usePhoneNotifications } from './usePhoneNotifications';
 
 // Notes app: Folders -> a folder's list -> the editor. Notes are yours or
 // shared with you by a friend; a shared note is one document for everyone in
@@ -264,6 +265,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
 
     // the open note
     const [ openNoteId, setOpenNoteId ] = useState(0);
+    const { markSeen = null } = usePhoneNotifications();
     const [ detail, setDetail ] = useState<NoteDetail>(null);
     const [ title, setTitle ] = useState('');
     const [ lines, setLines ] = useState<Line[]>(() => [ newLine('text', '') ]);
@@ -528,6 +530,9 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
 
     const openNote = (noteId: number) =>
     {
+        // Opening the note is what clears "shared with you" and its edits.
+        if(markSeen) markSeen('notes', noteId);
+
         historyRef.current = [];
         dirtyRef.current = false;
         setOpenNoteId(noteId);

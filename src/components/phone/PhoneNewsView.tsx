@@ -6,6 +6,7 @@ import { HotelDate } from '../../api/prefs/HotelTime';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
+import { usePhoneNotifications } from './usePhoneNotifications';
 
 // News app: a staff-run noticeboard for the city. Everyone reads the Today
 // feed (pinned or newest story on top, the rest as a list) and opens stories;
@@ -179,6 +180,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     const [ screen, setScreen ] = useState<Screen>('feed');
     const [ slide, setSlide ] = useState<'right' | 'left' | 'up'>('right');
     const [ openId, setOpenId ] = useState(0);
+    const { markSeen = null } = usePhoneNotifications();
     const [ sheet, setSheet ] = useState<Sheet>(null);
     const [ draft, setDraft ] = useState<Draft>(null);
     const [ returnTo, setReturnTo ] = useState<Screen>('feed');
@@ -230,6 +232,9 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
 
     const openStory = (id: number) =>
     {
+        // Reading the story is what clears its notification.
+        if(markSeen) markSeen('news', id);
+
         setOpenId(id);
         setSheet(null);
         setSlide('right');

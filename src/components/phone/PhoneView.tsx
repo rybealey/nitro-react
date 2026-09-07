@@ -21,10 +21,14 @@ import { PhoneContactsView } from './PhoneContactsView';
 import { PhoneHomeView } from './PhoneHomeView';
 import { PhoneComposeView, PhoneMessagesView } from './PhoneMessagesView';
 import { PhoneIcon } from './PhoneIcon';
+import { PhoneNotificationCenterView } from './PhoneNotificationCenterView';
+import { PhoneNotificationsView } from './PhoneNotificationsView';
+import { PhoneNotifySettingsView } from './PhoneNotifySettingsView';
 import { PhonePhotosView } from './PhonePhotosView';
 import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
 import { ReadPhonePosition, TEXT_SIZE_SCALES, useAirplane, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
+import { PhoneNotification, usePhoneNotifications } from './usePhoneNotifications';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 
 // The PixelRP phone — the player's window to their social life, replacing
@@ -32,7 +36,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility' | 'wallet';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -65,6 +69,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
     if(to === 'accessibility') return 'slide-right';
     if((from === 'accessibility') && (to === 'settings')) return 'slide-left';
+    if(to === 'notifications') return 'slide-right';
+    if((from === 'notifications') && (to === 'settings')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -81,6 +87,9 @@ export const PhoneView: FC<{}> = props =>
     const [ clock, setClock ] = useState<string>('');
     const [ shotFlash, setShotFlash ] = useState(false);
     const [ shotToast, setShotToast ] = useState<string>(null);
+    // The Notification Center rides over whatever screen is open rather than
+    // being one of its own, the way it pulls down over anything on a phone.
+    const [ centerOpen, setCenterOpen ] = useState(false);
     const { visibleThreads = [], getMessageThread = null, setActiveThreadId = null } = useMessenger();
     const { requestFriend = null, getFriend = null } = useFriends();
     const { ensureLoaded, access } = usePhonePrefs();
@@ -88,6 +97,7 @@ export const PhoneView: FC<{}> = props =>
     const { enabled: airplaneOn = false } = useAirplane();
     const { clock24 } = useUnitsPrefs();
     const { saveScreenshot = null } = usePhonePhotos();
+    const { markSeen = null } = usePhoneNotifications();
     const displayRef = useRef<HTMLDivElement>(null);
     const powerTimer = useRef<number>(0);
     const powerLongFired = useRef(false);
@@ -144,6 +154,7 @@ export const PhoneView: FC<{}> = props =>
     const hide = () =>
     {
         setIsVisible(false);
+        setCenterOpen(false);
         setCallFriendId(0);
 
         if(setActiveThreadId) setActiveThreadId(-1);
@@ -156,6 +167,10 @@ export const PhoneView: FC<{}> = props =>
         const thread = getMessageThread(userId);
 
         if(!thread) return;
+
+        // Reading the conversation is what clears its notification - the
+        // badge itself is the messenger's own unread count and clears with it.
+        if(markSeen) markSeen('messages', userId);
 
         setThreadId(thread.threadId);
 
@@ -172,8 +187,10 @@ export const PhoneView: FC<{}> = props =>
         });
     }
 
-    const openThread = (thread: { threadId: number }) =>
+    const openThread = (thread: { threadId: number, participant?: { id: number } }) =>
     {
+        if(markSeen && thread.participant) markSeen('messages', thread.participant.id);
+
         setThreadId(thread.threadId);
 
         if(setActiveThreadId) setActiveThreadId(thread.threadId);
@@ -184,6 +201,36 @@ export const PhoneView: FC<{}> = props =>
 
             return 'thread';
         });
+    }
+
+    // Opening a notification takes you to its app. Clearing it is the app's
+    // job, when the player opens the actual album, note, event or story - so
+    // a glance at the banner never wipes the list.
+    const openNotification = (notification: PhoneNotification) =>
+    {
+        setCenterOpen(false);
+
+        switch(notification.app)
+        {
+            case 'messages':
+                openThreadForUser(notification.targetId);
+                return;
+            case 'contacts':
+                go('contacts');
+                return;
+            case 'photos':
+                go('photos');
+                return;
+            case 'calendar':
+                go('calendar');
+                return;
+            case 'notes':
+                go('notes');
+                return;
+            case 'news':
+                go('news');
+                return;
+        }
     }
 
     const onHomeBar = () =>
@@ -416,7 +463,7 @@ export const PhoneView: FC<{}> = props =>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
                     <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }${ access.bold ? ' is-a11y-bold' : '' }${ access.contrast ? ' is-a11y-contrast' : '' }${ access.opaque ? ' is-a11y-opaque' : '' }${ access.switchLabels ? ' is-a11y-labels' : '' }${ access.reduceMotion ? ' is-a11y-still' : '' }` } style={ { '--ph-text-scale': TEXT_SIZE_SCALES[access.textSize] } as CSSProperties }>
-                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` }>
+                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` } title={ centerOpen ? 'Close notifications' : 'Notifications' } onClick={ event => setCenterOpen(value => !value) }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
                                 <span>PXL</span>
@@ -442,7 +489,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } openNotifications={ () => go('notifications') } /> }
                             { (screen === 'music') &&
                                 <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
@@ -461,11 +508,16 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneWallpaperView onBack={ () => go('settings') } /> }
                             { (screen === 'accessibility') &&
                                 <PhoneAccessibilityView onBack={ () => go('settings') } /> }
+                            { (screen === 'notifications') &&
+                                <PhoneNotifySettingsView onBack={ () => go('settings') } /> }
                             { (screen === 'account') &&
                                 <PhoneAccountView onBack={ () => go('settings') } /> }
                             { (screen === 'appearance') &&
                                 <PhoneAppearanceView onBack={ () => go('settings') } /> }
                         </div>
+                        { centerOpen
+                            ? <PhoneNotificationCenterView onOpen={ openNotification } onClose={ () => setCenterOpen(false) } />
+                            : <PhoneNotificationsView onOpen={ openNotification } openCenter={ () => setCenterOpen(true) } /> }
                         { callFriend &&
                             <PhoneCallView friend={ callFriend } onEnd={ () => setCallFriendId(0) } /> }
                         <div className={ `phone-home-indicator${ onLightScreen ? ' on-light' : '' }` } title={ (screen === 'home') ? 'Put phone away' : 'Home' } onClick={ onHomeBar } />

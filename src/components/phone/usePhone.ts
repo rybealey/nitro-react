@@ -77,6 +77,35 @@ export interface PhoneAccess
     reduceMotion: boolean;
 }
 
+// Settings > Notifications. Which banners the phone is willing to show and
+// count. Friends coming and going ships OFF: with a long friends list it is
+// the one trigger that fires all day, and there is nothing to go back and
+// read afterwards.
+export interface PhoneNotify
+{
+    allow: boolean;
+    messages: boolean;
+    contacts: boolean;
+    calendar: boolean;
+    notes: boolean;
+    photos: boolean;
+    news: boolean;
+    // ten minutes before an event starts
+    reminders: boolean;
+    // a friend logging in or out
+    friends: boolean;
+}
+
+export const DEFAULT_NOTIFY: PhoneNotify = { allow: true, messages: true, contacts: true, calendar: true, notes: true, photos: true, news: true, reminders: true, friends: false };
+
+const readNotify = (value: unknown): PhoneNotify =>
+{
+    const raw = ((value && (typeof value === 'object')) ? (value as Record<string, unknown>) : {});
+    const flag = (key: keyof PhoneNotify) => ((typeof raw[key] === 'boolean') ? (raw[key] as boolean) : DEFAULT_NOTIFY[key]);
+
+    return { allow: flag('allow'), messages: flag('messages'), contacts: flag('contacts'), calendar: flag('calendar'), notes: flag('notes'), photos: flag('photos'), news: flag('news'), reminders: flag('reminders'), friends: flag('friends') };
+}
+
 export const TEXT_SIZE_NAMES: string[] = [ 'Smaller', 'Default', 'Large', 'Larger', 'Largest' ];
 export const TEXT_SIZE_SCALES: number[] = [ 0.9, 1, 1.1, 1.2, 1.3 ];
 export const DEFAULT_ACCESS: PhoneAccess = { textSize: 1, bold: false, contrast: false, opaque: false, switchLabels: false, reduceMotion: false };
@@ -107,6 +136,7 @@ interface PhonePrefs
     // a built-in wallpaper key, or 'photo:<url>' (see PhoneWallpapers)
     wallpaper: string;
     access: PhoneAccess;
+    notify: PhoneNotify;
 }
 
 const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
@@ -183,7 +213,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 theme: (((parsed.theme === 'light') || (parsed.theme === 'dark')) ? parsed.theme : 'auto'),
                 position: (((parsed.position === 'left') || (parsed.position === 'right') || (parsed.position === 'center')) ? parsed.position : 'right'),
                 wallpaper: CleanWallpaper(parsed.wallpaper),
-                access: readAccess(parsed.access)
+                access: readAccess(parsed.access),
+                notify: readNotify(parsed.notify)
             };
         }
     }
@@ -191,7 +222,7 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS } };
+    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS }, notify: { ...DEFAULT_NOTIFY } };
 }
 
 // Synchronous read of just the saved open-position, straight from storage -
@@ -232,6 +263,7 @@ const usePhonePrefsState = () =>
     const [ position, setPositionState ] = useState<PhonePosition>('right');
     const [ wallpaper, setWallpaperState ] = useState<string>(DEFAULT_WALLPAPER);
     const [ access, setAccessState ] = useState<PhoneAccess>({ ...DEFAULT_ACCESS });
+    const [ notify, setNotifyState ] = useState<PhoneNotify>({ ...DEFAULT_NOTIFY });
 
     const ensureLoaded = () =>
     {
@@ -250,6 +282,7 @@ const usePhonePrefsState = () =>
         setPositionState(prefs.position);
         setWallpaperState(prefs.wallpaper);
         setAccessState(prefs.access);
+        setNotifyState(prefs.notify);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
@@ -269,7 +302,8 @@ const usePhonePrefsState = () =>
                 theme: (prefs.theme ?? theme),
                 position: (prefs.position ?? position),
                 wallpaper: (prefs.wallpaper ?? wallpaper),
-                access: (prefs.access ?? access)
+                access: (prefs.access ?? access),
+                notify: (prefs.notify ?? notify)
             }));
         }
 
@@ -356,6 +390,19 @@ const usePhonePrefsState = () =>
         });
     }
 
+    // Settings > Notifications: merge one or more switches.
+    const setNotify = (changes: Partial<PhoneNotify>) =>
+    {
+        setNotifyState(prevValue =>
+        {
+            const next = readNotify({ ...prevValue, ...changes });
+
+            save({ notify: next });
+
+            return next;
+        });
+    }
+
     // Drag-rearrange of the home screen (grid slot matrix + dock together).
     const setAppOrder = (grid: string[], dock: string[]) =>
     {
@@ -364,7 +411,7 @@ const usePhonePrefsState = () =>
         save({ grid, dock });
     }
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, ensureLoaded };
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, notify, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, setNotify, ensureLoaded };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);

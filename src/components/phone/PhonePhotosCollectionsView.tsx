@@ -1,4 +1,5 @@
 import { RpAlbumListItem, RpPhotoListItem } from '@nitrots/nitro-renderer';
+import { usePhoneNotifications } from './usePhoneNotifications';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { useFriends } from '../../hooks';
@@ -58,6 +59,7 @@ export const PhonePhotosCollectionsView: FC<PhonePhotosCollectionsViewProps> = p
     const { onDetailChange = null } = props;
     const { photos = [] } = usePhonePhotos();
     const { albums = [], albumPhotos = {}, requestAlbums = null, requestAlbumPhotos = null, createAlbum = null, deleteAlbum = null, setAlbumMember = null, setAlbumPhoto = null } = usePhoneAlbums();
+    const { markSeen = null } = usePhoneNotifications();
     const { friends = [] } = useFriends();
     const [ view, setView ] = useState<CollectionView>(null);
     const [ createShared, setCreateShared ] = useState<boolean>(null);
@@ -139,6 +141,9 @@ export const PhonePhotosCollectionsView: FC<PhonePhotosCollectionsViewProps> = p
 
     const openAlbum = (albumId: number) =>
     {
+        // Opening the album is what clears its invite and its new photos.
+        if(markSeen) markSeen('photos', albumId);
+
         setView({ type: 'album', id: albumId });
 
         if(requestAlbumPhotos) requestAlbumPhotos(albumId);

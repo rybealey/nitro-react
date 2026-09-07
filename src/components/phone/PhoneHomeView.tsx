@@ -1,6 +1,7 @@
 import { CSSProperties, FC, PointerEvent, useRef, useState } from 'react';
 import { WallpaperStyle } from './PhoneWallpapers';
-import { DOCK_CAPACITY, GRID_COLS, GRID_ROWS, usePhoneBadges, usePhonePrefs } from './usePhone';
+import { DOCK_CAPACITY, GRID_COLS, GRID_ROWS, usePhonePrefs } from './usePhone';
+import { usePhoneAppBadges } from './usePhoneNotifications';
 
 // Phone home screen: terrace wallpaper, a fixed 4x5 slot grid and the dock.
 // iOS-style rearranging: icons are NOT immediately draggable — click-hold an
@@ -33,7 +34,7 @@ const jiggleVars = (key: string): CSSProperties =>
     } as CSSProperties);
 }
 
-interface PhoneAppDef
+export interface PhoneAppDef
 {
     // FontAwesome Duotone Regular glyph name (fa-<icon>) for the app tile.
     icon: string;
@@ -62,7 +63,7 @@ interface PhoneAppDef
 // allows (a saturated plate + white glyph, which is how iOS colours its own
 // icons). Several iOS icons are grey/silver (Camera, Contacts, Settings,
 // Translate) or dark (Stocks, Wallet) - kept distinct by tint.
-const APP_DEFS: Record<string, PhoneAppDef> = {
+export const APP_DEFS: Record<string, PhoneAppDef> = {
     // dock
     'Phone': { icon: 'phone', plate: 'linear-gradient(160deg, #6ee86f, #34c759 55%, #1aa63f)' },
     'Messages': { icon: 'comment-dots', active: true, plate: 'linear-gradient(160deg, #5bf07a, #23c33f 55%, #12a636)' },
@@ -87,7 +88,7 @@ const APP_DEFS: Record<string, PhoneAppDef> = {
 // The phone app-tile glyphs come from the PixelRP FontAwesome Duotone Regular
 // kit (loaded in index.html), not the pixelarticons mask set the rest of the
 // phone chrome uses.
-const AppGlyph: FC<{ icon: string, pri?: string, sec?: string, faStyle?: 'solid' | 'regular' }> = ({ icon, pri, sec, faStyle }) =>
+export const AppGlyph: FC<{ icon: string, pri?: string, sec?: string, faStyle?: 'solid' | 'regular' }> = ({ icon, pri, sec, faStyle }) =>
 {
     // Per-app layer colours (full opacity) tint the duotone layers; the
     // default (neither set) keeps the soft white-on-white look from
@@ -119,7 +120,7 @@ interface PhoneHomeViewProps
 export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 {
     const { openApp = null } = props;
-    const { unreadMessages = 0, requestCount = 0 } = usePhoneBadges();
+    const { counts: badgeCounts } = usePhoneAppBadges();
     const { gridOrder, dockOrder, setAppOrder, wallpaper } = usePhonePrefs();
     const [ dragApp, setDragApp ] = useState<DragApp>(null);
     const [ editing, setEditing ] = useState(false);
@@ -138,7 +139,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
         holdTimerRef.current = 0;
     }
 
-    const badgeCount = (key: string) => ((key === 'Messages') ? unreadMessages : ((key === 'Contacts') ? requestCount : 0));
+    const badgeCount = (key: string) => (badgeCounts[key] ?? 0);
 
     // Pointer -> grid slot index, through the phone's transform scale: convert
     // the client point into the grid's local space and snap to the 4-column,
