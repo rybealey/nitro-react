@@ -649,6 +649,9 @@ $phone-scale: 0.8;
         flex: none;
         border-radius: 50%;
         overflow: hidden;
+
+        // a real head renders bare: no pastel circle, no clipping
+        &.phone-face--bare { overflow: visible; background: transparent !important; box-shadow: none; }
         display: flex;
         align-items: center;
         justify-content: center;
@@ -691,10 +694,9 @@ $phone-scale: 0.8;
             }
         }
 
-        // 1.6x (not 2x): the full-2x head overfilled the pinned tiles; 20%
-        // smaller leaves breathing room around the head.
-        &.phone-avatar--2x .phone-avatar-crop .avatar-image {
-            transform: scale(1.6);
+        // bare heads scale with their footprint (--head-scale from the component)
+        &.phone-avatar--unmasked .phone-avatar-crop .avatar-image {
+            transform: scale(var(--head-scale, 1));
             transform-origin: 45px 46px;
             image-rendering: pixelated;
         }
@@ -717,12 +719,14 @@ $phone-scale: 0.8;
             image-rendering: pixelated;
         }
 
-        // Unmasked (pinned grid): no tile at all — no pastel field, no ink
-        // outline, no clipping. Just the bare head at the same size, in the
-        // same footprint so the grid and presence dot don't move.
+        // Bare head: no tile at all — no pastel field, no ink outline, no
+        // clipping, no sticker shadow. Same footprint so lists, grids and
+        // the presence dot don't move.
         &.phone-avatar--unmasked .phone-avatar-crop {
             overflow: visible;
             border: none;
+            box-shadow: none;
+            background: transparent;
         }
 
         // Settings account portrait: a plain full circle, no ink ring (the
@@ -4731,9 +4735,8 @@ $phone-scale: 0.8;
         align-items: center;
         gap: 4px;
 
-        // Bare sprite head (unmasked PhoneAvatar) - same treatment as the
-        // pinned-messages heads, scaled a touch smaller for the People row.
-        .phone-avatar--2x .phone-avatar-crop .avatar-image {
+        // Bare sprite head, scaled a touch smaller for the People row.
+        .phone-avatar--unmasked .phone-avatar-crop .avatar-image {
             transform: scale(1.3);
         }
     }
