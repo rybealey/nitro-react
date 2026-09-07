@@ -16,6 +16,14 @@ interface ChatWidgetMessageViewProps
 // (:superhire and friends) - all render "*Name does a thing*"
 const ACTION_BUBBLE_STYLES: number[] = [ 4, 5, 23 ];
 
+// Relationship bubbles are their own family, not combat: 16 carries the social
+// commands (:hug, :kiss, :bite). They narrate the same way, so they get the
+// same "*Name does a thing*" treatment - kept in a separate list because they
+// are not action bubbles and should not inherit whatever those grow into.
+const RELATIONSHIP_BUBBLE_STYLES: number[] = [ 16 ];
+
+const NARRATED_BUBBLE_STYLES: number[] = [ ...ACTION_BUBBLE_STYLES, ...RELATIONSHIP_BUBBLE_STYLES ];
+
 export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
 {
     const { chat = null, makeRoom = null, bubbleWidth = RoomChatSettings.CHAT_BUBBLE_WIDTH_NORMAL } = props;
@@ -82,18 +90,21 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
         setIsVisible(true);
     }, [ chat, isReady, isVisible, makeRoom ]);
 
-    // Action bubbles arrive as *action text*. Move that opening marker ahead of
-    // the username so the whole line reads *Username action text*, and mark the
-    // bubble so ChatWidgetView.scss can bold it.
+    // Narrated bubbles arrive as *action text*. Move that opening marker ahead
+    // of the username so the whole line reads *Username action text*, and mark
+    // the bubble so ChatWidgetView.scss can bold it.
     //
-    // Two styles qualify: 4, the blue bubble every combat action uses, and 5,
-    // the yellow one a consumed backpack item announces itself with (the passive
-    // smoothie, a VIP token). They are the same KIND of message - the player
-    // doing something, narrated in the third person - so they read the same.
+    // Two families qualify. The action bubbles: 4, the blue bubble every combat
+    // action uses, 5, the yellow one a consumed backpack item announces itself
+    // with (the passive smoothie, a VIP token), and 23, the staff one. And the
+    // relationship bubble, 16, which the social commands shout. They are all
+    // the same KIND of message - the player doing something, narrated in the
+    // third person - so they read the same, while staying separate lists.
     //
-    // The asterisk test is what makes this safe: either style may also be a
-    // player-selectable chat style, and ordinary chat in one must stay plain.
-    const isActionBubble = (ACTION_BUBBLE_STYLES.includes(chat.styleId) && chat.text.startsWith('*') && chat.text.endsWith('*'));
+    // The asterisk test is what makes this safe: any of these styles may also
+    // be a player-selectable chat style, and ordinary chat in one must stay
+    // plain.
+    const isActionBubble = (NARRATED_BUBBLE_STYLES.includes(chat.styleId) && chat.text.startsWith('*') && chat.text.endsWith('*'));
     const formattedText = isActionBubble ? chat.formattedText.substring(1) : chat.formattedText;
 
     return (
