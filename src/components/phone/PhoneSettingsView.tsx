@@ -90,13 +90,13 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('plane-up', '#f0954a', 'Airplane Mode', { chevron: false, inert: false, switchOn: airplane, onTap: () => setAirplane(!airplane) }) }
                     </>) }
                     { group(<>
-                        { item('bell', '#e03131', 'Notifications', { value: notifyLabel, inert: false, onTap: () => (openNotifications && openNotifications()) }) }
                         { item('sliders', '#8a8a90', 'General', { inert: false, onTap: () => (openGeneral && openGeneral()) }) }
                         { item('human', '#3f6fbf', 'Accessibility', { inert: false, onTap: () => (openAccessibility && openAccessibility()) }) }
                         { item('sun', '#f0954a', 'Appearance', { value: appearanceLabel, inert: false, onTap: () => (openAppearance && openAppearance()) }) }
                         { item('image', '#2ba88f', 'Wallpaper', { value: WallpaperName(wallpaper), inert: false, onTap: () => (openWallpaper && openWallpaper()) }) }
                     </>) }
                     { group(<>
+                        { item('bell', '#e03131', 'Notifications', { value: notifyLabel, inert: false, onTap: () => (openNotifications && openNotifications()) }) }
                         { item('shield', '#e03131', 'Emergency SOS') }
                         { item('lock', '#3f8fbf', 'Privacy & Security') }
                     </>) }
