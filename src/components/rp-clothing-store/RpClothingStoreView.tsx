@@ -46,6 +46,8 @@ interface ShelfItem
     // the rail category the piece files under
     type: string;
     tab: StoreTab;
+    // false when every set in the piece is cut for the other gender
+    fitsGender: boolean;
 }
 
 // every figuredata part set by id, with the set type it belongs to
@@ -188,6 +190,7 @@ export const RpClothingStoreView: FC<{}> = props =>
     const [ tab, setTab ] = useState<StoreTab>('head');
     const [ railType, setRailType ] = useState<string>(FigureData.HAIR);
     const [ search, setSearch ] = useState('');
+    const [ showOtherGender, setShowOtherGender ] = useState(false);
     const [ listings, setListings ] = useState<ClothingListing[]>([]);
     const [ ownedSetIds, setOwnedSetIds ] = useState<number[]>(() => [ ...AvatarEditorUtilities.FIGURE_SET_IDS ]);
     // clothing id -> the set types it currently occupies on the mannequin
@@ -237,7 +240,7 @@ export const RpClothingStoreView: FC<{}> = props =>
             const type = parts[0].type;
             const tab = TABS.find(candidate => (candidate.types.indexOf(type) >= 0));
 
-            items.push({ listing, name: ClothingShelfName(listing), parts, type, tab: (tab ? tab.key : 'head') });
+            items.push({ listing, name: ClothingShelfName(listing), parts, type, tab: (tab ? tab.key : 'head'), fitsGender: !!matching.length });
         }
 
         return items;
@@ -263,7 +266,9 @@ export const RpClothingStoreView: FC<{}> = props =>
         return [ 'all', ...present ];
     }, [ tab, shelf ]);
 
-    const visibleItems = useMemo(() =>
+    // everything the tab, rail and search allow - before the gender filter,
+    // so the toggle can say how much it is holding back
+    const matchedItems = useMemo(() =>
     {
         const needle = search.trim().toLowerCase();
 
@@ -284,6 +289,9 @@ export const RpClothingStoreView: FC<{}> = props =>
             return (!needle.length || (item.name.toLowerCase().indexOf(needle) >= 0));
         });
     }, [ shelf, tab, railType, search ]);
+
+    const visibleItems = useMemo(() => (showOtherGender ? matchedItems : matchedItems.filter(item => item.fitsGender)), [ matchedItems, showOtherGender ]);
+    const otherGenderCount = useMemo(() => matchedItems.reduce((count, item) => (count + (item.fitsGender ? 0 : 1)), 0), [ matchedItems ]);
 
     const canRemove = useMemo(() =>
     {
@@ -405,6 +413,20 @@ export const RpClothingStoreView: FC<{}> = props =>
         setNotice(null);
         setArmed(false);
     }, [ figure, base, gender ]);
+
+    // Hiding the other gender again takes anything of theirs back off: the
+    // tile it came from is gone, so it could not be taken off any other way.
+    const toggleOtherGender = useCallback(() =>
+    {
+        if(showOtherGender) for(const id of Array.from(tried.keys()))
+        {
+            const item = shelfById.get(id);
+
+            if(item && !item.fitsGender) takeOff(id);
+        }
+
+        setShowOtherGender(value => !value);
+    }, [ showOtherGender, tried, shelfById, takeOff ]);
 
     const rotate = useCallback((offset: number) =>
     {
@@ -584,6 +606,12 @@ export const RpClothingStoreView: FC<{}> = props =>
 
     const ltdIconUrl = GetConfiguration<string>('catalog.asset.icon.url', '').replace('%name%', LTD_ICON);
     const placeholder = ((tab === 'ltd') ? 'Search limited editions...' : `Search ${ TYPE_LABELS[railType] || 'clothing' }...`);
+    const otherGenderLabel = ((gender === FigureData.MALE) ? "women's" : "men's");
+    const emptyText = (!listings.length
+        ? 'The shelves are being stocked.'
+        : ((!showOtherGender && (otherGenderCount > 0))
+            ? `Nothing here in your size - turn on ${ otherGenderLabel } clothing to see the rest.`
+            : 'Nothing here matches.'));
     const buyLabel = (!basket.length ? 'Buy' : (armed ? 'Confirm purchase' : `Buy ${ basket.length } item${ (basket.length > 1) ? 's' : '' }`));
 
     return (
@@ -608,9 +636,17 @@ export const RpClothingStoreView: FC<{}> = props =>
                             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="6" cy="6" r="4" /><path d="M9.2 9.2L12.5 12.5" /></svg>
                             <input type="text" value={ search } placeholder={ placeholder } onChange={ event => setSearch(event.target.value) } />
                         </div>
+                        <div className="clothing-store-filter">
+                            <div className={ `clothing-store-filter-check${ showOtherGender ? ' is-on' : '' }` } onClick={ toggleOtherGender }>
+                                <span className="clothing-store-filter-box" />
+                                Also show { otherGenderLabel } clothing
+                            </div>
+                            { (!showOtherGender && (otherGenderCount > 0)) &&
+                                <span className="clothing-store-filter-count">{ otherGenderCount } hidden</span> }
+                        </div>
                         <div className="clothing-store-shelf">
                             { (!visibleItems.length && !canRemove) &&
-                                <div className="clothing-store-empty">{ listings.length ? 'Nothing here matches.' : 'The shelves are being stocked.' }</div> }
+                                <div className="clothing-store-empty">{ emptyText }</div> }
                             <div className="clothing-store-grid">
                                 { canRemove &&
                                     <div className="clothing-store-tile" title="Remove" onClick={ () => clearType(railType) }>
