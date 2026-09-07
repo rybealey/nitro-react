@@ -4456,6 +4456,150 @@ $phone-scale: 0.8;
         }
     }
 
+    // ---- Wallet: the Resident ID ---------------------------------------
+    // Navy card on both themes (the ID is the same object wherever it shows);
+    // a fine guilloche field, a holo edge and the brand-orange civic band.
+    .phone-wallet-card {
+        position: relative;
+        margin: 6px 18px 0;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #1c2742;
+        color: #f4f0f7;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .12);
+        animation: phone-cal-rise .32s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .phone-wallet-field {
+        position: absolute;
+        inset: 0;
+        opacity: .35;
+        background:
+            repeating-linear-gradient(115deg, rgba(255, 255, 255, 0) 0 6px, rgba(255, 255, 255, .05) 6px 7px),
+            repeating-linear-gradient(65deg, rgba(255, 255, 255, 0) 0 9px, rgba(255, 255, 255, .04) 9px 10px);
+    }
+
+    .phone-wallet-holo {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 9px;
+        opacity: .85;
+        background: linear-gradient(180deg, #ff9dbf, #7fb0d0 30%, #7fc98f 55%, #f5b96a 80%, #ff9dbf);
+    }
+
+    .phone-wallet-band {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 22px 8px 14px;
+        background: linear-gradient(90deg, #e87332, #f0954a);
+        color: #1a0a14;
+    }
+
+    .phone-wallet-band-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .phone-wallet-band-number { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums; opacity: .85; white-space: nowrap; }
+
+    .phone-wallet-body {
+        position: relative;
+        padding: 14px 22px 14px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .phone-wallet-identity { display: flex; align-items: center; gap: 12px; }
+
+    // the photo tile: white, like an ID photo, the bare head sat on it
+    .phone-wallet-photo {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        background: #fdfcff;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1.5px rgba(26, 10, 20, .25);
+    }
+
+    .phone-wallet-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+    .phone-wallet-name {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: calc(18px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: -.2px;
+
+        span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .phone-wallet-verified { color: #3f8fbf; font-size: calc(15px * var(--ph-text-scale, 1)); flex: none; }
+    }
+
+    .phone-wallet-motto { font-size: calc(11px * var(--ph-text-scale, 1)); color: rgba(244, 240, 247, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .phone-wallet-birthday { display: flex; align-items: center; gap: 5px; font-size: calc(11px * var(--ph-text-scale, 1)); color: rgba(244, 240, 247, .78); }
+
+    .phone-wallet-levels { display: flex; gap: 8px; }
+
+    .phone-wallet-level {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 9px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, .08);
+        border: 1px solid rgba(255, 255, 255, .1);
+        color: #f0954a;
+
+        > div { display: flex; flex-direction: column; line-height: 1.1; }
+        .phone-wallet-level-label { font-size: calc(8.5px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(244, 240, 247, .6); }
+        .phone-wallet-level-value { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: #f4f0f7; font-variant-numeric: tabular-nums; }
+    }
+
+    .phone-wallet-rows { display: flex; flex-direction: column; }
+
+    .phone-wallet-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 6px 0;
+        border-top: 1px solid rgba(255, 255, 255, .1);
+    }
+
+    .phone-wallet-row-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        overflow: hidden;
+
+        // corp badge art is pixel art at native size; shrink it into the slot
+        &.is-badge { background: rgba(255, 255, 255, .1); .badge-image { position: static; transform: scale(.6); } }
+    }
+
+    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); color: #f4f0f7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; b { font-weight: 700; } }
+
+    @media (prefers-reduced-motion: reduce) { .phone-wallet-card { animation: none; } }
+
     // Appearance sub-screen option list (Light / Dark / Automatic; phone
     // position Left / Center / Right).
     .phone-appearance-option {
