@@ -12,6 +12,7 @@ import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
 import { PhoneGeneralView } from './PhoneGeneralView';
 import { PhoneWallpaperView } from './PhoneWallpaperView';
+import { PhoneWalletView } from './PhoneWalletView';
 import { PhoneWeatherView } from './PhoneWeatherView';
 import { PhoneNewsView } from './PhoneNewsView';
 import { PhoneCallView } from './PhoneCallView';
@@ -31,7 +32,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility' | 'wallet';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -44,13 +45,14 @@ const APP_SCREENS: Record<string, PhoneScreen> = {
     'Tunes': 'music',
     'Notes': 'notes',
     'Weather': 'weather',
-    'News': 'news'
+    'News': 'news',
+    'Wallet': 'wallet'
 };
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather') || (to === 'news'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather') || (to === 'news') || (to === 'wallet'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'appearance') return 'slide-right';
@@ -451,6 +453,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneWeatherView onBack={ () => go('home') } /> }
                             { (screen === 'news') &&
                                 <PhoneNewsView onBack={ () => go('home') } /> }
+                            { (screen === 'wallet') &&
+                                <PhoneWalletView onBack={ () => go('home') } /> }
                             { (screen === 'general') &&
                                 <PhoneGeneralView onBack={ () => go('settings') } /> }
                             { (screen === 'wallpaper') &&
