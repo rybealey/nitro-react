@@ -411,13 +411,11 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
                 { top && topCard(top) }
                 { rest.length > 0 &&
                     <>
-                        <div className="phone-news-section">Latest</div>
+                        <div className="phone-section-label is-fade">Latest</div>
                         <div className="phone-news-card">
                             { rest.map((post, index) => row(post, index)) }
                         </div>
                     </> }
-                { posts.length > 0 &&
-                    <div className="phone-news-foot">Posted by hotel staff. New stories appear here as they go up.</div> }
             </div>
         </div>
     );
@@ -573,9 +571,9 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
             <div className="phone-news-picker-scroll">
                 { library && !query.length && recent.filter(name => library.images.includes(name)).length > 0 &&
                     <>
-                        <div className="phone-news-section is-sheet">Recently used</div>
+                        <div className="phone-section-label is-fade is-sheet">Recently used</div>
                         <div className="phone-news-grid">{ recent.filter(name => library.images.includes(name)).map((name, index) => tile(name, index)) }</div>
-                        <div className="phone-news-section is-sheet">All images</div>
+                        <div className="phone-section-label is-fade is-sheet">All images</div>
                     </> }
                 { library &&
                     <div className="phone-news-grid">{ filtered.map((name, index) => tile(name, index)) }</div> }

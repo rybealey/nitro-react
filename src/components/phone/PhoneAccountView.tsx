@@ -98,45 +98,47 @@ export const PhoneAccountView: FC<PhoneAccountViewProps> = props =>
                             </div>
                         </div>
                     </div>
-                    <div className="phone-appearance-sublabel">Birthday</div>
-                    <div className="phone-settings-card">
-                        <div className={ `phone-settings-item phone-tap${ picking ? ' is-open' : '' }` } onClick={ event => (!picking && openPicker()) }>
-                            <div className="phone-settings-icon" style={ { background: '#e93a7d' } }>
-                                <PhoneIcon icon="cake" size={ 17 } />
+                    <div>
+                        <div className="phone-section-label">Birthday</div>
+                        <div className="phone-settings-card">
+                            <div className={ `phone-settings-item phone-tap${ picking ? ' is-open' : '' }` } onClick={ event => (!picking && openPicker()) }>
+                                <div className="phone-settings-icon" style={ { background: '#e93a7d' } }>
+                                    <PhoneIcon icon="cake" size={ 17 } />
+                                </div>
+                                <div className="phone-settings-item-label">Birthday</div>
+                                <span className={ `phone-settings-item-value${ picking ? ' is-draft' : '' }` }>{ value }</span>
+                                { !picking &&
+                                    <PhoneIcon icon="chevron-right" size={ 18 } className="phone-settings-chev" /> }
                             </div>
-                            <div className="phone-settings-item-label">Birthday</div>
-                            <span className={ `phone-settings-item-value${ picking ? ' is-draft' : '' }` }>{ value }</span>
-                            { !picking &&
-                                <PhoneIcon icon="chevron-right" size={ 18 } className="phone-settings-chev" /> }
-                        </div>
-                        { picking &&
-                            <div className="phone-birthday-picker">
-                                <div className="phone-birthday-label">Month</div>
-                                <div className="phone-birthday-months">
-                                    { MONTHS.map((name, index) => (
-                                        <div key={ name } className={ `phone-tap phone-birthday-month${ (draftMonth === (index + 1)) ? ' is-picked' : '' }` } onClick={ event => pickMonth(index + 1) }>{ name.substring(0, 3) }</div>
-                                    )) }
-                                </div>
-                                <div className="phone-birthday-label">Day</div>
-                                <div className="phone-birthday-days">
-                                    { Array.from({ length: 31 }, (_, index) => (index + 1)).map(value =>
-                                    {
-                                        const inMonth = (value <= DAYS_IN_MONTH[draftMonth - 1]);
+                            { picking &&
+                                <div className="phone-birthday-picker">
+                                    <div className="phone-birthday-label">Month</div>
+                                    <div className="phone-birthday-months">
+                                        { MONTHS.map((name, index) => (
+                                            <div key={ name } className={ `phone-tap phone-birthday-month${ (draftMonth === (index + 1)) ? ' is-picked' : '' }` } onClick={ event => pickMonth(index + 1) }>{ name.substring(0, 3) }</div>
+                                        )) }
+                                    </div>
+                                    <div className="phone-birthday-label">Day</div>
+                                    <div className="phone-birthday-days">
+                                        { Array.from({ length: 31 }, (_, index) => (index + 1)).map(value =>
+                                        {
+                                            const inMonth = (value <= DAYS_IN_MONTH[draftMonth - 1]);
 
-                                        return (
-                                            <div key={ value } className={ `phone-birthday-day${ (draftDay === value) ? ' is-picked' : '' }${ inMonth ? ' phone-tap' : ' is-out' }` } onClick={ event => (inMonth && setDraftDay(value)) }>{ value }</div>
-                                        );
-                                    }) }
-                                </div>
-                                <div className="phone-birthday-actions">
-                                    <div className="phone-tap phone-birthday-btn" onClick={ event => setPicking(false) }>Cancel</div>
-                                    <div className="phone-tap phone-birthday-btn is-primary" onClick={ save }>Save</div>
-                                </div>
-                            </div> }
-                        { isSet && !picking &&
-                            <div className="phone-settings-item phone-tap phone-settings-item--danger" onClick={ remove }>
-                                <div className="phone-settings-item-label">Remove birthday</div>
-                            </div> }
+                                            return (
+                                                <div key={ value } className={ `phone-birthday-day${ (draftDay === value) ? ' is-picked' : '' }${ inMonth ? ' phone-tap' : ' is-out' }` } onClick={ event => (inMonth && setDraftDay(value)) }>{ value }</div>
+                                            );
+                                        }) }
+                                    </div>
+                                    <div className="phone-birthday-actions">
+                                        <div className="phone-tap phone-birthday-btn" onClick={ event => setPicking(false) }>Cancel</div>
+                                        <div className="phone-tap phone-birthday-btn is-primary" onClick={ save }>Save</div>
+                                    </div>
+                                </div> }
+                            { isSet && !picking &&
+                                <div className="phone-settings-item phone-tap phone-settings-item--danger" onClick={ remove }>
+                                    <div className="phone-settings-item-label">Remove birthday</div>
+                                </div> }
+                        </div>
                     </div>
                 </div>
                 <div className="phone-settings-footnote">Just the day and month - no year is stored.</div>

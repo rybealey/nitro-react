@@ -856,7 +856,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
 
         return (
             <>
-                <div className="phone-notes-section">{ label }</div>
+                <div className="phone-section-label is-fade">{ label }</div>
                 <div className="phone-notes-card">
                     { list.map((note, index) => noteRow(note, (index === 0), index)) }
                 </div>
@@ -907,7 +907,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                     </> }
                 { !query.length &&
                     <>
-                        <div className="phone-notes-section">On this phone</div>
+                        <div className="phone-section-label is-fade">On this phone</div>
                         <div className="phone-notes-card">
                             <div className="phone-notes-row phone-tap" onClick={ event => openList(ALL_NOTES) }>
                                 <PhoneIcon icon="list" size={ 17 } className="phone-notes-row-icon" />
@@ -928,7 +928,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                             <div className="phone-notes-hint">Tap the folder button to sort your notes into folders.</div> }
                         { sharedUnfiled.length > 0 &&
                             <>
-                                <div className="phone-notes-section">Shared with you</div>
+                                <div className="phone-section-label is-fade">Shared with you</div>
                                 <div className="phone-notes-card">
                                     { sharedUnfiled.map((note, index) => (
                                         <SwipeRow key={ note.id } first={ index === 0 } index={ index } open={ openSwipeId === note.id } onOpenChange={ open => setOpenSwipeId(open ? note.id : 0) } onTap={ () => openNote(note.id) } actions={ noteActions(note) }>
@@ -1057,7 +1057,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
         <>
             <div className="phone-notes-sheet-title">{ isOwner ? `Share “${ title.trim().length ? title : 'New note' }”` : 'In this note' }</div>
             <div className="phone-notes-sheet-sub">{ isOwner ? 'Friends you add can read and edit it. Changes show up for everyone as they happen.' : `${ detail.ownerName } shared this note. Everyone in it can edit.` }</div>
-            <div className="phone-notes-section is-sheet">In this note</div>
+            <div className="phone-section-label is-fade is-sheet">In this note</div>
             <div className="phone-notes-people">
                 { detail.people.map((person, index) => (
                     <div key={ person.userId } className={ `phone-notes-person${ index ? ' has-top' : '' }` }>
@@ -1075,7 +1075,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             </div>
             { isOwner &&
                 <>
-                    <div className="phone-notes-section is-sheet">Add friends</div>
+                    <div className="phone-section-label is-fade is-sheet">Add friends</div>
                     { !detail.friends.filter(friend => !detail.people.some(person => person.userId === friend.userId)).length &&
                         <div className="phone-notes-hint is-sheet">{ detail.friends.length ? 'Everyone on your friends list is already in this note.' : 'Add friends in Contacts first - notes can only be shared with friends.' }</div> }
                     <div className="phone-notes-people is-friends">

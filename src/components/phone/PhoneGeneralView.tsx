@@ -40,21 +40,23 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                     </div>
                 </div>
                 <div className="phone-settings-list">
-                    <div className="phone-settings-section-label">Time and units</div>
-                    <div className="phone-settings-card">
-                        <div className="phone-settings-item">
-                            <div className="phone-settings-icon" style={ { background: '#3f8fbf' } }>
-                                <PhoneIcon icon="clock" size={ 17 } />
+                    <div>
+                        <div className="phone-section-label">Time and units</div>
+                        <div className="phone-settings-card">
+                            <div className="phone-settings-item">
+                                <div className="phone-settings-icon" style={ { background: '#3f8fbf' } }>
+                                    <PhoneIcon icon="clock" size={ 17 } />
+                                </div>
+                                <div className="phone-settings-item-label">Clock</div>
+                                <Segmented options={ [ '12-hour', '24-hour' ] } picked={ clock24 ? 1 : 0 } onPick={ index => SetClock24(index === 1) } />
                             </div>
-                            <div className="phone-settings-item-label">Clock</div>
-                            <Segmented options={ [ '12-hour', '24-hour' ] } picked={ clock24 ? 1 : 0 } onPick={ index => SetClock24(index === 1) } />
-                        </div>
-                        <div className="phone-settings-item">
-                            <div className="phone-settings-icon" style={ { background: '#f0954a' } }>
-                                <PhoneIcon icon="temperature-half" size={ 17 } />
+                            <div className="phone-settings-item">
+                                <div className="phone-settings-icon" style={ { background: '#f0954a' } }>
+                                    <PhoneIcon icon="temperature-half" size={ 17 } />
+                                </div>
+                                <div className="phone-settings-item-label">Temperature</div>
+                                <Segmented options={ [ '°F', '°C' ] } picked={ celsius ? 1 : 0 } onPick={ index => SetCelsius(index === 1) } />
                             </div>
-                            <div className="phone-settings-item-label">Temperature</div>
-                            <Segmented options={ [ '°F', '°C' ] } picked={ celsius ? 1 : 0 } onPick={ index => SetCelsius(index === 1) } />
                         </div>
                     </div>
                 </div>

@@ -105,7 +105,6 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                         { item('wallet', '#1a0a14', 'Wallet') }
                     </>) }
                 </div>
-                <div className="phone-settings-footnote">Placeholder services aside, Notifications, General, Accessibility, Appearance and Wallpaper are live - they only change your phone.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

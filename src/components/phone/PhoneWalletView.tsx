@@ -91,7 +91,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                <div className="phone-appearance-sublabel">Your cards</div>
+                <div className="phone-section-label">Your cards</div>
                 <div className="phone-wallet-card">
                     <div className="phone-wallet-field" />
                     <div className="phone-wallet-holo" />
@@ -140,7 +140,6 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                             </div> }
                     </div>
                 </div>
-                <div className="phone-settings-footnote">Your Resident ID keeps itself current: levels, job and gang change on the card the moment they change in the city.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

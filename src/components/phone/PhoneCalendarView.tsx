@@ -274,7 +274,6 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                 { loaded && (dayEvents.length === 0) && (dayBirthdays.length === 0) &&
                     <div className="phone-calendar-empty">
                         <div className="phone-calendar-empty-title">Nothing on the { selected.getDate() }{ ([ 1, 21, 31 ].includes(selected.getDate()) ? 'st' : ([ 2, 22 ].includes(selected.getDate()) ? 'nd' : ([ 3, 23 ].includes(selected.getDate()) ? 'rd' : 'th'))) }</div>
-                        <div className="phone-calendar-empty-sub">Staff post in-game events here. Friends' birthdays show up on the day once they set one.</div>
                     </div> }
                 <div className="phone-calendar-timeline" style={ { height: `${ ((hours.length - 1) * HOUR_PX) + 16 }px` } }>
                     { hours.map(hour => (

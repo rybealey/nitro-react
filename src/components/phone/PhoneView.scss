@@ -569,13 +569,51 @@ $phone-scale: 0.8;
         box-shadow: 0 3px 8px rgba(184, 30, 116, 0.4);
     }
 
+    // ---- Eyebrow section headers ------------------------------------
+    // ONE class for every eyebrow on the phone. The convention:
+    //
+    //   An eyebrow belongs to the block BELOW it, so it always sits far
+    //   closer to what it labels than to what came before - 18px of air
+    //   above it, 6px beneath. Never a negative margin: the block that
+    //   follows contributes no top gap of its own (the reset below), so
+    //   the 6px is the whole distance and does not depend on which kind
+    //   of card happens to come next.
+    //
+    //   Inside a container that already separates groups - .phone-settings-list
+    //   is a flex column with gap: 18px - the eyebrow is the FIRST CHILD
+    //   of its group wrapper, so it drops its own top margin and the gap
+    //   is not paid twice. That wrapper is required: an eyebrow and the
+    //   card it heads are one group, or the container's gap lands
+    //   between them instead of around them.
     .phone-section-label {
-        padding: 12px 18px 4px;
+        margin: 18px 20px 6px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
-        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-size: calc(10px * var(--ph-text-scale, 1));
         letter-spacing: 1px;
-        color: $phone-muted-text;
+        text-transform: uppercase;
+        color: var(--ph-faint);
+
+        // First in a group or a scrollport: the container supplies the air.
+        &:first-child { margin-top: 0; }
+
+        // Sheets run full-bleed, so only the side inset drops away.
+        &.is-sheet { margin-left: 0; margin-right: 0; }
+
+        // News and Notes fade their headers in with the cards below them.
+        &.is-fade { animation: phone-cal-fade .3s ease both; }
+    }
+
+    // The block an eyebrow heads owns no top gap of its own. Add to this
+    // list when a new kind of block gets a header above it.
+    .phone-section-label + .phone-settings-card,
+    .phone-section-label + .phone-news-card,
+    .phone-section-label + .phone-news-grid,
+    .phone-section-label + .phone-notes-card,
+    .phone-section-label + .phone-wallet-card,
+    .phone-section-label + .phone-wallpaper-grid,
+    .phone-section-label + .phone-search {
+        margin-top: 0;
     }
 
     .phone-search {
@@ -2408,17 +2446,6 @@ $phone-scale: 0.8;
         &::-webkit-scrollbar { display: none; }
     }
 
-    .phone-notes-section {
-        margin: 12px 20px -6px;
-        font-weight: 700;
-        font-size: calc(10px * var(--ph-text-scale, 1));
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--ph-faint);
-
-        &.is-sheet { margin: 12px 0 6px; }
-    }
-
     .phone-notes-card {
         margin: 10px 18px 0;
         background: var(--ph-bg);
@@ -2436,8 +2463,6 @@ $phone-scale: 0.8;
         &.is-sheet .phone-notes-row:nth-child(5) { animation-delay: 120ms; }
         &.is-sheet .phone-notes-row:nth-child(n+6) { animation-delay: 150ms; }
     }
-
-    .phone-notes-section { animation: phone-cal-fade .3s ease both; }
 
     .phone-notes-row {
         display: flex;
@@ -2807,7 +2832,7 @@ $phone-scale: 0.8;
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .phone-notes-anim, .phone-notes-row, .phone-notes-swipe, .phone-notes-section, .phone-notes-line, .phone-notes-face, .phone-notes-fab, .phone-notes-caret-tag, .phone-notes-item-pin, .phone-notes-meta-live, .phone-notes-hint, .phone-notes-footer, .phone-notes-empty, .phone-notes-person, .phone-notes-menu-item, .phone-notes-check, .phone-notes-check .phone-pi { animation: none; }
+        .phone-notes-anim, .phone-notes-row, .phone-notes-swipe, .phone-section-label, .phone-notes-line, .phone-notes-face, .phone-notes-fab, .phone-notes-caret-tag, .phone-notes-item-pin, .phone-notes-meta-live, .phone-notes-hint, .phone-notes-footer, .phone-notes-empty, .phone-notes-person, .phone-notes-menu-item, .phone-notes-check, .phone-notes-check .phone-pi { animation: none; }
         .phone-notes-swipe-content, .phone-notes-line, .phone-notes-tool, .phone-notes-iconbtn, .phone-notes-fab, .phone-notes-check, .phone-notes-btn { transition: none; }
     }
 
@@ -3093,6 +3118,9 @@ $phone-scale: 0.8;
     }
 
     .phone-weather-tile-value { font-size: calc(26px * var(--ph-text-scale, 1)); font-weight: 500; letter-spacing: -.5px; margin-top: 6px; font-variant-numeric: tabular-nums; small { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 600; color: $wx-s2; letter-spacing: 0; } }
+    // A tile carrying the compass keeps its value clear of it.
+    .phone-weather-tile:has(.phone-weather-compass) .phone-weather-tile-value { padding-right: 52px; }
+
     .phone-weather-tile-sub { margin-top: auto; font-size: calc(11.5px * var(--ph-text-scale, 1)); line-height: 1.35; color: $wx-s2; }
 
     .phone-weather-uv { position: relative; height: 5px; border-radius: 3px; margin-top: 8px; background: linear-gradient(90deg, #4cc26b, #f2c65d 45%, #f08a4b 70%, #d94b6a 88%, #9b5de5); }
@@ -3109,10 +3137,12 @@ $phone-scale: 0.8;
         circle { fill: #ffffff; }
     }
 
+    // Pinned to the tile's top-right corner - at its old top: 30px it sat
+    // straight through the 26px value text beside it.
     .phone-weather-compass {
         position: absolute;
-        right: 12px;
-        top: 30px;
+        right: 13px;
+        top: 11px;
         width: 46px;
         height: 46px;
         border-radius: 50%;
@@ -3125,7 +3155,6 @@ $phone-scale: 0.8;
         .phone-pi { color: #ffffff; transition: transform .6s ease; }
     }
 
-    .phone-weather-foot { padding: 14px 26px 30px; text-align: center; font-size: calc(10.5px * var(--ph-text-scale, 1)); line-height: 1.5; color: $wx-s3; animation: phone-cal-fade .4s ease .4s both; }
 
     // loading
     .phone-weather-shimmer {
@@ -3136,7 +3165,7 @@ $phone-scale: 0.8;
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .phone-weather-sky, .phone-weather-stars, .phone-weather-pill, .phone-weather-pill-dot, .phone-weather-notice, .phone-weather-hero, .phone-weather-card, .phone-weather-hour, .phone-weather-day, .phone-weather-bar-fill, .phone-weather-bar-now, .phone-weather-tile, .phone-weather-foot, .phone-weather-shimmer { animation: none; }
+        .phone-weather-sky, .phone-weather-stars, .phone-weather-pill, .phone-weather-pill-dot, .phone-weather-notice, .phone-weather-hero, .phone-weather-card, .phone-weather-hour, .phone-weather-day, .phone-weather-bar-fill, .phone-weather-bar-now, .phone-weather-tile, .phone-weather-shimmer { animation: none; }
         .phone-weather-top, .phone-weather-compact, .phone-weather-body, .phone-weather-uv-dot, .phone-weather-compass .phone-pi { transition: none; }
     }
 
@@ -3194,18 +3223,6 @@ $phone-scale: 0.8;
         scrollbar-width: none;
 
         &::-webkit-scrollbar { display: none; }
-    }
-
-    .phone-news-section {
-        margin: 12px 20px -4px;
-        font-weight: 700;
-        font-size: calc(10px * var(--ph-text-scale, 1));
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--ph-faint);
-        animation: phone-cal-fade .3s ease both;
-
-        &.is-sheet { margin: 12px 0 8px; }
     }
 
     .phone-news-card {
@@ -3561,7 +3578,7 @@ $phone-scale: 0.8;
     .phone-news-tile-check { position: absolute; right: 5px; top: 5px; width: 18px; height: 18px; border-radius: 50%; background: var(--news-accent); color: var(--news-ink); display: flex; align-items: center; justify-content: center; animation: phone-notes-pop-in .22s cubic-bezier(.2, .8, .2, 1) both; }
 
     @media (prefers-reduced-motion: reduce) {
-        .phone-news-anim, .phone-news-section, .phone-news-card, .phone-news-row, .phone-news-foot, .phone-news-empty, .phone-news-article-hero, .phone-news-article-title, .phone-news-article-meta, .phone-news-p, .phone-news-imagerow, .phone-news-preview, .phone-news-menu-item, .phone-news-tile, .phone-news-tile-check { animation: none; }
+        .phone-news-anim, .phone-section-label, .phone-news-card, .phone-news-row, .phone-news-foot, .phone-news-empty, .phone-news-article-hero, .phone-news-article-title, .phone-news-article-meta, .phone-news-p, .phone-news-imagerow, .phone-news-preview, .phone-news-menu-item, .phone-news-tile, .phone-news-tile-check { animation: none; }
         .phone-news-iconbtn, .phone-news-top, .phone-news-row, .phone-news-postbtn, .phone-news-imagerow, .phone-news-cat, .phone-news-switch, .phone-news-switch-knob, .phone-news-btn, .phone-news-tile, .phone-news-top-hero img, .phone-news-article-hero img, .phone-news-preview img { transition: none; }
     }
 
@@ -3774,7 +3791,6 @@ $phone-scale: 0.8;
         text-align: center;
 
         .phone-calendar-empty-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
-        .phone-calendar-empty-sub { font-size: calc(12px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-soft); margin-top: 4px; }
     }
 
     .phone-calendar-timeline { position: relative; margin-top: 8px; }
@@ -4138,16 +4154,6 @@ $phone-scale: 0.8;
         }
     }
 
-    // General: uppercase label above a card, like the phone's other section labels
-    .phone-settings-section-label {
-        margin: 6px 20px 4px;
-        font-weight: 700;
-        font-size: calc(10px * var(--ph-text-scale, 1));
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--ph-faint);
-    }
-
     // two-way pill (Settings > General): a track with the chosen half raised
     .phone-segmented {
         position: relative;
@@ -4201,18 +4207,6 @@ $phone-scale: 0.8;
         justify-content: center;
         flex: none;
         color: #ffffff;
-    }
-
-    // Small label heading a group on the Appearance screen (e.g. the phone
-    // open-position options).
-    .phone-appearance-sublabel {
-        margin: 2px 20px -6px;
-        font-family: 'Ubuntu', sans-serif;
-        font-weight: 700;
-        font-size: calc(10px * var(--ph-text-scale, 1));
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--ph-faint);
     }
 
     // ---- Wallpaper sub-screen -------------------------------------------
@@ -4464,7 +4458,6 @@ $phone-scale: 0.8;
     // a fine guilloche field, a holo edge and the brand-orange civic band.
     // the sub-label's negative bottom margin is tuned for the settings cards;
     // the ID card sits lower and clears it
-    .phone-wallet .phone-appearance-sublabel { margin: 10px 20px 0; }
 
     .phone-wallet-card {
         position: relative;

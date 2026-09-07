@@ -36,7 +36,7 @@ export const ParsePhotoMessage = (message: string): string =>
 // screen). New apps get appended to the stored layout on load; unknown stored
 // keys (renamed/removed apps) are dropped.
 export const DEFAULT_DOCK_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App Store' ];
-export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Stocks', 'Tunes', 'Wallet', 'Calendar', 'Tasks', 'Notes', 'Weather', 'News', 'Translate', 'Settings' ];
+export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Tunes', 'Wallet', 'Calendar', 'Notes', 'Weather', 'News', 'Settings' ];
 export const DOCK_CAPACITY: number = 4;
 
 // Fixed home-screen slot matrix (iOS-style): apps sit in any slot, empty

@@ -318,7 +318,6 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
                             <div className="phone-weather-days">{ dayRows(snapshot.daily) }</div>
                         </div>
                         { tiles(snapshot) }
-                        <div className="phone-weather-foot">Real weather from the real San Francisco, refreshed every 10 minutes.</div>
                     </div> }
             </div>
         </div>

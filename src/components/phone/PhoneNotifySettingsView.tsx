@@ -72,7 +72,7 @@ export const PhoneNotifySettingsView: FC<PhoneNotifySettingsViewProps> = props =
                         </div>
                     </div>
                     <div className={ notify.allow ? undefined : 'phone-notify-settings-off' }>
-                        <div className="phone-appearance-sublabel">Apps</div>
+                        <div className="phone-section-label">Apps</div>
                         <div className="phone-settings-card">
                             { APP_ROWS.map(row => (
                                 <div key={ row.key } className="phone-settings-item phone-tap" onClick={ event => toggle(row.key) }>
@@ -87,7 +87,7 @@ export const PhoneNotifySettingsView: FC<PhoneNotifySettingsViewProps> = props =
                         </div>
                     </div>
                     <div className={ notify.allow ? undefined : 'phone-notify-settings-off' }>
-                        <div className="phone-appearance-sublabel">Fine tuning</div>
+                        <div className="phone-section-label">Fine tuning</div>
                         <div className="phone-settings-card">
                             { wideRow('reminders', 'Event reminders', 'Ten minutes before an event starts.') }
                             { wideRow('friends', 'Friends coming online', 'A banner when a friend logs in or out. Never badges.') }
