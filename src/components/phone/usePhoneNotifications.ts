@@ -400,31 +400,27 @@ const usePhoneNotificationsState = () =>
     }, [ requests, add ]);
 
     // Friends coming and going. Off by default (see PhoneNotify) because it
-    // is the one trigger that fires all day. The first roster of a session is
-    // the baseline, so logging in does not announce everyone already on.
-    const onlineIds = useRef<number[]>(null);
+    // is the one trigger that fires all day.
+    //
+    // Only a friend we have already seen can have CHANGED: the friend list
+    // arrives in fragments, so a friend showing up in the roster for the
+    // first time is the baseline, not someone who just logged in. Without
+    // that, logging in announced everyone in the second fragment.
+    const friendState = useRef<Record<number, boolean>>({});
 
     useEffect(() =>
     {
-        const online = friends.filter(friend => friend.online).map(friend => friend.id);
-
-        if(onlineIds.current === null)
-        {
-            onlineIds.current = online;
-
-            return;
-        }
-
         for(const friend of friends)
         {
-            const was = (onlineIds.current.indexOf(friend.id) >= 0);
+            const known = friendState.current;
+            const was = known[friend.id];
 
-            if(friend.online === was) continue;
+            known[friend.id] = friend.online;
+
+            if((was === undefined) || (was === friend.online)) continue;
 
             add({ app: 'contacts', kind: (friend.online ? 'friend_on' : 'friend_off'), subject: friend.name, actor: '', targetId: friend.id, extra: 0, transient: true });
         }
-
-        onlineIds.current = online;
     }, [ friends, add ]);
 
     // ---- reading ------------------------------------------------------
@@ -503,13 +499,17 @@ export const usePhoneAppBadges = () =>
 
     return useMemo(() =>
     {
+        // Turning an app off hides its badge as well as its banners: a number
+        // whose reason the player has switched off is worse than no number.
+        // It also zeroes anything counted before the switch was flipped.
+        const on = (key: keyof PhoneNotify) => (notify.allow && notify[key]);
         const counts: Record<string, number> = {
-            Messages: (notify.allow && notify.messages) ? unreadMessages : 0,
-            Contacts: (notify.allow && notify.contacts) ? requestCount : 0,
-            Photos: (unseen.photos ?? 0),
-            Calendar: (unseen.calendar ?? 0),
-            Notes: (unseen.notes ?? 0),
-            News: (unseen.news ?? 0)
+            Messages: on('messages') ? unreadMessages : 0,
+            Contacts: on('contacts') ? requestCount : 0,
+            Photos: on('photos') ? (unseen.photos ?? 0) : 0,
+            Calendar: on('calendar') ? (unseen.calendar ?? 0) : 0,
+            Notes: on('notes') ? (unseen.notes ?? 0) : 0,
+            News: on('news') ? (unseen.news ?? 0) : 0
         };
 
         return { counts, total: Object.values(counts).reduce((sum, count) => (sum + count), 0) };
