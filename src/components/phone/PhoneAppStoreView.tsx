@@ -1,7 +1,8 @@
 import { FC, MouseEvent, useState } from 'react';
 import { AppGlyph, APP_DEFS } from './PhoneHomeView';
 import { PhoneIcon } from './PhoneIcon';
-import { EmployedBy, FindStoreApp, PriceLabel, STORE_APPS, StoreApp } from './PhoneAppStore';
+import { AppPrice, EmployedBy, FindStoreApp, PriceAmount, PriceCurrency, STORE_APPS, StoreApp } from './PhoneAppStore';
+import { LayoutCurrencyIcon } from '../../common';
 import { usePhonePrefs } from './usePhone';
 
 // The App Store.
@@ -20,6 +21,20 @@ interface PhoneAppStoreViewProps
     onBack: () => void;
     // Launching an installed app straight from its row, as the Store does.
     openApp: (key: string) => void;
+}
+
+// A price: the amount beside the coin or diamond the player already knows
+// from the toolbar. A free app just says GET.
+const PriceTag: FC<{ price: AppPrice }> = ({ price }) =>
+{
+    if(price.kind === 'free') return <>Get</>;
+
+    return (
+        <>
+            { PriceAmount(price) }
+            <LayoutCurrencyIcon type={ PriceCurrency(price) } />
+        </>
+    );
 }
 
 // An app's plate at any size, the same gradient the home screen tile uses.
@@ -60,7 +75,7 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
         // Owned already: putting it back never costs anything again.
         const reinstall = (owned.indexOf(app.key) >= 0);
 
-        return <div className="phone-store-get">{ reinstall ? 'Get' : PriceLabel(app.price) }</div>;
+        return <div className="phone-store-get">{ reinstall ? <>Get</> : <PriceTag price={ app.price } /> }</div>;
     }
 
     const row = (app: StoreApp) => (
@@ -126,12 +141,12 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                                     <div className="phone-store-get phone-tap" onClick={ event => removeApp(open.key) }>Remove</div>
                                 </div>
                                 : <div className={ `phone-store-get is-buy${ hasFreeSlot ? ' phone-tap' : ' is-inert' }` } onClick={ event => (hasFreeSlot && installApp(open.key)) }>
-                                    { reinstall ? 'Get' : PriceLabel(open.price) }
+                                    { reinstall ? <>Get</> : <PriceTag price={ open.price } /> }
                                 </div> }
                         </div>
                     </div>
                     <div className="phone-store-meta">
-                        <div><span>Price</span><b>{ reinstall ? 'Owned' : PriceLabel(open.price) }</b></div>
+                        <div><span>Price</span><b>{ reinstall ? <>Owned</> : <PriceTag price={ open.price } /> }</b></div>
                         <div className="is-mid"><span>Category</span><b>{ open.category }</b></div>
                         <div><span>Size</span><b>1 tile</b></div>
                     </div>

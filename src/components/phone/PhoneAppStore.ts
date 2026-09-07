@@ -108,13 +108,21 @@ export const STORE_APPS: StoreApp[] = [
 
 export const FindStoreApp = (key: string): StoreApp => STORE_APPS.find(app => (app.key === key));
 
-export const PriceLabel = (price: AppPrice): string =>
-{
-    if(price.kind === 'coins') return `${ price.amount } coins`;
-    if(price.kind === 'diamonds') return `${ price.amount } diamonds`;
+// Currency types as the purse uses them - the number is the wallet icon's
+// filename (wallet/<type>.png), so a price shows the same coin or diamond the
+// player already reads in the toolbar rather than spelling the currency out.
+export const COINS_TYPE: number = -1;
+export const DIAMONDS_TYPE: number = 5;
 
-    return 'Get';
+export const PriceCurrency = (price: AppPrice): number =>
+{
+    if(price.kind === 'coins') return COINS_TYPE;
+    if(price.kind === 'diamonds') return DIAMONDS_TYPE;
+
+    return null;
 }
+
+export const PriceAmount = (price: AppPrice): number => ((price.kind === 'free') ? 0 : price.amount);
 
 // Whether the player works for a corporation. There is no membership on the
 // client yet, so this is false for everyone and no catalogue app sets one.

@@ -4257,6 +4257,12 @@ $phone-scale: 0.8;
 
         &.is-buy { background: #1a86f5; color: #ffffff; }
         &.is-inert { opacity: .45; }
+
+        // A priced pill is "42 <icon>", so the number and the coin sit
+        // together rather than the currency being spelled out.
+        gap: 5px;
+
+        .nitro-currency-icon { width: 13px; height: 13px; background-size: contain; flex: none; }
     }
 
     .phone-store-hero {
@@ -4319,10 +4325,15 @@ $phone-scale: 0.8;
         }
 
         b {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
             font-weight: 700;
             font-size: calc(11px * var(--ph-text-scale, 1));
             color: var(--ph-text);
+
+            .nitro-currency-icon { width: 12px; height: 12px; background-size: contain; flex: none; }
         }
     }
 
