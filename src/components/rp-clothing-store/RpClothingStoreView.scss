@@ -285,11 +285,13 @@
         background-color: $pale-sky;
         z-index: 1;
 
+        // feet land on the shadow ellipse (bottom 15px, 30px tall), not the
+        // frame's edge
         .avatar-image {
             position: absolute;
             left: 0;
             right: 0;
-            bottom: 14px;
+            bottom: 40px;
             margin: 0 auto;
             z-index: 4;
         }
