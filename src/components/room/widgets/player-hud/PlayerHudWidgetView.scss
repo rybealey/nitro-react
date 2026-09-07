@@ -220,8 +220,11 @@
 
     .hud-bar {
         position: relative;
-        width: 150px;
-        height: 20px;
+        // Longer and slimmer than the original 150x20: the readout and the
+        // icon both centre themselves, so height is free to come down, and
+        // the card sizes to content, so length just widens the card.
+        width: 180px;
+        height: 17px;
         background: rgba($light, .1);
         border-radius: $border-radius;
         overflow: hidden;
