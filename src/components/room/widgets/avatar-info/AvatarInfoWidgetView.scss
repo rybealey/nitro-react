@@ -61,6 +61,50 @@
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
 
+        // ---- build tools (the Tools button) -------------------------------
+        // Collapsed to nothing and clipped, so the panel keeps its 190px shape
+        // and the room behind it is not covered by an invisible box. max-height
+        // rather than a grid-row interpolation: it animates the same way in
+        // every browser the client runs in, and the ceiling only has to be
+        // taller than the tools, not exact.
+        //
+        // 0.22s ease-out matches infostand-slide-in above, so opening the tools
+        // feels like the panel that carried them in.
+        .infostand-tools {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateY(-4px);
+            transition: max-height .22s ease-out, opacity .16s ease-out, transform .22s ease-out;
+
+            &.is-open {
+                max-height: 260px;
+                opacity: 1;
+                transform: none;
+            }
+
+            .infostand-tools-inner {
+                padding-top: 4px;
+                margin-top: 4px;
+                border-top: 1px solid rgba(255, 255, 255, .1);
+            }
+
+            // The nudge pad and the steppers want square-ish buttons; the row
+            // buttons keep whatever .btn-sm gives them.
+            .btn {
+                min-width: 0;
+            }
+        }
+
+        // A reader who has asked for less motion gets the same states, just
+        // without the travel.
+        @media (prefers-reduced-motion: reduce) {
+            .infostand-tools {
+                transition: none;
+                transform: none;
+            }
+        }
+
         .form-control-sm {
             height: 25px;
             min-height: 25px;

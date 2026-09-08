@@ -5,6 +5,7 @@ import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance
 import { Base, Button, Column, Flex, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
 import { useMessageEvent, useRoom, useSoundEvent } from '../../../../../hooks';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
+import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
 
 interface InfoStandWidgetFurniViewProps
 {
@@ -40,6 +41,9 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     const [ canMove, setCanMove ] = useState(false);
     const [ canRotate, setCanRotate ] = useState(false);
     const [ canUse, setCanUse ] = useState(false);
+    // Build tools ride the same right as Move: if you cannot move it, you have
+    // no business nudging it a tile at a time either.
+    const [ showTools, setShowTools ] = useState(false);
     const [ furniKeys, setFurniKeys ] = useState<string[]>([]);
     const [ furniValues, setFurniValues ] = useState<string[]>([]);
     const [ customKeys, setCustomKeys ] = useState<string[]>([]);
@@ -522,6 +526,14 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                     </Column>
                 </Column>
             </Column>
+            { canMove &&
+                <div className={ 'infostand-tools' + (showTools ? ' is-open' : '') }>
+                    { /* Always mounted while the item is movable: unmounting on
+                         close would leave the collapse animating an empty box. */ }
+                    <div className="infostand-tools-inner">
+                        <InfoStandWidgetFurniToolsView avatarInfo={ avatarInfo } />
+                    </div>
+                </div> }
             <Flex gap={ 1 } justifyContent="end">
                 { canMove &&
                     <Button variant="dark" onClick={ event => processButtonAction('move') }>
@@ -530,6 +542,10 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                 { canRotate &&
                     <Button variant="dark" onClick={ event => processButtonAction('rotate') }>
                         { LocalizeText('infostand.button.rotate') }
+                    </Button> }
+                { canMove &&
+                    <Button variant="dark" active={ showTools } onClick={ () => setShowTools(value => !value) }>
+                        { LocalizeText('infostand.button.tools') }
                     </Button> }
                 { (pickupMode !== PICKUP_MODE_NONE) &&
                     <Button variant="dark" onClick={ event => processButtonAction('pickup') }>
