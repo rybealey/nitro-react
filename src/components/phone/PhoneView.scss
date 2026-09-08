@@ -2964,22 +2964,6 @@ $phone-scale: 0.8;
         .phone-app-title { color: #f4f0f7; }
     }
 
-    .phone-stocks-live {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        color: $phone-pink;
-    }
-
-    .phone-stocks-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: $phone-pink;
-        flex: none;
-        box-shadow: 0 0 0 3px rgba(233, 58, 125, .16);
-    }
-
     .phone-stocks-list { padding: 6px 0 0; }
 
     .phone-stocks-group { padding: 0 18px; }

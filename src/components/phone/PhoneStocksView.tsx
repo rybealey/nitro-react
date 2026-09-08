@@ -162,13 +162,6 @@ export const PhoneStocksView: FC<PhoneStocksViewProps> = props =>
         </div>
     );
 
-    const liveKicker = (
-        <div className="phone-app-kicker phone-stocks-live">
-            <span className="phone-stocks-dot" />
-            { stamp ? `Live · updated ${ seconds }s ago` : 'Live' }
-        </div>
-    );
-
     // ---- one corporation ------------------------------------------------
     if(openReading)
     {
@@ -234,7 +227,7 @@ export const PhoneStocksView: FC<PhoneStocksViewProps> = props =>
     return (
         <div className="phone-screen phone-app-screen phone-stocks">
             <div className="phone-app-scroll">
-                { header('Stocks', liveKicker, () => (onBack && onBack())) }
+                { header('Stocks', null, () => (onBack && onBack())) }
                 { !corps &&
                     <div className="phone-stocks-empty">Reading the board…</div> }
                 { (!!corps && !readings.length) &&
