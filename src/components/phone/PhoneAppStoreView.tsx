@@ -206,7 +206,7 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                     <div className="phone-settings-list">
                         { (mine.length > 0) &&
                             <div>
-                                <div className="phone-section-label">On this phone</div>
+                                <div className="phone-section-label">ON THIS PHONE</div>
                                 <div className="phone-settings-card">
                                     { mine.map((app, index) => (
                                         <SwipeRow key={ app.key } first={ index === 0 } index={ index }
@@ -224,7 +224,7 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                             </div> }
                         { (gone.length > 0) &&
                             <div>
-                                <div className="phone-section-label">Not installed</div>
+                                <div className="phone-section-label">NOT INSTALLED</div>
                                 <div className="phone-settings-card">{ gone.map(row) }</div>
                             </div> }
                     </div>
@@ -268,7 +268,7 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                 <div className="phone-settings-list">
                     { (rest.length > 0) &&
                         <div>
-                            <div className="phone-section-label">{ query ? 'Results' : 'More to install' }</div>
+                            <div className="phone-section-label">{ query ? 'RESULTS' : 'MORE TO INSTALL' }</div>
                             <div className="phone-settings-card">{ rest.map(row) }</div>
                         </div> }
                     { (!query && !rest.length && !featured) &&

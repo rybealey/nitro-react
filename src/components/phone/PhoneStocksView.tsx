@@ -235,12 +235,12 @@ export const PhoneStocksView: FC<PhoneStocksViewProps> = props =>
                 <div className="phone-stocks-list">
                     { (needs.length > 0) &&
                         <>
-                            <div className="phone-section-label">Needs stock</div>
+                            <div className="phone-section-label">NEEDS STOCK</div>
                             <div className="phone-stocks-group">{ needs.map(row) }</div>
                         </> }
                     { (stocked.length > 0) &&
                         <>
-                            <div className="phone-section-label">Well stocked</div>
+                            <div className="phone-section-label">WELL STOCKED</div>
                             <div className="phone-stocks-group">{ stocked.map(row) }</div>
                         </> }
                 </div>

@@ -903,13 +903,13 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             <div className="phone-notes-scroll">
                 { query.length > 0 &&
                     <>
-                        { notesList(notes.filter(matches), `${ notes.filter(matches).length } ${ (notes.filter(matches).length === 1) ? 'result' : 'results' }`) }
+                        { notesList(notes.filter(matches), `${ notes.filter(matches).length } ${ (notes.filter(matches).length === 1) ? 'RESULT' : 'RESULTS' }`) }
                         { !notes.filter(matches).length &&
                             <div className="phone-notes-empty">Nothing matches “{ search }”.</div> }
                     </> }
                 { !query.length &&
                     <>
-                        <div className="phone-section-label is-fade">On this phone</div>
+                        <div className="phone-section-label is-fade">ON THIS PHONE</div>
                         <div className="phone-notes-card">
                             <div className="phone-notes-row phone-tap" onClick={ event => openList(ALL_NOTES) }>
                                 <PhoneIcon icon="list" size={ 17 } className="phone-notes-row-icon" />
@@ -930,7 +930,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
                             <div className="phone-notes-hint">Tap the folder button to sort your notes into folders.</div> }
                         { sharedUnfiled.length > 0 &&
                             <>
-                                <div className="phone-section-label is-fade">Shared with you</div>
+                                <div className="phone-section-label is-fade">SHARED WITH YOU</div>
                                 <div className="phone-notes-card">
                                     { sharedUnfiled.map((note, index) => (
                                         <SwipeRow key={ note.id } first={ index === 0 } index={ index } open={ openSwipeId === note.id } onOpenChange={ open => setOpenSwipeId(open ? note.id : 0) } onTap={ () => openNote(note.id) } actions={ noteActions(note) }>
@@ -971,8 +971,8 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             )) }
             { searchBar('Search') }
             <div className="phone-notes-scroll" onClick={ event => setOpenSwipeId(0) }>
-                { notesList(pinned, 'Pinned') }
-                { notesList(unpinned, (pinned.length ? 'Notes' : ((listFolder === ALL_NOTES) ? 'All notes' : 'Notes'))) }
+                { notesList(pinned, 'PINNED') }
+                { notesList(unpinned, (pinned.length ? 'NOTES' : ((listFolder === ALL_NOTES) ? 'ALL NOTES' : 'NOTES'))) }
                 { !listNotes.length && loaded &&
                     <div className="phone-notes-empty">{ query.length ? `Nothing matches “${ search }”.` : 'No notes here yet. Tap the pen to write one.' }</div> }
                 { listNotes.length > 0 &&
@@ -1059,7 +1059,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
         <>
             <div className="phone-notes-sheet-title">{ isOwner ? `Share “${ title.trim().length ? title : 'New note' }”` : 'In this note' }</div>
             <div className="phone-notes-sheet-sub">{ isOwner ? 'Friends you add can read and edit it. Changes show up for everyone as they happen.' : `${ detail.ownerName } shared this note. Everyone in it can edit.` }</div>
-            <div className="phone-section-label is-fade is-sheet">In this note</div>
+            <div className="phone-section-label is-fade is-sheet">IN THIS NOTE</div>
             <div className="phone-notes-people">
                 { detail.people.map((person, index) => (
                     <div key={ person.userId } className={ `phone-notes-person${ index ? ' has-top' : '' }` }>
@@ -1077,7 +1077,7 @@ export const PhoneNotesView: FC<PhoneNotesViewProps> = props =>
             </div>
             { isOwner &&
                 <>
-                    <div className="phone-section-label is-fade is-sheet">Add friends</div>
+                    <div className="phone-section-label is-fade is-sheet">ADD FRIENDS</div>
                     { !detail.friends.filter(friend => !detail.people.some(person => person.userId === friend.userId)).length &&
                         <div className="phone-notes-hint is-sheet">{ detail.friends.length ? 'Everyone on your friends list is already in this note.' : 'Add friends in Contacts first - notes can only be shared with friends.' }</div> }
                     <div className="phone-notes-people is-friends">

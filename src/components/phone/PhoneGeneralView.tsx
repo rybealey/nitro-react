@@ -41,7 +41,7 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                 </div>
                 <div className="phone-settings-list">
                     <div>
-                        <div className="phone-section-label">Time and units</div>
+                        <div className="phone-section-label">TIME AND UNITS</div>
                         <div className="phone-settings-card">
                             <div className="phone-settings-item">
                                 <div className="phone-settings-icon" style={ { background: '#3f8fbf' } }>

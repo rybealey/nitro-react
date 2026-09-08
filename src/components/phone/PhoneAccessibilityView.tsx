@@ -59,7 +59,7 @@ export const PhoneAccessibilityView: FC<PhoneAccessibilityViewProps> = props =>
                 </div>
                 <div className="phone-settings-list">
                     <div>
-                        <div className="phone-section-label">Preview</div>
+                        <div className="phone-section-label">PREVIEW</div>
                         <div className="phone-settings-card">
                             <div className="phone-access-preview">
                                 <div className="phone-access-preview-row">
@@ -77,7 +77,7 @@ export const PhoneAccessibilityView: FC<PhoneAccessibilityViewProps> = props =>
                         </div>
                     </div>
                     <div>
-                        <div className="phone-section-label">Vision</div>
+                        <div className="phone-section-label">VISION</div>
                         <div className="phone-settings-card">
                             { row('text-size', '#3f8fbf', 'Text Size', <span className="phone-settings-item-value">{ TEXT_SIZE_NAMES[access.textSize] }</span>) }
                             <div className="phone-access-slider">
@@ -92,7 +92,7 @@ export const PhoneAccessibilityView: FC<PhoneAccessibilityViewProps> = props =>
                         </div>
                     </div>
                     <div>
-                        <div className="phone-section-label">Motion</div>
+                        <div className="phone-section-label">MOTION</div>
                         <div className="phone-settings-card">
                             { row('wave-pulse', '#e93a7d', 'Reduce Motion', switchFor('reduceMotion'), () => toggle('reduceMotion')) }
                         </div>

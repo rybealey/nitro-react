@@ -81,7 +81,7 @@ export const PhoneAppearanceView: FC<PhoneAppearanceViewProps> = props =>
                         { option('clock', 'Automatic', isAuto, () => setTheme('auto')) }
                     </div>
                     <div>
-                        <div className="phone-section-label">Where the phone opens</div>
+                        <div className="phone-section-label">WHERE THE PHONE OPENS</div>
                         <div className="phone-settings-card">
                             { option('align-left', 'Left', (position === 'left'), () => setPosition('left')) }
                             { option('align-center', 'Center', (position === 'center'), () => setPosition('center')) }

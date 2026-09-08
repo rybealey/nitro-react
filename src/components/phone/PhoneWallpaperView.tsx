@@ -81,7 +81,7 @@ export const PhoneWallpaperView: FC<PhoneWallpaperViewProps> = props =>
                 </div>
                 <div className="phone-settings-list">
                     <div>
-                        <div className="phone-section-label">Wallpapers</div>
+                        <div className="phone-section-label">WALLPAPERS</div>
                         <div className="phone-settings-card">
                             <div className="phone-wallpaper-grid">
                                 { WALLPAPERS.map((item, index) => tile(item.key, item.name, index)) }
@@ -89,7 +89,7 @@ export const PhoneWallpaperView: FC<PhoneWallpaperViewProps> = props =>
                         </div>
                     </div>
                     <div>
-                        <div className="phone-section-label">Your photos</div>
+                        <div className="phone-section-label">YOUR PHOTOS</div>
                         <div className="phone-settings-card">
                             { (recent.length > 0)
                                 ? <div className="phone-wallpaper-strip">

@@ -585,6 +585,14 @@ $phone-scale: 0.8;
     //   is not paid twice. That wrapper is required: an eyebrow and the
     //   card it heads are one group, or the container's gap lands
     //   between them instead of around them.
+    //
+    //   The text is written in CAPS at the call site, not left to
+    //   text-transform, so an eyebrow reads as an eyebrow in the JSX too.
+    //
+    //   Not every heading is an eyebrow. .phone-music-section (the queue's
+    //   "NOW PLAYING" / "NEXT IN QUEUE"), the Stocks stat strip and the App
+    //   Store meta strip are deliberately a larger, separate vocabulary -
+    //   leave them alone.
     .phone-section-label {
         margin: 18px 20px 6px;
         font-family: 'Ubuntu', sans-serif;

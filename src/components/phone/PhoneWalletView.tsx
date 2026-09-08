@@ -91,7 +91,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                <div className="phone-section-label">Your cards</div>
+                <div className="phone-section-label">YOUR CARDS</div>
                 <div className="phone-wallet-card">
                     <div className="phone-wallet-field" />
                     <div className="phone-wallet-holo" />

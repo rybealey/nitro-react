@@ -99,7 +99,7 @@ export const PhoneAccountView: FC<PhoneAccountViewProps> = props =>
                         </div>
                     </div>
                     <div>
-                        <div className="phone-section-label">Birthday</div>
+                        <div className="phone-section-label">BIRTHDAY</div>
                         <div className="phone-settings-card">
                             <div className={ `phone-settings-item phone-tap${ picking ? ' is-open' : '' }` } onClick={ event => (!picking && openPicker()) }>
                                 <div className="phone-settings-icon" style={ { background: '#e93a7d' } }>
