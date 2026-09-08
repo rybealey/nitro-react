@@ -15,6 +15,32 @@ interface InfoStandWidgetFurniToolsViewProps
 const MAX_HEIGHT: number = 40;
 const HEIGHT_STEPS: number[] = [ 1, 0.1, 0.01 ];
 
+// Inline so they inherit currentColor and scale with the button, and so the
+// four nudge arrows are one consistent set rather than whatever a glyph font
+// happens to draw. 16px on a 26px button, stroked to match the client's icons.
+const NudgeIcon: FC<{ rotate: number }> = ({ rotate }) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+        style={ { transform: `rotate(${ rotate }deg)` } }>
+        <path d="M12 19V5" />
+        <path d="M5 12l7-7 7 7" />
+    </svg>);
+
+const RotateIcon: FC<{ clockwise?: boolean }> = ({ clockwise = false }) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+        style={ clockwise ? { transform: 'scaleX(-1)' } : undefined }>
+        <path d="M3 12a9 9 0 1 0 3-6.7" />
+        <path d="M3 4v5h5" />
+    </svg>);
+
+const StepIcon: FC<{ minus?: boolean }> = ({ minus = false }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2.6" strokeLinecap="round">
+        <path d="M5 12h14" />
+        { !minus && <path d="M12 5v14" /> }
+    </svg>);
+
 /**
  * Build tools for a selected item - nudge, turn, stack height, opacity.
  *
@@ -111,17 +137,17 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
                     <Flex gap={ 1 }>
                         <Column gap={ 1 } className="infostand-tools-pad">
                             <Flex gap={ 1 }>
-                                <Button variant="dark" onClick={ () => nudge(-1, 0) }>&#9698;</Button>
-                                <Button variant="dark" onClick={ () => nudge(0, -1) }>&#9699;</Button>
+                                <Button variant="dark" onClick={ () => nudge(-1, 0) }><NudgeIcon rotate={ -45 } /></Button>
+                                <Button variant="dark" onClick={ () => nudge(0, -1) }><NudgeIcon rotate={ 45 } /></Button>
                             </Flex>
                             <Flex gap={ 1 }>
-                                <Button variant="dark" onClick={ () => nudge(0, 1) }>&#9701;</Button>
-                                <Button variant="dark" onClick={ () => nudge(1, 0) }>&#9700;</Button>
+                                <Button variant="dark" onClick={ () => nudge(0, 1) }><NudgeIcon rotate={ 225 } /></Button>
+                                <Button variant="dark" onClick={ () => nudge(1, 0) }><NudgeIcon rotate={ 135 } /></Button>
                             </Flex>
                         </Column>
                         <Column gap={ 1 } grow className="infostand-tools-rotate">
-                            <Button variant="dark" onClick={ () => rotate(false) }>&#8634;</Button>
-                            <Button variant="dark" onClick={ () => rotate(true) }>&#8635;</Button>
+                            <Button variant="dark" onClick={ () => rotate(false) }><RotateIcon /></Button>
+                            <Button variant="dark" onClick={ () => rotate(true) }><RotateIcon clockwise /></Button>
                         </Column>
                     </Flex>
 
@@ -132,9 +158,9 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
                     <Flex gap={ 1 }>
                         { HEIGHT_STEPS.map(step =>
                             <Column key={ step } gap={ 1 } grow className="infostand-tools-step">
-                                <Button variant="dark" onClick={ () => stepHeight(step) }>+</Button>
+                                <Button variant="dark" onClick={ () => stepHeight(step) }><StepIcon /></Button>
                                 <Text variant="white" center small>{ step }</Text>
-                                <Button variant="dark" onClick={ () => stepHeight(-step) }>&#8722;</Button>
+                                <Button variant="dark" onClick={ () => stepHeight(-step) }><StepIcon minus /></Button>
                             </Column>) }
                     </Flex>
                     <Flex gap={ 1 }>
@@ -149,7 +175,7 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
             </Flex>
             <ReactSlider
                 className="nitro-slider"
-                min={ 20 }
+                min={ 10 }
                 max={ 100 }
                 step={ 5 }
                 value={ opacity }

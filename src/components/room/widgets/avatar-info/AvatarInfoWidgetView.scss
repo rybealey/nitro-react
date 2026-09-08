@@ -39,6 +39,14 @@
         animation: infostand-slide-out 0.22s ease-in forwards;
     }
 
+    // Sits BELOW .nitro-infostand, not inside it, so it is scoped here and not
+    // in the plate's block. 190px matches the plate exactly, and wrapping keeps
+    // the row inside that width instead of growing left across the room.
+    .infostand-actions {
+        width: 190px;
+        flex-wrap: wrap;
+    }
+
     .nitro-infostand {
         // The username opens the profile; underline on hover signals it.
         .infostand-name-link:hover {
@@ -77,16 +85,30 @@
             transform: translateY(-4px);
             transition: max-height .22s ease-out, opacity .16s ease-out, transform .22s ease-out;
 
+            // The ceiling only has to CLEAR the tools - it is not a height.
+            // 260px cut the opacity slider off the bottom; the tools measure
+            // ~250px and a short room should scroll rather than push the panel
+            // off the top of the screen.
             &.is-open {
-                max-height: 260px;
+                max-height: 40vh;
                 opacity: 1;
                 transform: none;
+            }
+
+            .infostand-tools-inner {
+                max-height: 40vh;
+                overflow-y: auto;
             }
 
             .infostand-tools-inner {
                 padding-top: 4px;
                 margin-top: 4px;
                 border-top: 1px solid rgba(255, 255, 255, .1);
+            }
+
+            // Icons carry these controls, so give them room to be seen.
+            svg {
+                display: block;
             }
 
             // The tools live inside the 190px plate, so their controls are

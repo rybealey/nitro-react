@@ -535,7 +535,9 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                         </div> }
                 </Column>
             </Column>
-            <Flex gap={ 1 } justifyContent="end">
+            { /* Same width as the plate above it, wrapping rather than growing
+                 leftward off the panel once Tools makes it five buttons. */ }
+            <Flex className="infostand-actions" gap={ 1 } justifyContent="end">
                 { canMove &&
                     <Button variant="dark" onClick={ event => processButtonAction('move') }>
                         { LocalizeText('infostand.button.move') }
