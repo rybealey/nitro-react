@@ -4309,10 +4309,14 @@ $phone-scale: 0.8;
         div {
             flex: 1;
             padding: 8px 0;
-            text-align: center;
+            // Left-aligned, so the first cell lines up with the description
+            // below it; the later cells clear their divider.
+            text-align: left;
 
             &.is-mid { border-left: 1px solid var(--ph-hairline); border-right: 1px solid var(--ph-hairline); }
         }
+
+        div + div { padding-left: 12px; }
 
         span {
             display: block;
@@ -4327,7 +4331,7 @@ $phone-scale: 0.8;
         b {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 4px;
             font-weight: 700;
             font-size: calc(11px * var(--ph-text-scale, 1));
