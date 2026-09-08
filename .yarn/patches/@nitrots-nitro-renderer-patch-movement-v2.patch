@@ -2273,7 +2273,7 @@ new file mode 100644
 index 0000000..f74f398
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1756 @@
+@@ -0,0 +1,1886 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2379,6 +2379,15 @@ index 0000000..f74f398
 +    id: number;
 +    session: number;
 +    revision: number;
++    /**
++     * A RouteRevision rejected WHOLE because its geometry did not chain onto
++     * what is already queued. -1 when there is none. Every later packet
++     * carrying this same revision is dropped on sight, so a route that does
++     * not connect can never be spliced in one edge at a time.
++     */
++    rejectedRevision: number;
++    /** Bound on broken-chain output, so one bad route cannot flood. */
++    chainLines: number;
 +    edges: PixelRPV2Edge[];
 +    lastPacketAtClient: number;
 +    /** TEMPORARY join forensics - ms this session waited in Pending. 0 = not a join. */
@@ -2556,7 +2565,7 @@ index 0000000..f74f398
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0, zMismatches: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0, zMismatches: 0, revisionsRejected: 0, chainViolations: 0 };
 +
 +    /**
 +     * What drove the current update pass, for diagnostics only. RoomEngine
@@ -2743,6 +2752,7 @@ index 0000000..f74f398
 +        {
 +            unit = {
 +                id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf,
++                rejectedRevision: -1, chainLines: 0,
 +                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true,
 +                pendFrames: 0, pendNativeFrames: 0,
 +                pendTicker: 0, pendX: 0, pendY: 0, pendZ: 0, pendDir: -1,
@@ -2780,6 +2790,10 @@ index 0000000..f74f398
 +            unit.session = session;
 +            unit.revision = revision;
 +            unit.edges = [];
++
++            // A rejection belongs to the walk it was rejected from.
++            unit.rejectedRevision = -1;
++            unit.chainLines = 0;
 +
 +            // A new walk starts from a hold at edge.from, so there is no
 +            // position to keep continuous and the freshest clock estimate can
@@ -2824,6 +2838,82 @@ index 0000000..f74f398
 +        }
 +        else if(revision > unit.revision)
 +        {
++            // Already judged incompatible. Every packet carrying it - the next
++            // real edge, its lookahead - is dropped without a second look, so
++            // one rejection covers the whole revision rather than each edge
++            // racing the check again.
++            if(revision === unit.rejectedRevision) return;
++
++            // ATOMIC MERGE: A REVISION IS TAKEN WHOLE OR NOT AT ALL.
++            //
++            // Refusing a changed ACTIVE edge on its own is not enough, and
++            // that is what was shipped. The rest of the same revision - the
++            // next real edge and the lookahead chained off it - describes a
++            // route leaving from where the REFUSED geometry ended, not from
++            // where the preserved edge actually ends. Splicing it in leaves a
++            // hole between two queued edges: observed as preserved 19,18->19,19
++            // followed by incoming 18,19->17,19, a gap of exactly 1.0 tiles,
++            // and as 19,18->19,17 followed by 18,19->17,19, a gap of 2.2361.
++            //
++            // So the incoming geometry is checked BEFORE anything is mutated.
++            // It has to leave from exactly where its predecessor arrives. If
++            // it does not, the whole revision is dropped - no edges, no
++            // metadata, and unit.revision is NOT adopted - and the route
++            // already being walked is kept until a contiguous revision
++            // arrives.
++            //
++            // The gap is never smoothed, never lerped across, never snapped
++            // shut and no intermediate edge is invented to bridge it.
++            const mergeNow = (clientNowPerf - this._clockOffset);
++            const atIndex = unit.edges.find(e => (e.edgeIndex === edgeIndex));
++            const activeAtIndex = ((atIndex && Number.isFinite(mergeNow) && (atIndex.cycleStart <= mergeNow)) ? atIndex : null);
++
++            // Two ways an incoming route can fail to connect. Either it
++            // rewrites the edge being walked right now - in which case
++            // everything behind it is planned from a destination this client
++            // will never reach - or it starts at the next index but not from
++            // where its predecessor arrives.
++            const rewritesActive = !!(activeAtIndex
++                && ((activeAtIndex.sx !== sx) || (activeAtIndex.sy !== sy) || (activeAtIndex.sz !== sz)
++                    || (activeAtIndex.gx !== gx) || (activeAtIndex.gy !== gy) || (activeAtIndex.gz !== gz)));
++
++            const predecessor = unit.edges.find(e => (e.edgeIndex === (edgeIndex - 1)));
++            const breaksChain = !!(!rewritesActive && predecessor
++                && ((predecessor.gx !== sx) || (predecessor.gy !== sy) || (predecessor.gz !== sz)));
++
++            if(rewritesActive || breaksChain)
++            {
++                const reference = (rewritesActive ? activeAtIndex : predecessor);
++                const gap = Math.sqrt(((reference.gx - sx) ** 2) + ((reference.gy - sy) ** 2));
++
++                unit.rejectedRevision = revision;
++                this.stats.revisionsRejected++;
++
++                if(unit.chainLines < 40)
++                {
++                    unit.chainLines++;
++
++                    console.error('[MV2/REVISION-REJECTED-BROKEN-CHAIN] ' + JSON.stringify({
++                        unit: unit.id,
++                        session,
++                        revision,
++                        revisionKept: unit.revision,
++                        activeEdgeIndex: reference.edgeIndex,
++                        activeEdge: `${reference.sx},${reference.sy},${reference.sz} -> ${reference.gx},${reference.gy},${reference.gz}`,
++                        activeEdgeTo: `${reference.gx},${reference.gy},${reference.gz}`,
++                        incomingEdgeIndex: edgeIndex,
++                        incomingFrom: `${sx},${sy},${sz}`,
++                        chainGapTiles: gap.toFixed(4),
++                        reason: (rewritesActive
++                            ? 'revision rewrites the edge already in flight, so everything after it is planned from a tile this client never reaches'
++                            : 'incoming edge does not leave from where its predecessor arrives'),
++                        action: 'ENTIRE REVISION REJECTED - existing route kept until a contiguous one arrives'
++                    }));
++                }
++
++                return;
++            }
++
 +            // A correction: drop provisional geometry at or after this index.
 +            //
 +            // NOTE for the anomaly report: this drops every queued edge whose
@@ -2923,6 +3013,46 @@ index 0000000..f74f398
 +        }
 +
 +        unit.edges.sort((a, b) => (a.edgeIndex - b.edgeIndex));
++
++        // THE INVARIANT: for every adjacent queued pair, edge[k].to must equal
++        // edge[k+1].from in all three axes, so chainGapTiles is always 0.
++        //
++        // The atomic merge above is what makes that true, and a correction can
++        // no longer break it. This is the assertion that says so out loud:
++        // anything caught here arrived by a path not yet accounted for, which
++        // is the only reason to keep looking. Non-adjacent indexes are skipped
++        // because a gap in the INDEXES is a queue that has been trimmed, not a
++        // gap in the geometry.
++        //
++        // Reported only. Nothing here closes the gap - no snap, no smoothing,
++        // no invented intermediate edge.
++        for(let i = 1; i < unit.edges.length; i++)
++        {
++            const left = unit.edges[i - 1];
++            const right = unit.edges[i];
++
++            if(right.edgeIndex !== (left.edgeIndex + 1)) continue;
++            if((left.gx === right.sx) && (left.gy === right.sy) && (left.gz === right.sz)) continue;
++
++            this.stats.chainViolations++;
++
++            if(unit.chainLines < 40)
++            {
++                unit.chainLines++;
++
++                console.error('[MV2/CHAIN-INVARIANT] ' + JSON.stringify({
++                    unit: unit.id,
++                    session: unit.session,
++                    revision: unit.revision,
++                    leftIndex: left.edgeIndex,
++                    leftTo: `${left.gx},${left.gy},${left.gz}`,
++                    rightIndex: right.edgeIndex,
++                    rightFrom: `${right.sx},${right.sy},${right.sz}`,
++                    chainGapTiles: Math.sqrt(((left.gx - right.sx) ** 2) + ((left.gy - right.sy) ** 2)).toFixed(4),
++                    action: 'REPORTED ONLY - nothing is snapped, smoothed or invented to close it'
++                }));
++            }
++        }
 +
 +        if(unit.edges.length > PixelRPMovementV2.MAX_EDGES)
 +        {
