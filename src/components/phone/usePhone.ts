@@ -328,8 +328,17 @@ const usePhonePrefsState = () =>
         setWallpaperState(prefs.wallpaper);
         setAccessState(prefs.access);
         setNotifyState(prefs.notify);
-        // A phone from before the Store owns whatever is already on it.
-        setOwnedState(prefs.owned.length ? prefs.owned : [ ...prefs.grid.filter(key => !!key), ...prefs.dock ]);
+        // ANYTHING ON THE PHONE IS OWNED, by definition - union, not either/or.
+        //
+        // A layout can carry an app the owned list does not: a phone that
+        // predates the Store, or one whose stored layout kept an app through
+        // the window where it was not a catalogue app yet, so the tile came
+        // back when it became one. Reading owned alone would then charge that
+        // player to get an app back they already had, which is exactly the
+        // rule buy-once exists to prevent.
+        const onPhone = [ ...prefs.grid.filter(key => !!key), ...prefs.dock ];
+
+        setOwnedState([ ...prefs.owned, ...onPhone.filter(key => (prefs.owned.indexOf(key) === -1)) ]);
     }
 
     const save = (prefs: Partial<PhonePrefs>) =>
