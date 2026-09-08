@@ -1,5 +1,6 @@
 import { RpAirplaneModeEvent, RpAlbumListEvent, RpAlbumListItem, RpAlbumMemberComposer, RpAlbumPhoto, RpAlbumPhotoComposer, RpAlbumPhotosEvent, RpCreateAlbumComposer, RpDeleteAlbumComposer, RpDeletePhotoComposer, RpPhotoListEvent, RpPhotoListItem, RpRequestAlbumPhotosComposer, RpRequestAlbumsComposer, RpRequestPhotoListComposer, RpSaveScreenshotComposer, RpSetAirplaneModeComposer, RpUpdatePhotoComposer } from '@nitrots/nitro-renderer';
 import { CleanWallpaper, DEFAULT_WALLPAPER } from './PhoneWallpapers';
+import { STORE_APPS } from './PhoneAppStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetConfiguration, GetSessionDataManager, SendMessageComposer } from '../../api';
@@ -36,7 +37,11 @@ export const ParsePhotoMessage = (message: string): string =>
 // screen). New apps get appended to the stored layout on load; unknown stored
 // keys (renamed/removed apps) are dropped.
 export const DEFAULT_DOCK_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App Store' ];
-export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Tunes', 'Wallet', 'Calendar', 'Notes', 'Weather', 'News', 'Settings' ];
+// What a new phone ships with. Tunes, Weather and News are deliberately NOT
+// here: they are the phone's optional, ambient apps, so they start in the App
+// Store and a player installs the ones they want. Everything here is either a
+// system app or one the phone is not much use without.
+export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Wallet', 'Calendar', 'Notes', 'Settings' ];
 export const DOCK_CAPACITY: number = 4;
 
 // Fixed home-screen slot matrix (iOS-style): apps sit in any slot, empty
@@ -149,7 +154,11 @@ const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
 // apps into their default zone (first empty grid slot catches a full dock).
 const mergeAppOrder = (storedGrid: string[], storedDock: string[]): { grid: string[], dock: string[] } =>
 {
-    const known = [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ];
+    // Every app the phone HAS, not just the ones it ships installed - an
+    // app can now start life in the Store instead of on the home screen, and
+    // a layout that already carries it must survive that. Apps missing from
+    // both lists (a retired one, or one not built yet) are still dropped.
+    const known = [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS, ...STORE_APPS.map(app => app.key) ];
     const dock = storedDock.filter(key => (known.indexOf(key) >= 0)).slice(0, DOCK_CAPACITY);
     const seen = new Set<string>(dock);
     const grid = new Array<string>(GRID_SLOTS).fill('');
