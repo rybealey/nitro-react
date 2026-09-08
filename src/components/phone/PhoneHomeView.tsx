@@ -72,7 +72,9 @@ export const APP_DEFS: Record<string, PhoneAppDef> = {
     // grid
     'Contacts': { icon: 'address-book', active: true, plate: 'linear-gradient(160deg, #b08862, #8a6544 55%, #5f4128)' },
     'Photos': { icon: 'images', active: true, plate: 'linear-gradient(135deg, #d4608f, #d69a55 33%, #58b077 66%, #5490cf)', sec: '#c9992b' },
-    'Stocks': { icon: 'chart-line', plate: 'linear-gradient(160deg, #3a3a46, #211c28 60%, #0f0b14)', sec: '#30d158' },
+    // pixelrp: the app reads inventory and paints in $phone-pink, so the
+    // plate's duotone accent follows it rather than the green it inherited.
+    'Stocks': { icon: 'chart-line', active: true, plate: 'linear-gradient(160deg, #3a3a46, #211c28 60%, #0f0b14)', sec: '#e93a7d' },
     // near-black tile, green equaliser bars: reads as the streaming-style app it opens
     'Tunes': { icon: 'waveform-lines', active: true, plate: 'linear-gradient(160deg, #1f1f1f, #121212 60%, #0a0a0a)', pri: '#2bd66a', sec: '#2bd66a' },
     'Wallet': { icon: 'wallet', active: true, plate: 'linear-gradient(160deg, #4a4650, #2a2730 60%, #141118)', sec: '#ff9f0a' },

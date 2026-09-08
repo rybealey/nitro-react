@@ -53,6 +53,15 @@ export const IsCoreApp = (key: string): boolean => (CORE_APPS.indexOf(key) >= 0)
 
 export const STORE_APPS: StoreApp[] = [
     {
+        key: 'Stocks',
+        category: 'Finance',
+        blurb: 'Who is running low, and buying.',
+        tagline: 'Know who is buying, before you haul it.',
+        featured: true,
+        about: 'Every corporation in the city on one board: what they are holding, how much room they have left, and which way it is going. A morning underground or a field\u2019s worth of crops goes to whoever is running lowest \u2014 not to whoever happened to be closest.',
+        price: { kind: 'free' }
+    },
+    {
         key: 'Photos',
         tagline: 'Every shot you take, in one place.',
         category: 'Photo',
@@ -87,7 +96,6 @@ export const STORE_APPS: StoreApp[] = [
     {
         key: 'Weather',
         tagline: 'The real San Francisco sky, in your pocket.',
-        featured: true,
         category: 'Weather',
         blurb: 'The real San Francisco sky.',
         about: 'Real weather from the real San Francisco, and the sky behind the city follows it.',
