@@ -2,6 +2,7 @@ import { FurnitureFloorUpdateComposer, FurnitureStackHeightComposer, RoomObjectC
 import { FC, useCallback, useEffect, useState } from 'react';
 import ReactSlider from 'react-slider';
 import { AvatarInfoFurni, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
+import { ApplyFurniAlpha, RpSetFurniAlphaComposer } from '../../../../../api/rp-furni/RpFurniMessages';
 import { Button, Column, Flex, Text } from '../../../../../common';
 import { useRoom } from '../../../../../hooks';
 
@@ -52,10 +53,9 @@ const StepIcon: FC<{ minus?: boolean }> = ({ minus = false }) => (
  *   height     FurnitureStackHeightComposer(id, height * 100), the wire format
  *              the stack-height widget already speaks
  *
- * Opacity is the exception and is deliberately CLIENT-ONLY: alpha has no column
- * on `furniture` and no message, so it is a see-through-it aid while building,
- * not a property of the item. It is restored when the tools close - without
- * that, a ghosted item would have no way back short of a reload.
+ * Opacity is the one PixelRP-side message: RpSetFurniAlphaComposer stores the
+ * value on `items.alpha`, and the server echoes it to the room so every viewer
+ * fades the item, then replays it to anyone who walks in later.
  */
 export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProps> = props =>
 {
@@ -71,7 +71,9 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
         return GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category);
     }, [ roomSession, avatarInfo ]);
 
-    // Start the readout from the item's own height rather than from zero.
+    // Start the readouts from the item itself rather than from a default: the
+    // height off its location, the opacity off the alpha the server already
+    // pushed for this room.
     useEffect(() =>
     {
         const roomObject = getRoomObject();
@@ -79,18 +81,20 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
         if(!roomObject) return;
 
         setHeight(parseFloat((roomObject.getLocation().z || 0).toFixed(2)));
+
+        const alpha = roomObject.model.getValue<number>(RoomObjectVariable.FURNITURE_ALPHA_MULTIPLIER);
+
+        setOpacity((alpha === undefined) || (alpha === null) ? 100 : Math.round(alpha * 100));
     }, [ getRoomObject ]);
 
-    const applyOpacity = useCallback((value: number) =>
+    // Painted locally for the drag, then stored - the server's echo lands on
+    // the same value, so nothing flickers back.
+    const applyOpacity = (value: number) =>
     {
-        const roomObject = getRoomObject();
+        ApplyFurniAlpha(avatarInfo.id, value);
 
-        if(!roomObject) return;
-
-        roomObject.model.setValue(RoomObjectVariable.FURNITURE_ALPHA_MULTIPLIER, (value / 100));
-    }, [ getRoomObject ]);
-
-    useEffect(() => () => applyOpacity(100), [ applyOpacity ]);
+        SendMessageComposer(new RpSetFurniAlphaComposer(avatarInfo.id, value));
+    }
 
     // Screen diagonals, not tile axes: the isometric transform puts +x
     // down-right and +y down-left, so each button moves the item the way it

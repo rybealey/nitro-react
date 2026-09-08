@@ -3,6 +3,7 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
+import { RegisterRpFurniMessages } from './api/rp-furni/RpFurniMessages';
 import { RegisterRpPhoneMessages } from './api/rp-phone/RpBirthdayMessages';
 import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
@@ -114,6 +115,7 @@ export const App: FC<{}> = props =>
                 RegisterRpGangMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
+                RegisterRpFurniMessages();
                 RegisterRpPhoneMessages();
                 RegisterRpCalendarMessages();
                 RegisterRpNotesMessages();
