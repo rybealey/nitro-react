@@ -573,15 +573,16 @@ $phone-scale: 0.8;
     // ONE class for every eyebrow on the phone. The convention:
     //
     //   An eyebrow belongs to the block BELOW it, so it always sits far
-    //   closer to what it labels than to what came before - 18px of air
-    //   above it, 6px beneath. Never a negative margin: the block that
-    //   follows contributes no top gap of its own (the reset below), so
+    //   closer to what it labels than to what came before - 24px of air
+    //   above it, 6px beneath - 18px read too tight under a search field.
+    //   Never a negative margin: the block that follows contributes no top
+    //   gap of its own (the reset below), so
     //   the 6px is the whole distance and does not depend on which kind
     //   of card happens to come next.
     //
     //   Inside a container that already separates groups - .phone-settings-list
-    //   is a flex column with gap: 18px - the eyebrow is the FIRST CHILD
-    //   of its group wrapper, so it drops its own top margin and the gap
+    //   is a flex column whose gap MATCHES that 24px - the eyebrow is the
+    //   FIRST CHILD of its group wrapper, so it drops its top margin and the gap
     //   is not paid twice. That wrapper is required: an eyebrow and the
     //   card it heads are one group, or the container's gap lands
     //   between them instead of around them.
@@ -594,7 +595,7 @@ $phone-scale: 0.8;
     //   Store meta strip are deliberately a larger, separate vocabulary -
     //   leave them alone.
     .phone-section-label {
-        margin: 18px 20px 6px;
+        margin: 24px 20px 6px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
         font-size: calc(10px * var(--ph-text-scale, 1));
@@ -4313,11 +4314,13 @@ $phone-scale: 0.8;
         background: var(--ph-group);
     }
 
+    // The gap stands in for .phone-section-label's top margin (the eyebrow is
+    // its group's first child and drops its own), so the two must move together.
     .phone-settings-list {
         padding: 6px 0 2px;
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 24px;
     }
 
     .phone-settings-account {
