@@ -109,7 +109,7 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
                 <>
                     <Text variant="white" small>{ LocalizeText('infostand.tools.position') }</Text>
                     <Flex gap={ 1 }>
-                        <Column gap={ 1 }>
+                        <Column gap={ 1 } className="infostand-tools-pad">
                             <Flex gap={ 1 }>
                                 <Button variant="dark" onClick={ () => nudge(-1, 0) }>&#9698;</Button>
                                 <Button variant="dark" onClick={ () => nudge(0, -1) }>&#9699;</Button>
@@ -119,7 +119,7 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
                                 <Button variant="dark" onClick={ () => nudge(1, 0) }>&#9700;</Button>
                             </Flex>
                         </Column>
-                        <Column gap={ 1 } grow>
+                        <Column gap={ 1 } grow className="infostand-tools-rotate">
                             <Button variant="dark" onClick={ () => rotate(false) }>&#8634;</Button>
                             <Button variant="dark" onClick={ () => rotate(true) }>&#8635;</Button>
                         </Column>
@@ -131,15 +131,15 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
                     </Flex>
                     <Flex gap={ 1 }>
                         { HEIGHT_STEPS.map(step =>
-                            <Column key={ step } gap={ 1 } grow>
+                            <Column key={ step } gap={ 1 } grow className="infostand-tools-step">
                                 <Button variant="dark" onClick={ () => stepHeight(step) }>+</Button>
                                 <Text variant="white" center small>{ step }</Text>
                                 <Button variant="dark" onClick={ () => stepHeight(-step) }>&#8722;</Button>
                             </Column>) }
                     </Flex>
                     <Flex gap={ 1 }>
-                        <Button variant="dark" grow onClick={ () => setStackMode(0) }>{ LocalizeText('furniture.floor.level') }</Button>
-                        <Button variant="dark" grow onClick={ () => setStackMode(-100) }>{ LocalizeText('furniture.above.stack') }</Button>
+                        <Button variant="dark" grow onClick={ () => setStackMode(0) }>{ LocalizeText('infostand.tools.floor') }</Button>
+                        <Button variant="dark" grow onClick={ () => setStackMode(-100) }>{ LocalizeText('infostand.tools.ontop') }</Button>
                     </Flex>
                 </> }
 

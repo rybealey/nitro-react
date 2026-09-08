@@ -89,10 +89,25 @@
                 border-top: 1px solid rgba(255, 255, 255, .1);
             }
 
-            // The nudge pad and the steppers want square-ish buttons; the row
-            // buttons keep whatever .btn-sm gives them.
+            // The tools live inside the 190px plate, so their controls are
+            // icon-sized rather than the text buttons of the action row.
             .btn {
                 min-width: 0;
+                padding: 0;
+                line-height: 1;
+            }
+
+            .infostand-tools-pad .btn {
+                width: 26px;
+                height: 26px;
+            }
+
+            .infostand-tools-rotate .btn {
+                height: 26px;
+            }
+
+            .infostand-tools-step .btn {
+                height: 18px;
             }
         }
 

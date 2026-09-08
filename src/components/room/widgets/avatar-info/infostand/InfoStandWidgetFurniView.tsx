@@ -524,16 +524,17 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                                 </Column>
                             </> }
                     </Column>
+                    { canMove &&
+                        <div className={ 'infostand-tools' + (showTools ? ' is-open' : '') }>
+                            { /* Always mounted while the item is movable: unmounting
+                                 on close would leave the collapse animating an empty
+                                 box. */ }
+                            <div className="infostand-tools-inner">
+                                <InfoStandWidgetFurniToolsView avatarInfo={ avatarInfo } />
+                            </div>
+                        </div> }
                 </Column>
             </Column>
-            { canMove &&
-                <div className={ 'infostand-tools' + (showTools ? ' is-open' : '') }>
-                    { /* Always mounted while the item is movable: unmounting on
-                         close would leave the collapse animating an empty box. */ }
-                    <div className="infostand-tools-inner">
-                        <InfoStandWidgetFurniToolsView avatarInfo={ avatarInfo } />
-                    </div>
-                </div> }
             <Flex gap={ 1 } justifyContent="end">
                 { canMove &&
                     <Button variant="dark" onClick={ event => processButtonAction('move') }>
