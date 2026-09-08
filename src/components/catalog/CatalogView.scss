@@ -18,12 +18,36 @@
         width: 30px;
     }
 
+    // Quantity control. The box is wide enough for three digits and the
+    // steppers borrow the grid-tile treatment - the stock bare carets were
+    // fine as decoration beside a bundle, but this is the control a builder
+    // buying twenty blocks actually aims at.
     .quantity-input {
-        min-height: 17px;
-        height: 17px;
-        width: 28px;
+        min-height: 19px;
+        height: 19px;
+        width: 42px;
         padding: 0 4px;
         text-align: right;
+    }
+
+    .quantity-step {
+        width: 19px;
+        min-width: 19px;
+        height: 19px;
+        box-sizing: border-box;
+        border: 2px solid $muted;
+        border-radius: $border-radius;
+        background-color: $grid-bg-color;
+        color: $black;
+        transition: filter 0.1s ease;
+
+        &:hover {
+            filter: brightness(1.06);
+        }
+
+        &:active {
+            filter: brightness(0.92);
+        }
     }
 }
 
