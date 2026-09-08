@@ -1,3 +1,7 @@
+// DraggableWindow stacks the open windows itself, inline, from 401 upward
+// (400 + how many are open), so every band below sits under them. Anything
+// that has to float over the windows themselves starts from this base.
+$draggable-window-zindex: 400;
 // Above .nitro-loading (100) — the deployment screen replaces every surface.
 $deployment-zindex: 200;
 $toolbar-me-zindex: 90;
