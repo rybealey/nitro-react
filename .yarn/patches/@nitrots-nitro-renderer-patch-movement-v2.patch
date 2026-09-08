@@ -2273,7 +2273,7 @@ new file mode 100644
 index 0000000..f74f398
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1886 @@
+@@ -0,0 +1,1995 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2388,6 +2388,8 @@ index 0000000..f74f398
 +    rejectedRevision: number;
 +    /** Bound on broken-chain output, so one bad route cannot flood. */
 +    chainLines: number;
++    /** Bound on frame-stall output. Per UNIT LIFETIME, never reset per walk. */
++    stallLines: number;
 +    edges: PixelRPV2Edge[];
 +    lastPacketAtClient: number;
 +    /** TEMPORARY join forensics - ms this session waited in Pending. 0 = not a join. */
@@ -2565,7 +2567,7 @@ index 0000000..f74f398
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0, zMismatches: 0, revisionsRejected: 0, chainViolations: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0, zMismatches: 0, revisionsRejected: 0, chainViolations: 0, frameStalls: 0 };
 +
 +    /**
 +     * What drove the current update pass, for diagnostics only. RoomEngine
@@ -2752,7 +2754,7 @@ index 0000000..f74f398
 +        {
 +            unit = {
 +                id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf,
-+                rejectedRevision: -1, chainLines: 0,
++                rejectedRevision: -1, chainLines: 0, stallLines: 0,
 +                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true,
 +                pendFrames: 0, pendNativeFrames: 0,
 +                pendTicker: 0, pendX: 0, pendY: 0, pendZ: 0, pendDir: -1,
@@ -2791,9 +2793,9 @@ index 0000000..f74f398
 +            unit.revision = revision;
 +            unit.edges = [];
 +
-+            // A rejection belongs to the walk it was rejected from.
++            // A rejection belongs to the walk it was rejected from. The line
++            // cap does not: see the note above.
 +            unit.rejectedRevision = -1;
-+            unit.chainLines = 0;
 +
 +            // A new walk starts from a hold at edge.from, so there is no
 +            // position to keep continuous and the freshest clock estimate can
@@ -2815,12 +2817,25 @@ index 0000000..f74f398
 +            unit.lastWriteValid = false;
 +            unit.lastWriteSession = -1;
 +            unit.lastWriteEdge = -1;
-+            unit.backwardLines = 0;
-+            unit.handoffLines = 0;
-+            unit.stepLines = 0;
++            // The anomaly caps are DELIBERATELY NOT reset here. Forty lines
++            // per unit for its whole lifetime is a bound; forty per walk is
++            // not one, because a unit walks many times a minute.
 +
-+            // Arm the unthrottled window for this join.
-+            unit.traceActive = true;
++            // Arm the unthrottled window for this join - ONLY for a unit the
++            // console has actually asked to trace.
++            //
++            // This armed UNCONDITIONALLY, on every new walk of every unit, and
++            // shouldLogRender bypasses both the throttle and the debug flag
++            // once the window is open. That is up to MAX_TRACE_LINES console
++            // lines PER WALK PER UNIT - and the anomaly caps below used to
++            // reset per walk too, adding four more forties. A room with a
++            // dozen people walking emitted thousands of console calls carrying
++            // object payloads, and DevTools retains and symbolises every one.
++            // That is a main-thread stall of hundreds of milliseconds, which
++            // is long enough to miss whole edges: the renderer then resumes
++            // correctly on server time, two indexes on, and the diagnostics
++            // blamed the route for a step the browser caused.
++            unit.traceActive = this.isDebugged(virtualId);
 +            unit.traceEdge1Now = NaN;
 +            unit.traceLines = 0;
 +
@@ -2829,7 +2844,6 @@ index 0000000..f74f398
 +            unit.progRevision = -1;
 +            unit.progEdge = -1;
 +            unit.progValue = 0;
-+            unit.clampLines = 0;
 +            unit.lastComputedPhase = NaN;
 +        }
 +        else if(session < unit.session)
@@ -3756,13 +3770,108 @@ index 0000000..f74f398
 +            }
 +        }
 +
++        // ---- MULTI-EDGE FRAME SKIP --------------------------------------
++        //
++        // The renderer went more than one index forward between writes. That
++        // is the BROWSER missing frames, not the server sending a broken
++        // route: V2 evaluates against server time, so after a stall it
++        // correctly resumes at whatever edge the authoritative clock now names
++        // - two indexes on if the stall ran about two intervals. The resulting
++        // position step is legitimate and must NOT be smoothed, capped or
++        // slowed. Observed as previousEdgeIndex 11 -> edgeIndex 13 with
++        // tickerDelta and serverDelta both 900.4ms and deltaTiles 1.8008,
++        // exactly the advance that much server time buys.
++        //
++        // chainGapTiles is deliberately NOT measured from the previous
++        // RENDERED edge to the current one when this happens. The edges in
++        // between were never drawn, so that distance is their combined length
++        // and reads as a break in a chain that is perfectly sound. Contiguity
++        // is checked against the QUEUE instead - every intermediate edge, end
++        // against start - because that is the only thing that can really be
++        // broken.
++        const previousEdgeIndex = unit.lastWriteEdge;
++        const sameSessionAsWrite = (unit.lastWriteValid && (unit.lastWriteSession === active.session));
++        const edgesSkipped = (sameSessionAsWrite ? (active.edgeIndex - previousEdgeIndex - 1) : 0);
++
++        if(edgesSkipped > 0)
++        {
++            let contiguous = true;
++            let brokeAt = -1;
++
++            for(let i = previousEdgeIndex; i < active.edgeIndex; i++)
++            {
++                const left = unit.edges.find(e => (e.edgeIndex === i));
++                const right = unit.edges.find(e => (e.edgeIndex === (i + 1)));
++
++                // An intermediate edge already trimmed out of the queue cannot
++                // be judged either way, so its absence is not evidence.
++                if(!left || !right) continue;
++
++                if((left.gx !== right.sx) || (left.gy !== right.sy) || (left.gz !== right.sz))
++                {
++                    contiguous = false;
++                    brokeAt = i;
++                    break;
++                }
++            }
++
++            const stallTicker = (Number.isFinite(unit.lastWriteNow) ? (nowPerf - unit.lastWriteNow) : NaN);
++            const stallServer = (Number.isFinite(unit.lastWriteServerNow) ? (active.estServerNow - unit.lastWriteServerNow) : NaN);
++
++            if(contiguous)
++            {
++                this.stats.frameStalls++;
++
++                if(unit.stallLines < 40)
++                {
++                    unit.stallLines++;
++
++                    console.warn('[MV2/FRAME-STALL] ' + JSON.stringify({
++                        unit: virtualId,
++                        session: active.session,
++                        previousEdgeIndex,
++                        edgeIndex: active.edgeIndex,
++                        edgesSkipped,
++                        tickerDelta: (Number.isFinite(stallTicker) ? Number(stallTicker.toFixed(3)) : null),
++                        serverDelta: (Number.isFinite(stallServer) ? Number(stallServer.toFixed(3)) : null),
++                        expectedDistanceAdvance: ((Number.isFinite(stallServer) && (active.interval > 0))
++                            ? Number((stallServer / active.interval).toFixed(4)) : null),
++                        visibility: ((typeof document !== 'undefined') ? document.visibilityState : 'unknown'),
++                        trackedUnits: this._units.size,
++                        queuedEdges: unit.edges.length,
++                        updateSource: this.updateSource,
++                        verdict: 'RENDERER MISSED FRAMES - queue is contiguous, the position step is what server time bought. NOT a broken chain, and not to be smoothed.'
++                    }));
++                }
++            }
++            else if(unit.chainLines < 40)
++            {
++                unit.chainLines++;
++
++                console.error('[MV2/CHAIN-INVARIANT] ' + JSON.stringify({
++                    unit: virtualId,
++                    session: active.session,
++                    revision: active.revision,
++                    context: 'found while attributing a multi-edge frame skip',
++                    leftIndex: brokeAt,
++                    rightIndex: (brokeAt + 1),
++                    edgesSkipped,
++                    action: 'REPORTED ONLY - nothing is snapped, smoothed or invented to close it'
++                }));
++            }
++        }
++
 +        // ---- EDGE -> EDGE CONTINUITY ------------------------------------
 +        // The outgoing edge ends exactly where the incoming one starts, so a
 +        // handoff must not move the avatar at all. Any jump here is a break in
 +        // the authoritative chain rather than in the interpolation.
-+        if(unit.lastWriteValid
-+            && (unit.lastWriteSession === active.session)
++        //
++        // ADJACENT INDEXES ONLY. A skipped edge is handled above, where the
++        // queue is what gets checked; measuring a jump across edges that were
++        // never rendered would report their combined length as a break.
++        if(sameSessionAsWrite
 +            && (unit.lastWriteEdge !== active.edgeIndex)
++            && (edgesSkipped === 0)
 +            && (unit.handoffLines < 40))
 +        {
 +            unit.handoffLines++;
