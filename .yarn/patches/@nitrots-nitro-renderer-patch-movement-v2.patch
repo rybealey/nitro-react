@@ -1630,7 +1630,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,535 @@
+@@ -0,0 +1,585 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1713,6 +1713,16 @@ index 0000000..19b0227
 +    private static readonly STALE_MS = 1400;
 +    private static readonly MAX_EDGES = 8;
 +
++    /**
++     * How far ahead of an edge's cycleStart V2 will hold a unit still rather
++     * than let native move it. The server aligns a Pending join to the next
++     * 500ms boundary, so a real hold is under one interval; this leaves room
++     * for clock-estimate error and stops a far-future or stale cycleStart
++     * pinning an avatar on a tile, which would be worse than the jitter the
++     * hold exists to fix.
++     */
++    private static readonly MAX_HOLD_MS = 1200;
++
 +    private static _instance: PixelRPMovementV2 = null;
 +
 +    public static get instance(): PixelRPMovementV2
@@ -1730,7 +1740,12 @@ index 0000000..19b0227
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0 };
++    // holdFrames is the whole diagnostic for this change: every increment is
++    // one frame on which native MovingObjectLogic would have written XYZ and
++    // was held at the authoritative from-tile instead. Read it from the
++    // console as pixelrpMovementV2.stats.holdFrames - it should be non-zero
++    // after any walk that joined the phase, and the jitter should be gone.
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2081,9 +2096,44 @@ index 0000000..19b0227
 +            if(unit.edges[i].cycleStart <= estServerNow) { edge = unit.edges[i]; break; }
 +        }
 +
-+        if(!edge) return null;
++        // NOTHING HAS STARTED YET - HOLD, DO NOT HAND THE FRAME TO NATIVE.
++        //
++        // Returning null here is what caused the micro speed-up at a join. The
++        // frames between V2 accepting edge 0 and that edge reaching its
++        // cycleStart fell through to native MovingObjectLogic, which advanced
++        // the avatar off its own prediction - 11.000 -> 11.009 -> 11.017 - and
++        // then V2's first authoritative write corrected it back to 11.005. Two
++        // forward steps and a rewind before the walk had begun.
++        //
++        // V2 owns a unit from the moment it accepts an edge, so it answers for
++        // these frames too: the earliest queued edge at phase 0, which is
++        // exactly that edge's from-tile. The avatar stands still until the
++        // edge starts, then interpolates from 0 as normal. Because this no
++        // longer returns null, the native positional branch in
++        // MovingObjectLogic is unreachable for an owned unit rather than
++        // merely guarded - and nothing outside this method had to change.
++        //
++        // Phase is PINNED to 0, not eased toward anything: no smoothing, no
++        // catch-up, and no change to the 500ms timing or to cycleStart.
++        let holding = false;
 +
-+        const raw = ((estServerNow - edge.cycleStart) / edge.interval);
++        if(!edge)
++        {
++            // Edges are kept sorted by index, so [0] is the earliest.
++            const first = unit.edges[0];
++
++            if(!first) return null;
++
++            // Only hold for a start that is genuinely imminent; native keeps
++            // anything further out. See MAX_HOLD_MS.
++            if((first.cycleStart - estServerNow) > PixelRPMovementV2.MAX_HOLD_MS) return null;
++
++            edge = first;
++            holding = true;
++            this.stats.holdFrames++;
++        }
++
++        const raw = (holding ? 0 : ((estServerNow - edge.cycleStart) / edge.interval));
 +
 +        if(raw > 1) this.stats.starvations++;
 +
