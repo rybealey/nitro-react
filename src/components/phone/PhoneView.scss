@@ -4210,6 +4210,99 @@ $phone-scale: 0.8;
     }
 
     // ---- App Store ------------------------------------------------------
+    // The account button in the Discover header, which opens the library.
+    .phone-store-account {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: $phone-pink;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        text-transform: uppercase;
+    }
+
+    // One featured app leads Discover: a band in the app's own plate colour
+    // carrying its promise, with the row beneath it.
+    .phone-store-feat {
+        margin: 8px 18px 0;
+        border: 1.5px solid var(--ph-hairline);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--ph-bg);
+    }
+
+    .phone-store-feat-band {
+        position: relative;
+        height: 118px;
+        overflow: hidden;
+    }
+
+    .phone-store-feat-ghost {
+        position: absolute;
+        right: -16px;
+        bottom: -30px;
+        opacity: 0.16;
+        line-height: 1;
+        pointer-events: none;
+    }
+
+    .phone-store-feat-tag {
+        position: absolute;
+        top: 11px;
+        left: 13px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.86);
+    }
+
+    .phone-store-feat-line {
+        position: absolute;
+        left: 13px;
+        right: 13px;
+        bottom: 12px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(19px * var(--ph-text-scale, 1));
+        letter-spacing: -0.3px;
+        line-height: 1.15;
+        color: #ffffff;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+        text-wrap: pretty;
+    }
+
+    // Nothing left to install, or nothing matching a search.
+    .phone-store-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 8px;
+        padding: 46px 34px 0;
+        color: var(--ph-faint);
+
+        .phone-store-empty-title {
+            font-family: 'Ubuntu', sans-serif;
+            font-weight: 700;
+            font-size: calc(15px * var(--ph-text-scale, 1));
+            color: var(--ph-text);
+        }
+
+        .phone-store-empty-sub {
+            font-size: calc(12.5px * var(--ph-text-scale, 1));
+            line-height: 1.5;
+            color: var(--ph-soft);
+        }
+    }
+
     // Rows and cards are the phone's grouped-list vocabulary; the only new
     // pieces are the app plate at store sizes and the GET pill.
     .phone-store-plate {

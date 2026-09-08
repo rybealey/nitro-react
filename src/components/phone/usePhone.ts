@@ -154,24 +154,55 @@ const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
 // apps into their default zone (first empty grid slot catches a full dock).
 const mergeAppOrder = (storedGrid: string[], storedDock: string[]): { grid: string[], dock: string[] } =>
 {
-    // Every app the phone HAS, not just the ones it ships installed - an
-    // app can now start life in the Store instead of on the home screen, and
-    // a layout that already carries it must survive that. Apps missing from
-    // both lists (a retired one, or one not built yet) are still dropped.
-    const known = [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS, ...STORE_APPS.map(app => app.key) ];
+    // TWO different sets, and conflating them broke the Store.
+    //
+    // KNOWN is every app the phone has - what a stored layout may legally
+    // carry. An app can now start life in the Store rather than on the home
+    // screen, and a layout that already holds one must survive that. Anything
+    // in neither list (retired, or not built yet) is still dropped.
+    //
+    // BACKFILL is the much smaller set that gets PUT BACK when a layout does
+    // not have it, and it deliberately excludes everything the Store sells:
+    // a catalogue app missing from a layout was either removed by the player
+    // or never installed, and either way the Store is where it comes from.
+    // Backfilling those re-installed them on every load, which made removing
+    // an app impossible to make stick.
+    const installable = STORE_APPS.map(app => app.key);
+    const known = [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS, ...installable ];
+    const backfill = known.filter(key => (installable.indexOf(key) === -1));
     const dock = storedDock.filter(key => (known.indexOf(key) >= 0)).slice(0, DOCK_CAPACITY);
     const seen = new Set<string>(dock);
     const grid = new Array<string>(GRID_SLOTS).fill('');
 
+    // Apps keep their exact slot, EXCEPT when this load is the one that
+    // retires an app: then the layout is re-packed so the hole it left closes
+    // rather than sitting there forever.
+    let dropped = false;
+
     storedGrid.slice(0, GRID_SLOTS).forEach((key, index) =>
     {
-        if(!key || (known.indexOf(key) === -1) || seen.has(key)) return;
+        if(!key) return;
+
+        if((known.indexOf(key) === -1) || seen.has(key))
+        {
+            dropped = true;
+
+            return;
+        }
 
         grid[index] = key;
         seen.add(key);
     });
 
-    for(const key of known)
+    if(dropped)
+    {
+        const survivors = grid.filter(key => !!key);
+
+        grid.fill('');
+        survivors.forEach((key, index) => (grid[index] = key));
+    }
+
+    for(const key of backfill)
     {
         if(seen.has(key)) continue;
 
@@ -457,7 +488,18 @@ const usePhonePrefsState = () =>
 
     const removeApp = (key: string) =>
     {
-        const grid = gridOrder.map(entry => ((entry === key) ? '' : entry));
+        // Close the gap: everything after the tile shifts up one slot so the
+        // home screen stays compact, rather than leaving a hole where it was.
+        // The matrix keeps its fixed length, so a slot frees up at the end.
+        const grid = [ ...gridOrder ];
+        const at = grid.indexOf(key);
+
+        if(at >= 0)
+        {
+            grid.splice(at, 1);
+            grid.push('');
+        }
+
         const dock = dockOrder.filter(entry => (entry !== key));
 
         setGridOrder(grid);

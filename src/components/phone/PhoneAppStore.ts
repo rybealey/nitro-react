@@ -34,6 +34,10 @@ export interface StoreApp
     category: string;
     // One line under the name in the list.
     blurb: string;
+    // The headline the featured card carries - a promise, not a description.
+    tagline: string;
+    // At most one app is featured; it leads the Discover screen.
+    featured?: boolean;
     // The app's own page.
     about: string;
     price: AppPrice;
@@ -50,6 +54,7 @@ export const IsCoreApp = (key: string): boolean => (CORE_APPS.indexOf(key) >= 0)
 export const STORE_APPS: StoreApp[] = [
     {
         key: 'Photos',
+        tagline: 'Every shot you take, in one place.',
         category: 'Photo',
         blurb: 'Every shot you have taken.',
         about: 'Everything the Camera saves lands here. Make albums, share one with a friend so you both add to it, and set any shot as your wallpaper.',
@@ -57,6 +62,7 @@ export const STORE_APPS: StoreApp[] = [
     },
     {
         key: 'Tunes',
+        tagline: 'Know what the room is playing.',
         category: 'Music',
         blurb: 'What is playing in the room.',
         about: 'The song the room is playing, who queued it, and what is coming next.',
@@ -64,6 +70,7 @@ export const STORE_APPS: StoreApp[] = [
     },
     {
         key: 'Calendar',
+        tagline: 'Never miss what the city is doing.',
         category: 'Productivity',
         blurb: 'What is on in the city.',
         about: 'Events posted by staff, and your friends’ birthdays on the day. Reminders arrive ten minutes before an event starts.',
@@ -71,6 +78,7 @@ export const STORE_APPS: StoreApp[] = [
     },
     {
         key: 'Notes',
+        tagline: 'Write it down before you forget it.',
         category: 'Productivity',
         blurb: 'Write it down.',
         about: 'Notes to yourself, or shared with a friend so you can both write in them.',
@@ -78,6 +86,8 @@ export const STORE_APPS: StoreApp[] = [
     },
     {
         key: 'Weather',
+        tagline: 'The real San Francisco sky, in your pocket.',
+        featured: true,
         category: 'Weather',
         blurb: 'The real San Francisco sky.',
         about: 'Real weather from the real San Francisco, and the sky behind the city follows it.',
@@ -85,6 +95,7 @@ export const STORE_APPS: StoreApp[] = [
     },
     {
         key: 'News',
+        tagline: 'The city, as it happens.',
         category: 'News',
         blurb: 'Stories as they go up.',
         about: 'What the city is talking about, posted by hotel staff as it happens.',

@@ -133,8 +133,10 @@ const FaceStack: FC<{ people: { userId: number, username: string, figure?: strin
     );
 }
 
-// A list row that slides left to reveal Pin / Move / Delete.
-const SwipeRow: FC<{ open: boolean, onOpenChange: (open: boolean) => void, onTap: () => void, actions: { icon: string, label: string, tone: string, onClick: () => void }[], children: ReactNode, first: boolean, index?: number }> = props =>
+// A list row that slides left to reveal actions. Notes reveals Pin / Move /
+// Delete; the App Store's library reveals Remove. Exported so there is one
+// implementation of the gesture rather than two.
+export const SwipeRow: FC<{ open: boolean, onOpenChange: (open: boolean) => void, onTap: () => void, actions: { icon: string, label: string, tone: string, onClick: () => void }[], children: ReactNode, first: boolean, index?: number }> = props =>
 {
     const { open, onOpenChange, onTap, actions, children, first, index = 0 } = props;
     const startX = useRef<number>(null);
