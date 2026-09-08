@@ -43,18 +43,11 @@ export interface StoreApp
 
 // Apps that are part of the phone itself. They are never listed, never
 // removable, and between them they always leave a way back to the Store.
-export const CORE_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App Store', 'Settings' ];
+export const CORE_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App Store', 'Settings', 'Contacts', 'Wallet' ];
 
 export const IsCoreApp = (key: string): boolean => (CORE_APPS.indexOf(key) >= 0);
 
 export const STORE_APPS: StoreApp[] = [
-    {
-        key: 'Contacts',
-        category: 'Social',
-        blurb: 'Everyone you have met.',
-        about: 'Your friends list, on the phone. Add people you meet around the city, see who is online, and start a call or a message from their card.',
-        price: { kind: 'free' }
-    },
     {
         key: 'Photos',
         category: 'Photo',
@@ -67,13 +60,6 @@ export const STORE_APPS: StoreApp[] = [
         category: 'Music',
         blurb: 'What is playing in the room.',
         about: 'The song the room is playing, who queued it, and what is coming next.',
-        price: { kind: 'free' }
-    },
-    {
-        key: 'Wallet',
-        category: 'Finance',
-        blurb: 'Your Resident ID and cards.',
-        about: 'Your Resident ID with your level, job and gang on it, kept current as they change in the city.',
         price: { kind: 'free' }
     },
     {

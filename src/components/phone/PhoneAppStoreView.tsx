@@ -189,7 +189,7 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                             <div className="phone-settings-card">{ on.map(row) }</div>
                         </div> }
                 </div>
-                <div className="phone-settings-footnote">Phone, Messages, Camera, Settings and the App&nbsp;Store are part of the phone and cannot be removed.</div>
+                <div className="phone-settings-footnote">Phone, Messages, Camera, Contacts, Wallet, Settings and the App&nbsp;Store are part of the phone and cannot be removed.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>
