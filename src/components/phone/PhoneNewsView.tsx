@@ -6,6 +6,7 @@ import { HotelDate } from '../../api/prefs/HotelTime';
 import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
+import { usePhonePrefs } from './usePhone';
 import { usePhoneNotifications } from './usePhoneNotifications';
 
 // News app: a staff-run noticeboard for the city. Everyone reads the Today
@@ -23,7 +24,6 @@ type Screen = 'feed' | 'article' | 'compose';
 type Sheet = 'menu' | 'delete' | 'picker' | null;
 
 const IMAGE_INDEX_URL = '/api/news/images';
-const RECENT_KEY = 'pixelrp.news.recentImages';
 const MAX_TITLE = 120;
 const MAX_BODY = 4000;
 const PICKER_PAGE = 120;
@@ -66,35 +66,6 @@ const loadLibrary = (): Promise<Library> =>
 }
 
 const imageUrl = (name: string): string => `${ window.location.origin }${ libraryCache?.base ?? '/assets/images/articles/' }${ name }`;
-
-const readRecent = (): string[] =>
-{
-    try
-    {
-        const raw = window.localStorage.getItem(RECENT_KEY);
-        const list = (raw ? JSON.parse(raw) : []);
-
-        return (Array.isArray(list) ? list.filter(item => (typeof item === 'string')) : []);
-    }
-    catch(e)
-    {
-        return [];
-    }
-}
-
-const pushRecent = (name: string) =>
-{
-    try
-    {
-        const list = [ name, ...readRecent().filter(item => item !== name) ].slice(0, 8);
-
-        window.localStorage.setItem(RECENT_KEY, JSON.stringify(list));
-    }
-    catch(e)
-    {
-        // storage blocked: the picker just has no "recently used" row
-    }
-}
 
 const MONTHS_SHORT: string[] = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
 const WEEKDAYS: string[] = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ];
@@ -190,7 +161,9 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     const [ library, setLibrary ] = useState<Library>(libraryCache);
     const [ libraryError, setLibraryError ] = useState(false);
     const [ search, setSearch ] = useState('');
-    const [ recent, setRecent ] = useState<string[]>(() => readRecent());
+    // "recently used" rides in the phone's server-side prefs, so it follows
+    // the staff member to any machine like the rest of the phone.
+    const { newsRecent: recent = [], pushNewsRecent = null } = usePhonePrefs();
 
     useEffect(() =>
     {
@@ -275,7 +248,7 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
 
         SendMessageComposer(new RpSaveNewsPostComposer(draft.id, draft.category, draft.title.trim(), draft.body.trim(), draft.image, draft.pinned, draft.anonymous));
 
-        if(draft.image) pushRecent(draft.image);
+        if(draft.image) pushNewsRecent(draft.image);
 
         closeCompose();
     }
@@ -296,7 +269,6 @@ export const PhoneNewsView: FC<PhoneNewsViewProps> = props =>
     {
         setSheet('picker');
         setSearch('');
-        setRecent(readRecent());
 
         if(library) return;
 

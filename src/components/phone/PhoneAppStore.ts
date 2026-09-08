@@ -11,10 +11,12 @@
 // it back is always free. What is paid is a SINK: the coins or diamonds leave
 // the economy, they are not credited to anyone.
 //
-// Before any app can actually carry a price, `owned` has to move off the
-// client. It lives in localStorage today (usePhone), which a player can edit,
-// so it is only trustworthy while everything is free - the moment an app costs
-// something, ownership is the receipt and the server has to hold it.
+// Before any app can actually carry a price, `owned` has to become the
+// server's to decide. It is stored server-side now (user_phone.prefs, via
+// usePhone) but as a document the CLIENT writes and the emulator never reads,
+// so a player can still put any key in it - it is only trustworthy while
+// everything is free. The moment an app costs something, ownership is the
+// receipt and the server has to grant it, not just keep it.
 //
 // A CORPORATION app is listed for everyone but only runs for that
 // corporation's employees; anyone else gets the unauthorised screen. Nothing

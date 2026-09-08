@@ -4,6 +4,7 @@ import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, 
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
 import { RegisterRpFurniMessages } from './api/rp-furni/RpFurniMessages';
+import { RegisterRpPhoneStateMessages } from './api/rp-phone/RpPhoneStateMessages';
 import { RegisterRpPhoneMessages } from './api/rp-phone/RpBirthdayMessages';
 import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
@@ -117,6 +118,7 @@ export const App: FC<{}> = props =>
                 RegisterRpChatMessages();
                 RegisterRpFurniMessages();
                 RegisterRpPhoneMessages();
+                RegisterRpPhoneStateMessages();
                 RegisterRpCalendarMessages();
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();

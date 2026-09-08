@@ -2,6 +2,7 @@ import { NewConsoleMessageEvent, RpAlbumListEvent, RpAlbumListItem } from '@nitr
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetSessionDataManager } from '../../api';
+import { GetPhoneState, SavePhoneNotifications, SubscribePhoneState } from '../../api/rp-phone/RpPhoneStateMessages';
 import { HotelDate } from '../../api/prefs/HotelTime';
 import { FormatClock } from '../../api/prefs/UnitsStore';
 import { CalendarEvent, RpCalendarEvent } from '../../api/rp-phone/RpCalendarMessages';
@@ -17,9 +18,11 @@ import { ParsePhotoMessage, PhoneNotify, useAirplane, usePhoneBadges, usePhonePr
 // already track unread threads and pending requests, so this hook watches
 // those and raises its own.
 //
-// Nothing is kept on the server. The list lives here, persisted per account
-// like the rest of the phone's preferences, which is what lets a badge
-// survive a page reload and what makes "seen" a purely local idea.
+// The server sends facts and keeps the list; it never reads it. The list is
+// stored per account as one JSON document (user_phone.notifications), pushed
+// at login and saved whole on every change, so a badge survives a reload AND
+// a new machine. "seen" is still purely the phone's idea - the server does not
+// know what a notification means, only that the player wants it kept.
 
 // Which app tile each notification belongs to, in the home screen's spelling.
 export const NOTIFY_APP_TILES: Record<NotifyApp, string> = {
@@ -55,14 +58,15 @@ const MAX_BANNERS: number = 3;
 // How long a banner sits there before it leaves, matching iOS.
 const BANNER_MS: number = 5000;
 
-const storageKey = (userId: number) => `pixelrp.phone.notifications.${ userId }`;
+// Where the list lived before it moved to the server. Read ONCE, as the
+// migration seed when the server has nothing for this account; never written.
+const legacyStorageKey = (userId: number) => `pixelrp.phone.notifications.${ userId }`;
 
-const read = (userId: number): PhoneNotification[] =>
+// Every field is re-validated: the document is the player's own to edit.
+const parse = (raw: string): PhoneNotification[] =>
 {
     try
     {
-        const raw = window.localStorage.getItem(storageKey(userId));
-
         if(!raw) return [];
 
         const parsed = JSON.parse(raw);
@@ -197,6 +201,10 @@ const usePhoneNotificationsState = () =>
     const { getMessageThread = null } = useMessenger();
     const [ notifications, setNotifications ] = useState<PhoneNotification[]>([]);
     const [ loadedUserId, setLoadedUserId ] = useState<number>(0);
+    // bumped by every login push; a dependency of load() so a push that lands
+    // after mount re-runs it even when nothing had loaded yet (setting
+    // loadedUserId back to 0 when it already is 0 would not)
+    const [ pushSerial, setPushSerial ] = useState<number>(0);
     // ids currently on screen as banners, newest last
     const [ bannerIds, setBannerIds ] = useState<number[]>([]);
     // the calendar / feed / album list, purely so a notification can be
@@ -229,24 +237,44 @@ const usePhoneNotificationsState = () =>
 
         if(!userIdRef.current) return;
 
-        try
-        {
-            // Transient banners are on screen and nowhere else - they must
-            // never come back from storage after a reload.
-            window.localStorage.setItem(storageKey(userIdRef.current), JSON.stringify(list.filter(entry => (TRANSIENT_KINDS.indexOf(entry.kind) === -1))));
-        }
-
-        catch(e)
-        {}
+        // Transient banners are on screen and nowhere else - they must never
+        // come back from the server after a reload.
+        SavePhoneNotifications(JSON.stringify(list.filter(entry => (TRANSIENT_KINDS.indexOf(entry.kind) === -1))));
     }, []);
 
     const load = useCallback(() =>
     {
         const userId = GetSessionDataManager().userId;
+        const remote = GetPhoneState();
 
-        if(!userId || (userId === loadedUserId)) return;
+        // Nothing is read before the login push: a list rebuilt from nothing
+        // and saved would wipe the real one.
+        if(!userId || !remote.loaded || (userId === loadedUserId)) return;
 
-        const stored = read(userId);
+        let stored: PhoneNotification[];
+
+        if(remote.notifications)
+        {
+            stored = parse(remote.notifications);
+        }
+        else
+        {
+            // '' = never saved: adopt this browser's pre-server copy, if any,
+            // and save it up so it follows the player from here on.
+            let legacy: string = null;
+
+            try
+            {
+                legacy = window.localStorage.getItem(legacyStorageKey(userId));
+            }
+
+            catch(e)
+            {}
+
+            stored = parse(legacy);
+
+            if(stored.length) SavePhoneNotifications(JSON.stringify(stored));
+        }
 
         userIdRef.current = userId;
         listRef.current = stored;
@@ -255,9 +283,18 @@ const usePhoneNotificationsState = () =>
         setLoadedUserId(userId);
         setNotifications(stored);
         ensureLoaded();
-    }, [ loadedUserId, ensureLoaded ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ loadedUserId, ensureLoaded, pushSerial ]);
 
     useEffect(() => load(), [ load ]);
+
+    // A push landing after mount (a reconnect) is a new document: forget what
+    // was loaded and let the effect above pick it up.
+    useEffect(() => SubscribePhoneState(() =>
+    {
+        setLoadedUserId(0);
+        setPushSerial(serial => (serial + 1));
+    }), []);
 
     /// Puts a banner on screen for a while. A repeat replaces its own banner
     /// rather than stacking a second one.

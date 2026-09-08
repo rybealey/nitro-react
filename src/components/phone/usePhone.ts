@@ -4,6 +4,7 @@ import { STORE_APPS } from './PhoneAppStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { GetConfiguration, GetSessionDataManager, SendMessageComposer } from '../../api';
+import { GetPhoneState, SavePhonePrefs, SubscribePhoneState } from '../../api/rp-phone/RpPhoneStateMessages';
 import { useFriends, useMessageEvent, useMessenger } from '../../hooks';
 
 // Photo messages ride the normal messenger text channel as a marker plus
@@ -27,11 +28,14 @@ export const ParsePhotoMessage = (message: string): string =>
 }
 
 // Pinned / muted conversation preferences plus home-screen layout for the
-// phone, persisted per account in localStorage. Muting a conversation hides
-// it from the unread badge counts; pinning promotes it to the Messages
-// app's pinned grid; the app order is the player's drag arrangement.
-// Loaded lazily via ensureLoaded() because the session user id isn't known
-// until after login.
+// phone - one JSON document per account, kept on the SERVER (user_phone.prefs,
+// pushed at login, saved whole on every change) so the phone is the player's
+// on any machine. It used to live in localStorage, and a new computer meant a
+// factory-reset phone; the first login after the move adopts that local copy
+// and saves it up. Muting a conversation hides it from the unread badge
+// counts; pinning promotes it to the Messages app's pinned grid; the app order
+// is the player's drag arrangement. Loaded lazily via ensureLoaded() because
+// the session user id isn't known until after login.
 
 // The canonical app roster + default arrangement (mirrors the design's home
 // screen). New apps get appended to the stored layout on load; unknown stored
@@ -145,9 +149,21 @@ interface PhonePrefs
     // Every app the player has ever installed. Removing an app leaves it
     // here, which is what makes putting it back free once apps are priced.
     owned: string[];
+    // News picker: the library images a staff member used most recently,
+    // newest first. Staff-only in practice; harmless on any other phone.
+    newsRecent: string[];
 }
 
-const storageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
+export const NEWS_RECENT_MAX: number = 8;
+
+// Where the document lived before it moved to the server. Read ONCE, as the
+// migration seed when the server has nothing for this account; never written.
+const legacyStorageKey = (userId: number) => `pixelrp.phone.prefs.${ userId }`;
+
+const DEFAULT_PREFS = (): PhonePrefs => ({ pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS }, notify: { ...DEFAULT_NOTIFY }, owned: [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ], newsRecent: [] });
+
+// The wire / stored shape. `layout` is the roster version, checked on read.
+const serialisePrefs = (prefs: PhonePrefs): string => JSON.stringify({ layout: PHONE_LAYOUT_VERSION, ...prefs });
 
 // Reconcile a stored slot layout with the current app roster: keep every
 // surviving app in its exact slot, drop strays and duplicates, and place new
@@ -225,12 +241,13 @@ const mergeAppOrder = (storedGrid: string[], storedDock: string[]): { grid: stri
     return { grid, dock };
 }
 
-const readPrefs = (userId: number): PhonePrefs =>
+// Every field is re-validated: the document is the player's own to edit, and
+// a stale or hand-altered one must only ever degrade to a default, never break
+// the phone.
+const parsePrefs = (raw: string): PhonePrefs =>
 {
     try
     {
-        const raw = window.localStorage.getItem(storageKey(userId));
-
         if(raw)
         {
             const parsed = JSON.parse(raw);
@@ -258,7 +275,8 @@ const readPrefs = (userId: number): PhonePrefs =>
                 wallpaper: CleanWallpaper(parsed.wallpaper),
                 access: readAccess(parsed.access),
                 notify: readNotify(parsed.notify),
-                owned: readStrings(parsed.owned)
+                owned: readStrings(parsed.owned),
+                newsRecent: readStrings(parsed.newsRecent).slice(0, NEWS_RECENT_MAX)
             };
         }
     }
@@ -266,27 +284,23 @@ const readPrefs = (userId: number): PhonePrefs =>
     catch(e)
     {}
 
-    return { pinned: [], muted: [], grid: packIntoSlots(DEFAULT_GRID_APPS), dock: [ ...DEFAULT_DOCK_APPS ], theme: 'auto', position: 'right', wallpaper: DEFAULT_WALLPAPER, access: { ...DEFAULT_ACCESS }, notify: { ...DEFAULT_NOTIFY }, owned: [ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ] };
+    return DEFAULT_PREFS();
 }
 
-// Synchronous read of just the saved open-position, straight from storage -
-// used by PhoneView on open, before the React prefs state may have loaded.
+// Synchronous read of just the saved open-position, straight from the server
+// document - used by PhoneView on open, before the React prefs state may have
+// loaded. The login push is long in by the time the phone can be opened.
 export const ReadPhonePosition = (): PhonePosition =>
 {
     try
     {
-        const userId = GetSessionDataManager().userId;
+        const raw = GetPhoneState().prefs;
 
-        if(userId)
+        if(raw)
         {
-            const raw = window.localStorage.getItem(storageKey(userId));
+            const value = JSON.parse(raw).position;
 
-            if(raw)
-            {
-                const value = JSON.parse(raw).position;
-
-                if((value === 'left') || (value === 'right') || (value === 'center')) return value;
-            }
+            if((value === 'left') || (value === 'right') || (value === 'center')) return value;
         }
     }
 
@@ -309,14 +323,43 @@ const usePhonePrefsState = () =>
     const [ access, setAccessState ] = useState<PhoneAccess>({ ...DEFAULT_ACCESS });
     const [ notify, setNotifyState ] = useState<PhoneNotify>({ ...DEFAULT_NOTIFY });
     const [ owned, setOwnedState ] = useState<string[]>([ ...DEFAULT_GRID_APPS, ...DEFAULT_DOCK_APPS ]);
+    const [ newsRecent, setNewsRecentState ] = useState<string[]>([]);
 
-    const ensureLoaded = () =>
+    // Where the document comes from, in order: the server's copy, pushed at
+    // login; failing that ('' = never saved), this browser's pre-server
+    // localStorage copy, adopted AND saved up so the next machine gets it too -
+    // the one-time migration; failing that, defaults. Nothing is read before
+    // the push has arrived: a default layout saved over a real one would be
+    // the move's worst possible outcome.
+    const load = () =>
     {
         const userId = GetSessionDataManager().userId;
+        const remote = GetPhoneState();
 
-        if(!userId || (userId === loadedUserId)) return;
+        if(!userId || !remote.loaded) return;
 
-        const prefs = readPrefs(userId);
+        let prefs: PhonePrefs;
+
+        if(remote.prefs)
+        {
+            prefs = parsePrefs(remote.prefs);
+        }
+        else
+        {
+            let legacy: string = null;
+
+            try
+            {
+                legacy = window.localStorage.getItem(legacyStorageKey(userId));
+            }
+
+            catch(e)
+            {}
+
+            prefs = parsePrefs(legacy);
+
+            if(legacy) SavePhonePrefs(serialisePrefs(prefs));
+        }
 
         setLoadedUserId(userId);
         setPinnedIds(prefs.pinned);
@@ -328,6 +371,7 @@ const usePhonePrefsState = () =>
         setWallpaperState(prefs.wallpaper);
         setAccessState(prefs.access);
         setNotifyState(prefs.notify);
+        setNewsRecentState(prefs.newsRecent);
         // ANYTHING ON THE PHONE IS OWNED, by definition - union, not either/or.
         //
         // A layout can carry an app the owned list does not: a phone that
@@ -341,31 +385,45 @@ const usePhonePrefsState = () =>
         setOwnedState([ ...prefs.owned, ...onPhone.filter(key => (prefs.owned.indexOf(key) === -1)) ]);
     }
 
+    const ensureLoaded = () =>
+    {
+        const userId = GetSessionDataManager().userId;
+
+        if(!userId || (userId === loadedUserId)) return;
+
+        load();
+    }
+
+    // The login push normally lands before any of this mounts, but not always
+    // (a reconnect mid-session) - whenever it does land, reload from it.
+    useEffect(() => SubscribePhoneState(() =>
+    {
+        setLoadedUserId(0);
+        load();
+    }), []);
+
+    // Every change saves the whole document: it is small, the server replaces
+    // it wholesale, and no change can half-apply. Not before load: a save
+    // built on defaults would overwrite the real document on the server.
     const save = (prefs: Partial<PhonePrefs>) =>
     {
         const userId = GetSessionDataManager().userId;
 
-        if(!userId) return;
+        if(!userId || (userId !== loadedUserId)) return;
 
-        try
-        {
-            window.localStorage.setItem(storageKey(userId), JSON.stringify({
-                layout: PHONE_LAYOUT_VERSION,
-                pinned: (prefs.pinned ?? pinnedIds),
-                muted: (prefs.muted ?? mutedIds),
-                grid: (prefs.grid ?? gridOrder),
-                dock: (prefs.dock ?? dockOrder),
-                theme: (prefs.theme ?? theme),
-                position: (prefs.position ?? position),
-                wallpaper: (prefs.wallpaper ?? wallpaper),
-                access: (prefs.access ?? access),
-                notify: (prefs.notify ?? notify),
-                owned: (prefs.owned ?? owned)
-            }));
-        }
-
-        catch(e)
-        {}
+        SavePhonePrefs(serialisePrefs({
+            pinned: (prefs.pinned ?? pinnedIds),
+            muted: (prefs.muted ?? mutedIds),
+            grid: (prefs.grid ?? gridOrder),
+            dock: (prefs.dock ?? dockOrder),
+            theme: (prefs.theme ?? theme),
+            position: (prefs.position ?? position),
+            wallpaper: (prefs.wallpaper ?? wallpaper),
+            access: (prefs.access ?? access),
+            notify: (prefs.notify ?? notify),
+            owned: (prefs.owned ?? owned),
+            newsRecent: (prefs.newsRecent ?? newsRecent)
+        }));
     }
 
     const setPinned = (friendId: number, flag: boolean) =>
@@ -518,7 +576,20 @@ const usePhonePrefsState = () =>
 
     const hasFreeSlot = (gridOrder.indexOf('') >= 0);
 
-    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, notify, owned, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, setNotify, ensureLoaded, isInstalled, installApp, removeApp, hasFreeSlot };
+    // News picker: remember an image the moment it is used, newest first.
+    const pushNewsRecent = (name: string) =>
+    {
+        setNewsRecentState(prevValue =>
+        {
+            const next = [ name, ...prevValue.filter(item => (item !== name)) ].slice(0, NEWS_RECENT_MAX);
+
+            save({ newsRecent: next });
+
+            return next;
+        });
+    }
+
+    return { pinnedIds, mutedIds, gridOrder, dockOrder, theme, position, wallpaper, access, notify, owned, newsRecent, setPinned, reorderPinned, toggleMuted, setAppOrder, setTheme, setPosition, setWallpaper, setAccess, setNotify, ensureLoaded, isInstalled, installApp, removeApp, hasFreeSlot, pushNewsRecent };
 }
 
 export const usePhonePrefs = () => useBetween(usePhonePrefsState);
