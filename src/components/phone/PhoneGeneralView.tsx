@@ -63,7 +63,6 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                             </div>
                         </div>
                     </div>
-                    <div className="phone-settings-footnote">Your region shows on your profile so people know roughly when you are around. It does not change the hotel clock.</div>
                     <div>
                         <div className="phone-section-label">TIME AND UNITS</div>
                         <div className="phone-settings-card">
