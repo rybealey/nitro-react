@@ -1543,7 +1543,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,529 @@
+@@ -0,0 +1,634 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1631,6 +1631,13 @@ index 0000000..19b0227
 +     */
 +    private static readonly MAX_HOLD_MS = 1200;
 +
++    /**
++     * Tiles of slack when checking that one edge's end is the next edge's
++     * start. Tile coordinates arrive as whole numbers, so this only ever
++     * absorbs float noise - it is not a tolerance for a genuinely broken chain.
++     */
++    private static readonly CHAIN_EPSILON = 0.001;
++
 +    private static _instance: PixelRPMovementV2 = null;
 +
 +    public static get instance(): PixelRPMovementV2
@@ -1653,7 +1660,7 @@ index 0000000..19b0227
 +    // was held at the authoritative from-tile instead. Read it from the
 +    // console as pixelrpMovementV2.stats.holdFrames - it should be non-zero
 +    // after any walk that joined the phase, and the jitter should be gone.
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0, rejectedRevisions: 0, frozenEdges: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -1801,6 +1808,10 @@ index 0000000..19b0227
 +    {
 +        this.updateClock(clientNowPerf, serverNow);
 +
++        // ONE sample for this whole call. "Has this edge started?" is the
++        // question every guard below asks, and they must all get one answer.
++        const estServerNowAtRx = (clientNowPerf - this._clockOffset);
++
 +        let unit = this._units.get(virtualId);
 +
 +        if(!unit)
@@ -1823,9 +1834,62 @@ index 0000000..19b0227
 +        }
 +        else if(revision > unit.revision)
 +        {
-+            // A correction: drop provisional geometry at or after this index.
++            // A CORRECTION MAY NOT REWRITE AN EDGE THAT HAS ALREADY STARTED.
++            //
++            // This is the root of the crossing/following hitch. The server
++            // re-emits the elapsing edge with a bumped revision and fresh
++            // lookahead, and this filter used to drop EVERY index from that
++            // point - including edges the client had already begun rendering
++            // from the previous lookahead. Measured: edge 103 went from
++            // 8,16->8,17 to 8,16->7,15 at phase 0.128, with the phase itself
++            // perfectly correct, and the avatar moved 0.33 tiles in one frame
++            // against an expected 0.047.
++            //
++            // A started edge is now immutable. Only future geometry may be
++            // replaced, and only when it CHAINS onto what is kept: the failure
++            // of the earlier attempt was preserving the active edge and then
++            // merging an unrelated future route onto it, which teleported the
++            // avatar further than the bug it replaced.
++            let lastStarted = -1;
++            let anchor: PixelRPV2Edge = null;
++
++            for(let i = 0; i < unit.edges.length; i++)
++            {
++                const held = unit.edges[i];
++
++                if((held.edgeIndex >= edgeIndex) && (held.cycleStart <= estServerNowAtRx) && (held.edgeIndex > lastStarted))
++                {
++                    lastStarted = held.edgeIndex;
++                    anchor = held;
++                }
++            }
++
++            if(anchor)
++            {
++                const joins = this.incomingStart((lastStarted + 1), edgeIndex, sx, sy, gx, gy, lookahead);
++
++                // A revision reaching no further than what is already committed
++                // has nothing to contradict.
++                if(joins)
++                {
++                    const gap = (Math.abs(joins.x - anchor.gx) + Math.abs(joins.y - anchor.gy));
++
++                    if(gap > PixelRPMovementV2.CHAIN_EPSILON)
++                    {
++                        // ATOMIC REJECTION. Nothing is applied - not the
++                        // revision number, not a single edge - so a later,
++                        // properly chained revision is judged from scratch
++                        // instead of landing on a half-updated queue.
++                        this.stats.rejectedRevisions++;
++
++                        return;
++                    }
++                }
++            }
++
 +            unit.revision = revision;
-+            unit.edges = unit.edges.filter(e => (e.edgeIndex < edgeIndex));
++            // Started edges survive; only what has not begun is replaceable.
++            unit.edges = unit.edges.filter(e => ((e.edgeIndex < edgeIndex) || (e.cycleStart <= estServerNowAtRx)));
 +            this.stats.corrections++;
 +        }
 +        else if(revision < unit.revision)
@@ -1840,7 +1904,7 @@ index 0000000..19b0227
 +        this.upsert(unit, {
 +            session, revision, edgeIndex, provisional: false,
 +            sx, sy, sz, gx, gy, gz, cycleStart, interval: step
-+        });
++        }, estServerNowAtRx);
 +        this.stats.edges++;
 +
 +        // Lookahead: a contiguous chain. from = previous goal, start = previous
@@ -1860,7 +1924,7 @@ index 0000000..19b0227
 +                interval: step
 +            };
 +
-+            this.upsert(unit, edge);
++            this.upsert(unit, edge, estServerNowAtRx);
 +            prev = edge;
 +        }
 +
@@ -1873,7 +1937,7 @@ index 0000000..19b0227
 +
 +        if(this.isDebugged(virtualId))
 +        {
-+            const estServerNow = (clientNowPerf - this._clockOffset);
++            const estServerNow = estServerNowAtRx;
 +
 +            console.log('[MV2/rx]', {
 +                unit: virtualId,
@@ -1890,19 +1954,60 @@ index 0000000..19b0227
 +        }
 +    }
 +
-+    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge): void
++    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge, estServerNow: number): void
 +    {
 +        const index = unit.edges.findIndex(e => (e.edgeIndex === edge.edgeIndex));
 +
 +        if(index >= 0)
 +        {
++            const held = unit.edges[index];
++
++            // AN EDGE THAT HAS STARTED IS FROZEN. Its geometry is the line the
++            // avatar is already walking; swapping it under a live phase moves
++            // the avatar without moving its progress, and that is the jump. A
++            // later record may still CONFIRM it - provisional becomes real -
++            // but it may not move it.
++            if(held.cycleStart <= estServerNow)
++            {
++                if(held.provisional && !edge.provisional)
++                {
++                    held.provisional = false;
++
++                    if((held.sx !== edge.sx) || (held.sy !== edge.sy) || (held.gx !== edge.gx) || (held.gy !== edge.gy)) this.stats.frozenEdges++;
++                }
++
++                return;
++            }
++
 +            // A confirmed real edge always beats a provisional guess.
-+            if(unit.edges[index].provisional || !edge.provisional) unit.edges[index] = edge;
++            if(held.provisional || !edge.provisional) unit.edges[index] = edge;
 +
 +            return;
 +        }
 +
 +        unit.edges.push(edge);
++    }
++
++    /**
++     * Where the incoming revision says edge `index` begins: the record's own
++     * start for its own index, then each lookahead tile handing its position
++     * to the edge after it. Null when the revision does not reach that far.
++     * Runs on a revision bump only - never on the render path.
++     */
++    private incomingStart(index: number, baseIndex: number, sx: number, sy: number, gx: number, gy: number,
++        lookahead: { x: number, y: number, z: number }[]): { x: number, y: number }
++    {
++        if(index === baseIndex) return { x: sx, y: sy };
++
++        const step = (index - baseIndex - 1);
++
++        if(step < 0) return null;
++        if(step === 0) return { x: gx, y: gy };
++        if(step > lookahead.length) return null;
++
++        const tile = lookahead[step - 1];
++
++        return { x: tile.x, y: tile.y };
 +    }
 +
 +    /** Teleport / roller / forced move: drop timed state, hand back to native. */

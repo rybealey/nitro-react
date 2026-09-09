@@ -538,6 +538,7 @@ const dump = (count: number): void =>
     let maxPosErr = 0, maxPosErrAt = 0;
     let maxSpacing = 0, maxSpacingAt = 0;
     let handoffs = 0, nonContiguous = 0, multiSkips = 0;
+    let rewrites = 0, rewriteAt = -1;
     let backwards = 0, ownershipLoss = 0, depthSwaps = 0;
     let minDist = Number.POSITIVE_INFINITY, minDistAt = 0;
     let prevDepthOrder = 0;
@@ -631,6 +632,21 @@ const dump = (count: number): void =>
                 }
             }
 
+            // THE ROOT CAUSE THIS TRACE WAS BUILT TO FIND. Same edgeIndex,
+            // different endpoints: a later revision rewrote the geometry of an
+            // edge already in flight, so the avatar jumps to the new line while
+            // its phase carries on undisturbed.
+            const geometryRewritten = (!first && !changed
+                && ((buf[b + U_FX] !== buf[pb + U_FX]) || (buf[b + U_FY] !== buf[pb + U_FY])
+                 || (buf[b + U_TX] !== buf[pb + U_TX]) || (buf[b + U_TY] !== buf[pb + U_TY])));
+
+            if(geometryRewritten)
+            {
+                rewrites++;
+
+                if(rewriteAt < 0) rewriteAt = i;
+            }
+
             const posError = ((first || Number.isNaN(expected)) ? NaN : (moved - expected));
 
             if(!first && !changed && !Number.isNaN(phaseError) && (Math.abs(phaseError) > Math.abs(maxPhaseErr)))
@@ -681,7 +697,8 @@ const dump = (count: number): void =>
                 positionDeltaTiles: +moved.toFixed(5),
                 expectedSpatialDelta: (Number.isNaN(expected) ? null : +expected.toFixed(5)),
                 positionError: (Number.isNaN(posError) ? null : +posError.toFixed(5)),
-                edgeContiguityGap: contiguity
+                edgeContiguityGap: contiguity,
+                activeEdgeGeometryRewritten: geometryRewritten
             };
         }
 
@@ -777,6 +794,8 @@ const dump = (count: number): void =>
         maxUnexplainedSpacingChange: +maxSpacing.toFixed(5),
         maxUnexplainedSpacingAtFrame: maxSpacingAt,
 
+        activeEdgeGeometryRewrites: rewrites,
+        firstGeometryRewriteAtFrame: rewriteAt,
         edgeHandoffCount: handoffs,
         nonContiguousHandoffCount: nonContiguous,
         multiEdgeSkipCount: multiSkips,
@@ -821,11 +840,25 @@ const dump = (count: number): void =>
 
     const verdicts: string[] = [];
 
+    // TIMING means the clock or the phase misbehaved, and nothing else. A
+    // position error is NOT evidence of it: the first traces showed ~0 phase
+    // error beside a 0.28-tile jump, and labelling that "timing" sent the
+    // investigation at the interpolator when the geometry was being rewritten
+    // underneath a perfectly correct phase.
     if((Math.abs(maxPhaseErr) > T_PHASE_ERROR) || backwards) verdicts.push('MOVEMENT_TIMING_ANOMALY');
     if(maxDt > T_LONG_FRAME_MS) verdicts.push('FRAME_HITCH');
     if(nonContiguous > 0) verdicts.push('EDGE_HANDOFF_ANOMALY');
     if(maxSpacing > T_SPACING) verdicts.push('FOLLOWING_SPACING_ANOMALY');
-    if(Math.abs(maxPosErr) > T_POSITION_ERROR) verdicts.push('MOVEMENT_TIMING_ANOMALY');
+
+    // Position moved further than the authoritative phase allows. With phase
+    // error at zero this is a POSITIONAL discontinuity - the edge's geometry
+    // changed under a continuous phase - so it gets its own name.
+    if(Math.abs(maxPosErr) > T_POSITION_ERROR)
+    {
+        verdicts.push((Math.abs(maxPhaseErr) > T_PHASE_ERROR)
+            ? 'MOVEMENT_TIMING_ANOMALY'
+            : 'ACTIVE_EDGE_GEOMETRY_REWRITE');
+    }
 
     // the question the eye cannot answer: did the worst measured moment land on
     // the frame the draw order flipped?
