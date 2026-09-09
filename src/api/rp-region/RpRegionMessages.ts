@@ -14,7 +14,7 @@ import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 const RP_USER_REGION = 3916;
 // client -> server
 const RP_SET_REGION = 3911;
-const RP_GET_USER_REGION = 3915;
+const RP_GET_USER_REGION = 3914;
 
 export type RpRegionCode = 'na' | 'eu' | 'oc' | '';
 
