@@ -4300,6 +4300,31 @@ $phone-scale: 0.8;
 
     .phone-settings-account.is-static { cursor: default; }
 
+    // Settings > General > Region. A taller row than the rest of the settings
+    // list because each option carries its busy window under the name; the
+    // check is the only thing on the right, so there is no icon slot.
+    .phone-region-item {
+        align-items: flex-start;
+        padding: 12px 14px;
+    }
+
+    .phone-region-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .phone-region-window {
+        margin-top: 2px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        color: var(--ph-faint);
+    }
+
+    .phone-region-check {
+        flex: none;
+        color: $phone-pink;
+        margin-top: 2px;
+    }
+
     .phone-settings-footnote {
         padding: 12px 26px 0;
         text-align: center;

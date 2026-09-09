@@ -106,6 +106,17 @@
         white-space: pre-line;
     }
 
+    // The region reads a shade darker than the motto it sits in front of, so
+    // the eye takes them as two facts rather than one run-on sentence.
+    .rp-profile-region {
+        color: rgba(0, 0, 0, 0.72);
+        font-weight: 500;
+    }
+
+    .rp-profile-motto-sep {
+        color: rgba(0, 0, 0, 0.32);
+    }
+
     // birthday (phone Settings > Account), day + month only
     .rp-profile-birthday {
         display: flex;
@@ -166,6 +177,14 @@
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    // A shield is taller than it is wide, so matching the badge's WIDTH makes
+    // it overrun a 40px square. The slot grows for the crest rather than the
+    // crest shrinking - the left edges still line up, which is what the two
+    // cards share.
+    .rp-profile-org-icon-slot--crest {
+        height: 52px;
     }
 
     .rp-profile-org-icon {

@@ -22,6 +22,7 @@ const FA_MAP: Record<string, string> = {
     'chevron-left': 'chevron-left',
     'chevron-right': 'chevron-right',
     'clock': 'clock',
+    'globe': 'earth-americas',
     'close': 'xmark',
     'crop': 'crop',
     'download': 'download',

@@ -5,6 +5,7 @@ import { AddEventLinkTracker, CreateLinkEvent, GetSessionDataManager, RemoveLink
 import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
+import { GetRpRegion, RequestRpRegion, RpRegionLabel, SubscribeRpRegion } from '../../api/rp-region/RpRegionMessages';
 import { GangCrest } from '../rp-gangs/RpGangsView';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
 import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
@@ -80,6 +81,9 @@ export const RpProfileView: FC<{}> = props =>
                         {
                             SendMessageComposer(new RpGetUserGangComposer(RpProfileState.userId));
                             SendMessageComposer(new RpGetBirthdayComposer(RpProfileState.userId));
+                            // Asked at most once per player per session; a
+                            // change broadcasts to the room after that.
+                            RequestRpRegion(RpProfileState.userId);
                         }
                         return;
                     case 'hide':
@@ -127,9 +131,12 @@ export const RpProfileView: FC<{}> = props =>
         setVersion(value => (value + 1));
     });
 
+    useEffect(() => SubscribeRpRegion(() => setVersion(value => (value + 1))), []);
+
     if(!isVisible) return null;
 
     const birthday = GetRpBirthday(RpProfileState.userId);
+    const regionLabel = RpRegionLabel(GetRpRegion(RpProfileState.userId));
 
     // The opener's own data wins; otherwise look the viewed player up.
     const employment = (RpProfileState.employment ?? GetRpEmployment(RpProfileState.userId));
@@ -157,7 +164,18 @@ export const RpProfileView: FC<{}> = props =>
                                     { RpProfileState.staff &&
                                         <i className="fa-solid fa-badge-check rp-profile-verified" title="PixelRP Staff" aria-hidden="true" /> }
                                 </div>
-                                <div className="rp-profile-motto">{ RpProfileState.motto || 'Welcome to my profile!' }</div>
+                                <div className="rp-profile-motto">
+                                    { /* Region first, then the motto, separated by a middot -
+                                         one line, and the pair still wraps as one block when
+                                         the motto is long. Nothing shows until the server has
+                                         answered, so a profile never flashes a wrong region. */ }
+                                    { regionLabel &&
+                                        <>
+                                            <span className="rp-profile-region">{ regionLabel }</span>
+                                            <span className="rp-profile-motto-sep"> &middot; </span>
+                                        </> }
+                                    { RpProfileState.motto || 'Welcome to my profile!' }
+                                </div>
                                 { birthday &&
                                     <div className="rp-profile-birthday" title="Birthday">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21h16M5 21v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6M12 13V9M12 9a2 2 0 0 0 2-2c0-1.2-2-3-2-3s-2 1.8-2 3a2 2 0 0 0 2 2zM5 17c2 1.2 3 1.2 5 0s3-1.2 5 0 3 1.2 4 0" /></svg>
@@ -200,10 +218,12 @@ export const RpProfileView: FC<{}> = props =>
                         </div>
                         <div className="rp-profile-card rp-profile-org">
                             <div className="rp-profile-org-row">
-                                { /* same slot as the corporation card so both icons line up */ }
-                                <div className="rp-profile-org-icon-slot">
+                                { /* same slot as the corporation card so both icons line up.
+                                     The crest is cropped to the shield so its 40px is the same
+                                     40px the badge art occupies, rather than two thirds of it. */ }
+                                <div className="rp-profile-org-icon-slot rp-profile-org-icon-slot--crest">
                                     { gang
-                                        ? <GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 34 } />
+                                        ? <GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 40 } crop />
                                         : <LuUsers className="rp-profile-org-icon" /> }
                                 </div>
                                 <div className="rp-profile-org-info">

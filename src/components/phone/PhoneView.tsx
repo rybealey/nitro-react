@@ -13,6 +13,7 @@ import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
 import { PhoneGeneralView } from './PhoneGeneralView';
+import { PhoneRegionView } from './PhoneRegionView';
 import { PhoneWallpaperView } from './PhoneWallpaperView';
 import { PhoneWalletView } from './PhoneWalletView';
 import { PhoneWeatherView } from './PhoneWeatherView';
@@ -38,7 +39,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet' | 'appstore' | 'stocks';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet' | 'appstore' | 'stocks';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -67,8 +68,13 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'appearance') && (to === 'settings')) return 'slide-left';
     if(to === 'account') return 'slide-right';
     if((from === 'account') && (to === 'settings')) return 'slide-left';
+    // Region sits one level deeper than General, so its back step has to be
+    // matched BEFORE the plain "into General" rule below claims it - otherwise
+    // coming back out of Region slides forwards.
+    if((from === 'region') && (to === 'general')) return 'slide-left';
     if(to === 'general') return 'slide-right';
     if((from === 'general') && (to === 'settings')) return 'slide-left';
+    if(to === 'region') return 'slide-right';
     if(to === 'wallpaper') return 'slide-right';
     if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
     if(to === 'accessibility') return 'slide-right';
@@ -511,7 +517,9 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'appstore') &&
                                 <PhoneAppStoreView onBack={ () => go('home') } openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app])) } /> }
                             { (screen === 'general') &&
-                                <PhoneGeneralView onBack={ () => go('settings') } /> }
+                                <PhoneGeneralView onBack={ () => go('settings') } openRegion={ () => go('region') } /> }
+                            { (screen === 'region') &&
+                                <PhoneRegionView onBack={ () => go('general') } /> }
                             { (screen === 'wallpaper') &&
                                 <PhoneWallpaperView onBack={ () => go('settings') } /> }
                             { (screen === 'accessibility') &&

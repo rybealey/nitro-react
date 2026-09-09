@@ -1,14 +1,19 @@
-import { FC } from 'react';
+import { FC, useEffect, useState } from 'react';
+import { GetSessionDataManager } from '../../api';
 import { SetCelsius, SetClock24, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { GetRpRegion, RpRegionLabel, SubscribeRpRegion } from '../../api/rp-region/RpRegionMessages';
 import { PhoneIcon } from './PhoneIcon';
 
-// Settings > General: the clock format and the temperature unit, as two-way
-// pills. Both are this player's own and only change how the phone writes
-// times and temperatures.
+// Settings > General: the player's region, then the clock format and the
+// temperature unit as two-way pills. The clock and the unit are this player's
+// own and only change how the phone writes times and temperatures; the region
+// is the one thing here other people see, which is why it sits apart at the
+// top with its own note rather than in with them.
 
 interface PhoneGeneralViewProps
 {
     onBack: () => void;
+    openRegion: () => void;
 }
 
 const Segmented: FC<{ options: [ string, string ], picked: number, onPick: (index: number) => void }> = ({ options, picked, onPick }) => (
@@ -22,8 +27,13 @@ const Segmented: FC<{ options: [ string, string ], picked: number, onPick: (inde
 
 export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
 {
-    const { onBack = null } = props;
+    const { onBack = null, openRegion = null } = props;
     const { clock24, celsius } = useUnitsPrefs();
+    const ownId = GetSessionDataManager().userId;
+    const [ region, setRegion ] = useState<string>(() => GetRpRegion(ownId));
+
+    // Seeded by the login push; re-read whenever the server says it changed.
+    useEffect(() => SubscribeRpRegion(() => setRegion(GetRpRegion(ownId))), [ ownId ]);
 
     return (
         <div className="phone-screen phone-app-screen phone-general">
@@ -40,6 +50,20 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                     </div>
                 </div>
                 <div className="phone-settings-list">
+                    <div>
+                        <div className="phone-section-label">REGION</div>
+                        <div className="phone-settings-card">
+                            <div className="phone-settings-item phone-tap" onClick={ event => (openRegion && openRegion()) }>
+                                <div className="phone-settings-icon" style={ { background: '#7a5cc4' } }>
+                                    <PhoneIcon icon="globe" size={ 17 } />
+                                </div>
+                                <div className="phone-settings-item-label">Region</div>
+                                <div className="phone-settings-item-value">{ RpRegionLabel(region) || 'Not set' }</div>
+                                <PhoneIcon icon="chevron-right" size={ 18 } className="phone-settings-chev" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="phone-settings-footnote">Your region shows on your profile so people know roughly when you are around. It does not change the hotel clock.</div>
                     <div>
                         <div className="phone-section-label">TIME AND UNITS</div>
                         <div className="phone-settings-card">
