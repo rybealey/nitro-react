@@ -298,60 +298,6 @@ index 6938b9a..58e5f45 100644
  export * from './RpUserCorpEvent';
  export * from './RpAlbumListEvent';
  export * from './RpAlbumPhotosEvent';
-diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
-index a9b94a1..3b45b33 100644
---- a/src/nitro/room/RoomEngine.ts
-+++ b/src/nitro/room/RoomEngine.ts
-@@ -18,6 +18,7 @@ import { RoomObjectEventHandler } from './RoomObjectEventHandler';
- import { RoomObjectLogicFactory } from './RoomObjectLogicFactory';
- import { RoomVariableEnum } from './RoomVariableEnum';
- import { RoomCamera, RoomData, RoomFurnitureData, RoomInstanceData, RoomObjectBadgeImageAssetListener, SpriteDataCollector } from './utils';
-+import { PixelRPMovementV2 } from '../../room/renderer/PixelRPMovementV2';
- 
- export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreator, IRoomEngineServices, IRoomManagerListener, IRoomContentListener, IUpdateReceiver, IDisposable
- {
-@@ -797,12 +798,39 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
- 
-     public runUpdate(): void
-     {
--        this.update(1);
-+        // Diagnostics only: this entry point is NOT a rAF frame (the room
-+        // previewer and Interval drive it), so GetTickerTime() can be stale
-+        // here. V2 samples its own clock; this just lets a log line say where
-+        // the pass came from.
-+        PixelRPMovementV2.instance.updateSource = 'runUpdate';
-+
-+        try
-+        {
-+            this.update(1);
-+        }
-+        finally
-+        {
-+            PixelRPMovementV2.instance.updateSource = 'ticker';
-+        }
-     }
- 
-     public runVisibilityUpdate(): void
-     {
--        if(!document.hidden) this.update(1, true);
-+        if(document.hidden) return;
-+
-+        // Also not a rAF frame, and the worst case for a stale ticker: rAF is
-+        // suspended while the tab is hidden, so Ticker.lastTime here is from
-+        // whenever the tab was last visible.
-+        PixelRPMovementV2.instance.updateSource = 'visibilitychange';
-+
-+        try
-+        {
-+            this.update(1, true);
-+        }
-+        finally
-+        {
-+            PixelRPMovementV2.instance.updateSource = 'ticker';
-+        }
-     }
- 
-     public update(time: number, update: boolean = false): void
 diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
 index 2ff0e23..09de3d7 100644
 --- a/src/nitro/room/RoomMessageHandler.ts
@@ -461,54 +407,18 @@ index 2ff0e23..09de3d7 100644
  
      private onRoomUnitEvent(event: RoomUnitEvent): void
 diff --git a/src/nitro/room/RoomObjectEventHandler.ts b/src/nitro/room/RoomObjectEventHandler.ts
-index 4198932..20c6fde 100644
+index 4198932..5965e22 100644
 --- a/src/nitro/room/RoomObjectEventHandler.ts
 +++ b/src/nitro/room/RoomObjectEventHandler.ts
-@@ -4,9 +4,9 @@ import { RoomEngineDimmerStateEvent, RoomEngineObjectEvent, RoomEngineObjectPlac
+@@ -4,7 +4,6 @@ import { RoomEngineDimmerStateEvent, RoomEngineObjectEvent, RoomEngineObjectPlac
  import { RoomEnterEffect, RoomId, RoomObjectUpdateMessage } from '../../room';
  import { BotPlaceComposer, FurnitureColorWheelComposer, FurnitureDiceActivateComposer, FurnitureDiceDeactivateComposer, FurnitureFloorUpdateComposer, FurnitureGroupInfoComposer, FurnitureMultiStateComposer, FurnitureOneWayDoorComposer, FurniturePickupComposer, FurniturePlaceComposer, FurniturePostItPlaceComposer, FurnitureRandomStateComposer, FurnitureWallMultiStateComposer, FurnitureWallUpdateComposer, GetItemDataComposer, GetResolutionAchievementsMessageComposer, PetMoveComposer, PetPlaceComposer, RemoveWallItemComposer, RoomUnitLookComposer, RoomUnitWalkComposer, SetItemDataMessageComposer, SetObjectDataMessageComposer } from '../communication';
  import { Nitro } from '../Nitro';
 -import { PixelRPMovementAuthority } from '../../room/renderer/PixelRPMovementAuthority';
  import { ObjectAvatarSelectedMessage, ObjectDataUpdateMessage, ObjectSelectedMessage, ObjectTileCursorUpdateMessage, ObjectVisibilityUpdateMessage } from './messages';
  import { SelectedRoomObjectData } from './utils';
-+import { PixelRPMovementV2, PixelRPV2Writer } from '../../room/renderer/PixelRPMovementV2';
  
- export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMouseListener, IRoomObjectEventManager
- {
-@@ -1120,7 +1120,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
- 
-             if(!_local_6)
-             {
-+                // TEMPORARY join forensics: a forced positional write, not an interpolation step.
-+                PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
-                 roomObject.setLocation(selectedData.loc);
-+                PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
-                 roomObject.setDirection(selectedData.dir);
-             }
- 
-@@ -1298,7 +1301,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
-             return false;
-         }
- 
-+        // TEMPORARY join forensics: a forced positional write, not an interpolation step.
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
-         roomObject.setLocation(_local_9);
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
- 
-         if(_local_8) roomObject.setDirection(_local_8);
- 
-@@ -1314,7 +1320,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
- 
-         if(!_local_10) return false;
- 
-+        // TEMPORARY join forensics: a forced positional write, not an interpolation step.
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
-         k.setLocation(_local_10);
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
-         k.setDirection(_local_9);
- 
-         return true;
-@@ -1495,9 +1504,6 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+@@ -1495,9 +1494,6 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
      {
          if(!this._roomEngine || !this._roomEngine.connection) return;
  
@@ -518,88 +428,21 @@ index 4198932..20c6fde 100644
          this._roomEngine.connection.send(new RoomUnitWalkComposer(x, y));
      }
  
-@@ -2132,7 +2138,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
- 
-                 if(roomObject && (selectedData.operation !== RoomObjectOperationType.OBJECT_MOVE_TO))
-                 {
-+                    // TEMPORARY join forensics: a forced positional write, not an interpolation step.
-+                    PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
-                     roomObject.setLocation(selectedData.loc);
-+                    PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
-                     roomObject.setDirection(selectedData.dir);
-                 }
- 
-@@ -2219,7 +2228,10 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
-     {
-         if(!wallGeometry.isRoomTile(x, y)) return false;
- 
-+        // TEMPORARY join forensics: a forced positional write, not an interpolation step.
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.DISPLACEMENT;
-         roomObject.setLocation(new Vector3d(x, y, wallGeometry.getHeight(x, y)));
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
- 
-         return true;
-     }
 diff --git a/src/nitro/room/object/logic/MovingObjectLogic.ts b/src/nitro/room/object/logic/MovingObjectLogic.ts
-index ac3907b..66c9d2c 100644
+index ac3907b..ec7370e 100644
 --- a/src/nitro/room/object/logic/MovingObjectLogic.ts
 +++ b/src/nitro/room/object/logic/MovingObjectLogic.ts
-@@ -1,11 +1,22 @@
+@@ -1,5 +1,6 @@
  import { IRoomObjectController, IRoomObjectUpdateMessage, IVector3D, RoomObjectVariable, Vector3d } from '../../../../api';
  import { RoomObjectLogicBase } from '../../../../room';
-+import { PixelRPMovementV2, PixelRPV2Writer } from '../../../../room/renderer/PixelRPMovementV2';
++import { PixelRPMovementV2 } from '../../../../room/renderer/PixelRPMovementV2';
  import { ObjectMoveUpdateMessage } from '../../messages';
  
  export class MovingObjectLogic extends RoomObjectLogicBase
- {
-     public static DEFAULT_UPDATE_INTERVAL: number = 500;
-     private static TEMP_VECTOR: Vector3d = new Vector3d();
-+    /** TEMPORARY forensics: separate scratch, so projecting cannot clobber the interp result. */
-+    private static PIXELRP_SCREEN_VECTOR: Vector3d = new Vector3d();
-+
-+    /**
-+     * How far a UserUpdate may land from the rendered position before it is
-+     * read as a hard displacement rather than a walking step. A walk step is
-+     * one tile; a diagonal is about 1.41. Two and a half tiles is clear of
-+     * both and well short of any real teleport.
-+     */
-+    private static readonly PIXELRP_DISPLACEMENT_TILES = 2.5;
- 
-     private _liftAmount: number;
- 
-@@ -64,6 +75,302 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +65,123 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
-+        // ONLY ROOM UNITS MAY CONSULT V2.
-+        //
-+        // Object ids are namespaced per category, so a floor item's id and a
-+        // walking avatar's virtualId can be the same number. V2's store is
-+        // keyed by virtualId - user space - so a furniture item querying it
-+        // with its own id can be handed a walking avatar's edge and dragged
-+        // onto that avatar every frame. Avatars, pets and bots opt in;
-+        // furniture does not.
-+        const pixelrpUnit = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined));
-+
-+        // V2'S ONE CLOCK, SAMPLED ONCE FOR THIS PASS.
-+        //
-+        // RoomEngine.update overwrites its time argument with GetTickerTime(),
-+        // which is PIXI's Ticker.lastTime and only advances on a rAF frame.
-+        // The engine is also driven from three places that are NOT rAF frames
-+        // - a visibilitychange listener, RoomPreviewer.runUpdate and Interval
-+        // - and on those passes the ticker still reads whatever the last
-+        // rendered frame left, stale by however long rAF was suspended.
-+        // Evaluating an edge against that renders a moment already gone,
-+        // putting the avatar back where it was for a frame before the next
-+        // real frame snaps it forward.
-+        //
-+        // V2's contract has always been performance.now() as its only clock.
-+        // That is sampled HERE, once, and every V2 calculation in this pass -
-+        // ownership, edge selection, phase, the assertions - uses this single
-+        // value. Native keeps using this.time: its timing is stock Nitro and
-+        // is not ours to change.
-+        const pixelrpNow = (pixelrpUnit ? performance.now() : 0);
-+
 +        // pixelrp Movement V2 - OPTION B SPIKE.
 +        // ONE interpolator. When the server has given this unit a timed edge,
 +        // the phase comes from the authoritative cycleStart instead of packet
@@ -609,8 +452,8 @@ index ac3907b..66c9d2c 100644
 +        //
 +        // this.time is GetTickerTime() = performance.now(), the SAME domain the
 +        // V2 store samples on packet arrival, so no conversion happens here.
-+        const pixelrpV2 = pixelrpUnit
-+            ? PixelRPMovementV2.instance.getActive(this.object.id, pixelrpNow)
++        const pixelrpV2 = (this.object && (this.object.id !== undefined))
++            ? PixelRPMovementV2.instance.getActive(this.object.id, this.time)
 +            : null;
 +
 +        if(pixelrpV2)
@@ -623,151 +466,55 @@ index ac3907b..66c9d2c 100644
 +
 +            if(locationOffset) vector.add(locationOffset);
 +
-+            // TEMPORARY join-handoff forensics, once per join, on the FIRST
-+            // frame edge 0 is active. `report` carries the Pending tail that
-+            // notePending() gathered on the frames before this one - which is
-+            // the whole point of this round. The previous version read the
-+            // position here and called it "before V2", but by then V2 had
-+            // already owned earlier frames of the same edge, so it was
-+            // measuring V2 against itself.
-+            const store = PixelRPMovementV2.instance;
-+            const report = store.takeJoinReport(this.object.id, pixelrpV2.edgeIndex);
-+
-+            // The position this frame INHERITED, read before V2 writes over
-+            // it. Needed on every frame now, not just once per join: the
-+            // edge-handoff and single-step checks both measure against it.
-+            // getLocation() hands back the live vector, so the components are
-+            // copied rather than the reference kept.
-+            const previous = this.object.getLocation();
-+
-+            const beforeX = previous.x;
-+            const beforeY = previous.y;
-+            const beforeZ = previous.z;
-+
++            // TEMPORARY join-handoff forensics, once per join. Captured HERE,
++            // immediately before V2's first write, because this is the last
++            // instant at which the object still holds whatever the previous
++            // writer left. getLocation() hands back the LIVE vector, so the
++            // components are copied out rather than the reference kept.
++            const handoff = PixelRPMovementV2.instance.shouldLogJoinHandoff(this.object.id, pixelrpV2.edgeIndex);
++            let beforeX = 0;
++            let beforeY = 0;
++            let beforeZ = 0;
 +            let beforeDir = -1;
 +
-+            if(report)
++            if(handoff)
 +            {
++                const previous = this.object.getLocation();
++
++                beforeX = previous.x;
++                beforeY = previous.y;
++                beforeZ = previous.z;
++
 +                const direction = this.object.getDirection();
 +
 +                if(direction) beforeDir = direction.x;
 +            }
 +
-+            store.writer = PixelRPV2Writer.V2_INTERP;
++            PixelRPMovementV2.instance.ownWrite = true;
 +            this.object.setLocation(vector);
-+            store.writer = PixelRPV2Writer.OTHER;
++            PixelRPMovementV2.instance.ownWrite = false;
 +
-+            // TEMPORARY assertions on this write: that it did not move the
-+            // unit backward along the edge, and that phase advanced exactly as
-+            // the clock did.
-+            store.noteV2Write(pixelrpV2, this.object.id, pixelrpNow, beforeX, beforeY, beforeZ, vector.x, vector.y, vector.z);
-+
-+            if(report)
++            if(handoff)
 +            {
 +                const after = this.object.getLocation();
 +                const afterDirection = this.object.getDirection();
 +
-+                // The reference the jump is measured FROM. With exclusive
-+                // ownership there is normally no Pending frame at all - V2
-+                // takes the position the instant it accepts the edge - so the
-+                // predecessor is the object's own position immediately before
-+                // V2's first write. When native did get frames (which now
-+                // means the invariant was broken) the last of those is the
-+                // honest reference instead.
-+                const hasPending = (report.pendFrames > 0);
-+                const refX = (hasPending ? report.pendX : beforeX);
-+                const refY = (hasPending ? report.pendY : beforeY);
-+                const refZ = (hasPending ? report.pendZ : beforeZ);
-+
-+                const pendScreen = this.pixelrpScreenOf(refX, refY, refZ);
-+                const beforeScreen = this.pixelrpScreenOf(beforeX, beforeY, beforeZ);
-+                const afterScreen = this.pixelrpScreenOf(after.x, after.y, after.z);
-+
-+                // THE measurement: predecessor position -> first V2 frame.
-+                const jumpX = (after.x - refX);
-+                const jumpY = (after.y - refY);
-+                const jumpTiles = Math.sqrt((jumpX * jumpX) + (jumpY * jumpY));
-+
-+                let jumpPixels = NaN;
-+
-+                if(pendScreen && afterScreen)
-+                {
-+                    const pxX = (afterScreen.x - pendScreen.x);
-+                    const pxY = (afterScreen.y - pendScreen.y);
-+
-+                    jumpPixels = Math.sqrt((pxX * pxX) + (pxY * pxY));
-+                }
-+
-+                // How far the avatar moved DURING Pending, i.e. before V2 ever
-+                // wrote. Non-zero here is hypothesis B outright.
-+                const driftX = (report.pendX - report.pendFirstX);
-+                const driftY = (report.pendY - report.pendFirstY);
-+                const driftTiles = Math.sqrt((driftX * driftX) + (driftY * driftY));
-+
-+                console.log('[MV2/JOIN-TRANSITION]', {
++                console.log('[MV2/JOIN-HANDOFF]', {
 +                    unit: this.object.id,
-+                    verdict: MovingObjectLogic.pixelrpVerdict(report.pendFrames, report.pendNativeFrames, driftTiles, jumpTiles),
-+
-+                    // ---- Pending, the frame before the handoff ------------
-+                    pendingFrames: report.pendFrames,
-+                    nativeWroteFrames: report.pendNativeFrames,
-+                    lastPendingTicker: Math.round(report.pendTicker),
-+                    referenceFrom: (hasPending ? 'last-pending-frame' : 'position-before-v2-took-ownership'),
-+                    referenceLoc: `${refX.toFixed(3)},${refY.toFixed(3)},${refZ.toFixed(3)}`,
-+                    lastPendingLoc: (hasPending ? `${report.pendX.toFixed(3)},${report.pendY.toFixed(3)},${report.pendZ.toFixed(3)}` : 'none'),
-+                    // Two readings on purpose. `...AtFrame` is what was on
-+                    // screen during that frame; `...Reprojected` is the same
-+                    // tile under the CURRENT geometry, which is the only pair
-+                    // jumpPixels can be computed from without camera motion
-+                    // contaminating it. They differ only if the room moved.
-+                    lastPendingScreenAtFrame: `${Number.isFinite(report.pendScreenX) ? report.pendScreenX.toFixed(2) : 'n/a'},${Number.isFinite(report.pendScreenY) ? report.pendScreenY.toFixed(2) : 'n/a'}`,
-+                    lastPendingScreenReprojected: MovingObjectLogic.pixelrpFmt(pendScreen),
-+                    lastPendingDir: report.pendDir,
-+                    lastPendingNativeWrote: report.pendNativeWrote,
-+                    lastPendingNativeDelta: report.pendNativeDelta.toFixed(4),
-+
-+                    // ---- drift accumulated across the whole Pending run ---
-+                    firstPendingTicker: Math.round(report.pendFirstTicker),
-+                    firstPendingLoc: `${report.pendFirstX.toFixed(3)},${report.pendFirstY.toFixed(3)},${report.pendFirstZ.toFixed(3)}`,
-+                    pendingDriftTiles: driftTiles.toFixed(4),
-+
-+                    // ---- the native `mv` that could have started it -------
-+                    mvArrivedAt: (report.mvAt ? Math.round(report.mvAt) : 'none'),
-+                    mvBeforeFirstMovingMs: (report.mvAt ? Math.round(pixelrpNow - report.mvAt) : 'n/a'),
-+                    mvFrom: (report.mvFrom || 'none'),
-+                    mvTo: (report.mvTo || 'none'),
-+
-+                    // ---- first moving frame ------------------------------
-+                    firstMovingTicker: Math.round(pixelrpNow),
 +                    edgeFrom: `${pixelrpV2.sx},${pixelrpV2.sy},${pixelrpV2.sz}`,
 +                    edgeTo: `${pixelrpV2.gx},${pixelrpV2.gy},${pixelrpV2.gz}`,
-+                    v2Interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
-+                    actualBeforeSet: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
-+                    actualBeforeScreen: MovingObjectLogic.pixelrpFmt(beforeScreen),
-+                    actualAfterSet: `${after.x.toFixed(3)},${after.y.toFixed(3)},${after.z.toFixed(3)}`,
-+                    actualAfterScreen: MovingObjectLogic.pixelrpFmt(afterScreen),
-+
-+                    // ---- the deltas ---------------------------------------
-+                    jumpTiles: jumpTiles.toFixed(4),
-+                    jumpXY: `${jumpX.toFixed(3)},${jumpY.toFixed(3)}`,
-+                    jumpPixels: (Number.isFinite(jumpPixels) ? jumpPixels.toFixed(2) : 'n/a'),
-+
++                    actualBeforeV2: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
++                    deltaFrom: `${(beforeX - pixelrpV2.sx).toFixed(3)},${(beforeY - pixelrpV2.sy).toFixed(3)},${(beforeZ - pixelrpV2.sz).toFixed(3)}`,
++                    interpAtStart: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
++                    actualAfterV2: `${after.x.toFixed(3)},${after.y.toFixed(3)},${after.z.toFixed(3)}`,
 +                    phase: pixelrpV2.phase.toFixed(4),
-+                    // True = V2 accepted the edge before its cycleStart and is
-+                    // pinning the avatar at edge.from. This is the intended
-+                    // shape of a join now: ownership taken early, position
-+                    // held, then interpolation from phase 0 at cycleStart.
-+                    holdingAtFrom: pixelrpV2.holding,
-+                    activeOffset: pixelrpV2.activeOffset.toFixed(3),
-+                    liveOffset: store.clockOffset.toFixed(3),
 +                    dirBefore: beforeDir,
 +                    dirAfter: (afterDirection ? afterDirection.x : -1),
 +                    // A non-null offset legitimately shifts the rendered
-+                    // position, so every delta must be read against it.
++                    // position, so deltaFrom must be read against it.
 +                    locationOffset: (locationOffset ? `${locationOffset.x},${locationOffset.y},${locationOffset.z}` : 'none'),
-+                    startDelayMs: report.joinDelayMs,
-+                    boundaryDeltaMs: Math.round(store.joinBoundaryDelta(this.object.id, pixelrpNow)),
-+                    updateSource: store.updateSource
++                    startDelayMs: PixelRPMovementV2.instance.joinDelayOf(this.object.id),
++                    tickerNow: Math.round(this.time)
 +                });
 +            }
 +
@@ -784,17 +531,12 @@ index ac3907b..66c9d2c 100644
 +
 +            this._lastUpdateTime = this.time;
 +
-+            // Diagnostics. Normally off unless pixelrpMovementDebug named the
-+            // unit, and throttled to the first frame of each edge plus ~250ms
-+            // - which on a 500ms edge is two lines and stops halfway. For a
-+            // join the store opens an UNTHROTTLED window instead, covering all
-+            // of edge 0, the edge 0 -> edge 1 handoff and the first 150ms of
-+            // edge 1, so the second half of an edge is no longer a blind spot.
-+            //
++            // Diagnostics: off unless pixelrpMovementDebug named this unit, and
++            // then throttled to the first frame of each edge plus ~250ms.
 +            // getLocation() is read back AFTER setLocation, so a mismatch
 +            // between `interp` and `actual` means something other than this
 +            // hook is writing the position.
-+            if(PixelRPMovementV2.instance.shouldLogRender(this.object.id, pixelrpNow, pixelrpV2.edgeIndex))
++            if(PixelRPMovementV2.instance.shouldLogRender(this.object.id, this.time, pixelrpV2.edgeIndex))
 +            {
 +                const actual = this.object.getLocation();
 +
@@ -807,442 +549,57 @@ index ac3907b..66c9d2c 100644
 +                    estServerNow: Math.round(pixelrpV2.estServerNow),
 +                    clockOffset: Math.round(PixelRPMovementV2.instance.clockOffset),
 +                    phase: pixelrpV2.phase.toFixed(3),
-+                    computedPhase: pixelrpV2.computedPhase.toFixed(3),
-+                    progressClamped: pixelrpV2.progressClamped,
 +                    from: `${pixelrpV2.sx},${pixelrpV2.sy}`,
 +                    to: `${pixelrpV2.gx},${pixelrpV2.gy}`,
-+                    before: `${beforeX.toFixed(3)},${beforeY.toFixed(3)}`,
 +                    interp: `${vector.x.toFixed(3)},${vector.y.toFixed(3)}`,
 +                    actual: `${actual.x.toFixed(3)},${actual.y.toFixed(3)}`,
-+                    // Per-frame step. One frame of a 500ms edge is ~0.033
-+                    // tiles, so this column is where a teleport shows up as a
-+                    // single outlier row.
-+                    stepTiles: Math.sqrt((((vector.x - beforeX)) ** 2) + (((vector.y - beforeY)) ** 2)).toFixed(4),
-+                    holding: pixelrpV2.holding,
-+                    msIntoEdge: Math.round(pixelrpV2.phase * pixelrpV2.interval),
-+                    activeOffset: pixelrpV2.activeOffset.toFixed(3),
-+                    updateSource: PixelRPMovementV2.instance.updateSource,
-+                    tickerNow: Math.round(pixelrpNow)
++                    tickerNow: Math.round(this.time)
 +                });
 +            }
 +
 +            return;
 +        }
 +
-+        const pixelrpStore = PixelRPMovementV2.instance;
-+
-+        // THE OWNERSHIP RULE, stated structurally rather than guarded.
-+        //
-+        // While V2 owns this unit it is the ONLY positional writer, and that
-+        // has to hold even on a frame getActive() declined to draw - a hold
-+        // whose start is further out than the allowance, a mapping not yet
-+        // established. Previously those frames fell through to native
-+        // interpolation below, which is one positional write by a writer that
-+        // does not own the unit. Native is not merely skipped here, it is
-+        // unreachable: the method returns.
-+        if(pixelrpUnit && pixelrpStore.owns(this.object.id, pixelrpNow))
-+        {
-+            this._lastUpdateTime = this.time;
-+
-+            return;
-+        }
-+
-+        // TEMPORARY join forensics. Reaching here means V2 neither drew this
-+        // frame nor owns the unit, so native legitimately has it. For a unit
-+        // armed for join forensics these are the Pending frames; any native
-+        // write recorded on them now means the rule above was bypassed.
-+        const pixelrpArmed = ((this.object && (this.object.id !== undefined)) && pixelrpStore.isJoinArmed(this.object.id));
-+        const pixelrpNativeDelta = this._locationDelta.length;
-+
-+        let pixelrpPrevX = 0;
-+        let pixelrpPrevY = 0;
-+        let pixelrpPrevZ = 0;
-+
-+        if(pixelrpArmed)
-+        {
-+            const previous = this.object.getLocation();
-+
-+            pixelrpPrevX = previous.x;
-+            pixelrpPrevY = previous.y;
-+            pixelrpPrevZ = previous.z;
-+        }
-+
          if((this._locationDelta.length > 0) || locationOffset)
          {
              const vector = MovingObjectLogic.TEMP_VECTOR;
-@@ -87,7 +394,9 @@ export class MovingObjectLogic extends RoomObjectLogicBase
- 
-             if(locationOffset) vector.add(locationOffset);
- 
-+            pixelrpStore.writer = PixelRPV2Writer.NATIVE_INTERP;
-             this.object.setLocation(vector);
-+            pixelrpStore.writer = PixelRPV2Writer.OTHER;
- 
-             if(difference === this._updateInterval)
-             {
-@@ -97,22 +406,184 @@ export class MovingObjectLogic extends RoomObjectLogicBase
-             }
-         }
- 
-+        // Recorded AFTER the native branch has had its turn, so the position
-+        // stored is what this frame actually leaves on screen - the true final
-+        // Pending position, which the previous diagnostic never sampled.
-+        if(pixelrpArmed)
-+        {
-+            const location = this.object.getLocation();
-+            const direction = this.object.getDirection();
-+            const screen = this.pixelrpScreenOf(location.x, location.y, location.z);
-+
-+            const moved = ((Math.abs(location.x - pixelrpPrevX) > 0.0001)
-+                || (Math.abs(location.y - pixelrpPrevY) > 0.0001)
-+                || (Math.abs(location.z - pixelrpPrevZ) > 0.0001));
-+
-+            pixelrpStore.notePending(
-+                this.object.id,
-+                pixelrpNow,
-+                location.x, location.y, location.z,
-+                (direction ? direction.x : -1),
-+                (screen ? screen.x : NaN),
-+                (screen ? screen.y : NaN),
-+                moved,
-+                pixelrpNativeDelta);
-+        }
-+
-         this._lastUpdateTime = this.time;
-     }
- 
-+    // ---- TEMPORARY join forensics helpers ---------------------------------
-+
-+    /**
-+     * Real screen pixels, via the geometry RoomSpriteCanvas publishes each
-+     * frame. Null when no canvas has rendered yet or the point is clipped, in
-+     * which case the report simply says n/a rather than inventing a number.
-+     */
-+    private pixelrpScreenOf(x: number, y: number, z: number): { x: number, y: number, z: number }
-+    {
-+        const geometry = PixelRPMovementV2.instance.geometry;
-+
-+        if(!geometry) return null;
-+
-+        const vector = MovingObjectLogic.PIXELRP_SCREEN_VECTOR;
-+
-+        vector.x = x;
-+        vector.y = y;
-+        vector.z = z;
-+
-+        try
-+        {
-+            return geometry.getScreenPosition(vector);
-+        }
-+        catch (e)
-+        {
-+            return null;
-+        }
-+    }
-+
-+    private static pixelrpFmt(point: { x: number, y: number }): string
-+    {
-+        return (point ? `${point.x.toFixed(2)},${point.y.toFixed(2)}` : 'n/a');
-+    }
-+
-+    /**
-+     * A first read of the three hypotheses, so the line states what it found
-+     * instead of leaving it to be reconstructed by eye:
-+     *   A - a real positional jump at the handoff
-+     *   B - native interpolation ran during Pending, then V2 took over
-+     *   C - only a sub-hundredth-of-a-tile sampling correction
-+     * The raw numbers are all in the same line, so a wrong call here is
-+     * visible rather than load-bearing.
-+     */
-+    private static pixelrpVerdict(pendFrames: number, nativeFrames: number, driftTiles: number, jumpTiles: number): string
-+    {
-+        // With exclusive ownership the intended outcome is no native Pending
-+        // frames at all: V2 accepts the edge, pins the avatar at edge.from and
-+        // holds it there until cycleStart. Zero frames is the PASS, not an
-+        // unknown - the previous wording predates the fix.
-+        if(!pendFrames)
-+        {
-+            if(jumpTiles > 0.02) return `PASS-WITH-SNAP - V2 owned from acceptance, but taking ownership moved the avatar ${jumpTiles.toFixed(3)} tiles (edge.from disagreed with where it stood)`;
-+
-+            return `PASS - V2 owned from acceptance, no native Pending frames, no snap (${jumpTiles.toFixed(4)} tiles)`;
-+        }
-+
-+        if((nativeFrames > 0) && (driftTiles > 0.02)) return `FAIL/B - native still moved ${driftTiles.toFixed(3)} tiles across ${nativeFrames}/${pendFrames} Pending frames before V2 took over`;
-+
-+        if(jumpTiles > 0.05) return `FAIL/A - real jump of ${jumpTiles.toFixed(3)} tiles at the handoff`;
-+
-+        return `C - timing/sample correction only (${jumpTiles.toFixed(4)} tiles) across ${pendFrames} Pending frames`;
-+    }
-+
-+    /**
-+     * Whether this logic drives a ROOM UNIT - an avatar, pet or bot, the
-+     * things the server addresses by virtualId and describes with 4110 edges.
-+     * Furniture shares this base class but is a different id space entirely,
-+     * so it must never consult or be owned by V2.
-+     */
-+    protected get pixelrpIsRoomUnit(): boolean
-+    {
-+        return false;
-+    }
-+
-     public setObject(object: IRoomObjectController): void
-     {
-         super.setObject(object);
- 
--        if(object) this._location.assign(object.getLocation());
-+        if(object)
-+        {
-+            this._location.assign(object.getLocation());
-+
-+            // Registered by IDENTITY, because ids collide across categories
-+            // and a reference does not. This is what lets the writer check in
-+            // RoomObject.setLocation tell a room unit from a floor item that
-+            // happens to share its number.
-+            if(this.pixelrpIsRoomUnit) PixelRPMovementV2.instance.markRoomUnit(object);
-+        }
-     }
- 
-     public processUpdateMessage(message: IRoomObjectUpdateMessage): void
-     {
-         if(!message) return;
- 
--        super.processUpdateMessage(message);
-+        // EXCLUSIVE OWNERSHIP.
-+        //
-+        // A UserUpdate carries facing, posture and the walk animation as well
-+        // as a tile, and all of those must keep working. But while V2 owns
-+        // this unit the POSITION must not be written here:
-+        // RoomObjectLogicBase.processUpdateMessage would snap the avatar onto
-+        // the packet's tile, making the `mv` a second positional writer racing
-+        // the interpolator. That race is what put a native write one frame
-+        // ahead of the Pending -> Moving handoff.
-+        //
-+        // Facing is still applied, so the avatar still turns on the packet.
-+        // One sample for this packet pass, for the same reason update() takes
-+        // one: every V2 question asked here must be asked of the same instant.
-+        const pixelrpNow = performance.now();
-+
-+        let pixelrpOwned = (this.pixelrpIsRoomUnit && this.object && (this.object.id !== undefined) && PixelRPMovementV2.instance.owns(this.object.id, pixelrpNow));
-+
-+        // HARD DISPLACEMENT: end ownership FIRST, then let the write through.
-+        //
-+        // A walking update carries the tile the unit is on or next to, so it
-+        // is always within about a tile of where the unit is rendered. A
-+        // teleport, roller or forced move is not - it lands somewhere else
-+        // entirely, and it must be applied rather than swallowed.
-+        //
-+        // This is a client-side backstop, and it exists because the server
-+        // does not currently mark these: RpMovementV2Flags.Displacement is
-+        // defined but never set, so a teleport reaches the client as an
-+        // ordinary status update indistinguishable in kind from a walk step.
-+        // Distance is the one thing that does distinguish them. When the
-+        // server starts setting the flag the 4110 path already calls
-+        // displace() and this backstop simply stops finding anything.
-+        if(pixelrpOwned && message.location)
-+        {
-+            const current = this.object.getLocation();
-+            const dx = (message.location.x - current.x);
-+            const dy = (message.location.y - current.y);
-+
-+            if(((dx * dx) + (dy * dy)) > (MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES * MovingObjectLogic.PIXELRP_DISPLACEMENT_TILES))
-+            {
-+                PixelRPMovementV2.instance.releaseForDisplacement(this.object.id, `userupdate jumped ${Math.sqrt((dx * dx) + (dy * dy)).toFixed(2)} tiles`);
-+
-+                pixelrpOwned = false;
-+            }
-+        }
-+
-+        if(pixelrpOwned)
-+        {
-+            if(this.object) this.object.setDirection(message.direction);
-+        }
-+        else
-+        {
-+            super.processUpdateMessage(message);
-+        }
- 
-+        // Native's baseline is kept current either way, so that if V2 ever
-+        // releases this unit (walk end, displacement, staleness) native
-+        // resumes from the right tile instead of an old one.
-         if(message.location) this._location.assign(message.location);
- 
-         if(message instanceof ObjectMoveUpdateMessage) return this.processMoveMessage(message);
-@@ -126,6 +597,27 @@ export class MovingObjectLogic extends RoomObjectLogicBase
- 
-         this._locationDelta.assign(message.targetLocation);
-         this._locationDelta.subtract(this._location);
-+
-+        // TEMPORARY join forensics. THE question this round has to answer:
-+        // this is the ordinary `mv` UserUpdate handing native Nitro a target
-+        // and a _changeTime. From this moment native will interpolate on
-+        // every frame V2 does not claim - so if this lands before edge 0's
-+        // cycleStart, native owns the avatar first and V2 inherits a position
-+        // that is already part-way along. Timestamped here, read back in the
-+        // transition report.
-+        //
-+        // Only units the store already knows are recorded. For a joiner the
-+        // 4110 precedes the `mv` (it carries startDelayMs precisely so the
-+        // client learns of the edge early), so this holds; if it ever does
-+        // not, the report says mvArrivedAt: none, which is itself the finding.
-+        if(this.object.id !== undefined)
-+        {
-+            PixelRPMovementV2.instance.noteNativeMove(
-+                this.object.id,
-+                performance.now(),
-+                `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)}`,
-+                `${message.targetLocation.x.toFixed(3)},${message.targetLocation.y.toFixed(3)}`);
-+        }
-     }
- 
-     protected getLocationOffset(): IVector3D
-diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-index a09afb9..31dfe73 100644
---- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-+++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-@@ -8,6 +8,12 @@ import { MovingObjectLogic } from '../MovingObjectLogic';
- 
- export class AvatarLogic extends MovingObjectLogic
- {
-+    /** An avatar is a room unit: the server addresses it by virtualId. */
-+    protected get pixelrpIsRoomUnit(): boolean
-+    {
-+        return true;
-+    }
-+
-     private static MAX_HAND_ID: number = 999999999;
-     private static MAX_HAND_USE_ID: number = 999;
-     private static EFFECT_TYPE_SPLASH: number = 28;
-diff --git a/src/nitro/room/object/logic/pet/PetLogic.ts b/src/nitro/room/object/logic/pet/PetLogic.ts
-index 1dc732f..f2b8ce9 100644
---- a/src/nitro/room/object/logic/pet/PetLogic.ts
-+++ b/src/nitro/room/object/logic/pet/PetLogic.ts
-@@ -7,6 +7,12 @@ import { MovingObjectLogic } from '../MovingObjectLogic';
- 
- export class PetLogic extends MovingObjectLogic
- {
-+    /** A pet is a room unit, addressed by virtualId exactly as an avatar is. */
-+    protected get pixelrpIsRoomUnit(): boolean
-+    {
-+        return true;
-+    }
-+
-     private _selected: boolean;
-     private _reportedLocation: Vector3d;
-     private _postureIndex: number;
 diff --git a/src/room/object/RoomObject.ts b/src/room/object/RoomObject.ts
-index f900839..c008cf7 100644
+index f900839..088425b 100644
 --- a/src/room/object/RoomObject.ts
 +++ b/src/room/object/RoomObject.ts
 @@ -1,6 +1,7 @@
  import { IRoomObjectController, IRoomObjectEventHandler, IRoomObjectModel, IRoomObjectMouseHandler, IRoomObjectUpdateMessage, IRoomObjectVisualization, IVector3D, Vector3d } from '../../api';
  import { Disposable } from '../../core';
  import { RoomObjectModel } from './RoomObjectModel';
-+import { PixelRPMovementV2, PixelRPV2Writer } from '../renderer/PixelRPMovementV2';
++import { PixelRPMovementV2 } from '../renderer/PixelRPMovementV2';
  
  export class RoomObject extends Disposable implements IRoomObjectController
  {
-@@ -75,6 +76,76 @@ export class RoomObject extends Disposable implements IRoomObjectController
+@@ -75,6 +76,24 @@ export class RoomObject extends Disposable implements IRoomObjectController
  
          if((vector.x === this._location.x) && (vector.y === this._location.y) && (vector.z === this._location.z)) return;
  
 +        // TEMPORARY join forensics. Every positional write in the engine funnels
-+        // through here, so this one hook catches the native lerp, V2's own
-+        // interpolation, a UserUpdate and a displacement alike - filtered to a
-+        // joining unit across the window around its Pending -> Moving boundary.
-+        //
-+        // The writer is now the tag the CALL SITE set, not a parsed stack. On
-+        // a minified build native interpolation and V2 interpolation are the
-+        // same method of the same class, so a stack could never separate the
-+        // two writers this investigation exists to tell apart. V2's own write
-+        // is included rather than excluded: the ordering of v2-interp against
-+        // native-interp across the boundary IS the sequence being measured.
++        // through here, so this one hook catches the native lerp, a UserUpdate,
++        // a displacement and anything else alike - filtered to a joining unit
++        // inside +-20ms of its Pending -> Moving boundary, and excluding V2's
++        // own write so it does not drown out the writer it is looking for.
 +        const pixelrpStore = PixelRPMovementV2.instance;
-+        const pixelrpNow = performance.now();
 +
-+        // TEMPORARY assertion: EXCLUSIVE OWNERSHIP.
-+        //
-+        // While V2 owns a unit - from the moment it accepts a future edge to
-+        // the end of that movement session - nothing else may write its
-+        // position. Every positional write in the engine funnels through here,
-+        // so this catches any that slip through regardless of where it came
-+        // from. Zero of these lines is the pass condition; each one names the
-+        // writer that broke the invariant and by how far it moved the avatar.
-+        // Scoped to ROOM UNITS by identity. Without that scope this fired for
-+        // any floor item whose id happened to equal a walking avatar's
-+        // virtualId - a false positive that says nothing about the avatar,
-+        // because the two live in different id spaces.
-+        if((pixelrpStore.writer !== PixelRPV2Writer.V2_INTERP) && pixelrpStore.isRoomUnit(this) && pixelrpStore.owns(this._id, pixelrpNow))
++        if(!pixelrpStore.ownWrite && pixelrpStore.isJoinWriterWatch(this._id, performance.now()))
 +        {
-+            pixelrpStore.stats.ownershipViolations++;
-+
-+            if(pixelrpStore.stats.ownershipViolations <= 40)
-+            {
-+                const vdx = (vector.x - this._location.x);
-+                const vdy = (vector.y - this._location.y);
-+
-+                console.warn('[MV2/OWNERSHIP-VIOLATION]', {
-+                    unit: this._id,
-+                    by: pixelrpStore.writer,
-+                    type: this._type,
-+                    from: `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)},${this._location.z.toFixed(3)}`,
-+                    to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
-+                    movedTiles: Math.sqrt((vdx * vdx) + (vdy * vdy)).toFixed(4),
-+                    at: Math.round(pixelrpNow),
-+                    updateSource: pixelrpStore.updateSource,
-+                    // Kept as a fallback for a caller the tags do not cover:
-+                    // if `by` reads "other", this is what names it.
-+                    stack: ((new Error().stack || '').split('\n').slice(2, 7).map(l => l.trim()).join(' <- '))
-+                });
-+            }
-+        }
-+
-+        if(pixelrpStore.isJoinWriterWatch(this._id, pixelrpNow))
-+        {
-+            const dx = (vector.x - this._location.x);
-+            const dy = (vector.y - this._location.y);
-+
 +            console.log('[MV2/JOIN-WRITER]', {
 +                unit: this._id,
-+                by: pixelrpStore.writer,
-+                // Negative = before the Pending -> Moving boundary. Any
-+                // native-interp line at a negative offset is native moving the
-+                // avatar while it is still meant to be standing.
-+                atBoundaryMs: Math.round(pixelrpStore.joinBoundaryDelta(this._id, pixelrpNow)),
 +                from: `${this._location.x.toFixed(3)},${this._location.y.toFixed(3)},${this._location.z.toFixed(3)}`,
 +                to: `${vector.x.toFixed(3)},${vector.y.toFixed(3)},${vector.z.toFixed(3)}`,
-+                stepTiles: Math.sqrt((dx * dx) + (dy * dy)).toFixed(4),
-+                at: Math.round(pixelrpNow)
++                at: Math.round(performance.now()),
++                by: ((new Error().stack || '').split('\n').slice(2, 6).map(l => l.trim()).join(' <- '))
 +            });
 +        }
 +
          this._location.x = vector.x;
          this._location.y = vector.y;
          this._location.z = vector.z;
-diff --git a/src/room/object/logic/RoomObjectLogicBase.ts b/src/room/object/logic/RoomObjectLogicBase.ts
-index e70d315..5e746fb 100644
---- a/src/room/object/logic/RoomObjectLogicBase.ts
-+++ b/src/room/object/logic/RoomObjectLogicBase.ts
-@@ -1,6 +1,7 @@
- import { IEventDispatcher, IRoomGeometry, IRoomObjectController, IRoomObjectEventHandler, IRoomObjectUpdateMessage } from '../../../api';
- import { Disposable } from '../../../core';
- import { RoomSpriteMouseEvent } from '../../../events';
-+import { PixelRPMovementV2, PixelRPV2Writer } from '../../renderer/PixelRPMovementV2';
- 
- export class RoomObjectLogicBase extends Disposable implements IRoomObjectEventHandler
- {
-@@ -40,7 +41,12 @@ export class RoomObjectLogicBase extends Disposable implements IRoomObjectEventH
-     {
-         if(!message || !this._object) return;
- 
-+        // TEMPORARY join forensics: name this call site, so a UserUpdate
-+        // snapping the avatar is distinguishable from an interpolation step.
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.USER_UPDATE;
-         this._object.setLocation(message.location);
-+        PixelRPMovementV2.instance.writer = PixelRPV2Writer.OTHER;
-+
-         this._object.setDirection(message.direction);
-     }
- 
 diff --git a/src/room/renderer/PixelRPMovementAuthority.ts b/src/room/renderer/PixelRPMovementAuthority.ts
 deleted file mode 100644
 index 3318c38..0000000
@@ -2270,10 +1627,10 @@ index 3318c38..0000000
 -}
 diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
 new file mode 100644
-index 0000000..f74f398
+index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1995 @@
+@@ -0,0 +1,535 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -2326,70 +1683,21 @@ index 0000000..f74f398
 +{
 +    sx: number; sy: number; sz: number;
 +    gx: number; gy: number; gz: number;
-+    /**
-+     * 0..1. The progress interpolation actually uses - the authoritative
-+     * phase, held to the monotonic invariant so it can never decrease within
-+     * one authoritative edge.
-+     */
++    /** 0..1, clamped. */
 +    phase: number;
-+    /**
-+     * The raw phase derived from the clock, before the invariant. Diagnostics
-+     * only: comparing it with `phase` shows the invariant doing work, and the
-+     * phase-rate assertion is measured against THIS, since the question it
-+     * asks is whether the clock mapping moved - not whether the invariant
-+     * caught it afterwards.
-+     */
-+    computedPhase: number;
-+    /** True when the invariant held progress against a lower computed phase. */
-+    progressClamped: boolean;
-+    /**
-+     * The edge is accepted but has not reached its cycleStart yet, so phase is
-+     * pinned at 0 and the unit stands exactly on edge.from. V2 still OWNS the
-+     * position while holding - that exclusivity is the point, since it is what
-+     * keeps native from writing the frame before the edge starts.
-+     */
-+    holding: boolean;
 +    /** Diagnostics only - lets the render hook name the edge it drew. */
 +    edgeIndex: number;
 +    session: number;
 +    revision: number;
 +    cycleStart: number;
 +    estServerNow: number;
-+    /** The frozen client->server mapping this edge is being drawn under. */
-+    activeOffset: number;
-+    interval: number;
 +}
 +
-+/**
-+ * TEMPORARY join forensics. Which call site wrote a position, named at the
-+ * site itself. A minified stack cannot tell native interpolation apart from
-+ * V2 interpolation - both are `MovingObjectLogic.update` - so the writer is
-+ * declared rather than inferred.
-+ */
-+export const PixelRPV2Writer = {
-+    V2_INTERP: 'v2-interp',
-+    NATIVE_INTERP: 'native-interp',
-+    USER_UPDATE: 'logicbase-userupdate',
-+    DISPLACEMENT: 'displacement',
-+    OTHER: 'other'
-+};
-+
-+export interface PixelRPV2Unit
++interface PixelRPV2Unit
 +{
 +    id: number;
 +    session: number;
 +    revision: number;
-+    /**
-+     * A RouteRevision rejected WHOLE because its geometry did not chain onto
-+     * what is already queued. -1 when there is none. Every later packet
-+     * carrying this same revision is dropped on sight, so a route that does
-+     * not connect can never be spliced in one edge at a time.
-+     */
-+    rejectedRevision: number;
-+    /** Bound on broken-chain output, so one bad route cannot flood. */
-+    chainLines: number;
-+    /** Bound on frame-stall output. Per UNIT LIFETIME, never reset per walk. */
-+    stallLines: number;
 +    edges: PixelRPV2Edge[];
 +    lastPacketAtClient: number;
 +    /** TEMPORARY join forensics - ms this session waited in Pending. 0 = not a join. */
@@ -2397,120 +1705,6 @@ index 0000000..f74f398
 +    /** performance.now() at which edge 0 of a joined session starts. */
 +    joinBoundaryClient: number;
 +    joinHandoffLogged: boolean;
-+
-+    // ---- TEMPORARY: the Pending tail ------------------------------------
-+    // Flat fields, mutated in place: this is touched once per avatar per
-+    // frame while Pending, so it must not allocate.
-+    //
-+    // "Pending" here is the client-side truth of it: every frame on which
-+    // getActive() returns null because edge 0 has not reached its cycleStart
-+    // yet. The LAST such frame is the real handoff predecessor - the frame
-+    // the previous diagnostic missed by reading position after V2 was
-+    // already active.
-+    pendFrames: number;
-+    pendNativeFrames: number;
-+    pendTicker: number;
-+    pendX: number; pendY: number; pendZ: number;
-+    pendDir: number;
-+    pendScreenX: number; pendScreenY: number;
-+    pendNativeWrote: boolean;
-+    pendNativeDelta: number;
-+    /** First Pending frame of this arming, so drift ACROSS Pending is visible. */
-+    pendFirstTicker: number;
-+    pendFirstX: number; pendFirstY: number; pendFirstZ: number;
-+    pendFirstScreenX: number; pendFirstScreenY: number;
-+
-+    // ---- TEMPORARY: the native `mv` that could start native interpolation --
-+    mvAt: number;
-+    mvFrom: string;
-+    mvTo: string;
-+    mvSeq: number;
-+
-+    /** Bound on writer-watch output, so one bad join cannot flood. */
-+    writerLines: number;
-+
-+    // ---- The frozen clock mapping for the edge currently being drawn -----
-+    // A live clockOffset is a moving target: correcting it mid-edge shifts
-+    // estimatedServerNow, which advances phase discontinuously and shows up as
-+    // a single render step of roughly twice its neighbours. The mapping is
-+    // therefore snapshotted when an edge becomes active and held for that
-+    // whole edge; only an edge BOUNDARY may adopt a newer estimate.
-+    activeSession: number;
-+    activeEdgeIndex: number;
-+    /** NaN until the first activation. */
-+    activeOffset: number;
-+
-+    /**
-+     * MONOTONIC INVARIANT: the newest V2 clock reading this unit has been
-+     * evaluated against. V2 time may never move backwards for a unit, so a
-+     * pass driven from outside the rAF frame - where the sampled clock can
-+     * read older than the last one - cannot rewind an avatar. Reset when the
-+     * session is replaced; a displaced or forgotten unit is deleted outright,
-+     * which resets it by construction.
-+     */
-+    lastNow: number;
-+
-+    // ---- TEMPORARY assertion state: phase must track the clock -----------
-+    lastPhase: number;
-+    lastPhaseTicker: number;
-+    lastPhaseEdge: number;
-+    lastPhaseClamped: boolean;
-+    phaseWarnings: number;
-+    clockLines: number;
-+
-+    // ---- TEMPORARY: the previous V2 positional write --------------------
-+    lastWriteSession: number;
-+    lastWriteEdge: number;
-+    lastWriteX: number; lastWriteY: number; lastWriteZ: number;
-+    /** Goal of the edge that was active on the previous write - the handoff's expected end. */
-+    lastWriteGX: number; lastWriteGY: number; lastWriteGZ: number;
-+    lastWriteValid: boolean;
-+    backwardLines: number;
-+
-+    // ---- TEMPORARY: the unthrottled join trace window --------------------
-+    // Armed with the join, covering the WHOLE of edge 0, the edge 0 -> edge 1
-+    // handoff, and the first 150ms of edge 1. The ordinary render trace is
-+    // throttled to one line per 250ms, which on a 500ms edge is two lines and
-+    // stops mid-edge; the teleport is not in that half.
-+    traceActive: boolean;
-+    traceEdge1Now: number;
-+    traceLines: number;
-+
-+    handoffLines: number;
-+    stepLines: number;
-+
-+    // ---- MONOTONIC PROGRESS INVARIANT -----------------------------------
-+    // The progress already reached on ONE exact authoritative edge, keyed by
-+    // the triple that identifies it. Progress never carries across a change in
-+    // any part of that key.
-+    progSession: number;
-+    progRevision: number;
-+    progEdge: number;
-+    progValue: number;
-+    clampLines: number;
-+
-+    /** Raw clock-derived phase at the previous write, for the rate assertion. */
-+    lastComputedPhase: number;
-+
-+    // ---- state of the PREVIOUS V2 write, for the anomaly report ---------
-+    lastWriteSX: number; lastWriteSY: number;
-+    lastWriteRevision: number;
-+    lastWriteServerNow: number;
-+    lastWriteOffset: number;
-+    lastWriteNow: number;
-+
-+    // ---- queue events, so an anomaly can be attributed ------------------
-+    // A step anomaly with no phase anomaly did not come from the maths; it
-+    // came from the edge under the unit being changed or removed. These
-+    // record the two ways that happens.
-+    restageLines: number;
-+    zLines: number;
-+    correctionCount: number;
-+    lastCorrectionIndex: number;
-+    lastCorrectionAt: number;
-+    trimCount: number;
-+    lastTrimHighestDropped: number;
-+    lastTrimAt: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -2518,37 +1712,6 @@ index 0000000..f74f398
 +    /** Drop a unit's timed state after this long with no packet -> native. */
 +    private static readonly STALE_MS = 1400;
 +    private static readonly MAX_EDGES = 8;
-+
-+    /**
-+     * How much of a clock correction one edge boundary may absorb.
-+     *
-+     * Adopting a newer offset at a boundary shifts phase by (delta / interval)
-+     * of a tile in a single frame. At 8ms of a 500ms edge that is 1.6% of a
-+     * tile - about half a pixel horizontally - which is below what can be
-+     * seen. Anything larger is spread across consecutive boundaries at this
-+     * rate rather than taken in one visible step. Nothing here touches the
-+     * server timeline: cycleStart, the 500ms interval and the room phase grid
-+     * are all untouched, and within an edge the rate stays exactly one tile
-+     * per interval.
-+     */
-+    private static readonly CLOCK_STEP_MS = 8;
-+
-+    /**
-+     * Past this the offset is not jitter, it is a different clock (a resume, a
-+     * long stall, a server restart). Holding a stale mapping then is worse
-+     * than one corrective step, so it is taken whole and logged.
-+     */
-+    private static readonly CLOCK_RESYNC_MS = 250;
-+
-+    /**
-+     * A future edge may be held this long before staleness reclaims the unit.
-+     * A held edge has no reason to receive packets, so the ordinary staleness
-+     * rule would drop the unit mid-hold and hand it straight back to native -
-+     * exactly the snap this change exists to remove. Server starts align to
-+     * the 500ms room grid, so a real hold is under one interval; this is
-+     * generous by design.
-+     */
-+    private static readonly MAX_HOLD_MS = 2000;
 +
 +    private static _instance: PixelRPMovementV2 = null;
 +
@@ -2567,15 +1730,7 @@ index 0000000..f74f398
 +    private _windowMin = NaN;
 +
 +    /** Spike instrumentation only. */
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, clockAdoptions: 0, clockResyncs: 0, ownershipViolations: 0, clockRewinds: 0, backwardWrites: 0, progressClamps: 0, illegalActiveRestages: 0, zMismatches: 0, revisionsRejected: 0, chainViolations: 0, frameStalls: 0 };
-+
-+    /**
-+     * What drove the current update pass, for diagnostics only. RoomEngine
-+     * sets it around the entry points that are NOT a rAF frame, so a log line
-+     * can say whether it came from the ticker, a visibilitychange, the room
-+     * previewer or an interval.
-+     */
-+    public updateSource = 'ticker';
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2583,19 +1738,6 @@ index 0000000..f74f398
 +     * packet arrival is already only ~2/sec, so that one is logged in full.
 +     */
 +    private static readonly DEBUG_THROTTLE_MS = 250;
-+
-+    /**
-+     * Frame cap for one join's unthrottled trace. Edge 0 plus the handoff plus
-+     * 150ms of edge 1 is about 650ms, which at 60fps is ~39 frames; 120 leaves
-+     * room for a high refresh rate display without ever becoming a flood.
-+     */
-+    private static readonly MAX_TRACE_LINES = 120;
-+
-+    /** How far into edge 1 the join trace window runs. */
-+    private static readonly TRACE_INTO_EDGE1_MS = 150;
-+
-+    /** A single V2 step larger than this is reported. One frame of a 500ms edge is ~0.033. */
-+    private static readonly STEP_ANOMALY_TILES = 0.05;
 +
 +    private readonly _debug = new Set<number>();
 +    private readonly _debugAt = new Map<number, number>();
@@ -2658,18 +1800,6 @@ index 0000000..f74f398
 +     */
 +    public shouldLogRender(virtualId: number, tickerNow: number, edgeIndex: number): boolean
 +    {
-+        // Inside the join trace window every frame is logged, throttle and
-+        // debug flag alike bypassed. The window is short and line-capped, so
-+        // this is bounded: about 40 frames for one join, once per join.
-+        const unit = this._units.get(virtualId);
-+
-+        if(unit && unit.traceActive && (unit.traceLines < PixelRPMovementV2.MAX_TRACE_LINES))
-+        {
-+            unit.traceLines++;
-+
-+            return true;
-+        }
-+
 +        if(!this.isDebugged(virtualId)) return false;
 +
 +        if(this._debugEdge.get(virtualId) !== edgeIndex)
@@ -2754,33 +1884,7 @@ index 0000000..f74f398
 +        {
 +            unit = {
 +                id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf,
-+                rejectedRevision: -1, chainLines: 0, stallLines: 0,
-+                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true,
-+                pendFrames: 0, pendNativeFrames: 0,
-+                pendTicker: 0, pendX: 0, pendY: 0, pendZ: 0, pendDir: -1,
-+                pendScreenX: NaN, pendScreenY: NaN,
-+                pendNativeWrote: false, pendNativeDelta: 0,
-+                pendFirstTicker: 0, pendFirstX: 0, pendFirstY: 0, pendFirstZ: 0,
-+                pendFirstScreenX: NaN, pendFirstScreenY: NaN,
-+                mvAt: 0, mvFrom: '', mvTo: '', mvSeq: 0,
-+                writerLines: 0,
-+                activeSession: -1, activeEdgeIndex: -1, activeOffset: NaN,
-+                lastNow: NaN,
-+                lastPhase: NaN, lastPhaseTicker: NaN, lastPhaseEdge: -1,
-+                lastPhaseClamped: true, phaseWarnings: 0, clockLines: 0,
-+                lastWriteSession: -1, lastWriteEdge: -1,
-+                lastWriteX: 0, lastWriteY: 0, lastWriteZ: 0,
-+                lastWriteGX: 0, lastWriteGY: 0, lastWriteGZ: 0,
-+                lastWriteValid: false, backwardLines: 0,
-+                traceActive: false, traceEdge1Now: NaN, traceLines: 0,
-+                handoffLines: 0, stepLines: 0,
-+                lastWriteSX: 0, lastWriteSY: 0, lastWriteRevision: -1,
-+                lastWriteServerNow: NaN, lastWriteOffset: NaN, lastWriteNow: NaN,
-+                restageLines: 0, zLines: 0,
-+                correctionCount: 0, lastCorrectionIndex: -1, lastCorrectionAt: NaN,
-+                trimCount: 0, lastTrimHighestDropped: -1, lastTrimAt: NaN,
-+                progSession: -1, progRevision: -1, progEdge: -1, progValue: 0, clampLines: 0,
-+                lastComputedPhase: NaN
++                joinDelayMs: 0, joinBoundaryClient: 0, joinHandoffLogged: true
 +            };
 +
 +            this._units.set(virtualId, unit);
@@ -2792,59 +1896,6 @@ index 0000000..f74f398
 +            unit.session = session;
 +            unit.revision = revision;
 +            unit.edges = [];
-+
-+            // A rejection belongs to the walk it was rejected from. The line
-+            // cap does not: see the note above.
-+            unit.rejectedRevision = -1;
-+
-+            // A new walk starts from a hold at edge.from, so there is no
-+            // position to keep continuous and the freshest clock estimate can
-+            // be taken whole. Re-anchoring here is also what keeps a long
-+            // session's frozen mapping from being inherited by the next one.
-+            unit.activeSession = -1;
-+            unit.activeEdgeIndex = -1;
-+            unit.activeOffset = NaN;
-+            unit.lastPhase = NaN;
-+            unit.lastPhaseTicker = NaN;
-+            unit.lastPhaseEdge = -1;
-+            unit.lastPhaseClamped = true;
-+            unit.phaseWarnings = 0;
-+            unit.clockLines = 0;
-+
-+            // The monotonic clock and the previous write belong to the walk
-+            // that just ended, not to this one.
-+            unit.lastNow = NaN;
-+            unit.lastWriteValid = false;
-+            unit.lastWriteSession = -1;
-+            unit.lastWriteEdge = -1;
-+            // The anomaly caps are DELIBERATELY NOT reset here. Forty lines
-+            // per unit for its whole lifetime is a bound; forty per walk is
-+            // not one, because a unit walks many times a minute.
-+
-+            // Arm the unthrottled window for this join - ONLY for a unit the
-+            // console has actually asked to trace.
-+            //
-+            // This armed UNCONDITIONALLY, on every new walk of every unit, and
-+            // shouldLogRender bypasses both the throttle and the debug flag
-+            // once the window is open. That is up to MAX_TRACE_LINES console
-+            // lines PER WALK PER UNIT - and the anomaly caps below used to
-+            // reset per walk too, adding four more forties. A room with a
-+            // dozen people walking emitted thousands of console calls carrying
-+            // object payloads, and DevTools retains and symbolises every one.
-+            // That is a main-thread stall of hundreds of milliseconds, which
-+            // is long enough to miss whole edges: the renderer then resumes
-+            // correctly on server time, two indexes on, and the diagnostics
-+            // blamed the route for a step the browser caused.
-+            unit.traceActive = this.isDebugged(virtualId);
-+            unit.traceEdge1Now = NaN;
-+            unit.traceLines = 0;
-+
-+            // A new walk starts its own progress; nothing carries in.
-+            unit.progSession = -1;
-+            unit.progRevision = -1;
-+            unit.progEdge = -1;
-+            unit.progValue = 0;
-+            unit.lastComputedPhase = NaN;
 +        }
 +        else if(session < unit.session)
 +        {
@@ -2852,118 +1903,9 @@ index 0000000..f74f398
 +        }
 +        else if(revision > unit.revision)
 +        {
-+            // Already judged incompatible. Every packet carrying it - the next
-+            // real edge, its lookahead - is dropped without a second look, so
-+            // one rejection covers the whole revision rather than each edge
-+            // racing the check again.
-+            if(revision === unit.rejectedRevision) return;
-+
-+            // ATOMIC MERGE: A REVISION IS TAKEN WHOLE OR NOT AT ALL.
-+            //
-+            // Refusing a changed ACTIVE edge on its own is not enough, and
-+            // that is what was shipped. The rest of the same revision - the
-+            // next real edge and the lookahead chained off it - describes a
-+            // route leaving from where the REFUSED geometry ended, not from
-+            // where the preserved edge actually ends. Splicing it in leaves a
-+            // hole between two queued edges: observed as preserved 19,18->19,19
-+            // followed by incoming 18,19->17,19, a gap of exactly 1.0 tiles,
-+            // and as 19,18->19,17 followed by 18,19->17,19, a gap of 2.2361.
-+            //
-+            // So the incoming geometry is checked BEFORE anything is mutated.
-+            // It has to leave from exactly where its predecessor arrives. If
-+            // it does not, the whole revision is dropped - no edges, no
-+            // metadata, and unit.revision is NOT adopted - and the route
-+            // already being walked is kept until a contiguous revision
-+            // arrives.
-+            //
-+            // The gap is never smoothed, never lerped across, never snapped
-+            // shut and no intermediate edge is invented to bridge it.
-+            const mergeNow = (clientNowPerf - this._clockOffset);
-+            const atIndex = unit.edges.find(e => (e.edgeIndex === edgeIndex));
-+            const activeAtIndex = ((atIndex && Number.isFinite(mergeNow) && (atIndex.cycleStart <= mergeNow)) ? atIndex : null);
-+
-+            // Two ways an incoming route can fail to connect. Either it
-+            // rewrites the edge being walked right now - in which case
-+            // everything behind it is planned from a destination this client
-+            // will never reach - or it starts at the next index but not from
-+            // where its predecessor arrives.
-+            const rewritesActive = !!(activeAtIndex
-+                && ((activeAtIndex.sx !== sx) || (activeAtIndex.sy !== sy) || (activeAtIndex.sz !== sz)
-+                    || (activeAtIndex.gx !== gx) || (activeAtIndex.gy !== gy) || (activeAtIndex.gz !== gz)));
-+
-+            const predecessor = unit.edges.find(e => (e.edgeIndex === (edgeIndex - 1)));
-+            const breaksChain = !!(!rewritesActive && predecessor
-+                && ((predecessor.gx !== sx) || (predecessor.gy !== sy) || (predecessor.gz !== sz)));
-+
-+            if(rewritesActive || breaksChain)
-+            {
-+                const reference = (rewritesActive ? activeAtIndex : predecessor);
-+                const gap = Math.sqrt(((reference.gx - sx) ** 2) + ((reference.gy - sy) ** 2));
-+
-+                unit.rejectedRevision = revision;
-+                this.stats.revisionsRejected++;
-+
-+                if(unit.chainLines < 40)
-+                {
-+                    unit.chainLines++;
-+
-+                    console.error('[MV2/REVISION-REJECTED-BROKEN-CHAIN] ' + JSON.stringify({
-+                        unit: unit.id,
-+                        session,
-+                        revision,
-+                        revisionKept: unit.revision,
-+                        activeEdgeIndex: reference.edgeIndex,
-+                        activeEdge: `${reference.sx},${reference.sy},${reference.sz} -> ${reference.gx},${reference.gy},${reference.gz}`,
-+                        activeEdgeTo: `${reference.gx},${reference.gy},${reference.gz}`,
-+                        incomingEdgeIndex: edgeIndex,
-+                        incomingFrom: `${sx},${sy},${sz}`,
-+                        chainGapTiles: gap.toFixed(4),
-+                        reason: (rewritesActive
-+                            ? 'revision rewrites the edge already in flight, so everything after it is planned from a tile this client never reaches'
-+                            : 'incoming edge does not leave from where its predecessor arrives'),
-+                        action: 'ENTIRE REVISION REJECTED - existing route kept until a contiguous one arrives'
-+                    }));
-+                }
-+
-+                return;
-+            }
-+
 +            // A correction: drop provisional geometry at or after this index.
-+            //
-+            // NOTE for the anomaly report: this drops every queued edge whose
-+            // index is >= the incoming one, which INCLUDES the edge currently
-+            // being rendered if a correction ever arrives for an index at or
-+            // before the elapsing one. The server is supposed to restage only
-+            // indexes strictly after the elapsing edge; this records what
-+            // actually happened so the two can be told apart.
 +            unit.revision = revision;
-+            unit.correctionCount++;
-+            unit.lastCorrectionIndex = edgeIndex;
-+            unit.lastCorrectionAt = clientNowPerf;
-+
-+            // CLIENT DEFENCE: an edge that has ALREADY STARTED is immutable.
-+            //
-+            // A higher revision may replace FUTURE geometry only. Indexes
-+            // below the incoming one are historical; the incoming index
-+            // itself is only replaceable while it is still in the future.
-+            // Once its cycleStart has passed the avatar is part-way along
-+            // that tile, and swapping the geometry underneath it moves the
-+            // avatar sideways mid-edge - the teleport this defends against.
-+            //
-+            // The server is the real fix (a late beat let a blocked-at-commit
-+            // re-plan restage the elapsing index); this is the backstop that
-+            // makes the invariant hold regardless of what arrives on the wire.
-+            const startedNow = (clientNowPerf - this._clockOffset);
-+
-+            unit.edges = unit.edges.filter(e =>
-+            {
-+                if(e.edgeIndex < edgeIndex) return true;
-+
-+                // At or after the incoming index: keep it only if it has
-+                // already begun, in which case it outranks the correction.
-+                return (e.cycleStart <= startedNow);
-+            });
-+
++            unit.edges = unit.edges.filter(e => (e.edgeIndex < edgeIndex));
 +            this.stats.corrections++;
 +        }
 +        else if(revision < unit.revision)
@@ -2981,28 +1923,14 @@ index 0000000..f74f398
 +            unit.joinDelayMs = startDelayMs;
 +            unit.joinBoundaryClient = (cycleStart + this._clockOffset);
 +            unit.joinHandoffLogged = false;
-+
-+            // Fresh arming: the Pending tail from any previous join must not
-+            // leak into this one.
-+            unit.pendFrames = 0;
-+            unit.pendNativeFrames = 0;
-+            unit.pendTicker = 0;
-+            unit.pendFirstTicker = 0;
-+            unit.pendNativeWrote = false;
-+            unit.pendNativeDelta = 0;
-+            unit.writerLines = 0;
 +        }
 +
 +        const step = ((interval > 0) ? interval : 500);
 +
-+        // The instant this packet describes, in server time - the reference
-+        // for "has this edge already started?".
-+        const startedNow = (clientNowPerf - this._clockOffset);
-+
 +        this.upsert(unit, {
 +            session, revision, edgeIndex, provisional: false,
 +            sx, sy, sz, gx, gy, gz, cycleStart, interval: step
-+        }, startedNow);
++        });
 +        this.stats.edges++;
 +
 +        // Lookahead: a contiguous chain. from = previous goal, start = previous
@@ -3022,67 +1950,15 @@ index 0000000..f74f398
 +                interval: step
 +            };
 +
-+            this.upsert(unit, edge, startedNow);
++            this.upsert(unit, edge);
 +            prev = edge;
 +        }
 +
 +        unit.edges.sort((a, b) => (a.edgeIndex - b.edgeIndex));
 +
-+        // THE INVARIANT: for every adjacent queued pair, edge[k].to must equal
-+        // edge[k+1].from in all three axes, so chainGapTiles is always 0.
-+        //
-+        // The atomic merge above is what makes that true, and a correction can
-+        // no longer break it. This is the assertion that says so out loud:
-+        // anything caught here arrived by a path not yet accounted for, which
-+        // is the only reason to keep looking. Non-adjacent indexes are skipped
-+        // because a gap in the INDEXES is a queue that has been trimmed, not a
-+        // gap in the geometry.
-+        //
-+        // Reported only. Nothing here closes the gap - no snap, no smoothing,
-+        // no invented intermediate edge.
-+        for(let i = 1; i < unit.edges.length; i++)
-+        {
-+            const left = unit.edges[i - 1];
-+            const right = unit.edges[i];
-+
-+            if(right.edgeIndex !== (left.edgeIndex + 1)) continue;
-+            if((left.gx === right.sx) && (left.gy === right.sy) && (left.gz === right.sz)) continue;
-+
-+            this.stats.chainViolations++;
-+
-+            if(unit.chainLines < 40)
-+            {
-+                unit.chainLines++;
-+
-+                console.error('[MV2/CHAIN-INVARIANT] ' + JSON.stringify({
-+                    unit: unit.id,
-+                    session: unit.session,
-+                    revision: unit.revision,
-+                    leftIndex: left.edgeIndex,
-+                    leftTo: `${left.gx},${left.gy},${left.gz}`,
-+                    rightIndex: right.edgeIndex,
-+                    rightFrom: `${right.sx},${right.sy},${right.sz}`,
-+                    chainGapTiles: Math.sqrt(((left.gx - right.sx) ** 2) + ((left.gy - right.sy) ** 2)).toFixed(4),
-+                    action: 'REPORTED ONLY - nothing is snapped, smoothed or invented to close it'
-+                }));
-+            }
-+        }
-+
 +        if(unit.edges.length > PixelRPMovementV2.MAX_EDGES)
 +        {
-+            const dropCount = (unit.edges.length - PixelRPMovementV2.MAX_EDGES);
-+
-+            // NOTE for the anomaly report: this trims from the FRONT, i.e. the
-+            // OLDEST indexes - which is the elapsing edge, not a spent one,
-+            // whenever a packet's lookahead pushes the queue past the cap. The
-+            // highest index dropped is recorded so an anomaly can say whether
-+            // the edge it was rendering had just been trimmed out from under
-+            // it.
-+            const dropped = unit.edges.splice(0, dropCount);
-+
-+            unit.trimCount++;
-+            unit.lastTrimHighestDropped = dropped[dropped.length - 1].edgeIndex;
-+            unit.lastTrimAt = clientNowPerf;
++            unit.edges.splice(0, (unit.edges.length - PixelRPMovementV2.MAX_EDGES));
 +        }
 +
 +        if(this.isDebugged(virtualId))
@@ -3104,72 +1980,14 @@ index 0000000..f74f398
 +        }
 +    }
 +
-+    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge, startedNow: number): void
++    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge): void
 +    {
 +        const index = unit.edges.findIndex(e => (e.edgeIndex === edge.edgeIndex));
 +
 +        if(index >= 0)
 +        {
-+            const existing = unit.edges[index];
-+
-+            // ONCE AN EDGE HAS BEGUN, ITS GEOMETRY IS IMMUTABLE.
-+            //
-+            // Refused here rather than at the filter above, because this is
-+            // the single point every replacement passes through - a
-+            // correction, a real edge confirming a provisional guess, or a
-+            // lookahead re-advertising a tile. Refusing at the choke point
-+            // means no future path can reintroduce the same defect.
-+            //
-+            // Only an ACTUAL geometry change is refused. A packet restating
-+            // an already-started edge with identical from/to is harmless and
-+            // common (a real edge confirming the provisional guess that was
-+            // already being rendered), so it still upgrades provisional to
-+            // confirmed without moving anything.
-+            const alreadyStarted = (Number.isFinite(startedNow) && (existing.cycleStart <= startedNow));
-+
-+            if(alreadyStarted)
-+            {
-+                const geometryDiffers = ((existing.sx !== edge.sx) || (existing.sy !== edge.sy) || (existing.sz !== edge.sz)
-+                    || (existing.gx !== edge.gx) || (existing.gy !== edge.gy) || (existing.gz !== edge.gz));
-+
-+                if(geometryDiffers)
-+                {
-+                    this.stats.illegalActiveRestages++;
-+
-+                    if(unit.restageLines < 40)
-+                    {
-+                        unit.restageLines++;
-+
-+                        console.error('[MV2/ILLEGAL-ACTIVE-RESTAGE] ' + JSON.stringify({
-+                            unit: unit.id,
-+                            session: edge.session,
-+                            edgeIndex: edge.edgeIndex,
-+                            previousRouteRevision: existing.revision,
-+                            routeRevision: edge.revision,
-+                            oldFrom: `${existing.sx},${existing.sy},${existing.sz}`,
-+                            oldTo: `${existing.gx},${existing.gy},${existing.gz}`,
-+                            newFrom: `${edge.sx},${edge.sy},${edge.sz}`,
-+                            newTo: `${edge.gx},${edge.gy},${edge.gz}`,
-+                            cycleStart: existing.cycleStart,
-+                            interval: existing.interval,
-+                            estServerNow: Math.round(startedNow),
-+                            msIntoEdge: Math.round(startedNow - existing.cycleStart),
-+                            phaseAtRefusal: Number(Math.min(1, Math.max(0, ((startedNow - existing.cycleStart) / existing.interval))).toFixed(6)),
-+                            incomingProvisional: edge.provisional,
-+                            action: 'REFUSED - existing geometry kept, edge is already in flight'
-+                        }));
-+                    }
-+
-+                    // Keep the geometry the avatar is actually walking. The
-+                    // revision is NOT adopted for this edge: adopting it would
-+                    // claim the new route describes this tile, which it does
-+                    // not.
-+                    return;
-+                }
-+            }
-+
 +            // A confirmed real edge always beats a provisional guess.
-+            if(existing.provisional || !edge.provisional) unit.edges[index] = edge;
++            if(unit.edges[index].provisional || !edge.provisional) unit.edges[index] = edge;
 +
 +            return;
 +        }
@@ -3180,107 +1998,22 @@ index 0000000..f74f398
 +    // ---- TEMPORARY join-handoff forensics ---------------------------------
 +
 +    /**
-+     * The call site currently writing a position, set by that site around its
-+     * own setLocation and cleared straight after. RoomObject.setLocation reads
-+     * it instead of unwinding a minified stack - native interpolation and V2
-+     * interpolation are the SAME frame of the SAME method there, so a stack
-+     * cannot separate them and this is the only honest way to name the writer.
++     * Set by MovingObjectLogic around its own setLocation, so the writer watch
++     * in RoomObject.setLocation can tell V2's write apart from everyone else's.
++     * Without it V2 would be the loudest entry in its own investigation.
 +     */
-+    public writer: string = PixelRPV2Writer.OTHER;
++    public ownWrite = false;
 +
-+    /**
-+     * A geometry reference, published once per frame by RoomSpriteCanvas, so
-+     * the forensics can quote real screen pixels rather than a hand-rolled
-+     * projection. Diagnostics only - nothing reads it on the render path.
-+     */
-+    public geometry: { getScreenPosition(vector: { x: number, y: number, z: number }): { x: number, y: number, z: number } } = null;
-+
-+    /** True while this unit is armed for join forensics and has not fired. */
-+    public isJoinArmed(virtualId: number): boolean
++    /** True exactly once, on the first frame V2 renders edge 0 of a join. */
++    public shouldLogJoinHandoff(virtualId: number, edgeIndex: number): boolean
 +    {
 +        const unit = this._units.get(virtualId);
 +
-+        return (!!unit && (unit.joinDelayMs > 0) && !unit.joinHandoffLogged);
-+    }
-+
-+    /**
-+     * Record one frame on which V2 had NO active edge for an armed unit - a
-+     * true Pending frame. Called AFTER the native branch has had its turn, so
-+     * the position stored is what the frame actually left on screen.
-+     *
-+     * `nativeWrote` is the load-bearing field: it is native Nitro's own lerp
-+     * reporting that it moved this avatar while V2 was still waiting for edge
-+     * 0 to start. That is hypothesis B, observed rather than inferred.
-+     */
-+    public notePending(
-+        virtualId: number,
-+        ticker: number,
-+        x: number, y: number, z: number,
-+        dir: number,
-+        screenX: number, screenY: number,
-+        nativeWrote: boolean,
-+        nativeDelta: number): void
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit || (unit.joinDelayMs <= 0) || unit.joinHandoffLogged) return;
-+
-+        if(unit.pendFrames === 0)
-+        {
-+            unit.pendFirstTicker = ticker;
-+            unit.pendFirstX = x;
-+            unit.pendFirstY = y;
-+            unit.pendFirstZ = z;
-+            unit.pendFirstScreenX = screenX;
-+            unit.pendFirstScreenY = screenY;
-+        }
-+
-+        unit.pendFrames++;
-+
-+        if(nativeWrote) unit.pendNativeFrames++;
-+
-+        unit.pendTicker = ticker;
-+        unit.pendX = x;
-+        unit.pendY = y;
-+        unit.pendZ = z;
-+        unit.pendDir = dir;
-+        unit.pendScreenX = screenX;
-+        unit.pendScreenY = screenY;
-+        unit.pendNativeWrote = nativeWrote;
-+        unit.pendNativeDelta = nativeDelta;
-+    }
-+
-+    /**
-+     * The native `mv` (UserUpdate) arriving for this unit. Timestamped so the
-+     * report can say whether native was handed a target BEFORE edge 0 became
-+     * active - the precondition for native interpolation starting early.
-+     */
-+    public noteNativeMove(virtualId: number, ticker: number, fromLabel: string, toLabel: string): void
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit) return;
-+
-+        unit.mvAt = ticker;
-+        unit.mvFrom = fromLabel;
-+        unit.mvTo = toLabel;
-+        unit.mvSeq++;
-+    }
-+
-+    /**
-+     * Fires exactly once, on the FIRST frame edge 0 of a join becomes active,
-+     * handing back everything gathered during Pending. Returns null on every
-+     * other frame.
-+     */
-+    public takeJoinReport(virtualId: number, edgeIndex: number): PixelRPV2Unit
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit || unit.joinHandoffLogged || (unit.joinDelayMs <= 0) || (edgeIndex !== 0)) return null;
++        if(!unit || unit.joinHandoffLogged || (unit.joinDelayMs <= 0) || (edgeIndex !== 0)) return false;
 +
 +        unit.joinHandoffLogged = true;
 +
-+        return unit;
++        return true;
 +    }
 +
 +    public joinDelayOf(virtualId: number): number
@@ -3290,39 +2023,14 @@ index 0000000..f74f398
 +        return (unit ? unit.joinDelayMs : 0);
 +    }
 +
-+    /**
-+     * The writer watch window: from 600ms BEFORE a joiner's Pending -> Moving
-+     * boundary to 250ms after.
-+     *
-+     * The old window was +-20ms, which is ~2 frames - enough to see the
-+     * handoff itself and nothing of what led to it. Native interpolation of a
-+     * 500ms edge would begin and largely finish before that window opened, so
-+     * the one writer worth catching was never caught. 600ms covers a whole
-+     * native cycle; the per-join line cap keeps the cost bounded either way.
-+     */
++    /** Within +-20ms of a joiner's Pending -> Moving boundary. */
 +    public isJoinWriterWatch(virtualId: number, nowPerf: number): boolean
 +    {
 +        const unit = this._units.get(virtualId);
 +
 +        if(!unit || (unit.joinDelayMs <= 0)) return false;
 +
-+        const delta = (nowPerf - unit.joinBoundaryClient);
-+
-+        if((delta < -600) || (delta > 250)) return false;
-+
-+        if(unit.writerLines >= 90) return false;
-+
-+        unit.writerLines++;
-+
-+        return true;
-+    }
-+
-+    /** Where a writer-watch line sits relative to the boundary, signed ms. */
-+    public joinBoundaryDelta(virtualId: number, nowPerf: number): number
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        return (unit ? (nowPerf - unit.joinBoundaryClient) : NaN);
++        return (Math.abs(nowPerf - unit.joinBoundaryClient) <= 20);
 +    }
 +
 +    /** Teleport / roller / forced move: drop timed state, hand back to native. */
@@ -3348,15 +2056,7 @@ index 0000000..f74f398
 +     * so the avatar holds at the real terminal tile. It never speeds up and
 +     * never skips - there is no catch-up path to write.
 +     */
-+    /**
-+     * `nowPerf` MUST be a performance.now() sample taken once for the whole
-+     * pass by the caller - never GetTickerTime(). PIXI's Ticker.lastTime only
-+     * advances on a rAF frame, so on a pass driven by visibilitychange, the
-+     * previewer or an interval it is stale by however long rAF was suspended,
-+     * and evaluating an edge against it renders a moment that has already
-+     * gone by.
-+     */
-+    public getActive(virtualId: number, nowPerf: number): PixelRPV2Active
++    public getActive(virtualId: number, tickerNow: number): PixelRPV2Active
 +    {
 +        if(!Number.isFinite(this._clockOffset)) return null;
 +
@@ -3364,44 +2064,15 @@ index 0000000..f74f398
 +
 +        if(!unit || !unit.edges.length) return null;
 +
-+        // MONOTONIC GUARD. V2 time never moves backwards for a unit. This is a
-+        // safety invariant, not smoothing: it does not move anything forward,
-+        // change a rate or catch anything up. It only refuses to evaluate an
-+        // edge against a clock reading older than one already used, which
-+        // would place the avatar back where it had been and snap it forward
-+        // again on the next frame.
-+        let tickerNow = nowPerf;
-+
-+        if(Number.isFinite(unit.lastNow) && (nowPerf < unit.lastNow))
++        if((tickerNow - unit.lastPacketAtClient) > PixelRPMovementV2.STALE_MS)
 +        {
-+            this.stats.clockRewinds++;
++            this.stats.staleDrops++;
++            this._units.delete(virtualId);
 +
-+            if(unit.backwardLines < 40)
-+            {
-+                unit.backwardLines++;
-+
-+                console.warn('[MV2/BACKWARD-WRITE]', {
-+                    cause: 'clock-rewind-clamped',
-+                    unit: virtualId,
-+                    session: unit.session,
-+                    edgeIndex: unit.activeEdgeIndex,
-+                    previousTickerNow: unit.lastNow.toFixed(3),
-+                    tickerNow: nowPerf.toFixed(3),
-+                    rewoundByMs: (unit.lastNow - nowPerf).toFixed(3),
-+                    updateSource: this.updateSource
-+                });
-+            }
-+
-+            tickerNow = unit.lastNow;
++            return null;
 +        }
 +
-+        unit.lastNow = tickerNow;
-+
-+        // The mapping this frame is drawn under. Frozen at the last edge
-+        // activation; NaN only before the very first one.
-+        if(!Number.isFinite(unit.activeOffset)) unit.activeOffset = this._clockOffset;
-+
-+        let estServerNow = (tickerNow - unit.activeOffset);
++        const estServerNow = (tickerNow - this._clockOffset);
 +
 +        let edge: PixelRPV2Edge = null;
 +
@@ -3410,798 +2081,24 @@ index 0000000..f74f398
 +            if(unit.edges[i].cycleStart <= estServerNow) { edge = unit.edges[i]; break; }
 +        }
 +
-+        // EXCLUSIVE OWNERSHIP BEFORE EDGE START.
-+        //
-+        // No edge has started, but the unit holds one that is going to: the
-+        // server delivered edge 0 ahead of its cycleStart so the client would
-+        // know about the walk before it began. V2 takes the position NOW and
-+        // pins it to edge.from until the edge starts, instead of returning
-+        // null and letting native own those frames. Returning null here is
-+        // what let native interpolate one frame ahead of the handoff.
-+        const holding = !edge;
++        if(!edge) return null;
 +
-+        if(holding)
-+        {
-+            edge = unit.edges[0];
-+
-+            // Only hold for a start that is actually imminent. A far-future
-+            // edge must not pin an avatar in place: server starts align to the
-+            // 500ms room grid, so a genuine hold is well under one interval,
-+            // and anything beyond the allowance is left to native rather than
-+            // frozen on a tile.
-+            if((edge.cycleStart - estServerNow) > PixelRPMovementV2.MAX_HOLD_MS) return null;
-+        }
-+
-+        if((tickerNow - unit.lastPacketAtClient) > PixelRPMovementV2.STALE_MS)
-+        {
-+            // A held edge has no reason to be receiving packets, so staleness
-+            // must not reclaim a unit that is simply waiting for a start that
-+            // is still in front of it.
-+            const waiting = (holding && ((edge.cycleStart - estServerNow) <= PixelRPMovementV2.MAX_HOLD_MS));
-+
-+            if(!waiting)
-+            {
-+                this.stats.staleDrops++;
-+                this._units.delete(virtualId);
-+
-+                return null;
-+            }
-+        }
-+
-+        // EDGE BOUNDARY: the one place a newer clock estimate may be adopted.
-+        // Within an edge the mapping never moves, so phase is a pure function
-+        // of ticker elapsed time and the rate stays exactly one tile per
-+        // interval.
-+        if((edge.session !== unit.activeSession) || (edge.edgeIndex !== unit.activeEdgeIndex))
-+        {
-+            const previousOffset = unit.activeOffset;
-+            const drift = (this._clockOffset - unit.activeOffset);
-+
-+            if(Math.abs(drift) > PixelRPMovementV2.CLOCK_RESYNC_MS)
-+            {
-+                // Not jitter - a different clock. One corrective step beats
-+                // drawing the rest of the walk against a mapping that is
-+                // wrong by a quarter second.
-+                unit.activeOffset = this._clockOffset;
-+                this.stats.clockResyncs++;
-+            }
-+            else if(drift > PixelRPMovementV2.CLOCK_STEP_MS)
-+            {
-+                unit.activeOffset += PixelRPMovementV2.CLOCK_STEP_MS;
-+            }
-+            else if(drift < -PixelRPMovementV2.CLOCK_STEP_MS)
-+            {
-+                unit.activeOffset -= PixelRPMovementV2.CLOCK_STEP_MS;
-+            }
-+            else
-+            {
-+                unit.activeOffset = this._clockOffset;
-+            }
-+
-+            unit.activeSession = edge.session;
-+            unit.activeEdgeIndex = edge.edgeIndex;
-+
-+            const adopted = (unit.activeOffset - previousOffset);
-+
-+            if(adopted !== 0)
-+            {
-+                this.stats.clockAdoptions++;
-+
-+                // TEMPORARY: every mapping change, with the positional step it
-+                // implies. At an edge boundary this is expected and bounded;
-+                // it must never appear anywhere else.
-+                if(this.isDebugged(virtualId) || (Math.abs(adopted) > PixelRPMovementV2.CLOCK_STEP_MS))
-+                {
-+                    if(unit.clockLines < 40)
-+                    {
-+                        unit.clockLines++;
-+
-+                        console.log('[MV2/CLOCK-EDGE]', {
-+                            unit: virtualId,
-+                            at: 'edge-boundary',
-+                            edge: edge.edgeIndex,
-+                            adoptedMs: adopted.toFixed(3),
-+                            pendingDriftMs: (this._clockOffset - unit.activeOffset).toFixed(3),
-+                            stepTiles: (adopted / edge.interval).toFixed(5),
-+                            resync: (Math.abs(drift) > PixelRPMovementV2.CLOCK_RESYNC_MS)
-+                        });
-+                    }
-+                }
-+
-+                // The mapping moved, so this frame's estimate must be taken
-+                // under the NEW one - otherwise the boundary frame is drawn
-+                // against the old mapping and the step lands one frame late.
-+                estServerNow = (tickerNow - unit.activeOffset);
-+            }
-+        }
-+
-+        const raw = (holding ? 0 : ((estServerNow - edge.cycleStart) / edge.interval));
++        const raw = ((estServerNow - edge.cycleStart) / edge.interval);
 +
 +        if(raw > 1) this.stats.starvations++;
 +
-+        const computedPhase = Math.min(1, Math.max(0, raw));
-+
-+        // ================= MONOTONIC PROGRESS INVARIANT ==================
-+        //
-+        // Within ONE authoritative edge - the same WalkSessionId, the same
-+        // RouteRevision and the same EdgeIndex - projected progress along that
-+        // edge must never decrease. An avatar part-way along a tile cannot
-+        // move back towards the tile it left while the server still says it is
-+        // walking that same edge; a write that does is impossible, not merely
-+        // ugly.
-+        //
-+        //     effectiveProgress = max(lastProgressForThisExactEdge, computed)
-+        //
-+        // This is NOT smoothing, slowdown or catch-up. It only ever refuses a
-+        // DECREASE. It never advances progress, never changes the rate, and
-+        // never limits an increase - so a genuinely large clock delta still
-+        // produces its full step, which is what keeps a legitimate large step
-+        // legitimate.
-+        //
-+        // The key is the whole triple, so progress is abandoned the moment any
-+        // part of it changes: a new session, a redirect raising the revision,
-+        // or the next edge index. Nothing carries across edges, which is what
-+        // keeps redirect semantics and lookahead intact - a correction is a
-+        // new revision and therefore starts clean.
-+        let phase = computedPhase;
-+        let progressClamped = false;
-+
-+        if((unit.progSession === edge.session) && (unit.progRevision === edge.revision) && (unit.progEdge === edge.edgeIndex))
-+        {
-+            if(computedPhase < unit.progValue)
-+            {
-+                phase = unit.progValue;
-+                progressClamped = true;
-+                this.stats.progressClamps++;
-+
-+                if(unit.clampLines < 40)
-+                {
-+                    unit.clampLines++;
-+
-+                    // Logged so the invariant holding something back stays
-+                    // visible. Silently absorbing it would make the fix
-+                    // indistinguishable from the bug never having happened.
-+                    console.warn('[MV2/PROGRESS-CLAMP] ' + JSON.stringify({
-+                        unit: virtualId,
-+                        session: edge.session,
-+                        routeRevision: edge.revision,
-+                        edgeIndex: edge.edgeIndex,
-+                        heldProgress: Number(unit.progValue.toFixed(6)),
-+                        computedProgress: Number(computedPhase.toFixed(6)),
-+                        wouldHaveMovedBackBy: Number((unit.progValue - computedPhase).toFixed(6)),
-+                        backwardTiles: Number(((unit.progValue - computedPhase) * Math.sqrt((((edge.gx - edge.sx)) ** 2) + (((edge.gy - edge.sy)) ** 2))).toFixed(5)),
-+                        estServerNow: Math.round(estServerNow),
-+                        cycleStart: edge.cycleStart,
-+                        interval: edge.interval,
-+                        activeOffset: Number(unit.activeOffset.toFixed(3)),
-+                        liveOffset: Number(this._clockOffset.toFixed(3)),
-+                        holding,
-+                        queuedIndexes: (unit.edges.length ? `${unit.edges[0].edgeIndex}..${unit.edges[unit.edges.length - 1].edgeIndex}` : 'none'),
-+                        msSinceCorrection: (Number.isFinite(unit.lastCorrectionAt) ? Math.round(tickerNow - unit.lastCorrectionAt) : null),
-+                        msSinceTrim: (Number.isFinite(unit.lastTrimAt) ? Math.round(tickerNow - unit.lastTrimAt) : null),
-+                        updateSource: this.updateSource
-+                    }));
-+                }
-+            }
-+        }
-+        else
-+        {
-+            // A different authoritative edge. Progress does not carry across.
-+            unit.progSession = edge.session;
-+            unit.progRevision = edge.revision;
-+            unit.progEdge = edge.edgeIndex;
-+        }
-+
-+        unit.progValue = phase;
++        const phase = Math.min(1, Math.max(0, raw));
 +
 +        return {
 +            sx: edge.sx, sy: edge.sy, sz: edge.sz,
 +            gx: edge.gx, gy: edge.gy, gz: edge.gz,
 +            phase,
-+            computedPhase,
-+            progressClamped,
-+            holding,
 +            edgeIndex: edge.edgeIndex,
 +            session: edge.session,
 +            revision: edge.revision,
 +            cycleStart: edge.cycleStart,
-+            estServerNow,
-+            activeOffset: unit.activeOffset,
-+            interval: edge.interval
++            estServerNow
 +        };
-+    }
-+
-+    /**
-+     * Does V2 own this unit's position right now?
-+     *
-+     * Deliberately cheap and side-effect free: no phase maths, no staleness
-+     * reclaim. Used by the writers that must stand down while V2 owns the
-+     * unit, and by the assertion that catches them if they do not.
-+     */
-+    /**
-+     * The room objects V2 is allowed to own, held BY IDENTITY.
-+     *
-+     * Object ids are namespaced per category - RoomInstance keeps one manager
-+     * per category, each with its own id space - so a floor item's id and a
-+     * walking avatar's virtualId are routinely the same number. V2's store is
-+     * keyed by virtualId, which is user-space, so an id alone cannot say
-+     * whether a given object is the unit an edge describes. Object references
-+     * can. A WeakSet holds no object alive, so a disposed room object leaves
-+     * on its own.
-+     */
-+    private readonly _roomUnits = new WeakSet<object>();
-+
-+    /** Real screen pixels via the published geometry, or null when unavailable. */
-+    private projectScreen(x: number, y: number, z: number): { x: number, y: number, z: number }
-+    {
-+        if(!this.geometry) return null;
-+
-+        try
-+        {
-+            return this.geometry.getScreenPosition({ x, y, z });
-+        }
-+        catch (e)
-+        {
-+            return null;
-+        }
-+    }
-+
-+    public markRoomUnit(object: object): void
-+    {
-+        if(object) this._roomUnits.add(object);
-+    }
-+
-+    public isRoomUnit(object: object): boolean
-+    {
-+        return (!!object && this._roomUnits.has(object));
-+    }
-+
-+    /**
-+     * End V2's ownership for a hard displacement - teleport, roller, forced
-+     * move - so the positional write that follows is legitimate rather than a
-+     * second writer racing the interpolator.
-+     *
-+     * Ownership is given up BEFORE the write, never around it: that ordering
-+     * is the rule. Everything queued for the unit goes with it, because a
-+     * displaced avatar's remaining edges describe a route it is no longer on.
-+     */
-+    public releaseForDisplacement(virtualId: number, reason: string): void
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit) return;
-+
-+        this.stats.displacements++;
-+        this._units.delete(virtualId);
-+
-+        console.log('[MV2/RELEASE]', {
-+            unit: virtualId,
-+            reason,
-+            edgesDropped: unit.edges.length,
-+            session: unit.session
-+        });
-+    }
-+
-+    public owns(virtualId: number, nowPerf: number): boolean
-+    {
-+        if(!Number.isFinite(this._clockOffset)) return false;
-+
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit || !unit.edges.length) return false;
-+
-+        // Ownership expires with staleness, as getActive's does. Without this
-+        // a unit whose packets stopped would keep suppressing UserUpdates for
-+        // as long as the store happened to remember it, so a server
-+        // correction could not land. The hold allowance is folded in because
-+        // a unit waiting for a start still ahead of it has no reason to be
-+        // receiving anything.
-+        if((nowPerf - unit.lastPacketAtClient) > (PixelRPMovementV2.STALE_MS + PixelRPMovementV2.MAX_HOLD_MS)) return false;
-+
-+        return true;
-+    }
-+
-+    /**
-+     * TEMPORARY assertion. Within one edge, phase must advance exactly as the
-+     * ticker does - that is what a frozen mapping buys. A mismatch means
-+     * something moved the mapping under an active edge, which is the bug this
-+     * change exists to remove. Returns a description, or null when fine.
-+     */
-+    /**
-+     * TEMPORARY assertions on a v2-interp positional write, both of them, in
-+     * one lookup: that the write did not move the unit BACKWARD along the
-+     * authoritative edge, and that phase advanced exactly as the clock did.
-+     *
-+     * With the monotonic guard in place a backward write cannot happen, so
-+     * this firing means the guard was bypassed or an edge was restaged under
-+     * the unit. The clamp itself is reported separately by getActive, so the
-+     * guard doing its job stays visible rather than silently hiding the bug.
-+     */
-+    public noteV2Write(
-+        active: PixelRPV2Active,
-+        virtualId: number,
-+        nowPerf: number,
-+        beforeX: number, beforeY: number, beforeZ: number,
-+        x: number, y: number, z: number): void
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit) return;
-+
-+        // ---- HEIGHT AT THE MOMENT OWNERSHIP IS TAKEN --------------------
-+        //
-+        // The first V2 write of a session is where a disagreement about Z
-+        // becomes visible: whatever the avatar was standing at is replaced by
-+        // the edge's own source height in a single frame. X and Y are
-+        // interpolated from the same edge across the full 500ms, so a Z that
-+        // does not match the tile is not a slow correction - it is a drop or a
-+        // lift with no travel time at all, which reads as a pop, and beside a
-+        // stationary neighbour reads as a speed-up.
-+        //
-+        // A real height CHANGE along an edge is fine and expected: it is
-+        // lerped across the edge exactly as X and Y are. What is reported here
-+        // is the edge disagreeing with where the avatar already stood.
-+        if(!unit.lastWriteValid && (Math.abs(beforeZ - active.sz) > 0.05))
-+        {
-+            this.stats.zMismatches++;
-+
-+            if(unit.zLines < 40)
-+            {
-+                unit.zLines++;
-+
-+                console.error('[MV2/Z-MISMATCH] ' + JSON.stringify({
-+                    unit: virtualId,
-+                    tile: `${active.sx},${active.sy}`,
-+                    actualZ: Number(beforeZ.toFixed(4)),
-+                    edgeFromZ: Number(active.sz.toFixed(4)),
-+                    edgeToZ: Number(active.gz.toFixed(4)),
-+                    deltaZ: Number((active.sz - beforeZ).toFixed(4)),
-+                    session: active.session,
-+                    revision: active.revision,
-+                    edgeIndex: active.edgeIndex,
-+                    holding: active.holding,
-+                    phase: Number(active.phase.toFixed(6)),
-+                    // A drop applied at phase 0 has no travel time at all; the
-+                    // same drop expressed as edgeFromZ -> edgeToZ would be
-+                    // spread over the whole edge.
-+                    appliedInstantly: (active.phase <= 0),
-+                    updateSource: this.updateSource
-+                }));
-+            }
-+        }
-+
-+        // ---- MULTI-EDGE FRAME SKIP --------------------------------------
-+        //
-+        // The renderer went more than one index forward between writes. That
-+        // is the BROWSER missing frames, not the server sending a broken
-+        // route: V2 evaluates against server time, so after a stall it
-+        // correctly resumes at whatever edge the authoritative clock now names
-+        // - two indexes on if the stall ran about two intervals. The resulting
-+        // position step is legitimate and must NOT be smoothed, capped or
-+        // slowed. Observed as previousEdgeIndex 11 -> edgeIndex 13 with
-+        // tickerDelta and serverDelta both 900.4ms and deltaTiles 1.8008,
-+        // exactly the advance that much server time buys.
-+        //
-+        // chainGapTiles is deliberately NOT measured from the previous
-+        // RENDERED edge to the current one when this happens. The edges in
-+        // between were never drawn, so that distance is their combined length
-+        // and reads as a break in a chain that is perfectly sound. Contiguity
-+        // is checked against the QUEUE instead - every intermediate edge, end
-+        // against start - because that is the only thing that can really be
-+        // broken.
-+        const previousEdgeIndex = unit.lastWriteEdge;
-+        const sameSessionAsWrite = (unit.lastWriteValid && (unit.lastWriteSession === active.session));
-+        const edgesSkipped = (sameSessionAsWrite ? (active.edgeIndex - previousEdgeIndex - 1) : 0);
-+
-+        if(edgesSkipped > 0)
-+        {
-+            let contiguous = true;
-+            let brokeAt = -1;
-+
-+            for(let i = previousEdgeIndex; i < active.edgeIndex; i++)
-+            {
-+                const left = unit.edges.find(e => (e.edgeIndex === i));
-+                const right = unit.edges.find(e => (e.edgeIndex === (i + 1)));
-+
-+                // An intermediate edge already trimmed out of the queue cannot
-+                // be judged either way, so its absence is not evidence.
-+                if(!left || !right) continue;
-+
-+                if((left.gx !== right.sx) || (left.gy !== right.sy) || (left.gz !== right.sz))
-+                {
-+                    contiguous = false;
-+                    brokeAt = i;
-+                    break;
-+                }
-+            }
-+
-+            const stallTicker = (Number.isFinite(unit.lastWriteNow) ? (nowPerf - unit.lastWriteNow) : NaN);
-+            const stallServer = (Number.isFinite(unit.lastWriteServerNow) ? (active.estServerNow - unit.lastWriteServerNow) : NaN);
-+
-+            if(contiguous)
-+            {
-+                this.stats.frameStalls++;
-+
-+                if(unit.stallLines < 40)
-+                {
-+                    unit.stallLines++;
-+
-+                    console.warn('[MV2/FRAME-STALL] ' + JSON.stringify({
-+                        unit: virtualId,
-+                        session: active.session,
-+                        previousEdgeIndex,
-+                        edgeIndex: active.edgeIndex,
-+                        edgesSkipped,
-+                        tickerDelta: (Number.isFinite(stallTicker) ? Number(stallTicker.toFixed(3)) : null),
-+                        serverDelta: (Number.isFinite(stallServer) ? Number(stallServer.toFixed(3)) : null),
-+                        expectedDistanceAdvance: ((Number.isFinite(stallServer) && (active.interval > 0))
-+                            ? Number((stallServer / active.interval).toFixed(4)) : null),
-+                        visibility: ((typeof document !== 'undefined') ? document.visibilityState : 'unknown'),
-+                        trackedUnits: this._units.size,
-+                        queuedEdges: unit.edges.length,
-+                        updateSource: this.updateSource,
-+                        verdict: 'RENDERER MISSED FRAMES - queue is contiguous, the position step is what server time bought. NOT a broken chain, and not to be smoothed.'
-+                    }));
-+                }
-+            }
-+            else if(unit.chainLines < 40)
-+            {
-+                unit.chainLines++;
-+
-+                console.error('[MV2/CHAIN-INVARIANT] ' + JSON.stringify({
-+                    unit: virtualId,
-+                    session: active.session,
-+                    revision: active.revision,
-+                    context: 'found while attributing a multi-edge frame skip',
-+                    leftIndex: brokeAt,
-+                    rightIndex: (brokeAt + 1),
-+                    edgesSkipped,
-+                    action: 'REPORTED ONLY - nothing is snapped, smoothed or invented to close it'
-+                }));
-+            }
-+        }
-+
-+        // ---- EDGE -> EDGE CONTINUITY ------------------------------------
-+        // The outgoing edge ends exactly where the incoming one starts, so a
-+        // handoff must not move the avatar at all. Any jump here is a break in
-+        // the authoritative chain rather than in the interpolation.
-+        //
-+        // ADJACENT INDEXES ONLY. A skipped edge is handled above, where the
-+        // queue is what gets checked; measuring a jump across edges that were
-+        // never rendered would report their combined length as a break.
-+        if(sameSessionAsWrite
-+            && (unit.lastWriteEdge !== active.edgeIndex)
-+            && (edgesSkipped === 0)
-+            && (unit.handoffLines < 40))
-+        {
-+            unit.handoffLines++;
-+
-+            const jx = (x - beforeX);
-+            const jy = (y - beforeY);
-+            const jumpTiles = Math.sqrt((jx * jx) + (jy * jy));
-+
-+            const beforeScreen = this.projectScreen(beforeX, beforeY, beforeZ);
-+            const afterScreen = this.projectScreen(x, y, z);
-+
-+            let jumpPixels = NaN;
-+
-+            if(beforeScreen && afterScreen)
-+            {
-+                const px = (afterScreen.x - beforeScreen.x);
-+                const py = (afterScreen.y - beforeScreen.y);
-+
-+                jumpPixels = Math.sqrt((px * px) + (py * py));
-+            }
-+
-+            console.log('[MV2/EDGE-HANDOFF]', {
-+                unit: virtualId,
-+                session: active.session,
-+                outgoingEdgeIndex: unit.lastWriteEdge,
-+                outgoingExpectedEnd: `${unit.lastWriteGX.toFixed(3)},${unit.lastWriteGY.toFixed(3)},${unit.lastWriteGZ.toFixed(3)}`,
-+                actualBeforeHandoff: `${beforeX.toFixed(3)},${beforeY.toFixed(3)},${beforeZ.toFixed(3)}`,
-+                incomingEdgeIndex: active.edgeIndex,
-+                incomingFrom: `${active.sx.toFixed(3)},${active.sy.toFixed(3)},${active.sz.toFixed(3)}`,
-+                actualAfterHandoff: `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`,
-+                jumpTiles: jumpTiles.toFixed(4),
-+                jumpPixels: (Number.isFinite(jumpPixels) ? jumpPixels.toFixed(2) : 'n/a'),
-+                previousPhase: (Number.isFinite(unit.lastPhase) ? unit.lastPhase.toFixed(6) : 'n/a'),
-+                newPhase: active.phase.toFixed(6),
-+                // Does the incoming edge actually start where the outgoing one
-+                // ended? A non-zero value is a gap in the chain itself.
-+                chainGapTiles: Math.sqrt((((active.sx - unit.lastWriteGX)) ** 2) + (((active.sy - unit.lastWriteGY)) ** 2)).toFixed(4),
-+                cycleStart: active.cycleStart,
-+                tickerNow: Math.round(nowPerf),
-+                updateSource: this.updateSource
-+            });
-+        }
-+
-+        // ---- A SINGLE STEP THAT IS TOO BIG, OR THE WRONG WAY -------------
-+        // One frame of a 500ms edge is about 0.033 tiles. Anything past the
-+        // threshold, or any movement against the edge's own direction, is the
-+        // teleport frame itself.
-+        if(unit.lastWriteValid && (unit.stepLines < 40))
-+        {
-+            const sx = (x - beforeX);
-+            const sy = (y - beforeY);
-+            const stepTiles = Math.sqrt((sx * sx) + (sy * sy));
-+
-+            const ex = (active.gx - active.sx);
-+            const ey = (active.gy - active.sy);
-+            const along = ((sx * ex) + (sy * ey));
-+
-+            // AN EDGE BOUNDARY IS NOT A REVERSAL.
-+            //
-+            // Crossing from one edge to the next takes phase from ~0.99 to
-+            // ~0.00 and changes the edge vector the step is judged against, so
-+            // the tiny residual step at the boundary routinely projects
-+            // negative onto the NEW edge. That is a normal handoff, not
-+            // movement against the route, and calling it reverse-direction
-+            // buried the real reversals in noise. Handoffs have their own
-+            // report, [MV2/EDGE-HANDOFF], which measures the thing that
-+            // actually matters there: whether the two edges join up.
-+            //
-+            // A genuinely large step at a boundary is still reported, since
-+            // size is meaningful regardless of which edge is being entered.
-+            const atBoundary = ((unit.lastWriteSession === active.session) && (unit.lastWriteEdge !== active.edgeIndex));
-+
-+            const tooBig = (stepTiles > PixelRPMovementV2.STEP_ANOMALY_TILES);
-+            // Judged only once the step is big enough for its direction to
-+            // mean anything; float noise on a still avatar has no direction.
-+            const wrongWay = (!atBoundary && (stepTiles > 0.001) && (along < 0));
-+
-+            if(tooBig || wrongWay)
-+            {
-+                unit.stepLines++;
-+
-+                const beforeScreen = this.projectScreen(beforeX, beforeY, beforeZ);
-+                const afterScreen = this.projectScreen(x, y, z);
-+
-+                let stepPixels = NaN;
-+
-+                if(beforeScreen && afterScreen)
-+                {
-+                    const px = (afterScreen.x - beforeScreen.x);
-+                    const py = (afterScreen.y - beforeScreen.y);
-+
-+                    stepPixels = Math.sqrt((px * px) + (py * py));
-+                }
-+
-+                // PROGRESS ALONG THE EDGE: both positions projected onto the
-+                // CURRENT edge's own vector, normalised so 0 is edge.from and
-+                // 1 is edge.to. Progress going down is the literal definition
-+                // of moving backwards along the authoritative edge, and it is
-+                // measured from the positions rather than inferred from phase,
-+                // so a disagreement between the two is itself informative.
-+                const edgeLen2 = ((ex * ex) + (ey * ey));
-+                const progress = ((edgeLen2 > 0) ? ((((x - active.sx) * ex) + ((y - active.sy) * ey)) / edgeLen2) : 0);
-+                const previousProgress = ((edgeLen2 > 0) ? ((((beforeX - active.sx) * ex) + ((beforeY - active.sy) * ey)) / edgeLen2) : 0);
-+
-+                const tickerDelta = (Number.isFinite(unit.lastWriteNow) ? (nowPerf - unit.lastWriteNow) : NaN);
-+                const phaseDelta = (Number.isFinite(unit.lastPhase) ? (active.phase - unit.lastPhase) : NaN);
-+                const serverDelta = (Number.isFinite(unit.lastWriteServerNow) ? (active.estServerNow - unit.lastWriteServerNow) : NaN);
-+
-+                // WHY. A step is legitimate when the clock genuinely advanced
-+                // that far; it is a defect when the clock advanced normally and
-+                // phase moved anyway. Everything below distinguishes those, and
-+                // names the queue event when the edge itself was changed.
-+                const expectedPhaseDelta = (Number.isFinite(tickerDelta) ? (tickerDelta / active.interval) : NaN);
-+                const phaseOverrun = ((Number.isFinite(phaseDelta) && Number.isFinite(expectedPhaseDelta)) ? (phaseDelta - expectedPhaseDelta) : NaN);
-+
-+                const sameEdge = ((unit.lastWriteSession === active.session) && (unit.lastWriteEdge === active.edgeIndex));
-+                const geometryChanged = (sameEdge && ((unit.lastWriteSX !== active.sx) || (unit.lastWriteSY !== active.sy) || (unit.lastWriteGX !== active.gx) || (unit.lastWriteGY !== active.gy)));
-+                const indexWentBackwards = ((unit.lastWriteSession === active.session) && (active.edgeIndex < unit.lastWriteEdge));
-+
-+                const sinceCorrection = (Number.isFinite(unit.lastCorrectionAt) ? (nowPerf - unit.lastCorrectionAt) : NaN);
-+                const sinceTrim = (Number.isFinite(unit.lastTrimAt) ? (nowPerf - unit.lastTrimAt) : NaN);
-+
-+                let verdict: string;
-+
-+                if(geometryChanged) verdict = 'EDGE RESTAGED UNDER THE UNIT - same index, different from/to geometry';
-+                else if(indexWentBackwards) verdict = 'EDGE INDEX WENT BACKWARDS - the queue handed back an earlier edge';
-+                else if(active.holding) verdict = 'HOLDING - pinned at edges[0].from, so the elapsing edge is no longer in the queue';
-+                else if(Number.isFinite(phaseOverrun) && (Math.abs(phaseOverrun) > 0.01)) verdict = 'B - clock advanced normally but phase jumped';
-+                else if(Number.isFinite(tickerDelta) && (tickerDelta > 100)) verdict = 'A - tickerDelta genuinely large, step is legitimate';
-+                else verdict = 'UNEXPLAINED - phase tracks the clock and the edge is unchanged';
-+
-+                // Logged as JSON so the whole object is visible and copyable
-+                // rather than collapsed behind a disclosure triangle.
-+                console.warn('[MV2/STEP-ANOMALY] ' + JSON.stringify({
-+                    cause: (tooBig && wrongWay) ? 'large-step+reverse' : (tooBig ? 'large-step' : 'reverse-direction'),
-+                    atEdgeBoundary: atBoundary,
-+                    verdict,
-+
-+                    unit: virtualId,
-+                    session: active.session,
-+                    edgeIndex: active.edgeIndex,
-+                    previousEdgeIndex: unit.lastWriteEdge,
-+                    routeRevision: active.revision,
-+                    previousRouteRevision: unit.lastWriteRevision,
-+                    holding: active.holding,
-+                    updateSource: this.updateSource,
-+
-+                    tickerNow: Number(nowPerf.toFixed(3)),
-+                    previousTickerNow: (Number.isFinite(unit.lastWriteNow) ? Number(unit.lastWriteNow.toFixed(3)) : null),
-+                    tickerDelta: (Number.isFinite(tickerDelta) ? Number(tickerDelta.toFixed(3)) : null),
-+
-+                    serverNow: Math.round(active.estServerNow),
-+                    previousServerNow: (Number.isFinite(unit.lastWriteServerNow) ? Math.round(unit.lastWriteServerNow) : null),
-+                    serverDelta: (Number.isFinite(serverDelta) ? Number(serverDelta.toFixed(3)) : null),
-+
-+                    phase: Number(active.phase.toFixed(6)),
-+                    computedPhase: Number(active.computedPhase.toFixed(6)),
-+                    progressClamped: active.progressClamped,
-+                    previousPhase: (Number.isFinite(unit.lastPhase) ? Number(unit.lastPhase.toFixed(6)) : null),
-+                    previousComputedPhase: (Number.isFinite(unit.lastComputedPhase) ? Number(unit.lastComputedPhase.toFixed(6)) : null),
-+                    phaseDelta: (Number.isFinite(phaseDelta) ? Number(phaseDelta.toFixed(6)) : null),
-+                    expectedPhaseDelta: (Number.isFinite(expectedPhaseDelta) ? Number(expectedPhaseDelta.toFixed(6)) : null),
-+                    phaseOverrun: (Number.isFinite(phaseOverrun) ? Number(phaseOverrun.toFixed(6)) : null),
-+
-+                    edgeFrom: `${active.sx},${active.sy},${active.sz}`,
-+                    edgeTo: `${active.gx},${active.gy},${active.gz}`,
-+                    previousEdgeFrom: `${unit.lastWriteSX},${unit.lastWriteSY}`,
-+                    previousEdgeTo: `${unit.lastWriteGX},${unit.lastWriteGY}`,
-+                    geometryChanged,
-+                    indexWentBackwards,
-+
-+                    previousPosition: `${beforeX.toFixed(4)},${beforeY.toFixed(4)},${beforeZ.toFixed(4)}`,
-+                    requestedPosition: `${x.toFixed(4)},${y.toFixed(4)},${z.toFixed(4)}`,
-+                    deltaTiles: Number(stepTiles.toFixed(5)),
-+                    deltaPixels: (Number.isFinite(stepPixels) ? Number(stepPixels.toFixed(2)) : null),
-+                    stepXY: `${sx.toFixed(5)},${sy.toFixed(5)}`,
-+                    edgeDirection: `${ex},${ey}`,
-+                    alongEdge: Number(along.toFixed(6)),
-+
-+                    progress: Number(progress.toFixed(6)),
-+                    previousProgress: Number(previousProgress.toFixed(6)),
-+                    progressDelta: Number((progress - previousProgress).toFixed(6)),
-+
-+                    clockOffset: Number(active.activeOffset.toFixed(3)),
-+                    previousClockOffset: (Number.isFinite(unit.lastWriteOffset) ? Number(unit.lastWriteOffset.toFixed(3)) : null),
-+                    clockOffsetDelta: (Number.isFinite(unit.lastWriteOffset) ? Number((active.activeOffset - unit.lastWriteOffset).toFixed(3)) : null),
-+                    liveClockOffset: Number(this._clockOffset.toFixed(3)),
-+
-+                    cycleStart: active.cycleStart,
-+                    interval: active.interval,
-+
-+                    // Queue state, and the two events that can change the edge
-+                    // under a unit mid-flight.
-+                    queuedEdges: unit.edges.length,
-+                    queuedIndexes: (unit.edges.length ? `${unit.edges[0].edgeIndex}..${unit.edges[unit.edges.length - 1].edgeIndex}` : 'none'),
-+                    activeStillQueued: unit.edges.some(e => (e.edgeIndex === active.edgeIndex)),
-+                    correctionCount: unit.correctionCount,
-+                    lastCorrectionIndex: unit.lastCorrectionIndex,
-+                    msSinceCorrection: (Number.isFinite(sinceCorrection) ? Math.round(sinceCorrection) : null),
-+                    trimCount: unit.trimCount,
-+                    lastTrimHighestDropped: unit.lastTrimHighestDropped,
-+                    msSinceTrim: (Number.isFinite(sinceTrim) ? Math.round(sinceTrim) : null)
-+                }));
-+            }
-+        }
-+
-+        // ---- trace window bookkeeping ------------------------------------
-+        if(unit.traceActive)
-+        {
-+            if((active.edgeIndex >= 1) && !Number.isFinite(unit.traceEdge1Now)) unit.traceEdge1Now = nowPerf;
-+
-+            if((Number.isFinite(unit.traceEdge1Now) && ((nowPerf - unit.traceEdge1Now) > PixelRPMovementV2.TRACE_INTO_EDGE1_MS))
-+                || (unit.traceLines >= PixelRPMovementV2.MAX_TRACE_LINES))
-+            {
-+                unit.traceActive = false;
-+
-+                console.log('[MV2/TRACE-END]', {
-+                    unit: virtualId,
-+                    session: active.session,
-+                    lines: unit.traceLines,
-+                    lastEdge: active.edgeIndex
-+                });
-+            }
-+        }
-+
-+        const sameEdgeAsWrite = (unit.lastWriteValid
-+            && (unit.lastWriteSession === active.session)
-+            && (unit.lastWriteEdge === active.edgeIndex));
-+
-+        if(sameEdgeAsWrite && Number.isFinite(unit.lastPhase) && (active.phase < (unit.lastPhase - 0.000001)))
-+        {
-+            this.stats.backwardWrites++;
-+
-+            if(unit.backwardLines < 40)
-+            {
-+                unit.backwardLines++;
-+
-+                console.warn('[MV2/BACKWARD-WRITE]', {
-+                    cause: 'phase-decreased',
-+                    unit: virtualId,
-+                    session: active.session,
-+                    edgeIndex: active.edgeIndex,
-+                    previousTickerNow: unit.lastPhaseTicker.toFixed(3),
-+                    tickerNow: nowPerf.toFixed(3),
-+                    previousPhase: unit.lastPhase.toFixed(6),
-+                    phase: active.phase.toFixed(6),
-+                    previousPosition: `${unit.lastWriteX.toFixed(3)},${unit.lastWriteY.toFixed(3)},${unit.lastWriteZ.toFixed(3)}`,
-+                    requestedPosition: `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`,
-+                    cycleStart: active.cycleStart,
-+                    updateSource: this.updateSource
-+                });
-+            }
-+        }
-+
-+        unit.lastWriteSession = active.session;
-+        unit.lastWriteEdge = active.edgeIndex;
-+        unit.lastWriteX = x;
-+        unit.lastWriteY = y;
-+        unit.lastWriteZ = z;
-+        unit.lastWriteGX = active.gx;
-+        unit.lastWriteGY = active.gy;
-+        unit.lastWriteGZ = active.gz;
-+        unit.lastWriteSX = active.sx;
-+        unit.lastWriteSY = active.sy;
-+        unit.lastWriteRevision = active.revision;
-+        unit.lastWriteServerNow = active.estServerNow;
-+        unit.lastWriteOffset = active.activeOffset;
-+        unit.lastWriteNow = nowPerf;
-+        unit.lastWriteValid = true;
-+
-+        const phaseWarning = this.checkPhaseRate(active, virtualId, nowPerf);
-+
-+        if(phaseWarning)
-+        {
-+            console.warn('[MV2/PHASE-RATE]', {
-+                unit: virtualId,
-+                detail: phaseWarning,
-+                activeOffset: active.activeOffset.toFixed(3),
-+                liveOffset: this._clockOffset.toFixed(3),
-+                holding: active.holding,
-+                updateSource: this.updateSource,
-+                tickerNow: Math.round(nowPerf)
-+            });
-+        }
-+    }
-+
-+    private checkPhaseRate(active: PixelRPV2Active, virtualId: number, tickerNow: number): string
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        if(!unit) return null;
-+
-+        // Measured against the RAW clock-derived phase: the question here is
-+        // whether the clock mapping moved under an active edge, which the
-+        // monotonic invariant would otherwise hide by holding progress flat.
-+        const clamped = (active.holding || (active.computedPhase <= 0) || (active.computedPhase >= 1));
-+
-+        const sameEdge = ((unit.lastPhaseEdge === active.edgeIndex) && Number.isFinite(unit.lastPhaseTicker));
-+        const comparable = (sameEdge && !clamped && !unit.lastPhaseClamped && Number.isFinite(unit.lastComputedPhase));
-+
-+        let warning: string = null;
-+
-+        if(comparable)
-+        {
-+            const tickerDelta = (tickerNow - unit.lastPhaseTicker);
-+            const expected = (tickerDelta / active.interval);
-+            const actual = (active.computedPhase - unit.lastComputedPhase);
-+            const error = (actual - expected);
-+
-+            // 0.002 of a 500ms edge is 1ms. Frame pacing cannot produce this:
-+            // both sides derive from the same tickerNow, so under a frozen
-+            // mapping the error is zero to floating-point precision.
-+            if(Math.abs(error) > 0.002)
-+            {
-+                if(unit.phaseWarnings < 40)
-+                {
-+                    unit.phaseWarnings++;
-+
-+                    warning = `edge ${active.edgeIndex}: phaseDelta ${actual.toFixed(5)} vs tickerDelta ${tickerDelta.toFixed(2)}ms (expected ${expected.toFixed(5)}), error ${error.toFixed(5)} = ${(error * active.interval).toFixed(2)}ms`;
-+                }
-+            }
-+        }
-+
-+        unit.lastPhase = active.phase;
-+        unit.lastComputedPhase = active.computedPhase;
-+        unit.lastPhaseTicker = tickerNow;
-+        unit.lastPhaseEdge = active.edgeIndex;
-+        unit.lastPhaseClamped = clamped;
-+
-+        return warning;
 +    }
 +}
 +
@@ -4270,20 +2167,18 @@ index 0000000..f74f398
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 2276481..10044cc 100644
+index 2276481..db05a34 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
-@@ -9,8 +9,8 @@ import { Nitro } from '../../nitro/Nitro';
+@@ -9,7 +9,6 @@ import { Nitro } from '../../nitro/Nitro';
  import { GetTicker, NitroContainer, NitroSprite, PixiApplicationProxy } from '../../pixi-proxy';
  import { RoomEnterEffect, RoomGeometry, RoomRotatingEffect, RoomShakingEffect } from '../utils';
  import { RoomObjectCache, RoomObjectCacheItem } from './cache';
 -import { PixelRPMovementAuthority } from './PixelRPMovementAuthority';
  import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
-+import { PixelRPMovementV2 } from './PixelRPMovementV2';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
- {
-@@ -64,10 +64,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -64,10 +63,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // early-return samples an offset avatar at animation FPS (~24Hz) while
      // its native location is clamped, and a released offset could latch on
      // screen until an unrelated visual update.
@@ -4294,20 +2189,7 @@ index 2276481..10044cc 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -347,6 +344,12 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
- 
-         if(!this._container || !this._geometry) return;
- 
-+        // TEMPORARY join forensics: publish the live geometry so the movement
-+        // diagnostics can quote real screen pixels instead of re-deriving the
-+        // isometric projection by hand. Diagnostics only - nothing on the
-+        // render path reads it back.
-+        PixelRPMovementV2.instance.geometry = this._geometry;
-+
-         if((this._width !== this._renderedWidth) || (this._height !== this._renderedHeight)) update = true;
- 
-         if((this._display.x !== this._screenOffsetX) || (this._display.y !== this._screenOffsetY))
-@@ -504,7 +507,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -504,7 +500,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
  
          if(locationCache.locationChanged) update = true;
@@ -4315,7 +2197,7 @@ index 2276481..10044cc 100644
  
          if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
          {
-@@ -542,60 +544,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -542,60 +537,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
              unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
  
