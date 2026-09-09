@@ -2,8 +2,10 @@ import { RoomControllerLevel, RoomObjectCategory, RoomObjectVariable, RoomUnitGi
 import { FC, useEffect, useMemo, useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetOwnRoomObject, GetSessionDataManager, GetUserProfile, LocalizeText, MessengerFriend, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
+import { RpGangInviteComposer, RpUserGangEvent } from '../../../../../api/rp-gangs/RpGangMessages';
+import { GetRpGang, SetRpGang } from '../../../../../api/rp-gangs/RpGangRegistry';
 import { Base, Flex } from '../../../../../common';
-import { useFriends, useHelp, useRoom, useSessionInfo } from '../../../../../hooks';
+import { useFriends, useHelp, useMessageEvent, useRoom, useSessionInfo } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
 import { ContextMenuView } from '../../context-menu/ContextMenuView';
@@ -29,6 +31,39 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
     const { canRequestFriend = null } = useFriends();
     const { report = null } = useHelp();
     const { roomSession = null } = useRoom();
+    const [ gangVersion, setGangVersion ] = useState(0);
+
+    // Membership is keyed by user id in the shared registry and arrives on the
+    // hotel-wide broadcast every gang mutation sends, so a gang founded or
+    // left while this menu is open re-gates the button rather than going stale.
+    useMessageEvent<RpUserGangEvent>(RpUserGangEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetRpGang(parser.userId, { gangId: parser.gangId, name: parser.name, colourA: parser.colourA, colourB: parser.colourB, isOwner: parser.isOwner });
+        setGangVersion(value => (value + 1));
+    });
+
+    // Offered when the viewer is in a gang and the target is not known to be
+    // in one. Deliberately NOT gated on the invite permission: that bit only
+    // ever reaches the client inside the Gang window's detail packet, so a
+    // member who has not opened that window has no way to know it. The server
+    // is the authority either way - GangManager.GetActor whispers "You don't
+    // have permission to do that in your gang." and refuses - so the worst
+    // case is an honest refusal rather than a button that lies about the rule.
+    //
+    // The target's membership is only known when something has asked for it,
+    // so an unknown target still shows the button; the server answers that
+    // with "<name> is already in a gang." if it turns out they are.
+    const canInviteToGang = useMemo(() =>
+    {
+        const ownId = GetSessionDataManager().userId;
+
+        if(!avatarInfo || (avatarInfo.webID === ownId)) return false;
+
+        return (!!GetRpGang(ownId) && !GetRpGang(avatarInfo.webID));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ avatarInfo, gangVersion ]);
 
     const isShowGiveRights = useMemo(() =>
     {
@@ -147,6 +182,12 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                 case 'trade':
                     SendMessageComposer(new TradingOpenComposer(avatarInfo.roomIndex));
                     break;
+                case 'invite_to_gang':
+                    // The composer takes a name, the same one the Invites tab
+                    // types in, so this is the existing flow with the typing
+                    // removed rather than a second way in.
+                    SendMessageComposer(new RpGangInviteComposer(avatarInfo.name));
+                    break;
                 case 'report':
                     report(ReportType.BULLY, { reportedUserId: avatarInfo.webID });
                     break;
@@ -211,6 +252,10 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                     <ContextMenuListItemView onClick={ event => processAction('whisper') }>
                         { LocalizeText('infostand.button.whisper') }
                     </ContextMenuListItemView>
+                    { canInviteToGang &&
+                        <ContextMenuListItemView onClick={ event => processAction('invite_to_gang') }>
+                            Invite to Gang
+                        </ContextMenuListItemView> }
                     { !canRequestFriend(avatarInfo.webID) &&
                         <ContextMenuListItemView onClick={ event => processAction('relationship') }>
                             { LocalizeText('infostand.link.relationship') }

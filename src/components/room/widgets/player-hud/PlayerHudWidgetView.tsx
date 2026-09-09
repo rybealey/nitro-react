@@ -218,6 +218,16 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         SendMessageComposer(new RpGetUserGangComposer(target.webID));
     }, [ target?.webID ]);
 
+    // The viewer's OWN gang, asked for once when the HUD mounts. Nothing else
+    // in a room requests it - the wallet, the profile and the Gang window all
+    // do, but a player who has opened none of them has no membership in the
+    // registry, and the avatar menu's "Invite to Gang" has to know before the
+    // first click. The hotel-wide broadcast only arrives after some mutation.
+    useEffect(() =>
+    {
+        SendMessageComposer(new RpGetUserGangComposer(GetSessionDataManager().userId));
+    }, []);
+
     const findRoomUserByName = useCallback((name: string): AvatarInfoUser =>
     {
         if(!roomSession || !name.trim()) return null;
