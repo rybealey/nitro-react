@@ -1,6 +1,7 @@
 import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, InfoRetrieveMessageComposer, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils, UserInfoEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
-import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetConfiguration, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
+import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
+import { ApplyMaxFps } from '../../../api/prefs/FpsStore';
 import { ClickthroughState } from '../clickthroughState';
 import { TargetState } from '../targetState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
@@ -254,11 +255,13 @@ const useChatInputWidgetState = () =>
                     
                     return null;
                 case ':togglefps': {
-                    // Toggle uncapped (0) <-> the configured cap. The old code
+                    // Toggle uncapped (0) <-> the cap in force. The old code
                     // read a nonexistent key, which Pixi clamped to minFPS and
-                    // silently locked the client to 10 FPS.
+                    // silently locked the client to 10 FPS. It now restores the
+                    // player's own Settings > General cap, so the command and
+                    // the slider cannot disagree about what "back on" means.
                     if(GetTicker().maxFPS > 0) GetTicker().maxFPS = 0;
-                    else GetTicker().maxFPS = (GetConfiguration<number>('system.fps.max') || 60);
+                    else ApplyMaxFps();
 
                     return null;
                 }

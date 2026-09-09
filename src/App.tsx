@@ -1,6 +1,7 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
+import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
 import { RegisterRpFurniMessages } from './api/rp-furni/RpFurniMessages';
@@ -153,6 +154,11 @@ export const App: FC<{}> = props =>
                 return;
             case RoomEngineEvent.ENGINE_INITIALIZED:
                 setPercent(prevValue => (prevValue + 20));
+
+                // Nitro sets maxFPS from system.fps.max during bootstrap, so
+                // the player's own cap has to be re-applied after the ticker
+                // exists or it would only take effect on the next change.
+                ApplyMaxFps();
 
                 setTimeout(() => setIsReady(true), 300);
                 return;

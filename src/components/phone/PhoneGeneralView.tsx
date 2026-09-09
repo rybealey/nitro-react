@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
+import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { SetCelsius, SetClock24, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { GetRpRegion, RpRegionLabel, SubscribeRpRegion } from '../../api/rp-region/RpRegionMessages';
 import { PhoneIcon } from './PhoneIcon';
@@ -9,6 +10,10 @@ import { PhoneIcon } from './PhoneIcon';
 // own and only change how the phone writes times and temperatures; the region
 // is the one thing here other people see, which is why it sits apart at the
 // top with its own note rather than in with them.
+//
+// Frame rate sits last because it is about this computer rather than about
+// the player - a slider instead of pills, since it is a range and not a
+// choice between two named things.
 
 interface PhoneGeneralViewProps
 {
@@ -29,6 +34,7 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
 {
     const { onBack = null, openRegion = null } = props;
     const { clock24, celsius } = useUnitsPrefs();
+    const { maxFps } = useFpsPref();
     const ownId = GetSessionDataManager().userId;
     const [ region, setRegion ] = useState<string>(() => GetRpRegion(ownId));
 
@@ -82,8 +88,25 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                             </div>
                         </div>
                     </div>
+                    <div>
+                        <div className="phone-section-label">PERFORMANCE</div>
+                        <div className="phone-settings-card">
+                            <div className="phone-settings-item">
+                                <div className="phone-settings-icon" style={ { background: '#2ba88f' } }>
+                                    <PhoneIcon icon="gamepad" size={ 17 } />
+                                </div>
+                                <div className="phone-settings-item-label">Frame Rate</div>
+                                <div className="phone-settings-item-value">{ maxFps } FPS</div>
+                            </div>
+                            <div className="phone-access-slider phone-fps-slider">
+                                <span className="phone-access-slider-small">{ FPS_MIN }</span>
+                                <input type="range" min={ FPS_MIN } max={ FPS_MAX } step={ 5 } value={ maxFps } aria-label="Frame rate cap" onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
+                                <span className="phone-access-slider-large">{ FPS_MAX }</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div className="phone-settings-footnote">The clock applies to the status bar, Calendar, News and Weather. Temperature applies to Weather and the sky behind rooms. Both are yours alone.</div>
+                <div className="phone-settings-footnote">The clock applies to the status bar, Calendar, News and Weather. Temperature applies to Weather and the sky behind rooms. Both are yours alone. Frame rate caps how often the room redraws and is saved on this computer only - your screen sets the real ceiling, so a cap above the refresh rate of your screen will not add frames, but lowering it can help an older machine.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>
