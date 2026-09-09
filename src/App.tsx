@@ -1,6 +1,7 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
+import { InstallCrossingTrace } from './api/diagnostics/CrossingTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
@@ -115,6 +116,9 @@ export const App: FC<{}> = props =>
                 // effects run before the parent's, so registering in MainView
                 // would be too late). registerMessages is additive - the stock
                 // configuration stays intact.
+                // Console handle only - nothing is registered on the ticker and
+                // nothing is measured until pixelrpCrossingTrace() arms it.
+                InstallCrossingTrace();
                 RegisterRpGangMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
