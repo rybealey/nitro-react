@@ -109,9 +109,20 @@
             align-items: center;
         }
 
+        // Both states carry the same hairline outline, so a lit and an unlit
+        // star read as one object with the light on or off rather than as two
+        // different marks. `paint-order` draws the stroke before the fill, so
+        // the fill covers its inner half and only a hairline shows outside the
+        // shape; the width is in the icon's own 576-unit viewBox, where 60
+        // units is about 1.1px at 11px, half of it visible. Round joins - the
+        // star's points would throw long spikes on a miter.
         svg {
             width: 11px;
             height: 11px;
+            paint-order: stroke fill;
+            stroke: rgba(0, 0, 0, 0.4);
+            stroke-width: 60;
+            stroke-linejoin: round;
         }
 
         // mirrors --hud-warning, which is scoped to the HUD bar
