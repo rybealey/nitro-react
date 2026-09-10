@@ -1,9 +1,9 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FaRegStar, FaStar } from 'react-icons/fa';
 import { AddEventLinkTracker, GetUserProfile, RemoveLinkEventTracker } from '../../api';
-import { GetRpWantedList, RpWantedPlayer, SubscribeRpWanted } from '../../api/rp-wanted/RpWantedMessages';
+import { GetRpCanPardon, GetRpWantedList, RpWantedPlayer, SendRpDropCharge, SubscribeRpWanted } from '../../api/rp-wanted/RpWantedMessages';
 import { LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 
 // PixelRP Wanted List, opened from the side drawer's Wanted button
@@ -30,10 +30,19 @@ const countdown = (expiresAt: number): string =>
 // Where a hovered row wants its tooltip: to the right of the window, so it is
 // never clipped by the list's scroller; flipped to the left when the window
 // sits against the right edge of the screen.
-interface TipAnchor { player: RpWantedPlayer; left: number; top: number; flip: boolean }
+//
+// The anchor holds the user id, not the player: an officer dropping a count
+// from inside the tooltip gets a fresh list pushed back, and the tooltip has
+// to redraw from THAT rather than from the row object it opened on.
+interface TipAnchor { userId: number; left: number; top: number; flip: boolean }
 
-const TIP_WIDTH = 180;
+const TIP_WIDTH = 190;
 const TIP_GAP = 8;
+
+// How long the tooltip survives the pointer leaving the row or itself. Long
+// enough to cross the gap between the window and the tooltip without hurrying,
+// short enough that it does not linger over the room.
+const TIP_GRACE = 260;
 
 const WantedStars: FC<{ level: number }> = ({ level }) => (
     <div className="rp-wanted-stars">
@@ -48,16 +57,37 @@ const WantedStars: FC<{ level: number }> = ({ level }) => (
 // The rap sheet, shown while hovering a row. Rendered through a portal onto
 // the body so it can sit OUTSIDE the window - the card clips its content and
 // the list scrolls, so nothing inside them could overhang the frame.
-const WantedTip: FC<{ anchor: TipAnchor }> = ({ anchor }) => createPortal(
-    <div className={ `rp-wanted-tip${ anchor.flip ? ' is-flipped' : '' }` }
-        style={ { left: anchor.left, top: anchor.top, width: TIP_WIDTH } }>
+//
+// Interactive for an on-duty officer: each line carries an x that drops ONE
+// count of that crime, so a sheet reading "Assault x3" takes three clicks. For
+// everybody else it is a read-only label and does not take the pointer at all,
+// or it would swallow clicks meant for the room behind it.
+const WantedTip: FC<{
+    anchor: TipAnchor;
+    player: RpWantedPlayer;
+    canPardon: boolean;
+    onEnter: () => void;
+    onLeave: () => void;
+}> = ({ anchor, player, canPardon, onEnter, onLeave }) => createPortal(
+    <div className={ `rp-wanted-tip${ anchor.flip ? ' is-flipped' : '' }${ canPardon ? ' is-interactive' : '' }` }
+        style={ { left: anchor.left, top: anchor.top, width: TIP_WIDTH } }
+        onMouseEnter={ onEnter } onMouseLeave={ onLeave }>
         <div className="rp-wanted-tip-head">
-            <span>{ anchor.player.charges.length === 1 ? 'Charge' : 'Charges' }</span>
-            <span>{ anchor.player.username }</span>
+            <span>{ player.charges.length === 1 ? 'Charge' : 'Charges' }</span>
+            <span>{ player.username }</span>
         </div>
         <div className="rp-wanted-tip-list">
-            { anchor.player.charges.map((charge, index) => (
-                <div key={ index } className="rp-wanted-tip-row">
+            { player.charges.map(charge => (
+                <div key={ charge.crimeId } className="rp-wanted-tip-row">
+                    { canPardon &&
+                        <button type="button" className="rp-wanted-tip-drop"
+                            title={ `Drop one count of ${ charge.name }` }
+                            aria-label={ `Drop one count of ${ charge.name } against ${ player.username }` }
+                            onClick={ () => SendRpDropCharge(player.userId, charge.crimeId) }>
+                            <svg viewBox="0 0 10 10" aria-hidden="true">
+                                <path d="M2 2l6 6M8 2l-6 6" />
+                            </svg>
+                        </button> }
                     <span className="rp-wanted-tip-name">{ charge.name }</span>
                     { (charge.count > 1) && <span className="rp-wanted-tip-count">×{ charge.count }</span> }
                 </div>
@@ -65,7 +95,11 @@ const WantedTip: FC<{ anchor: TipAnchor }> = ({ anchor }) => createPortal(
         </div>
     </div>, document.body);
 
-const WantedRow: FC<{ player: RpWantedPlayer; onHover: (anchor: TipAnchor) => void }> = ({ player, onHover }) =>
+const WantedRow: FC<{
+    player: RpWantedPlayer;
+    onHover: (anchor: TipAnchor) => void;
+    onLeave: () => void;
+}> = ({ player, onHover, onLeave }) =>
 {
     const hover = (event: React.MouseEvent<HTMLDivElement>) =>
     {
@@ -79,7 +113,7 @@ const WantedRow: FC<{ player: RpWantedPlayer; onHover: (anchor: TipAnchor) => vo
         const flip = (card.right + TIP_GAP + TIP_WIDTH) > window.innerWidth;
 
         onHover({
-            player,
+            userId: player.userId,
             left: flip ? (card.left - TIP_GAP - TIP_WIDTH) : (card.right + TIP_GAP),
             top: row.top,
             flip
@@ -88,7 +122,7 @@ const WantedRow: FC<{ player: RpWantedPlayer; onHover: (anchor: TipAnchor) => vo
 
     return (
         <div className="rp-wanted-row" onClick={ () => GetUserProfile(player.userId) }
-            onMouseEnter={ hover } onMouseLeave={ () => onHover(null) }>
+            onMouseEnter={ hover } onMouseLeave={ onLeave }>
             <div className="rp-wanted-face">
                 <LayoutAvatarImageView figure={ player.figure } direction={ 2 } headOnly />
             </div>
@@ -107,6 +141,39 @@ export const RpWantedView: FC<{}> = props =>
     const [ entries, setEntries ] = useState<RpWantedPlayer[]>(() => GetRpWantedList());
     const [ tip, setTip ] = useState<TipAnchor>(null);
     const [ , setTick ] = useState(0);
+    const closeTimer = useRef(0);
+
+    // The tooltip is a body-level element with a gap between it and the row,
+    // so leaving one to reach the other has to be survivable: the close is
+    // scheduled rather than immediate, and entering either end cancels it.
+    // Without this an officer could never reach the x they are aiming at.
+    const holdTip = useCallback(() =>
+    {
+        if(!closeTimer.current) return;
+
+        window.clearTimeout(closeTimer.current);
+        closeTimer.current = 0;
+    }, []);
+
+    const releaseTip = useCallback(() =>
+    {
+        holdTip();
+
+        closeTimer.current = window.setTimeout(() =>
+        {
+            closeTimer.current = 0;
+
+            setTip(null);
+        }, TIP_GRACE);
+    }, [ holdTip ]);
+
+    const openTip = useCallback((anchor: TipAnchor) =>
+    {
+        holdTip();
+        setTip(anchor);
+    }, [ holdTip ]);
+
+    useEffect(() => () => holdTip(), [ holdTip ]);
 
     // Countdowns tick once a second while the window is open; the store
     // itself drops entries at zero, this only keeps the labels moving.
@@ -119,12 +186,6 @@ export const RpWantedView: FC<{}> = props =>
         return () => window.clearInterval(interval);
     }, [ isVisible ]);
 
-    // A row that vanishes mid-hover (expired, or the list was re-pushed)
-    // must not leave its tooltip floating on the body.
-    useEffect(() =>
-    {
-        if(tip && !entries.some(player => player.userId === tip.player.userId)) setTip(null);
-    }, [ entries, tip ]);
 
     // The login push usually lands long before this window is opened, so the
     // list is read on mount as well as subscribed to.
@@ -172,6 +233,11 @@ export const RpWantedView: FC<{}> = props =>
         return null;
     }
 
+    // Resolved from the CURRENT list, not from the row the tooltip opened on:
+    // dropping a count pushes a fresh list, and a player whose sheet has been
+    // cleared (or who has lapsed) is simply gone, which closes the tooltip.
+    const tipPlayer = tip ? entries.find(player => player.userId === tip.userId) : null;
+
     return (
         <NitroCardView resizable uniqueKey="rp-wanted" className="rp-wanted-window" theme="primary-slim">
             <NitroCardHeaderView headerText="Wanted List" onCloseClick={ () => setIsVisible(false) } />
@@ -181,9 +247,13 @@ export const RpWantedView: FC<{}> = props =>
                         ? <div className="rp-wanted-none">
                             <div className="rp-wanted-none-text">Nobody is wanted right now.</div>
                         </div>
-                        : entries.map(player => <WantedRow key={ player.userId } player={ player } onHover={ setTip } />) }
+                        : entries.map(player => (
+                            <WantedRow key={ player.userId } player={ player } onHover={ openTip } onLeave={ releaseTip } />
+                        )) }
                 </div>
-                { tip && <WantedTip anchor={ tip } /> }
+                { tip && tipPlayer &&
+                    <WantedTip anchor={ tip } player={ tipPlayer } canPardon={ GetRpCanPardon() }
+                        onEnter={ holdTip } onLeave={ releaseTip } /> }
             </NitroCardContentView>
         </NitroCardView>
     );

@@ -185,7 +185,14 @@
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    // Transparent to the pointer unless there is something in it to click:
+    // it floats over the room, and a read-only label must not swallow a
+    // click meant for whatever is behind it.
     pointer-events: none;
+
+    &.is-interactive {
+        pointer-events: auto;
+    }
 
     // caret pointing back at the row
     &::before {
@@ -227,10 +234,54 @@
 
     .rp-wanted-tip-row {
         display: flex;
-        justify-content: space-between;
-        gap: 8px;
+        align-items: center;
+        gap: 6px;
         font-size: 11px;
         line-height: 1.25;
+        min-height: 16px;
+    }
+
+    .rp-wanted-tip-name {
+        flex: 1;
+        min-width: 0;
+    }
+
+    // Drops ONE count of this crime. Deliberately small and quiet at rest -
+    // it sits beside every line of a list an officer is mostly just reading -
+    // and turns red under the pointer, which is the only warning a click
+    // gets: the drop is immediate and there is no confirmation step.
+    .rp-wanted-tip-drop {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+
+        svg {
+            width: 8px;
+            height: 8px;
+            stroke: currentColor;
+            stroke-width: 1.6;
+            stroke-linecap: round;
+            fill: none;
+        }
+
+        &:hover {
+            background: #c0392b;
+            border-color: #e05a4a;
+            color: #fff;
+        }
+
+        &:active {
+            background: #a5301f;
+        }
     }
 
     .rp-wanted-tip-count {

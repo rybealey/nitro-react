@@ -1,5 +1,5 @@
-import { IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
-import { GetCommunication, GetConnection } from '../nitro';
+import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
+import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 
 // PixelRP wanted list - client-source packet, registered at runtime like the
 // gang, corp, phone and region packets. Wire id matches the emulator's
@@ -18,6 +18,14 @@ import { GetCommunication, GetConnection } from '../nitro';
 // server -> client, at login and whenever a charge is filed
 const RP_WANTED = 3903;
 
+// server -> client, at login and on every clock-in and clock-off: whether THIS
+// player may drop a charge. Per-recipient, which the wanted list cannot be -
+// that one broadcast goes to everybody unchanged.
+const RP_POLICE = 3969;
+
+// client -> server: drop one count of one crime from one player's sheet
+const RP_DROP_CHARGE = 3988;
+
 export interface RpWantedPlayer
 {
     userId: number;
@@ -35,6 +43,9 @@ export interface RpWantedPlayer
 
 export interface RpWantedCharge
 {
+    // the crime's row id - what a drop names, since a display name is not
+    // unique after a rename in housekeeping
+    crimeId: number;
     name: string;
     // how many open counts of this crime - 2+ only for stackable crimes
     count: number;
@@ -74,7 +85,7 @@ export class RpWantedParser implements IMessageParser
 
             while(chargeCount > 0)
             {
-                player.charges.push({ name: wrapper.readString(), count: wrapper.readInt() });
+                player.charges.push({ crimeId: wrapper.readInt(), name: wrapper.readString(), count: wrapper.readInt() });
 
                 chargeCount--;
             }
@@ -88,6 +99,58 @@ export class RpWantedParser implements IMessageParser
     }
 
     public get players(): RpWantedPlayer[] { return this._players; }
+}
+
+export class RpPoliceParser implements IMessageParser
+{
+    private _canPardon: boolean = false;
+
+    public flush(): boolean
+    {
+        this._canPardon = false;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._canPardon = (wrapper.readInt() === 1);
+
+        return true;
+    }
+
+    public get canPardon(): boolean { return this._canPardon; }
+}
+
+export class RpPoliceEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpPoliceParser);
+    }
+
+    public getParser(): RpPoliceParser
+    {
+        return this.parser as RpPoliceParser;
+    }
+}
+
+class RpWantedComposerBase implements IMessageComposer<(string | number)[]>
+{
+    private _data: (string | number)[];
+
+    constructor(...data: (string | number)[]) { this._data = data; }
+
+    public getMessageArray() { return this._data; }
+
+    public dispose(): void { return; }
+}
+
+export class RpDropChargeComposer extends RpWantedComposerBase
+{
+    constructor(userId: number, crimeId: number) { super(userId, crimeId); }
 }
 
 export class RpWantedEvent extends MessageEvent implements IMessageEvent
@@ -110,6 +173,7 @@ export class RpWantedEvent extends MessageEvent implements IMessageEvent
 
 let players: RpWantedPlayer[] = [];
 let byUserId: Map<number, RpWantedPlayer> = new Map();
+let canPardon = false;
 let expiryTimer = 0;
 
 const listeners = new Set<() => void>();
@@ -125,6 +189,17 @@ export const GetRpWanted = (userId: number): number =>
 
     return (player && isLive(player)) ? player.level : 0;
 }
+
+/**
+ * Whether this player may drop a charge - an on-duty officer of a police
+ * corporation. Gates the affordance only; the server re-checks the same rule
+ * on the packet, so a client that lies gets nothing.
+ */
+export const GetRpCanPardon = (): boolean => canPardon;
+
+/** Drop ONE count of a crime from a player's sheet. */
+export const SendRpDropCharge = (userId: number, crimeId: number): void =>
+    SendMessageComposer(new RpDropChargeComposer(userId, crimeId));
 
 export const SubscribeRpWanted = (listener: () => void): (() => void) =>
 {
@@ -162,6 +237,19 @@ const scheduleExpiry = () =>
     }, Math.max(0, next - Date.now()) + 50);
 }
 
+const onPolice = (event: RpPoliceEvent) =>
+{
+    const parser = event.getParser();
+
+    if(!parser) return;
+
+    canPardon = parser.canPardon;
+
+    // Same listeners as the list: an open Wanted window has to grow or lose
+    // its x the moment the officer clocks on or off.
+    notify();
+}
+
 const onWanted = (event: RpWantedEvent) =>
 {
     const parser = event.getParser();
@@ -186,11 +274,15 @@ export const RegisterRpWantedMessages = () =>
     if(!connection) return;
 
     connection.registerMessages({
-        events: new Map<number, Function>([ [ RP_WANTED, RpWantedEvent ] ]),
-        composers: new Map<number, Function>()
+        events: new Map<number, Function>([
+            [ RP_WANTED, RpWantedEvent ],
+            [ RP_POLICE, RpPoliceEvent ]
+        ]),
+        composers: new Map<number, Function>([ [ RP_DROP_CHARGE, RpDropChargeComposer ] ])
     });
 
     GetCommunication().registerMessageEvent(new RpWantedEvent(onWanted));
+    GetCommunication().registerMessageEvent(new RpPoliceEvent(onPolice));
 
     registered = true;
 }
