@@ -41,9 +41,29 @@ const WantedStars: FC<{ level: number }> = ({ level }) => (
     </div>
 );
 
+// The rap sheet, shown while hovering a row. Purely CSS-driven (:hover) so it
+// costs nothing while the list sits idle; it is rendered inside the row so it
+// tracks the row when the list scrolls. Sits below the row by default and
+// flips above for the last row so it never runs off the bottom of the list.
+const WantedTip: FC<{ player: RpWantedPlayer }> = ({ player }) => (
+    <div className="rp-wanted-tip">
+        <div className="rp-wanted-tip-head">
+            <span>{ player.charges.length === 1 ? 'Charge' : 'Charges' }</span>
+            <span>wanted { since(player.since) }</span>
+        </div>
+        <div className="rp-wanted-tip-list">
+            { player.charges.map((charge, index) => (
+                <div key={ index } className="rp-wanted-tip-row">
+                    <span className="rp-wanted-tip-name">{ charge.name }</span>
+                    { (charge.count > 1) && <span className="rp-wanted-tip-count">×{ charge.count }</span> }
+                </div>
+            )) }
+        </div>
+    </div>
+);
+
 const WantedRow: FC<{ player: RpWantedPlayer }> = ({ player }) => (
-    <div className="rp-wanted-row" onClick={ () => GetUserProfile(player.userId) }
-        title={ `Open ${ player.username }'s profile` }>
+    <div className="rp-wanted-row" onClick={ () => GetUserProfile(player.userId) }>
         <div className="rp-wanted-face">
             <LayoutAvatarImageView figure={ player.figure } direction={ 2 } headOnly />
         </div>
@@ -51,7 +71,8 @@ const WantedRow: FC<{ player: RpWantedPlayer }> = ({ player }) => (
             <div className="rp-wanted-name">{ player.username }</div>
             <WantedStars level={ player.level } />
         </div>
-        <div className="rp-wanted-since" title="How long they have been wanted">{ since(player.since) }</div>
+        <div className="rp-wanted-since">{ since(player.since) }</div>
+        { (player.charges.length > 0) && <WantedTip player={ player } /> }
     </div>
 );
 

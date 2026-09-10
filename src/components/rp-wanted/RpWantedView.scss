@@ -36,31 +36,50 @@
     // One row per wanted player: head, name over stars, and how long they
     // have been on the list. Clicking anywhere on the row opens the profile,
     // which is the only thing a reader of this list wants to do next.
+    //
+    // Striped rather than ruled: alternate rows carry a faint tint and there
+    // are no dividers, so the eye tracks a row across without hairlines
+    // competing with the stars. Hover darkens whichever row it is on.
     .rp-wanted-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 8px;
+        height: 44px;
+        flex-shrink: 0;
+        padding: 0 8px;
         cursor: pointer;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        position: relative;
 
-        &:hover {
-            background: rgba(0, 0, 0, 0.05);
+        &:nth-child(even) {
+            background: rgba(0, 0, 0, 0.035);
         }
 
-        &:last-child {
-            border-bottom: none;
+        &:hover {
+            background: rgba(0, 0, 0, 0.08);
+
+            .rp-wanted-tip {
+                display: block;
+            }
         }
     }
 
+    // The head-only sprite is still drawn on the 90x130 avatar canvas, so a
+    // small box has to offset the canvas to land on the head - the same crop
+    // the Gang and Group member lists use. Never scaled: resampling blurs
+    // the pixel art.
     .rp-wanted-face {
-        width: 34px;
-        height: 34px;
+        width: 40px;
+        height: 44px;
         flex-shrink: 0;
+        position: relative;
         overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+
+        .avatar-image {
+            position: absolute;
+            left: -25px;
+            top: -23px;
+            image-rendering: pixelated;
+        }
     }
 
     .rp-wanted-who {
@@ -97,6 +116,62 @@
         flex-shrink: 0;
         font-size: 10px;
         color: rgba(0, 0, 0, 0.45);
+        font-variant-numeric: tabular-nums;
+    }
+
+    // The rap sheet. Dark plate over the light list so it reads as a layer,
+    // not another row. Below the row by default; the last row flips it above
+    // so it cannot run off the bottom of the scroller (the first row is
+    // exempt from the flip - above it there is nothing but the header).
+    .rp-wanted-tip {
+        display: none;
+        position: absolute;
+        left: 48px;
+        right: 8px;
+        top: calc(100% - 4px);
+        z-index: 5;
+        padding: 6px 8px 7px;
+        background: rgba(33, 35, 38, 0.96);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+    }
+
+    .rp-wanted-row:last-child:not(:first-child) .rp-wanted-tip {
+        top: auto;
+        bottom: calc(100% - 4px);
+    }
+
+    .rp-wanted-tip-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .rp-wanted-tip-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .rp-wanted-tip-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 11px;
+        line-height: 1.25;
+    }
+
+    .rp-wanted-tip-count {
+        color: rgba(255, 255, 255, 0.55);
         font-variant-numeric: tabular-nums;
     }
 

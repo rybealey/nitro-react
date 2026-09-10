@@ -25,6 +25,15 @@ export interface RpWantedPlayer
     level: number;
     // unix seconds of their FIRST open charge - a later one does not reset it
     since: number;
+    // the rap sheet, worst crime first: one line per crime with its open count
+    charges: RpWantedCharge[];
+}
+
+export interface RpWantedCharge
+{
+    name: string;
+    // how many open counts of this crime - 2+ only for stackable crimes
+    count: number;
 }
 
 export class RpWantedParser implements IMessageParser
@@ -48,13 +57,25 @@ export class RpWantedParser implements IMessageParser
 
         while(count > 0)
         {
-            this._players.push({
+            const player: RpWantedPlayer = {
                 userId: wrapper.readInt(),
                 username: wrapper.readString(),
                 figure: wrapper.readString(),
                 level: wrapper.readInt(),
-                since: wrapper.readInt()
-            });
+                since: wrapper.readInt(),
+                charges: []
+            };
+
+            let chargeCount = wrapper.readInt();
+
+            while(chargeCount > 0)
+            {
+                player.charges.push({ name: wrapper.readString(), count: wrapper.readInt() });
+
+                chargeCount--;
+            }
+
+            this._players.push(player);
 
             count--;
         }
