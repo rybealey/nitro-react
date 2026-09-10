@@ -12,6 +12,8 @@ import { GetCommunication, GetConnection } from '../nitro';
 //
 // A player's level is the highest severity among their open charges, decided
 // server-side (WantedUtility); the client only ever displays what it is told.
+// A player stays wanted for 15 minutes after their latest charge; the server
+// sends the seconds left and the client counts them down itself.
 
 // server -> client, at login and whenever a charge is filed
 const RP_WANTED = 3903;
@@ -23,8 +25,10 @@ export interface RpWantedPlayer
     figure: string;
     // 1-5, the same scale the HUD's stars draw
     level: number;
-    // unix seconds of their FIRST open charge - a later one does not reset it
-    since: number;
+    // client clock (ms) at which they drop off the list: 15 minutes after their
+    // latest charge, sent by the server as seconds remaining so clock skew
+    // between the two cannot shift it
+    expiresAt: number;
     // the rap sheet, worst crime first: one line per crime with its open count
     charges: RpWantedCharge[];
 }
@@ -62,7 +66,7 @@ export class RpWantedParser implements IMessageParser
                 username: wrapper.readString(),
                 figure: wrapper.readString(),
                 level: wrapper.readInt(),
-                since: wrapper.readInt(),
+                expiresAt: Date.now() + (wrapper.readInt() * 1000),
                 charges: []
             };
 
@@ -105,20 +109,57 @@ export class RpWantedEvent extends MessageEvent implements IMessageEvent
 // render code rather than through a hook.
 
 let players: RpWantedPlayer[] = [];
-let byUserId: Map<number, number> = new Map();
+let byUserId: Map<number, RpWantedPlayer> = new Map();
+let expiryTimer = 0;
 
 const listeners = new Set<() => void>();
 
-export const GetRpWantedList = (): RpWantedPlayer[] => players;
+const isLive = (player: RpWantedPlayer): boolean => (player.expiresAt > Date.now());
 
-/** 0 for anyone with no open charges - which is most people. */
-export const GetRpWanted = (userId: number): number => (byUserId.get(userId) ?? 0);
+export const GetRpWantedList = (): RpWantedPlayer[] => players.filter(isLive);
+
+/** 0 for anyone not currently wanted - which is most people. */
+export const GetRpWanted = (userId: number): number =>
+{
+    const player = byUserId.get(userId);
+
+    return (player && isLive(player)) ? player.level : 0;
+}
 
 export const SubscribeRpWanted = (listener: () => void): (() => void) =>
 {
     listeners.add(listener);
 
     return () => listeners.delete(listener);
+}
+
+const notify = () => listeners.forEach(listener => listener());
+
+// The server does not push when somebody's 15 minutes run out - every client
+// knows the moment already. Wake at the next expiry so the HUD's stars and
+// the Wanted window drop the entry on time rather than on the next charge.
+const scheduleExpiry = () =>
+{
+    if(expiryTimer) window.clearTimeout(expiryTimer);
+
+    expiryTimer = 0;
+
+    const live = players.filter(isLive);
+
+    if(!live.length) return;
+
+    const next = Math.min(...live.map(player => player.expiresAt));
+
+    expiryTimer = window.setTimeout(() =>
+    {
+        expiryTimer = 0;
+
+        players = players.filter(isLive);
+        byUserId = new Map(players.map(player => [ player.userId, player ]));
+
+        notify();
+        scheduleExpiry();
+    }, Math.max(0, next - Date.now()) + 50);
 }
 
 const onWanted = (event: RpWantedEvent) =>
@@ -128,9 +169,10 @@ const onWanted = (event: RpWantedEvent) =>
     if(!parser) return;
 
     players = parser.players;
-    byUserId = new Map(players.map(player => [ player.userId, player.level ]));
+    byUserId = new Map(players.map(player => [ player.userId, player ]));
 
-    listeners.forEach(listener => listener());
+    notify();
+    scheduleExpiry();
 }
 
 let registered = false;

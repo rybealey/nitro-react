@@ -56,28 +56,27 @@
 
         &:hover {
             background: rgba(0, 0, 0, 0.08);
-
-            .rp-wanted-tip {
-                display: block;
-            }
         }
     }
 
-    // The head-only sprite is still drawn on the 90x130 avatar canvas, so a
-    // small box has to offset the canvas to land on the head - the same crop
-    // the Gang and Group member lists use. Never scaled: resampling blurs
-    // the pixel art.
+    // The head-only sprite is still drawn on the 90x130 avatar canvas, so the
+    // box offsets the canvas to land on the head (the Gang and Group member
+    // lists' crop, nudged for a square). Masked to a circle with a hairline
+    // ring and NO fill - the row's stripe shows through around the face.
+    // Never scaled: resampling blurs the pixel art.
     .rp-wanted-face {
-        width: 40px;
-        height: 44px;
+        width: 38px;
+        height: 38px;
         flex-shrink: 0;
         position: relative;
         overflow: hidden;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16);
 
         .avatar-image {
             position: absolute;
-            left: -25px;
-            top: -23px;
+            left: -26px;
+            top: -24px;
             image-rendering: pixelated;
         }
     }
@@ -119,29 +118,55 @@
         font-variant-numeric: tabular-nums;
     }
 
-    // The rap sheet. Dark plate over the light list so it reads as a layer,
-    // not another row. Below the row by default; the last row flips it above
-    // so it cannot run off the bottom of the scroller (the first row is
-    // exempt from the flip - above it there is nothing but the header).
-    .rp-wanted-tip {
-        display: none;
-        position: absolute;
-        left: 48px;
-        right: 8px;
-        top: calc(100% - 4px);
-        z-index: 5;
-        padding: 6px 8px 7px;
-        background: rgba(33, 35, 38, 0.96);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 4px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-        pointer-events: none;
+    .rp-wanted-none {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        text-align: center;
     }
 
-    .rp-wanted-row:last-child:not(:first-child) .rp-wanted-tip {
-        top: auto;
-        bottom: calc(100% - 4px);
+    .rp-wanted-none-text {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+}
+
+// The rap sheet, shown while hovering a Wanted row. Lives on the body (portal)
+// and is positioned by the row: to the right of the window by default, to the
+// left when the window is against the screen's right edge. Dark plate over
+// the room so it reads as a layer, not another window. Above every card,
+// like the Backpack's drag ghost.
+.rp-wanted-tip {
+    position: fixed;
+    z-index: 10000;
+    padding: 6px 8px 7px;
+    background: rgba(33, 35, 38, 0.96);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+
+    // caret pointing back at the row
+    &::before {
+        content: '';
+        position: absolute;
+        top: 14px;
+        left: -6px;
+        width: 10px;
+        height: 10px;
+        background: rgba(33, 35, 38, 0.96);
+        border-left: 1px solid rgba(255, 255, 255, 0.14);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        transform: rotate(45deg);
+    }
+
+    &.is-flipped::before {
+        left: auto;
+        right: -6px;
+        transform: rotate(-135deg);
     }
 
     .rp-wanted-tip-head {
@@ -173,19 +198,5 @@
     .rp-wanted-tip-count {
         color: rgba(255, 255, 255, 0.55);
         font-variant-numeric: tabular-nums;
-    }
-
-    .rp-wanted-none {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12px;
-        text-align: center;
-    }
-
-    .rp-wanted-none-text {
-        font-size: 11px;
-        color: rgba(0, 0, 0, 0.45);
     }
 }
