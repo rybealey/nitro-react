@@ -33,6 +33,73 @@
         flex-direction: column;
     }
 
+    // One row per wanted player: head, name over stars, and how long they
+    // have been on the list. Clicking anywhere on the row opens the profile,
+    // which is the only thing a reader of this list wants to do next.
+    .rp-wanted-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+        &:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    .rp-wanted-face {
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .rp-wanted-who {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rp-wanted-name {
+        font-size: 12px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    // Same treatment as the HUD's stars so one player reads the same in both
+    // places: filled amber, empty a faint outline.
+    .rp-wanted-stars {
+        display: flex;
+        gap: 1px;
+        font-size: 9px;
+        line-height: 1;
+
+        .on {
+            color: #f0a726;
+        }
+
+        .off {
+            color: rgba(0, 0, 0, 0.25);
+        }
+    }
+
+    .rp-wanted-since {
+        flex-shrink: 0;
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+        font-variant-numeric: tabular-nums;
+    }
+
     .rp-wanted-none {
         flex: 1;
         display: flex;

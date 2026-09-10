@@ -1,34 +1,73 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
-import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { FaRegStar, FaStar } from 'react-icons/fa';
+import { AddEventLinkTracker, GetUserProfile, RemoveLinkEventTracker } from '../../api';
+import { GetRpWantedList, RpWantedPlayer, SubscribeRpWanted } from '../../api/rp-wanted/RpWantedMessages';
+import { LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 
 // PixelRP Wanted List, opened from the side drawer's Wanted button
 // (CreateLinkEvent('rp-wanted/toggle')). Players land here when they are
 // charged with a crime and drop off when their sentence expires.
 //
-// BASE ONLY - there is no wanted system on the server yet. The HUD's wanted
-// stars are still derived from a username hash (mockStatsFor in
-// PlayerHudWidgetView), and the emulator has no crime table, charge logic or
-// packet for any of this. So the list is always empty for now and the window
-// renders its empty state; WantedEntry below is the seam the real feed plugs
-// into once that system exists.
+// Live: the emulator pushes the whole list at login and again whenever an
+// officer files a charge (RpWantedMessages). A player's stars are the highest
+// severity among their open charges, decided server-side.
+//
+// There is no countdown column. Charges do not lapse on a timer - they sit on
+// the sheet until they are dropped - so the list reports when somebody became
+// wanted rather than when they stop being.
 
-export interface WantedEntry
+const HOUR = 3600;
+const DAY = 86400;
+
+// "3h", "2d" - how long they have been on the list, at a glance.
+const since = (unix: number): string =>
 {
-    username: string;
-    figure: string;
-    // 1-5, same scale as the HUD's wanted stars
-    wanted: number;
-    // epoch ms the charge lapses at - drives the countdown column
-    expiresAt: number;
+    const seconds = Math.max(0, Math.floor((Date.now() / 1000) - unix));
+
+    if(seconds < HOUR) return `${ Math.max(1, Math.floor(seconds / 60)) }m`;
+    if(seconds < DAY) return `${ Math.floor(seconds / HOUR) }h`;
+
+    return `${ Math.floor(seconds / DAY) }d`;
 }
+
+const WantedStars: FC<{ level: number }> = ({ level }) => (
+    <div className="rp-wanted-stars">
+        { [ 0, 1, 2, 3, 4 ].map(index => (
+            <span key={ index } className={ (index < level) ? 'on' : 'off' }>
+                { (index < level) ? <FaStar /> : <FaRegStar /> }
+            </span>
+        )) }
+    </div>
+);
+
+const WantedRow: FC<{ player: RpWantedPlayer }> = ({ player }) => (
+    <div className="rp-wanted-row" onClick={ () => GetUserProfile(player.userId) }
+        title={ `Open ${ player.username }'s profile` }>
+        <div className="rp-wanted-face">
+            <LayoutAvatarImageView figure={ player.figure } direction={ 2 } headOnly />
+        </div>
+        <div className="rp-wanted-who">
+            <div className="rp-wanted-name">{ player.username }</div>
+            <WantedStars level={ player.level } />
+        </div>
+        <div className="rp-wanted-since" title="How long they have been wanted">{ since(player.since) }</div>
+    </div>
+);
 
 export const RpWantedView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
-    // Stays empty until the server can report charges; no mock feed.
-    const [ entries ] = useState<WantedEntry[]>([]);
+    const [ entries, setEntries ] = useState<RpWantedPlayer[]>(() => GetRpWantedList());
+
+    // The login push usually lands long before this window is opened, so the
+    // list is read on mount as well as subscribed to.
+    useEffect(() =>
+    {
+        setEntries(GetRpWantedList());
+
+        return SubscribeRpWanted(() => setEntries(GetRpWantedList()));
+    }, []);
 
     useEffect(() =>
     {
@@ -67,10 +106,11 @@ export const RpWantedView: FC<{}> = props =>
             <NitroCardHeaderView headerText="Wanted List" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardContentView className="text-black">
                 <div className="rp-wanted-list">
-                    { !entries.length &&
-                        <div className="rp-wanted-none">
+                    { !entries.length
+                        ? <div className="rp-wanted-none">
                             <div className="rp-wanted-none-text">Nobody is wanted right now.</div>
-                        </div> }
+                        </div>
+                        : entries.map(player => <WantedRow key={ player.userId } player={ player } />) }
                 </div>
             </NitroCardContentView>
         </NitroCardView>
