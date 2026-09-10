@@ -1,6 +1,7 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, ChatEntryType, LocalizeText, RemoveLinkEventTracker } from '../../api';
+import { IsNarratedBubble, NarratedBubbleText } from '../../api/rp-chat/NarratedBubble';
 import { Flex, InfiniteScroll, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
 import { useChatHistory } from '../../hooks';
 import { UsernameIconGlyph } from '../rp-settings/UsernameIconGlyph';
@@ -65,6 +66,12 @@ export const ChatHistoryView: FC<{}> = props =>
                 <input type="text" className="form-control form-control-sm" placeholder={ LocalizeText('generic.search') } value={ searchText } onChange={ event => setSearchText(event.target.value) } />
                 <InfiniteScroll rows={ filteredChatHistory } scrollToBottom={ true } rowRender={ row =>
                 {
+                    // The same rule the in-room bubble applies, from the same
+                    // module: a narrated line reads "*Yavn drops Murder against
+                    // twist*" here too, rather than "Yavn: *drops ...*".
+                    const isActionBubble = IsNarratedBubble(row.style, row.text);
+                    const message = isActionBubble ? NarratedBubbleText(row.message) : row.message;
+
                     return (
                         <Flex alignItems="center" className="p-1" gap={ 2 }>
                             <Text variant="muted">{ row.timestamp }</Text>
@@ -72,7 +79,7 @@ export const ChatHistoryView: FC<{}> = props =>
                                 <div className="bubble-container" style={ { position: 'relative' } }>
                                     { (row.style === 0) &&
                                     <div className="user-container-bg" style={ { backgroundColor: row.color } } /> }
-                                    <div className={ `chat-bubble bubble-${ row.style } type-${ row.chatType }` } style={ { maxWidth: '100%' } }>
+                                    <div className={ `chat-bubble bubble-${ row.style } type-${ row.chatType }${ isActionBubble ? ' is-action' : '' }` } style={ { maxWidth: '100%' } }>
                                         <div className="user-container">
                                             { row.imageUrl && (row.imageUrl.length > 0) &&
                                 <div className="user-image" style={ { backgroundImage: `url(${ row.imageUrl })` } } /> }
@@ -80,8 +87,8 @@ export const ChatHistoryView: FC<{}> = props =>
                                         <div className="chat-content">
                                             { row.usernameIcon &&
                                                 <b className="username mr-1"><UsernameIconGlyph iconClass={ row.usernameIcon } />{ ' ' }</b> }
-                                            <b className="username mr-1"><span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: row.name } } />{ ': ' }</b>
-                                            <span className="message" dangerouslySetInnerHTML={ { __html: `${ row.message }` } } />
+                                            <b className="username mr-1">{ isActionBubble && '*' }<span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: row.name } } />{ isActionBubble ? ' ' : ': ' }</b>
+                                            <span className="message" dangerouslySetInnerHTML={ { __html: `${ message }` } } />
                                         </div>
                                     </div>
                                 </div> }
