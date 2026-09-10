@@ -610,6 +610,36 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         }
     }
 
+    // General > Frame Rate. The opacity control's track and spacing, with the
+    // range's ends labelled either side of it - both are plain numbers of
+    // different digit counts, so they need tabular figures or the track shifts
+    // as the value crosses 100.
+    .rp-settings-fps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        input[type='range'] {
+            flex: 1;
+            min-width: 0;
+            width: 130px;
+            accent-color: var(--prp-chrome-95);
+            cursor: pointer;
+        }
+    }
+
+    .rp-settings-fps-end,
+    .rp-settings-fps-value {
+        font-variant-numeric: tabular-nums;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .rp-settings-fps-value {
+        min-width: 30px;
+        text-align: right;
+        color: inherit;
+    }
+
     .rp-settings-opacity-value {
         min-width: 30px;
         text-align: right;

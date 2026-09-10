@@ -4970,19 +4970,6 @@ $phone-scale: 0.8;
         }
     }
 
-    // Settings > General: the frame-rate slider. It carries .phone-access-slider
-    // too and so borrows that track and thumb wholesale; the only difference is
-    // the ends, which are both plain numbers here and so want the same size
-    // rather than the A/a contrast the text-size slider uses to mean something.
-    .phone-fps-slider {
-        .phone-access-slider-small, .phone-access-slider-large {
-            font-size: 12px;
-            color: var(--ph-soft);
-            // the low and high labels are different digit counts, so without
-            // tabular figures the track shifts as the value crosses 100
-            font-variant-numeric: tabular-nums;
-        }
-    }
 
     // ---- Wallet: the Resident ID ---------------------------------------
     // Navy card on both themes (the ID is the same object wherever it shows);

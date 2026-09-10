@@ -7,6 +7,7 @@ import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, Rem
 import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
@@ -75,6 +76,7 @@ export const RpSettingsView: FC<{}> = props =>
     const [ exportCopied, setExportCopied ] = useState<boolean>(false);
     const exportTextRef = useRef<HTMLTextAreaElement>(null);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
+    const { maxFps } = useFpsPref();
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
@@ -1139,7 +1141,27 @@ export const RpSettingsView: FC<{}> = props =>
                             </>
                         </Column>
                     </div> }
-                { (currentTab !== 'UI') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') && (currentTab !== 'Macros') &&
+                { (currentTab === 'General') &&
+                    <Column gap={ 2 } className="rp-settings-general">
+                        { /* Plain sections rather than a subnav rail: one setting
+                             behind a one-item rail reads as scaffolding. Macros is
+                             laid out the same way, so the pattern is already here. */ }
+                        <div className="rp-settings-section">
+                            <div className="rp-settings-section-info">
+                                <Text bold>Frame Rate</Text>
+                                <Text small className="text-muted">How often the room is allowed to redraw, saved on this computer rather than to your account. It can only take frames away - your screen sets the real ceiling, so on a 60Hz monitor anything above 60 looks the same. Lowering it is the lever to pull on an older machine.</Text>
+                            </div>
+                            <div className="rp-settings-fps">
+                                <Text small className="rp-settings-fps-end">{ FPS_MIN }</Text>
+                                <input type="range" min={ FPS_MIN } max={ FPS_MAX } step={ 5 } value={ maxFps }
+                                    aria-label="Frame rate cap"
+                                    onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
+                                <Text small className="rp-settings-fps-end">{ FPS_MAX }</Text>
+                                <Text small className="rp-settings-fps-value">{ maxFps }</Text>
+                            </div>
+                        </div>
+                    </Column> }
+                { (currentTab !== 'General') && (currentTab !== 'UI') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') && (currentTab !== 'Macros') &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>
