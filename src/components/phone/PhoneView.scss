@@ -5261,6 +5261,186 @@ $phone-scale: 0.8;
     // The line under an employer: the rank, and its tier when there is one.
     .phone-wallet-row-sub { color: rgba(244, 240, 247, .66); }
 
+    // ---- the stack ------------------------------------------------------
+    // A wallet, not a list: the cards overlap and only the tapped one opens,
+    // so three of them do not turn the screen into something you scroll past.
+    // max-height and the overlap animate together, so the cards below slide
+    // rather than jump.
+    .phone-wallet-stack {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 6px;
+    }
+
+    .phone-wallet-card.is-stacked,
+    .phone-wallet-card.is-open {
+        transition: max-height .34s cubic-bezier(.2, .8, .2, 1), margin-top .34s cubic-bezier(.2, .8, .2, 1), box-shadow .2s ease;
+    }
+
+    .phone-wallet-card.is-stacked {
+        // The band plus the name under it: enough to pick a card out of the
+        // stack without opening it.
+        max-height: 104px;
+        cursor: pointer;
+
+        .phone-wallet-body { opacity: .62; }
+
+        &:hover { box-shadow: 0 12px 30px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .18); }
+    }
+
+    .phone-wallet-card.is-open {
+        max-height: 560px;
+        cursor: pointer;
+    }
+
+    // Only a card BEHIND another overlaps; the first keeps its own margin.
+    .phone-wallet-card.is-stacked.is-behind { margin-top: -14px; }
+
+    .phone-wallet-body { transition: opacity .24s ease; }
+
+    // "Playing" - which of the three this session actually is.
+    .phone-wallet-current {
+        flex: none;
+        align-self: flex-start;
+        padding: 3px 8px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .14);
+        border: 1px solid rgba(255, 255, 255, .18);
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: #f4f0f7;
+    }
+
+    .phone-wallet-switchrow { display: flex; justify-content: flex-end; }
+
+    .phone-wallet-switch {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 13px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .1);
+        border: 1px solid rgba(255, 255, 255, .16);
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        color: #f4f0f7;
+        transition: background .15s ease, transform .12s ease;
+
+        &:hover { background: rgba(255, 255, 255, .16); }
+        &:active { transform: scale(.97); opacity: 1; }
+    }
+
+    .phone-wallet-add.is-off { opacity: .38; cursor: default; }
+
+    // ---- Wallet > New character -----------------------------------------
+    .phone-newchar-field {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+
+    .phone-newchar-input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        font-family: 'Barlow', 'Ubuntu', sans-serif;
+        font-size: calc(16px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        color: var(--ph-text);
+
+        &::placeholder { color: var(--ph-faint); font-weight: 400; }
+    }
+
+    .phone-newchar-count {
+        flex: none;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-variant-numeric: tabular-nums;
+        color: var(--ph-faint);
+    }
+
+    .phone-newchar-note {
+        padding: 8px 26px 0;
+        text-align: left;
+
+        &.is-bad { color: #c0392b; }
+    }
+
+    .phone-newchar-genders {
+        margin: 4px 18px 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .phone-newchar-gender {
+        background: var(--ph-bg);
+        border: 2px solid var(--ph-hairline);
+        border-radius: 16px;
+        padding: 12px 8px 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        transition: border-color .18s ease, box-shadow .18s ease;
+
+        &.is-on {
+            border-color: #e87332;
+            box-shadow: 0 0 0 3px rgba(232, 115, 50, .18);
+
+            .phone-newchar-gender-label { color: var(--ph-text); }
+        }
+    }
+
+    // The figure at its native size, cropped to the tile - the avatar sprite
+    // is pixel art and resampling it blurs the face.
+    .phone-newchar-figure {
+        height: 96px;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            margin-left: -45px;
+            top: -18px;
+            image-rendering: pixelated;
+        }
+    }
+
+    .phone-newchar-gender-label {
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        color: var(--ph-soft);
+    }
+
+    .phone-newchar-create {
+        margin: 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 46px;
+        border-radius: 14px;
+        background: #e87332;
+        color: #ffffff;
+        font-size: calc(15px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        transition: background .15s ease, transform .12s ease;
+
+        &:active { transform: scale(.98); opacity: 1; }
+        &.is-off { opacity: .4; cursor: default; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-wallet-card.is-stacked, .phone-wallet-card.is-open, .phone-wallet-body,
+        .phone-wallet-switch, .phone-newchar-gender, .phone-newchar-create { transition: none; }
+    }
+
     @media (prefers-reduced-motion: reduce) { .phone-wallet-card { animation: none; } }
 
     // Appearance sub-screen option list (Light / Dark / Automatic; phone

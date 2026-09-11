@@ -13,6 +13,7 @@ import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
 import { PhoneGeneralView } from './PhoneGeneralView';
+import { PhoneNewCharacterView } from './PhoneNewCharacterView';
 import { PhonePrivacyView } from './PhonePrivacyView';
 import { PhoneRegionView } from './PhoneRegionView';
 import { PhoneWallpaperView } from './PhoneWallpaperView';
@@ -40,7 +41,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'privacy' | 'wallet' | 'appstore' | 'stocks';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'privacy' | 'wallet' | 'newcharacter' | 'appstore' | 'stocks';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -77,6 +78,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'general') && (to === 'settings')) return 'slide-left';
     if(to === 'region') return 'slide-right';
     if(to === 'privacy') return 'slide-right';
+    if(to === 'newcharacter') return 'slide-right';
+    if((from === 'newcharacter') && (to === 'wallet')) return 'slide-left';
     if((from === 'privacy') && (to === 'settings')) return 'slide-left';
     if(to === 'wallpaper') return 'slide-right';
     if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
@@ -554,7 +557,9 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'news') &&
                                 <PhoneNewsView onBack={ () => go('home') } /> }
                             { (screen === 'wallet') &&
-                                <PhoneWalletView onBack={ () => go('home') } /> }
+                                <PhoneWalletView onBack={ () => go('home') } openCreate={ () => go('newcharacter') } /> }
+                            { (screen === 'newcharacter') &&
+                                <PhoneNewCharacterView onBack={ () => go('wallet') } onCreated={ () => go('wallet') } /> }
                             { (screen === 'stocks') &&
                                 <PhoneStocksView onBack={ () => go('home') } /> }
                             { (screen === 'appstore') &&
