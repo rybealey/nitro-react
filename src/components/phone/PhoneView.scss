@@ -1582,6 +1582,9 @@ $phone-scale: 0.8;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
         font-size: calc(11px * var(--ph-text-scale, 1));
+        transition: background .18s ease, border-color .18s ease;
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
 
         &.is-selected {
             background: $phone-pink;
@@ -1823,12 +1826,15 @@ $phone-scale: 0.8;
         font-weight: 600;
         font-size: calc(14px * var(--ph-text-scale, 1));
         color: var(--ph-muted);
+        transition: background .18s ease, color .18s ease, box-shadow .18s ease;
 
         &.is-active {
             background: var(--ph-bg);
             color: var(--ph-text);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
         }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     .phone-contacts-tab-badge {
@@ -1974,6 +1980,17 @@ $phone-scale: 0.8;
         align-items: center;
         justify-content: center;
         color: #ffffff;
+        // The ring is always drawn and only fills when chosen, so the fill is
+        // a transition while the mark inside it pops in.
+        transition: background .18s ease, border-color .18s ease;
+
+        .phone-pi { animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both; }
+
+        @media (prefers-reduced-motion: reduce) {
+            transition: none;
+
+            .phone-pi { animation: none; }
+        }
 
         &.is-chosen {
             background: $phone-pink;
@@ -3124,7 +3141,11 @@ $phone-scale: 0.8;
         font-variant-numeric: tabular-nums;
         color: #9a90a5;
 
+        transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+
         &.is-on { background: #171021; color: #f4f0f7; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     .phone-stocks-chart {
@@ -3967,6 +3988,9 @@ $phone-scale: 0.8;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
             color: var(--ph-text);
+            transition: background .18s ease, color .18s ease;
+
+            @media (prefers-reduced-motion: reduce) { transition: none; }
         }
 
         &.is-weekend .phone-calendar-daynum { color: var(--ph-faint); }
@@ -4319,10 +4343,14 @@ $phone-scale: 0.8;
         color: var(--ph-faint);
     }
 
+    // The check ARRIVES rather than appearing: the same pop the wallpaper
+    // tile's check and the news tile's already use, so picking a row in any
+    // list reads the same.
     .phone-region-check {
         flex: none;
         color: $phone-pink;
         margin-top: 2px;
+        animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both;
     }
 
     // ---- Settings > Privacy ---------------------------------------------
@@ -4344,6 +4372,7 @@ $phone-scale: 0.8;
         flex: none;
         color: $phone-pink;
         margin-top: 2px;
+        animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both;
     }
 
     // Footnotes here sit under their own group rather than the whole screen,
@@ -4380,6 +4409,7 @@ $phone-scale: 0.8;
 
     @media (prefers-reduced-motion: reduce) {
         .phone-privacy-switch, .phone-privacy-knob { transition: none; }
+        .phone-privacy-check, .phone-region-check { animation: none; }
     }
 
     .phone-settings-footnote {
@@ -4866,8 +4896,11 @@ $phone-scale: 0.8;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
         color: var(--ph-soft);
+        transition: color .18s ease;
 
         &.is-chosen { font-weight: 700; color: var(--ph-text); }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     .phone-wallpaper-strip {
@@ -5196,6 +5229,9 @@ $phone-scale: 0.8;
         .phone-appearance-check {
             color: $phone-pink;
             flex: none;
+            animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both;
+
+            @media (prefers-reduced-motion: reduce) { animation: none; }
         }
 
         &:hover {
@@ -5886,9 +5922,13 @@ $phone-scale: 0.8;
             font-size: calc(10px * var(--ph-text-scale, 1));
         }
 
+        transition: color .18s ease;
+
         &.is-active {
             color: $phone-pink;
         }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     // Keeps scrolled content clear of the floating tab bar.

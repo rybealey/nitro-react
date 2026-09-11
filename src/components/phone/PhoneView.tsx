@@ -84,6 +84,11 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if((from === 'accessibility') && (to === 'settings')) return 'slide-left';
     if(to === 'notifications') return 'slide-right';
     if((from === 'notifications') && (to === 'settings')) return 'slide-left';
+    // Camera and Photos are a pair rather than two unrelated apps - the
+    // shutter leads into the library and the library back out to it - so they
+    // move like a forward/back step instead of cross-fading.
+    if((from === 'camera') && (to === 'photos')) return 'slide-right';
+    if((from === 'photos') && (to === 'camera')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -118,11 +123,15 @@ export const PhoneView: FC<{}> = props =>
     const activeThread = useMemo(() => visibleThreads.find(thread => (thread.threadId === threadId)), [ visibleThreads, threadId ]);
     const callFriend = ((callFriendId && getFriend) ? getFriend(callFriendId) : null);
 
-    const go = (to: PhoneScreen) =>
+    // `animation` overrides what animationFor would pick, for the gestures it
+    // cannot read from the two screen names alone: opening an app from the App
+    // Store or from a notification is a LAUNCH wherever you happened to be, so
+    // it gets the home screen's app-open rather than a fade.
+    const go = (to: PhoneScreen, animation?: string) =>
     {
         setScreen(prevValue =>
         {
-            setAnimation(animationFor(prevValue, to));
+            setAnimation(animation ?? animationFor(prevValue, to));
 
             return to;
         });
@@ -229,19 +238,19 @@ export const PhoneView: FC<{}> = props =>
                 openThreadForUser(notification.targetId);
                 return;
             case 'contacts':
-                go('contacts');
+                go('contacts', 'app-open');
                 return;
             case 'photos':
-                go('photos');
+                go('photos', 'app-open');
                 return;
             case 'calendar':
-                go('calendar');
+                go('calendar', 'app-open');
                 return;
             case 'notes':
-                go('notes');
+                go('notes', 'app-open');
                 return;
             case 'news':
-                go('news');
+                go('news', 'app-open');
                 return;
         }
     }
@@ -518,7 +527,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'stocks') &&
                                 <PhoneStocksView onBack={ () => go('home') } /> }
                             { (screen === 'appstore') &&
-                                <PhoneAppStoreView onBack={ () => go('home') } openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app])) } /> }
+                                <PhoneAppStoreView onBack={ () => go('home') } openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app], 'app-open')) } /> }
                             { (screen === 'general') &&
                                 <PhoneGeneralView onBack={ () => go('settings') } openRegion={ () => go('region') } /> }
                             { (screen === 'region') &&
