@@ -46,13 +46,21 @@ export const PhoneAvatar: FC<PhoneAvatarProps> = props =>
     const { id = 0, figure = null, size = 48, online = undefined, portrait = false, className = null } = props;
     // every player head is bare; the head sprite fills a 44px circle at scale 1.2, so scale with the footprint
     const bare = ((id > 0) && !portrait);
-    const headScale = Math.min(3, Math.max(1, size / 37.5));
+    // The HUD's head-and-shoulders framing is tuned for the 54px tile it was
+    // built for - a fixed offset into a full-figure sprite. Below that the
+    // window is too short to hold a face and you get a sliver of somebody's
+    // chin. A small portrait keeps the circle and the pastel field but frames
+    // the HEAD instead, which is the crop that already works at any size.
+    const headPortrait = (portrait && (size < 48));
+    // No floor on the scale: a tile smaller than the head sprite has to shrink
+    // it, and clamping at 1 is what cropped a 30px avatar down to a sliver.
+    const headScale = Math.min(3, size / 37.5);
 
     return (
-        <div className={ `phone-avatar${ bare ? ' phone-avatar--unmasked' : '' }${ portrait ? ' phone-avatar--portrait' : '' }${ className ? (' ' + className) : '' }` } style={ { width: size, height: size, borderRadius: Math.round(size * 0.3), '--head-scale': headScale } as CSSProperties }>
+        <div className={ `phone-avatar${ bare ? ' phone-avatar--unmasked' : '' }${ portrait ? ' phone-avatar--portrait' : '' }${ headPortrait ? ' phone-avatar--portrait-head' : '' }${ className ? (' ' + className) : '' }` } style={ { width: size, height: size, borderRadius: Math.round(size * 0.3), '--head-scale': headScale } as CSSProperties }>
             <div className="phone-avatar-crop" style={ bare ? undefined : { backgroundColor: PhoneAvatarColor(id) } }>
                 { (id > 0) && figure &&
-                    <LayoutAvatarImageView figure={ figure } headOnly={ !portrait } direction={ 2 } /> }
+                    <LayoutAvatarImageView figure={ figure } headOnly={ !portrait || headPortrait } direction={ 2 } /> }
                 { (id <= 0) &&
                     <div className="phone-avatar-group-badge">
                         <LayoutBadgeImageView isGroup={ true } badgeCode={ figure } />

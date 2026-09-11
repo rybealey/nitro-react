@@ -829,7 +829,7 @@ $phone-scale: 0.8;
         // rendered exactly like the player HUD portrait — native 90x130, no
         // resampling, masked to the head+shoulders window. -27px recentres
         // the HUD's -26px framing (56px circle) for the 54px tile.
-        &.phone-avatar--portrait .phone-avatar-crop .avatar-image {
+        &.phone-avatar--portrait:not(.phone-avatar--portrait-head) .phone-avatar-crop .avatar-image {
             position: absolute;
             inset: 0;
             left: auto;
@@ -863,6 +863,14 @@ $phone-scale: 0.8;
             border: none;
             box-shadow: none;
             background: transparent;
+        }
+
+        // A portrait too small for the HUD framing: the head crop, scaled to the
+        // tile, inside the portrait's own circle and pastel field.
+        &.phone-avatar--portrait-head .phone-avatar-crop .avatar-image {
+            transform: scale(var(--head-scale, 1));
+            transform-origin: 45px 46px;
+            image-rendering: pixelated;
         }
 
         // Settings account portrait: a plain full circle, no ink ring (the
