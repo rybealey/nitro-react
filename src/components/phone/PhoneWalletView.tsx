@@ -119,7 +119,15 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     // Login already pushed these, so this is a cheap re-ask against the
     // server's own cache - it costs no query and covers a session that has
     // been open long enough for a payday to have been missed.
-    useEffect(() => SendRpGetBankAccounts(), []);
+    // A BLOCK body, not a concise one. IConnection.send is declared void but
+    // SocketConnection.send actually returns a boolean, so `() => Send...()`
+    // hands React a `true` where it expects a cleanup function - and React
+    // calls it on unmount, which took the whole client to a black screen the
+    // moment the phone was closed from this screen.
+    useEffect(() =>
+    {
+        SendRpGetBankAccounts();
+    }, []);
 
     // Refusals carry the SERVER's wording, because only the server can say
     // "only 4,200c fits before your savings is full" - the client does not
