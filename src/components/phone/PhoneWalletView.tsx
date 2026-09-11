@@ -20,9 +20,14 @@ import { PhoneIcon } from './PhoneIcon';
 // rows (birthday, job, gang) are simply absent when there is nothing to show.
 // Combat and Farming read the same placeholder the profile shows.
 //
-// A wallet is a STACK: the cards overlap and only the one you tap is open, so
-// three of them do not turn the screen into a list you scroll past. The card
-// you are currently playing opens by default.
+// A wallet is a STACK, the way a wallet is: every card shows its whole top -
+// band, photo, name, motto - and the card below covers its lower edge, which
+// is what makes a stack read as a stack. Tapping one opens the DETAIL beneath
+// that top (levels, employer, gang, the switch) and slides the cards under it
+// down. The card you are playing opens by default.
+//
+// Nothing is ever cut through: what collapses is a whole section with its own
+// height, not the card with a lid dropped on it.
 //
 // The + makes a character (up to three), and a card that is not the one you
 // are playing offers to become it - which is a reconnect, not a swap, so the
@@ -118,7 +123,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
 
         return (
             <div key={ person.userId }
-                className={ `phone-wallet-card${ isOpen ? ' is-open' : ' is-stacked' }${ (index > 0) ? ' is-behind' : '' }` }
+                className={ `phone-wallet-card${ isOpen ? ' is-open' : '' }` }
                 onClick={ event => setOpenId(isOpen ? 0 : person.userId) }>
                 <div className="phone-wallet-field" />
                 <div className="phone-wallet-holo" />
@@ -143,6 +148,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                         </div>
                         { isCurrent && <div className="phone-wallet-current">Playing</div> }
                     </div>
+                    <div className="phone-wallet-detail">
                     <div className="phone-wallet-levels">
                         <div className="phone-wallet-level">
                             <PhoneIcon icon="sword" size={ 14 } />
@@ -180,6 +186,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                 <span>Play as { person.username }</span>
                             </div>
                         </div> }
+                    </div>
                 </div>
             </div>
         );
