@@ -5258,6 +5258,9 @@ $phone-scale: 0.8;
     // lines do. The row grows to fit.
     .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); line-height: 1.35; color: #f4f0f7; text-wrap: pretty; b { font-weight: 700; } }
 
+    // The line under an employer: the rank, and its tier when there is one.
+    .phone-wallet-row-sub { color: rgba(244, 240, 247, .66); }
+
     @media (prefers-reduced-motion: reduce) { .phone-wallet-card { animation: none; } }
 
     // Appearance sub-screen option list (Light / Dark / Automatic; phone

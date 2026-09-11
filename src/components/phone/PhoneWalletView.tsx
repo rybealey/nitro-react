@@ -130,7 +130,13 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                 { employment &&
                                     <div className="phone-wallet-row">
                                         <div className="phone-wallet-row-icon is-badge"><LayoutBadgeImageView badgeCode={ employment.badge || DEFAULT_CORP_BADGE } /></div>
-                                        <div className="phone-wallet-row-text"><b>{ employment.corpName }</b> · { RpRankTitle(employment.rankName, employment.tier) }</div>
+                                        { /* Employer over rank, on two lines. A corporation name and a
+                                             rank title do not fit one 219px line, and the middot that used
+                                             to join them ended up stranded at the end of the first. */ }
+                                        <div className="phone-wallet-row-text">
+                                            <b>{ employment.corpName }</b>
+                                            <div className="phone-wallet-row-sub">{ RpRankTitle(employment.rankName, employment.tier) }</div>
+                                        </div>
                                     </div> }
                                 { gang &&
                                     <div className="phone-wallet-row">
