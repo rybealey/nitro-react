@@ -24,8 +24,16 @@ export const InventoryPetItemView: FC<PropsWithChildren<{ petItem: IPetItem }>> 
                 setMouseDown(false);
                 return;
             case MouseEventType.ROLL_OUT:
-                if(!isMouseDown || !(petItem === selectedPet)) return;
+                // The button has to still be DOWN for this to be a drag.
+                // isMouseDown is only cleared by a MOUSE_UP on this same tile,
+                // and a click that releases anywhere else - over the room,
+                // which is most of them - left it stuck true. Moving the cursor
+                // off the tile any time after that then armed a placement the
+                // player never asked for: the ghost started following them,
+                // and the next floor click moved it instead of walking.
+                if(!isMouseDown || !(event.buttons & 1) || !(petItem === selectedPet)) return;
 
+                setMouseDown(false);
                 attemptPetPlacement(petItem);
                 return;
             case 'dblclick':
