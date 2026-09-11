@@ -43,7 +43,7 @@ const KINDS: { [key: string]: { title: string; tone: 'in' | 'out' | 'flat'; mark
     withdraw: { title: 'Cash Withdrawal', tone: 'out', mark: 'arrow-up-from-line' },
     transfer_in: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
     transfer_out: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
-    open: { title: 'Account opened', tone: 'flat', mark: 'circle-plus' }
+    open: { title: 'Account Opened', tone: 'flat', mark: 'circle-plus' }
 };
 
 const FALLBACK = { title: 'Movement', tone: 'flat' as const, mark: 'circle-plus' };
