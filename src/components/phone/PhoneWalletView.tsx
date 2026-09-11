@@ -402,7 +402,9 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                     </div>
                                     { !!bankNote && <div className="phone-wallet-note">{ bankNote }</div> }
                                     <div className="phone-wallet-note is-quiet">
-                                        Wages are paid into your current account. Use a cash machine to take out cash.
+                                        Wages are paid into your current account. Use a cash machine to take out
+                                        cash. Savings earns interest only while you are up and about - it stops
+                                        when you do, the same as a shift.
                                     </div>
                                 </div>
                             </div>
