@@ -1,7 +1,7 @@
 import { FriendlyTime, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef } from 'react';
 import { CreateLinkEvent, GetConfiguration, LocalizeText } from '../../api';
-import { Column, Flex, LayoutCurrencyIcon, Text } from '../../common';
+import { Column, Flex, Text } from '../../common';
 import { usePurse } from '../../hooks';
 import { CurrencyView } from './views/CurrencyView';
 import { SeasonalView } from './views/SeasonalView';
@@ -13,6 +13,11 @@ export const PurseView: FC<{}> = props =>
 
     const displayedCurrencies = useMemo(() => GetConfiguration<number[]>('system.currency.types', []), []);
     const currencyDisplayNumberShort = useMemo(() => GetConfiguration<boolean>('currency.display.number.short', false), []);
+
+    // The subscription tile carries the hotel's own VIP badge, not the stock HC
+    // logo - the same c_images icon the catalog's VIP page uses, so the HUD and
+    // the shop agree on what the subscription is called.
+    const vipIconUrl = useMemo(() => GetConfiguration<string>('catalog.asset.icon.url', '').replace('%name%', '137'), []);
 
     // Publish the purse's actual (dynamic) width to .purse-title-row so the
     // quick-tools pinned to its left edge track it as currency values grow.
@@ -94,7 +99,7 @@ export const PurseView: FC<{}> = props =>
                 </Column>
                 { !hcDisabled &&
                     <Column center gap={ 1 } className="nitro-purse-subscription rounded px-2">
-                        <LayoutCurrencyIcon type="hc" />
+                        <img alt="" className="nitro-purse-vip" src={ vipIconUrl } />
                         <Text variant="white">{ getClubText }</Text>
                     </Column> }
                 <Column justifyContent="center" gap={ 0 }>
