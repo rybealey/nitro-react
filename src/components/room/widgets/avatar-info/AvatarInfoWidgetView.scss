@@ -400,11 +400,31 @@ $furni-function-on: #2e9e4f;
         border-bottom: 1px solid rgba($white, .07);
     }
 
+    // An input rather than a label, but it should read as the heading it
+    // replaced until someone puts a cursor in it - hence no ground and no
+    // border until focus.
     .rp-furni-function-name {
+        width: 100%;
+        padding: 1px 4px;
+        margin-left: -4px;
+        font-family: inherit;
         font-size: 13px;
         font-weight: 700;
         line-height: 1.2;
         color: $white;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        outline: none;
+
+        &:hover { background: rgba($white, .06); }
+
+        &:focus {
+            background: rgba(0, 0, 0, .28);
+            border-color: var(--prp-chrome-hover);
+        }
+
+        &::placeholder { color: rgba($white, .45); }
     }
 
     .rp-furni-function-class {

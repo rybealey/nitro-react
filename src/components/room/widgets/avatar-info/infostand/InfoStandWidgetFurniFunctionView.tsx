@@ -87,15 +87,15 @@ const PRESETS: [ string, string, { walkable: boolean; seat: boolean; stackable: 
 ];
 
 const LABELS: { [key: string]: string } = {
-    walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
+    publicName: 'Name', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
 
-type Draft = Pick<RpFurniFunction, 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
+type Draft = Pick<RpFurniFunction, 'publicName' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
 
 const toDraft = (data: RpFurniFunction): Draft => ({
-    walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
+    publicName: data.publicName, walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
     stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights,
     interactionType: data.interactionType, modes: data.modes, effectId: data.effectId,
     behaviourData: data.behaviourData, vendingIds: data.vendingIds
@@ -271,7 +271,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     const commit = useCallback(() =>
     {
-        SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.walkable,
+        SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.publicName, draft.walkable,
             draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.interactionType, draft.modes, draft.effectId, draft.behaviourData, draft.vendingIds));
 
@@ -400,7 +400,9 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                 <i className="rp-furni-function-close" onClick={ onClose } />
             </div>
             <div className="rp-furni-function-subject">
-                <div className="rp-furni-function-name">{ saved.publicName || saved.itemName }</div>
+                <input className="rp-furni-function-name" value={ draft.publicName } maxLength={ 56 }
+                    placeholder={ saved.itemName } aria-label="Furni name"
+                    onChange={ event => update({ publicName: event.target.value }) } />
                 <div className="rp-furni-function-class">{ saved.itemName } #{ saved.definitionId }</div>
             </div>
             <div className="rp-furni-function-scope">

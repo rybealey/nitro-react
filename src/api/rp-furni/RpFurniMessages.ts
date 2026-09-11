@@ -286,12 +286,14 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
 {
     private _data: (number | string | boolean)[];
 
-    constructor(definitionId: number, walkable: boolean, walkMask: string, seat: boolean,
-        stackable: boolean, stackHeight: number, adjustableHeights: string, interactionType: string,
-        modes: number, effectId: number, behaviourData: number, vendingIds: string)
+    constructor(definitionId: number, publicName: string, walkable: boolean, walkMask: string,
+        seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
+        interactionType: string, modes: number, effectId: number, behaviourData: number,
+        vendingIds: string)
     {
-        this._data = [ definitionId, walkable, walkMask, seat, stackable, Math.round(stackHeight * 100),
-            adjustableHeights, interactionType, modes, effectId, behaviourData, vendingIds ];
+        this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
+            Math.round(stackHeight * 100), adjustableHeights, interactionType, modes, effectId,
+            behaviourData, vendingIds ];
     }
 
     public getMessageArray() 
@@ -324,6 +326,11 @@ const PatchFurnitureData = (data: RpFurniFunction) =>
     if(!furniData) return;
 
     const writable = (furniData as any);
+
+    // The displayed name is client-side too - FurnitureData carries it, loaded
+    // from gamedata on disk - so a rename that stopped at the database would
+    // change nothing anybody could see.
+    if(data.publicName) writable._localizedName = data.publicName;
 
     writable._canStandOn = data.walkable;
     writable._canSitOn = data.seat;
