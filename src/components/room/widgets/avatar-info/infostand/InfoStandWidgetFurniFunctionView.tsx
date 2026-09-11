@@ -220,17 +220,89 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         onClose();
     }, [ saved, draft, onClose ]);
 
+    // The skeleton mirrors the real panel block for block, at the same heights,
+    // so the window opens at its final size and fills in - rather than opening
+    // small and jumping once the definition lands.
     if(!saved || !draft)
     {
         return createPortal(
-            <div className="rp-furni-function" style={ { left: pos.x, top: pos.y } }>
+            <div className="rp-furni-function is-loading" style={ { left: pos.x, top: pos.y } }>
                 <div className="rp-furni-function-header" onPointerDown={ onHeaderPointerDown }
                     onPointerMove={ onHeaderPointerMove } onPointerUp={ onHeaderPointerUp }>
-                    <span>Furni function</span>
+                    <span>Function Tool</span>
                     <i className="rp-furni-function-close" onClick={ onClose } />
                 </div>
+                <div className="rp-furni-function-subject">
+                    <div className="rp-skeleton" style={ { width: '45%', height: 15 } } />
+                    <div className="rp-skeleton" style={ { width: '62%', height: 11, marginTop: 4 } } />
+                </div>
+                <div className="rp-furni-function-scope">
+                    <div className="rp-skeleton" style={ { width: '100%', height: 11 } } />
+                    <div className="rp-skeleton" style={ { width: '74%', height: 11, marginTop: 4 } } />
+                </div>
                 <div className="rp-furni-function-body">
-                    <span className="rp-furni-function-hint">Loading...</span>
+                    <div className="rp-furni-function-section">
+                        <div className="rp-furni-function-legend">Presets</div>
+                        <div className="rp-furni-function-presets">
+                            { [ 44, 84, 40, 46, 36 ].map((width, index) =>
+                                <div key={ index } className="rp-skeleton is-pill" style={ { width, height: 26 } } />) }
+                        </div>
+                    </div>
+                    <div className="rp-furni-function-section">
+                        <div className="rp-furni-function-legend">Movement &amp; collision</div>
+                        { [ 0, 1, 2, 3 ].map(index =>
+                            <div key={ index } className="rp-furni-function-row">
+                                <div className="rp-skeleton is-switch" />
+                                <div className="rp-furni-function-row-text">
+                                    <div className="rp-skeleton" style={ { width: 72, height: 12 } } />
+                                    <div className="rp-skeleton" style={ { width: 148, height: 10, marginTop: 3 } } />
+                                </div>
+                            </div>) }
+                        <div className="rp-furni-function-pair">
+                            <label>
+                                <span>Stack height</span>
+                                <div className="rp-skeleton is-input" />
+                            </label>
+                            <label className="is-wide">
+                                <span>Adjustable heights</span>
+                                <div className="rp-skeleton is-input" />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="rp-furni-function-section">
+                        <div className="rp-furni-function-legend">Interaction</div>
+                        <label className="rp-furni-function-field">
+                            <span>Behaviour</span>
+                            <div className="rp-skeleton is-select" />
+                        </label>
+                        <div className="rp-furni-function-pair">
+                            <label>
+                                <span>Click states</span>
+                                <div className="rp-skeleton is-input" />
+                            </label>
+                            <label>
+                                <span>Walk effect</span>
+                                <div className="rp-skeleton is-input" />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="rp-furni-function-section">
+                        <div className="rp-furni-function-legend">Fixed by the artwork</div>
+                        <div className="rp-furni-function-fixed">
+                            { [ 'Class', 'Sprite', 'Size', 'Placement' ].map(label =>
+                                <div key={ label }>
+                                    <span>{ label }</span>
+                                    <div className="rp-skeleton" style={ { width: 54, height: 10 } } />
+                                </div>) }
+                        </div>
+                    </div>
+                </div>
+                <div className="rp-furni-function-footer">
+                    <span>Loading</span>
+                    <div className="rp-furni-function-actions">
+                        <div className="rp-skeleton is-pill" style={ { width: 58, height: 26 } } />
+                        <div className="rp-skeleton is-pill" style={ { width: 58, height: 26 } } />
+                    </div>
                 </div>
             </div>, document.body);
     }
@@ -249,7 +321,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         <div className="rp-furni-function" style={ { left: pos.x, top: pos.y } }>
             <div className="rp-furni-function-header" onPointerDown={ onHeaderPointerDown }
                 onPointerMove={ onHeaderPointerMove } onPointerUp={ onHeaderPointerUp }>
-                <span>Furni function</span>
+                <span>Function Tool</span>
                 <i className="rp-furni-function-close" onClick={ onClose } />
             </div>
             <div className="rp-furni-function-subject">
