@@ -116,6 +116,9 @@ export const PhoneView: FC<{}> = props =>
     const { clock24 } = useUnitsPrefs();
     const { saveScreenshot = null } = usePhonePhotos();
     const { markSeen = null } = usePhoneNotifications();
+    // Whether whatever is open has been scrolled: the status bar's scrim is
+    // for content passing under it, so it stays off until there is any.
+    const [ isScrolled, setIsScrolled ] = useState(false);
     const displayRef = useRef<HTMLDivElement>(null);
     const powerTimer = useRef<number>(0);
     const powerLongFired = useRef(false);
@@ -138,6 +141,34 @@ export const PhoneView: FC<{}> = props =>
 
         if((to !== 'thread') && setActiveThreadId) setActiveThreadId(-1);
     }
+
+    // Scroll does not bubble, so this listens in the CAPTURE phase and reads
+    // whichever scrollport fired. Horizontal ones are ignored - a sideways
+    // strip reporting scrollTop 0 would otherwise wipe the flag the vertical
+    // scroller just set.
+    useEffect(() =>
+    {
+        const element = displayRef.current;
+
+        if(!element) return;
+
+        const onScroll = (event: Event) =>
+        {
+            const target = event.target as HTMLElement;
+
+            if(!target || !target.scrollHeight || (target.scrollHeight <= target.clientHeight)) return;
+
+            setIsScrolled(target.scrollTop > 4);
+        };
+
+        element.addEventListener('scroll', onScroll, true);
+
+        return () => element.removeEventListener('scroll', onScroll, true);
+    }, []);
+
+    // Every screen opens at the top, and its scrollport does not fire a scroll
+    // event to say so.
+    useEffect(() => setIsScrolled(false), [ screen ]);
 
     // Place the phone at the player's chosen side the next time it mounts.
     // DraggableWindow centers the phone (windowPosition=CENTER) then applies
@@ -485,7 +516,7 @@ export const PhoneView: FC<{}> = props =>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
                     <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }${ access.bold ? ' is-a11y-bold' : '' }${ access.contrast ? ' is-a11y-contrast' : '' }${ access.opaque ? ' is-a11y-opaque' : '' }${ access.switchLabels ? ' is-a11y-labels' : '' }${ access.reduceMotion ? ' is-a11y-still' : '' }` } style={ { '--ph-text-scale': TEXT_SIZE_SCALES[access.textSize] } as CSSProperties }>
-                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` } title={ centerOpen ? 'Close notifications' : 'Notifications' } onClick={ event => setCenterOpen(value => !value) }>
+                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }${ isScrolled ? ' is-scrolled' : '' }` } title={ centerOpen ? 'Close notifications' : 'Notifications' } onClick={ event => setCenterOpen(value => !value) }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
                                 <span>PXL</span>

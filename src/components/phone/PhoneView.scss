@@ -137,7 +137,10 @@ $phone-scale: 0.8;
         padding: 0 22px;
         color: #ffffff;
 
+        // Both sit above the scrim, which is an absolutely-positioned pseudo
+        // and would otherwise paint over them.
         .phone-status-time {
+            position: relative;
             font-family: 'Ubuntu', sans-serif;
             font-weight: 500;
             font-size: calc(13px * var(--ph-text-scale, 1));
@@ -145,6 +148,7 @@ $phone-scale: 0.8;
         }
 
         .phone-status-right {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 7px;
@@ -157,12 +161,37 @@ $phone-scale: 0.8;
             }
         }
 
+        // The scrim exists for content passing UNDER the bar, so it is not
+        // there until something does: at the top of a screen the bar is just
+        // its text over the app's own ground, and the glass fades in once the
+        // scrollport behind it has moved. Carried on a pseudo-element rather
+        // than the bar itself so the BLUR fades with the tint - switching
+        // backdrop-filter on and off snaps, opacity does not.
+        //
+        // The text colour does not wait for the scroll: what makes a screen
+        // on-light is the app ground behind the bar, which is light at the top
+        // of the screen too.
         &.on-light {
             color: var(--ph-text);
-            background: var(--ph-glass);
-            backdrop-filter: var(--ph-glass-blur);
-            -webkit-backdrop-filter: var(--ph-glass-blur);
-            box-shadow: inset 0 1px 0 var(--ph-glass-hi);
+
+            &::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: var(--ph-glass);
+                backdrop-filter: var(--ph-glass-blur);
+                -webkit-backdrop-filter: var(--ph-glass-blur);
+                box-shadow: inset 0 1px 0 var(--ph-glass-hi);
+                opacity: 0;
+                transition: opacity .2s ease;
+                pointer-events: none;
+            }
+
+            &.is-scrolled::before { opacity: 1; }
+
+            @media (prefers-reduced-motion: reduce) {
+                &::before { transition: none; }
+            }
         }
     }
 
