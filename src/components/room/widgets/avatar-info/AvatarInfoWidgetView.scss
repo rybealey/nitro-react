@@ -423,9 +423,17 @@ $furni-function-on: #2e9e4f;
         border-bottom: 1px solid rgba($white, .07);
     }
 
+    // The body scrolled only once the window hit the viewport, so on a tall
+    // screen the panel simply grew - past 800px for a 2x2 with a tile grid,
+    // most of a 1080p screen. Capped to about half that; the min() lets it
+    // shrink further on a short viewport rather than pushing the footer off.
     .rp-furni-function-body {
         display: flex;
         flex-direction: column;
+        flex: 1 1 auto;
+        // a flex child will not shrink below its content without this
+        min-height: 0;
+        max-height: min(300px, calc(100vh - 210px));
         overflow-y: auto;
     }
 
@@ -761,6 +769,9 @@ $furni-function-on: #2e9e4f;
         .rp-furni-function-body {
             gap: 9px;
             padding: 10px;
+            // Its own panel, sized by its diff rather than by the tall one
+            // behind it - though a long diff still scrolls inside the overlay.
+            max-height: min(320px, calc(100vh - 160px));
         }
     }
 

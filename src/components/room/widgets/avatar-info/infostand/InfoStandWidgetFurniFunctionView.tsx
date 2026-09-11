@@ -23,10 +23,10 @@ interface InfoStandWidgetFurniFunctionViewProps
  */
 
 // Matches the width in AvatarInfoWidgetView.scss; the height is the opening
-// guess used only to centre it, since the panel's real height depends on
-// whether a companion field is showing.
+// guess used only to centre it - the body is capped and scrolls, so the panel
+// lands near this whatever the furni turns out to be.
 const DIALOG_WIDTH = 360;
-const DIALOG_HEIGHT = 560;
+const DIALOG_HEIGHT = 460;
 
 // Laying has no column of its own - the emulator reads it off the behaviour
 // (GameMap.cs), so the toggle drives that field and the row says so.
