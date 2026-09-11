@@ -1,4 +1,5 @@
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AvatarInfoFurni, SendMessageComposer } from '../../../../../api';
 import { AddFurniFunctionListener, RequestFurniFunction, RpFurniFunction, RpSetFurniFunctionComposer } from '../../../../../api/rp-furni/RpFurniMessages';
 
@@ -20,6 +21,12 @@ interface InfoStandWidgetFurniFunctionViewProps
  * furni's artwork, and changing them here would make the server block tiles the
  * sprite never covers.
  */
+
+// Matches the width in AvatarInfoWidgetView.scss; the height is the opening
+// guess used only to centre it, since the panel's real height depends on
+// whether a companion field is showing.
+const DIALOG_WIDTH = 360;
+const DIALOG_HEIGHT = 560;
 
 // Laying has no column of its own - the emulator reads it off the behaviour
 // (GameMap.cs), so the toggle drives that field and the row says so.
@@ -84,7 +91,7 @@ const show = (value: boolean | number | string): string =>
 {
     if(value === true) return 'yes';
     if(value === false) return 'no';
-    if((value === '') || (value === null)) return '—';
+    if((value === '') || (value === null)) return '-';
 
     return String(value);
 }
@@ -102,7 +109,14 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     const [ saved, setSaved ] = useState<RpFurniFunction>(null);
     const [ draft, setDraft ] = useState<Draft>(null);
     const [ confirming, setConfirming ] = useState(false);
-    const [ applied, setApplied ] = useState(false);
+    // Viewport px. Opened centred, then moved by the header - the same pointer
+    // drag the macros dialog uses, rather than HTML5 drag-and-drop, which
+    // cannot work for a panel that sits over a canvas.
+    const [ pos, setPos ] = useState<{ x: number; y: number }>(() => ({
+        x: Math.max(8, Math.round((window.innerWidth - DIALOG_WIDTH) / 2)),
+        y: Math.max(8, Math.round((window.innerHeight - DIALOG_HEIGHT) / 2))
+    }));
+    const dragRef = useRef<{ startX: number; startY: number; x: number; y: number }>(null);
 
     useEffect(() =>
     {
@@ -151,8 +165,40 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     const update = useCallback((patch: Partial<Draft>) =>
     {
-        setApplied(false);
         setDraft(prev => ({ ...prev, ...patch }));
+    }, []);
+
+    const onHeaderPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        if((event.target as HTMLElement).closest('.rp-furni-function-close')) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        dragRef.current = { startX: event.clientX, startY: event.clientY, x: pos.x, y: pos.y };
+
+        event.currentTarget.setPointerCapture(event.pointerId);
+    }, [ pos ]);
+
+    const onHeaderPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        const drag = dragRef.current;
+
+        if(!drag) return;
+
+        setPos({ x: (drag.x + (event.clientX - drag.startX)), y: (drag.y + (event.clientY - drag.startY)) });
+    }, []);
+
+    const onHeaderPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) =>
+    {
+        dragRef.current = null;
+
+        try 
+        {
+            event.currentTarget.releasePointerCapture(event.pointerId); 
+        }
+        catch(error) 
+        { }
     }, []);
 
     const applyPreset = useCallback((preset: typeof PRESETS[number][2]) =>
@@ -167,23 +213,26 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
             draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.interactionType, draft.modes, draft.effectId, draft.behaviourData, draft.vendingIds));
 
+        // Closing is the confirmation: the change is hotel-wide and the
+        // window has nothing left to say about it. Staying open would invite a
+        // second apply of the same edit.
         setConfirming(false);
-        setApplied(true);
-    }, [ saved, draft ]);
+        onClose();
+    }, [ saved, draft, onClose ]);
 
     if(!saved || !draft)
     {
-        return (
-            <div className="rp-furni-function">
-                <div className="rp-furni-function-header">
+        return createPortal(
+            <div className="rp-furni-function" style={ { left: pos.x, top: pos.y } }>
+                <div className="rp-furni-function-header" onPointerDown={ onHeaderPointerDown }
+                    onPointerMove={ onHeaderPointerMove } onPointerUp={ onHeaderPointerUp }>
                     <span>Furni function</span>
                     <i className="rp-furni-function-close" onClick={ onClose } />
                 </div>
                 <div className="rp-furni-function-body">
-                    <span className="rp-furni-function-hint">Loading…</span>
+                    <span className="rp-furni-function-hint">Loading...</span>
                 </div>
-            </div>
-        );
+            </div>, document.body);
     }
 
     const scope = `${ saved.placedCopies } placed ${ (saved.placedCopies === 1) ? 'copy' : 'copies' } across ${ saved.roomCount } ${ (saved.roomCount === 1) ? 'room' : 'rooms' }`;
@@ -192,22 +241,23 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     const toggles: [ string, string, boolean, () => void ][] = [
         [ 'Walkable', 'Avatars can walk over it', draft.walkable, () => update({ walkable: !draft.walkable }) ],
         [ 'Sittable', 'Avatars sit at stack height', draft.seat, () => update({ seat: !draft.seat }) ],
-        [ 'Layable', 'Sets Behaviour to Bed — laying has no field of its own', layable, () => update({ interactionType: layable ? 'default' : 'bed' }) ],
+        [ 'Layable', 'Sets Behaviour to Bed - laying has no field of its own', layable, () => update({ interactionType: layable ? 'default' : 'bed' }) ],
         [ 'Stackable', 'Other furni can go on top', draft.stackable, () => update({ stackable: !draft.stackable }) ]
     ];
 
-    return (
-        <div className="rp-furni-function">
-            <div className="rp-furni-function-header">
+    return createPortal(
+        <div className="rp-furni-function" style={ { left: pos.x, top: pos.y } }>
+            <div className="rp-furni-function-header" onPointerDown={ onHeaderPointerDown }
+                onPointerMove={ onHeaderPointerMove } onPointerUp={ onHeaderPointerUp }>
                 <span>Furni function</span>
                 <i className="rp-furni-function-close" onClick={ onClose } />
             </div>
             <div className="rp-furni-function-subject">
                 <div className="rp-furni-function-name">{ saved.publicName || saved.itemName }</div>
-                <div className="rp-furni-function-class">{ saved.itemName } · #{ saved.definitionId }</div>
+                <div className="rp-furni-function-class">{ saved.itemName } #{ saved.definitionId }</div>
             </div>
             <div className="rp-furni-function-scope">
-                Changes every copy of this furni hotel-wide — <b>{ scope }</b> — and everything bought from now on.
+                Changes every copy of this furni hotel-wide (<b>{ scope }</b>) and everything bought from now on.
             </div>
             <div className="rp-furni-function-body">
                 <div className="rp-furni-function-section">
@@ -280,7 +330,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     <div className="rp-furni-function-fixed">
                         <div><span>Class</span><b>{ saved.itemName }</b></div>
                         <div><span>Sprite</span><b>{ saved.spriteId }</b></div>
-                        <div><span>Size</span><b>{ saved.width } × { saved.length }</b></div>
+                        <div><span>Size</span><b>{ saved.width } x { saved.length }</b></div>
                         <div><span>Placement</span><b>{ (saved.productType === 'i') ? 'Wall' : 'Floor' }</b></div>
                     </div>
                     <div className="rp-furni-function-note">Size and placement come from the furni&apos;s artwork, not the database. Changing them here would make the server block tiles the sprite never covers.</div>
@@ -288,13 +338,10 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
             </div>
             <div className="rp-furni-function-footer">
                 <span className={ changes.length ? 'is-dirty' : '' }>
-                    { applied ? 'Saved' : (changes.length ? `${ changes.length } change${ (changes.length === 1) ? '' : 's' }` : 'No changes') }
+                    { changes.length ? `${ changes.length } change${ (changes.length === 1) ? '' : 's' }` : 'No changes' }
                 </span>
                 <div className="rp-furni-function-actions">
-                    <div className="rp-furni-function-btn" onClick={ () => 
-                    {
-                        setDraft(toDraft(saved)); setApplied(false); 
-                    } }>Reset</div>
+                    <div className="rp-furni-function-btn" onClick={ () => setDraft(toDraft(saved)) }>Reset</div>
                     <div className={ 'rp-furni-function-btn' + (canApply ? ' rp-furni-function-btn--accent' : ' is-disabled') }
                         onClick={ () => canApply && setConfirming(true) }>Apply</div>
                 </div>
@@ -310,7 +357,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                     <div key={ change.key }>
                                         <span>{ change.label }</span>
                                         <i>{ change.from }</i>
-                                        <em>→</em>
+                                        <em>-&gt;</em>
                                         <b>{ change.to }</b>
                                     </div>) }
                             </div>
@@ -321,6 +368,5 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                         </div>
                     </div>
                 </div> }
-        </div>
-    );
+        </div>, document.body);
 }

@@ -333,10 +333,10 @@ $furni-function-on: #2e9e4f;
 // same chrome-solid surface, same 12px pills, same 34x18 switch - so the two
 // staff dialogs read as one set.
 .rp-furni-function {
+    // Positioned in viewport px by the view, which portals it to <body> so it
+    // can be dragged anywhere on screen rather than being clipped by the
+    // infostand it opened from.
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     width: 360px;
     max-width: calc(100vw - 16px);
     max-height: calc(100vh - 32px);
@@ -351,6 +351,8 @@ $furni-function-on: #2e9e4f;
     box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
 
     .rp-furni-function-header {
+        cursor: grab;
+        touch-action: none;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -361,6 +363,8 @@ $furni-function-on: #2e9e4f;
         user-select: none;
         color: $white;
         background: var(--prp-chrome-hover);
+
+        &:active { cursor: grabbing; }
     }
 
     // Drawn rather than an icon font, matching the macros dialog's close.
