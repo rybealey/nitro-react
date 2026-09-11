@@ -533,223 +533,80 @@
 }
 
 // ---- PixelRP: the ATM ------------------------------------------------------
-// Fixed dark on both themes, like the Wallet's cards: a machine in a room is
-// the same object whatever the client's appearance setting says. Two screens
-// in one window - balances and two decisions, then amount entry - because an
-// ATM that scrolls is not an ATM.
+// A hotel window, not a machine. It used to paint its own dark screen because
+// "a machine in a room is the same object whatever the client's appearance
+// setting says" - but the hotel's windows are light, and that made the one
+// piece of banking you meet on the floor the only thing that did not look like
+// the client it sits in.
+//
+// Almost everything it needs now comes from the card and the button kit. What
+// is left here is the inset balances panel and the quick-add chips, both in
+// the client's own vocabulary: a tinted fill inside a white hairline, which is
+// how .layout-grid-item and .nitro-progress-bar already draw an inset.
 .nitro-widget-atm {
-    width: 292px;
+    width: 300px;
 
-    .atm-screen {
+    .atm-balances {
+        background: #cdd3d9;
+        border: 1px solid #ffffff;
+        border-radius: $border-radius-sm;
+        padding: 8px 10px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 12px;
-        min-height: 318px;
-        border-radius: 8px;
-        background: #14171f;
-        color: #e8ecf4;
-        font-family: inherit;
+        gap: 5px;
     }
 
-    .atm-row {
+    .atm-balance {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
     }
 
-    .atm-rows {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .atm-row-label {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 1.4px;
-        color: rgba(232, 236, 244, .5);
-    }
-
-    .atm-row-value {
+    .atm-figure {
         display: flex;
         align-items: center;
         gap: 5px;
-        font-size: 15px;
         font-weight: 700;
+        font-variant-numeric: tabular-nums;
         white-space: nowrap;
 
-        .nitro-currency-icon {
-            width: 15px;
-            height: 15px;
-            background-repeat: no-repeat;
-            background-size: contain;
-            background-position: center;
-        }
+        .nitro-currency-icon { width: 15px; height: 15px; flex: none; }
     }
 
-    .atm-row.is-amount .atm-row-value { font-size: 22px; }
-
-    .atm-row.is-footer {
-        margin-top: 2px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(255, 255, 255, .08);
-    }
-
-    // Holds the two decisions at the bottom of the home screen. The gap is the
-    // point: an ATM is a small number of large choices.
-    .atm-spacer { flex: 1 1 auto; min-height: 8px; }
-
-    .atm-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .atm-key {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 40px;
-        border-radius: 8px;
-        background: #232935;
-        border: 1px solid rgba(255, 255, 255, .07);
-        font-size: 15px;
+    // Tabular so the digits do not shuffle under the cursor as they are typed.
+    .atm-amount {
         font-weight: 700;
-        cursor: pointer;
-        user-select: none;
-        pointer-events: all;
-        transition: background .12s ease, transform .08s ease;
-
-        &:hover { background: #2c3442; }
-        &:active { transform: scale(.97); }
-
-        &.is-off { opacity: .35; cursor: default; }
-        &.is-off:hover { background: #232935; }
-        &.is-off:active { transform: none; }
-
-        &.is-wide { flex: 1 1 0; letter-spacing: 1.2px; }
-
-        &.is-eject {
-            height: 36px;
-            background: transparent;
-            border-color: rgba(255, 255, 255, .14);
-            font-size: 12px;
-            letter-spacing: 1.4px;
-            color: rgba(232, 236, 244, .7);
-        }
-
-        // MAX, C and OK are the keys that end a thought, so they are the ones
-        // that carry colour. Everything else is a digit.
-        &.is-accent {
-            background: #3a2a1c;
-            border-color: rgba(232, 115, 50, .5);
-            color: #f0954a;
-
-            &:hover { background: #48331f; }
-        }
-
-        &.is-commit {
-            background: #1f5f47;
-            border-color: rgba(70, 163, 127, .55);
-            color: #bff0da;
-
-            &:hover { background: #267356; }
-        }
-    }
-
-    .atm-entry-head {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 1.6px;
-        color: rgba(232, 236, 244, .8);
-    }
-
-    .atm-back {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        border-radius: 7px;
-        background: #232935;
-        font-size: 11px;
-        cursor: pointer;
-        pointer-events: all;
-
-        &:hover { background: #2c3442; }
+        font-variant-numeric: tabular-nums;
     }
 
     .atm-chips {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 5px;
     }
 
     .atm-chip {
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 28px;
-        border-radius: 7px;
-        background: #232935;
-        border: 1px solid rgba(255, 255, 255, .07);
-        font-size: 12px;
+        min-height: 24px;
+        border-radius: $border-radius-sm;
+        border: 1px solid #ffffff;
+        background: #cdd3d9;
+        font-size: 11.5px;
         font-weight: 700;
         cursor: pointer;
         user-select: none;
         pointer-events: all;
 
-        &:hover { background: #2c3442; }
+        &:hover { background: #ececec; }
 
-        // Dim, not gone. A chip that disappears when it stops fitting makes the
-        // row jump and reads as a bug; a dim +500 says why it cannot be used.
-        &.is-off { opacity: .32; cursor: default; }
-        &.is-off:hover { background: #232935; }
-
-        &.is-accent {
-            background: #3a2a1c;
-            border-color: rgba(232, 115, 50, .5);
-            color: #f0954a;
-
-            &:hover { background: #48331f; }
-        }
+        // Dim, not gone. A chip that vanishes when it stops fitting makes the
+        // row reflow under the cursor and reads as a bug.
+        &.is-off { opacity: .4; cursor: default; }
+        &.is-off:hover { background: #cdd3d9; }
     }
 
-    // 1-9 in a 3x3 block, the column on the right for the keys that finish
-    // something, and the bottom row for 0 and the way out. OK is tall because
-    // it is the one key you are reaching for.
-    .atm-pad {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        grid-template-rows: repeat(4, 38px);
-        gap: 6px;
-
-        .atm-key { height: auto; }
-
-        .atm-key:nth-child(1) { grid-column: 1; grid-row: 1; }
-        .atm-key:nth-child(2) { grid-column: 2; grid-row: 1; }
-        .atm-key:nth-child(3) { grid-column: 3; grid-row: 1; }
-        .atm-key:nth-child(4) { grid-column: 1; grid-row: 2; }
-        .atm-key:nth-child(5) { grid-column: 2; grid-row: 2; }
-        .atm-key:nth-child(6) { grid-column: 3; grid-row: 2; }
-        .atm-key:nth-child(7) { grid-column: 1; grid-row: 3; }
-        .atm-key:nth-child(8) { grid-column: 2; grid-row: 3; }
-        .atm-key:nth-child(9) { grid-column: 3; grid-row: 3; }
-
-        .atm-key.is-clear { grid-column: 4; grid-row: 1; }
-        .atm-key.is-backspace { grid-column: 4; grid-row: 2; font-size: 13px; }
-        .atm-key.is-commit { grid-column: 4; grid-row: 3 / span 2; }
-        .atm-key.is-zero { grid-column: 1 / span 2; grid-row: 4; }
-        .atm-key.is-back { grid-column: 3; grid-row: 4; font-size: 11px; letter-spacing: 1.2px; }
-    }
-
-    .atm-note {
-        font-size: 11px;
-        line-height: 1.4;
-        color: #ffd9a8;
-    }
+    .atm-helper { color: $cello-light; }
 }
