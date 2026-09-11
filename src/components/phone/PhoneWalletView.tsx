@@ -5,7 +5,7 @@ import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } fro
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
-import { GetRpBankAccounts, RpBankAccounts, SendRpBankTransfer, SendRpOpenBankAccount, SubscribeRpBankAccounts, SubscribeRpBankResult, TRANSFER_TO_CURRENT, TRANSFER_TO_SAVINGS } from '../../api/rp-phone/RpBankMessages';
+import { GetRpBankAccounts, RpBankAccounts, SendRpBankTransfer, SendRpGetBankAccounts, SendRpOpenBankAccount, SubscribeRpBankAccounts, SubscribeRpBankResult, TRANSFER_TO_CURRENT, TRANSFER_TO_SAVINGS } from '../../api/rp-phone/RpBankMessages';
 import { GetRpCharacters, GetRpCurrentCharacterId, GetRpMaxCharacters, RpCharacter, SendRpSwitchCharacter, SubscribeRpCharacters } from '../../api/rp-phone/RpCharacterMessages';
 import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
 import { ResolveRpStaff } from '../../api/user/RpStaffFlag';
@@ -115,6 +115,11 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         setAmount('');
         setBankNote('');
     }), []);
+
+    // Login already pushed these, so this is a cheap re-ask against the
+    // server's own cache - it costs no query and covers a session that has
+    // been open long enough for a payday to have been missed.
+    useEffect(() => SendRpGetBankAccounts(), []);
 
     // Refusals carry the SERVER's wording, because only the server can say
     // "only 4,200c fits before your savings is full" - the client does not
