@@ -37,7 +37,7 @@ const FILTERS: [ Filter, string ][] = [
 // a TRANSFER is the same money in the same hands, so it is neither - a green +
 // on it would be the app telling you that you got richer by moving it.
 const KINDS: { [key: string]: { title: string; tone: 'in' | 'out' | 'flat'; mark: string }} = {
-    wages: { title: 'Shift pay', tone: 'in', mark: 'briefcase' },
+    wages: { title: 'Direct Deposit', tone: 'in', mark: 'briefcase' },
     interest: { title: 'Interest', tone: 'in', mark: 'percent' },
     deposit: { title: 'Cash Deposit', tone: 'in', mark: 'arrow-down-to-line' },
     withdraw: { title: 'Cash Withdrawal', tone: 'out', mark: 'arrow-up-from-line' },
