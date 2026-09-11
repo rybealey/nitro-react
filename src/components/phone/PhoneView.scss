@@ -484,6 +484,43 @@ $phone-scale: 0.8;
         }
     }
 
+    // The app icon, at any size. The home tile below is the reference: every
+    // ratio here is that 54px tile's, in em, so one font-size scales the plate,
+    // its outline, its bevel and its glyph together.
+    //
+    // This exists so a surface that shows an app - the Store, the notification
+    // centre, Settings - shows the SAME icon rather than a flatter version of
+    // it. The notification centre used to round its corners harder, drop the
+    // outline and pin the glyph at 17px whatever size the plate was.
+    .phone-app-plate {
+        position: relative;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .259em;
+        border: max(1px, .037em) solid rgba(26, 10, 20, .55);
+        box-shadow:
+            inset 0 max(1px, .037em) 0 rgba(255, 255, 255, .5),
+            inset 0 max(-1px, -.037em) 0 rgba(0, 0, 0, .28),
+            0 .055em .148em rgba(0, 0, 0, .35);
+        color: #ffffff;
+        box-sizing: border-box;
+
+        .phone-app-fa {
+            font-size: calc(.556em * var(--ph-text-scale, 1));
+            line-height: 1;
+            color: #ffffff;
+            --fa-primary-color: #ffffff;
+            --fa-secondary-color: #ffffff;
+            --fa-primary-opacity: 1;
+            --fa-secondary-opacity: .45;
+            filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .35));
+        }
+
+        svg.phone-app-fa { width: .556em; height: .556em; }
+    }
+
     .phone-app-tile {
         position: relative;
         width: 54px;
@@ -4704,30 +4741,9 @@ $phone-scale: 0.8;
 
     // Rows and cards are the phone's grouped-list vocabulary; the only new
     // pieces are the app plate at store sizes and the GET pill.
-    .phone-store-plate {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        color: #ffffff;
-        border: 1px solid rgba(26, 10, 20, .14);
-        box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .45), inset 0 -1.5px 0 rgba(0, 0, 0, .22), 0 1px 3px rgba(0, 0, 0, .14);
-
-        // The tile's glyph rule is scoped to .phone-app-tile, so the plate
-        // sets its own size and the glyph just fills it.
-        .phone-app-fa {
-            font-size: 1em;
-            line-height: 1;
-            color: #ffffff;
-            --fa-primary-color: #ffffff;
-            --fa-secondary-color: #ffffff;
-            --fa-primary-opacity: 1;
-            --fa-secondary-opacity: 0.45;
-            filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
-        }
-
-        svg.phone-app-fa { width: 1em; height: 1em; }
-    }
+    // Everything an app plate looks like now lives on .phone-app-plate, which
+    // this rides alongside. The class is kept only as the hook the greyed-out
+    // corporation-locked rule below needs.
 
     // The pill that gets an app. Reads as a price when one is set, so it is
     // sized from its text rather than fixed.
@@ -6516,23 +6532,6 @@ $phone-scale: 0.8;
 
     // The app's icon plate at notification size: the home screen's gradient
     // without the hardware bevel, which would read as an app you could press.
-    .phone-notify-plate {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-
-        .phone-app-fa {
-            font-size: calc(17px * var(--ph-text-scale, 1));
-        }
-
-        svg.phone-app-fa {
-            width: 17px;
-            height: 17px;
-        }
-    }
-
     // A person's head with the app on its corner, the way a phone shows a text.
     .phone-notify-lead {
         position: relative;
@@ -6546,6 +6545,17 @@ $phone-scale: 0.8;
             border: 1.5px solid var(--ph-bg);
             overflow: hidden;
             line-height: 0;
+
+            // The chip is the app MARKING a personal notification, and it is
+            // already framed by the ring that lifts it off the avatar. The
+            // plate's own outline and bevel inside 15px would just be mud, so
+            // the chip's rounding governs and the gradient and glyph carry the
+            // identity on their own.
+            .phone-app-plate {
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+            }
 
             .phone-app-fa {
                 font-size: calc(10px * var(--ph-text-scale, 1));

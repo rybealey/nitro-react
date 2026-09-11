@@ -109,6 +109,35 @@ export const AppGlyph: FC<{ icon: string, pri?: string, sec?: string, faStyle?: 
     return <i className={ `phone-app-fa fa-duotone fa-${ faStyle ?? 'regular' } fa-${ icon }` } style={ style } aria-hidden="true" />;
 }
 
+// An app whose key is not in APP_DEFS - a notification for something with no
+// tile of its own. Better a neutral plate than a hole where an icon goes.
+const UNKNOWN_APP: PhoneAppDef = { icon: 'bell', plate: 'linear-gradient(160deg, #9aa0ab, #6d727c 55%, #474b53)' };
+
+/**
+ * An app's icon, wherever it appears.
+ *
+ * The HOME SCREEN TILE is the design - the plate gradient, the dark outline,
+ * the highlight along the top and the shade under it. Every other surface
+ * (the App Store, the notification centre, Settings) renders that same object
+ * at a different size rather than its own flatter approximation of it, which
+ * is how the notification centre ended up with rounder corners, no outline and
+ * a glyph that did not scale.
+ *
+ * Every ratio below comes from the 54px tile and is expressed in em, so the
+ * one `size` sizes the whole icon.
+ */
+export const AppPlate: FC<{ appKey: string, size: number, className?: string }> = ({ appKey, size, className }) =>
+{
+    const def = (APP_DEFS[appKey] ?? UNKNOWN_APP);
+
+    return (
+        <div className={ `phone-app-plate${ className ? (' ' + className) : '' }` }
+            style={ { fontSize: size, width: size, height: size, background: def.plate } }>
+            <AppGlyph icon={ def.icon } pri={ def.pri } sec={ def.sec } faStyle={ def.faStyle } />
+        </div>
+    );
+}
+
 interface DragApp
 {
     key: string;

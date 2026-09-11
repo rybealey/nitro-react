@@ -1,7 +1,7 @@
 import { FC, MouseEvent, useMemo } from 'react';
 import { useFriends } from '../../hooks';
 import { NotifyApp } from '../../api/rp-phone/RpNotificationMessages';
-import { AppGlyph, APP_DEFS } from './PhoneHomeView';
+import { AppPlate } from './PhoneHomeView';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { NOTIFY_APP_TILES, NotificationText, NotifyContext, PhoneNotification, usePhoneNotifications } from './usePhoneNotifications';
@@ -17,17 +17,10 @@ import { NOTIFY_APP_TILES, NotificationText, NotifyContext, PhoneNotification, u
 // phone shows a text; the rest lead with the app.
 const PERSONAL_KINDS: string[] = [ 'message', 'friend_request', 'friend_on', 'friend_off', 'album_invite', 'album_photo', 'note_shared', 'note_updated' ];
 
-/// The app's icon plate, at whatever size the surface needs.
+/// The app's icon plate, at whatever size the surface needs. The icon itself is
+/// the home screen's, rendered smaller - not a second, flatter drawing of it.
 export const NotifyAppPlate: FC<{ app: NotifyApp, size: number }> = ({ app, size }) =>
-{
-    const def = (APP_DEFS[NOTIFY_APP_TILES[app]] ?? { icon: 'bell' });
-
-    return (
-        <div className="phone-notify-plate" style={ { width: size, height: size, borderRadius: Math.round(size * 0.32), background: def.plate } }>
-            <AppGlyph icon={ def.icon } pri={ def.pri } sec={ def.sec } faStyle={ def.faStyle } />
-        </div>
-    );
-}
+    <AppPlate appKey={ NOTIFY_APP_TILES[app] } size={ size } className="phone-notify-plate" />;
 
 /// The leading art: the actor's head with the app on its corner, or just the
 /// app when nobody is behind it.
@@ -91,7 +84,7 @@ export const PhoneNotifyCard: FC<NotifyCardProps> = props =>
     }
 
     return (
-        <div className={ `phone-notify-card${ row ? ' is-row' : ''}${ (row && !notification.seen) ? ' is-unseen' : '' }` } onClick={ event => (onOpen && onOpen(notification)) }>
+        <div className={ `phone-notify-card${ row ? ' is-row' : '' }${ (row && !notification.seen) ? ' is-unseen' : '' }` } onClick={ event => (onOpen && onOpen(notification)) }>
             { !row &&
                 <div className="phone-notify-glass" /> }
             <div className="phone-notify-body">

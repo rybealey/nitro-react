@@ -3,7 +3,7 @@ import { GetSessionDataManager } from '../../api';
 import { LayoutCurrencyIcon } from '../../common';
 import { AppPrice, EmployedBy, FindStoreApp, PriceAmount, PriceCurrency, STORE_APPS, StoreApp } from './PhoneAppStore';
 import { PhoneAvatar } from './PhoneAvatar';
-import { AppGlyph, APP_DEFS } from './PhoneHomeView';
+import { AppGlyph, APP_DEFS, AppPlate } from './PhoneHomeView';
 import { PhoneIcon } from './PhoneIcon';
 import { SwipeRow } from './PhoneNotesView';
 import { usePhonePrefs } from './usePhone';
@@ -30,19 +30,9 @@ interface PhoneAppStoreViewProps
 
 type StoreScreen = 'discover' | 'library';
 
-// An app's plate at any size, the same gradient the home screen tile uses.
+// An app's plate at any size - the home screen's own icon, rendered smaller.
 const StorePlate: FC<{ appKey: string, size: number }> = ({ appKey, size }) =>
-{
-    const def = APP_DEFS[appKey];
-
-    if(!def) return null;
-
-    return (
-        <div className="phone-store-plate" style={ { width: size, height: size, borderRadius: Math.round(size * 0.26), background: def.plate, fontSize: Math.round(size * 0.56) } }>
-            <AppGlyph icon={ def.icon } pri={ def.pri } sec={ def.sec } faStyle={ def.faStyle } />
-        </div>
-    );
-}
+    <AppPlate appKey={ appKey } size={ size } className="phone-store-plate" />;
 
 // A price: the amount beside the coin or diamond the player already knows from
 // the toolbar. A free app just says GET.
@@ -266,7 +256,8 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                     <div className="phone-store-feat phone-tap" onClick={ event => setOpenKey(featured.key) }>
                         <div className="phone-store-feat-band" style={ { background: APP_DEFS[featured.key]?.plate } }>
                             <div className="phone-store-feat-ghost" style={ { fontSize: 150 } }>
-                                <AppGlyph icon={ APP_DEFS[featured.key]?.icon } />
+                                <AppGlyph icon={ APP_DEFS[featured.key]?.icon } pri={ APP_DEFS[featured.key]?.pri }
+                                    sec={ APP_DEFS[featured.key]?.sec } faStyle={ APP_DEFS[featured.key]?.faStyle } />
                             </div>
                             <div className="phone-store-feat-tag">Featured</div>
                             <div className="phone-store-feat-line">{ featured.tagline }</div>
