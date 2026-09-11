@@ -5,10 +5,11 @@ import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } fro
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
+import { GetRpBankAccounts, RpBankAccounts, SendRpBankTransfer, SendRpOpenBankAccount, SubscribeRpBankAccounts, SubscribeRpBankResult, TRANSFER_TO_CURRENT, TRANSFER_TO_SAVINGS } from '../../api/rp-phone/RpBankMessages';
 import { GetRpCharacters, GetRpCurrentCharacterId, GetRpMaxCharacters, RpCharacter, SendRpSwitchCharacter, SubscribeRpCharacters } from '../../api/rp-phone/RpCharacterMessages';
 import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
 import { ResolveRpStaff } from '../../api/user/RpStaffFlag';
-import { LayoutBadgeImageView } from '../../common';
+import { LayoutBadgeImageView, LayoutCurrencyIcon } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { GangCrest } from '../rp-gangs/RpGangsView';
 import { PhoneFace } from './PhoneAvatar';
@@ -32,6 +33,17 @@ import { PhoneIcon } from './PhoneIcon';
 // The + makes a character (up to three), and a card that is not the one you
 // are playing offers to become it - which is a reconnect, not a swap, so the
 // client reloads into the new character.
+//
+// The + is a MENU rather than one action, because there are now two things a
+// wallet can gain: a character, and a bank account. Both rows stay visible
+// when they are unavailable and go dim instead - same call as the + itself
+// going quiet at three characters rather than disappearing, since a control
+// that vanishes reads as a bug rather than as an answer.
+//
+// The debit card sits below the ID stack and there is only ever ONE, for the
+// character being played: accounts are per character and the server tells a
+// session about its own and nothing else, so a card per sibling would be a
+// card the client cannot fill in.
 
 interface PhoneWalletViewProps
 {
@@ -43,12 +55,43 @@ interface PhoneWalletViewProps
 const COMBAT_LEVEL: number = 1;
 const FARMING_LEVEL: number = 1;
 
+const FormatCredits = (value: number): string => Math.max(0, value || 0).toLocaleString('en-US');
+
+// d0b702e7 deliberately took the printed number OFF the Resident ID - an ID
+// does not need one and it was noise. A debit card is the opposite: a card
+// with no number does not read as a debit card at all.
+//
+// Derived from the character id rather than stored, so it is stable for a
+// character and costs no column. It is decoration - nothing is ever keyed on
+// it - which is why it can be invented here.
+const CardNumber = (userId: number): string =>
+{
+    const seed = ((userId * 2654435761) >>> 0).toString().padStart(10, '0').slice(-10);
+    const digits = (seed + String(userId).padStart(2, '0')).slice(0, 12);
+
+    return `4923 ${ digits.slice(0, 4) } ${ digits.slice(4, 8) } ${ digits.slice(8, 12) }`;
+}
+
+const NextInterest = (seconds: number): string =>
+{
+    if(seconds <= 0) return 'due now';
+
+    const minutes = Math.ceil(seconds / 60);
+
+    return (minutes >= 60) ? `in ${ Math.floor(minutes / 60) }h ${ minutes % 60 }m` : `in ${ minutes }m`;
+}
+
 export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
 {
     const { onBack = null, openCreate = null } = props;
     const [ , setVersion ] = useState(0);
     const [ characters, setCharacters ] = useState<RpCharacter[]>(() => GetRpCharacters());
     const [ openId, setOpenId ] = useState(() => GetRpCurrentCharacterId());
+    const [ bank, setBank ] = useState<RpBankAccounts>(() => GetRpBankAccounts());
+    const [ menuOpen, setMenuOpen ] = useState(false);
+    const [ bankOpen, setBankOpen ] = useState(false);
+    const [ amount, setAmount ] = useState('');
+    const [ bankNote, setBankNote ] = useState('');
 
     const ownId = GetSessionDataManager().userId;
     const ownName = (GetSessionDataManager().userName || 'You');
@@ -63,6 +106,20 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         setCharacters(GetRpCharacters());
         setOpenId(GetRpCurrentCharacterId());
     }), []);
+
+    // The accounts land at login and again after every movement - a payday, an
+    // interest payment, a transfer - so the card never has to poll.
+    useEffect(() => SubscribeRpBankAccounts(() =>
+    {
+        setBank(GetRpBankAccounts());
+        setAmount('');
+        setBankNote('');
+    }), []);
+
+    // Refusals carry the SERVER's wording, because only the server can say
+    // "only 4,200c fits before your savings is full" - the client does not
+    // know the ceiling maths and should not learn it.
+    useEffect(() => SubscribeRpBankResult((outcome, message) => setBankNote(message)), []);
 
     // Each card's job, gang and birthday come from the composers that already
     // exist, asked per character. Privacy does not get in the way of your own
@@ -113,6 +170,23 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         : [ { userId: ownId, username: ownName, figure: ownFigure, motto, gender: 'M' } ];
     const full = (cards.length >= GetRpMaxCharacters());
 
+    const openBankAccount = () =>
+    {
+        if(bank.hasAccount) return;
+
+        setMenuOpen(false);
+        SendRpOpenBankAccount();
+    };
+
+    const newCharacter = () =>
+    {
+        if(full) return;
+
+        setMenuOpen(false);
+
+        if(openCreate) openCreate();
+    };
+
     const card = (person: RpCharacter, index: number) =>
     {
         const isOpen = (person.userId === openId);
@@ -135,7 +209,10 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                     { !isCurrent &&
                         <div className="phone-wallet-switch phone-tap"
                             title={ `Play as ${ person.username }` }
-                            onClick={ event => { event.stopPropagation(); SendRpSwitchCharacter(person.userId); } }>
+                            onClick={ event => 
+                            {
+                                event.stopPropagation(); SendRpSwitchCharacter(person.userId); 
+                            } }>
                             <PhoneIcon icon="arrow-right-arrow-left" size={ 12 } />
                             <span>Play as { person.username }</span>
                         </div> }
@@ -158,17 +235,17 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                         { isCurrent && <div className="phone-wallet-current">Playing</div> }
                     </div>
                     <div className="phone-wallet-detail">
-                    <div className="phone-wallet-levels">
-                        <div className="phone-wallet-level">
-                            <PhoneIcon icon="sword" size={ 14 } />
-                            <div><span className="phone-wallet-level-label">Combat</span><span className="phone-wallet-level-value">Level { COMBAT_LEVEL }</span></div>
+                        <div className="phone-wallet-levels">
+                            <div className="phone-wallet-level">
+                                <PhoneIcon icon="sword" size={ 14 } />
+                                <div><span className="phone-wallet-level-label">Combat</span><span className="phone-wallet-level-value">Level { COMBAT_LEVEL }</span></div>
+                            </div>
+                            <div className="phone-wallet-level">
+                                <PhoneIcon icon="wheat-awn" size={ 14 } />
+                                <div><span className="phone-wallet-level-label">Farming</span><span className="phone-wallet-level-value">Level { FARMING_LEVEL }</span></div>
+                            </div>
                         </div>
-                        <div className="phone-wallet-level">
-                            <PhoneIcon icon="wheat-awn" size={ 14 } />
-                            <div><span className="phone-wallet-level-label">Farming</span><span className="phone-wallet-level-value">Level { FARMING_LEVEL }</span></div>
-                        </div>
-                    </div>
-                    { (employment || gang) &&
+                        { (employment || gang) &&
                         <div className="phone-wallet-rows">
                             { employment &&
                                 <div className="phone-wallet-row">
@@ -206,12 +283,12 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                             <div className="phone-app-title">Wallet</div>
                         </div>
                     </div>
-                    { /* Goes quiet at three rather than disappearing: a character
-                         cannot be deleted to free a slot, so a vanished button
-                         would read as a bug. */ }
-                    <div className={ `phone-notes-iconbtn phone-wallet-add${ full ? ' is-off' : ' phone-tap' }` }
-                        title={ full ? 'You have all three characters' : 'New character' }
-                        onClick={ event => (!full && openCreate && openCreate()) }>
+                    { /* Two things a wallet can gain now, so the + opens a menu.
+                         It never goes quiet itself - a row inside says which of
+                         the two is unavailable, and why. */ }
+                    <div className={ `phone-tap phone-notes-iconbtn phone-wallet-add${ menuOpen ? ' is-open' : '' }` }
+                        title="Add to wallet"
+                        onClick={ event => setMenuOpen(!menuOpen) }>
                         <PhoneIcon icon="plus" size={ 15 } />
                     </div>
                 </div>
@@ -219,8 +296,84 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                 <div className="phone-wallet-stack">
                     { cards.map((person, index) => card(person, index)) }
                 </div>
+                { bank.hasAccount &&
+                    <>
+                        <div className="phone-section-label">BANKING</div>
+                        <div className={ `phone-wallet-card phone-wallet-bank${ bankOpen ? ' is-open' : '' }` }
+                            onClick={ event => setBankOpen(!bankOpen) }>
+                            <div className="phone-wallet-field" />
+                            <div className="phone-wallet-holo" />
+                            <div className="phone-wallet-band">
+                                <div className="phone-wallet-band-title"><PhoneIcon icon="building-columns" size={ 14 } /><span>San Francisco · Debit</span></div>
+                            </div>
+                            <div className="phone-wallet-body">
+                                <div className="phone-wallet-number">{ CardNumber(GetRpCurrentCharacterId() || ownId) }</div>
+                                <div className="phone-wallet-balances">
+                                    <div className="phone-wallet-balance">
+                                        <span className="phone-wallet-balance-label">CURRENT</span>
+                                        <span className="phone-wallet-balance-value"><LayoutCurrencyIcon type={ -1 } />{ FormatCredits(bank.current) }</span>
+                                    </div>
+                                    <div className="phone-wallet-balance">
+                                        <span className="phone-wallet-balance-label">SAVINGS</span>
+                                        { /* The ceiling is on savings, so savings is where it is
+                                             shown. x / cap is the honest read of an account that
+                                             stops growing, and it belongs on the account that has
+                                             the limit rather than on the ATM, which never sees
+                                             this number at all. */ }
+                                        <span className="phone-wallet-balance-value"><LayoutCurrencyIcon type={ -1 } />{ FormatCredits(bank.savings) }<em> / { FormatCredits(bank.savingsCap) }</em></span>
+                                    </div>
+                                </div>
+                                <div className="phone-wallet-meter">
+                                    <span style={ { width: `${ Math.min(100, bank.savingsCap ? ((bank.savings / bank.savingsCap) * 100) : 0) }%` } } />
+                                </div>
+                                <div className="phone-wallet-holder">
+                                    <span>{ ownName }</span>
+                                    <span>{ (bank.rateBps / 100).toFixed(2) }% / HR · { NextInterest(bank.secondsToInterest) }</span>
+                                </div>
+                                <div className="phone-wallet-detail">
+                                    <div className="phone-wallet-transfer" onClick={ event => event.stopPropagation() }>
+                                        <input type="text" inputMode="numeric" spellCheck={ false } maxLength={ 9 }
+                                            placeholder="Amount"
+                                            value={ amount }
+                                            onChange={ event => setAmount(event.target.value.replace(/[^0-9]/g, '')) } />
+                                        <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
+                                            title="Move to savings"
+                                            onClick={ event => (amount && SendRpBankTransfer(TRANSFER_TO_SAVINGS, parseInt(amount, 10))) }>
+                                            To savings
+                                        </div>
+                                        <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
+                                            title="Move to current"
+                                            onClick={ event => (amount && SendRpBankTransfer(TRANSFER_TO_CURRENT, parseInt(amount, 10))) }>
+                                            To current
+                                        </div>
+                                    </div>
+                                    { !!bankNote && <div className="phone-wallet-note">{ bankNote }</div> }
+                                    <div className="phone-wallet-note is-quiet">
+                                        Wages are paid into your current account. Use a cash machine to take out cash.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </> }
                 <div className="phone-scroll-spacer" />
             </div>
+            { menuOpen &&
+                <div className="phone-thread-menu-backdrop" onClick={ event => setMenuOpen(false) }>
+                    <div className="phone-wallet-menu" onClick={ event => event.stopPropagation() }>
+                        <div className={ `phone-pin-menu-item${ bank.hasAccount ? ' is-off' : ' phone-tap' }` }
+                            title={ bank.hasAccount ? 'You already have a bank account' : 'Open a current and a savings account' }
+                            onClick={ event => openBankAccount() }>
+                            <span>{ bank.hasAccount ? 'Bank account open' : 'Open a bank account' }</span>
+                            <PhoneIcon icon="building-columns" size={ 18 } />
+                        </div>
+                        <div className={ `phone-pin-menu-item${ full ? ' is-off' : ' phone-tap' }` }
+                            title={ full ? 'You have all three characters' : 'New character' }
+                            onClick={ event => newCharacter() }>
+                            <span>{ full ? 'All three characters made' : 'New character' }</span>
+                            <PhoneIcon icon="user-plus" size={ 18 } />
+                        </div>
+                    </div>
+                </div> }
         </div>
     );
 }

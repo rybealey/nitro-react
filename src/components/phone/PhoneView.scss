@@ -649,6 +649,7 @@ $phone-scale: 0.8;
     .phone-section-label + .phone-news-grid,
     .phone-section-label + .phone-notes-card,
     .phone-section-label + .phone-wallet-card,
+    .phone-section-label + .phone-wallet-bank,
     .phone-section-label + .phone-wallpaper-grid,
     .phone-section-label + .phone-search {
         margin-top: 0;
@@ -5369,6 +5370,184 @@ $phone-scale: 0.8;
     }
 
     .phone-wallet-add.is-off { opacity: .38; cursor: default; }
+
+    // The + is a menu now, so it wears the same open tell as the thread's
+    // attach button: the glyph turns into an x rather than the button turning
+    // into a different button.
+    .phone-wallet-add {
+        .phone-pi { transition: transform .16s ease; }
+
+        &.is-open .phone-pi { transform: rotate(45deg); }
+    }
+
+    // Anchored under the + rather than over the list: the thread's menu rises
+    // from a button at the bottom, this one drops from one at the top, and
+    // both are the same glass card.
+    .phone-wallet-menu {
+        position: absolute;
+        top: 62px;
+        right: 14px;
+        width: 216px;
+        z-index: 61;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        border: 1px solid var(--ph-glass-brd);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 12px 34px rgba(0, 0, 0, .4);
+        animation: phone-sheet-up .18s cubic-bezier(.22, .61, .36, 1) both;
+
+        // Unavailable rows go DIM, not missing - the same call as the + going
+        // quiet at three characters. A row that disappears reads as a bug;
+        // a row that is dim and still says its own name is an answer.
+        .phone-pin-menu-item.is-off {
+            opacity: .4;
+            cursor: default;
+
+            &:hover { background: transparent; }
+        }
+    }
+
+    // ---- Wallet > the debit card ----------------------------------------
+    // The same object as the Resident ID - navy, guilloche, holo edge - with
+    // the civic band reading Debit. It is one card, for the character being
+    // played, so it sits under the stack rather than in it.
+    .phone-wallet-bank {
+        .phone-wallet-band { background: linear-gradient(90deg, #2f7d63, #46a37f); }
+    }
+
+    // Reintroduced deliberately. d0b702e7 took the number off the Resident ID
+    // because an ID does not need one; a debit card without one does not read
+    // as a debit card.
+    .phone-wallet-number {
+        font-family: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        letter-spacing: 1.6px;
+        color: rgba(244, 240, 247, .92);
+        text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+    }
+
+    .phone-wallet-balances {
+        display: flex;
+        gap: 16px;
+        margin-top: 12px;
+    }
+
+    .phone-wallet-balance {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .phone-wallet-balance-label {
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.4px;
+        color: rgba(244, 240, 247, .55);
+    }
+
+    .phone-wallet-balance-value {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: calc(15px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        white-space: nowrap;
+
+        em {
+            font-style: normal;
+            font-size: calc(11px * var(--ph-text-scale, 1));
+            font-weight: 600;
+            color: rgba(244, 240, 247, .5);
+        }
+
+        .nitro-currency-icon { width: 15px; height: 15px; background-repeat: no-repeat; background-size: contain; background-position: center; }
+    }
+
+    // How full savings is. The current account has no ceiling and so has no
+    // bar - a meter that can never fill would say the wrong thing about it.
+    .phone-wallet-meter {
+        margin-top: 10px;
+        height: 4px;
+        border-radius: 2px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, .14);
+
+        span {
+            display: block;
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #46a37f, #7fc98f);
+            transition: width .3s ease;
+        }
+    }
+
+    .phone-wallet-holder {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 10px;
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: rgba(244, 240, 247, .62);
+
+        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+
+    .phone-wallet-transfer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        input {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 32px;
+            padding: 0 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(0, 0, 0, .22);
+            color: #f4f0f7;
+            font-size: calc(13px * var(--ph-text-scale, 1));
+            font-weight: 600;
+            outline: none;
+
+            &::placeholder { color: rgba(244, 240, 247, .4); }
+            &:focus { border-color: rgba(255, 255, 255, .34); }
+        }
+    }
+
+    .phone-wallet-move {
+        flex: none;
+        display: flex;
+        align-items: center;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .14);
+        border: 1px solid rgba(255, 255, 255, .18);
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        white-space: nowrap;
+
+        &:hover { background: rgba(255, 255, 255, .2); }
+        &:active { transform: scale(.97); }
+        &.is-off { opacity: .4; cursor: default; }
+    }
+
+    .phone-wallet-note {
+        margin-top: 10px;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        line-height: 1.4;
+        color: #ffd9a8;
+
+        &.is-quiet { color: rgba(244, 240, 247, .55); }
+    }
 
     // ---- Wallet > New character -----------------------------------------
     .phone-newchar-field {

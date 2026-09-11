@@ -73,6 +73,7 @@ const BEHAVIOURS: [ string, string ][] = [
     [ 'exchange', 'Credit exchange' ], [ 'counter', 'Timer' ], [ 'alert', 'Alert' ],
     [ 'arrow', 'Arrow' ], [ 'gift', 'Gift' ], [ 'trophy', 'Trophy' ],
     [ 'scoreboard', 'Scoreboard' ], [ 'television', 'Television' ], [ 'jukebox', 'Jukebox' ],
+    [ 'atm', 'Cash machine' ],
     [ 'musicdisc', 'Music disc' ], [ 'camera_picture', 'Photo' ], [ 'mannequin', 'Mannequin' ],
     [ 'bot', 'Bot' ], [ 'pet', 'Pet' ], [ 'deal', 'Bundle' ], [ 'roomdeal', 'Room bundle' ],
     [ 'purchasable_clothing', 'Clothing box' ]
