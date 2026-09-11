@@ -686,7 +686,7 @@ $phone-scale: 0.8;
     .phone-section-label + .phone-news-grid,
     .phone-section-label + .phone-notes-card,
     .phone-section-label + .phone-wallet-card,
-    .phone-section-label + .phone-wallet-bank,
+    .phone-section-label + .phone-wallet-debit,
     .phone-section-label + .phone-merc-rows,
     .phone-section-label + .phone-wallpaper-grid,
     .phone-section-label + .phone-search {
@@ -5388,44 +5388,6 @@ $phone-scale: 0.8;
 
     .phone-wallet-add.is-off { opacity: .38; cursor: default; }
 
-    // The + is a menu now, so it wears the same open tell as the thread's
-    // attach button: the glyph turns into an x rather than the button turning
-    // into a different button.
-    .phone-wallet-add {
-        .phone-pi { transition: transform .16s ease; }
-
-        &.is-open .phone-pi { transform: rotate(45deg); }
-    }
-
-    // Anchored under the + rather than over the list: the thread's menu rises
-    // from a button at the bottom, this one drops from one at the top, and
-    // both are the same glass card.
-    .phone-wallet-menu {
-        position: absolute;
-        top: 62px;
-        right: 14px;
-        width: 216px;
-        z-index: 61;
-        background: var(--ph-glass2);
-        backdrop-filter: var(--ph-glass-blur);
-        -webkit-backdrop-filter: var(--ph-glass-blur);
-        border: 1px solid var(--ph-glass-brd);
-        border-radius: 18px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 0 var(--ph-glass-hi), 0 12px 34px rgba(0, 0, 0, .4);
-        animation: phone-sheet-up .18s cubic-bezier(.22, .61, .36, 1) both;
-
-        // Unavailable rows go DIM, not missing - the same call as the + going
-        // quiet at three characters. A row that disappears reads as a bug;
-        // a row that is dim and still says its own name is an answer.
-        .phone-pin-menu-item.is-off {
-            opacity: .4;
-            cursor: default;
-
-            &:hover { background: transparent; }
-        }
-    }
-
     // ---- Mercury: the banking app ---------------------------------------
     // The Wallet holds the CARD; Mercury holds the ACCOUNT and every movement
     // through it. The panel borrows the card's navy and guilloche so the two
@@ -5802,6 +5764,314 @@ $phone-scale: 0.8;
         &:active { opacity: .8; }
     }
 
+    // ---- Mercury > the Transfer action and its sheet ----------------------
+    .phone-merc-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .phone-merc-move {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .12);
+        border: 1px solid rgba(255, 255, 255, .16);
+        color: #f4f0f7;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(10.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .3px;
+
+        &:active { opacity: .8; }
+    }
+
+    .phone-merc-sheet-title {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(17px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: -.2px;
+        color: var(--ph-text);
+    }
+
+    .phone-merc-dir {
+        margin: 14px 0 0;
+
+        .phone-segmented-option { flex: 1 1 0; }
+    }
+
+    .phone-merc-amount-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 0 12px;
+        height: 48px;
+        border-radius: 14px;
+        background: var(--ph-inset);
+
+        input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-family: 'Ubuntu', sans-serif;
+            font-size: calc(22px * var(--ph-text-scale, 1));
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--ph-text);
+
+            &::placeholder { color: var(--ph-faint); }
+        }
+
+        .nitro-currency-icon { width: 18px; height: 18px; background-repeat: no-repeat; background-size: contain; background-position: center; flex: none; }
+    }
+
+    .phone-merc-amount-max {
+        flex: none;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: var(--ph-bg);
+        color: $phone-pink;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(10.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .4px;
+    }
+
+    // The weekly allowance, as pips you can count without reading. It only
+    // exists in one direction, so it only appears in one direction.
+    .phone-merc-allow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 11px 12px;
+        border-radius: 12px;
+        background: var(--ph-inset);
+    }
+
+    .phone-merc-allow-pips {
+        display: flex;
+        gap: 4px;
+        flex: none;
+
+        i {
+            display: block;
+            width: 16px;
+            height: 5px;
+            border-radius: 3px;
+            background: var(--ph-faint);
+            opacity: .35;
+
+            &.is-left { background: #46a37f; opacity: 1; }
+        }
+    }
+
+    .phone-merc-allow-text {
+        flex: 1;
+        min-width: 0;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        line-height: 1.35;
+        color: var(--ph-soft);
+    }
+
+    .phone-merc-allow.is-spent .phone-merc-allow-text { color: #e87332; }
+
+    .phone-merc-sheet-note {
+        margin-top: 12px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        line-height: 1.4;
+        color: #e87332;
+    }
+
+    .phone-merc-go {
+        margin-top: 16px;
+        height: 46px;
+        border-radius: 14px;
+        background: #46a37f;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(14px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:active { opacity: .85; }
+        &.is-off { background: var(--ph-inset); color: var(--ph-faint); }
+    }
+
+    .phone-merc-cancel {
+        margin-top: 8px;
+        height: 42px;
+        border-radius: 14px;
+        color: var(--ph-soft);
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    // ---- Mercury > signing in ---------------------------------------------
+    // There is no credential that works. The screen is a locked door whose
+    // whole job is to say where the key is kept, so the route to a branch sits
+    // apart from the form - it is the only thing here that leads anywhere.
+    .phone-merc-signin {
+        display: flex;
+        flex-direction: column;
+        padding: 26px 28px 0;
+    }
+
+    .phone-merc-signin-mark {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #8fe3c6;
+        background: linear-gradient(160deg, #3f4d63, #232c3a 60%, #121820);
+        border: 2px solid rgba(26, 10, 20, .55);
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -2px 0 rgba(0, 0, 0, .28), 0 3px 8px rgba(0, 0, 0, .35);
+    }
+
+    .phone-merc-signin-title {
+        margin-top: 16px;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(27px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: -.5px;
+        line-height: 1.1;
+        color: var(--ph-text);
+    }
+
+    .phone-merc-signin-strap {
+        margin-top: 4px;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        line-height: 1.45;
+        color: var(--ph-soft);
+        text-wrap: pretty;
+    }
+
+    .phone-merc-signin-fields { margin-top: 26px; }
+
+    .phone-merc-signin-field {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 48px;
+        padding: 0 14px;
+        border-radius: 14px;
+        background: var(--ph-inset);
+        color: var(--ph-faint);
+
+        & + .phone-merc-signin-field { margin-top: 8px; }
+
+        input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-family: 'Barlow', sans-serif;
+            font-size: calc(15px * var(--ph-text-scale, 1));
+            font-weight: 600;
+            letter-spacing: .3px;
+            color: var(--ph-text);
+
+            &::placeholder { color: var(--ph-faint); font-weight: 500; }
+        }
+    }
+
+    .phone-merc-signin-go {
+        margin-top: 12px;
+        height: 48px;
+        border-radius: 14px;
+        background: #3f7fbd;
+        color: #ffffff;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(14px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:active { opacity: .85; }
+    }
+
+    .phone-merc-signin-refusal {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 12px;
+        padding: 11px 12px;
+        border-radius: 12px;
+        background: rgba(232, 115, 50, .14);
+        color: #e87332;
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        line-height: 1.4;
+        text-wrap: pretty;
+        animation: phone-cal-fade .18s ease both;
+
+        .phone-pi { flex: none; margin-top: 1px; }
+    }
+
+    .phone-merc-signin-route {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin-top: 30px;
+        padding: 13px 14px;
+        border-radius: 16px;
+        background: var(--ph-inset);
+    }
+
+    .phone-merc-signin-route-mark {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(63, 127, 189, .18);
+        color: #3f7fbd;
+    }
+
+    .phone-merc-signin-route-text { flex: 1; min-width: 0; }
+
+    .phone-merc-signin-route-title {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        color: var(--ph-text);
+    }
+
+    .phone-merc-signin-route-sub {
+        margin-top: 1px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        line-height: 1.35;
+        color: var(--ph-soft);
+    }
+
+    .phone-merc-signin-legal {
+        margin-top: 14px;
+        text-align: center;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        line-height: 1.5;
+        color: var(--ph-faint);
+        text-wrap: pretty;
+    }
+
     // ---- Mercury > before there are accounts ------------------------------
     // Centred in what is left of the screen, not hugging the header: an empty
     // state pinned to the top reads as a page that failed to load.
@@ -5852,249 +6122,193 @@ $phone-scale: 0.8;
 
     @media (prefers-reduced-motion: reduce) {
         .phone-merc-panel, .phone-merc-sheet, .phone-merc-scrim, .phone-merc-skel,
-        .phone-merc-meter span, .phone-merc-chip { animation: none; transition: none; }
+        .phone-merc-meter span, .phone-merc-chip, .phone-merc-signin-refusal { animation: none; transition: none; }
     }
 
     // ---- Wallet > the debit card ----------------------------------------
-    // The same object as the Resident ID - navy, guilloche, holo edge - with
-    // the civic band reading Debit. It is one card, for the character being
-    // played, so it sits under the stack rather than in it.
-    .phone-wallet-bank {
-        .phone-wallet-band { background: linear-gradient(90deg, #2f7d63, #46a37f); }
+    // The Wallet holds the CARD; Mercury holds the account. So this is plastic
+    // and nothing on it changes - number, holder, issuer - which is what lets
+    // the same artwork be a found object or a teller's reference later without
+    // going stale. The live balance sits UNDER it, the way a wallet lists what
+    // a card is attached to.
+    //
+    // 1.586:1 is a real card. At the phone's 288px content width that is 182
+    // tall, and every element is placed off that rather than off the screen.
+    .phone-wallet-debit {
+        position: relative;
+        height: 182px;
+        box-sizing: border-box;
     }
 
-    // Reintroduced deliberately. d0b702e7 took the number off the Resident ID
-    // because an ID does not need one; a debit card without one does not read
-    // as a debit card.
-    .phone-wallet-number {
-        font-family: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
-        font-size: calc(13px * var(--ph-text-scale, 1));
-        letter-spacing: 1.6px;
-        color: rgba(244, 240, 247, .92);
-        text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+    .phone-wallet-debit-rule {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        // Checking is blue everywhere - Mercury's panel rule, the account
+        // switch, this card. Savings is green and never appears on plastic,
+        // because savings is not something you carry.
+        background: linear-gradient(90deg, #2a4f7d, #3f7fbd 62%, #6aa9dd);
     }
 
-    .phone-wallet-balances {
-        display: flex;
-        gap: 16px;
-        margin-top: 12px;
+    // One diagonal sheen instead of the Resident ID's rainbow holo edge. The
+    // holo says "identity document"; a bank card's tell is the light on it.
+    .phone-wallet-debit-sheen {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(118deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, .07) 50%, rgba(255, 255, 255, 0) 62%);
     }
 
-    .phone-wallet-balance {
+    .phone-wallet-debit-face {
+        position: relative;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 16px 18px 15px;
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        min-width: 0;
     }
 
-    .phone-wallet-balance-label {
-        font-size: calc(9px * var(--ph-text-scale, 1));
-        font-weight: 700;
-        letter-spacing: 1.4px;
-        color: rgba(244, 240, 247, .55);
+    .phone-wallet-debit-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
     }
 
-    .phone-wallet-balance-value {
+    .phone-wallet-debit-brand { display: flex; align-items: center; gap: 7px; }
+
+    .phone-wallet-debit-mark {
+        width: 20px;
+        height: 20px;
+        flex: none;
+        border-radius: 6px;
         display: flex;
         align-items: center;
-        gap: 5px;
+        justify-content: center;
+        color: #8fe3c6;
+        background: linear-gradient(160deg, #3f4d63, #232c3a 60%, #121820);
+        border: 1px solid rgba(0, 0, 0, .45);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38);
+    }
+
+    .phone-wallet-debit-wordmark {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .3px;
+    }
+
+    .phone-wallet-debit-kind {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(7.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.6px;
+        color: rgba(244, 240, 247, .5);
+        text-align: right;
+        line-height: 1.5;
+    }
+
+    // The one piece of real-world card grammar that makes a rectangle read as
+    // a card at a glance, so it is drawn rather than suggested.
+    .phone-wallet-debit-chip {
+        position: relative;
+        margin-top: 14px;
+        width: 32px;
+        height: 24px;
+        flex: none;
+        border-radius: 5px;
+        overflow: hidden;
+        background: linear-gradient(150deg, #f0d28a, #c99b3f 55%, #9c7326);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 1px 2px rgba(0, 0, 0, .4);
+
+        i { position: absolute; background: rgba(60, 42, 12, .55); }
+        i.h1 { left: 0; right: 0; top: 8px; height: 1px; }
+        i.h2 { left: 0; right: 0; top: 15px; height: 1px; }
+        i.v1 { top: 0; bottom: 0; left: 11px; width: 1px; }
+        i.v2 { top: 0; bottom: 0; left: 21px; width: 1px; }
+    }
+
+    .phone-wallet-debit-number {
+        margin-top: 13px;
+        font-family: 'Ubuntu', sans-serif;
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 700;
-        white-space: nowrap;
-
-        em {
-            font-style: normal;
-            font-size: calc(11px * var(--ph-text-scale, 1));
-            font-weight: 600;
-            color: rgba(244, 240, 247, .5);
-        }
-
-        .nitro-currency-icon { width: 15px; height: 15px; background-repeat: no-repeat; background-size: contain; background-position: center; }
+        letter-spacing: 2.2px;
+        font-variant-numeric: tabular-nums;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, .4);
     }
 
-    // How full savings is. The current account has no ceiling and so has no
-    // bar - a meter that can never fill would say the wrong thing about it.
-    .phone-wallet-meter {
-        margin-top: 10px;
-        height: 4px;
-        border-radius: 2px;
-        overflow: hidden;
-        background: rgba(255, 255, 255, .14);
-
-        span {
-            display: block;
-            height: 100%;
-            border-radius: 2px;
-            background: linear-gradient(90deg, #46a37f, #7fc98f);
-            transition: width .3s ease;
-        }
+    .phone-wallet-debit-bottom {
+        margin-top: auto;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 14px;
     }
 
-    .phone-wallet-holder {
+    .phone-wallet-debit-label {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(7px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.3px;
+        color: rgba(244, 240, 247, .45);
+    }
+
+    .phone-wallet-debit-value {
+        margin-top: 2px;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+    }
+
+    .phone-wallet-debit-issuer {
+        font-family: 'Silkscreen', monospace;
+        font-size: calc(7px * var(--ph-text-scale, 1));
+        letter-spacing: .3px;
+        color: rgba(244, 240, 247, .5);
+        text-align: right;
+        line-height: 1.7;
+    }
+
+    .phone-wallet-debit-caption {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        margin-top: 10px;
+        margin: 11px 22px 0;
+    }
+
+    .phone-wallet-debit-caption-label {
+        font-family: 'Ubuntu', sans-serif;
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: rgba(244, 240, 247, .62);
-
-        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    }
-
-    .phone-wallet-transfer {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        input {
-            flex: 1 1 auto;
-            min-width: 0;
-            height: 32px;
-            padding: 0 10px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, .18);
-            background: rgba(0, 0, 0, .22);
-            color: #f4f0f7;
-            font-size: calc(13px * var(--ph-text-scale, 1));
-            font-weight: 600;
-            outline: none;
-
-            &::placeholder { color: rgba(244, 240, 247, .4); }
-            &:focus { border-color: rgba(255, 255, 255, .34); }
-        }
-    }
-
-    .phone-wallet-move {
-        flex: none;
-        display: flex;
-        align-items: center;
-        height: 32px;
-        padding: 0 10px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, .14);
-        border: 1px solid rgba(255, 255, 255, .18);
-        font-size: calc(11px * var(--ph-text-scale, 1));
-        font-weight: 700;
-        white-space: nowrap;
-
-        &:hover { background: rgba(255, 255, 255, .2); }
-        &:active { transform: scale(.97); }
-        &.is-off { opacity: .4; cursor: default; }
-    }
-
-    .phone-wallet-note {
-        margin-top: 10px;
-        font-size: calc(11px * var(--ph-text-scale, 1));
-        line-height: 1.4;
-        color: #ffd9a8;
-
-        &.is-quiet { color: rgba(244, 240, 247, .55); }
-    }
-
-    // ---- Wallet > New character -----------------------------------------
-    .phone-newchar-field {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
-    }
-
-    .phone-newchar-input {
-        flex: 1;
-        min-width: 0;
-        border: 0;
-        outline: 0;
-        background: transparent;
-        font-family: 'Barlow', 'Ubuntu', sans-serif;
-        font-size: calc(16px * var(--ph-text-scale, 1));
-        font-weight: 600;
-        color: var(--ph-text);
-
-        &::placeholder { color: var(--ph-faint); font-weight: 400; }
-    }
-
-    .phone-newchar-count {
-        flex: none;
-        font-size: calc(11px * var(--ph-text-scale, 1));
-        font-variant-numeric: tabular-nums;
+        letter-spacing: 1.3px;
         color: var(--ph-faint);
     }
 
-    .phone-newchar-note {
-        padding: 8px 26px 0;
-        text-align: left;
-
-        &.is-bad { color: #c0392b; }
-    }
-
-    .phone-newchar-genders {
-        margin: 4px 18px 0;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    .phone-newchar-gender {
-        background: var(--ph-bg);
-        border: 2px solid var(--ph-hairline);
-        border-radius: 16px;
-        padding: 12px 8px 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        transition: border-color .18s ease, box-shadow .18s ease;
-
-        &.is-on {
-            border-color: #e87332;
-            box-shadow: 0 0 0 3px rgba(232, 115, 50, .18);
-
-            .phone-newchar-gender-label { color: var(--ph-text); }
-        }
-    }
-
-    // The figure at its native size, cropped to the tile - the avatar sprite
-    // is pixel art and resampling it blurs the face.
-    .phone-newchar-figure {
-        height: 96px;
-        width: 100%;
-        position: relative;
-        overflow: hidden;
-
-        .avatar-image {
-            position: absolute;
-            left: 50%;
-            margin-left: -45px;
-            top: -18px;
-            image-rendering: pixelated;
-        }
-    }
-
-    .phone-newchar-gender-label {
-        font-size: calc(13px * var(--ph-text-scale, 1));
-        font-weight: 700;
-        color: var(--ph-soft);
-    }
-
-    .phone-newchar-create {
-        margin: 0 18px;
+    .phone-wallet-debit-caption-value {
         display: flex;
         align-items: center;
-        justify-content: center;
-        height: 46px;
-        border-radius: 14px;
-        background: #e87332;
-        color: #ffffff;
+        gap: 5px;
+        font-family: 'Ubuntu', sans-serif;
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 700;
-        transition: background .15s ease, transform .12s ease;
+        font-variant-numeric: tabular-nums;
+        color: var(--ph-text);
 
-        &:active { transform: scale(.98); opacity: 1; }
-        &.is-off { opacity: .4; cursor: default; }
+        .nitro-currency-icon { width: 15px; height: 15px; background-repeat: no-repeat; background-size: contain; background-position: center; flex: none; }
+    }
+
+    .phone-wallet-debit-foot {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 10px 22px 0;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        color: var(--ph-soft);
     }
 
     @media (prefers-reduced-motion: reduce) {

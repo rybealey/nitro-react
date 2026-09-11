@@ -1,5 +1,5 @@
-import { FC, Fragment, useEffect, useMemo, useState } from 'react';
-import { GetRpBankAccounts, GetRpBankLedger, IsRpBankLedgerLoaded, RpBankEntry, SendRpGetBankAccounts, SendRpGetBankLedger, SubscribeRpBankAccounts, SubscribeRpBankLedger } from '../../api/rp-phone/RpBankMessages';
+import { FC, Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { GetRpBankAccounts, GetRpBankLedger, IsRpBankLedgerLoaded, RpBankEntry, SendRpBankTransfer, SendRpGetBankAccounts, SendRpGetBankLedger, SubscribeRpBankAccounts, SubscribeRpBankLedger, SubscribeRpBankResult, TRANSFER_TO_CURRENT, TRANSFER_TO_SAVINGS } from '../../api/rp-phone/RpBankMessages';
 import { LayoutCurrencyIcon } from '../../common';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -76,6 +76,16 @@ const DayLabel = (createdAt: number): string =>
 const Clock = (createdAt: number): string =>
     new Date(createdAt * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
+// "Monday" is the promise the allowance makes, so the countdown says the day
+// rather than a number of hours - a player telling another when theirs comes
+// back says a day, not "in 61 hours".
+const ResetDay = (unix: number): string =>
+{
+    if(!unix) return 'Monday';
+
+    return new Date(unix * 1000).toLocaleDateString('en-US', { weekday: 'long' });
+}
+
 const NextInterest = (seconds: number): string =>
 {
     if(seconds <= 0) return 'due now';
@@ -94,6 +104,16 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
     const [ savings, setSavings ] = useState(false);
     const [ filter, setFilter ] = useState<Filter>('all');
     const [ openId, setOpenId ] = useState(0);
+    const [ moving, setMoving ] = useState(false);
+    const [ toSavings, setToSavings ] = useState(true);
+    const [ amount, setAmount ] = useState('');
+    const [ note, setNote ] = useState('');
+    const [ number, setNumber ] = useState('');
+    const [ pin, setPin ] = useState('');
+    const [ refused, setRefused ] = useState(false);
+    // Set when a move is sent, so the accounts push that follows can be told
+    // apart from the minute poll.
+    const movePending = useRef(false);
 
     useEffect(() => SubscribeRpBankAccounts(() => setBank(GetRpBankAccounts())), []);
 
@@ -102,6 +122,10 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
         setEntries(GetRpBankLedger());
         setLoaded(true);
     }), []);
+
+    // A refusal carries the server's own wording - only it knows when the
+    // allowance refills and how much of savings is reachable.
+    useEffect(() => SubscribeRpBankResult((outcome, message) => setNote(message)), []);
 
     // A block body, not a concise one: the send returns a boolean and React
     // would take it for a cleanup function.
@@ -175,6 +199,39 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
         return { paid, spent };
     }, [ entries, account ]);
 
+    // Taking money OUT of savings is the rationed direction, so it is the only
+    // one that can be spent.
+    const spent = (!toSavings && (bank.transfersLeft <= 0));
+    const earning = (bank.savings >= bank.interestMinimum);
+    const canMove = (!!parseInt(amount || '0', 10) && !spent);
+
+    const closeMove = () =>
+    {
+        setMoving(false);
+        setAmount('');
+        setNote('');
+    };
+
+    const doMove = () =>
+    {
+        if(!canMove) return;
+
+        movePending.current = true;
+
+        SendRpBankTransfer(toSavings ? TRANSFER_TO_SAVINGS : TRANSFER_TO_CURRENT, parseInt(amount, 10));
+    };
+
+    // A successful move pushes fresh accounts; a refused one pushes only the
+    // reason. So closing on the accounts push - and not on the click - is what
+    // keeps a refusal on screen with the amount still typed.
+    useEffect(() => SubscribeRpBankAccounts(() =>
+    {
+        if(!movePending.current) return;
+
+        movePending.current = false;
+        closeMove();
+    }), []);
+
     const look = (entry: RpBankEntry) => (KINDS[entry.kind] || FALLBACK);
 
     // A transfer's direction is derivable from the account it landed in and
@@ -241,17 +298,47 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                     </div>
                 </div>
                 { !bank.hasAccount &&
-                    <div className="phone-merc-blank">
-                        <div className="phone-merc-blank-mark"><PhoneIcon icon="right-left" size={ 30 } /></div>
-                        <div className="phone-merc-blank-title">Nothing to show yet</div>
-                        <div className="phone-merc-blank-body">
-                            Mercury reads the accounts you already hold. Open a current and a savings
-                            account, and everything that moves through them lands here.
+                    <div className="phone-merc-signin">
+                        <div className="phone-merc-signin-mark"><PhoneIcon icon="right-left" size={ 30 } /></div>
+                        <div className="phone-merc-signin-title">Mercury</div>
+                        <div className="phone-merc-signin-strap">Sign in with the account number on your debit card.</div>
+                        <div className="phone-merc-signin-fields">
+                            <div className="phone-merc-signin-field">
+                                <PhoneIcon icon="credit-card" size={ 16 } />
+                                <input type="text" inputMode="numeric" spellCheck={ false } maxLength={ 14 }
+                                    placeholder="Account number" value={ number }
+                                    onChange={ event => 
+                                    {
+                                        setNumber(event.target.value.replace(/[^0-9 ]/g, '')); setRefused(false); 
+                                    } } />
+                            </div>
+                            <div className="phone-merc-signin-field">
+                                <PhoneIcon icon="lock" size={ 16 } />
+                                <input type="password" spellCheck={ false } maxLength={ 6 }
+                                    placeholder="PIN" value={ pin }
+                                    onChange={ event => 
+                                    {
+                                        setPin(event.target.value.replace(/[^0-9]/g, '')); setRefused(false); 
+                                    } } />
+                            </div>
                         </div>
-                        <div className="phone-merc-blank-foot">
-                            Wages are paid into your current account once you have one. Until then they
-                            stay in hand, exactly as they do today.
+                        { /* There is no credential that works. The screen is a locked
+                             door whose whole job is to say where the key is kept, so
+                             pressing Sign in has to answer rather than sit there. */ }
+                        <div className="phone-tap phone-merc-signin-go" onClick={ event => setRefused(true) }>Sign in</div>
+                        { refused &&
+                            <div className="phone-merc-signin-refusal">
+                                <PhoneIcon icon="circle-exclamation" size={ 14 } />
+                                <span>No account found. Accounts are opened in person - a teller will give you your number and PIN.</span>
+                            </div> }
+                        <div className="phone-merc-signin-route">
+                            <div className="phone-merc-signin-route-mark"><PhoneIcon icon="building-columns" size={ 18 } /></div>
+                            <div className="phone-merc-signin-route-text">
+                                <div className="phone-merc-signin-route-title">Open an account</div>
+                                <div className="phone-merc-signin-route-sub">Visit a Mercury branch in the city</div>
+                            </div>
                         </div>
+                        <div className="phone-merc-signin-legal">Wages stay in hand until you hold an account.</div>
                     </div> }
                 { bank.hasAccount &&
                     <>
@@ -273,7 +360,17 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                             <div className="phone-wallet-field" />
                             <div className={ `phone-merc-panel-rule${ savings ? ' is-savings' : '' }` } />
                             <div className="phone-merc-panel-body">
-                                <div className="phone-merc-panel-label">{ savings ? 'SAVINGS' : 'CHECKING' }</div>
+                                <div className="phone-merc-panel-head">
+                                    <div className="phone-merc-panel-label">{ savings ? 'SAVINGS' : 'CHECKING' }</div>
+                                    <div className="phone-tap phone-merc-move"
+                                        onClick={ event => 
+                                        {
+                                            setMoving(true); setToSavings(!savings); setAmount(''); setNote(''); 
+                                        } }>
+                                        <PhoneIcon icon="right-left" size={ 12 } />
+                                        <span>Transfer</span>
+                                    </div>
+                                </div>
                                 <div className="phone-merc-balance">
                                     <LayoutCurrencyIcon type={ -1 } />
                                     <span>{ Money(savings ? bank.savings : bank.current) }</span>
@@ -286,7 +383,10 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                                         <span style={ { width: `${ Math.min(100, bank.savingsCap ? ((bank.savings / bank.savingsCap) * 100) : 0) }%` } } />
                                     </div> }
                                 <div className="phone-merc-panel-foot">
-                                    { savings &&
+                                    { /* Below the floor the rate is a promise the account
+                                         cannot keep, so it says what it needs instead of
+                                         counting down to a payment of nothing. */ }
+                                    { savings && earning &&
                                         <>
                                             <div className="phone-merc-stat">
                                                 <div className="phone-merc-stat-label">EARNING</div>
@@ -295,6 +395,17 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                                             <div className="phone-merc-stat">
                                                 <div className="phone-merc-stat-label">NEXT PAYMENT</div>
                                                 <div className="phone-merc-stat-value">{ NextInterest(bank.secondsToInterest) }</div>
+                                            </div>
+                                        </> }
+                                    { savings && !earning &&
+                                        <>
+                                            <div className="phone-merc-stat">
+                                                <div className="phone-merc-stat-label">EARNING</div>
+                                                <div className="phone-merc-stat-value is-out">Not yet</div>
+                                            </div>
+                                            <div className="phone-merc-stat">
+                                                <div className="phone-merc-stat-label">STARTS AT</div>
+                                                <div className="phone-merc-stat-value">{ Money(bank.interestMinimum) }</div>
                                             </div>
                                         </> }
                                     { !savings &&
@@ -351,6 +462,57 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                     </> }
                 <div className="phone-scroll-spacer" />
             </div>
+            { moving &&
+                <>
+                    <div className="phone-merc-scrim" onClick={ closeMove } />
+                    <div className="phone-merc-sheet">
+                        <div className="phone-merc-grab" />
+                        <div className="phone-merc-sheet-title">Move money</div>
+                        <div className="phone-segmented phone-merc-dir">
+                            <div className="phone-segmented-thumb" style={ { transform: `translateX(${ toSavings ? '0%' : '100%' })` } } />
+                            <div className={ `phone-tap phone-segmented-option${ toSavings ? ' is-on' : '' }` }
+                                onClick={ event => 
+                                {
+                                    setToSavings(true); setAmount(''); setNote(''); 
+                                } }>To savings</div>
+                            <div className={ `phone-tap phone-segmented-option${ toSavings ? '' : ' is-on' }` }
+                                onClick={ event => 
+                                {
+                                    setToSavings(false); setAmount(''); setNote(''); 
+                                } }>To checking</div>
+                        </div>
+                        <div className="phone-merc-amount-field">
+                            <LayoutCurrencyIcon type={ -1 } />
+                            <input type="text" inputMode="numeric" spellCheck={ false } maxLength={ 9 }
+                                placeholder="0" value={ amount }
+                                onChange={ event => 
+                                {
+                                    setAmount(event.target.value.replace(/[^0-9]/g, '')); setNote(''); 
+                                } } />
+                            <div className="phone-tap phone-merc-amount-max"
+                                onClick={ event => setAmount(String(toSavings ? bank.current : bank.savings)) }>MAX</div>
+                        </div>
+                        { /* The counter exists in one direction only. One that read
+                             "unlimited" the rest of the time would be noise. */ }
+                        { !toSavings &&
+                            <div className={ `phone-merc-allow${ spent ? ' is-spent' : '' }` }>
+                                <div className="phone-merc-allow-pips">
+                                    { Array.from({ length: bank.transfersPerWeek }).map((entry, index) =>
+                                        <i key={ index } className={ (index < bank.transfersLeft) ? 'is-left' : '' } />) }
+                                </div>
+                                <div className="phone-merc-allow-text">
+                                    { spent
+                                        ? `No transfers left this week. Your allowance refills on ${ ResetDay(bank.transfersResetAt) }.`
+                                        : `${ bank.transfersLeft } of ${ bank.transfersPerWeek } transfers left this week` }
+                                </div>
+                            </div> }
+                        { !!note && <div className="phone-merc-sheet-note">{ note }</div> }
+                        <div className={ `phone-merc-go${ canMove ? ' phone-tap' : ' is-off' }` } onClick={ doMove }>
+                            { spent ? 'No transfers left' : 'Move money' }
+                        </div>
+                        <div className="phone-tap phone-merc-cancel" onClick={ closeMove }>Cancel</div>
+                    </div>
+                </> }
             { !!open &&
                 <>
                     <div className="phone-merc-scrim" onClick={ event => setOpenId(0) } />

@@ -5,7 +5,7 @@ import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } fro
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
-import { GetRpBankAccounts, RpBankAccounts, SendRpBankTransfer, SendRpGetBankAccounts, SendRpOpenBankAccount, SubscribeRpBankAccounts, SubscribeRpBankResult, TRANSFER_TO_CURRENT, TRANSFER_TO_SAVINGS } from '../../api/rp-phone/RpBankMessages';
+import { GetRpBankAccounts, RpBankAccounts, SendRpGetBankAccounts, SubscribeRpBankAccounts } from '../../api/rp-phone/RpBankMessages';
 import { GetRpCharacters, GetRpCurrentCharacterId, GetRpMaxCharacters, RpCharacter, SendRpSwitchCharacter, SubscribeRpCharacters } from '../../api/rp-phone/RpCharacterMessages';
 import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
 import { ResolveRpStaff } from '../../api/user/RpStaffFlag';
@@ -93,13 +93,6 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     const [ characters, setCharacters ] = useState<RpCharacter[]>(() => GetRpCharacters());
     const [ openId, setOpenId ] = useState(() => GetRpCurrentCharacterId());
     const [ bank, setBank ] = useState<RpBankAccounts>(() => GetRpBankAccounts());
-    const [ menuOpen, setMenuOpen ] = useState(false);
-    const [ bankOpen, setBankOpen ] = useState(false);
-    const [ amount, setAmount ] = useState('');
-    const [ bankNote, setBankNote ] = useState('');
-    // Set when a transfer is sent, so the accounts push that follows can be
-    // told apart from the minute poll.
-    const transferPending = useRef(false);
 
     const ownId = GetSessionDataManager().userId;
     const ownName = (GetSessionDataManager().userName || 'You');
@@ -116,24 +109,8 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     }), []);
 
     // The accounts land at login, after every movement, and on the minute poll
-    // below.
-    //
-    // The typed amount is NOT cleared here. It used to be, which was harmless
-    // when the only pushes were ones the player had caused - but a poll that
-    // arrives every minute would wipe a half-typed transfer under their hands.
-    // It is cleared when a transfer actually goes through instead, which is
-    // the only push that makes the entry stale.
-    useEffect(() => SubscribeRpBankAccounts(() =>
-    {
-        setBank(GetRpBankAccounts());
-
-        if(!transferPending.current) return;
-
-        transferPending.current = false;
-
-        setAmount('');
-        setBankNote('');
-    }), []);
+    // below. Nothing here changes them any more - the card only reads.
+    useEffect(() => SubscribeRpBankAccounts(() => setBank(GetRpBankAccounts())), []);
 
     // Once a minute while this screen is open, and never otherwise: the server
     // stamps online time on its own minute tick, so anything faster asks the
@@ -159,11 +136,6 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
 
         return () => clearInterval(timer);
     }, []);
-
-    // Refusals carry the SERVER's wording, because only the server can say
-    // "only 4,200c fits before your savings is full" - the client does not
-    // know the ceiling maths and should not learn it.
-    useEffect(() => SubscribeRpBankResult((outcome, message) => setBankNote(message)), []);
 
     // Each card's job, gang and birthday come from the composers that already
     // exist, asked per character. Privacy does not get in the way of your own
@@ -214,28 +186,9 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         : [ { userId: ownId, username: ownName, figure: ownFigure, motto, gender: 'M' } ];
     const full = (cards.length >= GetRpMaxCharacters());
 
-    const transfer = (direction: number) =>
-    {
-        if(!amount) return;
-
-        transferPending.current = true;
-
-        SendRpBankTransfer(direction, parseInt(amount, 10));
-    };
-
-    const openBankAccount = () =>
-    {
-        if(bank.hasAccount) return;
-
-        setMenuOpen(false);
-        SendRpOpenBankAccount();
-    };
-
     const newCharacter = () =>
     {
         if(full) return;
-
-        setMenuOpen(false);
 
         if(openCreate) openCreate();
     };
@@ -336,12 +289,14 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                             <div className="phone-app-title">Wallet</div>
                         </div>
                     </div>
-                    { /* Two things a wallet can gain now, so the + opens a menu.
-                         It never goes quiet itself - a row inside says which of
-                         the two is unavailable, and why. */ }
-                    <div className={ `phone-tap phone-notes-iconbtn phone-wallet-add${ menuOpen ? ' is-open' : '' }` }
-                        title="Add to wallet"
-                        onClick={ event => setMenuOpen(!menuOpen) }>
+                    { /* Goes quiet at three rather than disappearing: a character
+                         cannot be deleted to free a slot, so a vanished button
+                         would read as a bug. Opening a bank account left this
+                         menu when accounts moved to a branch, and a menu of one
+                         is just a button. */ }
+                    <div className={ `phone-notes-iconbtn phone-wallet-add${ full ? ' is-off' : ' phone-tap' }` }
+                        title={ full ? 'You have all three characters' : 'New character' }
+                        onClick={ event => newCharacter() }>
                         <PhoneIcon icon="plus" size={ 15 } />
                     </div>
                 </div>
@@ -349,86 +304,51 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                 <div className="phone-wallet-stack">
                     { cards.map((person, index) => card(person, index)) }
                 </div>
+                { /* The Wallet holds the CARD; Mercury holds the account. So this
+                     is plastic - number, holder, issuer, nothing that changes -
+                     and the live balance sits underneath it the way a wallet
+                     lists what a card is attached to. */ }
                 { bank.hasAccount &&
                     <>
                         <div className="phone-section-label">BANKING</div>
-                        <div className={ `phone-wallet-card phone-wallet-bank${ bankOpen ? ' is-open' : '' }` }
-                            onClick={ event => setBankOpen(!bankOpen) }>
+                        <div className="phone-wallet-card phone-wallet-debit">
                             <div className="phone-wallet-field" />
-                            <div className="phone-wallet-holo" />
-                            <div className="phone-wallet-band">
-                                <div className="phone-wallet-band-title"><PhoneIcon icon="building-columns" size={ 14 } /><span>San Francisco · Debit</span></div>
-                            </div>
-                            <div className="phone-wallet-body">
-                                <div className="phone-wallet-number">{ CardNumber(GetRpCurrentCharacterId() || ownId) }</div>
-                                <div className="phone-wallet-balances">
-                                    <div className="phone-wallet-balance">
-                                        <span className="phone-wallet-balance-label">CHECKING</span>
-                                        <span className="phone-wallet-balance-value"><LayoutCurrencyIcon type={ -1 } />{ FormatCredits(bank.current) }</span>
+                            <div className="phone-wallet-debit-rule" />
+                            <div className="phone-wallet-debit-sheen" />
+                            <div className="phone-wallet-debit-face">
+                                <div className="phone-wallet-debit-top">
+                                    <div className="phone-wallet-debit-brand">
+                                        <div className="phone-wallet-debit-mark"><PhoneIcon icon="right-left" size={ 12 } /></div>
+                                        <div className="phone-wallet-debit-wordmark">Mercury</div>
                                     </div>
-                                    <div className="phone-wallet-balance">
-                                        <span className="phone-wallet-balance-label">SAVINGS</span>
-                                        { /* The ceiling is on savings, so savings is where it is
-                                             shown. x / cap is the honest read of an account that
-                                             stops growing, and it belongs on the account that has
-                                             the limit rather than on the ATM, which never sees
-                                             this number at all. */ }
-                                        <span className="phone-wallet-balance-value"><LayoutCurrencyIcon type={ -1 } />{ FormatCredits(bank.savings) }<em> / { FormatCredits(bank.savingsCap) }</em></span>
-                                    </div>
+                                    <div className="phone-wallet-debit-kind">DEBIT<br />CHECKING</div>
                                 </div>
-                                <div className="phone-wallet-meter">
-                                    <span style={ { width: `${ Math.min(100, bank.savingsCap ? ((bank.savings / bank.savingsCap) * 100) : 0) }%` } } />
+                                <div className="phone-wallet-debit-chip">
+                                    <i className="h1" /><i className="h2" /><i className="v1" /><i className="v2" />
                                 </div>
-                                <div className="phone-wallet-holder">
-                                    <span>{ ownName }</span>
-                                    <span>{ (bank.rateBps / 100).toFixed(2) }% / HR · { NextInterest(bank.secondsToInterest) }</span>
-                                </div>
-                                <div className="phone-wallet-detail">
-                                    <div className="phone-wallet-transfer" onClick={ event => event.stopPropagation() }>
-                                        <input type="text" inputMode="numeric" spellCheck={ false } maxLength={ 9 }
-                                            placeholder="Amount"
-                                            value={ amount }
-                                            onChange={ event => setAmount(event.target.value.replace(/[^0-9]/g, '')) } />
-                                        <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
-                                            title="Move to savings"
-                                            onClick={ event => transfer(TRANSFER_TO_SAVINGS) }>
-                                            To savings
-                                        </div>
-                                        <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
-                                            title="Move to current"
-                                            onClick={ event => transfer(TRANSFER_TO_CURRENT) }>
-                                            To checking
-                                        </div>
+                                <div className="phone-wallet-debit-number">{ CardNumber(GetRpCurrentCharacterId() || ownId) }</div>
+                                <div className="phone-wallet-debit-bottom">
+                                    <div>
+                                        <div className="phone-wallet-debit-label">CARDHOLDER</div>
+                                        <div className="phone-wallet-debit-value">{ ownName }</div>
                                     </div>
-                                    { !!bankNote && <div className="phone-wallet-note">{ bankNote }</div> }
-                                    <div className="phone-wallet-note is-quiet">
-                                        Wages are paid into your checking account. Use an ATM to take out
-                                        cash. Savings earns interest only while you are up and about - it stops
-                                        when you do, the same as a shift.
-                                    </div>
+                                    <div className="phone-wallet-debit-issuer">SAN FRANCISCO<br />PIXELRP</div>
                                 </div>
                             </div>
+                        </div>
+                        <div className="phone-wallet-debit-caption">
+                            <span className="phone-wallet-debit-caption-label">CHECKING</span>
+                            <span className="phone-wallet-debit-caption-value">
+                                <LayoutCurrencyIcon type={ -1 } />{ FormatCredits(bank.current) }
+                            </span>
+                        </div>
+                        <div className="phone-wallet-debit-foot">
+                            <PhoneIcon icon="right-left" size={ 13 } />
+                            <span>Savings and transfers live in Mercury</span>
                         </div>
                     </> }
                 <div className="phone-scroll-spacer" />
             </div>
-            { menuOpen &&
-                <div className="phone-thread-menu-backdrop" onClick={ event => setMenuOpen(false) }>
-                    <div className="phone-wallet-menu" onClick={ event => event.stopPropagation() }>
-                        <div className={ `phone-pin-menu-item${ bank.hasAccount ? ' is-off' : ' phone-tap' }` }
-                            title={ bank.hasAccount ? 'You already have a bank account' : 'Open a current and a savings account' }
-                            onClick={ event => openBankAccount() }>
-                            <span>{ bank.hasAccount ? 'Bank account open' : 'Open a bank account' }</span>
-                            <PhoneIcon icon="building-columns" size={ 18 } />
-                        </div>
-                        <div className={ `phone-pin-menu-item${ full ? ' is-off' : ' phone-tap' }` }
-                            title={ full ? 'You have all three characters' : 'New character' }
-                            onClick={ event => newCharacter() }>
-                            <span>{ full ? 'All three characters made' : 'New character' }</span>
-                            <PhoneIcon icon="user-plus" size={ 18 } />
-                        </div>
-                    </div>
-                </div> }
         </div>
     );
 }

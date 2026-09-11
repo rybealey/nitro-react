@@ -39,6 +39,13 @@ export interface RpBankAccounts
     secondsToInterest: number;
     interestTotal: number;
     wagesTotal: number;
+    /** Savings -> checking moves left this week. Paying in is unlimited. */
+    transfersLeft: number;
+    transfersPerWeek: number;
+    /** unix seconds; when the allowance refills. */
+    transfersResetAt: number;
+    /** Savings has to hold this much before it earns anything. */
+    interestMinimum: number;
 }
 
 /** One movement, exactly as rp_bank_transactions records it. */
@@ -72,6 +79,7 @@ export const BANK_INVALID_AMOUNT = 3;
 export const BANK_INSUFFICIENT = 4;
 export const BANK_SAVINGS_FULL = 5;
 export const BANK_FAILED = 6;
+export const BANK_TRANSFERS_SPENT = 7;
 
 /** Direction on the transfer composer. */
 export const TRANSFER_TO_SAVINGS = 0;
@@ -82,7 +90,11 @@ export const ATM_DEPOSIT = 0;
 export const ATM_WITHDRAW = 1;
 
 const EMPTY_ACCOUNTS = (): RpBankAccounts => (
-    { hasAccount: false, current: 0, savings: 0, savingsCap: 0, rateBps: 0, secondsToInterest: 0, interestTotal: 0, wagesTotal: 0 });
+    {
+        hasAccount: false, current: 0, savings: 0, savingsCap: 0, rateBps: 0, secondsToInterest: 0,
+        interestTotal: 0, wagesTotal: 0, transfersLeft: 0, transfersPerWeek: 3, transfersResetAt: 0,
+        interestMinimum: 0
+    });
 
 export class RpBankAccountsParser implements IMessageParser
 {
@@ -107,7 +119,11 @@ export class RpBankAccountsParser implements IMessageParser
             rateBps: wrapper.readInt(),
             secondsToInterest: wrapper.readInt(),
             interestTotal: wrapper.readInt(),
-            wagesTotal: wrapper.readInt()
+            wagesTotal: wrapper.readInt(),
+            transfersLeft: wrapper.readInt(),
+            transfersPerWeek: wrapper.readInt(),
+            transfersResetAt: wrapper.readInt(),
+            interestMinimum: wrapper.readInt()
         };
 
         return true;
