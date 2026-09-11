@@ -4325,6 +4325,63 @@ $phone-scale: 0.8;
         margin-top: 2px;
     }
 
+    // ---- Settings > Privacy ---------------------------------------------
+    // The Region screen's picker anatomy - a label over a hint line with a
+    // pink check on the chosen row - reused for the two audience lists, plus
+    // switches for the custom region lists.
+    .phone-privacy-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .phone-privacy-hint {
+        margin-top: 2px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        color: var(--ph-faint);
+    }
+
+    .phone-privacy-check {
+        flex: none;
+        color: $phone-pink;
+        margin-top: 2px;
+    }
+
+    // Footnotes here sit under their own group rather than the whole screen,
+    // so they read left-aligned with the card above instead of centred.
+    .phone-privacy-note {
+        padding: 8px 26px 0;
+        text-align: left;
+    }
+
+    .phone-privacy-switch {
+        flex: none;
+        width: 38px;
+        height: 22px;
+        border-radius: 11px;
+        padding: 2px;
+        box-sizing: border-box;
+        display: flex;
+        background: var(--ph-inset);
+        transition: background .18s ease;
+
+        &.is-on { background: $phone-pink; }
+
+        &.is-on .phone-privacy-knob { transform: translateX(16px); }
+    }
+
+    .phone-privacy-knob {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--ph-bg);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+        transition: transform .18s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-privacy-switch, .phone-privacy-knob { transition: none; }
+    }
+
     .phone-settings-footnote {
         padding: 12px 26px 0;
         text-align: center;

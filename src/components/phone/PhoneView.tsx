@@ -13,6 +13,7 @@ import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
 import { PhoneGeneralView } from './PhoneGeneralView';
+import { PhonePrivacyView } from './PhonePrivacyView';
 import { PhoneRegionView } from './PhoneRegionView';
 import { PhoneWallpaperView } from './PhoneWallpaperView';
 import { PhoneWalletView } from './PhoneWalletView';
@@ -39,7 +40,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet' | 'appstore' | 'stocks';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'privacy' | 'wallet' | 'appstore' | 'stocks';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -75,6 +76,8 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if(to === 'general') return 'slide-right';
     if((from === 'general') && (to === 'settings')) return 'slide-left';
     if(to === 'region') return 'slide-right';
+    if(to === 'privacy') return 'slide-right';
+    if((from === 'privacy') && (to === 'settings')) return 'slide-left';
     if(to === 'wallpaper') return 'slide-right';
     if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
     if(to === 'accessibility') return 'slide-right';
@@ -499,7 +502,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } openNotifications={ () => go('notifications') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } openNotifications={ () => go('notifications') } openPrivacy={ () => go('privacy') } /> }
                             { (screen === 'music') &&
                                 <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
@@ -520,6 +523,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneGeneralView onBack={ () => go('settings') } openRegion={ () => go('region') } /> }
                             { (screen === 'region') &&
                                 <PhoneRegionView onBack={ () => go('general') } /> }
+                            { (screen === 'privacy') &&
+                                <PhonePrivacyView onBack={ () => go('settings') } /> }
                             { (screen === 'wallpaper') &&
                                 <PhoneWallpaperView onBack={ () => go('settings') } /> }
                             { (screen === 'accessibility') &&
