@@ -5415,7 +5415,15 @@ $phone-scale: 0.8;
     // through it. The panel borrows the card's navy and guilloche so the two
     // read as one system, minus the holo edge - that is the tell that says
     // "you carry this one", and an account is not a thing you carry.
-    .phone-merc-switch { margin: 4px 18px 0; }
+    // The shared pill sizes its options to their text, which is right in
+    // Settings where the track hugs them. Here the track spans the screen, so
+    // the halves have to fill it - otherwise both labels huddle on the left
+    // and the thumb slides to an empty right half.
+    .phone-merc-switch {
+        margin: 4px 18px 0;
+
+        .phone-segmented-option { flex: 1 1 0; }
+    }
 
     .phone-merc-panel {
         position: relative;
@@ -5523,27 +5531,34 @@ $phone-scale: 0.8;
         &.is-out { color: #f0954a; }
     }
 
+    // Sized to fit all five at the default text scale - but the phone has an
+    // accessibility scale, so above 1 they WILL overflow. The row scrolls, and
+    // fades at the right edge so that reads as more-to-come rather than as a
+    // chip chopped off by the bezel.
     .phone-merc-chips {
         display: flex;
-        gap: 6px;
+        gap: 4px;
         margin-top: 16px;
         padding: 0 18px;
         overflow-x: auto;
         scrollbar-width: none;
+        mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent 100%);
+        -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent 100%);
 
         &::-webkit-scrollbar { display: none; }
     }
 
     .phone-merc-chip {
         flex: none;
-        padding: 6px 12px;
+        padding: 6px 9px;
         border-radius: 999px;
         background: var(--ph-inset);
         color: var(--ph-soft);
         font-family: 'Ubuntu', sans-serif;
-        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-size: calc(10.5px * var(--ph-text-scale, 1));
         font-weight: 700;
-        letter-spacing: .3px;
+        letter-spacing: .2px;
+        white-space: nowrap;
         transition: background .14s ease, color .14s ease;
 
         &.is-on { background: $phone-pink; color: #ffffff; }

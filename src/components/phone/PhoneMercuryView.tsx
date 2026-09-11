@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { GetRpBankAccounts, GetRpBankLedger, IsRpBankLedgerLoaded, RpBankEntry, SendRpGetBankAccounts, SendRpGetBankLedger, SubscribeRpBankAccounts, SubscribeRpBankLedger } from '../../api/rp-phone/RpBankMessages';
 import { LayoutCurrencyIcon } from '../../common';
 import { PhoneIcon } from './PhoneIcon';
@@ -41,8 +41,8 @@ const KINDS: { [key: string]: { title: string; tone: 'in' | 'out' | 'flat'; mark
     interest: { title: 'Interest', tone: 'in', mark: 'percent' },
     deposit: { title: 'Cash in', tone: 'in', mark: 'arrow-down-to-line' },
     withdraw: { title: 'Cash out', tone: 'out', mark: 'arrow-up-from-line' },
-    transfer_in: { title: 'Transfer in', tone: 'flat', mark: 'right-left' },
-    transfer_out: { title: 'Transfer out', tone: 'flat', mark: 'right-left' },
+    transfer_in: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
+    transfer_out: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
     open: { title: 'Account opened', tone: 'flat', mark: 'circle-plus' }
 };
 
@@ -177,6 +177,21 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
 
     const look = (entry: RpBankEntry) => (KINDS[entry.kind] || FALLBACK);
 
+    // A transfer's direction is derivable from the account it landed in and
+    // the sign, so it is derived rather than read off `source` - which said
+    // only "transfer" on every row written before this, and would have left
+    // the oldest half of everyone's ledger saying nothing at all.
+    const subtitle = (entry: RpBankEntry): string =>
+    {
+        if(entry.kind.indexOf('transfer') !== 0) return (entry.source || Clock(entry.createdAt));
+
+        const savings = (entry.account === 'savings');
+
+        if(entry.amount >= 0) return savings ? 'From checking' : 'From savings';
+
+        return savings ? 'To checking' : 'To savings';
+    };
+
     const row = (entry: RpBankEntry) =>
     {
         const kind = look(entry);
@@ -186,13 +201,15 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                 <div className={ `phone-merc-mark is-${ kind.tone }` }><PhoneIcon icon={ kind.mark } size={ 16 } /></div>
                 <div className="phone-merc-row-body">
                     <div className="phone-merc-row-title">{ kind.title }</div>
-                    <div className="phone-merc-row-sub">{ entry.source || Clock(entry.createdAt) }</div>
+                    <div className="phone-merc-row-sub">{ subtitle(entry) }</div>
                 </div>
                 <div className="phone-merc-row-tail">
                     <div className={ `phone-merc-amount is-${ kind.tone }` }>
                         <LayoutCurrencyIcon type={ -1 } />{ Signed(entry.amount) }
                     </div>
-                    <div className="phone-merc-after">{ Money(entry.balanceAfter) } left</div>
+                    { /* The running balance, bare. "left" was wrong on anything paid IN -
+                         nothing was taken, so nothing was left. The receipt names it. */ }
+                    <div className="phone-merc-after">{ Money(entry.balanceAfter) }</div>
                 </div>
             </div>
         );
@@ -306,11 +323,14 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                                         </div>
                                     </div>) }
                             </div> }
+                        { /* A Fragment, not a wrapping div: inside one the eyebrow is a
+                             :first-child, and .phone-section-label zeroes its top margin
+                             there - which collapsed the gap between the chips and TODAY. */ }
                         { loaded && days.map(day =>
-                            <div key={ day.label }>
+                            <Fragment key={ day.label }>
                                 <div className="phone-section-label">{ day.label.toUpperCase() }</div>
                                 <div className="phone-merc-rows">{ day.rows.map(entry => row(entry)) }</div>
-                            </div>) }
+                            </Fragment>) }
                         { loaded && !days.length &&
                             <div className="phone-list-note phone-merc-none">
                                 { (filter === 'all')
@@ -345,11 +365,10 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                                 <div className="phone-merc-detail-key">When</div>
                                 <div className="phone-merc-detail-val">{ DayLabel(open.createdAt) }, { Clock(open.createdAt) }</div>
                             </div>
-                            { !!open.source &&
-                                <div className="phone-merc-detail">
-                                    <div className="phone-merc-detail-key">Source</div>
-                                    <div className="phone-merc-detail-val">{ open.source }</div>
-                                </div> }
+                            <div className="phone-merc-detail">
+                                <div className="phone-merc-detail-key">Source</div>
+                                <div className="phone-merc-detail-val">{ subtitle(open) }</div>
+                            </div>
                             <div className="phone-merc-detail">
                                 <div className="phone-merc-detail-key">Balance after</div>
                                 <div className="phone-merc-detail-val">{ Money(open.balanceAfter) }c</div>
