@@ -844,10 +844,22 @@ $phone-scale: 0.8;
         }
 
         // Bare head: no tile at all — no pastel field, no ink outline, no
-        // clipping, no sticker shadow. Same footprint so lists, grids and
-        // the presence dot don't move.
+        // sticker shadow. Same footprint so lists, grids and the presence dot
+        // don't move.
+        //
+        // It still CLIPS, though. Dropping the tile dropped the clipping with
+        // it, and a head wearing a tall hat or big hair then reached out of
+        // its own row and sat on the contact above it.
+        //
+        // The window is the tile plus a bleed, not the tile itself: a bare
+        // head is meant to overhang a little, and cropping at 44px would
+        // behead everyone to contain the few. The bleed is a PERCENTAGE so it
+        // stays proportional on the larger avatars other screens use — at 44px
+        // it comes to ~9px, which is the contact row's own padding, so nothing
+        // can cross the hairline into a neighbour.
         &.phone-avatar--unmasked .phone-avatar-crop {
             overflow: visible;
+            clip-path: inset(-20% -22% -20% -22%);
             border: none;
             box-shadow: none;
             background: transparent;

@@ -299,7 +299,7 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                 </div>
                 { !bank.hasAccount &&
                     <div className="phone-merc-signin">
-                        <div className="phone-merc-signin-mark"><PhoneIcon icon="right-left" size={ 30 } /></div>
+                        <div className="phone-merc-signin-mark"><PhoneIcon icon="building-columns" size={ 30 } /></div>
                         <div className="phone-merc-signin-title">Mercury</div>
                         <div className="phone-merc-signin-strap">Sign in with the account number on your debit card.</div>
                         <div className="phone-merc-signin-fields">
@@ -332,7 +332,7 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                                 <span>No account found. Accounts are opened in person - a teller will give you your number and PIN.</span>
                             </div> }
                         <div className="phone-merc-signin-route">
-                            <div className="phone-merc-signin-route-mark"><PhoneIcon icon="building-columns" size={ 18 } /></div>
+                            <div className="phone-merc-signin-route-mark"><PhoneIcon icon="location-dot" size={ 18 } /></div>
                             <div className="phone-merc-signin-route-text">
                                 <div className="phone-merc-signin-route-title">Open an account</div>
                                 <div className="phone-merc-signin-route-sub">Visit a Mercury branch in the city</div>

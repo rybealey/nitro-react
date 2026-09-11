@@ -78,7 +78,11 @@ export const APP_DEFS: Record<string, PhoneAppDef> = {
     // pixelrp banking: slate plate, mint glyph. Deliberately not the Wallet's
     // grey-and-orange or Stocks' black-and-pink - three finance tiles that
     // look alike would be three tiles nobody can tell apart in the dock.
-    'Mercury': { icon: 'right-left', active: true, plate: 'linear-gradient(160deg, #3f4d63, #232c3a 60%, #121820)', sec: '#8fe3c6' },
+    //
+    // The pillared bank, not the two swapping arrows it started as: those
+    // read as sync or transfer on any other tile, and the one thing this app
+    // has to say at 30px is that it is a BANK.
+    'Mercury': { icon: 'building-columns', active: true, plate: 'linear-gradient(160deg, #3f4d63, #232c3a 60%, #121820)', sec: '#8fe3c6' },
     // near-black tile, green equaliser bars: reads as the streaming-style app it opens
     'Tunes': { icon: 'waveform-lines', active: true, plate: 'linear-gradient(160deg, #1f1f1f, #121212 60%, #0a0a0a)', pri: '#2bd66a', sec: '#2bd66a' },
     'Wallet': { icon: 'wallet', active: true, plate: 'linear-gradient(160deg, #4a4650, #2a2730 60%, #141118)', sec: '#ff9f0a' },

@@ -318,7 +318,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                             <div className="phone-wallet-debit-face">
                                 <div className="phone-wallet-debit-top">
                                     <div className="phone-wallet-debit-brand">
-                                        <div className="phone-wallet-debit-mark"><PhoneIcon icon="right-left" size={ 12 } /></div>
+                                        <div className="phone-wallet-debit-mark"><PhoneIcon icon="building-columns" size={ 12 } /></div>
                                         <div className="phone-wallet-debit-wordmark">Mercury</div>
                                     </div>
                                     <div className="phone-wallet-debit-kind">DEBIT<br />CHECKING</div>
