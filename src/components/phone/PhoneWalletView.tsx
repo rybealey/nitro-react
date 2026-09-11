@@ -363,7 +363,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                 <div className="phone-wallet-number">{ CardNumber(GetRpCurrentCharacterId() || ownId) }</div>
                                 <div className="phone-wallet-balances">
                                     <div className="phone-wallet-balance">
-                                        <span className="phone-wallet-balance-label">CURRENT</span>
+                                        <span className="phone-wallet-balance-label">CHECKING</span>
                                         <span className="phone-wallet-balance-value"><LayoutCurrencyIcon type={ -1 } />{ FormatCredits(bank.current) }</span>
                                     </div>
                                     <div className="phone-wallet-balance">
@@ -397,12 +397,12 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                         <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
                                             title="Move to current"
                                             onClick={ event => transfer(TRANSFER_TO_CURRENT) }>
-                                            To current
+                                            To checking
                                         </div>
                                     </div>
                                     { !!bankNote && <div className="phone-wallet-note">{ bankNote }</div> }
                                     <div className="phone-wallet-note is-quiet">
-                                        Wages are paid into your current account. Use a cash machine to take out
+                                        Wages are paid into your checking account. Use a cash machine to take out
                                         cash. Savings earns interest only while you are up and about - it stops
                                         when you do, the same as a shift.
                                     </div>

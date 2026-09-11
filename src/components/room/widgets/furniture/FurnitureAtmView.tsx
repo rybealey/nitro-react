@@ -9,7 +9,7 @@ import { LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCar
 // server refuses a deposit or a withdrawal unless that is still true. Closing
 // it tells the server, so the permission does not outlive the window.
 //
-// It knows about the CURRENT account and the cash in hand, and nothing else.
+// It knows about CHECKING and the cash in hand, and nothing else.
 // Savings is not sent here and cannot be named from here, which is what makes
 // the two accounts different things: one you can reach from the floor, one you
 // have to sit down with the Wallet to reach.
@@ -169,7 +169,7 @@ export const FurnitureAtmView: FC<{}> = props =>
                             </div>
                             { /* The footer restates the figure that limits this screen -
                                  what you are carrying when depositing, what the account
-                                 holds when withdrawing. With the current account
+                                 holds when withdrawing. With checking
                                  uncapped those are the only two limits an ATM has. */ }
                             <div className="atm-row is-footer">
                                 <span className="atm-row-label">{ (mode === ATM_DEPOSIT) ? 'CASH AVAILABLE' : 'BANK AVAILABLE' }</span>

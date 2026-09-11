@@ -18,6 +18,7 @@ import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 const RP_BANK_ACCOUNTS = 4112;
 const RP_BANK_RESULT = 4113;
 const RP_ATM_OPEN = 4114;
+const RP_BANK_LEDGER = 4115;
 
 // client -> server
 const RP_GET_BANK_ACCOUNTS = 4114;
@@ -25,6 +26,7 @@ const RP_OPEN_BANK_ACCOUNT = 4115;
 const RP_BANK_TRANSFER = 4116;
 const RP_ATM_TRANSACTION = 4117;
 const RP_CLOSE_ATM = 4118;
+const RP_GET_BANK_LEDGER = 4119;
 
 export interface RpBankAccounts
 {
@@ -37,6 +39,22 @@ export interface RpBankAccounts
     secondsToInterest: number;
     interestTotal: number;
     wagesTotal: number;
+}
+
+/** One movement, exactly as rp_bank_transactions records it. */
+export interface RpBankEntry
+{
+    id: number;
+    /** open | wages | interest | transfer_in | transfer_out | deposit | withdraw */
+    kind: string;
+    /** current | savings */
+    account: string;
+    /** Signed: negative is money leaving that account. */
+    amount: number;
+    balanceAfter: number;
+    source: string;
+    /** unix seconds */
+    createdAt: number;
 }
 
 export interface RpAtmState
@@ -202,6 +220,62 @@ export class RpAtmOpenEvent extends MessageEvent implements IMessageEvent
     }
 }
 
+export class RpBankLedgerParser implements IMessageParser
+{
+    private _entries: RpBankEntry[] = [];
+
+    public flush(): boolean
+    {
+        this._entries = [];
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._entries = [];
+
+        let count = wrapper.readInt();
+
+        while(count > 0)
+        {
+            this._entries.push({
+                id: wrapper.readInt(),
+                kind: wrapper.readString(),
+                account: wrapper.readString(),
+                amount: wrapper.readInt(),
+                balanceAfter: wrapper.readInt(),
+                source: wrapper.readString(),
+                createdAt: wrapper.readInt()
+            });
+
+            count--;
+        }
+
+        return true;
+    }
+
+    public get entries(): RpBankEntry[] 
+    {
+        return this._entries; 
+    }
+}
+
+export class RpBankLedgerEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpBankLedgerParser);
+    }
+
+    public getParser(): RpBankLedgerParser
+    {
+        return this.parser as RpBankLedgerParser;
+    }
+}
+
 class RpBankComposerBase implements IMessageComposer<(string | number)[]>
 {
     private _data: (string | number)[];
@@ -262,18 +336,42 @@ export class RpCloseAtmComposer extends RpBankComposerBase
     }
 }
 
+export class RpGetBankLedgerComposer extends RpBankComposerBase
+{
+    constructor()
+    {
+        super();
+    }
+}
+
 // ---- the store ----------------------------------------------------------
 // A module singleton like the rest: login pushes the accounts long before the
 // Wallet is opened, and the ATM can arrive at any moment because the server is
 // the one that decides it should.
 
 let accounts: RpBankAccounts = EMPTY_ACCOUNTS();
+let ledger: RpBankEntry[] = [];
+// Distinguishes "not asked yet" from "asked, and there is nothing" - the
+// difference between a skeleton and an empty state.
+let ledgerLoaded = false;
 
 const listeners = new Set<() => void>();
 const resultListeners = new Set<(outcome: number, message: string) => void>();
 const atmListeners = new Set<(state: RpAtmState) => void>();
+const ledgerListeners = new Set<() => void>();
 
 export const GetRpBankAccounts = (): RpBankAccounts => accounts;
+
+export const GetRpBankLedger = (): RpBankEntry[] => ledger;
+
+export const IsRpBankLedgerLoaded = (): boolean => ledgerLoaded;
+
+export const SubscribeRpBankLedger = (listener: () => void): (() => void) =>
+{
+    ledgerListeners.add(listener);
+
+    return () => ledgerListeners.delete(listener);
+}
 
 export const SubscribeRpBankAccounts = (listener: () => void): (() => void) =>
 {
@@ -310,6 +408,8 @@ export const SendRpAtmTransaction = (mode: number, amount: number): void =>
 
 export const SendRpCloseAtm = (): void => SendMessageComposer(new RpCloseAtmComposer());
 
+export const SendRpGetBankLedger = (): void => SendMessageComposer(new RpGetBankLedgerComposer());
+
 const onAccounts = (event: RpBankAccountsEvent) =>
 {
     const parser = event.getParser();
@@ -328,6 +428,18 @@ const onResult = (event: RpBankResultEvent) =>
     if(!parser) return;
 
     resultListeners.forEach(listener => listener(parser.outcome, parser.message));
+}
+
+const onLedger = (event: RpBankLedgerEvent) =>
+{
+    const parser = event.getParser();
+
+    if(!parser) return;
+
+    ledger = parser.entries;
+    ledgerLoaded = true;
+
+    ledgerListeners.forEach(listener => listener());
 }
 
 const onAtm = (event: RpAtmOpenEvent) =>
@@ -353,20 +465,23 @@ export const RegisterRpBankMessages = () =>
         events: new Map<number, Function>([
             [ RP_BANK_ACCOUNTS, RpBankAccountsEvent ],
             [ RP_BANK_RESULT, RpBankResultEvent ],
-            [ RP_ATM_OPEN, RpAtmOpenEvent ]
+            [ RP_ATM_OPEN, RpAtmOpenEvent ],
+            [ RP_BANK_LEDGER, RpBankLedgerEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_GET_BANK_ACCOUNTS, RpGetBankAccountsComposer ],
             [ RP_OPEN_BANK_ACCOUNT, RpOpenBankAccountComposer ],
             [ RP_BANK_TRANSFER, RpBankTransferComposer ],
             [ RP_ATM_TRANSACTION, RpAtmTransactionComposer ],
-            [ RP_CLOSE_ATM, RpCloseAtmComposer ]
+            [ RP_CLOSE_ATM, RpCloseAtmComposer ],
+            [ RP_GET_BANK_LEDGER, RpGetBankLedgerComposer ]
         ])
     });
 
     GetCommunication().registerMessageEvent(new RpBankAccountsEvent(onAccounts));
     GetCommunication().registerMessageEvent(new RpBankResultEvent(onResult));
     GetCommunication().registerMessageEvent(new RpAtmOpenEvent(onAtm));
+    GetCommunication().registerMessageEvent(new RpBankLedgerEvent(onLedger));
 
     registered = true;
 }

@@ -650,6 +650,7 @@ $phone-scale: 0.8;
     .phone-section-label + .phone-notes-card,
     .phone-section-label + .phone-wallet-card,
     .phone-section-label + .phone-wallet-bank,
+    .phone-section-label + .phone-merc-rows,
     .phone-section-label + .phone-wallpaper-grid,
     .phone-section-label + .phone-search {
         margin-top: 0;
@@ -5407,6 +5408,410 @@ $phone-scale: 0.8;
 
             &:hover { background: transparent; }
         }
+    }
+
+    // ---- Mercury: the banking app ---------------------------------------
+    // The Wallet holds the CARD; Mercury holds the ACCOUNT and every movement
+    // through it. The panel borrows the card's navy and guilloche so the two
+    // read as one system, minus the holo edge - that is the tell that says
+    // "you carry this one", and an account is not a thing you carry.
+    .phone-merc-switch { margin: 4px 18px 0; }
+
+    .phone-merc-panel {
+        position: relative;
+        margin: 12px 18px 0;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #1c2742;
+        color: #f4f0f7;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .12);
+        animation: phone-cal-rise .32s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .phone-merc-panel-rule {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #2a4f7d, #3f7fbd);
+
+        &.is-savings { background: linear-gradient(90deg, #2f7d63, #46a37f); }
+    }
+
+    .phone-merc-panel-body {
+        position: relative;
+        padding: 16px 16px 15px;
+    }
+
+    .phone-merc-panel-label {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.4px;
+        color: rgba(244, 240, 247, .55);
+    }
+
+    .phone-merc-balance {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 5px;
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 700;
+        font-size: calc(30px * var(--ph-text-scale, 1));
+        letter-spacing: -.6px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+
+        em {
+            font-style: normal;
+            font-size: calc(13px * var(--ph-text-scale, 1));
+            font-weight: 600;
+            letter-spacing: 0;
+            color: rgba(244, 240, 247, .5);
+        }
+
+        .nitro-currency-icon { width: 20px; height: 20px; background-repeat: no-repeat; background-size: contain; background-position: center; flex: none; }
+    }
+
+    // Only savings has a ceiling, so only savings has a meter. One that could
+    // never fill would say the wrong thing about the current account.
+    .phone-merc-meter {
+        margin-top: 12px;
+        height: 4px;
+        border-radius: 2px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, .14);
+
+        span {
+            display: block;
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #46a37f, #7fc98f);
+            transition: width .3s ease;
+        }
+    }
+
+    .phone-merc-panel-foot {
+        display: flex;
+        gap: 18px;
+        margin-top: 13px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, .1);
+    }
+
+    .phone-merc-stat { min-width: 0; }
+
+    .phone-merc-stat-label {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(8.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        color: rgba(244, 240, 247, .45);
+    }
+
+    .phone-merc-stat-value {
+        margin-top: 3px;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        color: #f4f0f7;
+
+        &.is-in { color: #7fc98f; }
+        &.is-out { color: #f0954a; }
+    }
+
+    .phone-merc-chips {
+        display: flex;
+        gap: 6px;
+        margin-top: 16px;
+        padding: 0 18px;
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar { display: none; }
+    }
+
+    .phone-merc-chip {
+        flex: none;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--ph-inset);
+        color: var(--ph-soft);
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .3px;
+        transition: background .14s ease, color .14s ease;
+
+        &.is-on { background: $phone-pink; color: #ffffff; }
+    }
+
+    .phone-merc-rows { padding: 0 18px; }
+
+    .phone-merc-row {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 11px 0;
+
+        & + .phone-merc-row { border-top: 1px solid $phone-hairline; }
+        &.is-skeleton { pointer-events: none; }
+    }
+
+    // in / out / flat. A TRANSFER is the same money in the same hands, so it is
+    // neither earned nor spent and is not coloured as either - a green + on one
+    // would be the app telling you that moving money made you richer.
+    .phone-merc-mark {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--ph-inset);
+        color: var(--ph-soft);
+
+        &.is-in { background: rgba(70, 163, 127, .16); color: #46a37f; }
+        &.is-out { background: rgba(232, 115, 50, .16); color: #e87332; }
+        &.is-big { width: 42px; height: 42px; border-radius: 14px; }
+        &.is-skeleton { background: var(--ph-inset); }
+    }
+
+    .phone-merc-row-body { flex: 1; min-width: 0; }
+
+    .phone-merc-row-title {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        line-height: 1.25;
+        color: var(--ph-text);
+    }
+
+    .phone-merc-row-sub {
+        margin-top: 1px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        line-height: 1.35;
+        color: $phone-muted-text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 158px;
+    }
+
+    .phone-merc-row-tail {
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+    }
+
+    .phone-merc-amount {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        color: var(--ph-text);
+
+        &.is-in { color: #46a37f; }
+        &.is-out { color: #e87332; }
+
+        .nitro-currency-icon { width: 13px; height: 13px; background-repeat: no-repeat; background-size: contain; background-position: center; flex: none; }
+    }
+
+    .phone-merc-after {
+        font-size: calc(10.5px * var(--ph-text-scale, 1));
+        color: var(--ph-faint);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .phone-merc-none { text-align: center; }
+
+    .phone-merc-skel {
+        height: 11px;
+        border-radius: 5px;
+        background: var(--ph-inset);
+        animation: phone-skel-pulse 1.1s ease-in-out infinite;
+
+        & + .phone-merc-skel { margin-top: 6px; }
+        &.is-sub { height: 9px; opacity: .7; }
+    }
+
+    @keyframes phone-skel-pulse {
+        0%, 100% { opacity: .55; }
+        50% { opacity: .95; }
+    }
+
+    // ---- Mercury > the receipt -------------------------------------------
+    .phone-merc-scrim {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        background: rgba(9, 5, 14, .55);
+        animation: phone-cal-fade .18s ease both;
+    }
+
+    .phone-merc-sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 61;
+        padding: 8px 18px 26px;
+        border-radius: 22px 22px 0 0;
+        background: var(--ph-bg);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, .45);
+        animation: phone-sheet-up .24s cubic-bezier(.22, .61, .36, 1) both;
+    }
+
+    .phone-merc-grab {
+        width: 38px;
+        height: 4px;
+        margin: 0 auto 16px;
+        border-radius: 2px;
+        background: var(--ph-inset);
+    }
+
+    .phone-merc-sheet-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .phone-merc-sheet-amount {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(26px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: -.5px;
+        font-variant-numeric: tabular-nums;
+        color: var(--ph-text);
+
+        &.is-in { color: #46a37f; }
+        &.is-out { color: #e87332; }
+
+        .nitro-currency-icon { width: 18px; height: 18px; background-repeat: no-repeat; background-size: contain; background-position: center; flex: none; }
+    }
+
+    .phone-merc-sheet-kind {
+        margin-top: 2px;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(10px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--ph-faint);
+    }
+
+    .phone-merc-details { margin-top: 16px; }
+
+    .phone-merc-detail {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 10px 0;
+
+        & + .phone-merc-detail { border-top: 1px solid $phone-hairline; }
+    }
+
+    .phone-merc-detail-key {
+        flex: none;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(9.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+        color: var(--ph-faint);
+    }
+
+    .phone-merc-detail-val {
+        text-align: right;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        color: var(--ph-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .phone-merc-close {
+        margin-top: 18px;
+        height: 42px;
+        border-radius: 14px;
+        background: var(--ph-inset);
+        color: var(--ph-text);
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: .4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:active { opacity: .8; }
+    }
+
+    // ---- Mercury > before there are accounts ------------------------------
+    // Centred in what is left of the screen, not hugging the header: an empty
+    // state pinned to the top reads as a page that failed to load.
+    .phone-merc-blank {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 92px 34px 0;
+        text-align: center;
+    }
+
+    .phone-merc-blank-mark {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 14px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--ph-inset);
+        color: var(--ph-soft);
+    }
+
+    .phone-merc-blank-title {
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(17px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: -.2px;
+        color: var(--ph-text);
+    }
+
+    .phone-merc-blank-body {
+        margin-top: 6px;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        line-height: 1.5;
+        color: var(--ph-soft);
+        text-wrap: pretty;
+    }
+
+    .phone-merc-blank-foot {
+        margin-top: 22px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        line-height: 1.5;
+        color: var(--ph-faint);
+        text-wrap: pretty;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-merc-panel, .phone-merc-sheet, .phone-merc-scrim, .phone-merc-skel,
+        .phone-merc-meter span, .phone-merc-chip { animation: none; transition: none; }
     }
 
     // ---- Wallet > the debit card ----------------------------------------
