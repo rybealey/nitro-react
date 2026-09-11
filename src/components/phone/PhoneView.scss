@@ -4608,6 +4608,20 @@ $phone-scale: 0.8;
         justify-content: center;
         flex: none;
         text-transform: uppercase;
+
+        // Carrying the portrait rather than the initial: the avatar IS the
+        // button, so the pink fallback ground would only show at its corners.
+        &.is-avatar {
+            background: transparent;
+        }
+
+        // PhoneAvatar sizes its own radius inline - the rounded square Settings
+        // uses - and the crop inherits it. This button has always been a
+        // circle, so both are overridden back to one here.
+        .phone-avatar,
+        .phone-avatar .phone-avatar-crop {
+            border-radius: 50% !important;
+        }
     }
 
     // One featured app leads Discover: a band in the app's own plate colour

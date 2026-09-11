@@ -2,6 +2,7 @@ import { FC, MouseEvent, useMemo, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { LayoutCurrencyIcon } from '../../common';
 import { AppPrice, EmployedBy, FindStoreApp, PriceAmount, PriceCurrency, STORE_APPS, StoreApp } from './PhoneAppStore';
+import { PhoneAvatar } from './PhoneAvatar';
 import { AppGlyph, APP_DEFS } from './PhoneHomeView';
 import { PhoneIcon } from './PhoneIcon';
 import { SwipeRow } from './PhoneNotesView';
@@ -70,6 +71,13 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
     const locked = (app: StoreApp) => (app.corporation && !EmployedBy(app.corporation));
     const ownedAlready = (key: string) => (owned.indexOf(key) >= 0);
 
+    // The account button carries the player's own portrait, the same render
+    // Settings shows beside their name. The initial stays as the fallback for
+    // the case where no figure is known yet.
+    const ownId = useMemo(() => (GetSessionDataManager()?.userId || 0), []);
+
+    const ownFigure = useMemo(() => (GetSessionDataManager()?.figure || null), []);
+
     const initial = useMemo(() =>
     {
         const name = (GetSessionDataManager()?.userName || '');
@@ -133,7 +141,12 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                 </div>
             </div>
             { !!onAccount &&
-                <div className="phone-store-account phone-tap" onClick={ event => onAccount() }>{ initial }</div> }
+                <div className={ 'phone-store-account phone-tap' + (ownFigure ? ' is-avatar' : '') }
+                    onClick={ event => onAccount() }>
+                    { ownFigure
+                        ? <PhoneAvatar portrait id={ ownId } figure={ ownFigure } size={ 30 } />
+                        : initial }
+                </div> }
         </div>
     );
 
@@ -249,7 +262,6 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                     <PhoneIcon icon="magnifying-glass" size={ 14 } />
                     <input value={ search } placeholder="Search apps" onChange={ event => setSearch(event.target.value) } />
                 </div>
-
                 { (!query && featured) &&
                     <div className="phone-store-feat phone-tap" onClick={ event => setOpenKey(featured.key) }>
                         <div className="phone-store-feat-band" style={ { background: APP_DEFS[featured.key]?.plate } }>
@@ -264,7 +276,6 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                             { actionFor(featured) }
                         </div>
                     </div> }
-
                 <div className="phone-settings-list">
                     { (rest.length > 0) &&
                         <div>
