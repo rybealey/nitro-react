@@ -32,6 +32,20 @@ const DIALOG_HEIGHT = 460;
 // (GameMap.cs), so the toggle drives that field and the row says so.
 const LAY_TYPES = [ 'bed', 'tent_small' ];
 
+// These are wired up once, at the end of RoomItemHandling.LoadFurniture -
+// the moodlight's state object, the hopper count, the flag that starts the
+// roller cycle - rather than being read per click. Applying the type updates
+// the definition, but nothing re-runs that block, so the furni claims the
+// behaviour with nothing behind it until the room loads again.
+//
+// Deliberately not gating Apply: the change IS correct and does persist, it
+// just does not come alive until a reload.
+const RELOAD_REQUIRED: { [key: string]: string } = {
+    dimmer: 'the mood light its state is stored against',
+    hopper: 'the room hopper count',
+    roller: 'the flag that starts the roller cycle'
+};
+
 // Behaviours that are inert - or actively broken - without a second value.
 // Picking one of these and leaving the companion blank is the easiest way to
 // ship furni that clicks and does nothing, so Apply waits for it.
@@ -173,6 +187,9 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     const openCount = useMemo(() => cells.filter(Boolean).length, [ cells ]);
 
     const companion = useMemo(() => (draft ? (COMPANIONS[draft.interactionType] || null) : null), [ draft ]);
+
+    const needsReload = useMemo(() => ((draft && (draft.interactionType !== saved?.interactionType))
+        ? (RELOAD_REQUIRED[draft.interactionType] || null) : null), [ draft, saved ]);
 
     const companionReady = useMemo(() =>
     {
@@ -451,6 +468,15 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                 <option value={ draft.interactionType }>{ draft.interactionType } (advanced)</option> }
                         </select>
                     </label>
+                    <div className="rp-furni-function-note">
+                        Behaviour changes what the SERVER does. A furni still behaves as its artwork
+                        allows, so a plain table will not become a working jukebox however it is set.
+                    </div>
+                    { needsReload &&
+                        <div className="rp-furni-function-reload">
+                            Applies now, but only comes alive when the room reloads - { needsReload } is
+                            set up as the room loads, not per click.
+                        </div> }
                     { companion &&
                         <div className={ 'rp-furni-function-companion' + (companionReady ? '' : ' is-missing') }>
                             <div className="rp-furni-function-companion-note">{ companion.note }</div>

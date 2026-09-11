@@ -614,6 +614,18 @@ $furni-function-on: #2e9e4f;
         }
     }
 
+    // Informational, not a blocker - the companion box beside it gates Apply,
+    // this one does not, so it reads quieter: no border, no amber ground.
+    .rp-furni-function-reload {
+        margin-top: 8px;
+        padding: 7px 8px;
+        border-radius: 6px;
+        font-size: 10px;
+        line-height: 1.45;
+        color: rgba($white, .72);
+        background: rgba(233, 185, 72, .09);
+    }
+
     .rp-furni-function-companion {
         margin-top: 9px;
         padding: 8px;
