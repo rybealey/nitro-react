@@ -6,6 +6,11 @@ import { GetLocalStorage, SetLocalStorage, WindowSaveOptions } from '../../api';
 import { DraggableWindowPosition } from './DraggableWindowPosition';
 
 const CURRENT_WINDOWS: HTMLElement[] = [];
+
+// PixelRP: how far a SIDE_DRAWER window sits from the drawer's right edge, and
+// where it lands if the drawer is not mounted (outside a room).
+const SIDE_DRAWER_GAP: number = 10;
+const SIDE_DRAWER_FALLBACK_LEFT: number = 60;
 const BOUNDS_THRESHOLD_TOP: number = 0;
 const BOUNDS_THRESHOLD_LEFT: number = 0;
 
@@ -175,6 +180,7 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
             const newStorage = { ...GetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`) } as WindowSaveOptions;
 
             newStorage.offset = { x: offsetX, y: offsetY };
+            newStorage.drawerAnchored = true;
 
             SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, newStorage);
         }
@@ -224,6 +230,17 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
                 element.style.top = 50 + offsetTop + 'px';
                 element.style.left = 50 + offsetLeft + 'px';
                 break;
+            case DraggableWindowPosition.SIDE_DRAWER: {
+                // Measured, not assumed: the drawer is two widths (expanded
+                // and collapsed) and its container's right edge includes the
+                // toggle notch hanging off it, which a window must not cover.
+                const drawer = document.querySelector('.nitro-side-drawer-container');
+                const drawerRight = drawer ? drawer.getBoundingClientRect().right : SIDE_DRAWER_FALLBACK_LEFT;
+
+                element.style.top = `calc(50vh - ${ (element.offsetHeight / 2) + offsetTop }px)`;
+                element.style.left = `${ drawerRight + SIDE_DRAWER_GAP + offsetLeft }px`;
+                break;
+            }
         }
 
         setDelta({ x: 0, y: 0 });
@@ -289,9 +306,20 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
 
         if(!localStorage || !localStorage.offset) return;
 
+        // A drawer window's offset was measured from the centred default it
+        // used to open at; against its new anchor beside the drawer the same
+        // number points somewhere nobody chose. Dropped once, then honoured
+        // normally - a player who drags it after this keeps their spot.
+        if((windowPosition === DraggableWindowPosition.SIDE_DRAWER) && !localStorage.drawerAnchored)
+        {
+            SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, { ...localStorage, offset: null, drawerAnchored: true });
+
+            return;
+        }
+
         setDelta({ x: 0, y: 0 });
         if(localStorage.offset) setOffset(localStorage.offset);
-    }, [ uniqueKey ]);
+    }, [ uniqueKey, windowPosition ]);
 
     return (
         createPortal(

@@ -218,12 +218,13 @@ export const RpProfileView: FC<{}> = props =>
                         </div>
                         <div className="rp-profile-card rp-profile-org">
                             <div className="rp-profile-org-row">
-                                { /* same slot as the corporation card so both icons line up.
-                                     The crest is cropped to the shield so its 40px is the same
-                                     40px the badge art occupies, rather than two thirds of it. */ }
-                                <div className="rp-profile-org-icon-slot rp-profile-org-icon-slot--crest">
+                                { /* the SAME slot as the corporation card, 40x40, so the two
+                                     rows are exactly the same height. A shield is taller than
+                                     it is wide, so the crest is sized by its height: cropped,
+                                     32 wide comes out 40 tall and fills the slot. */ }
+                                <div className="rp-profile-org-icon-slot">
                                     { gang
-                                        ? <GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 40 } crop />
+                                        ? <GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 32 } crop />
                                         : <LuUsers className="rp-profile-org-icon" /> }
                                 </div>
                                 <div className="rp-profile-org-info">

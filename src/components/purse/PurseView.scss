@@ -13,6 +13,15 @@
         // Square Diamonds button in the purse's left slot. Pixel icon renders
         // at NATIVE size (43x40, no scaling) centered in the square.
 
+        // VIP badge, at its native 20x20 like the Diamonds icon above - the
+        // source is a 20px pixel sprite, so any scaling muddies the outline.
+        .nitro-purse-vip {
+            width: 20px;
+            height: 20px;
+            flex: none;
+            image-rendering: pixelated;
+        }
+
         .nitro-purse-subscription {
             background-color: rgba($light, 0.1);
             // 1:1 tile. aspect-ratio can't do this here (the row's auto

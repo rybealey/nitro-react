@@ -1,6 +1,7 @@
 import { RoomChatSettings, RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatBubbleMessage, GetRoomEngine } from '../../../../api';
+import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/NarratedBubble';
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
 
 interface ChatWidgetMessageViewProps
@@ -10,19 +11,6 @@ interface ChatWidgetMessageViewProps
     bubbleWidth?: number;
 }
 
-// Chat styles whose asterisk-wrapped messages render as an action: 4 is the
-// blue combat bubble, 5 the yellow one used when a backpack item is consumed.
-// 4 = fight/action blue, 5 = consume yellow, 23 = the staff action bubble
-// (:superhire and friends) - all render "*Name does a thing*"
-const ACTION_BUBBLE_STYLES: number[] = [ 4, 5, 23 ];
-
-// Relationship bubbles are their own family, not combat: 16 carries the social
-// commands (:hug, :kiss, :bite). They narrate the same way, so they get the
-// same "*Name does a thing*" treatment - kept in a separate list because they
-// are not action bubbles and should not inherit whatever those grow into.
-const RELATIONSHIP_BUBBLE_STYLES: number[] = [ 16 ];
-
-const NARRATED_BUBBLE_STYLES: number[] = [ ...ACTION_BUBBLE_STYLES, ...RELATIONSHIP_BUBBLE_STYLES ];
 
 export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
 {
@@ -90,22 +78,12 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
         setIsVisible(true);
     }, [ chat, isReady, isVisible, makeRoom ]);
 
-    // Narrated bubbles arrive as *action text*. Move that opening marker ahead
-    // of the username so the whole line reads *Username action text*, and mark
-    // the bubble so ChatWidgetView.scss can bold it.
-    //
-    // Two families qualify. The action bubbles: 4, the blue bubble every combat
-    // action uses, 5, the yellow one a consumed backpack item announces itself
-    // with (the passive smoothie, a VIP token), and 23, the staff one. And the
-    // relationship bubble, 16, which the social commands shout. They are all
-    // the same KIND of message - the player doing something, narrated in the
-    // third person - so they read the same, while staying separate lists.
-    //
-    // The asterisk test is what makes this safe: any of these styles may also
-    // be a player-selectable chat style, and ordinary chat in one must stay
-    // plain.
-    const isActionBubble = (NARRATED_BUBBLE_STYLES.includes(chat.styleId) && chat.text.startsWith('*') && chat.text.endsWith('*'));
-    const formattedText = isActionBubble ? chat.formattedText.substring(1) : chat.formattedText;
+    // Narrated bubbles arrive as *action text*. Move that opening marker
+    // ahead of the username so the whole line reads *Username action text*,
+    // and mark the bubble so ChatWidgetView.scss can bold it. The rule itself
+    // lives in NarratedBubble, shared with the Chat History window.
+    const isActionBubble = IsNarratedBubble(chat.styleId, chat.text);
+    const formattedText = isActionBubble ? NarratedBubbleText(chat.formattedText) : chat.formattedText;
 
     return (
         <div ref={ elementRef } className={ `bubble-container ${ isVisible ? 'visible' : 'invisible' }` } onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>

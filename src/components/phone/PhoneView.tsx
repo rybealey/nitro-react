@@ -13,6 +13,8 @@ import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
 import { PhoneGeneralView } from './PhoneGeneralView';
+import { PhoneNewCharacterView } from './PhoneNewCharacterView';
+import { PhonePrivacyView } from './PhonePrivacyView';
 import { PhoneRegionView } from './PhoneRegionView';
 import { PhoneWallpaperView } from './PhoneWallpaperView';
 import { PhoneWalletView } from './PhoneWalletView';
@@ -39,7 +41,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'wallet' | 'appstore' | 'stocks';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'privacy' | 'wallet' | 'newcharacter' | 'appstore' | 'stocks';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -75,12 +77,21 @@ const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
     if(to === 'general') return 'slide-right';
     if((from === 'general') && (to === 'settings')) return 'slide-left';
     if(to === 'region') return 'slide-right';
+    if(to === 'privacy') return 'slide-right';
+    if(to === 'newcharacter') return 'slide-right';
+    if((from === 'newcharacter') && (to === 'wallet')) return 'slide-left';
+    if((from === 'privacy') && (to === 'settings')) return 'slide-left';
     if(to === 'wallpaper') return 'slide-right';
     if((from === 'wallpaper') && (to === 'settings')) return 'slide-left';
     if(to === 'accessibility') return 'slide-right';
     if((from === 'accessibility') && (to === 'settings')) return 'slide-left';
     if(to === 'notifications') return 'slide-right';
     if((from === 'notifications') && (to === 'settings')) return 'slide-left';
+    // Camera and Photos are a pair rather than two unrelated apps - the
+    // shutter leads into the library and the library back out to it - so they
+    // move like a forward/back step instead of cross-fading.
+    if((from === 'camera') && (to === 'photos')) return 'slide-right';
+    if((from === 'photos') && (to === 'camera')) return 'slide-left';
     if(to === 'compose') return 'sheet-up';
     if(from === 'compose') return 'slide-left';
 
@@ -108,6 +119,9 @@ export const PhoneView: FC<{}> = props =>
     const { clock24 } = useUnitsPrefs();
     const { saveScreenshot = null } = usePhonePhotos();
     const { markSeen = null } = usePhoneNotifications();
+    // Whether whatever is open has been scrolled: the status bar's scrim is
+    // for content passing under it, so it stays off until there is any.
+    const [ isScrolled, setIsScrolled ] = useState(false);
     const displayRef = useRef<HTMLDivElement>(null);
     const powerTimer = useRef<number>(0);
     const powerLongFired = useRef(false);
@@ -115,17 +129,49 @@ export const PhoneView: FC<{}> = props =>
     const activeThread = useMemo(() => visibleThreads.find(thread => (thread.threadId === threadId)), [ visibleThreads, threadId ]);
     const callFriend = ((callFriendId && getFriend) ? getFriend(callFriendId) : null);
 
-    const go = (to: PhoneScreen) =>
+    // `animation` overrides what animationFor would pick, for the gestures it
+    // cannot read from the two screen names alone: opening an app from the App
+    // Store or from a notification is a LAUNCH wherever you happened to be, so
+    // it gets the home screen's app-open rather than a fade.
+    const go = (to: PhoneScreen, animation?: string) =>
     {
         setScreen(prevValue =>
         {
-            setAnimation(animationFor(prevValue, to));
+            setAnimation(animation ?? animationFor(prevValue, to));
 
             return to;
         });
 
         if((to !== 'thread') && setActiveThreadId) setActiveThreadId(-1);
     }
+
+    // Scroll does not bubble, so this listens in the CAPTURE phase and reads
+    // whichever scrollport fired. Horizontal ones are ignored - a sideways
+    // strip reporting scrollTop 0 would otherwise wipe the flag the vertical
+    // scroller just set.
+    useEffect(() =>
+    {
+        const element = displayRef.current;
+
+        if(!element) return;
+
+        const onScroll = (event: Event) =>
+        {
+            const target = event.target as HTMLElement;
+
+            if(!target || !target.scrollHeight || (target.scrollHeight <= target.clientHeight)) return;
+
+            setIsScrolled(target.scrollTop > 4);
+        };
+
+        element.addEventListener('scroll', onScroll, true);
+
+        return () => element.removeEventListener('scroll', onScroll, true);
+    }, []);
+
+    // Every screen opens at the top, and its scrollport does not fire a scroll
+    // event to say so.
+    useEffect(() => setIsScrolled(false), [ screen ]);
 
     // Place the phone at the player's chosen side the next time it mounts.
     // DraggableWindow centers the phone (windowPosition=CENTER) then applies
@@ -226,19 +272,19 @@ export const PhoneView: FC<{}> = props =>
                 openThreadForUser(notification.targetId);
                 return;
             case 'contacts':
-                go('contacts');
+                go('contacts', 'app-open');
                 return;
             case 'photos':
-                go('photos');
+                go('photos', 'app-open');
                 return;
             case 'calendar':
-                go('calendar');
+                go('calendar', 'app-open');
                 return;
             case 'notes':
-                go('notes');
+                go('notes', 'app-open');
                 return;
             case 'news':
-                go('news');
+                go('news', 'app-open');
                 return;
         }
     }
@@ -473,7 +519,7 @@ export const PhoneView: FC<{}> = props =>
             <div className="pixelrp-phone">
                 <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
                     <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }${ access.bold ? ' is-a11y-bold' : '' }${ access.contrast ? ' is-a11y-contrast' : '' }${ access.opaque ? ' is-a11y-opaque' : '' }${ access.switchLabels ? ' is-a11y-labels' : '' }${ access.reduceMotion ? ' is-a11y-still' : '' }` } style={ { '--ph-text-scale': TEXT_SIZE_SCALES[access.textSize] } as CSSProperties }>
-                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }` } title={ centerOpen ? 'Close notifications' : 'Notifications' } onClick={ event => setCenterOpen(value => !value) }>
+                        <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }${ isScrolled ? ' is-scrolled' : '' }` } title={ centerOpen ? 'Close notifications' : 'Notifications' } onClick={ event => setCenterOpen(value => !value) }>
                             <div className="phone-status-time">{ clock }</div>
                             <div className="phone-status-right">
                                 <span>PXL</span>
@@ -499,7 +545,7 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&
-                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } openNotifications={ () => go('notifications') } /> }
+                                <PhoneSettingsView onBack={ () => go('home') } openAppearance={ () => go('appearance') } openAccount={ () => go('account') } openGeneral={ () => go('general') } openWallpaper={ () => go('wallpaper') } openAccessibility={ () => go('accessibility') } openNotifications={ () => go('notifications') } openPrivacy={ () => go('privacy') } /> }
                             { (screen === 'music') &&
                                 <PhoneMusicView onBack={ () => go('home') } /> }
                             { (screen === 'calendar') &&
@@ -511,15 +557,19 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'news') &&
                                 <PhoneNewsView onBack={ () => go('home') } /> }
                             { (screen === 'wallet') &&
-                                <PhoneWalletView onBack={ () => go('home') } /> }
+                                <PhoneWalletView onBack={ () => go('home') } openCreate={ () => go('newcharacter') } /> }
+                            { (screen === 'newcharacter') &&
+                                <PhoneNewCharacterView onBack={ () => go('wallet') } onCreated={ () => go('wallet') } /> }
                             { (screen === 'stocks') &&
                                 <PhoneStocksView onBack={ () => go('home') } /> }
                             { (screen === 'appstore') &&
-                                <PhoneAppStoreView onBack={ () => go('home') } openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app])) } /> }
+                                <PhoneAppStoreView onBack={ () => go('home') } openApp={ app => (APP_SCREENS[app] && go(APP_SCREENS[app], 'app-open')) } /> }
                             { (screen === 'general') &&
                                 <PhoneGeneralView onBack={ () => go('settings') } openRegion={ () => go('region') } /> }
                             { (screen === 'region') &&
                                 <PhoneRegionView onBack={ () => go('general') } /> }
+                            { (screen === 'privacy') &&
+                                <PhonePrivacyView onBack={ () => go('settings') } /> }
                             { (screen === 'wallpaper') &&
                                 <PhoneWallpaperView onBack={ () => go('settings') } /> }
                             { (screen === 'accessibility') &&

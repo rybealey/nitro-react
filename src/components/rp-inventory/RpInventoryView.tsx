@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { FaPen } from 'react-icons/fa';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Backpack
@@ -233,7 +233,7 @@ export const RpInventoryView: FC<{}> = props =>
     }
 
     return (
-        <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim">
+        <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
             <div ref={ useModeRef } className="rp-inventory-use-mode">
                 <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>

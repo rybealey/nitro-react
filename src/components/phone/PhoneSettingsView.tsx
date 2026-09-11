@@ -20,11 +20,12 @@ interface PhoneSettingsViewProps
     openWallpaper: () => void;
     openAccessibility: () => void;
     openNotifications: () => void;
+    openPrivacy: () => void;
 }
 
 export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
 {
-    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null, openAccessibility = null, openNotifications = null } = props;
+    const { onBack = null, openAppearance = null, openAccount = null, openGeneral = null, openWallpaper = null, openAccessibility = null, openNotifications = null, openPrivacy = null } = props;
     const { theme, wallpaper, notify } = usePhonePrefs();
     const { enabled: airplane, setEnabled: setAirplane } = useAirplane();
 
@@ -98,7 +99,7 @@ export const PhoneSettingsView: FC<PhoneSettingsViewProps> = props =>
                     { group(<>
                         { item('bell', '#e03131', 'Notifications', { value: notifyLabel, inert: false, onTap: () => (openNotifications && openNotifications()) }) }
                         { item('shield', '#e03131', 'Emergency SOS') }
-                        { item('lock', '#3f8fbf', 'Privacy & Security') }
+                        { item('lock', '#3f8fbf', 'Privacy', { inert: false, onTap: () => (openPrivacy && openPrivacy()) }) }
                     </>) }
                     { group(<>
                         { item('gamepad', '#e93a7d', 'Game Center') }

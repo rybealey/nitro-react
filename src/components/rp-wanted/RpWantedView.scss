@@ -33,6 +33,129 @@
         flex-direction: column;
     }
 
+    // One row per wanted player: head, name over stars, and how long they
+    // have been on the list. Clicking anywhere on the row opens the profile,
+    // which is the only thing a reader of this list wants to do next.
+    //
+    // Striped rather than ruled: alternate rows carry a faint tint and there
+    // are no dividers, so the eye tracks a row across without hairlines
+    // competing with the stars. Hover darkens whichever row it is on.
+    .rp-wanted-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 54px;
+        flex-shrink: 0;
+        padding: 0 8px;
+        cursor: pointer;
+        position: relative;
+
+        &:nth-child(even) {
+            background: rgba(0, 0, 0, 0.035);
+        }
+
+        &:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+    }
+
+    // The head-only sprite is still drawn on the 90x130 avatar canvas, so the
+    // box offsets the canvas to land on the head (the Gang and Group member
+    // lists' crop, nudged for a square). Masked to a circle with a hairline
+    // ring and NO fill - the row's stripe shows through around the face.
+    // Never scaled: resampling blurs the pixel art.
+    .rp-wanted-face {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+
+        .avatar-image {
+            position: absolute;
+            left: -21px;
+            top: -19px;
+            image-rendering: pixelated;
+        }
+    }
+
+    .rp-wanted-who {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rp-wanted-name {
+        font-size: 12px;
+        margin-bottom: 3px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    // The HUD's stars, exactly: same 11px size, same amber, same glint walking
+    // left to right every ~4s (`hud-star-glint`, declared with the HUD). The
+    // one difference is the unlit star - the HUD's near-white outline would
+    // vanish on this light list, so it is the same tone inverted.
+    .rp-wanted-stars {
+        display: flex;
+        gap: 1px;
+        line-height: 1;
+
+        span {
+            display: flex;
+            align-items: center;
+        }
+
+        // Both states carry the same hairline outline, so a lit and an unlit
+        // star read as one object with the light on or off rather than as two
+        // different marks. `paint-order` draws the stroke before the fill, so
+        // the fill covers its inner half and only a hairline shows outside the
+        // shape; the width is in the icon's own 576-unit viewBox, where 60
+        // units is about 1.1px at 11px, half of it visible. Round joins - the
+        // star's points would throw long spikes on a miter.
+        svg {
+            width: 11px;
+            height: 11px;
+            paint-order: stroke fill;
+            stroke: rgba(0, 0, 0, 0.4);
+            stroke-width: 60;
+            stroke-linejoin: round;
+        }
+
+        // mirrors --hud-warning, which is scoped to the HUD bar
+        .on {
+            color: #f5c542;
+        }
+
+        .off {
+            color: rgba(0, 0, 0, 0.25);
+        }
+
+        .on svg {
+            animation: hud-star-glint 4.2s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        .on:nth-child(2) svg { animation-delay: .25s; }
+        .on:nth-child(3) svg { animation-delay: .5s; }
+        .on:nth-child(4) svg { animation-delay: .75s; }
+        .on:nth-child(5) svg { animation-delay: 1s; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .on svg { animation: none; }
+        }
+    }
+
+    .rp-wanted-since {
+        flex-shrink: 0;
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.45);
+        font-variant-numeric: tabular-nums;
+    }
+
     .rp-wanted-none {
         flex: 1;
         display: flex;
@@ -45,5 +168,124 @@
     .rp-wanted-none-text {
         font-size: 11px;
         color: rgba(0, 0, 0, 0.45);
+    }
+}
+
+// The rap sheet, shown while hovering a Wanted row. Lives on the body (portal)
+// and is positioned by the row: to the right of the window by default, to the
+// left when the window is against the screen's right edge. Dark plate over
+// the room so it reads as a layer, not another window. Above every card,
+// like the Backpack's drag ghost.
+.rp-wanted-tip {
+    position: fixed;
+    z-index: 10000;
+    padding: 6px 8px 7px;
+    background: rgba(33, 35, 38, 0.96);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    // Transparent to the pointer unless there is something in it to click:
+    // it floats over the room, and a read-only label must not swallow a
+    // click meant for whatever is behind it.
+    pointer-events: none;
+
+    &.is-interactive {
+        pointer-events: auto;
+    }
+
+    // caret pointing back at the row
+    &::before {
+        content: '';
+        position: absolute;
+        top: 14px;
+        left: -6px;
+        width: 10px;
+        height: 10px;
+        background: rgba(33, 35, 38, 0.96);
+        border-left: 1px solid rgba(255, 255, 255, 0.14);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        transform: rotate(45deg);
+    }
+
+    &.is-flipped::before {
+        left: auto;
+        right: -6px;
+        transform: rotate(-135deg);
+    }
+
+    .rp-wanted-tip-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .rp-wanted-tip-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .rp-wanted-tip-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        line-height: 1.25;
+        min-height: 16px;
+    }
+
+    .rp-wanted-tip-name {
+        flex: 1;
+        min-width: 0;
+    }
+
+    // Drops ONE count of this crime. Deliberately small and quiet at rest -
+    // it sits beside every line of a list an officer is mostly just reading -
+    // and turns red under the pointer, which is the only warning a click
+    // gets: the drop is immediate and there is no confirmation step.
+    .rp-wanted-tip-drop {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+
+        svg {
+            width: 8px;
+            height: 8px;
+            stroke: currentColor;
+            stroke-width: 1.6;
+            stroke-linecap: round;
+            fill: none;
+        }
+
+        &:hover {
+            background: #c0392b;
+            border-color: #e05a4a;
+            color: #fff;
+        }
+
+        &:active {
+            background: #a5301f;
+        }
+    }
+
+    .rp-wanted-tip-count {
+        color: rgba(255, 255, 255, 0.55);
+        font-variant-numeric: tabular-nums;
     }
 }

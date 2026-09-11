@@ -3,6 +3,7 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
+import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
 import { Flex, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
@@ -41,26 +42,12 @@ export const IsRpStaff = (roomIndex: number): boolean => (rpStatsStore.get(roomI
 // the shared profile opener (api layer) asks for the flag through this hook
 SetRpStaffResolver(IsRpStaff);
 
-// Deterministic pseudo-values for the still-mocked wanted level — stable per
-// name. Everything else is overridden by live values once the server has
-// sent them.
-const mockStatsFor = (name: string): HudStats =>
-{
-    let hash = 0;
-
-    for(let i = 0; i < name.length; i++) hash = (((hash * 31) + name.charCodeAt(i)) >>> 0);
-
-    return {
-        hp: 100,
-        hpMax: 100,
-        energy: 100,
-        energyMax: 100,
-        aggro: 0,
-        wanted: (hash % 6),
-        aggressive: false,
-        passive: false
-    };
-};
+// The wanted level is the one HUD value that comes from a different feed to
+// the rest: RpStats is per room unit, but a player's stars follow the player,
+// so they are looked up by USER id from the wanted list (RpWantedMessages).
+// This used to be a hash of the username - stable, and unrelated to anything
+// the player had done.
+const statsWithWanted = (userId: number): HudStats => ({ ...DEFAULT_STATS, wanted: GetRpWanted(userId) });
 
 // Merge the live server stats (when known) over the base values.
 const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
@@ -297,10 +284,16 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         }
     }, [ target, toggleTargetLock, lockTargetByName, selectTargetByName ]);
 
+    // A charge filed anywhere re-broadcasts the whole list, and these stars
+    // have to follow it without waiting for the next room event.
+    const [ , setWantedTick ] = useState(0);
+
+    useEffect(() => SubscribeRpWanted(() => setWantedTick(value => (value + 1))), []);
+
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
-    const playerStats = withLiveStats(roomSession?.ownRoomIndex ?? -1, DEFAULT_STATS);
-    const targetStats = target ? withLiveStats(target.roomIndex, mockStatsFor(target.name)) : null;
+    const playerStats = withLiveStats(roomSession?.ownRoomIndex ?? -1, statsWithWanted(GetSessionDataManager().userId));
+    const targetStats = target ? withLiveStats(target.roomIndex, statsWithWanted(target.webID)) : null;
     const targetGang = (target ? GetRpGang(target.webID) : null);
 
     return (

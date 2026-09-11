@@ -5,6 +5,7 @@ import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } fro
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
+import { GetRpCharacters, GetRpCurrentCharacterId, GetRpMaxCharacters, RpCharacter, SendRpSwitchCharacter, SubscribeRpCharacters } from '../../api/rp-phone/RpCharacterMessages';
 import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
 import { ResolveRpStaff } from '../../api/user/RpStaffFlag';
 import { LayoutBadgeImageView } from '../../common';
@@ -13,15 +14,29 @@ import { GangCrest } from '../rp-gangs/RpGangsView';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 
-// Wallet app: one card to start, the player's Resident ID - a card-sized read
-// of their own profile. Name, staff mark and motto from the session, birthday
-// from the phone's birthday store, job and gang from their registries; the
-// optional rows (birthday, job, gang) are simply absent when there is nothing
-// to show. Combat and Farming read the same placeholder the profile shows.
+// Wallet app: the Resident ID cards for every character on this account - a
+// card-sized read of each profile. Name, staff mark and motto, birthday from
+// the phone's birthday store, job and gang from their registries; the optional
+// rows (birthday, job, gang) are simply absent when there is nothing to show.
+// Combat and Farming read the same placeholder the profile shows.
+//
+// A wallet is a STACK, the way a wallet is: every card shows its whole top -
+// band, photo, name, motto - and the card below covers its lower edge, which
+// is what makes a stack read as a stack. Tapping one opens the DETAIL beneath
+// that top (levels, employer, gang, the switch) and slides the cards under it
+// down. The card you are playing opens by default.
+//
+// Nothing is ever cut through: what collapses is a whole section with its own
+// height, not the card with a lid dropped on it.
+//
+// The + makes a character (up to three), and a card that is not the one you
+// are playing offers to become it - which is a reconnect, not a swap, so the
+// client reloads into the new character.
 
 interface PhoneWalletViewProps
 {
     onBack: () => void;
+    openCreate?: () => void;
 }
 
 // the same placeholder values the profile window shows until stats land
@@ -30,8 +45,10 @@ const FARMING_LEVEL: number = 1;
 
 export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
 {
-    const { onBack = null } = props;
+    const { onBack = null, openCreate = null } = props;
     const [ , setVersion ] = useState(0);
+    const [ characters, setCharacters ] = useState<RpCharacter[]>(() => GetRpCharacters());
+    const [ openId, setOpenId ] = useState(() => GetRpCurrentCharacterId());
 
     const ownId = GetSessionDataManager().userId;
     const ownName = (GetSessionDataManager().userName || 'You');
@@ -39,14 +56,30 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     const motto = (OwnMotto.value || 'Welcome to my profile!');
     const staff = ResolveRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
 
+    // The roster lands at login; this follows it, and re-opens on the
+    // character being played whenever the set changes (a create adds one).
+    useEffect(() => SubscribeRpCharacters(() =>
+    {
+        setCharacters(GetRpCharacters());
+        setOpenId(GetRpCurrentCharacterId());
+    }), []);
+
+    // Each card's job, gang and birthday come from the composers that already
+    // exist, asked per character. Privacy does not get in the way of your own
+    // account - PrivacyUtility treats siblings as yourself.
     useEffect(() =>
     {
-        if(!ownId) return;
+        const ids = characters.length ? characters.map(character => character.userId) : [ ownId ];
 
-        SendMessageComposer(new RpGetUserCorpComposer(ownId));
-        SendMessageComposer(new RpGetUserGangComposer(ownId));
-        SendMessageComposer(new RpGetBirthdayComposer(ownId));
-    }, [ ownId ]);
+        ids.forEach(id =>
+        {
+            if(!id) return;
+
+            SendMessageComposer(new RpGetUserCorpComposer(id));
+            SendMessageComposer(new RpGetUserGangComposer(id));
+            SendMessageComposer(new RpGetBirthdayComposer(id));
+        });
+    }, [ characters, ownId ]);
 
     useMessageEvent<RpUserCorpEvent>(RpUserCorpEvent, event =>
     {
@@ -72,10 +105,93 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         setVersion(value => (value + 1));
     });
 
-    const birthday = GetRpBirthday(ownId);
-    const employment = GetRpEmployment(ownId);
-    const gang = GetRpGang(ownId);
-    const cardNumber = String(ownId).padStart(6, '0');
+    // One card per character. Before the roster lands (or on a hotel where
+    // nobody has made a second) this is just the player themselves, which is
+    // what the Wallet always showed.
+    const cards: RpCharacter[] = characters.length
+        ? characters
+        : [ { userId: ownId, username: ownName, figure: ownFigure, motto, gender: 'M' } ];
+    const full = (cards.length >= GetRpMaxCharacters());
+
+    const card = (person: RpCharacter, index: number) =>
+    {
+        const isOpen = (person.userId === openId);
+        const isCurrent = (person.userId === GetRpCurrentCharacterId() || (!characters.length && person.userId === ownId));
+        const birthday = GetRpBirthday(person.userId);
+        const employment = GetRpEmployment(person.userId);
+        const gang = GetRpGang(person.userId);
+
+        return (
+            <div key={ person.userId }
+                className={ `phone-wallet-card${ isOpen ? ' is-open' : '' }` }
+                onClick={ event => setOpenId(isOpen ? 0 : person.userId) }>
+                <div className="phone-wallet-field" />
+                <div className="phone-wallet-holo" />
+                <div className="phone-wallet-band">
+                    <div className="phone-wallet-band-title"><PhoneIcon icon="id-card" size={ 14 } /><span>San Francisco · Resident ID</span></div>
+                    { /* The band's right slot is the action, on any card that is not
+                         the one being played. Nothing stands in for it on that card:
+                         an empty slot reads as "this is you". */ }
+                    { !isCurrent &&
+                        <div className="phone-wallet-switch phone-tap"
+                            title={ `Play as ${ person.username }` }
+                            onClick={ event => { event.stopPropagation(); SendRpSwitchCharacter(person.userId); } }>
+                            <PhoneIcon icon="arrow-right-arrow-left" size={ 12 } />
+                            <span>Play as { person.username }</span>
+                        </div> }
+                </div>
+                <div className="phone-wallet-body">
+                    <div className="phone-wallet-identity">
+                        <div className="phone-wallet-photo">
+                            <PhoneFace id={ person.userId } figure={ person.figure } name={ person.username } size={ 56 } />
+                        </div>
+                        <div className="phone-wallet-who">
+                            <div className="phone-wallet-name">
+                                <span>{ person.username }</span>
+                                { isCurrent && staff &&
+                                    <i className="fa-solid fa-badge-check phone-wallet-verified" title="PixelRP Staff" aria-hidden="true" /> }
+                            </div>
+                            <div className="phone-wallet-motto">{ person.motto || 'Welcome to my profile!' }</div>
+                            { birthday &&
+                                <div className="phone-wallet-birthday"><PhoneIcon icon="cake" size={ 12 } /><span>{ FormatBirthday(birthday.month, birthday.day) }</span></div> }
+                        </div>
+                        { isCurrent && <div className="phone-wallet-current">Playing</div> }
+                    </div>
+                    <div className="phone-wallet-detail">
+                    <div className="phone-wallet-levels">
+                        <div className="phone-wallet-level">
+                            <PhoneIcon icon="sword" size={ 14 } />
+                            <div><span className="phone-wallet-level-label">Combat</span><span className="phone-wallet-level-value">Level { COMBAT_LEVEL }</span></div>
+                        </div>
+                        <div className="phone-wallet-level">
+                            <PhoneIcon icon="wheat-awn" size={ 14 } />
+                            <div><span className="phone-wallet-level-label">Farming</span><span className="phone-wallet-level-value">Level { FARMING_LEVEL }</span></div>
+                        </div>
+                    </div>
+                    { (employment || gang) &&
+                        <div className="phone-wallet-rows">
+                            { employment &&
+                                <div className="phone-wallet-row">
+                                    <div className="phone-wallet-row-icon is-badge"><LayoutBadgeImageView badgeCode={ employment.badge || DEFAULT_CORP_BADGE } /></div>
+                                    { /* Employer over rank, on two lines. A corporation name and a
+                                         rank title do not fit one 219px line, and the middot that used
+                                         to join them ended up stranded at the end of the first. */ }
+                                    <div className="phone-wallet-row-text">
+                                        <b>{ employment.corpName }</b>
+                                        <div className="phone-wallet-row-sub">{ RpRankTitle(employment.rankName, employment.tier) }</div>
+                                    </div>
+                                </div> }
+                            { gang &&
+                                <div className="phone-wallet-row">
+                                    <div className="phone-wallet-row-icon"><GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 22 } /></div>
+                                    <div className="phone-wallet-row-text"><b>{ gang.name }</b> · { gang.isOwner ? 'Leader' : 'Member' }</div>
+                                </div> }
+                        </div> }
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="phone-screen phone-app-screen phone-settings phone-wallet">
@@ -90,55 +206,18 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                             <div className="phone-app-title">Wallet</div>
                         </div>
                     </div>
+                    { /* Goes quiet at three rather than disappearing: a character
+                         cannot be deleted to free a slot, so a vanished button
+                         would read as a bug. */ }
+                    <div className={ `phone-notes-iconbtn phone-wallet-add${ full ? ' is-off' : ' phone-tap' }` }
+                        title={ full ? 'You have all three characters' : 'New character' }
+                        onClick={ event => (!full && openCreate && openCreate()) }>
+                        <PhoneIcon icon="plus" size={ 15 } />
+                    </div>
                 </div>
-                <div className="phone-section-label">YOUR CARDS</div>
-                <div className="phone-wallet-card">
-                    <div className="phone-wallet-field" />
-                    <div className="phone-wallet-holo" />
-                    <div className="phone-wallet-band">
-                        <div className="phone-wallet-band-title"><PhoneIcon icon="id-card" size={ 14 } /><span>San Francisco · Resident ID</span></div>
-                        <span className="phone-wallet-band-number">No. { cardNumber }</span>
-                    </div>
-                    <div className="phone-wallet-body">
-                        <div className="phone-wallet-identity">
-                            <div className="phone-wallet-photo">
-                                <PhoneFace id={ ownId } figure={ ownFigure } name={ ownName } size={ 56 } />
-                            </div>
-                            <div className="phone-wallet-who">
-                                <div className="phone-wallet-name">
-                                    <span>{ ownName }</span>
-                                    { staff &&
-                                        <i className="fa-solid fa-badge-check phone-wallet-verified" title="PixelRP Staff" aria-hidden="true" /> }
-                                </div>
-                                <div className="phone-wallet-motto">{ motto }</div>
-                                { birthday &&
-                                    <div className="phone-wallet-birthday"><PhoneIcon icon="cake" size={ 12 } /><span>{ FormatBirthday(birthday.month, birthday.day) }</span></div> }
-                            </div>
-                        </div>
-                        <div className="phone-wallet-levels">
-                            <div className="phone-wallet-level">
-                                <PhoneIcon icon="sword" size={ 14 } />
-                                <div><span className="phone-wallet-level-label">Combat</span><span className="phone-wallet-level-value">Level { COMBAT_LEVEL }</span></div>
-                            </div>
-                            <div className="phone-wallet-level">
-                                <PhoneIcon icon="wheat-awn" size={ 14 } />
-                                <div><span className="phone-wallet-level-label">Farming</span><span className="phone-wallet-level-value">Level { FARMING_LEVEL }</span></div>
-                            </div>
-                        </div>
-                        { (employment || gang) &&
-                            <div className="phone-wallet-rows">
-                                { employment &&
-                                    <div className="phone-wallet-row">
-                                        <div className="phone-wallet-row-icon is-badge"><LayoutBadgeImageView badgeCode={ employment.badge || DEFAULT_CORP_BADGE } /></div>
-                                        <div className="phone-wallet-row-text"><b>{ employment.corpName }</b> · { RpRankTitle(employment.rankName, employment.tier) }</div>
-                                    </div> }
-                                { gang &&
-                                    <div className="phone-wallet-row">
-                                        <div className="phone-wallet-row-icon"><GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 22 } /></div>
-                                        <div className="phone-wallet-row-text"><b>{ gang.name }</b> · { gang.isOwner ? 'Leader' : 'Member' }</div>
-                                    </div> }
-                            </div> }
-                    </div>
+                <div className="phone-section-label">YOUR CARDS · { cards.length } OF { GetRpMaxCharacters() }</div>
+                <div className="phone-wallet-stack">
+                    { cards.map((person, index) => card(person, index)) }
                 </div>
                 <div className="phone-scroll-spacer" />
             </div>

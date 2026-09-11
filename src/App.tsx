@@ -8,6 +8,9 @@ import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
 import { RegisterRpFurniMessages } from './api/rp-furni/RpFurniMessages';
 import { RegisterRpPhoneStateMessages } from './api/rp-phone/RpPhoneStateMessages';
 import { RegisterRpRegionMessages } from './api/rp-region/RpRegionMessages';
+import { CHARACTER_RELOAD, RegisterRpCharacterMessages, SubscribeRpCharacterResult } from './api/rp-phone/RpCharacterMessages';
+import { RegisterRpPrivacyMessages } from './api/rp-phone/RpPrivacyMessages';
+import { RegisterRpWantedMessages } from './api/rp-wanted/RpWantedMessages';
 import { RegisterRpPhoneMessages } from './api/rp-phone/RpBirthdayMessages';
 import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
@@ -126,6 +129,9 @@ export const App: FC<{}> = props =>
                 RegisterRpPhoneMessages();
                 RegisterRpPhoneStateMessages();
                 RegisterRpRegionMessages();
+                RegisterRpCharacterMessages();
+                RegisterRpPrivacyMessages();
+                RegisterRpWantedMessages();
                 RegisterRpCalendarMessages();
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();
@@ -201,6 +207,31 @@ export const App: FC<{}> = props =>
     useLocalizationEvent(NitroLocalizationEvent.LOADED, handler);
     useConfigurationEvent(ConfigurationEvent.LOADED, handler);
     useConfigurationEvent(ConfigurationEvent.FAILED, handler);
+
+    // PixelRP: switching character is a RECONNECT. The session is bound to
+    // its character at authentication and cannot be rebound, so the server
+    // points the account at the new one and asks the client to leave.
+    //
+    // The PARENT page is what reloads, not this frame: our own url carries the
+    // SSO ticket that was already spent at login, so reloading here would
+    // hand the emulator a dead ticket. /game re-runs and mints a fresh one for
+    // whoever the account now points at.
+    useEffect(() => SubscribeRpCharacterResult(outcome =>
+    {
+        if(outcome !== CHARACTER_RELOAD) return;
+
+        try
+        {
+            window.parent.location.reload();
+        }
+        catch (error)
+        {
+            // A client served from another origin cannot reach its parent;
+            // reloading ourselves at least fails loudly rather than silently
+            // doing nothing.
+            window.location.reload();
+        }
+    }), []);
 
     useEffect(() =>
     {

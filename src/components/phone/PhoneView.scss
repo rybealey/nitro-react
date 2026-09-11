@@ -137,7 +137,10 @@ $phone-scale: 0.8;
         padding: 0 22px;
         color: #ffffff;
 
+        // Both sit above the scrim, which is an absolutely-positioned pseudo
+        // and would otherwise paint over them.
         .phone-status-time {
+            position: relative;
             font-family: 'Ubuntu', sans-serif;
             font-weight: 500;
             font-size: calc(13px * var(--ph-text-scale, 1));
@@ -145,6 +148,7 @@ $phone-scale: 0.8;
         }
 
         .phone-status-right {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 7px;
@@ -157,12 +161,37 @@ $phone-scale: 0.8;
             }
         }
 
+        // The scrim exists for content passing UNDER the bar, so it is not
+        // there until something does: at the top of a screen the bar is just
+        // its text over the app's own ground, and the glass fades in once the
+        // scrollport behind it has moved. Carried on a pseudo-element rather
+        // than the bar itself so the BLUR fades with the tint - switching
+        // backdrop-filter on and off snaps, opacity does not.
+        //
+        // The text colour does not wait for the scroll: what makes a screen
+        // on-light is the app ground behind the bar, which is light at the top
+        // of the screen too.
         &.on-light {
             color: var(--ph-text);
-            background: var(--ph-glass);
-            backdrop-filter: var(--ph-glass-blur);
-            -webkit-backdrop-filter: var(--ph-glass-blur);
-            box-shadow: inset 0 1px 0 var(--ph-glass-hi);
+
+            &::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: var(--ph-glass);
+                backdrop-filter: var(--ph-glass-blur);
+                -webkit-backdrop-filter: var(--ph-glass-blur);
+                box-shadow: inset 0 1px 0 var(--ph-glass-hi);
+                opacity: 0;
+                transition: opacity .2s ease;
+                pointer-events: none;
+            }
+
+            &.is-scrolled::before { opacity: 1; }
+
+            @media (prefers-reduced-motion: reduce) {
+                &::before { transition: none; }
+            }
         }
     }
 
@@ -1582,6 +1611,9 @@ $phone-scale: 0.8;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
         font-size: calc(11px * var(--ph-text-scale, 1));
+        transition: background .18s ease, border-color .18s ease;
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
 
         &.is-selected {
             background: $phone-pink;
@@ -1823,12 +1855,15 @@ $phone-scale: 0.8;
         font-weight: 600;
         font-size: calc(14px * var(--ph-text-scale, 1));
         color: var(--ph-muted);
+        transition: background .18s ease, color .18s ease, box-shadow .18s ease;
 
         &.is-active {
             background: var(--ph-bg);
             color: var(--ph-text);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
         }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     .phone-contacts-tab-badge {
@@ -1974,6 +2009,17 @@ $phone-scale: 0.8;
         align-items: center;
         justify-content: center;
         color: #ffffff;
+        // The ring is always drawn and only fills when chosen, so the fill is
+        // a transition while the mark inside it pops in.
+        transition: background .18s ease, border-color .18s ease;
+
+        .phone-pi { animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both; }
+
+        @media (prefers-reduced-motion: reduce) {
+            transition: none;
+
+            .phone-pi { animation: none; }
+        }
 
         &.is-chosen {
             background: $phone-pink;
@@ -2449,6 +2495,13 @@ $phone-scale: 0.8;
         flex: 1;
         min-height: 0;
         overflow-y: auto;
+        // The first eyebrow in here drops its own top margin (the shared
+        // :first-child rule, which assumes the container supplies the air) -
+        // and what sits above it is the search field, not air. This is that
+        // air: enough to read as separate from the search bar without opening
+        // a full group-sized gap. Both notes panes scroll through here, so
+        // Folders and a note list are spaced alike.
+        padding-top: 16px;
         padding-bottom: 100px;
         scrollbar-width: none;
 
@@ -3124,7 +3177,11 @@ $phone-scale: 0.8;
         font-variant-numeric: tabular-nums;
         color: #9a90a5;
 
+        transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+
         &.is-on { background: #171021; color: #f4f0f7; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     .phone-stocks-chart {
@@ -3967,6 +4024,9 @@ $phone-scale: 0.8;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
             color: var(--ph-text);
+            transition: background .18s ease, color .18s ease;
+
+            @media (prefers-reduced-motion: reduce) { transition: none; }
         }
 
         &.is-weekend .phone-calendar-daynum { color: var(--ph-faint); }
@@ -4319,10 +4379,73 @@ $phone-scale: 0.8;
         color: var(--ph-faint);
     }
 
+    // The check ARRIVES rather than appearing: the same pop the wallpaper
+    // tile's check and the news tile's already use, so picking a row in any
+    // list reads the same.
     .phone-region-check {
         flex: none;
         color: $phone-pink;
         margin-top: 2px;
+        animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    // ---- Settings > Privacy ---------------------------------------------
+    // The Region screen's picker anatomy - a label over a hint line with a
+    // pink check on the chosen row - reused for the two audience lists, plus
+    // switches for the custom region lists.
+    .phone-privacy-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .phone-privacy-hint {
+        margin-top: 2px;
+        font-size: calc(11.5px * var(--ph-text-scale, 1));
+        color: var(--ph-faint);
+    }
+
+    .phone-privacy-check {
+        flex: none;
+        color: $phone-pink;
+        margin-top: 2px;
+        animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    // Footnotes here sit under their own group rather than the whole screen,
+    // so they read left-aligned with the card above instead of centred.
+    .phone-privacy-note {
+        padding: 8px 26px 0;
+        text-align: left;
+    }
+
+    .phone-privacy-switch {
+        flex: none;
+        width: 38px;
+        height: 22px;
+        border-radius: 11px;
+        padding: 2px;
+        box-sizing: border-box;
+        display: flex;
+        background: var(--ph-inset);
+        transition: background .18s ease;
+
+        &.is-on { background: $phone-pink; }
+
+        &.is-on .phone-privacy-knob { transform: translateX(16px); }
+    }
+
+    .phone-privacy-knob {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--ph-bg);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+        transition: transform .18s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-privacy-switch, .phone-privacy-knob { transition: none; }
+        .phone-privacy-check, .phone-region-check { animation: none; }
     }
 
     .phone-settings-footnote {
@@ -4809,8 +4932,11 @@ $phone-scale: 0.8;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
         color: var(--ph-soft);
+        transition: color .18s ease;
 
         &.is-chosen { font-weight: 700; color: var(--ph-text); }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     .phone-wallpaper-strip {
@@ -4970,19 +5096,6 @@ $phone-scale: 0.8;
         }
     }
 
-    // Settings > General: the frame-rate slider. It carries .phone-access-slider
-    // too and so borrows that track and thumb wholesale; the only difference is
-    // the ends, which are both plain numbers here and so want the same size
-    // rather than the A/a contrast the text-size slider uses to mean something.
-    .phone-fps-slider {
-        .phone-access-slider-small, .phone-access-slider-large {
-            font-size: 12px;
-            color: var(--ph-soft);
-            // the low and high labels are different digit counts, so without
-            // tabular figures the track shifts as the value crosses 100
-            font-variant-numeric: tabular-nums;
-        }
-    }
 
     // ---- Wallet: the Resident ID ---------------------------------------
     // Navy card on both themes (the ID is the same object wherever it shows);
@@ -5035,14 +5148,18 @@ $phone-scale: 0.8;
         display: flex;
         align-items: center;
         gap: 7px;
+        // Gives way to whatever sits in the right slot rather than pushing it
+        // off the card - the action there has a fixed size, the title does not.
+        min-width: 0;
+        overflow: hidden;
+
+        span { overflow: hidden; text-overflow: ellipsis; }
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
         letter-spacing: 1.6px;
         text-transform: uppercase;
         white-space: nowrap;
     }
-
-    .phone-wallet-band-number { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums; opacity: .85; white-space: nowrap; }
 
     .phone-wallet-body {
         position: relative;
@@ -5123,11 +5240,228 @@ $phone-scale: 0.8;
         flex: none;
         overflow: hidden;
 
-        // corp badge art is pixel art at native size; shrink it into the slot
-        &.is-badge { background: rgba(255, 255, 255, .1); .badge-image { position: static; transform: scale(.6); } }
+        // Corp badge art is pixel art at its native 40px; it is SCALED into
+        // the 24px slot, not squeezed into it. `flex: none` is what makes
+        // that true - as a flex item the 40px box was shrinking to the 24px
+        // line first, so the badge went out 24 wide by 40 tall and then got
+        // clipped. At its real size, scale(.6) lands exactly 24x24 centred.
+        &.is-badge {
+            background: rgba(255, 255, 255, .1);
+
+            .badge-image {
+                position: static;
+                flex: none;
+                transform: scale(.6);
+                transform-origin: center;
+            }
+        }
     }
 
-    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); color: #f4f0f7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; b { font-weight: 700; } }
+    // Wraps rather than truncating: a corporation name and a rank title is
+    // more than 250px of card, and half a job title tells you less than two
+    // lines do. The row grows to fit.
+    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); line-height: 1.35; color: #f4f0f7; text-wrap: pretty; b { font-weight: 700; } }
+
+    // The line under an employer: the rank, and its tier when there is one.
+    .phone-wallet-row-sub { color: rgba(244, 240, 247, .66); }
+
+    // ---- the stack ------------------------------------------------------
+    // A wallet, the way a wallet is. Every card shows its whole top - band,
+    // photo, name, motto - and the card below covers its lower edge, which is
+    // what makes a stack read as a stack rather than a list. Tapping one opens
+    // the detail beneath that top and slides the cards under it down.
+    //
+    // What collapses is a SECTION with its own height, never the card with a
+    // lid on it: a fixed max-height on the card sliced the photo in half,
+    // which is a clip, not a stack.
+    .phone-wallet-stack {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 6px;
+    }
+
+    .phone-wallet-card {
+        transition: margin-top .34s cubic-bezier(.2, .8, .2, 1), box-shadow .24s ease, transform .24s ease;
+        cursor: pointer;
+
+        // The overlap IS the stack. Only cards after the first have one, so
+        // the top card keeps the section's own spacing.
+        & + .phone-wallet-card { margin-top: -34px; }
+
+        // An open card stands clear of the one above it, and pushes the one
+        // below clear of itself.
+        &.is-open,
+        &.is-open + .phone-wallet-card { margin-top: 10px; }
+
+        &.is-open { box-shadow: 0 16px 34px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .14); }
+
+        &:not(.is-open):hover { transform: translateY(-3px); }
+    }
+
+    .phone-wallet-detail {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: max-height .34s cubic-bezier(.2, .8, .2, 1), opacity .2s ease, margin-top .34s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    // Generous enough for the tallest card - levels, an employer on two
+    // lines, a gang and the switch - since a max-height that is too small
+    // would clip exactly what this rewrite exists to stop.
+    .phone-wallet-card.is-open .phone-wallet-detail {
+        max-height: 360px;
+        opacity: 1;
+        margin-top: 12px;
+    }
+
+    // "Playing" - which of the three this session actually is.
+    .phone-wallet-current {
+        flex: none;
+        align-self: flex-start;
+        padding: 3px 8px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .14);
+        border: 1px solid rgba(255, 255, 255, .18);
+        font-size: calc(9px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: #f4f0f7;
+    }
+
+    // Sits in the band, on the orange: dark ink on a light fill, the inverse
+    // of the card body's buttons, because the band is the one bright surface
+    // on the card and a translucent-white pill would vanish into it.
+    .phone-wallet-switch {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        max-width: 60%;
+        padding: 4px 9px;
+        border-radius: 8px;
+        background: rgba(26, 10, 20, .16);
+        border: 1px solid rgba(26, 10, 20, .22);
+        font-size: calc(10px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        color: #1a0a14;
+        white-space: nowrap;
+        transition: background .15s ease, transform .12s ease;
+
+        span { overflow: hidden; text-overflow: ellipsis; }
+
+        &:hover { background: rgba(26, 10, 20, .26); }
+        &:active { transform: scale(.96); opacity: 1; }
+    }
+
+    .phone-wallet-add.is-off { opacity: .38; cursor: default; }
+
+    // ---- Wallet > New character -----------------------------------------
+    .phone-newchar-field {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+
+    .phone-newchar-input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        font-family: 'Barlow', 'Ubuntu', sans-serif;
+        font-size: calc(16px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        color: var(--ph-text);
+
+        &::placeholder { color: var(--ph-faint); font-weight: 400; }
+    }
+
+    .phone-newchar-count {
+        flex: none;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-variant-numeric: tabular-nums;
+        color: var(--ph-faint);
+    }
+
+    .phone-newchar-note {
+        padding: 8px 26px 0;
+        text-align: left;
+
+        &.is-bad { color: #c0392b; }
+    }
+
+    .phone-newchar-genders {
+        margin: 4px 18px 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .phone-newchar-gender {
+        background: var(--ph-bg);
+        border: 2px solid var(--ph-hairline);
+        border-radius: 16px;
+        padding: 12px 8px 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        transition: border-color .18s ease, box-shadow .18s ease;
+
+        &.is-on {
+            border-color: #e87332;
+            box-shadow: 0 0 0 3px rgba(232, 115, 50, .18);
+
+            .phone-newchar-gender-label { color: var(--ph-text); }
+        }
+    }
+
+    // The figure at its native size, cropped to the tile - the avatar sprite
+    // is pixel art and resampling it blurs the face.
+    .phone-newchar-figure {
+        height: 96px;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            margin-left: -45px;
+            top: -18px;
+            image-rendering: pixelated;
+        }
+    }
+
+    .phone-newchar-gender-label {
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        color: var(--ph-soft);
+    }
+
+    .phone-newchar-create {
+        margin: 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 46px;
+        border-radius: 14px;
+        background: #e87332;
+        color: #ffffff;
+        font-size: calc(15px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        transition: background .15s ease, transform .12s ease;
+
+        &:active { transform: scale(.98); opacity: 1; }
+        &.is-off { opacity: .4; cursor: default; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-wallet-card, .phone-wallet-detail, .phone-wallet-switch,
+        .phone-newchar-gender, .phone-newchar-create { transition: none; }
+    }
 
     @media (prefers-reduced-motion: reduce) { .phone-wallet-card { animation: none; } }
 
@@ -5152,6 +5486,9 @@ $phone-scale: 0.8;
         .phone-appearance-check {
             color: $phone-pink;
             flex: none;
+            animation: phone-notes-pop-in .2s cubic-bezier(.2, .8, .2, 1) both;
+
+            @media (prefers-reduced-motion: reduce) { animation: none; }
         }
 
         &:hover {
@@ -5842,9 +6179,13 @@ $phone-scale: 0.8;
             font-size: calc(10px * var(--ph-text-scale, 1));
         }
 
+        transition: color .18s ease;
+
         &.is-active {
             color: $phone-pink;
         }
+
+        @media (prefers-reduced-motion: reduce) { transition: none; }
     }
 
     // Keeps scrolled content clear of the floating tab bar.

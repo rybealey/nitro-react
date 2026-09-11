@@ -4,7 +4,7 @@ import { AddEventLinkTracker, GetSessionDataManager, RemoveLinkEventTracker, Sen
 import { RpGangDetailEvent, RpGangInvitesEvent, RpGetGangDetailComposer, RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
 import { GANG_PERM_ADMIN, GANG_PERM_INVITE, GANG_PERM_KICK, GangDetail, GangIncomingInvite, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
-import { NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { GangCreateView } from './GangCreateView';
 import { GangInfoTab } from './GangInfoTab';
@@ -166,7 +166,7 @@ export const RpGangsView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ (inGang || viewingOther) ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim">
+        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ (inGang || viewingOther) ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Gang" onCloseClick={ () => setIsVisible(false) } />
             { showTabs &&
                 <NitroCardTabsView>
