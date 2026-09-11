@@ -2,7 +2,7 @@ import { FC, useEffect, useState } from 'react';
 import { ATM_DEPOSIT, ATM_WITHDRAW, RpAtmState, SendRpAtmTransaction, SendRpCloseAtm, SubscribeRpAtm, SubscribeRpBankResult } from '../../../../api/rp-phone/RpBankMessages';
 import { LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../../../common';
 
-// PixelRP: the cash machine.
+// PixelRP: the ATM.
 //
 // SERVER-OPENED. This window appears because the player walked up to an ATM
 // furni and used it, never because the client decided to show it - and the
@@ -89,7 +89,7 @@ export const FurnitureAtmView: FC<{}> = props =>
 
     return (
         <NitroCardView className="nitro-widget-atm" theme="primary-slim" uniqueKey="atm">
-            <NitroCardHeaderView headerText="Cash Machine" onCloseClick={ close } />
+            <NitroCardHeaderView headerText="ATM" onCloseClick={ close } />
             <NitroCardContentView>
                 <div className="atm-screen">
                     { (mode === null) &&

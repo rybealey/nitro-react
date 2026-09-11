@@ -68,7 +68,7 @@ export const STORE_APPS: StoreApp[] = [
         category: 'Finance',
         blurb: 'Every coin, accounted for.',
         tagline: 'Every coin, accounted for.',
-        about: 'Your checking and savings, and every movement in either of them. Wages as they land, interest as it accrues, transfers between your own two accounts, and every note counted out at a cash machine \u2014 each with the balance it left behind. Mercury reads the accounts you already hold; you open those in your Wallet.',
+        about: 'Your checking and savings, and every movement in either of them. Wages as they land, interest as it accrues, transfers between your own two accounts, and every note counted out at an ATM \u2014 each with the balance it left behind. Mercury reads the accounts you already hold; you open those in your Wallet.',
         price: { kind: 'free' }
     },
     {
