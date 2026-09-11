@@ -1,6 +1,11 @@
 .nitro-catalog {
+    // starting size; the corner grip writes inline width/height over these
     width: $catalog-width;
     height: $catalog-height;
+    min-width: 520px;
+    min-height: 340px;
+    max-width: 96vw;
+    max-height: 92vh;
 
     // Chrome tab strip, matching the Settings window (theme selectors beat
     // the stock theme-primary/-slim $secondary tab bar).

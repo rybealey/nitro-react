@@ -6,8 +6,13 @@
         @include prp-chrome-tab-strip;
     }
 
+    // starting size; the corner grip writes inline width/height over these
     width: $inventory-width;
     height: $inventory-height;
+    min-width: 440px;
+    min-height: 280px;
+    max-width: 96vw;
+    max-height: 92vh;
 
     .empty-image {
         background: url('@/assets/images/inventory/empty.png');
