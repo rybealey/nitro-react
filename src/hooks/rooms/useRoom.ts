@@ -1,6 +1,7 @@
 import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSprite, NitroTexture, RoomBackgroundColorEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomGeometry, RoomId, RoomObjectCategory, RoomObjectHSLColorEnabledEvent, RoomObjectOperationType, RoomSessionEvent, RoomVariableEnum, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
+import { ApplyHeightMarkerToObject } from '../../api/rp-furni/RpFurniMessages';
 import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SetActiveRoomId, StartRoomSession } from '../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../events';
 
@@ -156,6 +157,14 @@ const useRoomState = () =>
                 switch(event.category)
                 {
                     case RoomObjectCategory.FLOOR:
+                        // pixelrp: a furni whose Function has the height marker
+                        // switched off must not hand the tile cursor its raised
+                        // blue ring. The flag is set by the object's own logic
+                        // on initialize, so the earliest we can overrule it is
+                        // here, the moment the room has the object.
+                        ApplyHeightMarkerToObject(event.roomId, event.objectId);
+                        addedEventType = RoomWidgetUpdateRoomObjectEvent.FURNI_ADDED;
+                        break;
                     case RoomObjectCategory.WALL:
                         addedEventType = RoomWidgetUpdateRoomObjectEvent.FURNI_ADDED;
                         break;

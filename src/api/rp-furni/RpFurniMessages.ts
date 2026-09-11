@@ -1,4 +1,4 @@
-import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent, RoomObjectCategory, RoomObjectVariable } from '@nitrots/nitro-renderer';
+import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, IRoomObject, MessageEvent, RoomObjectCategory, RoomObjectVariable } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, GetRoomEngine, GetRoomSession, GetSessionDataManager, SendMessageComposer } from '../nitro';
 
 // PixelRP furni packets - client-source, registered at runtime like the gang,
@@ -165,6 +165,8 @@ export interface RpFurniFunction
     stackable: boolean;
     stackHeight: number;
     adjustableHeights: string;
+    /** Whether the tile cursor may show its raised height ring over this furni. */
+    heightMarker: boolean;
     interactionType: string;
     modes: number;
     effectId: number;
@@ -204,6 +206,7 @@ export class RpFurniFunctionParser implements IMessageParser
             // hundredths on the wire, the same format the stack-height widget uses
             stackHeight: (wrapper.readInt() / 100),
             adjustableHeights: wrapper.readString(),
+            heightMarker: wrapper.readBoolean(),
             interactionType: wrapper.readString(),
             modes: wrapper.readInt(),
             effectId: wrapper.readInt(),
@@ -288,12 +291,12 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
 
     constructor(definitionId: number, publicName: string, walkable: boolean, walkMask: string,
         seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
-        interactionType: string, modes: number, effectId: number, behaviourData: number,
-        vendingIds: string)
+        heightMarker: boolean, interactionType: string, modes: number, effectId: number,
+        behaviourData: number, vendingIds: string)
     {
         this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
-            Math.round(stackHeight * 100), adjustableHeights, interactionType, modes, effectId,
-            behaviourData, vendingIds ];
+            Math.round(stackHeight * 100), adjustableHeights, heightMarker, interactionType, modes,
+            effectId, behaviourData, vendingIds ];
     }
 
     public getMessageArray() 
@@ -337,6 +340,84 @@ const PatchFurnitureData = (data: RpFurniFunction) =>
     // Laying has no column of its own - the emulator reads it off the
     // behaviour, so the client has to derive it the same way.
     writable._canLayOn = ((data.interactionType === 'bed') || (data.interactionType === 'tent_small'));
+
+    if(data.heightMarker) heightMarkerOff.delete(data.spriteId);
+    else heightMarkerOff.add(data.spriteId);
+}
+
+// ---------------------------------------------------------------------------
+// The tile cursor's height ring
+// ---------------------------------------------------------------------------
+//
+// Hovering a tile normally draws the white diamond on the floor. But
+// RoomObjectEventHandler.handleMouseOverTile looks at the TOP object on that
+// tile for `furniture_is_variable_height`, and when it finds it, sends the
+// tile's stack height along with the cursor instead of zero. TileCursorLogic
+// then flips the cursor to state 6 for any height over 0.8, and
+// TileCursorVisualization raises the cursor's second layer by height * 32 -
+// which is the blue ring, hanging at the height a dropped item would land on.
+//
+// Nothing in the database decides that. FurnitureMultiHeightLogic sets the
+// flag on initialize, and a furni only gets that logic because its own .nitro
+// bundle asks for `furniture_multiheight`. So the marker belongs to the ASSET,
+// and switching it off would otherwise mean rebuilding the bundle.
+//
+// The original value is stashed on the object before it is overwritten, so
+// turning the marker back on restores exactly what the asset asked for rather
+// than handing the ring to furni that never had it.
+const HEIGHT_MARKER_ORIGINAL = 'pixelrp_height_marker_original';
+
+const heightMarkerOff = new Set<number>();
+
+const ApplyHeightMarker = (object: IRoomObject) =>
+{
+    if(!object || !object.model) return;
+
+    const spriteId = object.model.getValue<number>(RoomObjectVariable.FURNITURE_TYPE_ID);
+
+    if(!spriteId) return;
+
+    let original = object.model.getValue<number>(HEIGHT_MARKER_ORIGINAL);
+
+    if((original === undefined) || (original === null))
+    {
+        original = (object.model.getValue<number>(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT) || 0);
+
+        object.model.setValue(HEIGHT_MARKER_ORIGINAL, original);
+    }
+
+    // Nothing to suppress and nothing suppressed: the overwhelming majority of
+    // furni, which never carried the flag in the first place.
+    if(!original && !heightMarkerOff.has(spriteId)) return;
+
+    object.model.setValue(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT, heightMarkerOff.has(spriteId) ? 0 : original);
+}
+
+/** One object, as the room adds it. */
+export const ApplyHeightMarkerToObject = (roomId: number, objectId: number) =>
+{
+    ApplyHeightMarker(GetRoomEngine().getRoomObject(roomId, objectId, RoomObjectCategory.FLOOR));
+}
+
+// Every floor object in the room the player is standing in. Needed twice: a
+// staff member applying a change should see it without walking out, and the
+// room-entry re-send of edited definitions arrives AFTER the objects it
+// describes.
+const ApplyHeightMarkerToRoom = () =>
+{
+    // activeRoomId first: on room ENTRY the definitions arrive right after the
+    // objects they describe, and the room session is not always set by then -
+    // which would leave exactly the furni this exists for unsuppressed until
+    // something else happened to sweep.
+    const roomId = (GetRoomEngine()?.activeRoomId || GetRoomSession()?.roomId);
+
+    if(!roomId) return;
+
+    const objects = GetRoomEngine().getRoomObjects(roomId, RoomObjectCategory.FLOOR);
+
+    if(!objects) return;
+
+    for(const object of objects) ApplyHeightMarker(object);
 }
 
 type FurniFunctionListener = (data: RpFurniFunction) => void;
@@ -360,6 +441,7 @@ const onFurniFunction = (event: RpFurniFunctionEvent) =>
     if(!data) return;
 
     PatchFurnitureData(data);
+    ApplyHeightMarkerToRoom();
 
     for(const listener of Array.from(functionListeners)) listener(data);
 }

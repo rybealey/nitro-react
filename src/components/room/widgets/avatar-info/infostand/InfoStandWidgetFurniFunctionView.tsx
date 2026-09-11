@@ -89,15 +89,16 @@ const PRESETS: [ string, string, { walkable: boolean; seat: boolean; stackable: 
 
 const LABELS: { [key: string]: string } = {
     publicName: 'Name', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
+    heightMarker: 'Height marker',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
 
-type Draft = Pick<RpFurniFunction, 'publicName' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
+type Draft = Pick<RpFurniFunction, 'publicName' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
 
 const toDraft = (data: RpFurniFunction): Draft => ({
     publicName: data.publicName, walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
-    stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights,
+    stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights, heightMarker: data.heightMarker,
     interactionType: data.interactionType, modes: data.modes, effectId: data.effectId,
     behaviourData: data.behaviourData, vendingIds: data.vendingIds
 });
@@ -274,7 +275,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     {
         SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.publicName, draft.walkable,
             draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
-            draft.interactionType, draft.modes, draft.effectId, draft.behaviourData, draft.vendingIds));
+            draft.heightMarker, draft.interactionType, draft.modes, draft.effectId, draft.behaviourData,
+            draft.vendingIds));
 
         // Closing is the confirmation: the change is hotel-wide and the
         // window has nothing left to say about it. Staying open would invite a
@@ -459,6 +461,19 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                             <input type="text" placeholder="e.g. 0.5,1.0,1.5" value={ draft.adjustableHeights }
                                 onChange={ event => update({ adjustableHeights: event.target.value }) } />
                         </label>
+                    </div>
+                    <div className="rp-furni-function-row">
+                        <div className={ 'rp-furni-function-switch' + (draft.heightMarker ? ' is-on' : '') }
+                            onClick={ () => update({ heightMarker: !draft.heightMarker }) }><span /></div>
+                        <div className="rp-furni-function-row-text">
+                            <div className="rp-furni-function-row-label">Height marker</div>
+                            <div className="rp-furni-function-row-hint">The floating blue ring over this furni</div>
+                        </div>
+                    </div>
+                    <div className="rp-furni-function-note">
+                        The ring is the tile cursor showing where a dropped item would land, and it
+                        appears because the furni&apos;s own artwork asks for it. Switching it off hides the
+                        readout only - stacking still works and still lands in the same place.
                     </div>
                 </div>
                 <div className="rp-furni-function-section">
