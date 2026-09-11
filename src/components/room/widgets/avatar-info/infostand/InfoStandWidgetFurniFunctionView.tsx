@@ -73,15 +73,15 @@ const PRESETS: [ string, string, { walkable: boolean; seat: boolean; stackable: 
 ];
 
 const LABELS: { [key: string]: string } = {
-    walkable: 'Walkable', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
+    walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
 
-type Draft = Pick<RpFurniFunction, 'walkable' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
+type Draft = Pick<RpFurniFunction, 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
 
 const toDraft = (data: RpFurniFunction): Draft => ({
-    walkable: data.walkable, seat: data.seat, stackable: data.stackable,
+    walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
     stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights,
     interactionType: data.interactionType, modes: data.modes, effectId: data.effectId,
     behaviourData: data.behaviourData, vendingIds: data.vendingIds
@@ -94,6 +94,33 @@ const show = (value: boolean | number | string): string =>
     if((value === '') || (value === null)) return '-';
 
     return String(value);
+}
+
+// A mask reads as "1011" on the wire, which tells a builder nothing. In the
+// diff it is the number of squares it opens.
+const describe = (key: string, value: boolean | number | string): string =>
+{
+    if(key === 'interactionType') return behaviourLabel(String(value));
+
+    if(key === 'walkMask')
+    {
+        const open = String(value || '').split('').filter(cell => (cell === '1')).length;
+
+        return open ? `${ open } open` : 'none';
+    }
+
+    return show(value);
+}
+
+// The mask is width*length characters indexed b * width + a, with `a` running
+// across the width and `b` along the length - the furni's own frame, so it
+// turns with the item rather than staying put on the map while the sofa moves.
+const maskCells = (mask: string, width: number, length: number): boolean[] =>
+{
+    const size = (width * length);
+    const source = ((mask || '').length === size) ? mask : '0'.repeat(size);
+
+    return source.split('').map(cell => (cell === '1'));
 }
 
 const behaviourLabel = (id: string): string =>
@@ -138,6 +165,13 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     const layable = useMemo(() => (draft ? (LAY_TYPES.indexOf(draft.interactionType) >= 0) : false), [ draft ]);
 
+    const multiTile = useMemo(() => (!!saved && ((saved.width * saved.length) > 1)), [ saved ]);
+
+    const cells = useMemo(() => (saved ? maskCells(draft?.walkMask, saved.width, saved.length) : []),
+        [ draft, saved ]);
+
+    const openCount = useMemo(() => cells.filter(Boolean).length, [ cells ]);
+
     const companion = useMemo(() => (draft ? (COMPANIONS[draft.interactionType] || null) : null), [ draft ]);
 
     const companionReady = useMemo(() =>
@@ -158,8 +192,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         return Object.keys(LABELS).filter(key => (saved[key] !== draft[key])).map(key => ({
             key,
             label: LABELS[key],
-            from: (key === 'interactionType') ? behaviourLabel(saved[key]) : show(saved[key]),
-            to: (key === 'interactionType') ? behaviourLabel(draft[key]) : show(draft[key])
+            from: describe(key, saved[key]),
+            to: describe(key, draft[key])
         }));
     }, [ saved, draft ]);
 
@@ -167,6 +201,17 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     {
         setDraft(prev => ({ ...prev, ...patch }));
     }, []);
+
+    // An all-solid mask says nothing the furni's own flag does not, so it is
+    // stored as no mask at all - which is also what the server does with it.
+    const toggleCell = useCallback((index: number) =>
+    {
+        const next = cells.slice();
+
+        next[index] = !next[index];
+
+        update({ walkMask: next.some(Boolean) ? next.map(open => (open ? '1' : '0')).join('') : '' });
+    }, [ cells, update ]);
 
     const onHeaderPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) =>
     {
@@ -210,7 +255,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     const commit = useCallback(() =>
     {
         SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.walkable,
-            draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
+            draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.interactionType, draft.modes, draft.effectId, draft.behaviourData, draft.vendingIds));
 
         // Closing is the confirmation: the change is hotel-wide and the
@@ -222,7 +267,9 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     // The skeleton mirrors the real panel block for block, at the same heights,
     // so the window opens at its final size and fills in - rather than opening
-    // small and jumping once the definition lands.
+    // small and jumping once the definition lands. The tile grid is sized from
+    // avatarInfo, which already carries the furni's footprint, so a 2x2 does
+    // not grow a grid's worth of height when the packet arrives.
     if(!saved || !draft)
     {
         return createPortal(
@@ -258,6 +305,17 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                     <div className="rp-skeleton" style={ { width: 148, height: 10, marginTop: 3 } } />
                                 </div>
                             </div>) }
+                        { ((avatarInfo.tileSizeX * avatarInfo.tileSizeY) > 1) &&
+                            <div className="rp-furni-function-mask">
+                                <div className="rp-furni-function-mask-head"><span>Open tiles</span></div>
+                                <div className="rp-furni-function-mask-grid"
+                                    style={ { gridTemplateColumns: `repeat(${ avatarInfo.tileSizeX }, 18px)` } }>
+                                    { Array.from({ length: (avatarInfo.tileSizeX * avatarInfo.tileSizeY) }).map((ignored, index) =>
+                                        <div key={ index } className="rp-skeleton" style={ { width: 18, height: 18 } } />) }
+                                </div>
+                                <div className="rp-skeleton" style={ { width: '92%', height: 10, marginTop: 7 } } />
+                                <div className="rp-skeleton" style={ { width: '68%', height: 10, marginTop: 3 } } />
+                            </div> }
                         <div className="rp-furni-function-pair">
                             <label>
                                 <span>Stack height</span>
@@ -349,6 +407,27 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                 <div className="rp-furni-function-row-hint">{ hint }</div>
                             </div>
                         </div>) }
+                    { multiTile &&
+                        <div className="rp-furni-function-mask">
+                            <div className="rp-furni-function-mask-head">
+                                <span>Open tiles</span>
+                                { openCount > 0 &&
+                                    <div className="rp-furni-function-btn rp-furni-function-btn--sm"
+                                        onClick={ () => update({ walkMask: '' }) }>Clear</div> }
+                            </div>
+                            <div className="rp-furni-function-mask-grid"
+                                style={ { gridTemplateColumns: `repeat(${ saved.width }, 18px)` } }>
+                                { cells.map((open, index) =>
+                                    <div key={ index } title={ open ? 'Walkable' : 'Solid' }
+                                        className={ 'rp-furni-function-cell' + (open ? ' is-open' : '') }
+                                        onClick={ () => toggleCell(index) } />) }
+                            </div>
+                            <div className="rp-furni-function-mask-note">
+                                Squares the furni leaves as floor - the inside of an L-shaped sofa, the
+                                gap in a fence. The grid turns with the furni, so a hole stays in the
+                                corner it belongs to.
+                            </div>
+                        </div> }
                     <div className="rp-furni-function-pair">
                         <label>
                             <span>Stack height</span>

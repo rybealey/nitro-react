@@ -159,6 +159,7 @@ export interface RpFurniFunction
     width: number;
     length: number;
     walkable: boolean;
+    walkMask: string;
     seat: boolean;
     stackable: boolean;
     stackHeight: number;
@@ -196,6 +197,7 @@ export class RpFurniFunctionParser implements IMessageParser
             width: wrapper.readInt(),
             length: wrapper.readInt(),
             walkable: wrapper.readBoolean(),
+            walkMask: wrapper.readString(),
             seat: wrapper.readBoolean(),
             stackable: wrapper.readBoolean(),
             // hundredths on the wire, the same format the stack-height widget uses
@@ -258,11 +260,11 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
 {
     private _data: (number | string | boolean)[];
 
-    constructor(definitionId: number, walkable: boolean, seat: boolean, stackable: boolean,
-        stackHeight: number, adjustableHeights: string, interactionType: string, modes: number,
-        effectId: number, behaviourData: number, vendingIds: string)
+    constructor(definitionId: number, walkable: boolean, walkMask: string, seat: boolean,
+        stackable: boolean, stackHeight: number, adjustableHeights: string, interactionType: string,
+        modes: number, effectId: number, behaviourData: number, vendingIds: string)
     {
-        this._data = [ definitionId, walkable, seat, stackable, Math.round(stackHeight * 100),
+        this._data = [ definitionId, walkable, walkMask, seat, stackable, Math.round(stackHeight * 100),
             adjustableHeights, interactionType, modes, effectId, behaviourData, vendingIds ];
     }
 

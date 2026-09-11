@@ -503,6 +503,64 @@ $furni-function-on: #2e9e4f;
         }
     }
 
+    // Per-tile walkability grid. Plain squares rather than an isometric
+    // diamond: the grid is the furni's OWN frame, not the room's, and drawing
+    // it on the diagonal would imply it maps to fixed map squares when it
+    // actually turns with the item.
+    .rp-furni-function-mask {
+        margin-top: 11px;
+        padding: 8px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, .2);
+    }
+
+    .rp-furni-function-mask-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 7px;
+
+        span {
+            font-size: 10px;
+            color: rgba($white, .65);
+        }
+    }
+
+    .rp-furni-function-mask-grid {
+        display: grid;
+        gap: 3px;
+        justify-content: start;
+    }
+
+    .rp-furni-function-cell {
+        width: 18px;
+        height: 18px;
+        border-radius: 3px;
+        cursor: pointer;
+        background: rgba($white, .16);
+        border: 1px solid rgba(0, 0, 0, .35);
+        transition: background-color .1s ease;
+
+        &:hover { background: rgba($white, .26); }
+
+        // Open reads as the floor showing through, so it takes the walkable
+        // green the movement toggles already use for "yes, you can be here".
+        &.is-open {
+            background: $furni-function-on;
+            border-color: rgba(0, 0, 0, .45);
+
+            &:hover { background: lighten($furni-function-on, 6%); }
+        }
+    }
+
+    .rp-furni-function-mask-note {
+        margin-top: 7px;
+        font-size: 10px;
+        line-height: 1.45;
+        color: rgba($white, .42);
+    }
+
     .rp-furni-function-pair {
         display: flex;
         gap: 8px;
@@ -648,6 +706,7 @@ $furni-function-on: #2e9e4f;
         }
 
         &--accent { background: rgba($light, .22); }
+        &--sm { padding: 2px 9px; font-size: 10px; }
         &--go { background: $furni-function-on; }
 
         &.is-disabled {
