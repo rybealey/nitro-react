@@ -39,8 +39,8 @@ const FILTERS: [ Filter, string ][] = [
 const KINDS: { [key: string]: { title: string; tone: 'in' | 'out' | 'flat'; mark: string }} = {
     wages: { title: 'Shift pay', tone: 'in', mark: 'briefcase' },
     interest: { title: 'Interest', tone: 'in', mark: 'percent' },
-    deposit: { title: 'Cash in', tone: 'in', mark: 'arrow-down-to-line' },
-    withdraw: { title: 'Cash out', tone: 'out', mark: 'arrow-up-from-line' },
+    deposit: { title: 'Cash Deposit', tone: 'in', mark: 'arrow-down-to-line' },
+    withdraw: { title: 'Cash Withdrawal', tone: 'out', mark: 'arrow-up-from-line' },
     transfer_in: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
     transfer_out: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
     open: { title: 'Account opened', tone: 'flat', mark: 'circle-plus' }
