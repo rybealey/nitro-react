@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { GetRoomEngine, GetRoomSession, GetSessionDataManager, IsOwnerOfFurniture } from '../../../../api';
 import { useRoomEngineEvent } from '../../../events';
 import { useFurniRemovedEvent } from '../../engine';
+import { HasAnyRoomRights } from '../../../../api/rp-rights/RpRoomRightsMessages';
 
 const useFurnitureStickieWidgetState = () =>
 {
@@ -69,7 +70,7 @@ const useFurnitureStickieWidgetState = () =>
         setColor(color || '0');
         setText(text || '');
         setType(roomObject.type || 'post_it');
-        setCanModify(GetRoomSession().isRoomOwner || GetSessionDataManager().isModerator || IsOwnerOfFurniture(roomObject));
+        setCanModify(GetRoomSession().isRoomOwner || HasAnyRoomRights() || IsOwnerOfFurniture(roomObject));
     });
 
     useFurniRemovedEvent(((objectId !== -1) && (category !== -1)), event =>

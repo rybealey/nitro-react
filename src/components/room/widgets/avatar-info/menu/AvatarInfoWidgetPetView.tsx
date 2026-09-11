@@ -5,6 +5,7 @@ import { useRoom, useSessionInfo } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
 import { ContextMenuView } from '../../context-menu/ContextMenuView';
+import { HasAnyRoomRights } from '../../../../../api/rp-rights/RpRoomRightsMessages';
 
 interface AvatarInfoWidgetPetViewProps
 {
@@ -26,7 +27,7 @@ export const AvatarInfoWidgetPetView: FC<AvatarInfoWidgetPetViewProps> = props =
 
     const canPickUp = useMemo(() =>
     {
-        return (roomSession.isRoomOwner || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || GetSessionDataManager().isModerator);
+        return (roomSession.isRoomOwner || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || HasAnyRoomRights());
     }, [ roomSession ]);
 
     const canGiveHandItem = useMemo(() =>

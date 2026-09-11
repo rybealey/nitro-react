@@ -6,6 +6,7 @@ import { AvatarInfoName } from './AvatarInfoName';
 import { AvatarInfoPet } from './AvatarInfoPet';
 import { AvatarInfoRentableBot } from './AvatarInfoRentableBot';
 import { AvatarInfoUser } from './AvatarInfoUser';
+import { HasAnyRoomRights } from '../../rp-rights/RpRoomRightsMessages';
 
 export class AvatarInfoUtilities
 {
@@ -152,7 +153,7 @@ export class AvatarInfoUtilities
         furniInfo.isWallItem = (category === RoomObjectCategory.WALL);
         furniInfo.isRoomOwner = roomSession.isRoomOwner;
         furniInfo.roomControllerLevel = roomSession.controllerLevel;
-        furniInfo.isAnyRoomController = GetSessionDataManager().isModerator;
+        furniInfo.isAnyRoomController = HasAnyRoomRights();
         furniInfo.ownerId = model.getValue<number>(RoomObjectVariable.FURNITURE_OWNER_ID);
         furniInfo.ownerName = model.getValue<string>(RoomObjectVariable.FURNITURE_OWNER_NAME);
         furniInfo.usagePolicy = model.getValue<number>(RoomObjectVariable.FURNITURE_USAGE_POLICY);
@@ -197,7 +198,7 @@ export class AvatarInfoUtilities
         userInfo.amIOwner = roomSession.isRoomOwner;
         userInfo.isGuildRoom = roomSession.isGuildRoom;
         userInfo.roomControllerLevel = roomSession.controllerLevel;
-        userInfo.amIAnyRoomController = GetSessionDataManager().isModerator;
+        userInfo.amIAnyRoomController = HasAnyRoomRights();
         userInfo.isAmbassador = GetSessionDataManager().isAmbassador;
 
         if(userInfoType === AvatarInfoUser.PEER)
@@ -285,7 +286,7 @@ export class AvatarInfoUtilities
         userInfo.amIOwner = roomSession.isRoomOwner;
         userInfo.isGuildRoom = roomSession.isGuildRoom;
         userInfo.roomControllerLevel = roomSession.controllerLevel;
-        userInfo.amIAnyRoomController = GetSessionDataManager().isModerator;
+        userInfo.amIAnyRoomController = HasAnyRoomRights();
         userInfo.isAmbassador = GetSessionDataManager().isAmbassador;
         userInfo.badges = [ AvatarInfoUser.DEFAULT_BOT_BADGE_ID ];
         userInfo.figure = userData.figure;
@@ -312,7 +313,7 @@ export class AvatarInfoUtilities
 
         botInfo.amIOwner = roomSession.isRoomOwner;
         botInfo.roomControllerLevel = roomSession.controllerLevel;
-        botInfo.amIAnyRoomController = GetSessionDataManager().isModerator;
+        botInfo.amIAnyRoomController = HasAnyRoomRights();
         botInfo.badges = [ AvatarInfoUser.DEFAULT_BOT_BADGE_ID ];
         botInfo.figure = userData.figure;
 
@@ -375,7 +376,7 @@ export class AvatarInfoUtilities
         petInfo.remainingGrowTime = petData.remainingGrowTime;
         petInfo.publiclyBreedable = petData.publiclyBreedable;
 
-        if(isOwner || roomSession.isRoomOwner || GetSessionDataManager().isModerator || (roomSession.controllerLevel >= RoomControllerLevel.GUEST)) petInfo.canRemovePet = true;
+        if(isOwner || roomSession.isRoomOwner || HasAnyRoomRights() || (roomSession.controllerLevel >= RoomControllerLevel.GUEST)) petInfo.canRemovePet = true;
 
         return petInfo;
     }

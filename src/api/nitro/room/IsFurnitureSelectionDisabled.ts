@@ -1,6 +1,7 @@
 import { RoomEngineObjectEvent, RoomObjectVariable } from '@nitrots/nitro-renderer';
 import { GetSessionDataManager } from '../..';
 import { GetRoomEngine } from './GetRoomEngine';
+import { HasAnyRoomRights } from '../../rp-rights/RpRoomRightsMessages';
 
 export function IsFurnitureSelectionDisabled(event: RoomEngineObjectEvent): boolean
 {
@@ -16,7 +17,7 @@ export function IsFurnitureSelectionDisabled(event: RoomEngineObjectEvent): bool
         {
             result = true;
 
-            if(GetSessionDataManager().isModerator) result = false;
+            if(HasAnyRoomRights()) result = false;
         }
     }
 

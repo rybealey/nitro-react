@@ -5,6 +5,7 @@ import { CreateLinkEvent, DispatchUiEvent, GetGroupInformation, GetSessionDataMa
 import { Button, classNames, Column, Flex, LayoutBadgeImageView, LayoutRoomThumbnailView, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text, UserProfileIconView } from '../../../common';
 import { RoomWidgetThumbnailEvent } from '../../../events';
 import { useHelp, useNavigator } from '../../../hooks';
+import { HasAnyRoomRights } from '../../../api/rp-rights/RpRoomRightsMessages';
 
 export class NavigatorRoomInfoViewProps
 {
@@ -24,7 +25,7 @@ export const NavigatorRoomInfoView: FC<NavigatorRoomInfoViewProps> = props =>
         switch(permission)
         {
             case 'settings':
-                return (GetSessionDataManager().userId === navigatorData.enteredGuestRoom.ownerId || GetSessionDataManager().isModerator);
+                return (GetSessionDataManager().userId === navigatorData.enteredGuestRoom.ownerId || HasAnyRoomRights());
             case 'staff_pick':
                 return GetSessionDataManager().securityLevel >= SecurityLevel.COMMUNITY;
             default: return false;

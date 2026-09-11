@@ -5,6 +5,7 @@ import { useMessageEvent, useRoomEngineEvent, useSoundEvent } from '../../../eve
 import { useNotification } from '../../../notification';
 import { useFurniRemovedEvent } from '../../engine';
 import { useRoom } from '../../useRoom';
+import { HasAnyRoomRights } from '../../../../api/rp-rights/RpRoomRightsMessages';
 
 const useFurniturePlaylistEditorWidgetState = () =>
 {
@@ -46,7 +47,7 @@ const useFurniturePlaylistEditorWidgetState = () =>
             return;
         }
 
-        if(roomSession.isRoomOwner || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || GetSessionDataManager().isModerator) SendMessageComposer(new FurnitureMultiStateComposer(event.objectId, -2));
+        if(roomSession.isRoomOwner || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || HasAnyRoomRights()) SendMessageComposer(new FurnitureMultiStateComposer(event.objectId, -2));
     });
 
     useFurniRemovedEvent(((objectId !== -1) && (category !== -1)), event =>
