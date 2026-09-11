@@ -8,6 +8,7 @@ const RP_FURNI_ALPHA = 3926; // both directions
 // The 39xx block is full; these continue past the highest id in use.
 const RP_FURNI_FUNCTION = 4111; // both directions
 const RP_REQUEST_FURNI_FUNCTION = 4112; // client -> server
+const RP_DELETE_INVENTORY_FURNI = 4113; // client -> server
 
 export interface RpFurniAlpha
 {
@@ -254,6 +255,31 @@ export class RpRequestFurniFunctionComposer implements IMessageComposer<number[]
     }
 }
 
+// A count, then that many item ids. Ids rather than a furni type: the stack the
+// player is binning is a CLIENT-side grouping (nitro groups by type AND stuff
+// data, so two colours of one sofa are two stacks), and the emulator has no
+// notion of it. Naming every id leaves no room for the two sides to disagree
+// about what "this stack" means.
+export class RpDeleteInventoryFurniComposer implements IMessageComposer<number[]>
+{
+    private _data: number[];
+
+    constructor(itemIds: number[])
+    {
+        this._data = [ itemIds.length, ...itemIds ];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    {
+        return;
+    }
+}
+
 // The constructor arguments ARE the wire payload, in order - and that order
 // has to match RpFurniFunctionEvent.Parse on the emulator exactly.
 export class RpSetFurniFunctionComposer implements IMessageComposer<(number | string | boolean)[]>
@@ -336,6 +362,24 @@ export const RequestFurniFunction = (itemId: number) =>
     SendMessageComposer(new RpRequestFurniFunctionComposer(itemId));
 }
 
+// Matches MaximumItems in RpDeleteInventoryFurniEvent. A stack bigger than one
+// message is split rather than refused - a builder with 3,000 blocks still bins
+// them in one press.
+const DELETE_CHUNK_SIZE = 1000;
+
+// Destroys the listed items outright: no refund, nothing to restore. Everything
+// that makes this safe lives on the emulator, which checks every id against the
+// sender's own inventory - the confirmation dialog is a courtesy, not a guard.
+export const DeleteInventoryFurni = (itemIds: number[]) =>
+{
+    if(!itemIds || !itemIds.length) return;
+
+    for(let i = 0; i < itemIds.length; i += DELETE_CHUNK_SIZE)
+    {
+        SendMessageComposer(new RpDeleteInventoryFurniComposer(itemIds.slice(i, (i + DELETE_CHUNK_SIZE))));
+    }
+}
+
 let registered = false;
 
 export const RegisterRpFurniMessages = () =>
@@ -354,7 +398,8 @@ export const RegisterRpFurniMessages = () =>
         composers: new Map<number, Function>([
             [ RP_FURNI_ALPHA, RpSetFurniAlphaComposer ],
             [ RP_FURNI_FUNCTION, RpSetFurniFunctionComposer ],
-            [ RP_REQUEST_FURNI_FUNCTION, RpRequestFurniFunctionComposer ]
+            [ RP_REQUEST_FURNI_FUNCTION, RpRequestFurniFunctionComposer ],
+            [ RP_DELETE_INVENTORY_FURNI, RpDeleteInventoryFurniComposer ]
         ])
     });
 

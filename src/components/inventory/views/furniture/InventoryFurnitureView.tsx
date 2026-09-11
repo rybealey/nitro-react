@@ -1,9 +1,11 @@
 import { IRoomSession, RoomObjectVariable, RoomPreviewer, Vector3d } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
+import { FaTrash } from 'react-icons/fa';
 import { attemptItemPlacement, DispatchUiEvent, FurniCategory, GetRoomEngine, GetSessionDataManager, GroupItem, LocalizeText, UnseenItemCategory } from '../../../../api';
 import { AutoGrid, Button, Column, Grid, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, LayoutRoomPreviewerView, Text } from '../../../../common';
 import { CatalogPostMarketplaceOfferEvent } from '../../../../events';
-import { useInventoryFurni, useInventoryUnseenTracker } from '../../../../hooks';
+import { DeleteInventoryFurni } from '../../../../api/rp-furni/RpFurniMessages';
+import { useInventoryFurni, useInventoryUnseenTracker, useNotification } from '../../../../hooks';
 import { InventoryCategoryEmptyView } from '../InventoryCategoryEmptyView';
 import { InventoryFurnitureItemView } from './InventoryFurnitureItemView';
 import { InventoryFurnitureSearchView } from './InventoryFurnitureSearchView';
@@ -32,6 +34,25 @@ export const InventoryFurnitureView: FC<InventoryFurnitureViewProps> = props =>
     const [ filteredGroupItems, setFilteredGroupItems ] = useState<GroupItem[]>([]);
     const { groupItems = [], selectedItem = null, activate = null, deactivate = null } = useInventoryFurni();
     const { resetItems = null } = useInventoryUnseenTracker();
+    const { showConfirm = null } = useNotification();
+
+    // Destroys the whole stack, not one copy - what the grid shows as a single
+    // tile is what goes. The count is spelled out in the confirmation because
+    // "Rubber Duck" alone gives no hint whether that is one duck or two hundred,
+    // and there is nothing to undo it with afterwards.
+    const attemptDelete = (groupItem: GroupItem) =>
+    {
+        if(!groupItem) return;
+
+        const itemIds = groupItem.items.map(item => item.id);
+
+        if(!itemIds.length) return;
+
+        showConfirm(LocalizeText('inventory.furni.delete.confirm', [ 'count', 'name' ], [ itemIds.length.toString(), groupItem.name ]), () =>
+        {
+            DeleteInventoryFurni(itemIds);
+        }, null, LocalizeText('inventory.furni.delete.confirm.button'), null, LocalizeText('inventory.furni.delete.confirm.title'));
+    }
 
     useEffect(() =>
     {
@@ -138,6 +159,10 @@ export const InventoryFurnitureView: FC<InventoryFurnitureViewProps> = props =>
                                 <Button onClick={ event => attemptPlaceMarketplaceOffer(selectedItem) }>
                                     { LocalizeText('inventory.marketplace.sell') }
                                 </Button> }
+                            <Button variant="danger" onClick={ event => attemptDelete(selectedItem) }>
+                                <FaTrash className="fa-icon me-1" />
+                                { LocalizeText('inventory.furni.delete') }
+                            </Button>
                         </Column>
                     </Column> }
             </Column>
