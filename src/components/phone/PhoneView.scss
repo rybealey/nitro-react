@@ -5148,6 +5148,12 @@ $phone-scale: 0.8;
         display: flex;
         align-items: center;
         gap: 7px;
+        // Gives way to whatever sits in the right slot rather than pushing it
+        // off the card - the action there has a fixed size, the title does not.
+        min-width: 0;
+        overflow: hidden;
+
+        span { overflow: hidden; text-overflow: ellipsis; }
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
         letter-spacing: 1.6px;
@@ -5325,23 +5331,29 @@ $phone-scale: 0.8;
         color: #f4f0f7;
     }
 
-    .phone-wallet-switchrow { display: flex; justify-content: flex-end; margin-top: 12px; }
-
+    // Sits in the band, on the orange: dark ink on a light fill, the inverse
+    // of the card body's buttons, because the band is the one bright surface
+    // on the card and a translucent-white pill would vanish into it.
     .phone-wallet-switch {
+        flex: none;
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 13px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, .1);
-        border: 1px solid rgba(255, 255, 255, .16);
-        font-size: calc(12px * var(--ph-text-scale, 1));
+        gap: 5px;
+        max-width: 60%;
+        padding: 4px 9px;
+        border-radius: 8px;
+        background: rgba(26, 10, 20, .16);
+        border: 1px solid rgba(26, 10, 20, .22);
+        font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 700;
-        color: #f4f0f7;
+        color: #1a0a14;
+        white-space: nowrap;
         transition: background .15s ease, transform .12s ease;
 
-        &:hover { background: rgba(255, 255, 255, .16); }
-        &:active { transform: scale(.97); opacity: 1; }
+        span { overflow: hidden; text-overflow: ellipsis; }
+
+        &:hover { background: rgba(26, 10, 20, .26); }
+        &:active { transform: scale(.96); opacity: 1; }
     }
 
     .phone-wallet-add.is-off { opacity: .38; cursor: default; }

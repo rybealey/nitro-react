@@ -129,7 +129,18 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                 <div className="phone-wallet-holo" />
                 <div className="phone-wallet-band">
                     <div className="phone-wallet-band-title"><PhoneIcon icon="id-card" size={ 14 } /><span>San Francisco · Resident ID</span></div>
-                    <span className="phone-wallet-band-number">No. { String(person.userId).padStart(6, '0') }</span>
+                    { /* The band's right slot carries one thing: the action on a card
+                         you could play, the card number otherwise. Both do not fit a
+                         324px band, and between a serial number and the only thing
+                         you would come to this card to do, the number gives way. */ }
+                    { isCurrent
+                        ? <span className="phone-wallet-band-number">No. { String(person.userId).padStart(6, '0') }</span>
+                        : <div className="phone-wallet-switch phone-tap"
+                            title={ `Play as ${ person.username }` }
+                            onClick={ event => { event.stopPropagation(); SendRpSwitchCharacter(person.userId); } }>
+                            <PhoneIcon icon="arrow-right-arrow-left" size={ 12 } />
+                            <span>Play as { person.username }</span>
+                        </div> }
                 </div>
                 <div className="phone-wallet-body">
                     <div className="phone-wallet-identity">
@@ -177,14 +188,6 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                     <div className="phone-wallet-row-icon"><GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 22 } /></div>
                                     <div className="phone-wallet-row-text"><b>{ gang.name }</b> · { gang.isOwner ? 'Leader' : 'Member' }</div>
                                 </div> }
-                        </div> }
-                    { !isCurrent &&
-                        <div className="phone-wallet-switchrow">
-                            <div className="phone-wallet-switch phone-tap"
-                                onClick={ event => { event.stopPropagation(); SendRpSwitchCharacter(person.userId); } }>
-                                <PhoneIcon icon="arrow-right-arrow-left" size={ 13 } />
-                                <span>Play as { person.username }</span>
-                            </div>
                         </div> }
                     </div>
                 </div>
