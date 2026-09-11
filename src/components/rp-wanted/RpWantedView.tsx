@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { FaRegStar, FaStar } from 'react-icons/fa';
 import { AddEventLinkTracker, GetUserProfile, RemoveLinkEventTracker } from '../../api';
 import { GetRpCanPardon, GetRpWantedList, RpWantedPlayer, SendRpDropCharge, SubscribeRpWanted } from '../../api/rp-wanted/RpWantedMessages';
-import { LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 
 // PixelRP Wanted List, opened from the side drawer's Wanted button
 // (CreateLinkEvent('rp-wanted/toggle')). Players land here when they are
@@ -239,7 +239,7 @@ export const RpWantedView: FC<{}> = props =>
     const tipPlayer = tip ? entries.find(player => player.userId === tip.userId) : null;
 
     return (
-        <NitroCardView resizable uniqueKey="rp-wanted" className="rp-wanted-window" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="rp-wanted" className="rp-wanted-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Wanted List" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardContentView className="text-black">
                 <div className="rp-wanted-list">

@@ -4,7 +4,7 @@ import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { FaTrash } from 'react-icons/fa';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
+import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
@@ -781,7 +781,7 @@ export const RpSettingsView: FC<{}> = props =>
     if(!isVisible) return null;
 
     return (
-        <NitroCardView resizable uniqueKey="rp-settings" className="rp-settings-window" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="rp-settings" className="rp-settings-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Settings" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardTabsView>
                 { TABS.map(tab => (

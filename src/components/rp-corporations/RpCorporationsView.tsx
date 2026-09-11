@@ -4,7 +4,7 @@ import { LuSlidersHorizontal } from 'react-icons/lu';
 import { AddEventLinkTracker, CreateLinkEvent, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { RpCorpDetailEvent, RpCorpRank } from '../../api/rp-corps/RpCorpDetailMessages';
 import { FormatLastOnline, FormatShifts } from '../../api/rp-employment/RpEmploymentRegistry';
-import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from '../rp-profile/RpProfileState';
 
@@ -161,7 +161,7 @@ export const RpCorporationsView: FC<{}> = props =>
         .filter(rank => (rank.employees.length > 0)));
 
     return (
-        <NitroCardView resizable uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="rp-corporations" className="rp-corporations-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Corporations" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardContentView overflow="hidden" className="text-black">
                 <div className="rp-corps-layout">
