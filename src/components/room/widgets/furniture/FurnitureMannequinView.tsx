@@ -3,7 +3,7 @@ import { FC, useEffect, useState } from 'react';
 import { GetAvatarRenderManager, GetClubMemberLevel, GetRoomSession, GetSessionDataManager, LocalizeText, MannequinUtilities } from '../../../../api';
 import { Base, Button, Column, Flex, LayoutAvatarImageView, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../../../common';
 import { useFurnitureMannequinWidget } from '../../../../hooks';
-import { HasAnyRoomRights } from '../../../../api/rp-rights/RpRoomRightsMessages';
+import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../../api/rp-rights/RpRoomRightsMessages';
 
 const MODE_NONE: number = -1;
 const MODE_CONTROLLER: number = 0;
@@ -24,7 +24,7 @@ export const FurnitureMannequinView: FC<{}> = props =>
 
         const roomSession = GetRoomSession();
 
-        if(roomSession.isRoomOwner || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || HasAnyRoomRights())
+        if(IsRoomOwnerNow(roomSession) || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || HasAnyRoomRights())
         {
             setMode(MODE_CONTROLLER);
 

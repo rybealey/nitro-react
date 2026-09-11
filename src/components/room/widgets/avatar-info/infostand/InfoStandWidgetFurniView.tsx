@@ -9,6 +9,7 @@ import { ResolveRpStaff } from '../../../../../api/user/RpStaffFlag';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
+import { IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
 
 interface InfoStandWidgetFurniViewProps
 {
@@ -50,7 +51,12 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     const [ showFunction, setShowFunction ] = useState(false);
     // Cosmetic only - the server checks the rp_furni_function permission on
     // both packets, so hiding the button is a courtesy, never the gate.
-    const isStaff = ResolveRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
+    //
+    // It follows the shift with the rest of the build tools. The Function tool
+    // edits a furni DEFINITION hotel-wide rather than anything in this room,
+    // so it is not a room right - but it is still a build power, and a staff
+    // member who is not clocked in has no business reaching it by mis-click.
+    const isStaff = ResolveRpStaff(GetRoomSession()?.ownRoomIndex ?? -1) && IsRpStaffOnDuty();
     const [ furniKeys, setFurniKeys ] = useState<string[]>([]);
     const [ furniValues, setFurniValues ] = useState<string[]>([]);
     const [ customKeys, setCustomKeys ] = useState<string[]>([]);

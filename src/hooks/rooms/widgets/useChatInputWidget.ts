@@ -8,7 +8,7 @@ import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useNotification } from '../../notification';
 import { useObjectSelectedEvent } from '../engine';
 import { useRoom } from '../useRoom';
-import { HasAnyRoomRights } from '../../../api/rp-rights/RpRoomRightsMessages';
+import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../api/rp-rights/RpRoomRightsMessages';
 
 // Every system whisper the client raises locally uses this bubble, matching
 // the emulator's SendWhisper - a message from the hotel must never wear the
@@ -224,7 +224,7 @@ const useChatInputWidgetState = () =>
                     newWindow.document.write(image.outerHTML);
                     return null;
                 case ':pickall':
-                    if(roomSession.isRoomOwner || HasAnyRoomRights())
+                    if(IsRoomOwnerNow(roomSession) || HasAnyRoomRights())
                     {
                         showConfirm(LocalizeText('room.confirm.pick_all'), () =>
                         {
@@ -235,7 +235,7 @@ const useChatInputWidgetState = () =>
 
                     return null;
                 case ':ejectall':
-                    if (roomSession.isRoomOwner || HasAnyRoomRights() || roomSession.controllerLevel >= RoomControllerLevel.GUEST)
+                    if (IsRoomOwnerNow(roomSession) || HasAnyRoomRights() || roomSession.controllerLevel >= RoomControllerLevel.GUEST)
                     {
                         showConfirm(LocalizeText('room.confirm.eject_all'), () => 
                         {
@@ -272,7 +272,7 @@ const useChatInputWidgetState = () =>
                     showNitroAlert();
                     return null;
                 case ':settings':
-                    if(roomSession.isRoomOwner || HasAnyRoomRights())
+                    if(IsRoomOwnerNow(roomSession) || HasAnyRoomRights())
                     {
                         SendMessageComposer(new RoomSettingsComposer(roomSession.roomId));
                     }

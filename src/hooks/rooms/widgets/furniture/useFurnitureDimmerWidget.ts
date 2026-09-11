@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { DimmerFurnitureWidgetPresetItem, FurnitureDimmerUtilities, GetSessionDataManager } from '../../../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../../events';
 import { useRoom } from '../../useRoom';
-import { HasAnyRoomRights } from '../../../../api/rp-rights/RpRoomRightsMessages';
+import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../../api/rp-rights/RpRoomRightsMessages';
 
 const useFurnitureDimmerWidgetState = () =>
 {
@@ -19,7 +19,7 @@ const useFurnitureDimmerWidgetState = () =>
     const [ selectedBrightness, setSelectedBrightness ] = useState(0);
     const { roomSession = null } = useRoom();
 
-    const canOpenWidget = () => (roomSession.isRoomOwner || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || HasAnyRoomRights());
+    const canOpenWidget = () => (IsRoomOwnerNow(roomSession) || (roomSession.controllerLevel >= RoomControllerLevel.GUEST) || HasAnyRoomRights());
 
     const selectPresetId = (id: number) =>
     {

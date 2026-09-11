@@ -7,6 +7,7 @@ import { useMessageEvent, useRoomEngineEvent, useUiEvent } from '../events';
 import { useNotification } from '../notification';
 import { useCatalogPlaceMultipleItems } from './useCatalogPlaceMultipleItems';
 import { useCatalogSkipPurchaseConfirmation } from './useCatalogSkipPurchaseConfirmation';
+import { IsRoomOwnerNow } from '../../api/rp-rights/RpRoomRightsMessages';
 
 const DUMMY_PAGE_ID_FOR_OFFER_SEARCH = -12345678;
 const DRAG_AND_DROP_ENABLED = true;
@@ -67,7 +68,7 @@ const useCatalogState = () =>
 
         if(!roomSession) return BuilderFurniPlaceableStatus.NOT_IN_ROOM;
 
-        if(!roomSession.isRoomOwner) return BuilderFurniPlaceableStatus.NOT_ROOM_OWNER;
+        if(!IsRoomOwnerNow(roomSession)) return BuilderFurniPlaceableStatus.NOT_ROOM_OWNER;
 
         if(secondsLeft <= 0)
         {
@@ -93,7 +94,7 @@ const useCatalogState = () =>
     {
         const roomSession = GetRoomSession();
 
-        if(((DRAG_AND_DROP_ENABLED && roomSession && offer.page && (offer.page.layoutCode !== 'sold_ltd_items') && (currentType === CatalogType.NORMAL) && (roomSession.isRoomOwner || (roomSession.isGuildRoom && (roomSession.controllerLevel >= RoomControllerLevel.GUILD_MEMBER)))) || ((currentType === CatalogType.BUILDER) && (getBuilderFurniPlaceableStatus(offer) === BuilderFurniPlaceableStatus.OKAY))) && (offer.pricingModel !== Offer.PRICING_MODEL_BUNDLE) && (offer.product.productType !== ProductTypeEnum.EFFECT) && (offer.product.productType !== ProductTypeEnum.HABBO_CLUB)) return true;
+        if(((DRAG_AND_DROP_ENABLED && roomSession && offer.page && (offer.page.layoutCode !== 'sold_ltd_items') && (currentType === CatalogType.NORMAL) && (IsRoomOwnerNow(roomSession) || (roomSession.isGuildRoom && (roomSession.controllerLevel >= RoomControllerLevel.GUILD_MEMBER)))) || ((currentType === CatalogType.BUILDER) && (getBuilderFurniPlaceableStatus(offer) === BuilderFurniPlaceableStatus.OKAY))) && (offer.pricingModel !== Offer.PRICING_MODEL_BUNDLE) && (offer.product.productType !== ProductTypeEnum.EFFECT) && (offer.product.productType !== ProductTypeEnum.HABBO_CLUB)) return true;
 
         return false;
     }, [ currentType, getBuilderFurniPlaceableStatus ]);

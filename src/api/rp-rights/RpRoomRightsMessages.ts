@@ -1,4 +1,4 @@
-import { IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
+import { IMessageDataWrapper, IMessageEvent, IMessageParser, IRoomSession, MessageEvent, RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, GetSessionDataManager } from '../nitro';
 
 // PixelRP: whether a staff member's global room rights are live right now.
@@ -73,6 +73,30 @@ let onDuty = false;
  * settings - because those never followed the clock.
  */
 export const HasAnyRoomRights = (): boolean => (GetSessionDataManager().isModerator && onDuty);
+
+/**
+ * The raw flag, for the few powers that are staff-only WITHOUT being room
+ * rights - the Function tool edits a furni definition hotel-wide rather than
+ * anything in this room, but it is still a build power and still follows the
+ * shift.
+ */
+export const IsRpStaffOnDuty = (): boolean => onDuty;
+
+/**
+ * Whether this player owns the room RIGHT NOW.
+ *
+ * The renderer's own isRoomOwner is sticky: setRoomOwner() has no clearing
+ * counterpart, so once a staff member enters a room on duty it stays true for
+ * the rest of the visit - including after they clock off, which is exactly
+ * when it must stop being true.
+ *
+ * The controller level is not sticky. The server re-sends it on every clock
+ * event, and a real owner always holds ROOM_OWNER because ownership is tested
+ * before any permission - so pairing the two gives an answer that can go back
+ * down.
+ */
+export const IsRoomOwnerNow = (roomSession: IRoomSession): boolean =>
+    (!!roomSession && roomSession.isRoomOwner && (roomSession.controllerLevel >= RoomControllerLevel.ROOM_OWNER));
 
 const onStaffDuty = (event: RpStaffDutyEvent) =>
 {
