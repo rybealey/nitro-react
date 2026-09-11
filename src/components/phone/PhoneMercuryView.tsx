@@ -183,7 +183,18 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
     // the oldest half of everyone's ledger saying nothing at all.
     const subtitle = (entry: RpBankEntry): string =>
     {
-        if(entry.kind.indexOf('transfer') !== 0) return (entry.source || Clock(entry.createdAt));
+        // `source` is free text written by several code paths over time, and
+        // the early ones wrote sentence fragments in lower case. Sentence-case
+        // it on the way out rather than leaving the oldest rows in anybody's
+        // ledger reading like log output.
+        if(entry.kind.indexOf('transfer') !== 0)
+        {
+            const source = (entry.source || '');
+
+            if(!source) return Clock(entry.createdAt);
+
+            return (source.charAt(0).toUpperCase() + source.slice(1));
+        }
 
         const savings = (entry.account === 'savings');
 
@@ -371,7 +382,11 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                             </div>
                             <div className="phone-merc-detail">
                                 <div className="phone-merc-detail-key">Balance after</div>
-                                <div className="phone-merc-detail-val">{ Money(open.balanceAfter) }c</div>
+                                { /* The coin, not a trailing "c" - every other figure on
+                                     this sheet carries the icon, and "0c" read as a typo. */ }
+                                <div className="phone-merc-detail-val is-money">
+                                    <LayoutCurrencyIcon type={ -1 } />{ Money(open.balanceAfter) }
+                                </div>
                             </div>
                             <div className="phone-merc-detail">
                                 <div className="phone-merc-detail-key">Reference</div>

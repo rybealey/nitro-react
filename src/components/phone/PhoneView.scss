@@ -5757,6 +5757,16 @@ $phone-scale: 0.8;
         color: var(--ph-text);
         overflow: hidden;
         text-overflow: ellipsis;
+
+        &.is-money {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 5px;
+            font-variant-numeric: tabular-nums;
+
+            .nitro-currency-icon { width: 13px; height: 13px; background-repeat: no-repeat; background-size: contain; background-position: center; flex: none; }
+        }
     }
 
     .phone-merc-close {
