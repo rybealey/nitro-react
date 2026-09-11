@@ -1,5 +1,5 @@
 import { RpGetUserCorpComposer, RpUserCorpEvent } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { GetRoomSession, GetSessionDataManager, OwnMotto, SendMessageComposer } from '../../api';
 import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
@@ -55,6 +55,11 @@ interface PhoneWalletViewProps
 const COMBAT_LEVEL: number = 1;
 const FARMING_LEVEL: number = 1;
 
+// Matches the emulator's accrual tick. The countdown only moves when online
+// time is actually stamped, so asking more often than that just repeats the
+// same answer - and asking less often makes the number wrong.
+const ACCOUNTS_POLL_MS = 60000;
+
 const FormatCredits = (value: number): string => Math.max(0, value || 0).toLocaleString('en-US');
 
 // d0b702e7 deliberately took the printed number OFF the Resident ID - an ID
@@ -92,6 +97,9 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     const [ bankOpen, setBankOpen ] = useState(false);
     const [ amount, setAmount ] = useState('');
     const [ bankNote, setBankNote ] = useState('');
+    // Set when a transfer is sent, so the accounts push that follows can be
+    // told apart from the minute poll.
+    const transferPending = useRef(false);
 
     const ownId = GetSessionDataManager().userId;
     const ownName = (GetSessionDataManager().userName || 'You');
@@ -107,26 +115,49 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         setOpenId(GetRpCurrentCharacterId());
     }), []);
 
-    // The accounts land at login and again after every movement - a payday, an
-    // interest payment, a transfer - so the card never has to poll.
+    // The accounts land at login, after every movement, and on the minute poll
+    // below.
+    //
+    // The typed amount is NOT cleared here. It used to be, which was harmless
+    // when the only pushes were ones the player had caused - but a poll that
+    // arrives every minute would wipe a half-typed transfer under their hands.
+    // It is cleared when a transfer actually goes through instead, which is
+    // the only push that makes the entry stale.
     useEffect(() => SubscribeRpBankAccounts(() =>
     {
         setBank(GetRpBankAccounts());
+
+        if(!transferPending.current) return;
+
+        transferPending.current = false;
+
         setAmount('');
         setBankNote('');
     }), []);
 
-    // Login already pushed these, so this is a cheap re-ask against the
-    // server's own cache - it costs no query and covers a session that has
-    // been open long enough for a payday to have been missed.
-    // A BLOCK body, not a concise one. IConnection.send is declared void but
-    // SocketConnection.send actually returns a boolean, so `() => Send...()`
-    // hands React a `true` where it expects a cleanup function - and React
-    // calls it on unmount, which took the whole client to a black screen the
-    // moment the phone was closed from this screen.
+    // Once a minute while this screen is open, and never otherwise: the server
+    // stamps online time on its own minute tick, so anything faster asks the
+    // same question twice and anything slower leaves the countdown lying.
+    //
+    // A poll rather than a push because the Wallet is shut almost all the time,
+    // and pushing every balance to every player every minute would be paying
+    // for a screen nobody is looking at.
+    //
+    // Both effects use a BLOCK body, not a concise one. IConnection.send is
+    // declared void but SocketConnection.send actually returns a boolean, so
+    // `() => Send...()` hands React a `true` where it expects a cleanup
+    // function - and React calls it on unmount, which took the whole client to
+    // a black screen the moment the phone was closed from this screen.
     useEffect(() =>
     {
         SendRpGetBankAccounts();
+    }, []);
+
+    useEffect(() =>
+    {
+        const timer = setInterval(() => SendRpGetBankAccounts(), ACCOUNTS_POLL_MS);
+
+        return () => clearInterval(timer);
     }, []);
 
     // Refusals carry the SERVER's wording, because only the server can say
@@ -182,6 +213,15 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         ? characters
         : [ { userId: ownId, username: ownName, figure: ownFigure, motto, gender: 'M' } ];
     const full = (cards.length >= GetRpMaxCharacters());
+
+    const transfer = (direction: number) =>
+    {
+        if(!amount) return;
+
+        transferPending.current = true;
+
+        SendRpBankTransfer(direction, parseInt(amount, 10));
+    };
 
     const openBankAccount = () =>
     {
@@ -351,12 +391,12 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                                             onChange={ event => setAmount(event.target.value.replace(/[^0-9]/g, '')) } />
                                         <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
                                             title="Move to savings"
-                                            onClick={ event => (amount && SendRpBankTransfer(TRANSFER_TO_SAVINGS, parseInt(amount, 10))) }>
+                                            onClick={ event => transfer(TRANSFER_TO_SAVINGS) }>
                                             To savings
                                         </div>
                                         <div className={ `phone-tap phone-wallet-move${ amount ? '' : ' is-off' }` }
                                             title="Move to current"
-                                            onClick={ event => (amount && SendRpBankTransfer(TRANSFER_TO_CURRENT, parseInt(amount, 10))) }>
+                                            onClick={ event => transfer(TRANSFER_TO_CURRENT) }>
                                             To current
                                         </div>
                                     </div>
