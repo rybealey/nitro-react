@@ -2466,6 +2466,13 @@ $phone-scale: 0.8;
         flex: 1;
         min-height: 0;
         overflow-y: auto;
+        // The first eyebrow in here drops its own top margin (the shared
+        // :first-child rule, which assumes the container supplies the air) -
+        // and what sits above it is the search field, not air. This is that
+        // air: enough to read as separate from the search bar without opening
+        // a full group-sized gap. Both notes panes scroll through here, so
+        // Folders and a note list are spaced alike.
+        padding-top: 16px;
         padding-bottom: 100px;
         scrollbar-width: none;
 
