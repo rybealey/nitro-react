@@ -208,7 +208,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                 <div className="phone-wallet-field" />
                 <div className="phone-wallet-holo" />
                 <div className="phone-wallet-band">
-                    <div className="phone-wallet-band-title"><PhoneIcon icon="id-card" size={ 14 } /><span>San Francisco · Resident ID</span></div>
+                    <div className="phone-wallet-band-title"><PhoneIcon icon="id-card" size={ 14 } /><span>San Francisco</span></div>
                     { /* The band's right slot is the action, on any card that is not
                          the one being played. Nothing stands in for it on that card:
                          an empty slot reads as "this is you". */ }
