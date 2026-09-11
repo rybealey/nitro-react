@@ -4,7 +4,10 @@ import { FaTimes } from 'react-icons/fa';
 import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Base, Button, Column, Flex, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
 import { useMessageEvent, useRoom, useSoundEvent } from '../../../../../hooks';
+import { GetRoomSession } from '../../../../../api';
+import { ResolveRpStaff } from '../../../../../api/user/RpStaffFlag';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
+import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
 
 interface InfoStandWidgetFurniViewProps
@@ -44,6 +47,10 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     // Build tools ride the same right as Move: if you cannot move it, you have
     // no business nudging it a tile at a time either.
     const [ showTools, setShowTools ] = useState(false);
+    const [ showFunction, setShowFunction ] = useState(false);
+    // Cosmetic only - the server checks the rp_furni_function permission on
+    // both packets, so hiding the button is a courtesy, never the gate.
+    const isStaff = ResolveRpStaff(GetRoomSession()?.ownRoomIndex ?? -1);
     const [ furniKeys, setFurniKeys ] = useState<string[]>([]);
     const [ furniValues, setFurniValues ] = useState<string[]>([]);
     const [ customKeys, setCustomKeys ] = useState<string[]>([]);
@@ -61,7 +68,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     const [ songCreator, setSongCreator ] = useState<string>('');
     // Baseline for the branding offset preview: the last saved (or initial)
     // model values, restored when the editor closes with unsaved tweaks.
-    const brandingOffsetBaseline = useRef<{ roomId: number, objectId: number, category: number, values: { [key: string]: number } }>(null);
+    const brandingOffsetBaseline = useRef<{ roomId: number, objectId: number, category: number, values: { [key: string]: number }}>(null);
 
     useSoundEvent<NowPlayingEvent>(NowPlayingEvent.NPE_SONG_CHANGED, event =>
     {
@@ -550,6 +557,10 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                     <Button variant="dark" active={ showTools } onClick={ () => setShowTools(value => !value) }>
                         { LocalizeText('infostand.button.tools') }
                     </Button> }
+                { isStaff &&
+                    <Button variant="dark" active={ showFunction } onClick={ () => setShowFunction(value => !value) }>
+                        { LocalizeText('infostand.button.function') }
+                    </Button> }
                 { (pickupMode !== PICKUP_MODE_NONE) &&
                     <Button variant="dark" onClick={ event => processButtonAction('pickup') }>
                         { LocalizeText((pickupMode === PICKUP_MODE_EJECT) ? 'infostand.button.eject' : 'infostand.button.pickup') }
@@ -567,6 +578,8 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                         { LocalizeText('save') }
                     </Button> }
             </Flex>
+            { showFunction &&
+                <InfoStandWidgetFurniFunctionView avatarInfo={ avatarInfo } onClose={ () => setShowFunction(false) } /> }
         </Column>
     );
 }
