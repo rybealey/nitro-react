@@ -341,8 +341,8 @@ const PatchFurnitureData = (data: RpFurniFunction) =>
     // behaviour, so the client has to derive it the same way.
     writable._canLayOn = ((data.interactionType === 'bed') || (data.interactionType === 'tent_small'));
 
-    if(data.heightMarker) heightMarkerOff.delete(data.spriteId);
-    else heightMarkerOff.add(data.spriteId);
+    if(data.heightMarker) heightMarkerOn.add(data.spriteId);
+    else heightMarkerOn.delete(data.spriteId);
 }
 
 // ---------------------------------------------------------------------------
@@ -362,12 +362,22 @@ const PatchFurnitureData = (data: RpFurniFunction) =>
 // bundle asks for `furniture_multiheight`. So the marker belongs to the ASSET,
 // and switching it off would otherwise mean rebuilding the bundle.
 //
+// The ring is OFF for everything by default, and a furni has to be opted in.
+// It is a builder's readout that shows for anyone walking past any furni whose
+// artwork happens to name `furniture_multiheight`, which is almost never a
+// furni somebody stacks on deliberately.
+//
+// Suppressing by default rather than listing what to suppress also keeps the
+// wire quiet: a furni nobody has opted in is never mentioned at all, and the
+// opted-in set arrives by the same two routes as the rest of the Function
+// record.
+//
 // The original value is stashed on the object before it is overwritten, so
-// turning the marker back on restores exactly what the asset asked for rather
-// than handing the ring to furni that never had it.
+// opting a furni in restores exactly what its asset asked for rather than
+// handing the ring to furni that never had it.
 const HEIGHT_MARKER_ORIGINAL = 'pixelrp_height_marker_original';
 
-const heightMarkerOff = new Set<number>();
+const heightMarkerOn = new Set<number>();
 
 const ApplyHeightMarker = (object: IRoomObject) =>
 {
@@ -386,11 +396,12 @@ const ApplyHeightMarker = (object: IRoomObject) =>
         object.model.setValue(HEIGHT_MARKER_ORIGINAL, original);
     }
 
-    // Nothing to suppress and nothing suppressed: the overwhelming majority of
-    // furni, which never carried the flag in the first place.
-    if(!original && !heightMarkerOff.has(spriteId)) return;
+    // Never had the flag, so there is nothing to suppress and nothing to give
+    // back. That is the overwhelming majority of furni, and it is why this can
+    // run over every floor object in a room without costing anything.
+    if(!original) return;
 
-    object.model.setValue(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT, heightMarkerOff.has(spriteId) ? 0 : original);
+    object.model.setValue(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT, heightMarkerOn.has(spriteId) ? original : 0);
 }
 
 /** One object, as the room adds it. */

@@ -467,13 +467,14 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                             onClick={ () => update({ heightMarker: !draft.heightMarker }) }><span /></div>
                         <div className="rp-furni-function-row-text">
                             <div className="rp-furni-function-row-label">Height marker</div>
-                            <div className="rp-furni-function-row-hint">The floating blue ring over this furni</div>
+                            <div className="rp-furni-function-row-hint">Show the floating blue ring over this furni</div>
                         </div>
                     </div>
                     <div className="rp-furni-function-note">
-                        The ring is the tile cursor showing where a dropped item would land, and it
-                        appears because the furni&apos;s own artwork asks for it. Switching it off hides the
-                        readout only - stacking still works and still lands in the same place.
+                        The ring is the tile cursor showing where a dropped item would land. It is off
+                        across the hotel and this turns it back on for one furni - and only for furni
+                        whose artwork offers it at all. Either way it is a readout: stacking still works
+                        and still lands in the same place.
                     </div>
                 </div>
                 <div className="rp-furni-function-section">
