@@ -134,7 +134,7 @@ export const PhoneAppStoreView: FC<PhoneAppStoreViewProps> = props =>
                 <div className={ 'phone-store-account phone-tap' + (ownFigure ? ' is-avatar' : '') }
                     onClick={ event => onAccount() }>
                     { ownFigure
-                        ? <PhoneAvatar portrait id={ ownId } figure={ ownFigure } size={ 30 } />
+                        ? <PhoneAvatar id={ ownId } figure={ ownFigure } size={ 30 } />
                         : initial }
                 </div> }
         </div>
