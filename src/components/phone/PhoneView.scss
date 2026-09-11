@@ -5236,11 +5236,27 @@ $phone-scale: 0.8;
         flex: none;
         overflow: hidden;
 
-        // corp badge art is pixel art at native size; shrink it into the slot
-        &.is-badge { background: rgba(255, 255, 255, .1); .badge-image { position: static; transform: scale(.6); } }
+        // Corp badge art is pixel art at its native 40px; it is SCALED into
+        // the 24px slot, not squeezed into it. `flex: none` is what makes
+        // that true - as a flex item the 40px box was shrinking to the 24px
+        // line first, so the badge went out 24 wide by 40 tall and then got
+        // clipped. At its real size, scale(.6) lands exactly 24x24 centred.
+        &.is-badge {
+            background: rgba(255, 255, 255, .1);
+
+            .badge-image {
+                position: static;
+                flex: none;
+                transform: scale(.6);
+                transform-origin: center;
+            }
+        }
     }
 
-    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); color: #f4f0f7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; b { font-weight: 700; } }
+    // Wraps rather than truncating: a corporation name and a rank title is
+    // more than 250px of card, and half a job title tells you less than two
+    // lines do. The row grows to fit.
+    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); line-height: 1.35; color: #f4f0f7; text-wrap: pretty; b { font-weight: 700; } }
 
     @media (prefers-reduced-motion: reduce) { .phone-wallet-card { animation: none; } }
 
