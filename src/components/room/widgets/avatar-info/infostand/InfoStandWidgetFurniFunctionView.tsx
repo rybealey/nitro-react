@@ -1,4 +1,4 @@
-import { FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AvatarInfoFurni, SendMessageComposer } from '../../../../../api';
 import { AddFurniFunctionListener, RequestFurniFunction, RpFurniFunction, RpSetFurniFunctionComposer } from '../../../../../api/rp-furni/RpFurniMessages';
@@ -151,6 +151,19 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     const { avatarInfo = null, onClose = null } = props;
     const [ saved, setSaved ] = useState<RpFurniFunction>(null);
     const [ draft, setDraft ] = useState<Draft>(null);
+    // pixelrp: what a number field is SHOWING while it is being typed in.
+    //
+    // These used to read `parseFloat(value) || 0` straight into the draft, and
+    // parseFloat('') is NaN, and NaN || 0 is 0 - so one backspace in Stack
+    // height wrote 0, Apply saves every field rather than the one you touched,
+    // and a furni was silently flattened. The log for bsstonino_furni959 shows
+    // exactly that: stack_height 1 -> 0 as its own save, moments after an
+    // unrelated edit.
+    //
+    // A field mid-edit is not a value. The raw string lives here so the input
+    // can be empty while you retype, the draft keeps the last thing that
+    // actually parsed, and clearing a field and walking away changes nothing.
+    const [ rawNumbers, setRawNumbers ] = useState<{ [field: string]: string }>({});
     const [ confirming, setConfirming ] = useState(false);
     // Viewport px. Opened centred, then moved by the header - the same pointer
     // drag the macros dialog uses, rather than HTML5 drag-and-drop, which
@@ -171,6 +184,9 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
             // new record wholesale is the honest outcome, and matches what the
             // furni now actually does.
             setDraft(toDraft(data));
+            // Whatever was half-typed described the old record. Dropping it
+            // lets every field show what the furni actually is now.
+            setRawNumbers({});
             setConfirming(false);
         });
 
@@ -220,6 +236,41 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     {
         setDraft(prev => ({ ...prev, ...patch }));
     }, []);
+
+    /**
+     * A number field: show what is being typed, commit only what parses.
+     *
+     * An empty box, a lone '-', a half-typed '1.' - none of those are a value,
+     * so none of them reach the draft. Blur puts the last committed number back
+     * on screen, which is also the answer to clearing a field and walking away.
+     */
+    const numberField = useCallback((field: keyof Draft, parse: (raw: string) => number) => ({
+        value: (rawNumbers[field as string] ?? String(draft?.[field] ?? '')),
+        onChange: (event: ChangeEvent<HTMLInputElement>) =>
+        {
+            const raw = event.target.value;
+
+            setRawNumbers(prev => ({ ...prev, [field]: raw }));
+
+            const parsed = parse(raw);
+
+            if(Number.isFinite(parsed)) update({ [field]: parsed } as Partial<Draft>);
+        },
+        onBlur: () => setRawNumbers(prev =>
+        {
+            const next = { ...prev };
+
+            delete next[field as string];
+
+            return next;
+        })
+    }), [ draft, rawNumbers, update ]);
+
+    const resetDraft = useCallback(() =>
+    {
+        setDraft(toDraft(saved));
+        setRawNumbers({});
+    }, [ saved ]);
 
     // An all-solid mask says nothing the furni's own flag does not, so it is
     // stored as no mask at all - which is also what the server does with it.
@@ -453,8 +504,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     <div className="rp-furni-function-pair">
                         <label>
                             <span>Stack height</span>
-                            <input type="number" step="0.1" min="0" max="40" value={ draft.stackHeight }
-                                onChange={ event => update({ stackHeight: parseFloat(event.target.value) || 0 }) } />
+                            <input type="number" step="0.1" min="0" max="40"
+                                { ...numberField('stackHeight', raw => parseFloat(raw)) } />
                         </label>
                         <label className="is-wide">
                             <span>Adjustable heights</span>
@@ -502,22 +553,25 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                             <label className="rp-furni-function-field">
                                 <span>{ companion.label }</span>
                                 <input type="text" placeholder={ companion.placeholder }
-                                    value={ String(draft[companion.field] ?? '') }
-                                    onChange={ event => update({ [companion.field]: (companion.field === 'vendingIds')
-                                        ? event.target.value
-                                        : (parseInt(event.target.value) || 0) } as Partial<Draft>) } />
+                                    { ...((companion.field === 'vendingIds')
+                                        ? {
+                                            value: String(draft[companion.field] ?? ''),
+                                            onChange: (event: ChangeEvent<HTMLInputElement>) =>
+                                                update({ [companion.field]: event.target.value } as Partial<Draft>)
+                                        }
+                                        : numberField(companion.field, raw => parseInt(raw))) } />
                             </label>
                         </div> }
                     <div className="rp-furni-function-pair">
                         <label>
                             <span>Click states</span>
-                            <input type="number" min="1" max="128" value={ draft.modes }
-                                onChange={ event => update({ modes: parseInt(event.target.value) || 1 }) } />
+                            <input type="number" min="1" max="128"
+                                { ...numberField('modes', raw => parseInt(raw)) } />
                         </label>
                         <label>
                             <span>Walk effect</span>
-                            <input type="number" min="0" value={ draft.effectId }
-                                onChange={ event => update({ effectId: parseInt(event.target.value) || 0 }) } />
+                            <input type="number" min="0"
+                                { ...numberField('effectId', raw => parseInt(raw)) } />
                         </label>
                     </div>
                 </div>
@@ -537,7 +591,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     { changes.length ? `${ changes.length } change${ (changes.length === 1) ? '' : 's' }` : 'No changes' }
                 </span>
                 <div className="rp-furni-function-actions">
-                    <div className="rp-furni-function-btn" onClick={ () => setDraft(toDraft(saved)) }>Reset</div>
+                    <div className="rp-furni-function-btn" onClick={ () => resetDraft() }>Reset</div>
                     <div className={ 'rp-furni-function-btn' + (canApply ? ' rp-furni-function-btn--accent' : ' is-disabled') }
                         onClick={ () => canApply && setConfirming(true) }>Apply</div>
                 </div>
