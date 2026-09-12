@@ -1,7 +1,7 @@
-import { IFurnitureData } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaSearch, FaTimes } from 'react-icons/fa';
-import { CatalogPage, CatalogType, FilterCatalogNode, FurnitureOffer, GetOfferNodes, GetSessionDataManager, ICatalogNode, ICatalogPage, IPurchasableOffer, LocalizeText, PageLocalization, SearchResult } from '../../../../../api';
+import { CatalogPage, FilterCatalogNode, GetSessionDataManager, ICatalogNode, ICatalogPage, IPurchasableOffer, LocalizeText, PageLocalization, SearchOffer, SearchResult } from '../../../../../api';
+import { SendRpCatalogSearch, SubscribeRpCatalogSearch } from '../../../../../api/rp-catalog/RpCatalogSearchMessages';
 import { Button, Flex } from '../../../../../common';
 import { useCatalog } from '../../../../../hooks';
 
@@ -10,11 +10,22 @@ export const CatalogSearchView: FC<{}> = props =>
     const [ searchValue, setSearchValue ] = useState('');
     const { currentType = null, rootNode = null, offersToNodes = null, searchResult = null, setSearchResult = null, setCurrentPage = null } = useCatalog();
 
+    // pixelrp: the search runs on the server.
+    //
+    // The stock version scanned FurnitureData client-side and then threw every
+    // match away, because it proves an item is purchasable by looking its OFFER
+    // id up in a map the catalog index builds - and every catalog row in this
+    // hotel carries offer_id -1, which the emulator skips when filling that
+    // map. The map is empty, so nothing survived except the category names
+    // FilterCatalogNode returns. Typing a classname could never find anything.
+    //
+    // The emulator has the whole catalog in memory with each item's real page
+    // beside it, which is both the correct place to ask and the only place the
+    // answer exists: the client is never sent more than the page it is looking
+    // at. Each hit comes back with that page, which is what makes it buyable.
     useEffect(() =>
     {
-        // Strip ALL whitespace — the furniture side compares against a
-        // fully de-spaced haystack, so a query keeping any space never matches.
-        let search = searchValue?.toLocaleLowerCase().replace(/\s+/g, '');
+        const search = searchValue?.trim();
 
         if(!search || !search.length)
         {
@@ -23,62 +34,46 @@ export const CatalogSearchView: FC<{}> = props =>
             return;
         }
 
-        const timeout = setTimeout(() =>
+        // Typing is not a query. The debounce is the server's protection as
+        // much as the box's responsiveness.
+        const timeout = setTimeout(() => SendRpCatalogSearch(search), 300);
+
+        return () => clearTimeout(timeout);
+    }, [ searchValue, setSearchResult ]);
+
+    useEffect(() =>
+    {
+        return SubscribeRpCatalogSearch((query, hits) =>
         {
-            const furnitureDatas = GetSessionDataManager().getAllFurnitureData({
-                loadFurnitureData: null
-            });
-
-            if(!furnitureDatas || !furnitureDatas.length) return;
-
-            const foundFurniture: IFurnitureData[] = [];
-            const foundFurniLines: string[] = [];
-
-            for(const furniture of furnitureDatas)
-            {
-                if((currentType === CatalogType.BUILDER) && !furniture.availableForBuildersClub) continue;
-
-                if((currentType === CatalogType.NORMAL) && furniture.excludeDynamic) continue;
-
-                const searchValues = [ furniture.className, furniture.name, furniture.description ].join(' ').replace(/ /gi, '').toLowerCase();
-
-                if((currentType === CatalogType.BUILDER) && (furniture.purchaseOfferId === -1) && (furniture.rentOfferId === -1))
-                {
-                    if((furniture.furniLine !== '') && (foundFurniLines.indexOf(furniture.furniLine) < 0))
-                    {
-                        if(searchValues.indexOf(search) >= 0) foundFurniLines.push(furniture.furniLine);
-                    }
-                }
-                else
-                {
-                    const foundNodes = [
-                        ...GetOfferNodes(offersToNodes, furniture.purchaseOfferId),
-                        ...GetOfferNodes(offersToNodes, furniture.rentOfferId)
-                    ];
-
-                    if(foundNodes.length)
-                    {
-                        if(searchValues.indexOf(search) >= 0) foundFurniture.push(furniture);
-
-                        if(foundFurniture.length === 250) break;
-                    }
-                }
-            }
+            // A slow answer must not overwrite a newer question: the query
+            // rides back with the result so a stale one can be dropped.
+            if(query.trim().toLowerCase() !== searchValue.trim().toLowerCase()) return;
 
             const offers: IPurchasableOffer[] = [];
 
-            for(const furniture of foundFurniture) offers.push(new FurnitureOffer(furniture));
+            for(const hit of hits)
+            {
+                const furniData = hit.isWallItem
+                    ? GetSessionDataManager().getWallItemData(hit.furnitureId)
+                    : GetSessionDataManager().getFloorItemData(hit.furnitureId);
 
-            let nodes: ICatalogNode[] = [];
+                // No FurnitureData means the client cannot draw it, which is a
+                // catalog row pointing at furni this client build does not
+                // have. Skipping is the honest answer; a blank tile is not.
+                if(!furniData) continue;
 
-            FilterCatalogNode(search, foundFurniLines, rootNode, nodes);
+                offers.push(new SearchOffer(hit.pageId, hit.itemId, hit.name, hit.className,
+                    hit.costCredits, hit.costPixels, hit.costDiamonds, furniData));
+            }
 
-            setSearchResult(new SearchResult(search, offers, nodes.filter(node => (node.isVisible))));
+            const nodes: ICatalogNode[] = [];
+
+            FilterCatalogNode(query.toLowerCase().replace(/\s+/g, ''), [], rootNode, nodes);
+
+            setSearchResult(new SearchResult(query, offers, nodes.filter(node => (node.isVisible))));
             setCurrentPage((new CatalogPage(-1, 'default_3x3', new PageLocalization([], []), offers, false, 1) as ICatalogPage));
-        }, 300);
-
-        return () => clearTimeout(timeout);
-    }, [ offersToNodes, currentType, rootNode, searchValue, setCurrentPage, setSearchResult ]);
+        });
+    }, [ searchValue, rootNode, setSearchResult, setCurrentPage ]);
 
     return (
         <Flex gap={ 1 }>

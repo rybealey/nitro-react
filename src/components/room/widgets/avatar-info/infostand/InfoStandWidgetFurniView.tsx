@@ -5,11 +5,10 @@ import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance
 import { Base, Button, Column, Flex, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
 import { useMessageEvent, useRoom, useSoundEvent } from '../../../../../hooks';
 import { GetRoomSession } from '../../../../../api';
-import { ResolveRpStaff } from '../../../../../api/user/RpStaffFlag';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
-import { IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CanUseFurniFunction, IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
 
 interface InfoStandWidgetFurniViewProps
 {
@@ -56,7 +55,12 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     // edits a furni DEFINITION hotel-wide rather than anything in this room,
     // so it is not a room right - but it is still a build power, and a staff
     // member who is not clocked in has no business reaching it by mis-click.
-    const isStaff = ResolveRpStaff(GetRoomSession()?.ownRoomIndex ?? -1) && IsRpStaffOnDuty();
+    // The Function tool's own two packets check the `rp_furni_function` command
+    // permission, so that is what gates the button. Rank was standing in for it
+    // and is a different question - a rank can be high and hold no such row,
+    // and the button then opened a panel the server refused. Duty still applies
+    // on top: the permission is the licence, the shift is when it answers.
+    const isStaff = CanUseFurniFunction() && IsRpStaffOnDuty();
     const [ furniKeys, setFurniKeys ] = useState<string[]>([]);
     const [ furniValues, setFurniValues ] = useState<string[]>([]);
     const [ customKeys, setCustomKeys ] = useState<string[]>([]);

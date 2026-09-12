@@ -23,10 +23,12 @@ const RP_STAFF_DUTY = 4116;
 export class RpStaffDutyParser implements IMessageParser
 {
     private _onDuty: boolean = false;
+    private _canFurniFunction: boolean = false;
 
     public flush(): boolean
     {
         this._onDuty = false;
+        this._canFurniFunction = false;
 
         return true;
     }
@@ -36,6 +38,7 @@ export class RpStaffDutyParser implements IMessageParser
         if(!wrapper) return false;
 
         this._onDuty = wrapper.readBoolean();
+        this._canFurniFunction = wrapper.readBoolean();
 
         return true;
     }
@@ -43,6 +46,11 @@ export class RpStaffDutyParser implements IMessageParser
     public get onDuty(): boolean 
     {
         return this._onDuty; 
+    }
+
+    public get canFurniFunction(): boolean
+    {
+        return this._canFurniFunction;
     }
 }
 
@@ -63,6 +71,7 @@ export class RpStaffDutyEvent extends MessageEvent implements IMessageEvent
 // on every clock event, so nothing has to poll and nothing has to subscribe -
 // the gates below read it at the moment they are asked.
 let onDuty = false;
+let canFurniFunction = false;
 
 /**
  * True when this player may act on a room they do not own.
@@ -81,6 +90,16 @@ export const HasAnyRoomRights = (): boolean => (GetSessionDataManager().isModera
  * shift.
  */
 export const IsRpStaffOnDuty = (): boolean => onDuty;
+
+/**
+ * Whether this player actually holds `rp_furni_function`.
+ *
+ * The Function tool's two packets check that command permission, and the
+ * client was approximating it with rank - which is a different question. A
+ * rank can be high and hold no such row, and the button then opened a panel
+ * the server refused. This is the permission itself, sent from the server.
+ */
+export const CanUseFurniFunction = (): boolean => canFurniFunction;
 
 /**
  * Whether this player owns the room RIGHT NOW.
@@ -105,6 +124,7 @@ const onStaffDuty = (event: RpStaffDutyEvent) =>
     if(!parser) return;
 
     onDuty = parser.onDuty;
+    canFurniFunction = parser.canFurniFunction;
 }
 
 let registered = false;
