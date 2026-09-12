@@ -1,0 +1,38 @@
+diff --git a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
+index db1630b..68ae028 100644
+--- a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
++++ b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
+@@ -60,12 +60,27 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+ 
+         if(updateObject)
+         {
+-            if(this._mannequinScale !== scale)
+-            {
+-                this._mannequinScale = scale;
+-
+-                this.updateAvatar();
+-            }
++            if(this._mannequinScale !== scale) this._mannequinScale = scale;
++
++            // pixelrp: a mannequin would not turn.
++            //
++            // The direction changes here as well as the scale, and the avatar
++            // image is baked per direction - getAvatarAssetName() carries the
++            // direction in its name. Stock only regenerated it when the SCALE
++            // changed, so after a rotate the asset for the new direction had
++            // never been made, avatarExists() was false, and getSpriteAssetName
++            // fell back to the bundle's static layer art.
++            //
++            // For boutique_mannequin1 that art is the same pixels eight times
++            // over: every _64_a_<dir>_0 and _64_b_<dir>_0 is an alias of the
++            // direction-0 asset, at identical offsets, with no flip. So the
++            // piece rotated on the server, bounced on screen, and drew exactly
++            // what it drew before. The figure is the only part that can turn,
++            // and nothing was asking it to.
++            //
++            // updateAvatar() no-ops when the asset for the current direction
++            // already exists, so this costs a lookup on an ordinary update.
++            if(this._figure) this.updateAvatar();
+         }
+ 
+         return updateObject;
