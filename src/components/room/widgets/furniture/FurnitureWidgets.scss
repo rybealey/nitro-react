@@ -540,15 +540,25 @@
 // the client it sits in.
 //
 // Almost everything it needs now comes from the card and the button kit. What
-// is left here is the inset balances panel and the quick-add chips, both in
-// the client's own vocabulary: a tinted fill inside a white hairline, which is
-// how .layout-grid-item and .nitro-progress-bar already draw an inset.
+// is left here is the balances panel and the quick-add chips.
+//
+// Both used to be a #cdd3d9 fill inside a white hairline, borrowed from
+// .layout-grid-item. That vocabulary is for an inset sitting on the CARD's
+// chrome; the content area is $light (#DFDFDF), and #cdd3d9 on #DFDFDF is a
+// contrast ratio of about 1.1:1 - the panel and every chip dissolved into the
+// background, and the dimmed chips past the balance vanished outright.
+//
+// So they read the other way now: WHITE is the surface you read a number off
+// or press, on the grey the card already paints, separated by a hairline dark
+// enough to survive on both. That is the same relationship the amount field
+// below already has with the panel above it, so the window ends up with one
+// rule instead of two.
 .nitro-widget-atm {
     width: 300px;
 
     .atm-balances {
-        background: #cdd3d9;
-        border: 1px solid #ffffff;
+        background: $white;
+        border: 1px solid #a9b3bd;
         border-radius: $border-radius-sm;
         padding: 8px 10px;
         display: flex;
@@ -563,6 +573,16 @@
         gap: 10px;
     }
 
+    // Colour stated, not inherited. .content-area sets a background and no
+    // colour, so everything in here is living off whatever the card root
+    // happens to carry - which is white. The labels get away with it by using
+    // .text-black; the figures were relying on the old grey panel to be dark
+    // enough to hide the difference. On a white panel that is a blank row.
+    .atm-balance .text-black,
+    .atm-figure {
+        color: $black;
+    }
+
     .atm-figure {
         display: flex;
         align-items: center;
@@ -572,6 +592,15 @@
         white-space: nowrap;
 
         .nitro-currency-icon { width: 15px; height: 15px; flex: none; }
+    }
+
+    // The unpicked side of the pair, and Max. btn-light is a fill with no edge,
+    // which against the card's own grey reads as a label rather than as the
+    // other half of a choice - the solid primary opposite it does all the
+    // shouting. The same hairline the panel and the chips use gives it a shape
+    // without making it compete.
+    .btn-light {
+        border: 1px solid #a9b3bd;
     }
 
     // Tabular so the digits do not shuffle under the cursor as they are typed.
@@ -592,20 +621,35 @@
         justify-content: center;
         min-height: 24px;
         border-radius: $border-radius-sm;
-        border: 1px solid #ffffff;
-        background: #cdd3d9;
+        border: 1px solid #a9b3bd;
+        background: $white;
+        color: $cello-light;
         font-size: 11.5px;
         font-weight: 700;
         cursor: pointer;
         user-select: none;
         pointer-events: all;
 
-        &:hover { background: #ececec; }
+        &:hover {
+            background: #e6eff6;
+            border-color: $primary;
+        }
 
-        // Dim, not gone. A chip that vanishes when it stops fitting makes the
-        // row reflow under the cursor and reads as a bug.
-        &.is-off { opacity: .4; cursor: default; }
-        &.is-off:hover { background: #cdd3d9; }
+        // Dim, not gone - a chip that vanishes when it stops fitting makes the
+        // row reflow under the cursor and reads as a bug. Drawn as a real
+        // disabled state rather than opacity: at .4 on this grey the label was
+        // gone entirely, which is the same failure as removing it.
+        &.is-off {
+            background: #e4e7ea;
+            border-color: #c6ccd3;
+            color: #8d97a1;
+            cursor: default;
+        }
+
+        &.is-off:hover {
+            background: #e4e7ea;
+            border-color: #c6ccd3;
+        }
     }
 
     .atm-helper { color: $cello-light; }
