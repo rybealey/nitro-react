@@ -114,7 +114,15 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         
         const isValidController = (avatarInfo.roomControllerLevel >= RoomControllerLevel.GUEST);
 
-        if(isValidController || avatarInfo.isOwner || avatarInfo.isRoomOwner || avatarInfo.isAnyRoomController)
+        // Owning the FURNI is not owning the room. MoveObjectEvent has no owner
+        // exception - it wants room rights and nothing else - so offering Move
+        // or Rotate on your own block in somebody else's room was a button
+        // that could not work.
+        //
+        // Pick Up is the opposite and stays: PickupObjectEvent honours
+        // item.UserId, which is how anybody gets their own furni back out of a
+        // room they have no rights in.
+        if(isValidController || avatarInfo.isRoomOwner || avatarInfo.isAnyRoomController)
         {
             canMove = true;
             canRotate = !avatarInfo.isWallItem;
