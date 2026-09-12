@@ -1,6 +1,8 @@
 import { BotCommandConfigurationEvent, BotRemoveComposer, BotSkillSaveComposer, RequestBotCommandConfigurationComposer, RoomObjectCategory, RoomObjectType } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { AvatarInfoRentableBot, BotSkillsEnum, DispatchUiEvent, GetConfiguration, GetNitroInstance, LocalizeText, RoomWidgetUpdateRentableBotChatEvent, SendMessageComposer } from '../../../../../api';
+import { GetRpBankAccounts, SubscribeRpBankAccounts } from '../../../../../api/rp-phone/RpBankMessages';
+import { IsTellerBot, SendRpTellerAction, SubscribeRpTellerBots, TELLER_DEPOSIT, TELLER_OPEN_ACCOUNT, TELLER_WITHDRAW } from '../../../../../api/rp-teller/RpTellerMessages';
 import { Button, Column, Flex, Text } from '../../../../../common';
 import { useMessageEvent } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
@@ -27,6 +29,10 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
 {
     const { avatarInfo = null, onClose = null } = props;
     const [ mode, setMode ] = useState(MODE_NORMAL);
+    // Bumped by either rp store pushing; the two useMemos below read it so
+    // an open menu re-reads them rather than showing what was true when it
+    // was opened.
+    const [ tellerTick, setTellerTick ] = useState(0);
     const [ newName, setNewName ] = useState('');
     const [ newMotto, setNewMotto ] = useState('');
     // Current walk state, fetched when the menu opens, so the toggle can be
@@ -138,6 +144,23 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
         if(hideMenu) onClose();
     }
 
+    // Both stores can change while the menu is open - a teller placed beside
+    // you, or an account opened by this very menu - and neither is React
+    // state, so this is what re-reads them.
+    useEffect(() =>
+    {
+        const bump = () => setTellerTick(value => value + 1);
+
+        return SubscribeRpTellerBots(bump);
+    }, []);
+
+    useEffect(() =>
+    {
+        const bump = () => setTellerTick(value => value + 1);
+
+        return SubscribeRpBankAccounts(bump);
+    }, []);
+
     useEffect(() =>
     {
         setMode(MODE_NORMAL);
@@ -150,11 +173,45 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
 
     const canControl = (avatarInfo.amIOwner || avatarInfo.amIAnyRoomController);
 
+    // pixelrp: the bank teller's own entries, OUTSIDE canControl.
+    //
+    // canControl is room ownership despite the name (amIOwner comes from
+    // IsRoomOwnerNow), so gating on it would mean nobody could bank at a
+    // teller in somebody else's room - which is every teller that matters.
+    //
+    // Both facts are affordances only: RpTellerActionEvent re-checks the bot,
+    // the room, the two-tile range and the account state before the teller
+    // says a word.
+    const isTeller = useMemo(() => IsTellerBot(avatarInfo.roomIndex), [ avatarInfo.roomIndex, tellerTick ]);
+    const hasAccount = useMemo(() => GetRpBankAccounts().hasAccount, [ tellerTick ]);
+
+    const teller = (action: number) =>
+    {
+        SendRpTellerAction(avatarInfo.roomIndex, action);
+        onClose();
+    }
+
     return (
         <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ RoomObjectType.RENTABLE_BOT } onClose={ onClose } collapsable={ true }>
             <ContextMenuHeaderView>
                 { avatarInfo.name }
             </ContextMenuHeaderView>
+            { (mode === MODE_NORMAL) && isTeller &&
+                <>
+                    { !hasAccount &&
+                        <ContextMenuListItemView onClick={ event => teller(TELLER_OPEN_ACCOUNT) }>
+                            Open account
+                        </ContextMenuListItemView> }
+                    { hasAccount &&
+                        <>
+                            <ContextMenuListItemView onClick={ event => teller(TELLER_DEPOSIT) }>
+                                Deposit
+                            </ContextMenuListItemView>
+                            <ContextMenuListItemView onClick={ event => teller(TELLER_WITHDRAW) }>
+                                Withdraw
+                            </ContextMenuListItemView>
+                        </> }
+                </> }
             { (mode === MODE_NORMAL) && canControl &&
                 <>
                     { (avatarInfo.botSkills.indexOf(BotSkillsEnum.DONATE_TO_ALL) >= 0) &&

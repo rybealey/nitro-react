@@ -232,7 +232,23 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
         closeMove();
     }), []);
 
-    const look = (entry: RpBankEntry) => (KINDS[entry.kind] || FALLBACK);
+    // Where the cash was handled, not just that it moved. The emulator writes
+    // the counter into `source` - "ATM at Mercury Bank", "Teller at Mercury
+    // Bank" - the same way for both, and the kind stays `deposit`/`withdraw`
+    // either way. Reading the prefix here means a teller row reads as one
+    // without a new transaction kind, a new ledger writer, or any change to a
+    // row already in the table.
+    const look = (entry: RpBankEntry) =>
+    {
+        const base = KINDS[entry.kind] || FALLBACK;
+
+        if(!entry.source || !entry.source.startsWith('Teller')) return base;
+
+        if(entry.kind === 'deposit') return { ...base, title: 'Teller Deposit' };
+        if(entry.kind === 'withdraw') return { ...base, title: 'Teller Withdrawal' };
+
+        return base;
+    };
 
     // A transfer's direction is derivable from the account it landed in and
     // the sign, so it is derived rather than read off `source` - which said
