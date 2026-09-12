@@ -1,7 +1,7 @@
 import { FurnitureListAddOrUpdateEvent, FurnitureListComposer, FurnitureListEvent, FurnitureListInvalidateEvent, FurnitureListItemParser, FurnitureListRemovedEvent, FurniturePostItPlacedEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
-import { addFurnitureItem, attemptItemPlacement, cancelRoomObjectPlacement, CloneObject, CreateLinkEvent, DispatchUiEvent, FurnitureItem, getAllItemIds, getPlacingItemId, GroupItem, mergeFurniFragments, SendMessageComposer, UnseenItemCategory } from '../../api';
+import { addFurnitureItem, attemptItemPlacement, cancelRoomObjectPlacement, CloneObject, CreateLinkEvent, DispatchUiEvent, FurnitureItem, getAllItemIds, getPlacingItemId, GroupItem, mergeFurniFragments, SendMessageComposer, sortGroupItemsByNewest, UnseenItemCategory } from '../../api';
 import { InventoryFurniAddedEvent } from '../../events';
 import { useMessageEvent } from '../events';
 import { useSharedVisibility } from '../useSharedVisibility';
@@ -102,13 +102,30 @@ const useInventoryFurniState = () =>
                 {
                     groupItem.hasUnseenItems = true;
 
-                    newValue[i] = CloneObject(groupItem);
+                    // pixelrp: to the front, not back where it was. An item
+                    // joining a group you already own is still the thing you
+                    // just picked up or were just given, and leaving the group
+                    // in place is why a pickup could vanish into the middle of
+                    // a long inventory.
+                    newValue.splice(i, 1);
+                    newValue.unshift(CloneObject(groupItem));
                 }
                 else
                 {
                     const furniture = new FurnitureItem(item);
 
-                    addFurnitureItem(newValue, furniture, isUnseen(UnseenItemCategory.FURNI, item.itemId));
+                    // Front regardless of whether the server thinks it is
+                    // unseen: it arrived while you were watching, which is a
+                    // stronger claim to the corner than not having looked at it
+                    // yet.
+                    const group = addFurnitureItem(newValue, furniture, isUnseen(UnseenItemCategory.FURNI, item.itemId));
+                    const at = newValue.indexOf(group);
+
+                    if(at > 0)
+                    {
+                        newValue.splice(at, 1);
+                        newValue.unshift(group);
+                    }
 
                     DispatchUiEvent(new InventoryFurniAddedEvent(furniture.id, furniture.type, furniture.category));
                 }
@@ -188,7 +205,9 @@ const useInventoryFurniState = () =>
 
             }
 
-            return newValue;
+            // Everything in a full list arrived at once, so arrival order says
+            // nothing here. The newest row in each group does.
+            return sortGroupItemsByNewest(newValue);
         });
 
         furniMsgFragments = null;

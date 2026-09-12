@@ -111,16 +111,44 @@ const addGroupableFurnitureItem = (set: GroupItem[], item: FurnitureItem, unseen
     return existingGroup;
 }
 
-export const addFurnitureItem = (set: GroupItem[], item: FurnitureItem, unseen: boolean) =>
+/**
+ * PixelRP: newest first.
+ *
+ * The inventory's order is the order things were added to it, which after a
+ * few months is the order you acquired them in - so the piece you just picked
+ * up lands at the bottom of a grid you have to scroll, while something from
+ * last spring sits in the corner your eye goes to.
+ *
+ * The highest item id is the most recently created row in `items`, so this is
+ * "newest thing in the group, first". It is the right answer for a login,
+ * where arrival order tells us nothing: everything arrived at once. While the
+ * session is running, arrival order is better and takes over - see the add
+ * handler in useInventoryFurni, which moves a group to the front as its items
+ * come in.
+ */
+export const sortGroupItemsByNewest = (set: GroupItem[]) =>
 {
-    if(!item.isGroupable)
+    const newest = (group: GroupItem) =>
     {
-        addSingleFurnitureItem(set, item, unseen);
-    }
-    else
-    {
-        addGroupableFurnitureItem(set, item, unseen);
-    }
+        let highest = 0;
+
+        for(const item of group.items) if(item.id > highest) highest = item.id;
+
+        return highest;
+    };
+
+    set.sort((a, b) => (newest(b) - newest(a)));
+
+    return set;
+}
+
+// Returns the group the item landed in - both helpers already produce it, and
+// a caller that wants to move that group needs to know which one it is.
+export const addFurnitureItem = (set: GroupItem[], item: FurnitureItem, unseen: boolean): GroupItem =>
+{
+    if(!item.isGroupable) return addSingleFurnitureItem(set, item, unseen);
+
+    return addGroupableFurnitureItem(set, item, unseen);
 }
 
 export const mergeFurniFragments = (fragment: Map<number, FurnitureListItemParser>, totalFragments: number, fragmentNumber: number, fragments: Map<number, FurnitureListItemParser>[]) =>
