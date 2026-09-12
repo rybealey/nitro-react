@@ -272,6 +272,17 @@ const useAvatarInfoWidgetState = () =>
         // sets its target from it). Furniture selection is unaffected.
         if(ClickthroughState.enabled && (event.category === RoomObjectCategory.UNIT)) return;
 
+        // The furni infostand is a BUILDER's panel - name, description, owner
+        // and the tools - so it only opens for somebody who could act on the
+        // furni: in their own room, holding rights there, or on duty at City
+        // Government. To everybody else the room is scenery, and clicking a
+        // piece of it does nothing.
+        //
+        // Usable furni are unaffected: a double-click still uses them, which
+        // never went through this panel.
+        if(((event.category === RoomObjectCategory.FLOOR) || (event.category === RoomObjectCategory.WALL)) &&
+            !CanManipulateFurniture(roomSession, event.id, event.category)) return;
+
         getObjectInfo(event.id, event.category);
     });
 
