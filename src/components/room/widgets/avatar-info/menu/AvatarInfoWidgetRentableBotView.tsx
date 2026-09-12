@@ -1,6 +1,5 @@
 import { BotCommandConfigurationEvent, BotRemoveComposer, BotSkillSaveComposer, RequestBotCommandConfigurationComposer, RoomObjectCategory, RoomObjectType } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { AvatarInfoRentableBot, BotSkillsEnum, DispatchUiEvent, GetConfiguration, GetNitroInstance, LocalizeText, RoomWidgetUpdateRentableBotChatEvent, SendMessageComposer } from '../../../../../api';
 import { Button, Column, Flex, Text } from '../../../../../common';
 import { useMessageEvent } from '../../../../../hooks';
@@ -17,7 +16,6 @@ interface AvatarInfoWidgetRentableBotViewProps
 const MODE_NORMAL = 0;
 const MODE_CHANGE_NAME = 1;
 const MODE_CHANGE_MOTTO = 2;
-const MODE_INSTRUCT = 3;
 
 // pixelrp: custom bot-menu actions for the back-and-forth patrol test mode
 // (see GenericBot.TickPatrol / SaveBotActionEvent on the emulator side).
@@ -28,7 +26,6 @@ const MODE_INSTRUCT = 3;
 // (header BOT_SKILL_SAVE / 2624) — no new packet was needed.
 const ACTION_WALK_HORIZONTAL = 90;
 const ACTION_WALK_VERTICAL = 91;
-const ACTION_WALK_FREE = 92;
 
 export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotViewProps> = props =>
 {
@@ -118,14 +115,6 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                 case 'dress_up':
                     SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, BotSkillsEnum.DRESS_UP, ''));
                     break;
-                case 'instruct':
-                    hideMenu = false;
-                    setMode(MODE_INSTRUCT);
-                    break;
-                case 'back':
-                    hideMenu = false;
-                    setMode(MODE_NORMAL);
-                    break;
                 case 'random_walk':
                     SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, BotSkillsEnum.RANDOM_WALK, ''));
                     // Server toggles freeroam <-> stand; keep our label in sync.
@@ -136,9 +125,6 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                     break;
                 case 'walk_vertical':
                     SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, ACTION_WALK_VERTICAL, ''));
-                    break;
-                case 'walk_free':
-                    SendMessageComposer(new BotSkillSaveComposer(avatarInfo.webID, ACTION_WALK_FREE, ''));
                     break;
                 case 'setup_chat':
                     requestBotCommandConfiguration(BotSkillsEnum.SETUP_CHAT);
@@ -201,27 +187,6 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                         <ContextMenuListItemView onClick={ event => processAction('dress_up') }>
                             { LocalizeText('avatar.widget.dress_up') }
                         </ContextMenuListItemView> }
-                    { /* pixelrp: the movement instructions live in their own submenu,
-                        styled like the own-avatar Dance/Actions entries. */ }
-                    <ContextMenuListItemView onClick={ event => processAction('instruct') }>
-                        <FaChevronRight className="right fa-icon" />
-                        Instruct
-                    </ContextMenuListItemView>
-                    { (avatarInfo.botSkills.indexOf(BotSkillsEnum.SETUP_CHAT) >= 0) &&
-                        <ContextMenuListItemView onClick={ event => processAction('setup_chat') }>
-                            { LocalizeText('avatar.widget.setup_chat') }
-                        </ContextMenuListItemView> }
-                    { (avatarInfo.botSkills.indexOf(BotSkillsEnum.DANCE) >= 0) &&
-                        <ContextMenuListItemView onClick={ event => processAction('dance') }>
-                            { LocalizeText('avatar.widget.dance') }
-                        </ContextMenuListItemView> }
-                    { (avatarInfo.botSkills.indexOf(BotSkillsEnum.NO_PICK_UP) === -1) &&
-                        <ContextMenuListItemView onClick={ event => processAction('pick') }>
-                            { LocalizeText('avatar.widget.pick_up') }
-                        </ContextMenuListItemView> }
-                </> }
-            { (mode === MODE_INSTRUCT) && canControl &&
-                <>
                     { (avatarInfo.botSkills.indexOf(BotSkillsEnum.RANDOM_WALK) >= 0) &&
                         <ContextMenuListItemView onClick={ event => processAction('random_walk') }>
                             { isFreeroaming ? LocalizeText('avatar.widget.random_walk') : 'Walk around' }
@@ -235,13 +200,18 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                     <ContextMenuListItemView onClick={ event => processAction('walk_vertical') }>
                         Walk vertically
                     </ContextMenuListItemView>
-                    <ContextMenuListItemView onClick={ event => processAction('walk_free') }>
-                        Walk freely
-                    </ContextMenuListItemView>
-                    <ContextMenuListItemView onClick={ event => processAction('back') }>
-                        <FaChevronLeft className="left fa-icon" />
-                        { LocalizeText('generic.back') }
-                    </ContextMenuListItemView>
+                    { (avatarInfo.botSkills.indexOf(BotSkillsEnum.SETUP_CHAT) >= 0) &&
+                        <ContextMenuListItemView onClick={ event => processAction('setup_chat') }>
+                            { LocalizeText('avatar.widget.setup_chat') }
+                        </ContextMenuListItemView> }
+                    { (avatarInfo.botSkills.indexOf(BotSkillsEnum.DANCE) >= 0) &&
+                        <ContextMenuListItemView onClick={ event => processAction('dance') }>
+                            { LocalizeText('avatar.widget.dance') }
+                        </ContextMenuListItemView> }
+                    { (avatarInfo.botSkills.indexOf(BotSkillsEnum.NO_PICK_UP) === -1) &&
+                        <ContextMenuListItemView onClick={ event => processAction('pick') }>
+                            { LocalizeText('avatar.widget.pick_up') }
+                        </ContextMenuListItemView> }
                 </> }
             { (mode === MODE_CHANGE_NAME) &&
                 <Column className="menu-item" onClick={ null } gap={ 1 }>
