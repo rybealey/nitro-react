@@ -53,6 +53,21 @@
             text-decoration: underline;
         }
 
+        // pixelrp: the furni classname, under its display name.
+        //
+        // An eyebrow rather than another line of body text: it is a reference,
+        // read when you are looking for it and ignored the rest of the time, so
+        // it wants to sit quieter than the name above it. Wraps on any
+        // character because a classname has no spaces to break at and some of
+        // the custom lines run long.
+        .infostand-classname {
+            font-size: 10px;
+            line-height: 1.2;
+            letter-spacing: .02em;
+            color: rgba(255, 255, 255, .65);
+            word-break: break-all;
+        }
+
         // staff verified badge - sits beside the name, never underlined
         .infostand-verified {
             color: #ffffff;

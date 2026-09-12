@@ -67,6 +67,12 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     const [ godMode, setGodMode ] = useState(false);
     const [ canSeeFurniId, setCanSeeFurniId ] = useState(false);
     const [ groupName, setGroupName ] = useState<string>(null);
+    // pixelrp: what a builder needs off a piece they are looking at - the
+    // classname to find it again in a migration or a furnidata entry, and where
+    // it actually sits. Both come off the room object rather than the info
+    // payload, which carries neither.
+    const [ className, setClassName ] = useState<string>('');
+    const [ location, setLocation ] = useState<{ x: number; y: number; z: number }>(null);
     const [ isJukeBox, setIsJukeBox ] = useState<boolean>(false);
     const [ isSongDisk, setIsSongDisk ] = useState<boolean>(false);
     const [ songId, setSongId ] = useState<number>(-1);
@@ -238,6 +244,16 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         setCrackableTarget(crackableTarget);
         setGodMode(godMode);
         setCanSeeFurniId(canSeeFurniId);
+
+        // roomObject.type IS the classname - the poster branch in
+        // AvatarInfoUtilities.getFurniInfo already reads it that way. The
+        // location is the rendered one, so z is the height the piece is
+        // actually drawn at, stack and build height included.
+        const object = GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category);
+        const point = object?.getLocation();
+
+        setClassName(object?.type ?? '');
+        setLocation(point ? { x: point.x, y: point.y, z: point.z } : null);
         setGroupName(null);
         setIsJukeBox(furniIsJukebox);
         setIsSongDisk(furniIsSongDisk);
@@ -435,6 +451,8 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                             <Text variant="white" small wrap>{ avatarInfo.name }</Text>
                             <FaTimes className="cursor-pointer fa-icon" onClick={ onClose } />
                         </Flex>
+                        { !!className &&
+                            <Text wrap textBreak variant="white" className="infostand-classname">{ className }</Text> }
                         <hr className="m-0" />
                     </Column>
                     <Column gap={ 1 }>
@@ -452,10 +470,18 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                         </Flex>
                         <hr className="m-0" />
                     </Column>
-                    <Column gap={ 1 }>
-                        <Text fullWidth wrap textBreak variant="white" small>{ avatarInfo.description }</Text>
-                        <hr className="m-0" />
-                    </Column>
+                    { /* pixelrp: where it sits, not what it is called a second
+                         time. The description is the catalog's sales line -
+                         "Stack them high!" - which says nothing about the piece
+                         in front of you; x, y and z say exactly where it is,
+                         which is what you open an infostand on a build for. */ }
+                    { !!location &&
+                        <Column gap={ 0 }>
+                            <Text variant="white" small>X: { location.x }</Text>
+                            <Text variant="white" small>Y: { location.y }</Text>
+                            <Text variant="white" small>Z: { location.z.toFixed(2) }</Text>
+                            <hr className="m-0 mt-1" />
+                        </Column> }
                     <Column gap={ 1 }>
                         <Flex alignItems="center" gap={ 1 }>
                             <UserProfileIconView userId={ avatarInfo.ownerId } />
