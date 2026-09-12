@@ -250,20 +250,54 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         setCanSeeFurniId(canSeeFurniId);
 
         // roomObject.type IS the classname - the poster branch in
-        // AvatarInfoUtilities.getFurniInfo already reads it that way. The
-        // location is the rendered one, so z is the height the piece is
-        // actually drawn at, stack and build height included.
-        const object = GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category);
-        const point = object?.getLocation();
-
-        setClassName(object?.type ?? '');
-        setLocation(point ? { x: point.x, y: point.y, z: point.z } : null);
+        // AvatarInfoUtilities.getFurniInfo already reads it that way. A
+        // classname cannot change under a piece, so unlike its location this is
+        // read once.
+        setClassName(GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category)?.type ?? '');
         setGroupName(null);
         setIsJukeBox(furniIsJukebox);
         setIsSongDisk(furniIsSongDisk);
         setSongId(furniSongId);
         
         if(avatarInfo.groupId) SendMessageComposer(new GroupInformationComposer(avatarInfo.groupId, false));
+    }, [ roomSession, avatarInfo ]);
+
+    // pixelrp: the coordinates have to keep up with the piece.
+    //
+    // Read once when the panel opened, they went stale the moment anything
+    // moved the furni - and stale coordinates are worse than none, because they
+    // look authoritative. A mannequin re-levelled by a rotation went on
+    // reporting the height it had beforehand, and reading the panel rather than
+    // the sprite gave the wrong answer about whether it had moved at all.
+    //
+    // Polled rather than driven by an event because there is no event to drive
+    // it: the renderer fires CONTENT_UPDATED for asset content, and a position
+    // arriving in an ObjectUpdate moves the room object without announcing it.
+    // Half a second is invisible on a readout and the work is one dictionary
+    // lookup; the state is only touched when a number actually changed, so a
+    // still piece costs no renders.
+    useEffect(() =>
+    {
+        if(!roomSession || !avatarInfo) return;
+
+        const read = () =>
+        {
+            const point = GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category)?.getLocation();
+
+            setLocation(prev =>
+            {
+                if(!point) return null;
+                if(prev && (prev.x === point.x) && (prev.y === point.y) && (prev.z === point.z)) return prev;
+
+                return { x: point.x, y: point.y, z: point.z };
+            });
+        };
+
+        read();
+
+        const timer = setInterval(read, 500);
+
+        return () => clearInterval(timer);
     }, [ roomSession, avatarInfo ]);
 
     useMessageEvent<GroupInformationEvent>(GroupInformationEvent, event =>
