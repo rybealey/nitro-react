@@ -1,4 +1,9 @@
 .nitro-chat-history {
+    // starting size; the corner grip writes inline width/height over these
     width: $chat-history-width;
     height: $chat-history-height;
+    min-width: 260px;
+    min-height: 200px;
+    max-width: 96vw;
+    max-height: 92vh;
 }
