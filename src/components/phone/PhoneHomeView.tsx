@@ -91,6 +91,11 @@ export const APP_DEFS: Record<string, PhoneAppDef> = {
     'Notes': { icon: 'note-sticky', active: true, plate: 'linear-gradient(160deg, #ffd85e, #f7bf2e 55%, #e6a400)', sec: '#e09a00' },
     'Weather': { icon: 'cloud-sun', active: true, plate: 'linear-gradient(160deg, #5bb8ff, #2f95e8 55%, #1e6fc0)', sec: '#ffd60a', faStyle: 'solid' },
     'News': { icon: 'newspaper', active: true, plate: 'linear-gradient(160deg, #ff7a7a, #fb4f4f 55%, #e23232)' },
+    // pixelrp Sitch: deep teal plate, one bold glyph. The tile has to say
+    // "somewhere people talk" at 30px without being mistaken for Messages
+    // (green comment-dots) - so a different hue and a different shape, not a
+    // second speech bubble.
+    'Sitch': { icon: 'at', active: true, plate: 'linear-gradient(160deg, #3aa79c, #1f7a74 58%, #0f4a48)', sec: '#9ff0e6' },
     'Translate': { icon: 'language', plate: 'linear-gradient(160deg, #8fc7c2, #5a9a95 55%, #3a6b67)' },
     'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #c2c6ce, #9096a0 55%, #5c616b)', sec: '#5c616b' }
 };

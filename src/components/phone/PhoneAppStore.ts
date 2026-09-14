@@ -112,6 +112,14 @@ export const STORE_APPS: StoreApp[] = [
         price: { kind: 'free' }
     },
     {
+        key: 'Sitch',
+        tagline: 'The city, out loud.',
+        category: 'Social',
+        blurb: 'What the city is saying.',
+        about: 'Short posts from everyone in the city, and the replies they start. Follow the people worth reading, put a photo from your library on a post, and keep one favorite song on your profile \u2014 that one is yours alone, it never reaches the hotel queue and never plays on its own.',
+        price: { kind: 'free' }
+    },
+    {
         key: 'News',
         tagline: 'The city, as it happens.',
         category: 'News',

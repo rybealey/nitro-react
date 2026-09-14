@@ -4002,6 +4002,107 @@ $phone-scale: 0.8;
         .phone-music-siri-halo::before { animation: none; }
     }
 
+    // ---- Sitch app --------------------------------------------------------
+    // The city's feed. Accent follows the house rule the News and Notes blocks
+    // state: the LIGHT value is the tile's teal deepened so it holds on white,
+    // the DARK value is the tile teal itself.
+    .phone-sitch {
+        --sitch-accent: #12786f;
+        --sitch-ink: #ffffff;
+        background: $phone-screen-bg;
+        color: var(--ph-text);
+        overflow: hidden;
+    }
+
+    .phone-display.is-dark .phone-sitch { --sitch-accent: #34d8cd; --sitch-ink: #1a0a14; }
+
+    .phone-sitch-body { display: flex; flex-direction: column; }
+
+    .phone-sitch-back, .phone-sitch-kicker { color: var(--sitch-accent); }
+
+    .phone-sitch-head { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+    // For you / Following. A pill, not a tab bar - the feed is a choice of
+    // source, not a different screen.
+    .phone-sitch-switch { flex: none; display: flex; gap: 6px; padding: 4px 18px 10px; }
+
+    .phone-sitch-pill {
+        padding: 6px 13px;
+        border-radius: 999px;
+        border: 1px solid var(--ph-input-border);
+        font-size: calc(12.5px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        letter-spacing: -.1px;
+        color: var(--ph-soft);
+        cursor: pointer;
+        transition: background .15s ease, color .15s ease, border-color .15s ease;
+
+        &.is-on {
+            background: var(--sitch-accent);
+            border-color: transparent;
+            color: var(--sitch-ink);
+        }
+    }
+
+    .phone-sitch-empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 72px 40px 60px;
+        text-align: center;
+        animation: phone-cal-rise .35s cubic-bezier(.2, .8, .2, 1) .1s both;
+    }
+
+    .phone-sitch-empty-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        background: var(--ph-inset);
+        color: var(--sitch-accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-sitch-empty-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-sitch-empty-sub { font-size: calc(13px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-soft); }
+
+    // The app's own tab bar, on the glass the rest of the phone's bars use.
+    .phone-sitch-tabs {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 9px 18px calc(6px + env(safe-area-inset-bottom, 0px));
+        border-top: 1px solid $phone-hairline;
+        background: var(--ph-glass);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
+        box-shadow: inset 0 1px 0 var(--ph-glass-hi);
+    }
+
+    .phone-sitch-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 34px;
+        color: var(--ph-faint);
+        cursor: pointer;
+        transition: color .15s ease, transform .12s ease;
+
+        &.is-on { color: var(--sitch-accent); }
+        &:active { transform: scale(.9); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .phone-sitch-empty { animation: none; }
+        .phone-sitch-pill, .phone-sitch-tab { transition: none; }
+    }
+
     // ---- Calendar app -----------------------------------------------------
     // iOS-style day view. The app's accent is its tile red (selection, now
     // line, actions); birthdays keep the phone pink. The

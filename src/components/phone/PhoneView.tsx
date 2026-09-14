@@ -21,6 +21,7 @@ import { PhoneWallpaperView } from './PhoneWallpaperView';
 import { PhoneWalletView } from './PhoneWalletView';
 import { PhoneWeatherView } from './PhoneWeatherView';
 import { PhoneNewsView } from './PhoneNewsView';
+import { PhoneSitchView } from './PhoneSitchView';
 import { PhoneCallView } from './PhoneCallView';
 import { PhoneCameraView } from './PhoneCameraView';
 import { PhoneContactsView } from './PhoneContactsView';
@@ -42,7 +43,7 @@ import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 // toolbar (phone/toggle); the old 'friends/...' and 'friends-messenger/...'
 // link events still work and route into the matching phone app.
 
-type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'privacy' | 'wallet' | 'newcharacter' | 'appstore' | 'stocks' | 'mercury';
+type PhoneScreen = 'home' | 'messages' | 'thread' | 'compose' | 'contacts' | 'camera' | 'photos' | 'settings' | 'appearance' | 'account' | 'calendar' | 'music' | 'notes' | 'weather' | 'news' | 'general' | 'region' | 'wallpaper' | 'accessibility' | 'notifications' | 'privacy' | 'wallet' | 'newcharacter' | 'appstore' | 'stocks' | 'mercury' | 'sitch';
 
 // Which app each home-screen tile opens.
 const APP_SCREENS: Record<string, PhoneScreen> = {
@@ -59,13 +60,14 @@ const APP_SCREENS: Record<string, PhoneScreen> = {
     'Wallet': 'wallet',
     'App Store': 'appstore',
     'Stocks': 'stocks',
-    'Mercury': 'mercury'
+    'Mercury': 'mercury',
+    'Sitch': 'sitch'
 };
 
 const animationFor = (from: PhoneScreen, to: PhoneScreen): string =>
 {
     if(to === 'home') return 'home-in';
-    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather') || (to === 'news') || (to === 'wallet') || (to === 'appstore') || (to === 'stocks') || (to === 'mercury'))) return 'app-open';
+    if((from === 'home') && ((to === 'messages') || (to === 'contacts') || (to === 'camera') || (to === 'photos') || (to === 'settings') || (to === 'calendar') || (to === 'music') || (to === 'notes') || (to === 'weather') || (to === 'news') || (to === 'wallet') || (to === 'appstore') || (to === 'stocks') || (to === 'mercury') || (to === 'sitch'))) return 'app-open';
     if(to === 'thread') return 'slide-right';
     if((from === 'thread') && (to === 'messages')) return 'slide-left';
     if(to === 'appearance') return 'slide-right';
@@ -558,6 +560,8 @@ export const PhoneView: FC<{}> = props =>
                                 <PhoneWeatherView onBack={ () => go('home') } /> }
                             { (screen === 'news') &&
                                 <PhoneNewsView onBack={ () => go('home') } /> }
+                            { (screen === 'sitch') &&
+                                <PhoneSitchView onBack={ () => go('home') } /> }
                             { (screen === 'wallet') &&
                                 <PhoneWalletView onBack={ () => go('home') } openCreate={ () => go('newcharacter') } /> }
                             { (screen === 'newcharacter') &&
