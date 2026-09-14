@@ -28,6 +28,10 @@ $phone-scale: 0.8;
     width: 336px * $phone-scale;
     height: 700px * $phone-scale;
 
+    // The case is burgundy; the phone's UI accent is still orange. Those are
+    // deliberately different things - #e87332 and friends run the HUD, Mercury
+    // and the site chrome, so recolouring the body must not reach them. Only
+    // this gradient, the power button and the camera-mode shell are the shell.
     .phone-shell {
         position: relative;
         width: 336px;
@@ -36,7 +40,7 @@ $phone-scale: 0.8;
         transform-origin: top left;
         border-radius: 48px;
         padding: 6px;
-        background: linear-gradient(150deg, #f5b96a, #e87332 55%, #c95a24);
+        background: linear-gradient(150deg, #a4596b, #73273c 55%, #521b2b);
         box-shadow: 0 0 0 2px $phone-ink, 16px 22px 0 rgba(0, 0, 0, 0.3), 0 20px 60px rgba(0, 0, 0, 0.5);
     }
 
@@ -47,12 +51,12 @@ $phone-scale: 0.8;
         width: 5px;
         height: 58px;
         border-radius: 0 4px 4px 0;
-        background: #a3451c;
+        background: #3e1420;
         box-shadow: 0 0 0 1px $phone-ink;
         cursor: pointer;
 
         &:hover {
-            background: #c95a24;
+            background: #521b2b;
         }
     }
 
@@ -6376,7 +6380,7 @@ $phone-scale: 0.8;
             inset: 0;
             border-radius: 48px;
             padding: 6px;
-            background: linear-gradient(150deg, #f5b96a, #e87332 55%, #c95a24);
+            background: linear-gradient(150deg, #a4596b, #73273c 55%, #521b2b);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
