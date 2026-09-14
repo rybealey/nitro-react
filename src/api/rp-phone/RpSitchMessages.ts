@@ -18,6 +18,14 @@ const RP_GET_SITCH_THREAD = 4123;
 const RP_GET_SITCH_PROFILE = 4124;
 const RP_GET_SITCH_ACTIVITY = 4125;
 
+const RP_SITCH_POST = 4130;
+const RP_SITCH_LIKE = 4131;
+const RP_SITCH_REPOST = 4132;
+const RP_SITCH_FOLLOW = 4133;
+const RP_SITCH_DELETE = 4134;
+const RP_SITCH_SET_BIO = 4135;
+const RP_SITCH_SET_SONG = 4136;
+
 // server -> client
 const RP_SITCH_FEED = 4126;
 const RP_SITCH_THREAD = 4127;
@@ -106,11 +114,13 @@ const readPosts = (wrapper: IMessageDataWrapper): SitchPost[] =>
 export class RpSitchFeedParser implements IMessageParser
 {
     private _following: boolean = false;
+    private _canModerate: boolean = false;
     private _posts: SitchPost[] = [];
 
     public flush(): boolean
     {
         this._following = false;
+        this._canModerate = false;
         this._posts = [];
 
         return true;
@@ -121,9 +131,16 @@ export class RpSitchFeedParser implements IMessageParser
         if(!wrapper) return false;
 
         this._following = (wrapper.readInt() === 1);
+        this._canModerate = (wrapper.readInt() === 1);
         this._posts = readPosts(wrapper);
 
         return true;
+    }
+
+    /** Whether to OFFER staff removal. The server checks it again before acting. */
+    public get canModerate(): boolean
+    {
+        return this._canModerate;
     }
 
     public get following(): boolean 
@@ -363,6 +380,77 @@ export const SendSitchActivity = (): void => SendMessageComposer(new RpGetSitchA
 /** Cover art for a favorite song, built from the id the way Tunes does it. */
 export const SitchSongArt = (videoId: string): string => (videoId ? `https://i.ytimg.com/vi/${ videoId }/mqdefault.jpg` : '');
 
+export class RpSitchPostComposer extends RpSitchComposerBase
+{
+    /** parentId 0 posts to the feed; anything else replies to that post. */
+    constructor(body: string, parentId: number = 0, photoId: number = 0)
+    {
+        super();
+        this._data = [ body, parentId, photoId ];
+    }
+}
+
+export class RpSitchLikeComposer extends RpSitchComposerBase
+{
+    constructor(postId: number, on: boolean) 
+    {
+        super(); this._data = [ postId, on ? 1 : 0 ]; 
+    }
+}
+
+export class RpSitchRepostComposer extends RpSitchComposerBase
+{
+    constructor(postId: number, on: boolean) 
+    {
+        super(); this._data = [ postId, on ? 1 : 0 ]; 
+    }
+}
+
+export class RpSitchFollowComposer extends RpSitchComposerBase
+{
+    constructor(userId: number, on: boolean) 
+    {
+        super(); this._data = [ userId, on ? 1 : 0 ]; 
+    }
+}
+
+export class RpSitchDeleteComposer extends RpSitchComposerBase
+{
+    constructor(postId: number) 
+    {
+        super(); this._data = [ postId ]; 
+    }
+}
+
+export class RpSitchSetBioComposer extends RpSitchComposerBase
+{
+    constructor(bio: string) 
+    {
+        super(); this._data = [ bio ]; 
+    }
+}
+
+export class RpSitchSetSongComposer extends RpSitchComposerBase
+{
+    /** An empty url clears the song - that is how it comes off a profile. */
+    constructor(url: string) 
+    {
+        super(); this._data = [ url ]; 
+    }
+}
+
+export const SendSitchPost = (body: string, parentId: number = 0, photoId: number = 0): void =>
+    SendMessageComposer(new RpSitchPostComposer(body, parentId, photoId));
+export const SendSitchLike = (postId: number, on: boolean): void => SendMessageComposer(new RpSitchLikeComposer(postId, on));
+export const SendSitchRepost = (postId: number, on: boolean): void => SendMessageComposer(new RpSitchRepostComposer(postId, on));
+export const SendSitchFollow = (userId: number, on: boolean): void => SendMessageComposer(new RpSitchFollowComposer(userId, on));
+export const SendSitchDelete = (postId: number): void => SendMessageComposer(new RpSitchDeleteComposer(postId));
+export const SendSitchBio = (bio: string): void => SendMessageComposer(new RpSitchSetBioComposer(bio));
+export const SendSitchSong = (url: string): void => SendMessageComposer(new RpSitchSetSongComposer(url));
+
+/** What the server enforces too - the counter here is a courtesy, not a control. */
+export const SITCH_MAX_BODY = 280;
+
 let registered = false;
 
 export const RegisterRpSitchMessages = () =>
@@ -384,7 +472,14 @@ export const RegisterRpSitchMessages = () =>
             [ RP_GET_SITCH_FEED, RpGetSitchFeedComposer ],
             [ RP_GET_SITCH_THREAD, RpGetSitchThreadComposer ],
             [ RP_GET_SITCH_PROFILE, RpGetSitchProfileComposer ],
-            [ RP_GET_SITCH_ACTIVITY, RpGetSitchActivityComposer ]
+            [ RP_GET_SITCH_ACTIVITY, RpGetSitchActivityComposer ],
+            [ RP_SITCH_POST, RpSitchPostComposer ],
+            [ RP_SITCH_LIKE, RpSitchLikeComposer ],
+            [ RP_SITCH_REPOST, RpSitchRepostComposer ],
+            [ RP_SITCH_FOLLOW, RpSitchFollowComposer ],
+            [ RP_SITCH_DELETE, RpSitchDeleteComposer ],
+            [ RP_SITCH_SET_BIO, RpSitchSetBioComposer ],
+            [ RP_SITCH_SET_SONG, RpSitchSetSongComposer ]
         ])
     });
 
