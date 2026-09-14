@@ -25,12 +25,14 @@ const RP_SITCH_FOLLOW = 4133;
 const RP_SITCH_DELETE = 4134;
 const RP_SITCH_SET_BIO = 4135;
 const RP_SITCH_SET_SONG = 4136;
+const RP_SITCH_SEARCH = 4137;
 
 // server -> client
 const RP_SITCH_FEED = 4126;
 const RP_SITCH_THREAD = 4127;
 const RP_SITCH_PROFILE = 4128;
 const RP_SITCH_ACTIVITY = 4129;
+const RP_SITCH_SEARCH_RESULT = 4138;
 
 export interface SitchPost
 {
@@ -80,6 +82,16 @@ export interface SitchActivity
     postBody: string;
     createdAt: number;
     seen: boolean;
+}
+
+export interface SitchPerson
+{
+    userId: number;
+    username: string;
+    figure: string;
+    bio: string;
+    followers: number;
+    follows: boolean;
 }
 
 const readPost = (wrapper: IMessageDataWrapper): SitchPost => ({
@@ -276,6 +288,77 @@ export class RpSitchActivityParser implements IMessageParser
     }
 }
 
+export class RpSitchSearchParser implements IMessageParser
+{
+    private _query: string = '';
+    private _people: SitchPerson[] = [];
+    private _posts: SitchPost[] = [];
+
+    public flush(): boolean
+    {
+        this._query = '';
+        this._people = [];
+        this._posts = [];
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._query = wrapper.readString();
+
+        const total = wrapper.readInt();
+        const people: SitchPerson[] = [];
+
+        for(let i = 0; i < total; i++)
+        {
+            people.push({
+                userId: wrapper.readInt(),
+                username: wrapper.readString(),
+                figure: wrapper.readString(),
+                bio: wrapper.readString(),
+                followers: wrapper.readInt(),
+                follows: (wrapper.readInt() === 1)
+            });
+        }
+
+        this._people = people;
+        this._posts = readPosts(wrapper);
+
+        return true;
+    }
+
+    /** Rides back so a slow answer cannot overwrite a newer question. */
+    public get query(): string
+    {
+        return this._query;
+    }
+
+    public get people(): SitchPerson[]
+    {
+        return this._people;
+    }
+
+    public get posts(): SitchPost[]
+    {
+        return this._posts;
+    }
+}
+
+export class RpSitchSearchEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpSitchSearchParser);
+    }
+    public getParser(): RpSitchSearchParser
+    {
+        return this.parser as RpSitchSearchParser;
+    }
+}
+
 export class RpSitchFeedEvent extends MessageEvent implements IMessageEvent
 {
     constructor(callBack: Function) 
@@ -357,10 +440,24 @@ export class RpGetSitchThreadComposer extends RpSitchComposerBase
 
 export class RpGetSitchProfileComposer extends RpSitchComposerBase
 {
-    /** 0 asks for your own, so the client need not know its own user id. */
-    constructor(userId: number = 0) 
+    /**
+     * 0 asks for your own, so the client need not know its own user id. The
+     * optional username is read only when the id is 0 - that is how tapping a
+     * mention opens a profile, since a post body carries the name, not the id.
+     */
+    constructor(userId: number = 0, username: string = null)
     {
-        super(); this._data = [ userId ]; 
+        super();
+        this._data = ((username === null) ? [ userId ] : [ userId, username ]);
+    }
+}
+
+export class RpSitchSearchComposer extends RpSitchComposerBase
+{
+    constructor(query: string)
+    {
+        super();
+        this._data = [ query ];
     }
 }
 
@@ -375,6 +472,8 @@ export class RpGetSitchActivityComposer extends RpSitchComposerBase
 export const SendSitchFeed = (following: boolean): void => SendMessageComposer(new RpGetSitchFeedComposer(following));
 export const SendSitchThread = (postId: number): void => SendMessageComposer(new RpGetSitchThreadComposer(postId));
 export const SendSitchProfile = (userId: number = 0): void => SendMessageComposer(new RpGetSitchProfileComposer(userId));
+export const SendSitchProfileByName = (username: string): void => SendMessageComposer(new RpGetSitchProfileComposer(0, username));
+export const SendSitchSearch = (query: string): void => SendMessageComposer(new RpSitchSearchComposer(query));
 export const SendSitchActivity = (): void => SendMessageComposer(new RpGetSitchActivityComposer());
 
 /** Cover art for a favorite song, built from the id the way Tunes does it. */
@@ -466,7 +565,8 @@ export const RegisterRpSitchMessages = () =>
             [ RP_SITCH_FEED, RpSitchFeedEvent ],
             [ RP_SITCH_THREAD, RpSitchThreadEvent ],
             [ RP_SITCH_PROFILE, RpSitchProfileEvent ],
-            [ RP_SITCH_ACTIVITY, RpSitchActivityEvent ]
+            [ RP_SITCH_ACTIVITY, RpSitchActivityEvent ],
+            [ RP_SITCH_SEARCH_RESULT, RpSitchSearchEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_GET_SITCH_FEED, RpGetSitchFeedComposer ],
@@ -479,7 +579,8 @@ export const RegisterRpSitchMessages = () =>
             [ RP_SITCH_FOLLOW, RpSitchFollowComposer ],
             [ RP_SITCH_DELETE, RpSitchDeleteComposer ],
             [ RP_SITCH_SET_BIO, RpSitchSetBioComposer ],
-            [ RP_SITCH_SET_SONG, RpSitchSetSongComposer ]
+            [ RP_SITCH_SET_SONG, RpSitchSetSongComposer ],
+            [ RP_SITCH_SEARCH, RpSitchSearchComposer ]
         ])
     });
 

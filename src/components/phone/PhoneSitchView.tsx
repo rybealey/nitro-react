@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
-import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchThreadEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchRepost, SendSitchSong, SendSitchThread, SITCH_MAX_BODY, SitchActivity, SitchPost, SitchProfile, SitchSongArt } from '../../api/rp-phone/RpSitchMessages';
+import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchThread, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt } from '../../api/rp-phone/RpSitchMessages';
 import { useMessageEvent } from '../../hooks';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
@@ -34,7 +34,8 @@ const TABS: { key: Tab, icon: string, label: string }[] = [
 const EMPTY: Record<string, { icon: string, title: string, sub: string }> = {
     feed: { icon: 'at', title: 'Nothing yet', sub: 'Be the first to say something.' },
     following: { icon: 'user-plus', title: 'Nobody yet', sub: 'Posts from people you follow land here.' },
-    search: { icon: 'magnifying-glass', title: 'Find someone', sub: 'Searching arrives with the next update.' },
+    search: { icon: 'magnifying-glass', title: 'Search Sitch', sub: 'Find a person, a word, or a #tag.' },
+    nothing: { icon: 'magnifying-glass', title: 'Nothing found', sub: 'No people or posts match that.' },
     activity: { icon: 'heart', title: 'Quiet so far', sub: 'Replies, likes and new followers land here.' },
     profile: { icon: 'user', title: 'Nothing posted', sub: 'What you post shows up here.' }
 };
@@ -45,8 +46,14 @@ const ACT_WORDS: Record<string, string> = {
     like: 'liked your post',
     reply: 'replied to you',
     repost: 'reposted you',
-    follow: 'followed you'
+    follow: 'followed you',
+    mention: 'mentioned you'
 };
+
+// #hashtag and @mention, matched the same way the server extracts them so what
+// lights up here is exactly what it indexed and notified. The capturing groups
+// keep the delimiters, so split() returns the text and the tokens together.
+const TOKENS = /([#@][A-Za-z0-9_\-.]+)/g;
 
 // "4m", "3h", "2d" - a feed reads better in elapsed time than in clock time.
 const Ago = (seconds: number): string =>
@@ -80,6 +87,10 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const [ replyTo, setReplyTo ] = useState(0);
     const [ songUrl, setSongUrl ] = useState('');
     const [ bioDraft, setBioDraft ] = useState('');
+    const [ query, setQuery ] = useState('');
+    const [ people, setPeople ] = useState<SitchPerson[]>([]);
+    const [ found, setFound ] = useState<SitchPost[]>([]);
+    const [ searched, setSearched ] = useState(false);
     const { photos = [], photosLoaded = false, requestPhotos = null } = usePhonePhotos();
     const ownUserId = GetSessionDataManager().userId;
 
@@ -96,9 +107,44 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
 
         if(tab === 'feed') SendSitchFeed(following);
         else if(tab === 'activity') SendSitchActivity();
-        else if(tab === 'profile') SendSitchProfile(viewing);
+        else if(tab === 'profile') 
+        {
+            if(viewing >= 0) SendSitchProfile(viewing); 
+        }
         else setLoaded(true);
     }, [ tab, following, viewing ]);
+
+    // Typing is not a query: the box waits until somebody stops, which is the
+    // server's protection as much as the field's responsiveness.
+    useEffect(() =>
+    {
+        const trimmed = query.trim();
+
+        if(!trimmed.length)
+        {
+            setPeople([]);
+            setFound([]);
+            setSearched(false);
+
+            return;
+        }
+
+        const timeout = window.setTimeout(() => SendSitchSearch(trimmed), 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [ query ]);
+
+    useMessageEvent<RpSitchSearchEvent>(RpSitchSearchEvent, event =>
+    {
+        const parser = event.getParser();
+
+        // A slow answer must not overwrite a newer question.
+        if(parser.query.trim().toLowerCase() !== query.trim().toLowerCase()) return;
+
+        setPeople(parser.people);
+        setFound(parser.posts);
+        setSearched(true);
+    });
 
     useMessageEvent<RpSitchFeedEvent>(RpSitchFeedEvent, event =>
     {
@@ -138,7 +184,10 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const refresh = () =>
     {
         if(thread && thread.length) SendSitchThread(thread[0].id);
-        else if(tab === 'profile') SendSitchProfile(viewing);
+        else if(tab === 'profile') 
+        {
+            if(viewing >= 0) SendSitchProfile(viewing); 
+        }
         else SendSitchFeed(following);
     }
 
@@ -154,6 +203,41 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         setThread(null);
         setTab('profile');
     }
+
+    const openTag = (tag: string) =>
+    {
+        setThread(null);
+        setQuery(tag);
+        setTab('search');
+    }
+
+    const openMention = (name: string) =>
+    {
+        setThread(null);
+        setViewing(-1);
+        setTab('profile');
+        SendSitchProfileByName(name);
+    }
+
+    // A body with its hashtags and mentions made real. Everything else is
+    // plain text - this deliberately does not linkify bare URLs, which would
+    // turn a typo into something tappable.
+    const richBody = (body: string) => body.split(TOKENS).map((piece, index) =>
+    {
+        if(piece.startsWith('#') && (piece.length > 1))
+            return <span key={ index } className="phone-sitch-token" onClick={ event => 
+            {
+                event.stopPropagation(); openTag(piece); 
+            } }>{ piece }</span>;
+
+        if(piece.startsWith('@') && (piece.length > 1))
+            return <span key={ index } className="phone-sitch-token" onClick={ event => 
+            {
+                event.stopPropagation(); openMention(piece.substring(1)); 
+            } }>{ piece }</span>;
+
+        return <span key={ index }>{ piece }</span>;
+    });
 
     const openCompose = (parentId: number = 0) =>
     {
@@ -218,7 +302,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     { (post.rank >= 5) && <div className="phone-sitch-staff">STAFF</div> }
                     <div className="phone-sitch-post-ago">{ Ago(post.createdAt) }</div>
                 </div>
-                { !!post.body && <div className="phone-sitch-post-text" onClick={ () => (!inThread && openThread(post.id)) }>{ post.body }</div> }
+                { !!post.body && <div className="phone-sitch-post-text" onClick={ () => (!inThread && openThread(post.id)) }>{ richBody(post.body) }</div> }
                 { !!post.photoUrl &&
                     <div className="phone-sitch-photo">
                         <img src={ post.photoUrl } alt="" loading="lazy" />
@@ -403,7 +487,39 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                         <div className={ 'phone-sitch-pill' + (following ? ' is-on' : '') } onClick={ () => setFollowing(true) }>Following</div>
                     </div> }
                 { (tab === 'feed') && (loaded && !posts.length ? emptyState(following ? 'following' : 'feed') : posts.map(post => postRow(post, false, deletable(post)))) }
-                { (tab === 'search') && emptyState('search') }
+                { (tab === 'search') &&
+                    <>
+                        <div className="phone-sitch-searchbar">
+                            <PhoneIcon icon="magnifying-glass" size={ 15 } />
+                            <input className="phone-sitch-searchinput" type="text" value={ query } spellCheck={ false }
+                                placeholder="Names, words, #tags" onChange={ event => setQuery(event.target.value) } />
+                            { !!query.length &&
+                                <div className="phone-tap phone-sitch-clear" onClick={ () => setQuery('') }>
+                                    <PhoneIcon icon="close" size={ 13 } />
+                                </div> }
+                        </div>
+                        { !query.trim().length && emptyState('search') }
+                        { (searched && !!query.trim().length && !people.length && !found.length) && emptyState('nothing') }
+                        { !!people.length &&
+                            <>
+                                <div className="phone-app-kicker phone-sitch-kicker phone-sitch-section">PEOPLE</div>
+                                { people.map(person => (
+                                    <div key={ person.userId } className="phone-sitch-person phone-tap" onClick={ () => openProfile(person.userId) }>
+                                        <PhoneFace id={ person.userId } figure={ person.figure } name={ person.username } size={ 34 } className="phone-sitch-face" />
+                                        <div className="phone-sitch-person-text">
+                                            <div className="phone-sitch-post-name">{ person.username }</div>
+                                            <div className="phone-sitch-person-sub">{ person.bio || `${ person.followers.toLocaleString('en-US') } followers` }</div>
+                                        </div>
+                                        { person.follows && <div className="phone-sitch-person-flag">Following</div> }
+                                    </div>
+                                )) }
+                            </> }
+                        { !!found.length &&
+                            <>
+                                <div className="phone-app-kicker phone-sitch-kicker phone-sitch-section">POSTS</div>
+                                { found.map(post => postRow(post, false, deletable(post))) }
+                            </> }
+                    </> }
                 { (tab === 'activity') && (loaded && !activity.length ? emptyState('activity') : activity.map(row => (
                     <div key={ row.id } className="phone-sitch-act phone-tap" onClick={ () => (row.postId ? openThread(row.postId) : null) }>
                         <PhoneFace id={ row.actorId } figure={ row.actorFigure } name={ row.actorName } size={ 32 } className="phone-sitch-face" />

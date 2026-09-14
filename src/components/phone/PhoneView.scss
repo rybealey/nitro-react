@@ -4121,6 +4121,46 @@ $phone-scale: 0.8;
 
     .phone-sitch-remove { margin-left: auto; color: $phone-red; }
 
+    // ---- search -----------------------------------------------------------
+    .phone-sitch-searchbar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 18px 10px;
+        padding: 0 12px;
+        height: 36px;
+        border-radius: 11px;
+        background: var(--ph-inset);
+        color: var(--ph-faint);
+    }
+
+    .phone-sitch-searchinput {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: var(--ph-text);
+        font-family: 'Barlow', 'Ubuntu', sans-serif;
+        font-size: calc(13.5px * var(--ph-text-scale, 1));
+
+        &:focus { outline: none; }
+        &::placeholder { color: var(--ph-faint); }
+    }
+
+    .phone-sitch-clear { display: flex; color: var(--ph-faint); }
+
+    .phone-sitch-section { padding: 12px 18px 6px; }
+
+    .phone-sitch-person { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid $phone-hairline; }
+    .phone-sitch-person-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .phone-sitch-person-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .phone-sitch-person-flag { flex: none; font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--sitch-accent); font-weight: 600; }
+
+    // A hashtag or a mention inside a post. Accent-coloured rather than
+    // underlined: a feed full of underlines reads as a page of links.
+    .phone-sitch-token { color: var(--sitch-accent); cursor: pointer; }
+
     // ---- sheets (compose, photo picker, edit profile) ---------------------
     // Over the app rather than beside it: everything here is a decision the
     // player has to finish or cancel before the feed matters again.
