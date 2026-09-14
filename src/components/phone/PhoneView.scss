@@ -4076,7 +4076,11 @@ $phone-scale: 0.8;
         display: flex;
         align-items: center;
         justify-content: space-around;
-        padding: 9px 18px calc(6px + env(safe-area-inset-bottom, 0px));
+        // 22px, the same bottom the sheets across this file use: the home
+        // indicator floats over the app at bottom 7px and is 5px tall, so a
+        // bar that stops any closer has its icons sitting on it. env() is no
+        // help - this phone is drawn, not a device, so the inset is always 0.
+        padding: 9px 18px 22px;
         border-top: 1px solid $phone-hairline;
         background: var(--ph-glass);
         backdrop-filter: var(--ph-glass-blur);
