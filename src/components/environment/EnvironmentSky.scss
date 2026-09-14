@@ -37,19 +37,36 @@
     position: absolute;
     left: -20%;
     right: -20%;
-    filter: blur(8px);
 
+    // The mask is the whole trick, and it is the same one the horizon above
+    // already uses: fade to nothing on the edges so the band never draws a
+    // line against the sky. These gradients only varied ACROSS the screen, so
+    // their top and bottom were a clean cut at a fixed percentage of the
+    // viewport - a horizontal rule through the window, which is exactly what
+    // it looked like.
+    //
+    // Blur cannot fix that on its own. 8px across a band 190px tall is a
+    // slightly soft edge, still plainly an edge; a radius big enough to hide
+    // it would wash out the drift that makes the fog read as moving air. So
+    // the mask dissolves the band and the blur only smooths what is left.
+    filter: blur(26px);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 100%);
+
+    // Taller than before and overlapping, because a bank of fog has depth
+    // rather than a thickness. Peak opacity is up a little to pay for what
+    // the dissolve takes away.
     &.is-a {
-        top: 38%;
-        height: 22%;
-        background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .05) 30%, rgba(255, 255, 255, .08) 55%, rgba(255, 255, 255, 0) 100%);
+        top: 24%;
+        height: 44%;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .06) 30%, rgba(255, 255, 255, .11) 55%, rgba(255, 255, 255, 0) 100%);
         animation: env-fog-a 90s ease-in-out infinite alternate;
     }
 
     &.is-b {
-        top: 58%;
-        height: 18%;
-        background: linear-gradient(90deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, .05) 80%, rgba(255, 255, 255, 0) 100%);
+        top: 46%;
+        height: 40%;
+        background: linear-gradient(90deg, rgba(255, 255, 255, .1) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, .07) 80%, rgba(255, 255, 255, 0) 100%);
         animation: env-fog-b 120s ease-in-out infinite alternate;
     }
 }
@@ -124,8 +141,17 @@
 
 @keyframes env-sky-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes env-sky-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes env-fog-a { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
-@keyframes env-fog-b { from { transform: translateX(3%); } to { transform: translateX(-3%); } }
+// Drifting AND thinning: fog that only slides sideways at a constant density
+// reads as a texture being panned. The opacity swing is small on purpose - it
+// should be noticed over a minute, not over a second.
+@keyframes env-fog-a {
+    from { transform: translateX(-4%); opacity: .75; }
+    to { transform: translateX(4%); opacity: 1; }
+}
+@keyframes env-fog-b {
+    from { transform: translateX(3%); opacity: 1; }
+    to { transform: translateX(-3%); opacity: .7; }
+}
 @keyframes env-rain { from { transform: translateY(-46px); } to { transform: translateY(0); } }
 @keyframes env-twinkle { from { opacity: .6; } to { opacity: 1; } }
 
