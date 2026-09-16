@@ -290,6 +290,9 @@ export const PhoneView: FC<{}> = props =>
             case 'news':
                 go('news', 'app-open');
                 return;
+            case 'sitch':
+                go('sitch', 'app-open');
+                return;
         }
     }
 

@@ -5,6 +5,7 @@ import { useMessageEvent } from '../../hooks';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { usePhonePhotos } from './usePhone';
+import { usePhoneNotifications } from './usePhoneNotifications';
 
 // Sitch: the city's own feed. Short posts, the replies they start, and a
 // profile carrying one favorite song.
@@ -92,6 +93,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const [ found, setFound ] = useState<SitchPost[]>([]);
     const [ searched, setSearched ] = useState(false);
     const { photos = [], photosLoaded = false, requestPhotos = null } = usePhonePhotos();
+    const { markAppSeen = null } = usePhoneNotifications();
     const ownUserId = GetSessionDataManager().userId;
 
     // Whose profile the Profile tab is showing. 0 is mine; tapping a name
@@ -106,13 +108,23 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         setLoaded(false);
 
         if(tab === 'feed') SendSitchFeed(following);
-        else if(tab === 'activity') SendSitchActivity();
+        else if(tab === 'activity')
+        {
+            SendSitchActivity();
+
+            // The Activity tab shows the same events the notifications
+            // describe, so opening it reads them.
+            if(markAppSeen) markAppSeen('sitch');
+        }
         else if(tab === 'profile') 
         {
             if(viewing >= 0) SendSitchProfile(viewing); 
         }
         else setLoaded(true);
-    }, [ tab, following, viewing ]);
+        // markAppSeen is deliberately out of the deps: its identity changes
+        // with the notification list, and depending on it would re-fetch the
+        // feed every time a notification arrived.
+    }, [ tab, following, viewing ]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Typing is not a query: the box waits until somebody stops, which is the
     // server's protection as much as the field's responsiveness.
@@ -299,7 +311,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
             <div className="phone-sitch-post-body">
                 <div className="phone-sitch-post-head">
                     <div className="phone-sitch-post-name phone-tap" onClick={ () => openProfile(post.userId) }>{ post.username }</div>
-                    { (post.rank >= 5) && <div className="phone-sitch-staff">STAFF</div> }
+                    { (post.rank >= 5) && <i className="fa-solid fa-badge-check phone-sitch-verified" title="PixelRP Staff" aria-hidden="true" /> }
                     <div className="phone-sitch-post-ago">{ Ago(post.createdAt) }</div>
                 </div>
                 { !!post.body && <div className="phone-sitch-post-text" onClick={ () => (!inThread && openThread(post.id)) }>{ richBody(post.body) }</div> }

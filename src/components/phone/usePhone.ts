@@ -99,20 +99,21 @@ export interface PhoneNotify
     notes: boolean;
     photos: boolean;
     news: boolean;
+    sitch: boolean;
     // ten minutes before an event starts
     reminders: boolean;
     // a friend logging in or out
     friends: boolean;
 }
 
-export const DEFAULT_NOTIFY: PhoneNotify = { allow: true, messages: true, contacts: true, calendar: true, notes: true, photos: true, news: true, reminders: true, friends: false };
+export const DEFAULT_NOTIFY: PhoneNotify = { allow: true, messages: true, contacts: true, calendar: true, notes: true, photos: true, news: true, sitch: true, reminders: true, friends: false };
 
 const readNotify = (value: unknown): PhoneNotify =>
 {
     const raw = ((value && (typeof value === 'object')) ? (value as Record<string, unknown>) : {});
     const flag = (key: keyof PhoneNotify) => ((typeof raw[key] === 'boolean') ? (raw[key] as boolean) : DEFAULT_NOTIFY[key]);
 
-    return { allow: flag('allow'), messages: flag('messages'), contacts: flag('contacts'), calendar: flag('calendar'), notes: flag('notes'), photos: flag('photos'), news: flag('news'), reminders: flag('reminders'), friends: flag('friends') };
+    return { allow: flag('allow'), messages: flag('messages'), contacts: flag('contacts'), calendar: flag('calendar'), notes: flag('notes'), photos: flag('photos'), news: flag('news'), sitch: flag('sitch'), reminders: flag('reminders'), friends: flag('friends') };
 }
 
 export const TEXT_SIZE_NAMES: string[] = [ 'Smaller', 'Default', 'Large', 'Larger', 'Largest' ];

@@ -16,11 +16,12 @@ interface PhoneNotifySettingsViewProps
     onBack: () => void;
 }
 
-// The six apps that notify, in the order they read best - the ones about
+// The seven apps that notify, in the order they read best - the ones about
 // people first.
 const APP_ROWS: { app: NotifyApp, key: keyof PhoneNotify, label: string, sub: string }[] = [
     { app: 'messages', key: 'messages', label: 'Messages', sub: 'New direct messages.' },
     { app: 'contacts', key: 'contacts', label: 'Contacts', sub: 'Friend requests.' },
+    { app: 'sitch', key: 'sitch', label: 'Sitch', sub: 'Likes, replies, reposts, mentions and new followers.' },
     { app: 'calendar', key: 'calendar', label: 'Calendar', sub: 'New, changed and cancelled events.' },
     { app: 'notes', key: 'notes', label: 'Notes', sub: 'Notes shared with you and their edits.' },
     { app: 'photos', key: 'photos', label: 'Photos', sub: 'Shared album invites and new photos.' },

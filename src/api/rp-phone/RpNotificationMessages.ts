@@ -9,7 +9,7 @@ const RP_NOTIFICATION = 4021; // server -> client: something happened
 // two the client raises for itself: Messages and Contacts already track
 // everything a notification would need (unread threads, pending requests), so
 // no packet has to tell us about them.
-export type NotifyApp = 'photos' | 'contacts' | 'calendar' | 'notes' | 'news' | 'messages';
+export type NotifyApp = 'photos' | 'contacts' | 'calendar' | 'notes' | 'news' | 'messages' | 'sitch';
 
 // What happened. The wording for every one of these lives in
 // usePhoneNotifications, so a notification is one place to read and one place
@@ -19,6 +19,7 @@ export type NotifyKind =
     | 'note_shared' | 'note_updated'
     | 'event_new' | 'event_changed' | 'event_cancelled' | 'event_soon'
     | 'story'
+    | 'sitch_like' | 'sitch_reply' | 'sitch_repost' | 'sitch_follow' | 'sitch_mention'
     | 'message' | 'friend_request' | 'friend_on' | 'friend_off';
 
 export interface NotifyPush

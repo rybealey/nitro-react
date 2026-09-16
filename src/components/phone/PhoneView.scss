@@ -4065,15 +4065,15 @@ $phone-scale: 0.8;
     .phone-sitch-post-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); letter-spacing: -.1px; }
     .phone-sitch-post-ago { margin-left: auto; flex: none; font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-faint); }
 
-    .phone-sitch-staff {
-        font-family: 'Ubuntu', sans-serif;
-        font-size: calc(8px * var(--ph-text-scale, 1));
-        font-weight: 700;
-        letter-spacing: 1px;
-        padding: 2px 5px;
-        border-radius: 5px;
-        background: var(--sitch-accent);
-        color: var(--sitch-ink);
+    // The same mark staff carry on the HUD and the infostand, not a label of
+    // its own. Colour follows the wallet's check rather than --sitch-accent:
+    // one phone, one verified blue, and the teal accent already means "this is
+    // a control you can press" everywhere else in this app.
+    .phone-sitch-verified {
+        flex: none;
+        line-height: 1;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        color: #3f8fbf;
     }
 
     .phone-sitch-post-text {

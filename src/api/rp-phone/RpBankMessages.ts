@@ -22,7 +22,8 @@ const RP_BANK_LEDGER = 4115;
 
 // client -> server
 const RP_GET_BANK_ACCOUNTS = 4114;
-const RP_OPEN_BANK_ACCOUNT = 4115;
+// 4115 opened an account without going anywhere near a teller. A banker bot
+// does that in person now, so the id is retired rather than reused.
 const RP_BANK_TRANSFER = 4116;
 const RP_ATM_TRANSACTION = 4117;
 const RP_CLOSE_ATM = 4118;
@@ -320,14 +321,6 @@ export class RpGetBankAccountsComposer extends RpBankComposerBase
     }
 }
 
-export class RpOpenBankAccountComposer extends RpBankComposerBase
-{
-    constructor() 
-    {
-        super(); 
-    }
-}
-
 export class RpBankTransferComposer extends RpBankComposerBase
 {
     constructor(direction: number, amount: number) 
@@ -414,8 +407,6 @@ export const SubscribeRpAtm = (listener: (state: RpAtmState) => void): (() => vo
 
 export const SendRpGetBankAccounts = (): void => SendMessageComposer(new RpGetBankAccountsComposer());
 
-export const SendRpOpenBankAccount = (): void => SendMessageComposer(new RpOpenBankAccountComposer());
-
 export const SendRpBankTransfer = (direction: number, amount: number): void =>
     SendMessageComposer(new RpBankTransferComposer(direction, amount));
 
@@ -486,7 +477,6 @@ export const RegisterRpBankMessages = () =>
         ]),
         composers: new Map<number, Function>([
             [ RP_GET_BANK_ACCOUNTS, RpGetBankAccountsComposer ],
-            [ RP_OPEN_BANK_ACCOUNT, RpOpenBankAccountComposer ],
             [ RP_BANK_TRANSFER, RpBankTransferComposer ],
             [ RP_ATM_TRANSACTION, RpAtmTransactionComposer ],
             [ RP_CLOSE_ATM, RpCloseAtmComposer ],

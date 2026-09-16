@@ -31,7 +31,8 @@ export const NOTIFY_APP_TILES: Record<NotifyApp, string> = {
     calendar: 'Calendar',
     notes: 'Notes',
     news: 'News',
-    messages: 'Messages'
+    messages: 'Messages',
+    sitch: 'Sitch'
 };
 
 export interface PhoneNotification
@@ -159,6 +160,32 @@ export const NotificationText = (notification: PhoneNotification, context: Notif
             return { title: `${ subject } was cancelled`, body: 'Taken off the calendar' };
         case 'story':
             return { title: subject, body: (post ? `${ post.category } · by ${ actor }` : `PixelRP News · by ${ actor }`) };
+        // Sitch groups by post, so several likes on one post arrive as one
+        // notification with a count rather than a pile. A follow carries no
+        // post, so every follow shares targetId 0 and they group together -
+        // which is the reading you want anyway ("3 new followers").
+        case 'sitch_like':
+            return {
+                title: ((count > 1) ? `${ count } people liked your post` : `${ actor } liked your post`),
+                body: subject
+            };
+        case 'sitch_reply':
+            return {
+                title: ((count > 1) ? `${ count } new replies` : `${ actor } replied to you`),
+                body: subject
+            };
+        case 'sitch_repost':
+            return {
+                title: ((count > 1) ? `${ count } people reposted your post` : `${ actor } reposted your post`),
+                body: subject
+            };
+        case 'sitch_follow':
+            return {
+                title: ((count > 1) ? `${ count } new followers` : `${ actor } followed you`),
+                body: ''
+            };
+        case 'sitch_mention':
+            return { title: `${ actor } mentioned you`, body: subject };
         case 'message':
             // the sender is the headline and the message is the line under it,
             // the way a phone shows a text
@@ -470,8 +497,11 @@ const usePhoneNotificationsState = () =>
         commit(listRef.current.map(entry => (((entry.app === app) && (entry.targetId === targetId)) ? { ...entry, seen: true } : entry)));
     }, [ commit ]);
 
-    /// Clears a whole app - the Center's sweep, not something opening an app
-    /// does on its own.
+    /// Clears a whole app. The Center's sweep uses it, and so does Sitch's
+    /// Activity tab - not because opening an app should clear it (Calendar,
+    /// News, Notes and Photos all clear one item at a time, when you open that
+    /// item), but because the Activity tab IS this list for that app. Reading
+    /// it and leaving the badge up would be the phone disagreeing with itself.
     const markAppSeen = useCallback((app: NotifyApp) =>
     {
         if(!listRef.current.some(entry => (!entry.seen && (entry.app === app)))) return;
@@ -546,7 +576,8 @@ export const usePhoneAppBadges = () =>
             Photos: on('photos') ? (unseen.photos ?? 0) : 0,
             Calendar: on('calendar') ? (unseen.calendar ?? 0) : 0,
             Notes: on('notes') ? (unseen.notes ?? 0) : 0,
-            News: on('news') ? (unseen.news ?? 0) : 0
+            News: on('news') ? (unseen.news ?? 0) : 0,
+            Sitch: on('sitch') ? (unseen.sitch ?? 0) : 0
         };
 
         return { counts, total: Object.values(counts).reduce((sum, count) => (sum + count), 0) };
