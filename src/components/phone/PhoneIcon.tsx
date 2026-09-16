@@ -15,6 +15,7 @@ const FA_MAP: Record<string, string> = {
     'music': 'music',
     'play': 'play',
     'pause': 'pause',
+    'stop': 'stop',
     'volume-low': 'volume-low',
     'camera': 'camera',
     'cellular-signal-3': 'signal',

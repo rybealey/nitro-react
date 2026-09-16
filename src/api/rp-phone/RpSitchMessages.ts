@@ -479,6 +479,17 @@ export const SendSitchActivity = (): void => SendMessageComposer(new RpGetSitchA
 /** Cover art for a favorite song, built from the id the way Tunes does it. */
 export const SitchSongArt = (videoId: string): string => (videoId ? `https://i.ytimg.com/vi/${ videoId }/mqdefault.jpg` : '');
 
+/**
+ * The watch link for a saved song, so the edit sheet can show what is already
+ * there instead of an empty box.
+ *
+ * Rebuilt from the id rather than remembered, because the id IS what the server
+ * stores - 127_Sitch.sql keeps the 11 characters and nothing else. Somebody who
+ * pasted a youtu.be or shorts link gets the canonical watch form back; same
+ * video, different spelling.
+ */
+export const SitchSongUrl = (videoId: string): string => (videoId ? `https://www.youtube.com/watch?v=${ videoId }` : '');
+
 export class RpSitchPostComposer extends RpSitchComposerBase
 {
     /** parentId 0 posts to the feed; anything else replies to that post. */

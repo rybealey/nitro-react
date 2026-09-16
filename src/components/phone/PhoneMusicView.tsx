@@ -4,6 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent } from '../../hooks';
 import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { StopSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -128,6 +129,15 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     }
 
     const canRemove = (entry: { queuedBy: string }) => (canManage || (entry.queuedBy === ownName));
+
+    // Tuning in is the inverse of a Sitch profile song taking over, and it is
+    // the one control a listener can always reach: the stop button for a song
+    // lives on the profile that started it, which may be several taps away.
+    const toggleTunes = () =>
+    {
+        StopSitchSong();
+        SetJukeboxPhoneOn(!phoneOn);
+    }
 
     // The request sheet is shared in spirit with the room jukebox panel and
     // deliberately untouched by the restyle: same plate, halo and Add.
@@ -292,7 +302,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-sidebtn${ volumeOpen ? ' is-on' : '' }` } title="Volume" onClick={ event => setVolumeOpen(!volumeOpen) }>
                             <PhoneIcon icon={ volume === 0 ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
-                        <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => SetJukeboxPhoneOn(!phoneOn) }>
+                        <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => toggleTunes() }>
                             <PhoneIcon icon={ phoneOn ? 'pause' : 'play' } size={ 26 } />
                         </div>
                         { canManage &&

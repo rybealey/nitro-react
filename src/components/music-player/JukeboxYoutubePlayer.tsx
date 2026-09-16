@@ -9,7 +9,7 @@ import { JukeboxCurrent } from './JukeboxStore';
 // keeps playing and reporting.
 let apiPromise: Promise<void> = null;
 
-const loadIframeApi = () =>
+export const loadIframeApi = () =>
 {
     if(apiPromise) return apiPromise;
     apiPromise = new Promise<void>(resolve =>

@@ -3,6 +3,7 @@ import { FC, useEffect } from 'react';
 import { useMessageEvent, useRoom } from '../../hooks';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { SetJukeboxPresent, SetJukeboxState, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
+import { useSitchSong } from './SitchSongStore';
 
 // THE one place the hotel station is heard. Mounted once at the app root, so
 // audio keeps going when the phone is closed, when the player leaves a room,
@@ -17,6 +18,14 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     const { roomSession = null } = useRoom();
     const { present, current } = useJukeboxState();
     const { phoneOn, volume, muted } = useJukeboxPrefs();
+    // A favorite song playing off somebody's Sitch profile takes the ears for
+    // as long as it lasts. Tunes was already switched off by PlaySitchSong -
+    // that is a real stop the player can see - but a jukebox belongs to the
+    // room rather than to you, so it cannot be stopped, only waited out. The
+    // station keeps its own timeline the whole time, so when the song ends the
+    // furni picks up wherever the room has got to rather than where it left
+    // off.
+    const sitchSong = useSitchSong();
 
     // Timing arrives as elapsed seconds; anchor it to the local clock on
     // receipt so the player can seek. present is this room's flag.
@@ -45,7 +54,7 @@ export const JukeboxAudioEngine: FC<{}> = props =>
         if(!roomSession) SetJukeboxPresent(false);
     }, [ roomSession ]);
 
-    const shouldPlay = (!!current && (phoneOn || present));
+    const shouldPlay = (!!current && (phoneOn || present) && !sitchSong);
 
     if(!shouldPlay) return null;
 

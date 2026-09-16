@@ -1,9 +1,10 @@
 import { FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
-import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchThread, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt } from '../../api/rp-phone/RpSitchMessages';
+import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchThread, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt, SitchSongUrl } from '../../api/rp-phone/RpSitchMessages';
 import { useMessageEvent } from '../../hooks';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
+import { PlaySitchSong, StopSitchSong, useSitchSong } from '../music-player/SitchSongStore';
 import { usePhonePhotos } from './usePhone';
 import { usePhoneNotifications } from './usePhoneNotifications';
 
@@ -87,6 +88,13 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const [ draftPhoto, setDraftPhoto ] = useState(0);
     const [ replyTo, setReplyTo ] = useState(0);
     const [ songUrl, setSongUrl ] = useState('');
+    // What the edit sheet opened with. Saving re-resolves a link through
+    // YouTube's oEmbed endpoint, so an untouched field should not pay for that
+    // - and, far worse, the field used to open EMPTY, which meant editing your
+    // bio silently deleted your favorite song (an empty link is how you remove
+    // one). The field now opens with what is saved, and Save only sends it when
+    // it actually differs.
+    const [ songUrlOpened, setSongUrlOpened ] = useState('');
     const [ bioDraft, setBioDraft ] = useState('');
     const [ query, setQuery ] = useState('');
     const [ people, setPeople ] = useState<SitchPerson[]>([]);
@@ -94,6 +102,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const [ searched, setSearched ] = useState(false);
     const { photos = [], photosLoaded = false, requestPhotos = null } = usePhonePhotos();
     const { markAppSeen = null } = usePhoneNotifications();
+    const playingSong = useSitchSong();
     const ownUserId = GetSessionDataManager().userId;
 
     // Whose profile the Profile tab is showing. 0 is mine; tapping a name
@@ -416,7 +425,9 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     <div className="phone-sitch-send phone-tap"
                         onClick={ () => 
                         {
-                            SendSitchBio(bioDraft); SendSitchSong(songUrl); setSheet(null); 
+                            SendSitchBio(bioDraft);
+                            if(songUrl.trim() !== songUrlOpened.trim()) SendSitchSong(songUrl);
+                            setSheet(null); 
                         } }>Save</div>
                 </div>
                 <div className="phone-sitch-field">
@@ -428,7 +439,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     <div className="phone-app-kicker phone-sitch-kicker">FAVORITE SONG</div>
                     <input className="phone-sitch-line" type="text" value={ songUrl } spellCheck={ false }
                         placeholder="Paste a YouTube link" onChange={ event => setSongUrl(event.target.value) } />
-                    <div className="phone-sitch-note">One song sits on your profile, and saving a new one replaces it. It never joins the hotel queue and never plays on its own &mdash; people tap it to listen. For the room, use Tunes. Leave this empty to take it off.</div>
+                    <div className="phone-sitch-note">One song sits on your profile, and saving a new one replaces it. It never joins the hotel queue and never plays on its own &mdash; people tap it to listen, and it takes over from Tunes and the room&rsquo;s jukebox while it does. For the room, use Tunes. Clear this box to take it off.</div>
                 </div>
             </div>
         );
@@ -488,7 +499,9 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                         <div className="phone-fab phone-tap"
                             onClick={ () => 
                             {
-                                setBioDraft(profile.bio); setSongUrl(''); setSheet('edit'); 
+                                const saved = SitchSongUrl(profile.favoriteVideoId);
+
+                                setBioDraft(profile.bio); setSongUrl(saved); setSongUrlOpened(saved); setSheet('edit'); 
                             } }>
                             <PhoneIcon icon="pencil" size={ 17 } />
                         </div> }
@@ -572,6 +585,23 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                                         <div className="phone-sitch-song-text">
                                             <div className="phone-sitch-song-title">{ profile.favoriteTitle || profile.favoriteVideoId }</div>
                                             { !!profile.favoriteAuthor && <div className="phone-sitch-song-author">{ profile.favoriteAuthor }</div> }
+                                        </div>
+                                        { /* Playing is this listener's own business: nobody else
+                                             hears it, and it stops Tunes and talks over the room's
+                                             jukebox for as long as it runs. */ }
+                                        <div className={ 'phone-sitch-song-play phone-tap' + ((playingSong?.videoId === profile.favoriteVideoId) ? ' is-on' : '') }
+                                            title={ (playingSong?.videoId === profile.favoriteVideoId) ? 'Stop' : 'Play' }
+                                            onClick={ () =>
+                                            {
+                                                if(playingSong?.videoId === profile.favoriteVideoId) StopSitchSong();
+                                                else PlaySitchSong({
+                                                    videoId: profile.favoriteVideoId,
+                                                    title: (profile.favoriteTitle || profile.favoriteVideoId),
+                                                    author: profile.favoriteAuthor,
+                                                    userId: profile.userId
+                                                });
+                                            } }>
+                                            <PhoneIcon icon={ (playingSong?.videoId === profile.favoriteVideoId) ? 'stop' : 'play' } size={ 15 } />
                                         </div>
                                     </div>
                                 </> }
