@@ -4074,6 +4074,13 @@ $phone-scale: 0.8;
         line-height: 1;
         font-size: calc(13px * var(--ph-text-scale, 1));
         color: #3f8fbf;
+        // The head's 6px gap is the right distance between a name and a
+        // timestamp, and too much between a name and the mark that belongs to
+        // it. Pulled in here rather than by lowering the gap, because the
+        // timestamp's margin-left:auto means a smaller gap would read as
+        // "this spacing does nothing", which is only true until somebody adds
+        // a fourth child to the row.
+        margin-left: -2px;
     }
 
     .phone-sitch-post-text {
