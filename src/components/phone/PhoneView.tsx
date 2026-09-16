@@ -2,6 +2,7 @@ import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { toPng } from 'html-to-image';
 import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, GetLocalStorage, PlaySound, RemoveLinkEventTracker, SetLocalStorage, SoundNames, WindowSaveOptions } from '../../api';
+import { SendRpPhoneVisible } from '../../api/rp-phone/RpPhoneStateMessages';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAppStoreView } from './PhoneAppStoreView';
@@ -405,6 +406,20 @@ export const PhoneView: FC<{}> = props =>
 
         return () => window.clearInterval(interval);
     }, [ isVisible, ensureLoaded, clock24 ]);
+
+    // The avatar holds handitem 244 for as long as the phone is on screen.
+    // Driven off isVisible rather than from show()/hide() so that every way
+    // the phone can close - the toolbar toggle, the home bar, this component
+    // unmounting on disconnect - puts the hand down too.
+    useEffect(() =>
+    {
+        SendRpPhoneVisible(isVisible);
+
+        return () =>
+        {
+            if(isVisible) SendRpPhoneVisible(false);
+        };
+    }, [ isVisible ]);
 
     useEffect(() =>
     {

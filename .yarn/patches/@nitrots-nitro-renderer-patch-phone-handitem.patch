@@ -1,0 +1,32 @@
+diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
++++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+@@ -9,6 +9,18 @@ export class AvatarLogic extends MovingObjectLogic
+ {
+     private static MAX_HAND_ID: number = 999999999;
+     private static MAX_HAND_USE_ID: number = 999;
++    // pixelrp: handitems that are CARRIED and never raised.
++    //
++    // Stock assumes every handitem under MAX_HAND_USE_ID is food or drink, so
++    // it plays the "use" pose for a second out of every ten. That pose draws
++    // h_drk_ri_<id>, and 244 - the mobile phone - is shipped with eight carry
++    // frames and no drink frame at all. The avatar would raise a phone it had
++    // no art for, so the phone blinked out of the hand every ten seconds.
++    //
++    // The phone is held while the player has it open on screen, which is why
++    // this matters more here than it would for a coffee: a two-minute carry
++    // hides the glitch, an open phone does not.
++    private static CARRY_ONLY_HAND_IDS: number[] = [ 244 ];
+     private static EFFECT_TYPE_SPLASH: number = 28;
+     private static EFFECT_SPLASH_LENGTH: number = 500;
+     private static EFFECT_TYPE_SWIM: number = 29;
+@@ -348,7 +360,7 @@ export class AvatarLogic extends MovingObjectLogic
+                 if(message.itemType < AvatarLogic.MAX_HAND_ID)
+                 {
+                     this._carryObjectEndTimestamp = 0;
+-                    this._allowUseCarryObject = message.itemType <= AvatarLogic.MAX_HAND_USE_ID;
++                    this._allowUseCarryObject = ((message.itemType <= AvatarLogic.MAX_HAND_USE_ID) && (AvatarLogic.CARRY_ONLY_HAND_IDS.indexOf(message.itemType) === -1));
+                 }
+                 else
+                 {

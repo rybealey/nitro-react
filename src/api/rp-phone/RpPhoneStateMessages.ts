@@ -18,6 +18,9 @@ import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 const RP_PHONE_STATE = 3900;
 // client -> server
 const RP_SAVE_PHONE_STATE = 3954;
+// client -> server: the phone is open on screen, so the avatar holds handitem
+// 244. Not a preference and never saved - see RpPhoneVisibleEvent.
+const RP_PHONE_VISIBLE = 4139;
 
 // Which document a save is for; mirrors RpSavePhoneStateEvent.
 export const PHONE_DOC_PREFS: number = 0;
@@ -83,6 +86,31 @@ export class RpSavePhoneStateComposer implements IMessageComposer<(string | numb
         return;
     }
 }
+
+/// The phone being open or closed on screen. One boolean; the server decides
+/// what to do with the avatar's hand.
+export class RpPhoneVisibleComposer implements IMessageComposer<boolean[]>
+{
+    private _data: boolean[];
+
+    constructor(open: boolean)
+    {
+        this._data = [ open ];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    {
+        return;
+    }
+}
+
+export const SendRpPhoneVisible = (open: boolean): void =>
+    SendMessageComposer(new RpPhoneVisibleComposer(open));
 
 // ---- the store ----------------------------------------------------------
 // A plain module singleton, like MacroState, and for the same reason: the
@@ -193,7 +221,10 @@ export const RegisterRpPhoneStateMessages = () =>
 
     connection.registerMessages({
         events: new Map<number, Function>([ [ RP_PHONE_STATE, RpPhoneStateEvent ] ]),
-        composers: new Map<number, Function>([ [ RP_SAVE_PHONE_STATE, RpSavePhoneStateComposer ] ])
+        composers: new Map<number, Function>([
+            [ RP_SAVE_PHONE_STATE, RpSavePhoneStateComposer ],
+            [ RP_PHONE_VISIBLE, RpPhoneVisibleComposer ]
+        ])
     });
 
     // Registered here rather than from a hook - see "the store" above.
