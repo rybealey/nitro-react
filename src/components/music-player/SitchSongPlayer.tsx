@@ -134,6 +134,22 @@ export const SitchSongPlayer: FC<{}> = props =>
 
             if(!state.inJam || (state.current?.videoId !== playing.videoId)) return;
 
+            // ONLY WHILE IT IS ACTUALLY PLAYING. This block used to run from the
+            // moment the player object existed, and for a guest joining a song
+            // already in progress that broke it outright: a loading player
+            // reports its position as ZERO, so against a jam forty seconds in
+            // the gap read as forty, and the corrector below seeked - every
+            // second, on top of a video still trying to load, restarting the
+            // buffering each time. The song never started.
+            //
+            // It only showed for a guest joining mid-song, because that is the
+            // only case where the gap is large before anything is playing: the
+            // host, and a guest on the next song, both start from zero with
+            // nothing to correct.
+            const playerState = player.getPlayerState?.();
+
+            if(playerState !== (window as any).YT.PlayerState.PLAYING) return;
+
             // The server starts a track not knowing how long it is; whoever's
             // player finds out first says so, and everyone else's report is
             // ignored. Sent once, while the length is still unknown.
@@ -193,8 +209,35 @@ export const SitchSongPlayer: FC<{}> = props =>
         const playing = (player.getPlayerState() === (window as any).YT.PlayerState.PLAYING);
         const paused = (songPaused || jamPaused);
 
-        if(paused && playing) player.pauseVideo?.();
-        else if(!paused && !playing) player.playVideo?.();
+        if(paused && playing)
+        {
+            player.pauseVideo?.();
+
+            return;
+        }
+
+        if(paused || playing) return;
+
+        // COMING BACK TO A JAM CATCHES UP FIRST.
+        //
+        // A guest's pause stops only their own player; the jam carries on
+        // without them, so pressing play again would resume them exactly as far
+        // behind as their pause was long. The drift corrector would eventually
+        // notice - but only past three seconds, and a second late, so a short
+        // pause left them quietly out of step for the rest of the song with
+        // nothing to fix it.
+        //
+        // Seeking before playing rather than after: playing first would put out
+        // the wrong few hundred milliseconds of audio before the jump.
+        const playingSong = GetSitchSong();
+        const state = GetJamState();
+
+        if(playingSong?.jamId && state.inJam && !state.paused && (state.current?.videoId === playingSong.videoId))
+        {
+            player.seekTo?.(Math.max(0, ((Date.now() - state.current.startedAtMs) / 1000)), true);
+        }
+
+        player.playVideo?.();
     }, [ songPaused, jamPaused, song?.videoId ]);
 
     if(!song) return null;

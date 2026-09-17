@@ -2703,6 +2703,60 @@ $phone-scale: 0.8;
         text-overflow: ellipsis;
     }
 
+    // RED, for the two ways a session ends. Red appears nowhere else in this
+    // app - the whole thing is one green accent on a dark ground - which is
+    // exactly why it is right here: these are the only controls that take
+    // something away from other people.
+    $mu-red: #e2453c;
+
+    // The host's, at the foot of a sheet they had to open. Not within a thumb's
+    // width of Invite.
+    .phone-music-endjam {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 14px;
+        height: 40px;
+        border-radius: 20px;
+        border: 1px solid rgba($mu-red, .5);
+        color: $mu-red;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        transition: transform .12s ease, background .12s ease;
+
+        .phone-pi { color: inherit; }
+
+        &:active { transform: scale(.97); background: rgba($mu-red, .12); opacity: 1; }
+    }
+
+    // The guest's, on the screen itself, because leaving is the thing a guest
+    // most needs to find and a sheet is somewhere you have to know to look.
+    //
+    // 34px rather than the app's usual 48: this column is fixed, does not
+    // scroll, and has twice run out of room - the source line below is what
+    // gets pushed off the phone when it does.
+    .phone-music-leavejam {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin: 8px 22px 0;
+        height: 34px;
+        border-radius: 17px;
+        border: 1px solid rgba($mu-red, .5);
+        color: $mu-red;
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        transition: transform .12s ease, background .12s ease;
+        animation: phone-cal-rise .24s cubic-bezier(.2, .8, .2, 1) both;
+
+        .phone-pi { color: inherit; }
+
+        &:active { transform: scale(.97); background: rgba($mu-red, .12); opacity: 1; }
+    }
+
     .phone-music-invite-empty {
         padding: 14px 2px 6px;
         font-size: calc(12px * var(--ph-text-scale, 1));

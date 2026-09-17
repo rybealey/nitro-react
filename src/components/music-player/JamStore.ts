@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import {
-    RpJamAddComposer, RpJamInviteComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
+    RpJamAddComposer, RpJamEndComposer, RpJamInviteComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
     RpJamRemoveComposer, RpJamReportComposer, RpJamSkipComposer, RpJamStartComposer, RpJamStateRequestComposer
 } from '../../api/rp-phone/RpJamMessages';
 
@@ -88,6 +88,14 @@ export const InviteToJam = (username: string) => SendMessageComposer(new RpJamIn
 export const JoinJam = (jamId: number) => SendMessageComposer(new RpJamJoinComposer(jamId));
 
 export const LeaveJam = () => SendMessageComposer(new RpJamLeaveComposer());
+
+/// The HOST's, and not the same button as leaving.
+///
+/// A host who LEAVES hands the jam to whoever has been in it longest and it
+/// carries on without them; a host who ENDS it stops it and everybody goes back
+/// to their own ears. Both are things you might want at the end of a session -
+/// "I am done" and "we are done" - so neither stands in for the other.
+export const EndJam = () => SendMessageComposer(new RpJamEndComposer());
 
 export const AddToJam = (url: string) => SendMessageComposer(new RpJamAddComposer(url));
 
