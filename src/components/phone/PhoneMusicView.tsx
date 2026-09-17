@@ -188,7 +188,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             <div className="phone-calendar-scrim" onClick={ event => setRequesting(false) } />
             <div className="phone-calendar-sheet phone-music-sheet">
                 <div className="phone-calendar-grabber" />
-                <div className="phone-music-sheet-title">Request a song</div>
+                <div className="phone-music-sheet-title">Request a song in this room</div>
                 <div className="phone-music-sheet-sub">
                     { queue.length ? `Paste a YouTube link. It joins this room's queue behind ${ queue.length } ${ (queue.length === 1) ? 'other' : 'others' }.` : "Paste a YouTube link. This room's queue is empty, so it plays next." }
                 </div>
@@ -371,7 +371,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     { present &&
                         <div className="phone-music-pill phone-tap" onClick={ openRequest }>
                             <PhoneIcon icon="plus" size={ 16 } />
-                            Request a song
+                            Request a song in this room
                         </div> }
                 </> }
             { current &&
@@ -448,14 +448,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 
     const queueScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-left', () => go('now'), 'QUEUE') }
+            { topBar('chevron-left', () => go('now'), 'THIS ROOM') }
             <div className="phone-music-list">
                 { current &&
                     <>
-                        <div className="phone-music-section">Now playing</div>
+                        <div className="phone-music-section">Playing in this room</div>
                         { queueRow(current, 0, true) }
                     </> }
-                <div className="phone-music-section">Next in queue</div>
+                <div className="phone-music-section">Next in this room</div>
                 { (queue.length === 0) &&
                     <div className="phone-music-emptyline">{ present ? 'Nothing queued yet. Add a song and it plays next.' : 'No jukebox in this room.' }</div> }
                 { queue.map((entry, index) => queueRow(entry, index)) }
@@ -465,7 +465,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { present &&
                 <div className="phone-music-pill phone-tap" onClick={ openRequest }>
                     <PhoneIcon icon="plus" size={ 16 } />
-                    Add a song
+                    Add a song to this room
                 </div> }
             <div className="phone-music-note">{ present
                 ? (canManage ? 'Staff can remove any request. Players can only remove their own.' : 'One request at a time per player. Remove yours to request another.')
