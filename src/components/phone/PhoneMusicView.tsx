@@ -223,6 +223,17 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const toggleRadio = () =>
     {
         StopSitchSong();
+
+        // Pressing play is an explicit "I want to hear this", so it lifts a
+        // mute rather than playing into one.
+        //
+        // NOT the override this replaced. That read `phoneOn ? false : muted`
+        // in the engine and left the mute set underneath, so the speaker went on
+        // showing muted while sound came out, and pausing put the silence back
+        // with no way to see why. This CLEARS it: one piece of state, changed
+        // out in the open, and both speakers follow.
+        if(!phoneOn) SetJukeboxMuted(false);
+
         SetJukeboxPhoneOn(!phoneOn);
     }
 
