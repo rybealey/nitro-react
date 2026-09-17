@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
 import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, StopSitchSong, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
+import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 import { PhoneMarquee } from './PhoneMarquee';
@@ -74,8 +74,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ personalUrl, setPersonalUrl ] = useState('');
     const personal = useSitchSong();
     const personalPlayback = useSitchPlayback();
-    // your song wins: it is the one taking your ears
-    const hero = (personal ?? current);
     const personalPaused = useSitchSongPaused();
     // The same answer the room HUD's speaker gives. A song of your own already
     // silences the room - the audio engine yields to it - so the room is muted
@@ -85,6 +83,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // them back, and both speakers say so.
     const songHasEars = (!!personal && !personalPaused);
     const roomSilenced = (muted || songHasEars);
+    // The hero is whatever you can HEAR, so a song of yours that is PAUSED is
+    // not it - the room has your ears back and the cover should say so.
+    const hero = (songHasEars ? personal : current);
     const personalQueue = useSitchQueue();
     const personalRepeat = useSitchRepeat();
     const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
@@ -221,19 +222,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         else showToast('Added to your queue.');
     }
 
-    const stopPersonal = () =>
-    {
-        StopSitchSong();
-        showToast('Stopped your song.');
-    }
-
-    // Tuning in is the inverse of a Sitch profile song taking over, and it is
-    // the one control a listener can always reach: the stop button for a song
-    // lives on the profile that started it, which may be several taps away.
     const toggleRadio = () =>
     {
-        StopSitchSong();
-
+        // Your session is NOT cleared here. This used to call StopSitchSong,
+        // which threw away the song AND the whole queue - a hangover from when
+        // this button meant "tune in" and starting the room instead of your own
+        // song was a decision to abandon it. It is a pause now, on both sides:
+        // your session waits, paused, until you go back and unpause it.
+        //
         // Pressing play is an explicit "I want to hear this", so it lifts a
         // mute rather than playing into one.
         //
@@ -319,26 +315,15 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     //
     // A song playing only for you is also easy to forget about, and until this
     // the only stop button was on the profile that started it.
+    // Only the start. A session you already have is reached by the green button
+    // beside this one; the row that used to sit here repeated the hero above it
+    // and is gone with it.
     const personalSection = (
         <div className="phone-music-personal">
-            { personal &&
-                <div className="phone-tap phone-music-row is-playing" onClick={ event => go('personal') }>
-                    <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
-                    <div className="phone-music-row-text">
-                        <PhoneMarquee className="phone-music-row-title" text={ personal.title || 'Your song' } />
-                        <div className="phone-music-row-by">{ personal.author || 'Playing in your ears only' }</div>
-                    </div>
-                    { eq }
-                    { /* the row opens the screen, so the stop has to stop there */ }
-                    <div className="phone-tap phone-music-rowbtn" title="Stop" onClick={ event => { event.stopPropagation(); stopPersonal(); } }>
-                        <PhoneIcon icon="stop" size={ 17 } />
-                    </div>
-                </div> }
-            { !personal &&
-                <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
-                    <PhoneIcon icon="play" size={ 15 } />
-                    Start your own jam session
-                </div> }
+            <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
+                <PhoneIcon icon="play" size={ 15 } />
+                Start your own jam session
+            </div>
         </div>
     );
 
@@ -453,31 +438,37 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                  art-and-title shape. That was the duplicate: two songs drawn,
                  one audible. One song here, ever; the room keeps its name on its
                  own button. */ }
-            <div className={ `phone-music-coverwrap${ personal ? ' phone-tap' : '' }` } onClick={ event => (personal && go('personal')) }>
+            <div className={ `phone-music-coverwrap${ songHasEars ? ' phone-tap' : '' }` } onClick={ event => (songHasEars && go('personal')) }>
                 <div className={ `phone-music-cover${ hero ? ' is-playing' : ' is-empty' }` }>
                     { hero
                         ? <img src={ `https://i.ytimg.com/vi/${ hero.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         : <PhoneIcon icon="waveform-lines" size={ 88 } /> }
                 </div>
             </div>
-            <div className={ `phone-music-titles${ personal ? ' phone-tap' : '' }` } onClick={ event => (personal && go('personal')) }>
+            <div className={ `phone-music-titles${ songHasEars ? ' phone-tap' : '' }` } onClick={ event => (songHasEars && go('personal')) }>
                 <div className="phone-music-titles-text">
                     { hero &&
-                        <PhoneMarquee className="phone-music-nowkicker" text={ personal
+                        <PhoneMarquee className="phone-music-nowkicker" text={ songHasEars
                             ? 'JUST FOR YOU'
                             : `NOW PLAYING${ roomName ? ` (IN ${ roomName.toUpperCase() })` : '' }` } /> }
-                    <PhoneMarquee className="phone-music-title" text={ personal ? (personal.title || 'Your song') : (current ? current.title : 'No track is playing') } />
-                    <div className="phone-music-sub is-wrap">{ personal
+                    <PhoneMarquee className="phone-music-title" text={ songHasEars ? (personal.title || 'Your song') : (current ? current.title : 'No track is playing') } />
+                    <div className="phone-music-sub is-wrap">{ songHasEars
                         ? personal.author
                         : (current
                             ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
                             : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.')) }</div>
                 </div>
             </div>
-            { /* Only the way IN to a song of your own. Once there is one it is
-                 the hero above, and a row repeating it is the duplicate we just
-                 took out. */ }
-            { !personal && personalSection }
+            { /* A session you already have gets a way back into it; one you do
+                 not have gets a way to start one. Either way it is the green
+                 button, because playing something of your own is the thing you
+                 can always do - the room's half below needs a jukebox. */ }
+            { personal
+                ? <div className="phone-tap phone-music-pill" onClick={ event => go('personal') }>
+                    <PhoneIcon icon="waveform-lines" size={ 16 } />
+                    Your jam session
+                </div>
+                : personalSection }
             { /* The room's half. With your song on the cover this button is the
                  only thing naming the room's, so it carries the title. */ }
             { current &&
