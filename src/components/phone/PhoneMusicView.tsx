@@ -399,10 +399,15 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             </div>
         )
         : (
-            <div className={ `phone-music-source${ roomPaused ? '' : ' is-on' }` }>
-                <PhoneIcon icon={ roomPaused ? 'pause' : 'radio' } size={ 14 } />
-                <span>{ roomPaused ? 'Paused for you' : 'Playing on the room jukebox' }</span>
-            </div>
+            // Nothing when paused. The button has turned back into a play, the
+            // cover has stopped pulsing and the sound has gone - a line saying
+            // so as well is the fourth thing telling you the same fact.
+            roomPaused ? null : (
+                <div className="phone-music-source is-on">
+                    <PhoneIcon icon="radio" size={ 14 } />
+                    <span>Playing on the room jukebox</span>
+                </div>
+            )
         ));
 
 
