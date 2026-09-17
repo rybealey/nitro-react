@@ -83,11 +83,10 @@ export const MusicPlayerView: FC<{}> = props =>
     const duration = (current?.durationSec ?? 0);
     // Capped at the duration so a track that has run over does not read past its
     // own end while the server works out that it is finished.
-    const clock = (current
-        ? ((duration > 0)
-            ? `${ FormatClock(Math.min(elapsed, duration)) } / ${ FormatClock(duration) }`
-            : FormatClock(elapsed))
-        : '');
+    const elapsedText = (current ? FormatClock((duration > 0) ? Math.min(elapsed, duration) : elapsed) : '');
+    // 'live' when nobody has reported a length yet - there is no destination to
+    // name, and a blank right end would look like the number failed to load.
+    const durationText = ((duration > 0) ? FormatClock(duration) : 'live');
 
     const progress = ((duration > 0) ? Math.min(100, ((elapsed / duration) * 100)) : 0);
 
@@ -123,9 +122,6 @@ export const MusicPlayerView: FC<{}> = props =>
                         <div className="music-player-kicker-row">
                             <SiriWave className="music-player-wave" />
                             <span className="music-player-kicker">{ current ? 'NOW PLAYING' : 'NOTHING PLAYING' }</span>
-                            { /* In the kicker's own row, so the panel gains a
-                                 readout without gaining a line. */ }
-                            { !!clock && <span className="music-player-clock">{ clock }</span> }
                         </div>
                         { /* Scrolls when it does not fit, the same component the
                              phone uses - its styles moved out of the phone's scope
@@ -140,7 +136,19 @@ export const MusicPlayerView: FC<{}> = props =>
                              which is also what tells it apart at a glance from
                              the volume beside it, which has one. */ }
                         { current &&
-                            <div className="music-player-progress" style={ { '--fill': `${ progress }%` } as React.CSSProperties } /> }
+                            <>
+                                <div className="music-player-progress" style={ { '--fill': `${ progress }%` } as React.CSSProperties } />
+                                { /* At the bar's own ends: the left one travels
+                                     with the fill, the right one is where it is
+                                     heading. It sat in the kicker row before, in a
+                                     180px panel next to a nowrap label that would
+                                     not yield - so the row overflowed and the
+                                     clock, being last, was what got clipped. */ }
+                                <div className="music-player-times">
+                                    <span>{ elapsedText }</span>
+                                    <span>{ durationText }</span>
+                                </div>
+                            </> }
                     </div>
                 </div>
                 <div className="music-player-controls">

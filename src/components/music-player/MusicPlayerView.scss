@@ -144,9 +144,16 @@ $player-teal: #1E7295;
         background: linear-gradient(90deg, $player-plum, $player-teal) 0 0 / var(--fill, 0%) 100% no-repeat, rgba($player-ink, 0.15);
     }
 
-    .music-player-clock {
-        margin-left: auto;
-        flex: none;
+    // The bar's two ends. Tabular figures, so the digits do not shuffle sideways
+    // every second as their widths change.
+    //
+    // This was one string pushed to the end of the kicker row, in a 180px panel
+    // beside a nowrap label that would not yield - so the row overflowed and the
+    // clock, being last, was what got clipped.
+    .music-player-times {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2px;
         font-size: 9px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
