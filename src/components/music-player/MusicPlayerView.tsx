@@ -32,6 +32,11 @@ export const MusicPlayerView: FC<{}> = props =>
     // happily beside it - nothing on screen said why, and the only way out was
     // the phone. One fact, shown wherever it is true.
     const silenced = (muted || roomPaused || songHasEars);
+    // A slider at the bottom is silence too, so the speaker says so. Kept apart
+    // from `silenced` on purpose: that one decides what a CLICK does, and
+    // lifting a mute you never set would leave the volume at zero and the sound
+    // still off - a button that appears to do nothing.
+    const looksSilent = (silenced || (volume === 0));
 
     // Double-clicking the jukebox summons Siri. The renderer's jukebox
     // furni logic swallows the generic double-click and fires the
@@ -105,7 +110,7 @@ export const MusicPlayerView: FC<{}> = props =>
 
                          react-icons svgs are React-managed, so a direct onClick
                          is safe here (unlike the FA kit's swapped-in icons) */ }
-                    { silenced
+                    { looksSilent
                         ? <FaVolumeMute
                             className={ `fa-icon music-player-mute is-muted${ songHasEars ? ' is-forced' : '' }` }
                             title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : (roomPaused ? 'Paused - click to listen again' : 'Unmute') }

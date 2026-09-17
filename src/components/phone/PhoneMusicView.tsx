@@ -565,7 +565,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                          song. */ }
                     <div className="phone-music-volume">
                         <div className={ `phone-tap phone-music-volbtn${ songMuted ? ' is-muted' : '' }` } title={ songMuted ? 'Unmute your song' : 'Mute your song' } onClick={ event => SetSongMuted(!songMuted) }>
-                            <PhoneIcon icon={ songMuted ? 'volume-x' : 'volume-low' } size={ 13 } />
+                            <PhoneIcon icon={ (songMuted || (songVolume === 0)) ? 'volume-x' : 'volume-low' } size={ 13 } />
                         </div>
                         <input type="range" min={ 0 } max={ 100 } value={ songVolume } style={ { '--fill': `${ songVolume }%` } as React.CSSProperties } onChange={ event => SetSongVolume(parseInt(event.target.value)) } />
                         <PhoneIcon icon="volume-high" size={ 13 } />
@@ -668,7 +668,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-sidebtn${ roomSilenced ? ' is-muted' : '' }` }
                             title={ personal ? 'Your own song is playing - stop it to hear the room' : (muted ? 'Unmute' : 'Mute') }
                             onClick={ event => (!personal && SetJukeboxMuted(!muted)) }>
-                            <PhoneIcon icon={ roomSilenced ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
+                            { /* zero is silence, whatever the mute says */ }
+                            <PhoneIcon icon={ (roomSilenced || (volume === 0)) ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
                         { /* Shown as paused whenever you cannot hear it, whether
                              that is your own pause or your own song holding the
