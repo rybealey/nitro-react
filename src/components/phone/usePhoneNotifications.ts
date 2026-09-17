@@ -497,6 +497,29 @@ const usePhoneNotificationsState = () =>
         commit(listRef.current.map(entry => (((entry.app === app) && (entry.targetId === targetId)) ? { ...entry, seen: true } : entry)));
     }, [ commit ]);
 
+    /// Clears anything this app can no longer open.
+    ///
+    /// Calendar, Notes, Photos and News each clear ONE notification at a time,
+    /// when the player opens the thing it is about. That is the right rule
+    /// while the thing still exists - and a trap when it does not. A cancelled
+    /// event is the clearest case: RpDeleteCalendarEventEvent hard-deletes the
+    /// row and THEN tells everybody, so the notification arrives pointing at an
+    /// id that is already gone. There is no sheet left to open, so the only way
+    /// to clear it was the Notification Center, which is behind a tap on the
+    /// status bar that nobody finds by accident. The badge looked permanent.
+    ///
+    /// So: when an app has loaded its list, whatever it was told about that is
+    /// not in that list is something it can never show, and is marked read.
+    const markGoneSeen = useCallback((app: NotifyApp, liveTargetIds: number[]) =>
+    {
+        const live = new Set(liveTargetIds);
+        const gone = (entry: PhoneNotification) => ((entry.app === app) && !live.has(entry.targetId));
+
+        if(!listRef.current.some(entry => (!entry.seen && gone(entry)))) return;
+
+        commit(listRef.current.map(entry => (gone(entry) ? { ...entry, seen: true } : entry)));
+    }, [ commit ]);
+
     /// Clears a whole app. The Center's sweep uses it, and so does Sitch's
     /// Activity tab - not because opening an app should clear it (Calendar,
     /// News, Notes and Photos all clear one item at a time, when you open that
@@ -548,7 +571,7 @@ const usePhoneNotificationsState = () =>
         return counts;
     }, [ kept ]);
 
-    return { notifications: kept, banners, unseen, context, notify, markSeen, markAppSeen, markAllSeen, clearAll, dismissBanner };
+    return { notifications: kept, banners, unseen, context, notify, markSeen, markGoneSeen, markAppSeen, markAllSeen, clearAll, dismissBanner };
 }
 
 export const usePhoneNotifications = () => useBetween(usePhoneNotificationsState);

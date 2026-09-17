@@ -80,7 +80,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const [ loaded, setLoaded ] = useState(false);
     const [ selected, setSelected ] = useState<Date>(() => startOfDay(HotelDate()));
     const [ openEventId, setOpenEventId ] = useState(0);
-    const { markSeen = null } = usePhoneNotifications();
+    const { markSeen = null, markGoneSeen = null } = usePhoneNotifications();
     const [ draft, setDraft ] = useState<Draft>(null);
     const [ confirmDelete, setConfirmDelete ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
@@ -112,6 +112,21 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
         setDraft(null);
         setConfirmDelete(false);
     });
+
+    // Anything the calendar was told about that is not on the calendar any more
+    // can never be opened, so opening the app is as close to reading it as the
+    // player can get. A cancelled event is the case this exists for: the row is
+    // deleted before the notification goes out, so its badge used to sit there
+    // for good.
+    //
+    // Gated on `loaded` so an empty list before the first packet does not sweep
+    // notifications the calendar simply has not heard about yet.
+    useEffect(() =>
+    {
+        if(!loaded || !markGoneSeen) return;
+
+        markGoneSeen('calendar', events.map(item => item.id));
+    }, [ loaded, events, markGoneSeen ]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const nowRef = useRef<HTMLDivElement>(null);
