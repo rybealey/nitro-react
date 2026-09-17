@@ -17,7 +17,7 @@ export const MusicPlayerView: FC<{}> = props =>
     const { present, current, queue } = useJukeboxState();
     // volume and mute are shared with the phone's Music app; the audio itself
     // plays from JukeboxAudioEngine (mounted once at the root), never here
-    const { phoneOn, volume, muted } = useJukeboxPrefs();
+    const { volume, muted } = useJukeboxPrefs();
 
     // Double-clicking the jukebox summons Siri. The renderer's jukebox
     // furni logic swallows the generic double-click and fires the

@@ -10,14 +10,14 @@ import { useSitchSong } from './SitchSongStore';
 // and there is never a second player to overlap the first.
 //
 // Plays when the station has a track AND either the phone is tuned in
-// (prefs.phoneOn - the Music app's play/pause) or this room has a jukebox.
+// (prefs.roomPaused - the Music app's play/pause) and this room has a jukebox.
 // With the phone on, the phone is the source: the room panel's mute is
 // ignored, so walking into a jukebox room changes nothing you hear.
 export const JukeboxAudioEngine: FC<{}> = props =>
 {
     const { roomSession = null } = useRoom();
     const { present, current } = useJukeboxState();
-    const { phoneOn, volume, muted } = useJukeboxPrefs();
+    const { roomPaused, volume, muted } = useJukeboxPrefs();
     // A favorite song playing off somebody's Sitch profile takes the ears for
     // as long as it lasts. Spotify was already switched off by PlaySitchSong -
     // that is a real stop the player can see - but a jukebox belongs to the
@@ -57,7 +57,14 @@ export const JukeboxAudioEngine: FC<{}> = props =>
         if(!roomSession) SetJukeboxState({ present: false, current: null, queue: [] });
     }, [ roomSession ]);
 
-    const shouldPlay = (!!current && (phoneOn || present) && !sitchSong);
+    // Your pause is the only thing between you and the room's track now.
+    //
+    // This read `(phoneOn || present)`, which per-room queues made permanently
+    // true: a current track only exists where a jukebox stands, so present was
+    // true whenever current was, and the app's play/pause could not affect the
+    // sound at all. present is not consulted here any more for the same reason -
+    // it is implied by there being something to play.
+    const shouldPlay = (!!current && !roomPaused && !sitchSong);
 
     if(!shouldPlay) return null;
 

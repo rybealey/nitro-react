@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
-import { SetJukeboxMuted, SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
@@ -58,7 +58,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 {
     const { onBack = null } = props;
     const { current, queue, present } = useJukeboxState();
-    const { phoneOn, volume, muted } = useJukeboxPrefs();
+    const { roomPaused, volume, muted } = useJukeboxPrefs();
     // the room's own name, the same place the title card in the corner reads it
     const { navigatorData = null } = useNavigator();
     const roomName = (navigatorData?.enteredGuestRoom?.roomName || '');
@@ -232,9 +232,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         // showing muted while sound came out, and pausing put the silence back
         // with no way to see why. This CLEARS it: one piece of state, changed
         // out in the open, and both speakers follow.
-        if(!phoneOn) SetJukeboxMuted(false);
+        if(roomPaused) SetJukeboxMuted(false);
 
-        SetJukeboxPhoneOn(!phoneOn);
+        SetJukeboxRoomPaused(!roomPaused);
     }
 
     // The request sheet is shared in spirit with the room jukebox panel and
@@ -399,9 +399,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             </div>
         )
         : (
-            <div className={ `phone-music-source${ phoneOn ? ' is-on' : '' }` }>
-                <PhoneIcon icon={ phoneOn ? 'mobile-screen' : (present ? 'radio' : 'mobile-screen') } size={ 14 } />
-                <span>{ phoneOn ? 'Playing on your phone' : (present ? 'Playing on the room jukebox' : 'Paused on your phone') }</span>
+            <div className={ `phone-music-source${ roomPaused ? '' : ' is-on' }` }>
+                <PhoneIcon icon={ roomPaused ? 'pause' : 'radio' } size={ 14 } />
+                <span>{ roomPaused ? 'Paused for you' : 'Playing on the room jukebox' }</span>
             </div>
         ));
 
@@ -601,7 +601,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { current &&
                 <div className="phone-music-now" key={ current.videoId }>
                     <div className="phone-music-coverwrap">
-                        <div className={ `phone-music-cover${ phoneOn ? ' is-playing' : '' }` }>
+                        <div className={ `phone-music-cover${ roomPaused ? '' : ' is-playing' }` }>
                             <img src={ art } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         </div>
                     </div>
@@ -637,8 +637,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-sidebtn${ muted ? ' is-muted' : '' }` } title={ muted ? 'Unmute' : 'Mute' } onClick={ event => SetJukeboxMuted(!muted) }>
                             <PhoneIcon icon={ muted ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
-                        <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => toggleRadio() }>
-                            <PhoneIcon icon={ phoneOn ? 'pause' : 'play' } size={ 26 } />
+                        <div className={ `phone-tap phone-music-play${ roomPaused ? '' : ' is-on' }` } title={ roomPaused ? 'Listen' : 'Pause (just for you)' } onClick={ event => toggleRadio() }>
+                            <PhoneIcon icon={ roomPaused ? 'play' : 'pause' } size={ 26 } />
                         </div>
                         { canManage &&
                             <div className="phone-tap phone-music-sidebtn is-skip" title="Skip for everyone" onClick={ event => setConfirmSkip(true) }>

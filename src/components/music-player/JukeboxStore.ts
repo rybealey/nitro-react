@@ -18,15 +18,22 @@ export interface JukeboxState
 
 export interface JukeboxPrefs
 {
-    // the phone's play/pause: this player's own on/off switch for tuning in
-    // from anywhere. Survives closing the phone (and the browser).
-    phoneOn: boolean;
+    // The phone's play/pause, as a PAUSE: have YOU stopped listening to this
+    // room's jukebox. False by default, because a jukebox plays out loud to the
+    // room and arriving to silence would be the surprise.
+    //
+    // It replaces phoneOn, which asked the opposite question - "are you tuning
+    // in from elsewhere" - and stopped meaning anything when queues became
+    // per-room: there is no elsewhere to tune in from, and `phoneOn || present`
+    // was therefore always true, which is why the button did nothing at all.
+    // New storage key, so nobody inherits a stale answer to the old question.
+    roomPaused: boolean;
     volume: number;
     // the room panel's mute; the phone source ignores it
     muted: boolean;
 }
 
-const PHONE_KEY = 'pixelrp.music.phone';
+const ROOM_PAUSED_KEY = 'pixelrp.jukebox.roompaused';
 const VOLUME_KEY = 'pixelrp.jukebox.volume';
 const MUTED_KEY = 'pixelrp.jukebox.muted';
 
@@ -44,7 +51,7 @@ const write = (key: string, value: string) =>
 
 let state: JukeboxState = { present: false, current: null, queue: [] };
 let prefs: JukeboxPrefs = {
-    phoneOn: (read(PHONE_KEY) === 'true'),
+    roomPaused: (read(ROOM_PAUSED_KEY) === 'true'),
     volume: (() => { const stored = parseInt(read(VOLUME_KEY)); return isNaN(stored) ? 50 : Math.min(100, Math.max(0, stored)); })(),
     muted: (read(MUTED_KEY) === 'true')
 };
@@ -71,10 +78,10 @@ export const SetJukeboxPresent = (present: boolean) =>
     notify();
 }
 
-export const SetJukeboxPhoneOn = (phoneOn: boolean) =>
+export const SetJukeboxRoomPaused = (roomPaused: boolean) =>
 {
-    prefs = { ...prefs, phoneOn };
-    write(PHONE_KEY, phoneOn.toString());
+    prefs = { ...prefs, roomPaused };
+    write(ROOM_PAUSED_KEY, roomPaused.toString());
     notify();
 }
 

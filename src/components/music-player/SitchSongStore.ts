@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { SetJukeboxPhoneOn } from './JukeboxStore';
 
 // A profile's favorite song, playing for THIS player and nobody else.
 //
@@ -88,19 +87,20 @@ export const GetSitchSong = () => song;
 
 /// Start a profile's song.
 ///
-/// The Spotify radio is STOPPED rather than suppressed: phoneOn is this player's
-/// own play/pause switch, so turning it off leaves the Music app showing
-/// paused, which is the honest reading of what just happened. A jukebox in the
-/// room cannot be stopped - it belongs to the room, not to you - so that half
-/// is a yield in JukeboxAudioEngine, and the furni picks straight back up when
-/// the song ends.
+/// The room's track is yielded to rather than stopped. JukeboxAudioEngine
+/// suppresses it for as long as a song of yours is playing and picks it up
+/// again where the room has got to when yours ends - a jukebox belongs to the
+/// room, not to you.
+///
+/// It used to switch the room off here as well, through what was then the
+/// phone's own on/off. That is gone: the switch is a PAUSE now, and leaving a
+/// player paused on the room because they played something of their own is a
+/// state they never asked for and would have to undo by hand.
 export const PlaySitchSong = (next: SitchSong) =>
 {
     if(!next || !next.videoId) return;
 
     song = next;
-
-    SetJukeboxPhoneOn(false);
 
     notify();
 }
