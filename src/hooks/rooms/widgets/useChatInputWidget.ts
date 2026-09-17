@@ -200,10 +200,6 @@ const useChatInputWidgetState = () =>
                     roomSession.sendExpressionMessage(AvatarExpressionEnum.RESPECT.ordinal);
 
                     return null;
-                case ':sign':
-                    roomSession.sendSignMessage(parseInt(secondPart));
-
-                    return null;
                 case ':iddqd':
                 case ':flip':
                     GetRoomEngine().events.dispatchEvent(new RoomZoomEvent(roomSession.roomId, -1, true));
