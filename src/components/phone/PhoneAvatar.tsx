@@ -1,4 +1,4 @@
-import { CSSProperties, FC } from 'react';
+import { CSSProperties, FC, MouseEvent } from 'react';
 import { LayoutAvatarImageView, LayoutBadgeImageView } from '../../common';
 
 // Avatar used across the phone apps. A player's head renders bare: the
@@ -13,13 +13,19 @@ export const PhoneAvatarColor = (id: number): string => TILE_COLORS[ Math.abs(id
 // A tiny head (Notes collaborators, News bylines): the head-only figure
 // render scaled to `size`, bare. The initial in a pastel circle is the
 // fallback when no figure is known.
-export const PhoneFace: FC<{ id: number, figure: string, name: string, size?: number, className?: string }> = props =>
+//
+// onClick is optional and opt-in: a head is only tappable where a caller says
+// it goes somewhere, so the heads in News, Notes, Notifications and the Wallet
+// are untouched. The handler is given the event so a caller whose head sits
+// inside an already-tappable row can stop it there - that nesting is the
+// caller's to know about, not this component's.
+export const PhoneFace: FC<{ id: number, figure: string, name: string, size?: number, className?: string, onClick?: (event: MouseEvent<HTMLDivElement>) => void }> = props =>
 {
-    const { id = 0, figure = null, name = '', size = 18, className = null } = props;
+    const { id = 0, figure = null, name = '', size = 18, className = null, onClick = null } = props;
     const style = { width: size, height: size, fontSize: Math.round(size * 0.45), background: (figure ? undefined : PhoneAvatarColor(id)), '--face-scale': (size / 44) } as CSSProperties;
 
     return (
-        <div className={ `phone-face${ figure ? ' phone-face--bare' : '' }${ className ? (' ' + className) : '' }` } title={ name } style={ style }>
+        <div className={ `phone-face${ figure ? ' phone-face--bare' : '' }${ onClick ? ' phone-tap' : '' }${ className ? (' ' + className) : '' }` } title={ name } style={ style } onClick={ onClick ?? undefined }>
             { figure
                 ? <LayoutAvatarImageView figure={ figure } headOnly={ true } direction={ 2 } />
                 : <span>{ (name || '?').charAt(0).toUpperCase() }</span> }

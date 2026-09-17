@@ -316,7 +316,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
 
     const postRow = (post: SitchPost, inThread: boolean = false, canDelete: boolean = false) => (
         <div key={ post.id } className={ 'phone-sitch-post' + (inThread ? ' is-reply' : '') }>
-            <PhoneFace id={ post.userId } figure={ post.figure } name={ post.username } size={ 34 } className="phone-sitch-face" />
+            <PhoneFace id={ post.userId } figure={ post.figure } name={ post.username } size={ 34 } className="phone-sitch-face" onClick={ () => openProfile(post.userId) } />
             <div className="phone-sitch-post-body">
                 <div className="phone-sitch-post-head">
                     <div className="phone-sitch-post-name phone-tap" onClick={ () => openProfile(post.userId) }>{ post.username }</div>
@@ -547,7 +547,10 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     </> }
                 { (tab === 'activity') && (loaded && !activity.length ? emptyState('activity') : activity.map(row => (
                     <div key={ row.id } className="phone-sitch-act phone-tap" onClick={ () => (row.postId ? openThread(row.postId) : null) }>
-                        <PhoneFace id={ row.actorId } figure={ row.actorFigure } name={ row.actorName } size={ 32 } className="phone-sitch-face" />
+                        { /* the row itself opens the post being talked about, so the
+                             head has to stop the tap or you would get the profile
+                             with the thread opening on top of it */ }
+                        <PhoneFace id={ row.actorId } figure={ row.actorFigure } name={ row.actorName } size={ 32 } className="phone-sitch-face" onClick={ event => { event.stopPropagation(); openProfile(row.actorId); } } />
                         <div className="phone-sitch-act-body">
                             <div className="phone-sitch-act-text">
                                 <strong>{ row.actorName }</strong> { ACT_WORDS[row.kind] ?? 'did something' }
