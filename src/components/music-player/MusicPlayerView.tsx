@@ -135,6 +135,16 @@ export const MusicPlayerView: FC<{}> = props =>
                             { queue.length } QUEUED
                         </span> }
                 </div>
+                { /* One line, no artwork: the track above is the one with a
+                     picture, and a second thumbnail for a song nobody is
+                     hearing yet would compete with it. The label reuses the
+                     NOW PLAYING kicker rather than inventing a second idea of
+                     what a small label looks like. */ }
+                { (queue.length > 0) &&
+                    <div className="music-player-next">
+                        <span className="music-player-kicker">UP NEXT</span>
+                        <PhoneMarquee className="music-player-next-title" text={ queue[0].title } />
+                    </div> }
             </div>
         </div>
             { /* fixed-position popover above the chat bar; lives outside the

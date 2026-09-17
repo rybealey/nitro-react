@@ -204,6 +204,32 @@ $player-teal: #1E7295;
     }
 
     // opens Siri; shows the queue length when something is waiting
+    // The next track, under the one playing. The plate is already a column
+    // with a gap, so this is a second child rather than a restructure, and it is
+    // only here when something is queued - an empty queue leaves the panel the
+    // height it has always been.
+    .music-player-next {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+
+        .music-player-kicker { flex: none; }
+    }
+
+    // flex and min-width so the box is CONSTRAINED: a title that can widen its
+    // own row never overflows, and the marquee measures it as fitting and sits
+    // still. That is exactly what stopped the title above from scrolling.
+    //
+    // No display here - that belongs to .phone-marquee on the same element.
+    .music-player-next-title {
+        flex: 1;
+        min-width: 0;
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba($player-ink, 0.72);
+    }
+
     .music-player-queue {
         display: inline-flex;
         align-items: center;
