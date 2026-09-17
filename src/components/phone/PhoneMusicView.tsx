@@ -501,7 +501,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     Request a song in this room
                 </div> }
             <div className="phone-music-spacer" />
-            { songHasEars && sourceRow }
+            { /* No gate: the line already answers for all three states, and its
+                 room case is only true when a track is playing, you have not
+                 paused it, and no song of yours holds the ears.
+                 
+                 It was gated here once because it used to announce a session you
+                 had not joined, on the screen offering to join it. It reports
+                 rather than advertises now. */ }
+            { sourceRow }
         </div>
     );
 
