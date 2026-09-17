@@ -68,15 +68,17 @@ export const MusicPlayerView: FC<{}> = props =>
                     </div>
                 </div>
                 <div className="music-player-controls">
-                    { /* with the phone tuned in, the phone is the source: its
-                         play/pause owns the sound, so the room mute steps aside */ }
-                    { phoneOn &&
-                        <span className="music-player-source" title="Playing from your phone - pause it there">Phone</span> }
-                    { /* react-icons svgs are React-managed, so a direct onClick is
-                         safe here (unlike the FA kit's swapped-in icons) */ }
-                    { !phoneOn && (muted
+                    { /* Always here. It used to disappear whenever the phone was
+                         tuned in, replaced by a Phone label saying to pause it
+                         there - which was true only because mute was being
+                         overridden in that state. One mute now, so the button
+                         that sets it is always the button that sets it.
+
+                         react-icons svgs are React-managed, so a direct onClick
+                         is safe here (unlike the FA kit's swapped-in icons) */ }
+                    { muted
                         ? <FaVolumeMute className="fa-icon music-player-mute is-muted" title="Unmute" onClick={ toggleMuted } />
-                        : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } />) }
+                        : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                     <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
                         onChange={ event => updateVolume(parseInt(event.target.value)) } />
                     { /* also an entry point to Siri (same as double-clicking the

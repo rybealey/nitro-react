@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
-import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { SetJukeboxMuted, SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
@@ -58,7 +58,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 {
     const { onBack = null } = props;
     const { current, queue, present } = useJukeboxState();
-    const { phoneOn, volume } = useJukeboxPrefs();
+    const { phoneOn, volume, muted } = useJukeboxPrefs();
     // the room's own name, the same place the title card in the corner reads it
     const { navigatorData = null } = useNavigator();
     const roomName = (navigatorData?.enteredGuestRoom?.roomName || '');
@@ -617,9 +617,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     { /* the play/pause is this player's own switch: it never
                          touches the stream everyone else hears. Skip is staff
                          only and DOES move everyone on. */ }
+                    { /* The speaker is the MUTE, and it is the same mute the room
+                         HUD's speaker sets - one piece of state, two controls that
+                         agree. The slider is not behind it any more: hiding the
+                         only volume control behind the button that now does
+                         something else would have traded one for the other. */ }
                     <div className="phone-music-transport">
-                        <div className={ `phone-tap phone-music-sidebtn${ volumeOpen ? ' is-on' : '' }` } title="Volume" onClick={ event => setVolumeOpen(!volumeOpen) }>
-                            <PhoneIcon icon={ volume === 0 ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
+                        <div className={ `phone-tap phone-music-sidebtn${ muted ? ' is-muted' : '' }` } title={ muted ? 'Unmute' : 'Mute' } onClick={ event => SetJukeboxMuted(!muted) }>
+                            <PhoneIcon icon={ muted ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
                         <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => toggleRadio() }>
                             <PhoneIcon icon={ phoneOn ? 'pause' : 'play' } size={ 26 } />
@@ -635,7 +640,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <PhoneIcon icon="shield-halved" size={ 11 } />
                             <span>Staff: skip moves everyone on</span>
                         </div> }
-                    { volumeOpen &&
+                    { !muted &&
                         <div className="phone-music-volume">
                             <PhoneIcon icon="volume-low" size={ 13 } />
                             <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties } onChange={ event => SetJukeboxVolume(parseInt(event.target.value)) } />

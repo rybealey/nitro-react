@@ -61,5 +61,11 @@ export const JukeboxAudioEngine: FC<{}> = props =>
 
     if(!shouldPlay) return null;
 
-    return <JukeboxYoutubePlayer current={ current } volume={ volume } muted={ phoneOn ? false : muted } />;
+    // ONE mute, honoured whatever is tuned in. This used to read
+    // `phoneOn ? false : muted` - tapping play in the app force-unmuted you,
+    // because back then the app's play meant "listen from anywhere" and a room
+    // mute was about the furni. With per-room queues a jukebox plays out loud to
+    // the room regardless, so two competing answers to "am I hearing this" was
+    // one too many.
+    return <JukeboxYoutubePlayer current={ current } volume={ volume } muted={ muted } />;
 }

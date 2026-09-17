@@ -2271,6 +2271,10 @@ $phone-scale: 0.8;
 
         &.is-on { color: $mu-green; }
         &.is-skip { color: $mu-text; }
+        // Muted is a state, not an action, so it reads as dimmed-and-marked
+        // rather than lit - the green is-on above means "this is doing
+        // something", and a mute is the opposite of that.
+        &.is-muted { color: $mu-faint; }
         // The one button that ENDS something, so it is the one button that is
         // red - and outlined rather than filled, because the green play beside
         // it is the filled one and two solid discs would read as a pair of
