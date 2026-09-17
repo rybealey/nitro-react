@@ -1,5 +1,5 @@
 import { FC, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
+import { CreateLinkEvent, GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
 import { MESSENGER_RECEIPT_NOT_DELIVERED, MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
 import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatar } from './PhoneAvatar';
@@ -317,7 +317,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                                 <div key={ key } className="phone-thread-jam">
                                     <PhoneIcon icon="user-music" size={ 15 } />
                                     <span className="phone-thread-jam-text">{ jamInvite.text }</span>
-                                    <div className="phone-tap phone-thread-jam-join" onClick={ event => JoinJam(jamInvite.jamId) }>Join</div>
+                                    <div className="phone-tap phone-thread-jam-join" onClick={ event => { JoinJam(jamInvite.jamId); CreateLinkEvent('phone/music-jam'); } }>Join</div>
                                 </div>
                             );
                         }

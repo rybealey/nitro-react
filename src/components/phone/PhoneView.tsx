@@ -473,6 +473,14 @@ export const PhoneView: FC<{}> = props =>
                         SetMusicOpenTarget('queue');
                         show('music');
                         return;
+                    // Joining from an invite in Messages. Straight to the jam's
+                    // own screen: accepting an invite is an answer to "come and
+                    // listen", and the home screen is one more tap between
+                    // saying yes and hearing it.
+                    case 'music-jam':
+                        SetMusicOpenTarget('personal');
+                        show('music');
+                        return;
                 }
             },
             eventUrlPrefix: 'phone/'

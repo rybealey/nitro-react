@@ -113,6 +113,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
     const toastTimer = useRef<number>(0);
+    // When this screen opened, so a jam that is still on its way is given a
+    // moment to arrive before the screen decides there is not one.
+    const openedAt = useRef<number>(Date.now());
 
     const ownName = (GetSessionDataManager().userName || 'You');
 
@@ -169,8 +172,20 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         // for at exactly that moment.
         if(((view !== 'personal') && (view !== 'personalqueue')) || personal || inJam) return;
 
-        setView('home');
-    }, [ view, personal ]);
+        // AND A JAM YOU HAVE JUST ACCEPTED IS NOT HERE YET. Tapping Join in
+        // Messages opens this screen and asks the server in the same breath, so
+        // for the length of one round trip there is no jam to show - and giving
+        // up in that gap would bounce the player home a blink after they said
+        // yes, which looks exactly like the invite not working.
+        //
+        // Clearing the timer on re-run is what ends the wait early: the moment
+        // the jam lands this effect runs again and returns above. inJam is in
+        // the deps for that reason - it was missing, so this never re-ran when a
+        // jam arrived or ended, only when the song did.
+        const timer = window.setTimeout(() => setView('home'), Math.max(0, (2500 - (Date.now() - openedAt.current))));
+
+        return () => window.clearTimeout(timer);
+    }, [ view, personal, inJam ]);
 
     const openRequest = () =>
     {
