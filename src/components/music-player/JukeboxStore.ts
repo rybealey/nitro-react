@@ -70,6 +70,16 @@ let prefs: JukeboxPrefs = {
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
 
+// m:ss. Lives here because both the phone's player and the room panel show
+// the same clock, and two copies of three lines is how two clocks end up
+// disagreeing about what a minute looks like.
+export const FormatClock = (seconds: number): string =>
+{
+    const safe = Math.max(0, Math.floor(seconds));
+
+    return `${ Math.floor(safe / 60) }:${ (safe % 60).toString().padStart(2, '0') }`;
+}
+
 export const GetJukeboxState = () => state;
 
 // Which screen the music app should open on, for a caller outside it - the room

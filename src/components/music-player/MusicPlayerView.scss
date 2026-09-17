@@ -133,6 +133,18 @@ $player-teal: #1E7295;
         height: 18px;
     }
 
+    // Pushed to the end of the kicker's row and set in tabular figures, so the
+    // digits do not shuffle sideways every second as their widths change.
+    .music-player-clock {
+        margin-left: auto;
+        flex: none;
+        font-size: 9px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: rgba($player-ink, 0.55);
+        white-space: nowrap;
+    }
+
     .music-player-kicker {
         font-size: 9px;
         font-weight: 700;

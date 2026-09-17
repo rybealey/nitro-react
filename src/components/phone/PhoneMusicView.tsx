@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
-import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { FormatClock, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
@@ -46,13 +46,6 @@ interface PhoneMusicViewProps
 // next card, then the block without flex: none squashed under its own content.
 // Splitting the screen ends the arithmetic rather than winning it.
 type MusicView = 'home' | 'personal' | 'personalqueue' | 'now' | 'queue';
-
-const formatClock = (seconds: number): string =>
-{
-    const safe = Math.max(0, Math.floor(seconds));
-
-    return `${ Math.floor(safe / 60) }:${ (safe % 60).toString().padStart(2, '0') }`;
-}
 
 export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 {
@@ -346,7 +339,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <img src={ `https://i.ytimg.com/vi/${ current.videoId }/mqdefault.jpg` } alt="" draggable={ false } />
                     <div className="phone-music-darksheet-tracktext">
                         <div className="phone-music-darksheet-tracktitle">{ current.title }</div>
-                        <div className="phone-music-darksheet-tracksub">{ current.author ? `${ current.author } · ` : '' }requested by { byName(current.queuedBy) }{ duration > 0 ? ` · ${ formatClock(duration - elapsed) } left` : '' }</div>
+                        <div className="phone-music-darksheet-tracksub">{ current.author ? `${ current.author } · ` : '' }requested by { byName(current.queuedBy) }{ duration > 0 ? ` · ${ FormatClock(duration - elapsed) } left` : '' }</div>
                     </div>
                 </div>
                 <div className="phone-music-darksheet-title">Skip this song for everyone?</div>
@@ -547,8 +540,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <div className="phone-music-knob" style={ { left: `${ personalProgress }%` } } />
                         </div>
                         <div className="phone-music-times">
-                            <span>{ formatClock(personalPlayback.elapsedSec) }</span>
-                            <span>{ (personalPlayback.durationSec > 0) ? formatClock(personalPlayback.durationSec) : 'live' }</span>
+                            <span>{ FormatClock(personalPlayback.elapsedSec) }</span>
+                            <span>{ (personalPlayback.durationSec > 0) ? FormatClock(personalPlayback.durationSec) : 'live' }</span>
                         </div>
                     </div>
                     { /* Repeat, play, skip - the room's three slots with its
@@ -668,8 +661,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                                 <div className="phone-music-knob" style={ { left: `${ progress }%` } } />
                             </div>
                             <div className="phone-music-times">
-                                <span>{ formatClock(elapsed) }</span>
-                                <span>{ duration > 0 ? formatClock(duration) : 'live' }</span>
+                                <span>{ FormatClock(elapsed) }</span>
+                                <span>{ duration > 0 ? FormatClock(duration) : 'live' }</span>
                             </div>
                         </div> }
                     { /* the play/pause is this player's own switch: it never

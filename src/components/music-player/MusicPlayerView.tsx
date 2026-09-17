@@ -1,9 +1,9 @@
 import { RoomEngineTriggerWidgetEvent } from '@nitrots/nitro-renderer';
-import React, { FC, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { CreateLinkEvent, GetRoomEngine } from '../../api';
 import { useRoomEngineEvent } from '../../hooks';
-import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
+import { FormatClock, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { PhoneMarquee } from '../phone/PhoneMarquee';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 import { SiriView } from './SiriView';
@@ -16,6 +16,7 @@ import { SiriWave } from './SiriWave';
 export const MusicPlayerView: FC<{}> = props =>
 {
     const [ isSiriOpen, setIsSiriOpen ] = useState(false);
+    const [ now, setNow ] = useState(() => Date.now());
     const { present, current, queue } = useJukeboxState();
     // volume and mute are shared with the phone's Music app; the audio itself
     // plays from JukeboxAudioEngine (mounted once at the root), never here
@@ -66,6 +67,28 @@ export const MusicPlayerView: FC<{}> = props =>
         if(roomPaused) SetJukeboxRoomPaused(false);
     }
 
+    // A second hand, only while there is something to count. The server sends
+    // when the track started and how long it is; the rest is arithmetic, so
+    // there is nothing to ask anybody - just a reason to re-read the clock.
+    useEffect(() =>
+    {
+        if(!current) return;
+
+        const timer = window.setInterval(() => setNow(Date.now()), 1000);
+
+        return () => window.clearInterval(timer);
+    }, [ current?.videoId ]);
+
+    const elapsed = (current ? Math.max(0, (now - current.startedAtMs) / 1000) : 0);
+    const duration = (current?.durationSec ?? 0);
+    // Capped at the duration so a track that has run over does not read past its
+    // own end while the server works out that it is finished.
+    const clock = (current
+        ? ((duration > 0)
+            ? `${ FormatClock(Math.min(elapsed, duration)) } / ${ FormatClock(duration) }`
+            : FormatClock(elapsed))
+        : '');
+
     const updateVolume = (value: number) =>
     {
         SetJukeboxVolume(value);
@@ -98,6 +121,9 @@ export const MusicPlayerView: FC<{}> = props =>
                         <div className="music-player-kicker-row">
                             <SiriWave className="music-player-wave" />
                             <span className="music-player-kicker">{ current ? 'NOW PLAYING' : 'NOTHING PLAYING' }</span>
+                            { /* In the kicker's own row, so the panel gains a
+                                 readout without gaining a line. */ }
+                            { !!clock && <span className="music-player-clock">{ clock }</span> }
                         </div>
                         { /* Scrolls when it does not fit, the same component the
                              phone uses - its styles moved out of the phone's scope
