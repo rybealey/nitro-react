@@ -3,7 +3,7 @@ import { SetJukeboxPhoneOn } from './JukeboxStore';
 
 // A profile's favorite song, playing for THIS player and nobody else.
 //
-// Deliberately not part of the jukebox. The hotel station is one shared
+// Deliberately not part of the jukebox. A room's station is one shared
 // timeline everybody hears at the same offset; this is one person tapping play
 // on somebody's profile card. Nothing is sent to the server, nothing is
 // queued, and nobody else hears it - which is the promise the app made when

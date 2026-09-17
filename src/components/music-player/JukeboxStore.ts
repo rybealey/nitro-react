@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// The hotel station's state and this player's listening preferences, shared
+// The state of THIS ROOM's jukebox and this player's listening preferences, shared
 // by the room panel, the phone's Music app and the one audio engine. A plain
 // module store with subscribers (like MacroState) so all three read the same
 // truth without prop threading; the engine is the only writer of state.
@@ -10,7 +10,7 @@ export interface JukeboxQueueEntry { videoId: string; title: string; author: str
 
 export interface JukeboxState
 {
-    // this ROOM has a jukebox (the panel shows); the station itself is hotel-wide
+    // this room has a jukebox: the panel shows, and there is a station at all
     present: boolean;
     current: JukeboxCurrent | null;
     queue: JukeboxQueueEntry[];
@@ -61,6 +61,8 @@ export const SetJukeboxState = (next: JukeboxState) =>
     notify();
 }
 
+// Kept for a caller that wants to flip only the flag; leaving a room now
+// replaces the whole state, because a station belongs to the room you left.
 export const SetJukeboxPresent = (present: boolean) =>
 {
     if(state.present === present) return;

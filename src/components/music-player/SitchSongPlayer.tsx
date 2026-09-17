@@ -8,7 +8,7 @@ import { StopSitchSong, useSitchSong } from './SitchSongStore';
 // stop because the phone closed or the player walked into another room.
 //
 // A separate player from the jukebox's on purpose. JukeboxYoutubePlayer reports
-// duration and end-of-track to the hotel station, and a personal song reporting
+// duration and end-of-track to the room's station, and a personal song reporting
 // into the shared queue would advance a track nobody else has finished. The two
 // share only the IFrame API loader.
 export const SitchSongPlayer: FC<{}> = props =>

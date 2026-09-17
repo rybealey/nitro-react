@@ -8,16 +8,19 @@ import { ParseVideoId, PlaySitchSong, StopSitchSong, useSitchSong } from '../mus
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
-// Spotify app: the hotel station on your phone, in a streaming-app idiom - an
+// Spotify app: THIS ROOM's jukebox on your phone, in a streaming-app idiom - an
 // always-dark ground, big square cover, one green for "playing" and the
 // primary action, flat rows for the queue. Now Playing shows the track the
-// whole hotel hears (state is server-authoritative and pushed to everyone);
+// room hears (state is server-authoritative and pushed to the room);
 // play/pause is YOUR on/off switch - it never touches the stream - and the
 // sound comes from the one JukeboxAudioEngine at the app root, so it keeps
 // going when the phone is closed and never doubles up in a jukebox room.
 // Requests go through the same Siri-style sheet as the room jukebox.
-// Staff (RpTunesAccess) can skip the playing song - hotel-wide, so it asks
-// once - and remove any request; players can remove their own.
+// Staff (RpTunesAccess) can skip the playing song - everyone in the room, so
+// it asks once - and remove any request; players can remove their own.
+//
+// Requesting needs a jukebox in the room: a queue belongs to one, so with no
+// jukebox standing there is nothing to request into.
 //
 // JUST FOR YOU is the other half: a link played for this listener and nobody
 // else. It is the same private player a Sitch profile song uses, so it stops
@@ -119,7 +122,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         setTimeout(() => setRequesting(false), 900);
     }
 
-    // skip moves the whole hotel on, so it goes through the confirm sheet
+    // skip moves the whole room on, so it goes through the confirm sheet
     const skipNow = () =>
     {
         SendMessageComposer(new RpJukeboxSkipComposer());
@@ -187,7 +190,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <div className="phone-calendar-grabber" />
                 <div className="phone-music-sheet-title">Request a song</div>
                 <div className="phone-music-sheet-sub">
-                    { queue.length ? `Paste a YouTube link. It joins the hotel queue behind ${ queue.length } ${ (queue.length === 1) ? 'other' : 'others' }.` : 'Paste a YouTube link. The hotel queue is empty, so it plays next.' }
+                    { queue.length ? `Paste a YouTube link. It joins this room's queue behind ${ queue.length } ${ (queue.length === 1) ? 'other' : 'others' }.` : "Paste a YouTube link. This room's queue is empty, so it plays next." }
                 </div>
                 <div className={ `phone-music-siri${ sent ? ' is-sent' : '' }` }>
                     <div className="phone-music-siri-halo" />
@@ -207,7 +210,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             </div> }
                     </div>
                 </div>
-                <div className="phone-music-sheet-note">One request at a time per player. The room jukebox and this app share the same queue.</div>
+                <div className="phone-music-sheet-note">One request at a time per player in this room. The jukebox standing here and this app share the same queue.</div>
             </div>
         </>
     );
@@ -278,7 +281,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 </div>
                 <div className="phone-music-darksheet-title">Skip this song for everyone?</div>
                 <div className="phone-music-darksheet-sub">
-                    Every phone and jukebox in the hotel moves on { queue.length ? <>to <b>{ queue[0].title }</b></> : 'to silence' } right away.
+                    Everyone in this room moves on { queue.length ? <>to <b>{ queue[0].title }</b></> : 'to silence' } right away.
                     { (current.queuedBy !== ownName) && ` ${ current.queuedBy } is told it was skipped by staff.` }
                 </div>
                 <div className="phone-music-darksheet-actions">
@@ -358,13 +361,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <div className="phone-music-titles">
                         <div className="phone-music-titles-text">
                             <div className="phone-music-title">The station is quiet</div>
-                            <div className="phone-music-sub is-wrap">Nothing is queued anywhere in the hotel. Request a song and it starts right away for everyone.</div>
+                            <div className="phone-music-sub is-wrap">{ present ? 'Nothing is queued in this room. Request a song and it starts right away for everyone here.' : 'No jukebox in this room, so there is nothing to request into. Play a song just for yourself instead.' }</div>
                         </div>
                     </div>
-                    <div className="phone-music-pill phone-tap" onClick={ openRequest }>
-                        <PhoneIcon icon="plus" size={ 16 } />
-                        Request a song
-                    </div>
+                    { present &&
+                        <div className="phone-music-pill phone-tap" onClick={ openRequest }>
+                            <PhoneIcon icon="plus" size={ 16 } />
+                            Request a song
+                        </div> }
                 </> }
             { current &&
                 <div className="phone-music-now" key={ current.videoId }>
@@ -378,9 +382,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <div className="phone-music-title">{ current.title }</div>
                             <div className="phone-music-sub">{ current.author ? `${ current.author } · ` : '' }requested by { byName(current.queuedBy) }</div>
                         </div>
-                        <div className="phone-tap phone-music-addbtn" title="Request a song" onClick={ openRequest }>
-                            <PhoneIcon icon="circle-plus" size={ 26 } />
-                        </div>
+                        { present &&
+                            <div className="phone-tap phone-music-addbtn" title="Request a song" onClick={ openRequest }>
+                                <PhoneIcon icon="circle-plus" size={ 26 } />
+                            </div> }
                     </div>
                     <div className="phone-music-progress">
                         <div className="phone-music-track">
@@ -448,16 +453,19 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     </> }
                 <div className="phone-music-section">Next in queue</div>
                 { (queue.length === 0) &&
-                    <div className="phone-music-emptyline">Nothing queued yet. Add a song and it plays next.</div> }
+                    <div className="phone-music-emptyline">{ present ? 'Nothing queued yet. Add a song and it plays next.' : 'No jukebox in this room.' }</div> }
                 { queue.map((entry, index) => queueRow(entry, index)) }
                 { (queue.length > 0) &&
                     <div className="phone-music-count">{ queue.length } { (queue.length === 1) ? 'song' : 'songs' } · in the order requested</div> }
             </div>
-            <div className="phone-music-pill phone-tap" onClick={ openRequest }>
-                <PhoneIcon icon="plus" size={ 16 } />
-                Add a song
-            </div>
-            <div className="phone-music-note">{ canManage ? 'Staff can remove any request. Players can only remove their own.' : 'One request at a time per player. Remove yours to request another.' }</div>
+            { present &&
+                <div className="phone-music-pill phone-tap" onClick={ openRequest }>
+                    <PhoneIcon icon="plus" size={ 16 } />
+                    Add a song
+                </div> }
+            <div className="phone-music-note">{ present
+                ? (canManage ? 'Staff can remove any request. Players can only remove their own.' : 'One request at a time per player. Remove yours to request another.')
+                : 'This queue belongs to a jukebox, and there is none in this room.' }</div>
         </div>
     );
 
