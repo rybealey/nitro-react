@@ -83,6 +83,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // them back, and both speakers say so.
     const songHasEars = (!!personal && !personalPaused);
     const roomSilenced = (muted || songHasEars);
+    // Which session is the one in your ears. Exactly one can be, which is what
+    // makes the moving bars worth having: they are a readout of where your sound
+    // is coming from, and neither moving means nothing has it.
+    //
+    // Mute is deliberately NOT folded in. The speaker already says that, and two
+    // indicators for one fact is the redundancy we keep taking back out.
+    const roomHasEars = (!!current && !roomPaused && !songHasEars);
     // The hero is whatever you can HEAR, so a song of yours that is PAUSED is
     // not it - the room has your ears back and the cover should say so.
     const hero = (songHasEars ? personal : current);
@@ -321,7 +328,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const personalSection = (
         <div className="phone-music-personal">
             <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
-                <PhoneIcon icon="play" size={ 15 } />
+                <PhoneIcon icon="music" size={ 15 } />
                 Start your own jam session
             </div>
         </div>
@@ -465,7 +472,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                  can always do - the room's half below needs a jukebox. */ }
             { personal
                 ? <div className="phone-tap phone-music-pill" onClick={ event => go('personal') }>
-                    <PhoneIcon icon="waveform-lines" size={ 16 } />
+                    { songHasEars ? eq : <PhoneIcon icon="music" size={ 16 } /> }
                     Your jam session
                 </div>
                 : personalSection }
@@ -473,7 +480,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                  only thing naming the room's, so it carries the title. */ }
             { current &&
                 <div className="phone-music-pill is-quiet is-stacked phone-tap" onClick={ event => go('now') }>
-                    <PhoneIcon icon="waveform-lines" size={ 16 } />
+                    { roomHasEars ? eq : <PhoneIcon icon="radio" size={ 16 } /> }
                     <span className="phone-music-pilltext">
                         Join the room jukebox session
                         <PhoneMarquee className="phone-music-pillsub" text={ current.title } />
