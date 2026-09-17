@@ -236,7 +236,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                <div className="phone-music-sheet-note">The station pauses while this plays. A room jukebox keeps its own time and picks up where the room has got to when your song ends.</div>
+                <div className="phone-music-sheet-note">The room's jukebox keeps its own time while this plays, and picks up wherever the room has got to when your song ends.</div>
             </div>
         </>
     );
@@ -374,8 +374,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     </div>
                     <div className="phone-music-titles">
                         <div className="phone-music-titles-text">
-                            <div className="phone-music-title">The station is quiet</div>
-                            <div className="phone-music-sub is-wrap">{ present ? 'Nothing is queued in this room. Request a song and it starts right away for everyone here.' : 'No jukebox in this room, so there is nothing to request into. Play a song just for yourself instead.' }</div>
+                            <div className="phone-music-title">{ present ? 'Nothing playing in this room' : 'No jukebox in this room' }</div>
+                            <div className="phone-music-sub is-wrap">{ present
+                                ? 'Request a song and it starts right away for everyone here — or play one just for yourself, which nobody else hears.'
+                                : 'Nothing to request into. Play a song just for yourself instead — it follows you from room to room, and nobody else hears it.' }</div>
                         </div>
                     </div>
                 </> }
