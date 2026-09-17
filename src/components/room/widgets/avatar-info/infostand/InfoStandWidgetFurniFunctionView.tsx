@@ -560,14 +560,20 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                 </div>
                 <div className="rp-furni-function-section is-interaction">
                     <div className="rp-furni-function-legend">Interaction</div>
-                    <label className="rp-furni-function-field rp-furni-function-scope">
-                        <span>This furni only</span>
-                        <input type="checkbox" checked={ scoped } onChange={ event => setScoped(event.target.checked) } />
-                    </label>
-                    <div className="rp-furni-function-note">
-                        { scoped
-                            ? 'Behaviour, click states, walk effect, behaviour data and handitems apply to THIS placed furni alone. Name, walkability and the rest stay hotel-wide and are locked - the client stores those per furni type, not per copy, so they cannot differ between two copies of the same thing. Bed and tent cannot be scoped for the same reason.'
-                            : 'Off: every change is hotel-wide, on every copy of this furni everywhere. Turn on to scope the behaviour to this one placed furni.' }
+                    { /* The window's own switch, not a checkbox: it reads as the
+                         same kind of control as Walkable and Sittable, which is
+                         what it is. */ }
+                    <div className="rp-furni-function-row">
+                        <div className={ 'rp-furni-function-switch' + (scoped ? ' is-on' : '') }
+                            onClick={ () => setScoped(value => !value) }><span /></div>
+                        <div className="rp-furni-function-row-text">
+                            <div className="rp-furni-function-row-label">This furni only</div>
+                            <div className="rp-furni-function-row-hint">
+                                { scoped
+                                    ? 'Behaviour, click states, walk effect, behaviour data and handitems apply to this placed copy alone. The rest stay hotel-wide - the client stores names and walkability per furni type, not per copy.'
+                                    : 'Every change is hotel-wide. Turn on to scope the behaviour below to this one placed furni.' }
+                            </div>
+                        </div>
                     </div>
                     <label className="rp-furni-function-field">
                         <span>Behaviour</span>

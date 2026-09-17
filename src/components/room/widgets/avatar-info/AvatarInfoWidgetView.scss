@@ -805,11 +805,6 @@ $furni-function-on: #2e9e4f;
         pointer-events: none;
     }
 
-    .rp-furni-function-scope {
-        // The one control that changes what every other control MEANS, so it
-        // reads as a statement rather than another field.
-        font-weight: 600;
-    }
 
     .rp-furni-function-confirm {
         position: absolute;
