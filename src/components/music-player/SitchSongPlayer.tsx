@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
-import { SetSitchSongMeta, StopSitchSong, useSitchSong } from './SitchSongStore';
+import { SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, StopSitchSong, useSitchSong } from './SitchSongStore';
 
 // The one place a profile's favorite song is heard. Mounted at the app root
 // beside JukeboxAudioEngine, for the same reason that one is: audio should not
@@ -41,6 +41,19 @@ export const SitchSongPlayer: FC<{}> = props =>
                         playerRef.current.setVolume?.(GetJukeboxPrefs().volume);
                         playerRef.current.loadVideoById?.({ videoId: song.videoId });
                         loadedVideoIdRef.current = song.videoId;
+
+                        // The screen's play/pause reaches the iframe through
+                        // this. Registered on ready and dropped on unmount, so a
+                        // button pressed after the song stopped reaches nothing.
+                        SetSitchSongControls({
+                            toggle: () =>
+                            {
+                                const state = playerRef.current?.getPlayerState?.();
+
+                                if(state === (window as any).YT.PlayerState.PLAYING) playerRef.current?.pauseVideo?.();
+                                else playerRef.current?.playVideo?.();
+                            }
+                        });
                     },
                     // A song the player chose to start is not autoplay, but the
                     // browser does not know that. Fall back the way the station
@@ -73,8 +86,27 @@ export const SitchSongPlayer: FC<{}> = props =>
             });
         });
 
+        // Where the song has got to, once a second, for the progress bar. Read
+        // off the player rather than counted here: a pause, a buffer or a seek
+        // all move it, and only the player knows about any of them.
+        const clock = window.setInterval(() =>
+        {
+            const player = playerRef.current;
+
+            if(!player?.getDuration) return;
+
+            SetSitchPlayback({
+                elapsedSec: Math.floor(player.getCurrentTime?.() ?? 0),
+                durationSec: Math.floor(player.getDuration?.() ?? 0),
+                paused: (player.getPlayerState?.() === (window as any).YT.PlayerState.PAUSED)
+            });
+        }, 1000);
+
         return () =>
         {
+            window.clearInterval(clock);
+            SetSitchSongControls(null);
+            SetSitchPlayback({ elapsedSec: 0, durationSec: 0, paused: false });
             disposed = true;
             playerRef.current?.destroy?.();
             playerRef.current = null;

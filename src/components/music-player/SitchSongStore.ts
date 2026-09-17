@@ -28,6 +28,62 @@ let song: SitchSong = null;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
 
+// Where the song has got to, so its screen can draw the same progress bar and
+// transport the room's player does.
+//
+// A SEPARATE listener set from the song's, deliberately. This changes once a
+// second, and the song's subscribers include the audio engine and the Sitch
+// profile view - neither of which has any use for a clock ticking under them.
+export interface SitchPlayback
+{
+    elapsedSec: number;
+    durationSec: number;
+    paused: boolean;
+}
+
+let playback: SitchPlayback = { elapsedSec: 0, durationSec: 0, paused: false };
+
+const playbackListeners = new Set<() => void>();
+const notifyPlayback = () => playbackListeners.forEach(listener => listener());
+
+export const GetSitchPlayback = () => playback;
+
+export const SetSitchPlayback = (next: SitchPlayback) =>
+{
+    if((playback.elapsedSec === next.elapsedSec) && (playback.durationSec === next.durationSec) && (playback.paused === next.paused)) return;
+
+    playback = next;
+
+    notifyPlayback();
+}
+
+export const useSitchPlayback = (): SitchPlayback =>
+{
+    const [ , setTick ] = useState(0);
+
+    useEffect(() =>
+    {
+        const listener = () => setTick(tick => (tick + 1));
+
+        playbackListeners.add(listener);
+
+        return () => { playbackListeners.delete(listener); };
+    }, []);
+
+    return playback;
+}
+
+// The screen holds the buttons; the player holds the iframe. This is the wire
+// between them - the player registers what it can do on ready and lets go on
+// unmount, so a button pressed after the song stopped reaches nothing.
+export interface SitchSongControls { toggle: () => void; }
+
+let controls: SitchSongControls = null;
+
+export const SetSitchSongControls = (next: SitchSongControls) => { controls = next; };
+
+export const ToggleSitchSongPaused = () => controls?.toggle();
+
 export const GetSitchSong = () => song;
 
 /// Start a profile's song.

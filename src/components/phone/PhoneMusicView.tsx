@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent } from '../../hooks';
 import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { ParseVideoId, PlaySitchSong, StopSitchSong, useSitchSong } from '../music-player/SitchSongStore';
+import { ParseVideoId, PlaySitchSong, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -69,6 +69,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ personalOpen, setPersonalOpen ] = useState(false);
     const [ personalUrl, setPersonalUrl ] = useState('');
     const personal = useSitchSong();
+    const personalPlayback = useSitchPlayback();
+    const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
     const toastTimer = useRef<number>(0);
@@ -445,33 +447,57 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // Your song's own screen, the mirror of the room's. A back arrow rather than
     // the app's close chevron, because there is somewhere to go back TO now -
     // and nothing here about the room, which is the other screen's business.
+    // The same shape as the room's player, because it is the same job: a cover,
+    // what it is, where it has got to, and the controls. What differs is what
+    // the controls can do - your own song has a stop where the room's has a
+    // staff skip, because stopping yours is yours to do.
     const personalScreen = (
         <div className="phone-music-pane">
             { topBar('chevron-left', () => go('home'), 'JUST FOR YOU') }
             { personal &&
-                <>
+                <div className="phone-music-now" key={ personal.videoId }>
                     <div className="phone-music-coverwrap">
-                        <div className="phone-music-cover is-playing">
+                        <div className={ `phone-music-cover${ personalPlayback.paused ? '' : ' is-playing' }` }>
                             <img src={ `https://i.ytimg.com/vi/${ personal.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         </div>
                     </div>
                     <div className="phone-music-titles">
                         <div className="phone-music-titles-text">
-                            <div className="phone-music-nowkicker">NOW PLAYING</div>
-                            { /* The title and channel come off the player itself
-                                 once the video loads - for a second after you
-                                 paste a link there is nothing to show but the
-                                 link's own id. */ }
+                            { /* title and channel come off the running player, so
+                                 for a second after pasting there is only the id */ }
                             <div className="phone-music-title">{ personal.title || 'Your song' }</div>
-                            <div className="phone-music-sub is-wrap">{ personal.author || 'Nobody else can hear this.' }</div>
+                            <div className="phone-music-sub">{ personal.author || 'Nobody else can hear this' }</div>
                         </div>
                     </div>
-                    <div className="phone-music-spacer" />
-                    <div className="phone-tap phone-music-pill" onClick={ stopPersonal }>
-                        <PhoneIcon icon="stop" size={ 16 } />
-                        Stop
+                    <div className="phone-music-progress">
+                        <div className="phone-music-track">
+                            <div className="phone-music-fill" style={ { width: `${ personalProgress }%` } } />
+                            <div className="phone-music-knob" style={ { left: `${ personalProgress }%` } } />
+                        </div>
+                        <div className="phone-music-times">
+                            <span>{ formatClock(personalPlayback.elapsedSec) }</span>
+                            <span>{ (personalPlayback.durationSec > 0) ? formatClock(personalPlayback.durationSec) : 'live' }</span>
+                        </div>
                     </div>
-                </> }
+                    <div className="phone-music-transport">
+                        <div className={ `phone-tap phone-music-sidebtn${ volumeOpen ? ' is-on' : '' }` } title="Volume" onClick={ event => setVolumeOpen(!volumeOpen) }>
+                            <PhoneIcon icon={ volume === 0 ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
+                        </div>
+                        <div className={ `phone-tap phone-music-play${ personalPlayback.paused ? '' : ' is-on' }` } title={ personalPlayback.paused ? 'Play' : 'Pause' } onClick={ event => ToggleSitchSongPaused() }>
+                            <PhoneIcon icon={ personalPlayback.paused ? 'play' : 'pause' } size={ 26 } />
+                        </div>
+                        <div className="phone-tap phone-music-sidebtn is-skip" title="Stop" onClick={ stopPersonal }>
+                            <PhoneIcon icon="stop" size={ 22 } />
+                        </div>
+                    </div>
+                    { volumeOpen &&
+                        <div className="phone-music-volume">
+                            <PhoneIcon icon="volume-low" size={ 13 } />
+                            <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties } onChange={ event => SetJukeboxVolume(parseInt(event.target.value)) } />
+                            <PhoneIcon icon="volume-high" size={ 13 } />
+                        </div> }
+                    <div className="phone-music-spacer" />
+                </div> }
             { sourceRow }
         </div>
     );
