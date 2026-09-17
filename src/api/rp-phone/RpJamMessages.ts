@@ -22,6 +22,7 @@ const RP_JAM_SKIP = 4038;
 const RP_JAM_PAUSE = 4039;
 const RP_JAM_REPORT = 4040;
 const RP_JAM_END = 4041;
+const RP_JAM_BACK = 4042;
 
 export interface RpJamMemberData { id: number; username: string; away: boolean; }
 export interface RpJamTrackData { videoId: string; title: string; author: string; durationSec: number; elapsedSec: number; queuedBy: string; }
@@ -38,6 +39,7 @@ export class RpJamStateParser implements IMessageParser
     private _members: RpJamMemberData[];
     private _current: RpJamTrackData;
     private _queue: RpJamQueueData[];
+    private _hasPrevious: boolean;
 
     public flush(): boolean
     {
@@ -50,6 +52,7 @@ export class RpJamStateParser implements IMessageParser
         this._members = [];
         this._current = null;
         this._queue = [];
+        this._hasPrevious = false;
 
         return true;
     }
@@ -109,6 +112,11 @@ export class RpJamStateParser implements IMessageParser
             });
         }
 
+        // LAST in the packet, on purpose - see the composer. Whether anything has
+        // played yet, which is what decides if the back button steps back or only
+        // restarts.
+        this._hasPrevious = wrapper.readBoolean();
+
         return true;
     }
 
@@ -121,6 +129,7 @@ export class RpJamStateParser implements IMessageParser
     public get members(): RpJamMemberData[] { return this._members; }
     public get current(): RpJamTrackData { return this._current; }
     public get queue(): RpJamQueueData[] { return this._queue; }
+    public get hasPrevious(): boolean { return this._hasPrevious; }
 }
 
 export class RpJamStateEvent extends MessageEvent implements IMessageEvent
@@ -163,6 +172,7 @@ export class RpJamSkipComposer extends RpJamComposer {}
 export class RpJamPauseComposer extends RpJamComposer {}
 export class RpJamReportComposer extends RpJamComposer {}
 export class RpJamEndComposer extends RpJamComposer {}
+export class RpJamBackComposer extends RpJamComposer {}
 
 let registered = false;
 
@@ -187,7 +197,8 @@ export const RegisterRpJamMessages = () =>
             [ RP_JAM_SKIP, RpJamSkipComposer ],
             [ RP_JAM_PAUSE, RpJamPauseComposer ],
             [ RP_JAM_REPORT, RpJamReportComposer ],
-            [ RP_JAM_END, RpJamEndComposer ]
+            [ RP_JAM_END, RpJamEndComposer ],
+            [ RP_JAM_BACK, RpJamBackComposer ]
         ])
     });
 

@@ -215,6 +215,32 @@ export const SitchSongPlayer: FC<{}> = props =>
         player.setVolume?.(songVolume);
     }, [ songVolume, songMuted, song?.videoId ]);
 
+    // A RESTART is the same song with its clock wound back, which nothing else
+    // here would notice: the song's own screen keys off the video id, and that
+    // has not changed. Without this the only thing that would eventually catch
+    // it is the once-a-second drift check - so pressing back would leave the
+    // music running on for another second before jumping, which reads as the
+    // button not having worked.
+    //
+    // Stepping back a TRACK needs none of this; that changes the video, and the
+    // player rebuilds on it as it would for any other song.
+    useEffect(() =>
+    {
+        const player = playerRef.current;
+
+        if(!player?.getCurrentTime || !song?.jamId) return;
+
+        const state = GetJamState();
+
+        if(!state.inJam || (state.current?.videoId !== song.videoId)) return;
+
+        const expected = Math.max(0, ((Date.now() - state.current.startedAtMs) / 1000));
+
+        // Same threshold the drift check uses. Below it a seek is more
+        // disruptive than the gap it closes.
+        if(Math.abs(expected - (player.getCurrentTime?.() ?? 0)) > 3) player.seekTo?.(expected, true);
+    }, [ jam.current?.startedAtMs, song?.jamId, song?.videoId ]);
+
     // The player FOLLOWS the store's paused intent. It used to be asked to
     // toggle and then polled for the answer - too slow to decide with, now that
     // whether the ROOM plays hangs on it.

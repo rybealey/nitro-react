@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import {
-    RpJamAddComposer, RpJamEndComposer, RpJamInviteComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
+    RpJamAddComposer, RpJamBackComposer, RpJamEndComposer, RpJamInviteComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
     RpJamRemoveComposer, RpJamReportComposer, RpJamSkipComposer, RpJamStartComposer, RpJamStateRequestComposer
 } from '../../api/rp-phone/RpJamMessages';
 
@@ -37,9 +37,13 @@ export interface JamState
     members: JamMember[];
     current: JamTrack | null;
     queue: JamQueueEntry[];
+    // Whether anything has played yet, which is what decides whether the back
+    // button steps back a track or only restarts this one. The server keeps the
+    // history; this is all the client needs to label the button honestly.
+    hasPrevious: boolean;
 }
 
-const EMPTY: JamState = { inJam: false, jamId: 0, hostId: 0, hostName: '', isHost: false, paused: false, members: [], current: null, queue: [] };
+const EMPTY: JamState = { inJam: false, jamId: 0, hostId: 0, hostName: '', isHost: false, paused: false, members: [], current: null, queue: [], hasPrevious: false };
 
 let state: JamState = EMPTY;
 
@@ -112,6 +116,12 @@ export const RemoveFromJam = (index: number) => SendMessageComposer(new RpJamRem
 /// Any member may. Deliberately not the same rule as the pause below - see
 /// JamSession.TrySkip on the server for why.
 export const SkipJam = () => SendMessageComposer(new RpJamSkipComposer());
+
+/// The back button, which is two buttons wearing one face - past the first few
+/// seconds of a track it restarts it, inside them it steps back to the song
+/// before. The SERVER decides which, because only it knows how far in the jam
+/// actually is; this just says the button was pressed.
+export const BackJam = () => SendMessageComposer(new RpJamBackComposer());
 
 /// The HOST's pause only. A guest calling this is refused server-side, which is
 /// why the app never offers it to them: their pause button stops their own

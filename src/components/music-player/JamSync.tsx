@@ -52,7 +52,8 @@ export const JamSync: FC<{}> = props =>
                 startedAtMs: (Date.now() - (parser.current.elapsedSec * 1000)),
                 queuedBy: parser.current.queuedBy
             } : null,
-            queue: parser.queue
+            queue: parser.queue,
+            hasPrevious: parser.hasPrevious
         });
     });
 

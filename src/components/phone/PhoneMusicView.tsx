@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useFriends, useMessageEvent, useNavigator } from '../../hooks';
-import { AddToJam, EndJam, InviteToJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
+import { AddToJam, BackJam, EndJam, InviteToJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
 import { FormatClock, JukeboxSoundBack, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, SongSoundBack, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
@@ -768,21 +768,23 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                              can want, and leaving is the control a guest most
                              needs and had nowhere to press. */ }
                         { /* Repeat has no meaning on a timeline five people
-                             share, so in a jam this slot is empty - and empty
-                             rather than filled, because the two things it could
-                             hold both belong elsewhere.
+                             share, so in a jam this slot holds BACK instead -
+                             which is the thing a shared timeline actually wants
+                             and no player in this hotel has ever had, because
+                             until now a finished song was dropped on the floor
+                             rather than remembered.
 
-                             The host's handover used to live here. It is gone:
-                             a host has one ending now, End jam, and it stops the
-                             session for everybody. A guest's way out is the
-                             labelled red button at the bottom, because leaving
-                             is the thing a guest most needs to find and an
-                             unlabelled icon is not findable.
-
-                             The empty slot stays so the play button keeps its
-                             place in the middle. */ }
+                             One button, two jobs, the way every music player
+                             does it: past the first few seconds it plays the
+                             song again, inside them it returns to the one
+                             before. The server decides which, since only it
+                             knows how far in the jam is. */ }
                         { inJam
-                            ? <div className="phone-music-sidebtn" />
+                            ? <div className="phone-tap phone-music-sidebtn"
+                                title={ jam.hasPrevious ? 'Back - restarts this song, or returns to the last one' : 'Start this song again' }
+                                onClick={ event => BackJam() }>
+                                <PhoneIcon icon="backward-step" size={ 22 } />
+                            </div>
                             : <div className={ `phone-tap phone-music-sidebtn${ personalRepeat ? ' is-on' : '' }` } title={ personalRepeat ? 'Repeat is on' : 'Repeat this song' } onClick={ event => ToggleSitchRepeat() }>
                                 <PhoneIcon icon="repeat" size={ 22 } />
                             </div> }
