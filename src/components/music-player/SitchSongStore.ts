@@ -49,6 +49,26 @@ export const PlaySitchSong = (next: SitchSong) =>
     notify();
 }
 
+/// The title and channel, once the player knows them.
+///
+/// A song started from a pasted link arrives here with neither: that path never
+/// reaches the server, and the server is what resolves a YouTube link into a
+/// name. The player that is already making the sound knows perfectly well what
+/// it is playing, so it is asked - no round trip, and no CORS fight with the
+/// oEmbed endpoint, which refuses browsers.
+///
+/// Guarded on the video id: a late answer about a song that has already been
+/// stopped or replaced must not relabel whatever is playing now.
+export const SetSitchSongMeta = (videoId: string, title: string, author: string) =>
+{
+    if(!song || (song.videoId !== videoId)) return;
+    if((song.title === (title || '')) && (song.author === (author || ''))) return;
+
+    song = { ...song, title: (title || ''), author: (author || '') };
+
+    notify();
+}
+
 export const StopSitchSong = () =>
 {
     if(!song) return;

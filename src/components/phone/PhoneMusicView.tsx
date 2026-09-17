@@ -44,7 +44,7 @@ interface PhoneMusicViewProps
 // that in a row: the source line clipped, then the buttons overlapped the up
 // next card, then the block without flex: none squashed under its own content.
 // Splitting the screen ends the arithmetic rather than winning it.
-type MusicView = 'home' | 'now' | 'queue';
+type MusicView = 'home' | 'personal' | 'now' | 'queue';
 
 const formatClock = (seconds: number): string =>
 {
@@ -120,6 +120,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         setView('home');
     }, [ view, current ]);
 
+    useEffect(() =>
+    {
+        if((view !== 'personal') || personal) return;
+
+        setView('home');
+    }, [ view, personal ]);
+
     const openRequest = () =>
     {
         setSent(false);
@@ -185,6 +192,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         PlaySitchSong({ videoId, title: '', author: '', userId: 0 });
         setPersonalUrl('');
         setPersonalOpen(false);
+        go('personal');
     }
 
     const stopPersonal = () =>
@@ -283,14 +291,15 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const personalSection = (
         <div className="phone-music-personal">
             { personal &&
-                <div className="phone-music-row is-playing">
+                <div className="phone-tap phone-music-row is-playing" onClick={ event => go('personal') }>
                     <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                     <div className="phone-music-row-text">
                         <div className="phone-music-row-title">{ personal.title || 'Your song' }</div>
                         <div className="phone-music-row-by">{ personal.author || 'Playing in your ears only' }</div>
                     </div>
                     { eq }
-                    <div className="phone-tap phone-music-rowbtn" title="Stop" onClick={ stopPersonal }>
+                    { /* the row opens the screen, so the stop has to stop there */ }
+                    <div className="phone-tap phone-music-rowbtn" title="Stop" onClick={ event => { event.stopPropagation(); stopPersonal(); } }>
                         <PhoneIcon icon="stop" size={ 17 } />
                     </div>
                 </div> }
@@ -395,9 +404,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         <div className="phone-music-pane">
             { topBar('chevron-down', () => (onBack && onBack()), 'SPOTIFY') }
             <div className="phone-music-coverwrap">
-                <div className={ `phone-music-cover${ (personal || current) ? ' is-playing' : ' is-empty' }` }>
-                    { (personal || current)
-                        ? <img src={ `https://i.ytimg.com/vi/${ personal ? personal.videoId : current.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                <div className={ `phone-music-cover${ current ? ' is-playing' : ' is-empty' }` }>
+                    { current
+                        ? <img src={ `https://i.ytimg.com/vi/${ current.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         : <PhoneIcon icon="waveform-lines" size={ 88 } /> }
                 </div>
             </div>
@@ -406,14 +415,12 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     { /* Only when something IS playing - over "No track is
                          playing" it would be a label arguing with its own
                          heading. */ }
-                    { (personal || current) &&
+                    { current &&
                         <div className="phone-music-nowkicker">NOW PLAYING</div> }
-                    <div className="phone-music-title">{ personal ? 'Playing just for you' : (current ? current.title : 'No track is playing') }</div>
-                    <div className="phone-music-sub is-wrap">{ personal
-                        ? 'Only you can hear it.'
-                        : (current
-                            ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
-                            : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.')) }</div>
+                    <div className="phone-music-title">{ current ? current.title : 'No track is playing' }</div>
+                    <div className="phone-music-sub is-wrap">{ current
+                        ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
+                        : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.') }</div>
                 </div>
             </div>
             { personalSection }
@@ -431,6 +438,40 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     Request a song in this room
                 </div> }
             <div className="phone-music-spacer" />
+            { sourceRow }
+        </div>
+    );
+
+    // Your song's own screen, the mirror of the room's. A back arrow rather than
+    // the app's close chevron, because there is somewhere to go back TO now -
+    // and nothing here about the room, which is the other screen's business.
+    const personalScreen = (
+        <div className="phone-music-pane">
+            { topBar('chevron-left', () => go('home'), 'JUST FOR YOU') }
+            { personal &&
+                <>
+                    <div className="phone-music-coverwrap">
+                        <div className="phone-music-cover is-playing">
+                            <img src={ `https://i.ytimg.com/vi/${ personal.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                        </div>
+                    </div>
+                    <div className="phone-music-titles">
+                        <div className="phone-music-titles-text">
+                            <div className="phone-music-nowkicker">NOW PLAYING</div>
+                            { /* The title and channel come off the player itself
+                                 once the video loads - for a second after you
+                                 paste a link there is nothing to show but the
+                                 link's own id. */ }
+                            <div className="phone-music-title">{ personal.title || 'Your song' }</div>
+                            <div className="phone-music-sub is-wrap">{ personal.author || 'Nobody else can hear this.' }</div>
+                        </div>
+                    </div>
+                    <div className="phone-music-spacer" />
+                    <div className="phone-tap phone-music-pill" onClick={ stopPersonal }>
+                        <PhoneIcon icon="stop" size={ 16 } />
+                        Stop
+                    </div>
+                </> }
             { sourceRow }
         </div>
     );
@@ -537,7 +578,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     return (
         <div className="phone-screen phone-app-screen phone-music">
             <div key={ view } className={ `phone-music-anim is-${ slide }` }>
-                { (view === 'home') ? homeScreen : ((view === 'now') ? nowScreen : queueScreen) }
+                { (view === 'home') ? homeScreen : ((view === 'personal') ? personalScreen : ((view === 'now') ? nowScreen : queueScreen)) }
             </div>
             { toast &&
                 <div key={ toast } className="phone-music-toast">

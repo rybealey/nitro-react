@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
-import { StopSitchSong, useSitchSong } from './SitchSongStore';
+import { SetSitchSongMeta, StopSitchSong, useSitchSong } from './SitchSongStore';
 
 // The one place a profile's favorite song is heard. Mounted at the app root
 // beside JukeboxAudioEngine, for the same reason that one is: audio should not
@@ -57,6 +57,13 @@ export const SitchSongPlayer: FC<{}> = props =>
                         if(event.data === (window as any).YT.PlayerState.PLAYING)
                         {
                             if(!playerRef.current?.isMuted?.()) setNeedsUnmute(false);
+
+                            // Read once it is actually playing: the data is not
+                            // populated until the video has loaded, so asking on
+                            // ready gets an empty title.
+                            const data = playerRef.current?.getVideoData?.();
+
+                            if(data?.video_id) SetSitchSongMeta(data.video_id, data.title, data.author);
                         }
                     },
                     // Private, removed or embed-disabled. Nothing to advance to,
