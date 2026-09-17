@@ -798,23 +798,19 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     </div>
                     <div className="phone-music-spacer" />
                 </div> }
-            { /* A GUEST'S WAY OUT, said plainly. It was the door icon in the
-                 transport, which is a fine place for it once you know it is
-                 there and no place at all before that - the one thing a guest
-                 most needs to find was the least labelled control on the screen.
+            { /* A GUEST'S WAY OUT. Bottom LEFT, mirroring the invite button
+                 opposite it, and floating over the pane for the same reason that
+                 one does: this column is fixed and full, and a labelled pill in
+                 the flow landed on top of the volume slider - the exact overflow
+                 the split screens were meant to end.
 
-                 The host does NOT get this one. Theirs is End jam, in the
-                 invite sheet, and it stops the session for everybody - a host
-                 has one ending, not a choice of two to tell apart at the moment
-                 they have already decided to stop.
-
-                 Deliberately shorter than the app's other pills: this screen is
-                 a fixed column that has twice run out of room, and the source
-                 line underneath is what gets pushed off when it does. */ }
+                 The host does NOT get this one. Theirs is End jam, in the invite
+                 sheet, and it stops the session for everybody - a host has one
+                 ending, not a choice of two to tell apart at the moment they
+                 have already decided to stop. */ }
             { inJam && !jam.isHost &&
-                <div className="phone-tap phone-music-leavejam" onClick={ event => LeaveJam() }>
-                    <PhoneIcon icon="arrow-right-from-bracket" size={ 14 } />
-                    Leave jam
+                <div className="phone-tap phone-music-leavejam" title="Leave this jam" onClick={ event => LeaveJam() }>
+                    <PhoneIcon icon="arrow-right-from-bracket" size={ 20 } />
                 </div> }
             { sourceRow }
             { /* BOTTOM RIGHT, floating over the pane rather than in the column.

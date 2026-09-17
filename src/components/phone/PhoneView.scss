@@ -2733,28 +2733,32 @@ $phone-scale: 0.8;
     // The guest's, on the screen itself, because leaving is the thing a guest
     // most needs to find and a sheet is somewhere you have to know to look.
     //
-    // 34px rather than the app's usual 48: this column is fixed, does not
-    // scroll, and has twice run out of room - the source line below is what
-    // gets pushed off the phone when it does.
+    // A BARE DOOR, bottom left, mirroring the invite opposite it. It was a
+    // labelled pill sitting in the column, and the column is fixed and was
+    // already full: it landed on top of the volume slider. Out of the flow it
+    // cannot land on anything, and the two bottom corners now read as a pair -
+    // one way in, one way out, either side of the line that says where your
+    // sound is coming from.
+    //
+    // Red ink, no border. The colour is the warning; a ring around it was the
+    // one heavy object on a screen of flat rows, the same thing the invite
+    // button had and lost.
     .phone-music-leavejam {
-        flex: none;
+        position: absolute;
+        left: 18px;
+        bottom: 22px;
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
-        margin: 8px 22px 0;
-        height: 34px;
-        border-radius: 17px;
-        border: 1px solid rgba($mu-red, .5);
         color: $mu-red;
-        font-size: calc(12px * var(--ph-text-scale, 1));
-        font-weight: 700;
-        transition: transform .12s ease, background .12s ease;
-        animation: phone-cal-rise .24s cubic-bezier(.2, .8, .2, 1) both;
+        transition: transform .12s ease, opacity .12s ease;
+        z-index: 3;
 
         .phone-pi { color: inherit; }
 
-        &:active { transform: scale(.97); background: rgba($mu-red, .12); opacity: 1; }
+        &:active { transform: scale(.9); opacity: .6; }
     }
 
     .phone-music-invite-empty {
