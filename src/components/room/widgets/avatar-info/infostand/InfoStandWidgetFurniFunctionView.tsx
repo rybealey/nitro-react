@@ -188,6 +188,11 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     // actually parsed, and clearing a field and walking away changes nothing.
     const [ rawNumbers, setRawNumbers ] = useState<{ [field: string]: string }>({});
     const [ confirming, setConfirming ] = useState(false);
+    // pixelrp: scope the edit to THIS placed furni instead of every copy.
+    // Only the five fields the client does not mirror can be scoped - name and
+    // walkability live in FurnitureData, which is keyed by furni class - so
+    // everything else is locked while this is on.
+    const [ scoped, setScoped ] = useState(false);
     // Viewport px. Opened centred, then moved by the header - the same pointer
     // drag the macros dialog uses, rather than HTML5 drag-and-drop, which
     // cannot work for a panel that sits over a canvas.
@@ -350,14 +355,14 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.publicName, draft.walkable,
             draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.heightMarker, draft.interactionType, draft.modes, draft.effectId, draft.behaviourData,
-            draft.vendingIds));
+            draft.vendingIds, (scoped ? avatarInfo.id : 0)));
 
         // Closing is the confirmation: the change is hotel-wide and the
         // window has nothing left to say about it. Staying open would invite a
         // second apply of the same edit.
         setConfirming(false);
         onClose();
-    }, [ saved, draft, onClose ]);
+    }, [ saved, draft, scoped, avatarInfo.id, onClose ]);
 
     // The skeleton mirrors the real panel block for block, at the same heights,
     // so the window opens at its final size and fills in - rather than opening
@@ -483,9 +488,11 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                 <div className="rp-furni-function-class">{ saved.itemName } #{ saved.definitionId }</div>
             </div>
             <div className="rp-furni-function-scope">
-                Changes every copy of this furni hotel-wide (<b>{ scope }</b>) and everything bought from now on.
+                { scoped
+                    ? <>Changes <b>this placed furni only</b>. Every other copy is untouched.</>
+                    : <>Changes every copy of this furni hotel-wide (<b>{ scope }</b>) and everything bought from now on.</> }
             </div>
-            <div className="rp-furni-function-body">
+            <div className={ 'rp-furni-function-body' + (scoped ? ' is-scoped' : '') }>
                 <div className="rp-furni-function-section">
                     <div className="rp-furni-function-legend">Presets</div>
                     <div className="rp-furni-function-presets">
@@ -551,8 +558,17 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                         and still lands in the same place.
                     </div>
                 </div>
-                <div className="rp-furni-function-section">
+                <div className="rp-furni-function-section is-interaction">
                     <div className="rp-furni-function-legend">Interaction</div>
+                    <label className="rp-furni-function-field rp-furni-function-scope">
+                        <span>This furni only</span>
+                        <input type="checkbox" checked={ scoped } onChange={ event => setScoped(event.target.checked) } />
+                    </label>
+                    <div className="rp-furni-function-note">
+                        { scoped
+                            ? 'Behaviour, click states, walk effect, behaviour data and handitems apply to THIS placed furni alone. Name, walkability and the rest stay hotel-wide and are locked - the client stores those per furni type, not per copy, so they cannot differ between two copies of the same thing. Bed and tent cannot be scoped for the same reason.'
+                            : 'Off: every change is hotel-wide, on every copy of this furni everywhere. Turn on to scope the behaviour to this one placed furni.' }
+                    </div>
                     <label className="rp-furni-function-field">
                         <span>Behaviour</span>
                         <select value={ draft.interactionType } onChange={ event => update({ interactionType: event.target.value }) }>

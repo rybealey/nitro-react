@@ -321,14 +321,21 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
 {
     private _data: (number | string | boolean)[];
 
+    /**
+     * scopeItemId 0 edits the DEFINITION, hotel-wide, as this tool always has.
+     * Anything else is the one placed item to scope the change to - and then
+     * only the five fields the client does not mirror take effect, because
+     * FurnitureData is keyed by furni class rather than by item. See
+     * 136_ItemFunctionOverrides.
+     */
     constructor(definitionId: number, publicName: string, walkable: boolean, walkMask: string,
         seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
         heightMarker: boolean, interactionType: string, modes: number, effectId: number,
-        behaviourData: number, vendingIds: string)
+        behaviourData: number, vendingIds: string, scopeItemId: number = 0)
     {
         this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
             Math.round(stackHeight * 100), adjustableHeights, heightMarker, interactionType, modes,
-            effectId, behaviourData, vendingIds ];
+            effectId, behaviourData, vendingIds, scopeItemId ];
     }
 
     public getMessageArray() 

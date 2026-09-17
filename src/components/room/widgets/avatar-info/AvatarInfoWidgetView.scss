@@ -795,6 +795,22 @@ $furni-function-on: #2e9e4f;
     // grab cursor reads as a control that is merely slow rather than absent.
     &.is-loading .rp-furni-function-body { pointer-events: none; }
 
+    // pixelrp: scoped to one placed furni. Everything but the Interaction
+    // section is hotel-wide by nature - the client keeps names and walkability
+    // per furni TYPE, not per copy - so those sections are stood down rather
+    // than left looking editable. The server ignores them on a scoped apply
+    // either way; this is so nobody types into a field that will not be read.
+    .rp-furni-function-body.is-scoped .rp-furni-function-section:not(.is-interaction) {
+        opacity: .42;
+        pointer-events: none;
+    }
+
+    .rp-furni-function-scope {
+        // The one control that changes what every other control MEANS, so it
+        // reads as a statement rather than another field.
+        font-weight: 600;
+    }
+
     .rp-furni-function-confirm {
         position: absolute;
         inset: 0;
