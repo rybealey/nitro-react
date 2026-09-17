@@ -2407,7 +2407,15 @@ $phone-scale: 0.8;
         animation: phone-cal-rise .34s cubic-bezier(.2, .8, .2, 1) .16s both;
         transition: transform .12s ease, filter .12s ease;
 
-        .phone-pi { color: $mu-ink; }
+        // INHERIT, not the green pill's ink. This was pinned to $mu-ink, which
+        // is the near-black that belongs on the bright green - and is-quiet
+        // changes the pill's own colour without touching this, so its icon
+        // stayed near-black on a dark plum inset and could not be seen. The
+        // label beside it was fine because a label inherits.
+        //
+        // The green pill sets that same ink on ITSELF, so nothing changes there;
+        // the quiet one's icon now follows its text like everything else on it.
+        .phone-pi { color: inherit; }
         &:active { transform: scale(.97); filter: brightness(.92); opacity: 1; }
     }
 
