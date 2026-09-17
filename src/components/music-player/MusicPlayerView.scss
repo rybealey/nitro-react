@@ -141,14 +141,18 @@ $player-teal: #1E7295;
         white-space: nowrap;
     }
 
+    // Type only. The LAYOUT belongs to .phone-marquee, which this class sits
+    // beside on the same element - a wrapper of its own would be a second box to
+    // keep in step with this one.
+    //
+    // It used to clamp to two lines, which beat the marquee twice: -webkit-box
+    // overrode the flex it needs, and text that WRAPS never overflows, so the
+    // component measured it, saw it fit, and correctly declined to scroll. One
+    // line that moves says more of a long title than two that stop.
     .music-player-title {
         font-size: 12px;
         font-weight: 700;
         line-height: 1.2;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
     }
 
     .music-player-controls {
