@@ -740,12 +740,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { /* The room's half. With your song on the cover this button is the
                  only thing naming the room's, so it carries the title. */ }
             { current &&
-                <div className="phone-music-pill is-quiet is-stacked phone-tap" onClick={ event => go('now') }>
+                <div className="phone-music-pill is-quiet phone-tap" onClick={ event => go('now') }>
                     { roomHasEars ? eq : <PhoneIcon icon="radio" size={ 16 } /> }
-                    <span className="phone-music-pilltext">
-                        Join the room jukebox session
-                        <PhoneMarquee className="phone-music-pillsub" text={ current.title } />
-                    </span>
+                    Join the room jukebox session
                 </div> }
             { !current && present &&
                 <div className="phone-music-pill is-quiet phone-tap" onClick={ openRequest }>

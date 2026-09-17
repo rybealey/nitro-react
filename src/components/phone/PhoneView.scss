@@ -2439,18 +2439,11 @@ $phone-scale: 0.8;
     // Green is the app's "the thing to do". On the front page that is playing
     // your own song - it works anywhere - rather than requesting, which needs a
     // jukebox standing in the room.
-    // The room button carries the track name on a second line when your own song
-    // has the cover - otherwise nothing on that screen says what the room is
-    // playing. Height goes auto so the second line has somewhere to be.
     // On a pill the bars take the pill's ink rather than their usual green -
     // green on the green pill is nothing at all, and on the quiet one they
     // should read as part of the label, not a separate mark.
     .phone-music-pill .phone-music-eq { height: 16px; }
     .phone-music-pill .phone-music-eq i { background: currentColor; }
-
-    .phone-music-pill.is-stacked { height: auto; min-height: 48px; padding: 7px 0; }
-    .phone-music-pilltext { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; min-width: 0; }
-    .phone-music-pillsub { font-size: calc(11px * var(--ph-text-scale, 1)); font-weight: 400; opacity: .72; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .phone-music-pill.is-quiet {
         background: var(--ph-inset);
