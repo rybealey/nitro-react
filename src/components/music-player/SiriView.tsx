@@ -24,17 +24,31 @@ import { SiriWave } from './SiriWave';
 // nothing happening at all. `present` is the server's own answer, so asking it
 // is the one check that cannot drift from what the server will accept.
 
-type SiriPhase = 'open' | 'done' | 'closing';
+type SiriPhase = 'open' | 'sending' | 'done' | 'failed' | 'closing';
 
 const DONE_HOLD_MS = 1000;
+const FAILED_HOLD_MS = 2600;
 const SINK_MS = 300;
-const FOCUS_DELAY_MS = 460;
+// Focus lands with the box, not after its animation. It used to wait 460ms for
+// the spring to finish, and for those 460ms the box was on screen while the
+// CHAT BAR still had the keys - so a link pasted the moment it appeared went
+// into chat, this input stayed empty, and submit returned on the empty check
+// without a word. The phone's request sheet autofocuses and has always worked;
+// that was the whole of the difference between them.
+const FOCUS_DELAY_MS = 0;
+// How long the room has to change before we call it refused. The server sends
+// state on every change, so a song landing is a packet; a refusal is a whisper
+// we cannot read from here, and this is what stands in for hearing it.
+const ACCEPT_WAIT_MS = 4000;
 
 export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
 {
     const [ phase, setPhase ] = useState<SiriPhase>('open');
-    const { present } = useJukeboxState();
+    const { present, current, queue } = useJukeboxState();
     const [ url, setUrl ] = useState('');
+    // what the room looked like when we asked, so the state packet coming back
+    // is what tells us the song landed
+    const [ pending, setPending ] = useState<{ videoId: string, queued: number }>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const phaseRef = useRef<SiriPhase>('open');
@@ -55,11 +69,40 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
         if(!present) return;
         if(!url.trim().length) return;
 
+        setPending({ videoId: (current?.videoId ?? ''), queued: queue.length });
         SendMessageComposer(new RpJukeboxAddComposer(url.trim()));
         setUrl('');
-        setPhase('done');
-        setTimeout(sink, DONE_HOLD_MS);
+        setPhase('sending');
     }
+
+    // The room changing IS the acceptance - a song either starts or joins the
+    // queue, and either way the server broadcasts. Saying "Queued for the room"
+    // the instant the packet left was the reason every failure in this feature
+    // looked exactly like a success.
+    useEffect(() =>
+    {
+        if((phase !== 'sending') || !pending) return;
+        if(((current?.videoId ?? '') === pending.videoId) && (queue.length === pending.queued)) return;
+
+        setPhase('done');
+    }, [ phase, pending, current, queue.length ]);
+
+    useEffect(() =>
+    {
+        if(phase === 'sending')
+        {
+            const timer = setTimeout(() => ((phaseRef.current === 'sending') && setPhase('failed')), ACCEPT_WAIT_MS);
+
+            return () => clearTimeout(timer);
+        }
+
+        if((phase === 'done') || (phase === 'failed'))
+        {
+            const timer = setTimeout(sink, (phase === 'done') ? DONE_HOLD_MS : FAILED_HOLD_MS);
+
+            return () => clearTimeout(timer);
+        }
+    }, [ phase ]);
 
     useEffect(() =>
     {
@@ -99,15 +142,15 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
         <div ref={ wrapRef } className={ `nitro-siri siri-${ phase }` }>
             <div className="siri-halo" />
             <div className="siri-plate">
-                { (phase !== 'done') && !present &&
+                { (phase === 'open') && !present &&
                     <div className="siri-row siri-none">
                         <SiriWave />
                         <span className="siri-nonetext">No jukebox in this room</span>
                     </div> }
-                { (phase !== 'done') && present &&
+                { (phase === 'open') && present &&
                     <div className="siri-row">
                         <SiriWave />
-                        <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"
+                        <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } autoFocus placeholder="Paste a YouTube link"
                             value={ url } onChange={ event => setUrl(event.target.value) } onKeyDown={ event =>
                             {
                                 if(event.key !== 'Enter') return;
@@ -123,10 +166,20 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
                             } } />
                         <button className="siri-add" type="button" onClick={ submit }>Add</button>
                     </div> }
+                { (phase === 'sending') &&
+                    <div className="siri-done siri-sending">
+                        <SiriWave />
+                        Asking the jukebox…
+                    </div> }
                 { (phase === 'done') &&
                     <div className="siri-done">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                         Queued for the room
+                    </div> }
+                { (phase === 'failed') &&
+                    <div className="siri-done siri-failed">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                        That didn't queue — check chat for why
                     </div> }
             </div>
         </div>
