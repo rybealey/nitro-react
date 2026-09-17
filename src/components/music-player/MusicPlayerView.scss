@@ -314,8 +314,14 @@ $player-teal: #1E7295;
     // the outside-click dismiss swallowed the submit.
     pointer-events: all;
 
+    // Every phase that is meant to be SEEN has to be listed here: the base
+    // rule is opacity 0, so a phase missing from this list is an invisible box.
+    // sending and failed were added to the component without being added here,
+    // which made submitting look like the box closing.
     &.siri-open,
-    &.siri-done {
+    &.siri-sending,
+    &.siri-done,
+    &.siri-failed {
         opacity: 1;
         animation: siri-spring 0.45s cubic-bezier(0.28, 1.4, 0.42, 1) forwards;
     }

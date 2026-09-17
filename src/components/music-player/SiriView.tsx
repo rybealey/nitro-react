@@ -164,7 +164,16 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
                                 event.stopPropagation();
                                 submit();
                             } } />
-                        <button className="siri-add" type="button" onClick={ submit }>Add</button>
+                        { /* onMouseDown, not onClick. The click never arrives - the
+                             button takes focus from the mousedown, which is why
+                             pressing space afterwards submits fine, so the press is
+                             reaching it and the click is being lost between down and
+                             up. preventDefault keeps the input from blurring under
+                             us; onClick stays as a belt and braces and is harmless
+                             twice, because submit refuses any phase but open. */ }
+                        <button className="siri-add" type="button"
+                            onMouseDown={ event => { event.preventDefault(); submit(); } }
+                            onClick={ submit }>Add</button>
                     </div> }
                 { (phase === 'sending') &&
                     <div className="siri-done siri-sending">
