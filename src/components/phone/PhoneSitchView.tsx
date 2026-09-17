@@ -88,6 +88,10 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const [ draftPhoto, setDraftPhoto ] = useState(0);
     const [ replyTo, setReplyTo ] = useState(0);
     const [ songUrl, setSongUrl ] = useState('');
+    // The song being attached to the post being written. Separate from songUrl,
+    // which belongs to the profile's edit sheet - the two are open at different
+    // times but there is no reason to make them fight over one box.
+    const [ draftSong, setDraftSong ] = useState('');
     // What the edit sheet opened with. Saving re-resolves a link through
     // YouTube's oEmbed endpoint, so an untouched field should not pay for that
     // - and, far worse, the field used to open EMPTY, which meant editing your
@@ -265,19 +269,25 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         setReplyTo(parentId);
         setDraft('');
         setDraftPhoto(0);
+        setDraftSong('');
         setSheet('compose');
     }
 
     const send = () =>
     {
         const body = draft.trim();
+        const song = draftSong.trim();
 
-        if(!body.length && !draftPhoto) return;
+        // A song on its own is a post: "here, listen to this" is the whole
+        // message. The server agrees, so the two do not disagree about what an
+        // empty post is.
+        if(!body.length && !draftPhoto && !song.length) return;
 
-        SendSitchPost(body, replyTo, draftPhoto);
+        SendSitchPost(body, replyTo, draftPhoto, song);
         setSheet(null);
         setDraft('');
         setDraftPhoto(0);
+        setDraftSong('');
     }
 
     const remove = (postId: number) =>
@@ -347,6 +357,30 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     <div className="phone-sitch-post-ago">{ Ago(post.createdAt) }</div>
                 </div>
                 { !!post.body && <div className="phone-sitch-post-text" onClick={ () => (!inThread && openThread(post.id)) }>{ richBody(post.body) }</div> }
+                { !!post.songVideoId &&
+                    <div className="phone-sitch-song is-inpost">
+                        <img className="phone-sitch-song-art" src={ SitchSongArt(post.songVideoId) } alt="" loading="lazy" />
+                        <div className="phone-sitch-song-text">
+                            <div className="phone-sitch-song-title">{ post.songTitle || post.songVideoId }</div>
+                            { !!post.songAuthor && <div className="phone-sitch-song-author">{ post.songAuthor }</div> }
+                        </div>
+                        { /* Same player as a profile's favorite song, so two
+                             songs never overlap and Tunes is stopped either way. */ }
+                        <div className={ 'phone-sitch-song-play phone-tap' + ((playingSong?.videoId === post.songVideoId) ? ' is-on' : '') }
+                            title={ (playingSong?.videoId === post.songVideoId) ? 'Stop' : 'Play' }
+                            onClick={ () =>
+                            {
+                                if(playingSong?.videoId === post.songVideoId) StopSitchSong();
+                                else PlaySitchSong({
+                                    videoId: post.songVideoId,
+                                    title: (post.songTitle || post.songVideoId),
+                                    author: post.songAuthor,
+                                    userId: post.userId
+                                });
+                            } }>
+                            <PhoneIcon icon={ (playingSong?.videoId === post.songVideoId) ? 'stop' : 'play' } size={ 15 } />
+                        </div>
+                    </div> }
                 { !!post.photoUrl &&
                     <div className="phone-sitch-photo">
                         <img src={ post.photoUrl } alt="" loading="lazy" />
@@ -386,7 +420,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     <div className="phone-sitch-sheet-bar">
                         <div className="phone-tap" onClick={ () => setSheet(null) }>Cancel</div>
                         <div className="phone-sitch-sheet-title">{ replyTo ? 'Reply' : 'New post' }</div>
-                        <div className={ 'phone-sitch-send phone-tap' + (((draft.trim().length || draftPhoto) && (remaining >= 0)) ? '' : ' is-off') }
+                        <div className={ 'phone-sitch-send phone-tap' + (((draft.trim().length || draftPhoto || draftSong.trim().length) && (remaining >= 0)) ? '' : ' is-off') }
                             onClick={ send }>Post</div>
                     </div>
                     <textarea className="phone-sitch-input" autoFocus value={ draft } maxLength={ SITCH_MAX_BODY + 40 }
@@ -399,6 +433,17 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                                 <PhoneIcon icon="close" size={ 11 } />
                             </div>
                         </div> }
+                    { /* Its own field, never the body: the body refuses links,
+                         and this is the box that makes that rule affordable. */ }
+                    <div className="phone-sitch-draft-song">
+                        <PhoneIcon icon="music" size={ 14 } />
+                        <input className="phone-sitch-line" type="text" value={ draftSong } spellCheck={ false }
+                            placeholder="Add a song (YouTube link)" onChange={ event => setDraftSong(event.target.value) } />
+                        { !!draftSong.length &&
+                            <div className="phone-tap phone-sitch-draft-drop is-inline" onClick={ () => setDraftSong('') }>
+                                <PhoneIcon icon="close" size={ 11 } />
+                            </div> }
+                    </div>
                     <div className="phone-sitch-sheet-foot">
                         <div className={ 'phone-tap phone-sitch-attach' + (draftPhoto ? ' is-on' : '') }
                             onClick={ () => 

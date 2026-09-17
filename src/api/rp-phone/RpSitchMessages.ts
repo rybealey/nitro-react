@@ -61,6 +61,14 @@ export interface SitchPost
     repostedBy: string;
     /** When the repost happened; the profile is ordered by it. */
     repostedAt: number;
+    /**
+     * A song attached to the post, or empty. Same shape as a profile's
+     * favorite song: the id is the identity, the title and author are what
+     * oEmbed said when the post was written.
+     */
+    songVideoId: string;
+    songTitle: string;
+    songAuthor: string;
 }
 
 export interface SitchProfile
@@ -121,7 +129,10 @@ const readPost = (wrapper: IMessageDataWrapper): SitchPost => ({
     reposted: (wrapper.readInt() === 1),
     // Only a profile ever fills these in; everywhere else they arrive empty.
     repostedBy: wrapper.readString(),
-    repostedAt: wrapper.readInt()
+    repostedAt: wrapper.readInt(),
+    songVideoId: wrapper.readString(),
+    songTitle: wrapper.readString(),
+    songAuthor: wrapper.readString()
 });
 
 const readPosts = (wrapper: IMessageDataWrapper): SitchPost[] =>
@@ -503,11 +514,16 @@ export const SitchSongUrl = (videoId: string): string => (videoId ? `https://www
 
 export class RpSitchPostComposer extends RpSitchComposerBase
 {
-    /** parentId 0 posts to the feed; anything else replies to that post. */
-    constructor(body: string, parentId: number = 0, photoId: number = 0)
+    /**
+     * parentId 0 posts to the feed; anything else replies to that post.
+     *
+     * songUrl is a YouTube link in its own field, never in the body - the body
+     * refuses links, and this is why it can afford to.
+     */
+    constructor(body: string, parentId: number = 0, photoId: number = 0, songUrl: string = '')
     {
         super();
-        this._data = [ body, parentId, photoId ];
+        this._data = [ body, parentId, photoId, songUrl ];
     }
 }
 
@@ -560,8 +576,8 @@ export class RpSitchSetSongComposer extends RpSitchComposerBase
     }
 }
 
-export const SendSitchPost = (body: string, parentId: number = 0, photoId: number = 0): void =>
-    SendMessageComposer(new RpSitchPostComposer(body, parentId, photoId));
+export const SendSitchPost = (body: string, parentId: number = 0, photoId: number = 0, songUrl: string = ''): void =>
+    SendMessageComposer(new RpSitchPostComposer(body, parentId, photoId, songUrl));
 export const SendSitchLike = (postId: number, on: boolean): void => SendMessageComposer(new RpSitchLikeComposer(postId, on));
 export const SendSitchRepost = (postId: number, on: boolean): void => SendMessageComposer(new RpSitchRepostComposer(postId, on));
 export const SendSitchFollow = (userId: number, on: boolean): void => SendMessageComposer(new RpSitchFollowComposer(userId, on));

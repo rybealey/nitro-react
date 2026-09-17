@@ -4403,6 +4403,35 @@ $phone-scale: 0.8;
     }
 
     // 16:9 art cropped square, the same treatment Spotify gives a cover.
+    // The same card inside a post, a size down: it sits under a body rather
+    // than under a heading, so it should not out-weigh the words above it.
+    .phone-sitch-song.is-inpost {
+        gap: 10px;
+        padding: 9px;
+        border-radius: 12px;
+
+        .phone-sitch-song-art { width: 46px; height: 46px; }
+        .phone-sitch-song-title { font-size: calc(13.5px * var(--ph-text-scale, 1)); }
+        .phone-sitch-song-author { font-size: calc(11.5px * var(--ph-text-scale, 1)); }
+        .phone-sitch-song-play { width: 30px; height: 30px; }
+    }
+
+    // The compose sheet's song box, beside a small note glyph.
+    .phone-sitch-draft-song {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 0 2px;
+        color: var(--ph-faint);
+
+        .phone-sitch-line { flex: 1; min-width: 0; }
+    }
+
+    .phone-sitch-draft-drop.is-inline {
+        position: static;
+        flex: none;
+    }
+
     .phone-sitch-song-art { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex: none; background: var(--ph-bubble); }
     .phone-sitch-song-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
     .phone-sitch-song-title { font-size: calc(15.5px * var(--ph-text-scale, 1)); font-weight: 700; line-height: 1.25; color: var(--ph-text); }
