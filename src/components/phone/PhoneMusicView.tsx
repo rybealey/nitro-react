@@ -1,11 +1,11 @@
 import { RpJukeboxAddComposer, RpJukeboxRemoveComposer, RpJukeboxSkipComposer } from '@nitrots/nitro-renderer';
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { DragEvent, FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
-import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
+import { RpGetTunesAccessComposer, RpJukeboxMoveComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useFriends, useMessageEvent, useNavigator } from '../../hooks';
-import { AddToJam, BackJam, EndJam, InviteToJam, KickFromJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
+import { AddToJam, BackJam, EndJam, InviteToJam, KickFromJam, LeaveJam, MoveInJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
 import { FormatClock, JukeboxSoundBack, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, SongSoundBack, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
+import { AdvanceSitchSong, EnqueueSitchSong, MoveSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
@@ -236,6 +236,57 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     }
 
     const canRemove = (entry: { queuedBy: string }) => (canManage || (entry.queuedBy === ownName));
+
+    // ---- dragging a queue into order ---------------------------------------
+    // WHO MAY, per queue, and it is the rule each queue already had for pulling
+    // a song OUT: staff in a room, the host in a jam, and always you in your
+    // own. Moving somebody's request down the list is the same kind of act as
+    // removing it, done more gently, so it would be odd for the gentler one to
+    // need less.
+    //
+    // The row being dragged and the row under the pointer, both as indices into
+    // the list the server is holding. The list is NOT redrawn as you drag: a
+    // live preview means every index has two meanings at once - where a row is
+    // shown and where it really is - and the translation between them is exactly
+    // the sort of arithmetic that puts a song in the wrong place.
+    //
+    // The target is marked instead, and the row lands when the server confirms.
+    // Nothing is sent until the drag ends, because a drop is one decision and a
+    // packet per row crossed would be a dozen of them.
+    const [ dragFrom, setDragFrom ] = useState<number>(-1);
+    const [ dragOver, setDragOver ] = useState<number>(-1);
+
+    const canOrderSession = (inJam ? jam.isHost : true);
+
+    const beginDrag = (event: DragEvent<HTMLDivElement>, index: number) =>
+    {
+        setDragFrom(index);
+        setDragOver(index);
+        event.dataTransfer.effectAllowed = 'move';
+    }
+
+    const dragAcross = (event: DragEvent<HTMLDivElement>, index: number) =>
+    {
+        event.preventDefault();
+
+        if(dragFrom < 0) return;
+
+        setDragOver(index);
+    }
+
+    const endDrag = (commit: (from: number, to: number) => void) =>
+    {
+        const from = dragFrom;
+        const to = dragOver;
+
+        setDragFrom(-1);
+        setDragOver(-1);
+
+        if((from < 0) || (to < 0) || (from === to)) return;
+
+        commit(from, to);
+    }
+
 
     // ---- your session, shared -------------------------------------------
     // The personal screen is the jam's screen. These are the only places the
@@ -606,7 +657,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const personalSourceRow = (songHasEars ? sourceRow : null);
 
     const queueRow = (entry: { videoId: string, title: string, queuedBy: string }, index: number, playing: boolean = false) => (
-        <div key={ `${ entry.videoId }-${ index }` } className={ `phone-music-row${ playing ? ' is-playing' : '' }` } style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
+        <div key={ `${ entry.videoId }-${ index }` }
+            className={ `phone-music-row${ playing ? ' is-playing' : '' }${ (!playing && canManage) ? ' is-draggable' : '' }${ (!playing && (dragFrom === index)) ? ' is-dragging' : '' }${ (!playing && (dragFrom >= 0) && (dragOver === index) && (dragFrom !== index)) ? ' is-droptarget' : '' }` }
+            draggable={ !playing && canManage }
+            onDragStart={ event => beginDrag(event, index) }
+            onDragOver={ event => (playing ? undefined : dragAcross(event, index)) }
+            onDrop={ event => event.preventDefault() }
+            onDragEnd={ event => endDrag((from, to) => SendMessageComposer(new RpJukeboxMoveComposer(from, to))) }
+            style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
             <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
             <div className="phone-music-row-text">
                 <PhoneMarquee className="phone-music-row-title" text={ entry.title } />
@@ -928,7 +986,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                      so the channel keeps that space instead, which is what it
                      said before anybody else was here. */ }
                 { sessionQueue.map((entry: any, index: number) => (
-                    <div key={ `${ entry.videoId }-${ index }` } className="phone-music-row" style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
+                    <div key={ `${ entry.videoId }-${ index }` }
+                        className={ `phone-music-row${ canOrderSession ? ' is-draggable' : '' }${ (dragFrom === index) ? ' is-dragging' : '' }${ ((dragFrom >= 0) && (dragOver === index) && (dragFrom !== index)) ? ' is-droptarget' : '' }` }
+                        draggable={ canOrderSession }
+                        onDragStart={ event => beginDrag(event, index) }
+                        onDragOver={ event => dragAcross(event, index) }
+                        onDrop={ event => event.preventDefault() }
+                        onDragEnd={ event => endDrag((from, to) => (inJam ? MoveInJam(from, to) : MoveSitchSong(from, to))) }
+                        style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
                         <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         <div className="phone-music-row-text">
                             <PhoneMarquee className="phone-music-row-title" text={ entry.title || 'Your song' } />

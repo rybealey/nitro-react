@@ -2628,6 +2628,17 @@ $phone-scale: 0.8;
     // WHO IS HERE, under the title. A row of names rather than avatars: at this
     // width four avatars would be four indistinct heads, and the thing worth
     // knowing is who, which is what a name says.
+    // ----- dragging a queue into order -----
+    // Only the rows somebody is allowed to move say so. A grab cursor over a row
+    // that will not move is a promise the interface cannot keep.
+    .phone-music-row.is-draggable { cursor: grab; }
+
+    .phone-music-row.is-dragging { opacity: .4; cursor: grabbing; }
+
+    // WHERE IT WILL LAND. A line rather than a filled highlight: the row is
+    // going BETWEEN two others, and a block of colour says "onto this one".
+    .phone-music-row.is-droptarget { box-shadow: inset 0 2px 0 $mu-green; }
+
     .phone-music-jammers {
         flex: none;
         display: flex;

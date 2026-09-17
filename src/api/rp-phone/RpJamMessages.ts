@@ -24,6 +24,7 @@ const RP_JAM_REPORT = 4040;
 const RP_JAM_END = 4041;
 const RP_JAM_BACK = 4042;
 const RP_JAM_KICK = 4043;
+const RP_JAM_MOVE = 4044;
 
 export interface RpJamMemberData { id: number; username: string; away: boolean; }
 export interface RpJamTrackData { videoId: string; title: string; author: string; durationSec: number; elapsedSec: number; queuedBy: string; }
@@ -175,6 +176,7 @@ export class RpJamReportComposer extends RpJamComposer {}
 export class RpJamEndComposer extends RpJamComposer {}
 export class RpJamBackComposer extends RpJamComposer {}
 export class RpJamKickComposer extends RpJamComposer {}
+export class RpJamMoveComposer extends RpJamComposer {}
 
 let registered = false;
 
@@ -201,7 +203,8 @@ export const RegisterRpJamMessages = () =>
             [ RP_JAM_REPORT, RpJamReportComposer ],
             [ RP_JAM_END, RpJamEndComposer ],
             [ RP_JAM_BACK, RpJamBackComposer ],
-            [ RP_JAM_KICK, RpJamKickComposer ]
+            [ RP_JAM_KICK, RpJamKickComposer ],
+            [ RP_JAM_MOVE, RpJamMoveComposer ]
         ])
     });
 

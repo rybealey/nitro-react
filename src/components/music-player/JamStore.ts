@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import {
-    RpJamAddComposer, RpJamBackComposer, RpJamEndComposer, RpJamInviteComposer, RpJamKickComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
+    RpJamAddComposer, RpJamBackComposer, RpJamEndComposer, RpJamInviteComposer, RpJamKickComposer, RpJamMoveComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
     RpJamRemoveComposer, RpJamReportComposer, RpJamSkipComposer, RpJamStartComposer, RpJamStateRequestComposer
 } from '../../api/rp-phone/RpJamMessages';
 
@@ -118,6 +118,11 @@ export const EndJam = () => SendMessageComposer(new RpJamEndComposer());
 export const AddToJam = (url: string) => SendMessageComposer(new RpJamAddComposer(url));
 
 export const RemoveFromJam = (index: number) => SendMessageComposer(new RpJamRemoveComposer(index));
+
+/// Drag a song up or down the jam's queue. The host's, matching who may pull
+/// anyone's song out - moving somebody's request down the list is the same kind
+/// of act done more gently.
+export const MoveInJam = (from: number, to: number) => SendMessageComposer(new RpJamMoveComposer(from, to));
 
 /// Any member may. Deliberately not the same rule as the pause below - see
 /// JamSession.TrySkip on the server for why.

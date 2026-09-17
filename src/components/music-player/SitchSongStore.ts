@@ -255,6 +255,22 @@ export const EnqueueSitchSong = (next: SitchSong): boolean =>
     return false;
 }
 
+/// Your own queue, reordered. No server involved and none needed - nobody else
+/// can hear this one, so there is nobody to agree with about the order.
+export const MoveSitchSong = (from: number, to: number) =>
+{
+    if((from < 0) || (from >= queue.length) || (to < 0) || (to >= queue.length) || (from === to)) return;
+
+    const next = [ ...queue ];
+    const [ moved ] = next.splice(from, 1);
+
+    next.splice(to, 0, moved);
+
+    queue = next;
+
+    notify();
+}
+
 export const RemoveSitchSongAt = (index: number) =>
 {
     if((index < 0) || (index >= queue.length)) return;
