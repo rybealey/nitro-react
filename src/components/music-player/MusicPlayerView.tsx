@@ -5,6 +5,7 @@ import { CreateLinkEvent, GetRoomEngine } from '../../api';
 import { useRoomEngineEvent } from '../../hooks';
 import { FormatClock, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { PhoneMarquee } from '../phone/PhoneMarquee';
+import { useJamState } from './JamStore';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 import { SiriView } from './SiriView';
 import { SiriWave } from './SiriWave';
@@ -26,6 +27,11 @@ export const MusicPlayerView: FC<{}> = props =>
     // nobody is hearing.
     const personal = useSitchSong();
     const personalPaused = useSitchSongPaused();
+    // Only to word the speaker's tooltip. "Pause it to hear the room" is advice
+    // a guest in somebody else's jam cannot take - their pause stops their own
+    // player and hands nothing back, because a jam outranks the room in every
+    // room. Leaving is what frees their ears, so that is what it says.
+    const jam = useJamState();
     // only while it is actually PLAYING: paused, the room has its sound back
     const songHasEars = (!!personal && !personalPaused);
     // THREE ways to be hearing nothing, and this panel used to know about one.
@@ -163,7 +169,11 @@ export const MusicPlayerView: FC<{}> = props =>
                     { looksSilent
                         ? <FaVolumeMute
                             className={ `fa-icon music-player-mute is-muted${ songHasEars ? ' is-forced' : '' }` }
-                            title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : (roomPaused ? 'Paused - click to listen again' : 'Unmute') }
+                            title={ songHasEars
+                                ? (jam.inJam
+                                    ? (jam.isHost ? 'Your jam is playing - pause it to hear the room' : `You're in ${ jam.hostName }'s jam - leave it to hear the room`)
+                                    : 'Your own song is playing - pause it to hear the room')
+                                : (roomPaused ? 'Paused - click to listen again' : 'Unmute') }
                             onClick={ songHasEars ? undefined : toggleMuted } />
                         : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                     <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
