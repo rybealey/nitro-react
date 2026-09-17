@@ -361,12 +361,18 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         </div>
     );
 
-    // where the sound is coming from for THIS player
+    // Where the sound is coming from for THIS player.
+    //
+    // Only shown where it answers something. Home shows it for a song of your
+    // own - the one whose source nothing else on that screen explains - and
+    // never for the room jukebox, which was a line about a session you had not
+    // joined, on the screen whose whole job is offering to join it. The room's
+    // line belongs on the room's screen.
     const sourceRow = (personal
         ? (
-            <div className="phone-tap phone-music-source is-on" title="Stop your song" onClick={ stopPersonal }>
+            <div className="phone-music-source is-on">
                 <PhoneIcon icon="mobile-screen" size={ 14 } />
-                <span>Playing your song &middot; tap to stop</span>
+                <span>Your session</span>
             </div>
         )
         : (
@@ -454,7 +460,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     Request a song in this room
                 </div> }
             <div className="phone-music-spacer" />
-            { sourceRow }
+            { personal && sourceRow }
         </div>
     );
 
