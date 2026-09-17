@@ -2359,6 +2359,11 @@ $phone-scale: 0.8;
     // its own 22px. This screen is a fixed column sharing its height with a
     // 272px cover, and the two of them at the queue screen's spacing is 44px of
     // margin for 96px of button.
+    // flex: none like every other block on these screens. Without it this
+    // wrapper was the only thing that would shrink when a screen ran out of
+    // room - and its 48px button would not, so the button spilled out of it and
+    // painted over the up next card and the source line underneath.
+    .phone-music-personal { flex: none; }
     .phone-music-personal .phone-music-pill { margin: 2px 18px 4px; }
     .phone-music-pill.is-quiet { margin: 0 18px 4px; }
 

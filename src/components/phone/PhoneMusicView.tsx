@@ -35,6 +35,17 @@ interface PhoneMusicViewProps
     onBack: () => void;
 }
 
+// home is the app: a couple of buttons and what is playing. The player and the
+// queue are screens you step into from it.
+//
+// It is this way round because the one screen holding everything could not hold
+// everything - a 272px cover, titles, progress, transport, up next, two buttons
+// and the source line in a column that does not scroll. Three bugs came out of
+// that in a row: the source line clipped, then the buttons overlapped the up
+// next card, then the block without flex: none squashed under its own content.
+// Splitting the screen ends the arithmetic rather than winning it.
+type MusicView = 'home' | 'now' | 'queue';
+
 const formatClock = (seconds: number): string =>
 {
     const safe = Math.max(0, Math.floor(seconds));
@@ -47,7 +58,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const { onBack = null } = props;
     const { current, queue, present } = useJukeboxState();
     const { phoneOn, volume } = useJukeboxPrefs();
-    const [ view, setView ] = useState<'now' | 'queue'>('now');
+    const [ view, setView ] = useState<MusicView>('home');
     const [ slide, setSlide ] = useState<'right' | 'left'>('right');
     const [ requesting, setRequesting ] = useState(false);
     const [ confirmSkip, setConfirmSkip ] = useState(false);
@@ -93,11 +104,21 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const art = (current ? `https://i.ytimg.com/vi/${ current.videoId }/hqdefault.jpg` : null);
     const byName = (name: string) => ((name === ownName) ? 'you' : name);
 
-    const go = (to: 'now' | 'queue') =>
+    const go = (to: MusicView) =>
     {
-        setSlide((to === 'queue') ? 'right' : 'left');
+        setSlide((to === 'home') ? 'left' : 'right');
         setView(to);
     }
+
+    // The player is a screen about a song. With no song there is nothing for it
+    // to be, so a track ending while you are standing in it puts you back home
+    // rather than leaving you on a screen with a hole in it.
+    useEffect(() =>
+    {
+        if((view !== 'now') || current) return;
+
+        setView('home');
+    }, [ view, current ]);
 
     const openRequest = () =>
     {
@@ -362,31 +383,56 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         </div>
     );
 
+    // HOME. A couple of buttons and whatever is making noise - deliberately
+    // sparse, because this is the screen that used to hold everything and could
+    // not. The cover is affordable here in a way it was not there: no progress
+    // bar, no transport, no up next card competing for the same 700px.
+    //
+    // The cover shows your own song first and the room's second. Your song is
+    // the one nothing else on screen represents; the room's has a whole screen
+    // of its own a tap away.
+    const homeScreen = (
+        <div className="phone-music-pane">
+            { topBar('chevron-down', () => (onBack && onBack()), 'SPOTIFY') }
+            <div className="phone-music-coverwrap">
+                <div className={ `phone-music-cover${ (personal || current) ? ' is-playing' : ' is-empty' }` }>
+                    { (personal || current)
+                        ? <img src={ `https://i.ytimg.com/vi/${ personal ? personal.videoId : current.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                        : <PhoneIcon icon="waveform-lines" size={ 88 } /> }
+                </div>
+            </div>
+            <div className="phone-music-titles">
+                <div className="phone-music-titles-text">
+                    <div className="phone-music-title">{ personal ? 'Playing just for you' : (current ? current.title : 'No track is playing') }</div>
+                    <div className="phone-music-sub is-wrap">{ personal
+                        ? 'Only you can hear it.'
+                        : (current
+                            ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
+                            : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.')) }</div>
+                </div>
+            </div>
+            { personalSection }
+            { /* The room's half. Something playing gets you a way in to it; an
+                 empty jukebox gets you a way to start it; no jukebox gets
+                 neither, and the line above already said why. */ }
+            { current &&
+                <div className="phone-music-pill is-quiet phone-tap" onClick={ event => go('now') }>
+                    <PhoneIcon icon="waveform-lines" size={ 16 } />
+                    Join the room jukebox session
+                </div> }
+            { !current && present &&
+                <div className="phone-music-pill is-quiet phone-tap" onClick={ openRequest }>
+                    <PhoneIcon icon="plus" size={ 16 } />
+                    Request a song in this room
+                </div> }
+            <div className="phone-music-spacer" />
+            { sourceRow }
+        </div>
+    );
+
     const nowScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-down', () => (onBack && onBack()), 'SPOTIFY', queueButton) }
-            { !current &&
-                <>
-                    { /* With the room playing nothing, the cover is free, so a
-                         song of your own gets it rather than leaving a blank
-                         square above artwork-sized silence. Breathing, like the
-                         room's cover does, because it IS playing. */ }
-                    <div className="phone-music-coverwrap">
-                        <div className={ `phone-music-cover${ personal ? ' is-playing' : ' is-empty' }` }>
-                            { personal
-                                ? <img src={ `https://i.ytimg.com/vi/${ personal.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
-                                : <PhoneIcon icon="waveform-lines" size={ 88 } /> }
-                        </div>
-                    </div>
-                    <div className="phone-music-titles">
-                        <div className="phone-music-titles-text">
-                            <div className="phone-music-title">{ personal ? 'Playing just for you' : 'No track is playing' }</div>
-                            <div className="phone-music-sub is-wrap">{ personal
-                                ? 'Only you can hear it.'
-                                : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.') }</div>
-                        </div>
-                    </div>
-                </> }
+            { topBar('chevron-left', () => go('home'), 'THIS ROOM', queueButton) }
             { current &&
                 <div className="phone-music-now" key={ current.videoId }>
                     <div className="phone-music-coverwrap">
@@ -452,26 +498,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <div className="phone-music-upnext-by">{ byName(queue[0].queuedBy) }</div>
                         </div> }
                 </div> }
-            { personalSection }
-            { /* Under Just for you, and in the quieter colour. Green is this
-                 app's "the thing to do", and the thing you can always do is
-                 play your own song - requesting only works with a jukebox
-                 standing in the room. Same show/hide rule it had inside the
-                 nothing-playing branch it used to live in. */ }
-            { !current && present &&
-                <div className="phone-music-pill is-quiet phone-tap" onClick={ openRequest }>
-                    <PhoneIcon icon="plus" size={ 16 } />
-                    Request a song in this room
-                </div> }
-            { current && sourceRow }
-            { !current && <div className="phone-music-spacer" /> }
-            { !current && sourceRow }
+            { sourceRow }
         </div>
     );
 
     const queueScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-left', () => go('now'), 'THIS ROOM') }
+            { topBar('chevron-left', () => go(current ? 'now' : 'home'), 'QUEUE') }
             <div className="phone-music-list">
                 { current &&
                     <>
@@ -499,7 +532,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     return (
         <div className="phone-screen phone-app-screen phone-music">
             <div key={ view } className={ `phone-music-anim is-${ slide }` }>
-                { (view === 'now') ? nowScreen : queueScreen }
+                { (view === 'home') ? homeScreen : ((view === 'now') ? nowScreen : queueScreen) }
             </div>
             { toast &&
                 <div key={ toast } className="phone-music-toast">
