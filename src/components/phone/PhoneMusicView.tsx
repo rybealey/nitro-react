@@ -76,6 +76,11 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const personalPlayback = useSitchPlayback();
     // your song wins: it is the one taking your ears
     const hero = (personal ?? current);
+    // The same answer the room HUD's speaker gives. A song of your own already
+    // silences the room - the audio engine yields to it - so the room is muted
+    // for you whether or not you pressed anything, and a speaker on this screen
+    // saying otherwise would disagree with the one in the corner about a fact.
+    const roomSilenced = (muted || !!personal);
     const personalQueue = useSitchQueue();
     const personalRepeat = useSitchRepeat();
     const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
@@ -246,9 +251,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             <div className="phone-calendar-sheet phone-music-sheet">
                 <div className="phone-calendar-grabber" />
                 <div className="phone-music-sheet-title">Request a song in this room</div>
-                <div className="phone-music-sheet-sub">
-                    { queue.length ? `Paste a YouTube link. It joins this room's queue behind ${ queue.length } ${ (queue.length === 1) ? 'other' : 'others' }.` : "Paste a YouTube link. This room's queue is empty, so it plays next." }
-                </div>
                 <div className={ `phone-music-siri${ sent ? ' is-sent' : '' }` }>
                     <div className="phone-music-siri-halo" />
                     <div className="phone-music-siri-plate">
@@ -267,7 +269,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             </div> }
                     </div>
                 </div>
-                <div className="phone-music-sheet-note">One request at a time per player in this room. The jukebox standing here and this app share the same queue.</div>
             </div>
         </>
     );
@@ -279,8 +280,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             <div className="phone-calendar-scrim" onClick={ event => setPersonalOpen(false) } />
             <div className="phone-calendar-sheet phone-music-sheet">
                 <div className="phone-calendar-grabber" />
-                <div className="phone-music-sheet-title">Play just for you</div>
-                <div className="phone-music-sheet-sub">Paste a YouTube link. It plays in your ears only - nobody else in the room hears it, and it never joins the queue.</div>
+                <div className="phone-music-sheet-title">Start your own jam session</div>
                 <div className="phone-music-siri">
                     <div className="phone-music-siri-halo" />
                     <div className="phone-music-siri-plate">
@@ -293,7 +293,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                <div className="phone-music-sheet-note">The room's jukebox keeps its own time while this plays, and picks up wherever the room has got to when your song ends.</div>
             </div>
         </>
     );
@@ -306,7 +305,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // NO HEADING, and a shorter pill than the app's others. The Now Playing
     // screen is a fixed column in a 700px phone and was using nearly all of it
     // before this block arrived; a "Just for you" heading over a control that
-    // already reads "Play a song just for you" was the one part paying rent
+    // already reads "Start your own jam session" was the one part paying rent
     // without saying anything, and it was pushing the source line off the
     // bottom.
     //
@@ -334,7 +333,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { !personal &&
                 <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
                     <PhoneIcon icon="play" size={ 15 } />
-                    Play a song just for you
+                    Start your own jam session
                 </div> }
         </div>
     );
@@ -664,8 +663,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                          only volume control behind the button that now does
                          something else would have traded one for the other. */ }
                     <div className="phone-music-transport">
-                        <div className={ `phone-tap phone-music-sidebtn${ muted ? ' is-muted' : '' }` } title={ muted ? 'Unmute' : 'Mute' } onClick={ event => SetJukeboxMuted(!muted) }>
-                            <PhoneIcon icon={ muted ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
+                        <div className={ `phone-tap phone-music-sidebtn${ roomSilenced ? ' is-muted' : '' }` }
+                            title={ personal ? 'Your own song is playing - stop it to hear the room' : (muted ? 'Unmute' : 'Mute') }
+                            onClick={ event => (!personal && SetJukeboxMuted(!muted)) }>
+                            <PhoneIcon icon={ roomSilenced ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
                         <div className={ `phone-tap phone-music-play${ roomPaused ? '' : ' is-on' }` } title={ roomPaused ? 'Listen' : 'Pause (just for you)' } onClick={ event => toggleRadio() }>
                             <PhoneIcon icon={ roomPaused ? 'play' : 'pause' } size={ 26 } />
@@ -681,7 +682,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <PhoneIcon icon="shield-halved" size={ 11 } />
                             <span>Staff: skip moves everyone on</span>
                         </div> }
-                    { !muted &&
+                    { !roomSilenced &&
                         <div className="phone-music-volume">
                             <PhoneIcon icon="volume-low" size={ 13 } />
                             <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties } onChange={ event => SetJukeboxVolume(parseInt(event.target.value)) } />
