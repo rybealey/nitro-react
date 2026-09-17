@@ -3,7 +3,7 @@ import React, { FC, useState } from 'react';
 import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { GetRoomEngine } from '../../api';
 import { useRoomEngineEvent } from '../../hooks';
-import { SetJukeboxMuted, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
+import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 import { SiriView } from './SiriView';
 import { SiriWave } from './SiriWave';
@@ -18,7 +18,7 @@ export const MusicPlayerView: FC<{}> = props =>
     const { present, current, queue } = useJukeboxState();
     // volume and mute are shared with the phone's Music app; the audio itself
     // plays from JukeboxAudioEngine (mounted once at the root), never here
-    const { volume, muted } = useJukeboxPrefs();
+    const { volume, muted, roomPaused } = useJukeboxPrefs();
     // A song of your own already silences the room's track - the audio engine
     // yields to it. The speaker showing anything else would be describing sound
     // nobody is hearing.
@@ -26,7 +26,12 @@ export const MusicPlayerView: FC<{}> = props =>
     const personalPaused = useSitchSongPaused();
     // only while it is actually PLAYING: paused, the room has its sound back
     const songHasEars = (!!personal && !personalPaused);
-    const silenced = (muted || songHasEars);
+    // THREE ways to be hearing nothing, and this panel used to know about one.
+    // roomPaused is saved and survives a logout, so a pause from days ago could
+    // leave a player silent with a normal-looking speaker and a track playing
+    // happily beside it - nothing on screen said why, and the only way out was
+    // the phone. One fact, shown wherever it is true.
+    const silenced = (muted || roomPaused || songHasEars);
 
     // Double-clicking the jukebox summons Siri. The renderer's jukebox
     // furni logic swallows the generic double-click and fires the
@@ -45,8 +50,23 @@ export const MusicPlayerView: FC<{}> = props =>
         if(roomObject && ((roomObject.type === 'jukebox') || present)) setIsSiriOpen(true);
     });
 
-    const updateVolume = (value: number) => SetJukeboxVolume(value);
-    const toggleMuted = () => SetJukeboxMuted(!muted);
+    // Reaching for the volume is reaching to HEAR something: it lifts a mute and
+    // a pause rather than sliding a control on silence. Your own song is left
+    // alone - it holds the ears deliberately, and taking them back should be a
+    // press on the song, not a nudge of a slider meant for the room.
+    const listenAgain = () =>
+    {
+        if(muted) SetJukeboxMuted(false);
+        if(roomPaused) SetJukeboxRoomPaused(false);
+    }
+
+    const updateVolume = (value: number) =>
+    {
+        SetJukeboxVolume(value);
+        listenAgain();
+    }
+
+    const toggleMuted = () => (silenced ? listenAgain() : SetJukeboxMuted(true));
 
     // The panel slides in only while something is queued or playing; the
     // double-click hook and Siri stay live while it's hidden so the first
@@ -88,7 +108,7 @@ export const MusicPlayerView: FC<{}> = props =>
                     { silenced
                         ? <FaVolumeMute
                             className={ `fa-icon music-player-mute is-muted${ songHasEars ? ' is-forced' : '' }` }
-                            title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : 'Unmute' }
+                            title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : (roomPaused ? 'Paused - click to listen again' : 'Unmute') }
                             onClick={ songHasEars ? undefined : toggleMuted } />
                         : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                     <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
