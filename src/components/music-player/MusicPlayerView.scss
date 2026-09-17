@@ -221,6 +221,17 @@ $player-teal: #1E7295;
             background: rgba($player-teal, 0.18);
             color: $player-ink;
         }
+
+        // A readout does not offer a press: no pointer, and no hover lift that
+        // would promise one.
+        &.is-readout {
+            cursor: default;
+
+            &:hover {
+                background: rgba($player-teal, 0.10);
+                color: rgba($player-ink, 0.7);
+            }
+        }
     }
 
     // "Phone" chip where the mute sits: the phone is the source right now

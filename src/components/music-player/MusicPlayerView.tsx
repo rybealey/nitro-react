@@ -90,6 +90,15 @@ export const MusicPlayerView: FC<{}> = props =>
                         : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                     <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
                         onChange={ event => updateVolume(parseInt(event.target.value)) } />
+                    { /* A READOUT, not a button. It used to open the paste box,
+                         which is now the jukebox furni's job alone - this only
+                         says how many are waiting, and only when any are. An
+                         empty queue has nothing to report, so it is not there to
+                         be pressed at all. */ }
+                    { (queue.length > 0) &&
+                        <span className="music-player-queue is-readout" title={ `Up next: ${ queue[0].title }` }>
+                            { queue.length } QUEUED
+                        </span> }
                 </div>
             </div>
         </div>
