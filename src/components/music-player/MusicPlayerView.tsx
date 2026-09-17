@@ -90,12 +90,6 @@ export const MusicPlayerView: FC<{}> = props =>
                         : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                     <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
                         onChange={ event => updateVolume(parseInt(event.target.value)) } />
-                    { /* also an entry point to Siri (same as double-clicking the
-                         jukebox furni); the count shows what's waiting */ }
-                    <span className="music-player-queue" title={ queue[0] ? `Up next: ${ queue[0].title }` : 'Queue a song' } onClick={ event => setIsSiriOpen(true) }>
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 1.5v9M1.5 6h9" /></svg>
-                        { queue.length ? `${ queue.length } QUEUED` : 'QUEUE' }
-                    </span>
                 </div>
             </div>
         </div>

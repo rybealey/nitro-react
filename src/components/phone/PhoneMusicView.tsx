@@ -629,16 +629,22 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                                 <PhoneIcon icon="circle-plus" size={ 26 } />
                             </div> }
                     </div>
-                    <div className="phone-music-progress">
-                        <div className="phone-music-track">
-                            <div className="phone-music-fill" style={ { width: `${ progress }%` } } />
-                            <div className="phone-music-knob" style={ { left: `${ progress }%` } } />
-                        </div>
-                        <div className="phone-music-times">
-                            <span>{ formatClock(elapsed) }</span>
-                            <span>{ duration > 0 ? formatClock(duration) : 'live' }</span>
-                        </div>
-                    </div>
+                    { /* Gone while you have it paused. The room's track has not
+                         stopped - it keeps its own clock and everyone else is
+                         still hearing it - so a bar crawling along while your
+                         sound is off would be counting something you are not
+                         part of. It comes back where the room has got to. */ }
+                    { !roomPaused &&
+                        <div className="phone-music-progress">
+                            <div className="phone-music-track">
+                                <div className="phone-music-fill" style={ { width: `${ progress }%` } } />
+                                <div className="phone-music-knob" style={ { left: `${ progress }%` } } />
+                            </div>
+                            <div className="phone-music-times">
+                                <span>{ formatClock(elapsed) }</span>
+                                <span>{ duration > 0 ? formatClock(duration) : 'live' }</span>
+                            </div>
+                        </div> }
                     { /* the play/pause is this player's own switch: it never
                          touches the stream everyone else hears. Skip is staff
                          only and DOES move everyone on. */ }
