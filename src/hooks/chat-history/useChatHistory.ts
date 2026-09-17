@@ -5,10 +5,15 @@ import { ChatEntryType, ChatHistoryCurrentDate, IChatEntry, IRoomHistoryEntry, M
 import { useMessageEvent, useRoomSessionManagerEvent } from '../events';
 
 const CHAT_HISTORY_MAX = 1000;
+// Mentions live in their own list rather than being filtered out of the chat
+// log on demand: the log keeps only the last CHAT_HISTORY_MAX lines, so in a
+// busy room a mention would quietly age out of the tab while still unread.
+const MENTIONS_MAX = 200;
 const ROOM_HISTORY_MAX = 10;
 const MESSENGER_HISTORY_MAX = 1000;
 
 let CHAT_HISTORY_COUNTER: number = 0;
+let MENTIONS_COUNTER: number = 0;
 let MESSENGER_HISTORY_COUNTER: number = 0;
 
 const useChatHistoryState = () =>
@@ -16,6 +21,8 @@ const useChatHistoryState = () =>
     const [ chatHistory, setChatHistory ] = useState<IChatEntry[]>([]);
     const [ roomHistory, setRoomHistory ] = useState<IRoomHistoryEntry[]>([]);
     const [ messengerHistory, setMessengerHistory ] = useState<IChatEntry[]>([]);
+    const [ mentions, setMentions ] = useState<IChatEntry[]>([]);
+    const [ mentionsUnread, setMentionsUnread ] = useState(0);
     const [ needsRoomInsert, setNeedsRoomInsert ] = useState(false);
 
     const addChatEntry = (entry: IChatEntry) =>
@@ -33,6 +40,26 @@ const useChatHistoryState = () =>
             return newValue;
         });
     }
+
+    // Given its own copy of the entry: addChatEntry stamps an id from the chat
+    // counter, and the two lists number their rows separately.
+    const addMention = (entry: IChatEntry) =>
+    {
+        entry.id = MENTIONS_COUNTER++;
+
+        setMentions(prevValue =>
+        {
+            const newValue = [ ...prevValue, entry ];
+
+            if(newValue.length > MENTIONS_MAX) newValue.shift();
+
+            return newValue;
+        });
+
+        setMentionsUnread(prevValue => (prevValue + 1));
+    }
+
+    const clearMentionsUnread = () => setMentionsUnread(0);
 
     const addRoomHistoryEntry = (entry: IRoomHistoryEntry) =>
     {
@@ -98,7 +125,7 @@ const useChatHistoryState = () =>
         addMessengerEntry({ id: -1, webId: parser.senderId, entityId: -1, name: '', message: parser.messageText, roomId: -1, timestamp: MessengerHistoryCurrentDate(), type: ChatEntryType.TYPE_IM });
     });
     
-    return { addChatEntry, chatHistory, roomHistory, messengerHistory };
+    return { addChatEntry, addMention, clearMentionsUnread, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread };
 }
 
 export const useChatHistory = () => useBetween(useChatHistoryState);

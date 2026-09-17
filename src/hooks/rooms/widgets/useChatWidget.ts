@@ -1,7 +1,8 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, GetGuestRoomResultEvent, NitroPoint, PetFigureData, RoomChatSettings, RoomChatSettingsEvent, RoomDragEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionChatEvent, RoomUserData, SystemChatStyleEnum, TextureUtils, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, GetSessionDataManager, IRoomChatSettings, LocalizeText, PlayMentionSound, PlaySound, RoomChatFormatter } from '../../../api';
+import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, IRoomChatSettings, LocalizeText, PlayMentionSound, PlaySound, RoomChatFormatter } from '../../../api';
 import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
+import { IsMentionOfMe } from '../../../api/rp-chat/Mention';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
 
@@ -20,7 +21,7 @@ const useChatWidgetState = () =>
         protection: RoomChatSettings.FLOOD_FILTER_NORMAL
     });
     const { roomSession = null } = useRoom();
-    const { addChatEntry } = useChatHistory();
+    const { addChatEntry, addMention } = useChatHistory();
     const isDisposed = useRef(false);
 
     const getScrollSpeed = useMemo(() =>
@@ -135,19 +136,16 @@ const useChatWidgetState = () =>
             username = userData.name;
         }
 
-        // Target mention (pixelrp): the server delivers a shout that @mentions
-        // you with bubble style 25 — play the mention alert so being addressed
-        // is unmissable. The own-name check keeps players who legitimately chose
-        // bubble 25 as their chat style from ringing the whole room.
-        if((styleId === 25) && userData && (userData.webID !== GetSessionDataManager().userId))
-        {
-            const ownName = GetSessionDataManager().userName;
+        // Target mention (pixelrp): the server delivers a message that @mentions
+        // you with bubble style 25 - play the alert so being addressed is
+        // unmissable, and remember the line for the Mentions tab. The rule lives
+        // in IsMentionOfMe so the sound and the tab cannot drift apart.
+        //
+        // Read before the switch below, which rewrites `text` for respect and
+        // pet lines - by then it is no longer what the player typed.
+        const isMention = (!!userData && IsMentionOfMe(styleId, text, userData.webID));
 
-            if(ownName && new RegExp(`@${ ownName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }\\b`, 'i').test(text))
-            {
-                PlayMentionSound();
-            }
-        }
+        if(isMention) PlayMentionSound();
 
         switch(chatType)
         {
@@ -232,7 +230,13 @@ const useChatWidgetState = () =>
             usernameIconColor);
 
         setChatMessages(prevValue => [ ...prevValue, chatMessage ]);
-        addChatEntry({ id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, text, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor });
+
+        const entry = { id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, text, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor };
+
+        addChatEntry(entry);
+
+        // a copy, because each list stamps the row with an id from its own counter
+        if(isMention) addMention({ ...entry });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
