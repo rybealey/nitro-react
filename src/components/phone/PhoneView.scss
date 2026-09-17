@@ -4196,6 +4196,43 @@ $phone-scale: 0.8;
     .phone-sitch-person { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid $phone-hairline; }
     .phone-sitch-person-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .phone-sitch-person-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    // A trending row: the tag and its count on the left, staff's quiet button
+    // on the right. Not a .phone-sitch-person - that row is a face and a name,
+    // and a tag has neither.
+    .phone-sitch-trend {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 14px;
+        border-bottom: 1px solid $phone-hairline;
+    }
+
+    .phone-sitch-trend-text { flex: 1; min-width: 0; }
+    .phone-sitch-trend-tag {
+        font-size: calc(14.5px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        color: var(--ph-text);
+    }
+    .phone-sitch-trend-count {
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        color: var(--ph-faint);
+    }
+
+    // Deliberately quiet until you reach for it: a moderation control sitting
+    // in a list of ordinary rows should not read as the point of the row.
+    .phone-sitch-trend-hush {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: var(--ph-faint);
+
+        &:active { background: var(--ph-hover); color: #d8536b; }
+    }
+
     .phone-sitch-person-flag { flex: none; font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--sitch-accent); font-weight: 600; }
 
     // A hashtag or a mention inside a post. Accent-coloured rather than

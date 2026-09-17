@@ -26,6 +26,8 @@ const RP_SITCH_DELETE = 4134;
 const RP_SITCH_SET_BIO = 4135;
 const RP_SITCH_SET_SONG = 4136;
 const RP_SITCH_SEARCH = 4137;
+const RP_GET_SITCH_TRENDING = 4140;
+const RP_SITCH_SUPPRESS_TAG = 4141;
 
 // server -> client
 const RP_SITCH_FEED = 4126;
@@ -33,6 +35,7 @@ const RP_SITCH_THREAD = 4127;
 const RP_SITCH_PROFILE = 4128;
 const RP_SITCH_ACTIVITY = 4129;
 const RP_SITCH_SEARCH_RESULT = 4138;
+const RP_SITCH_TRENDING = 4139;
 
 export interface SitchPost
 {
@@ -310,6 +313,94 @@ export class RpSitchActivityParser implements IMessageParser
     }
 }
 
+/** A tag the city is talking about. */
+export interface SitchTrend
+{
+    tag: string;
+    posts: number;
+}
+
+/** Somebody being talked about, counted by how many DIFFERENT people said it. */
+export interface SitchTalkedAbout
+{
+    userId: number;
+    username: string;
+    figure: string;
+    mentions: number;
+}
+
+export class RpSitchTrendingParser implements IMessageParser
+{
+    private _canModerate: boolean = false;
+    private _tags: SitchTrend[] = [];
+    private _people: SitchTalkedAbout[] = [];
+
+    public flush(): boolean
+    {
+        this._canModerate = false;
+        this._tags = [];
+        this._people = [];
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._canModerate = (wrapper.readInt() === 1);
+
+        const tagCount = wrapper.readInt();
+        const tags: SitchTrend[] = [];
+
+        for(let i = 0; i < tagCount; i++) tags.push({ tag: wrapper.readString(), posts: wrapper.readInt() });
+
+        this._tags = tags;
+
+        const peopleCount = wrapper.readInt();
+        const people: SitchTalkedAbout[] = [];
+
+        for(let i = 0; i < peopleCount; i++)
+        {
+            people.push({
+                userId: wrapper.readInt(),
+                username: wrapper.readString(),
+                figure: wrapper.readString(),
+                mentions: wrapper.readInt()
+            });
+        }
+
+        this._people = people;
+
+        return true;
+    }
+
+    public get canModerate(): boolean
+    {
+        return this._canModerate;
+    }
+    public get tags(): SitchTrend[]
+    {
+        return this._tags;
+    }
+    public get people(): SitchTalkedAbout[]
+    {
+        return this._people;
+    }
+}
+
+export class RpSitchTrendingEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpSitchTrendingParser);
+    }
+    public getParser(): RpSitchTrendingParser
+    {
+        return this.parser as RpSitchTrendingParser;
+    }
+}
+
 export class RpSitchSearchParser implements IMessageParser
 {
     private _query: string = '';
@@ -491,6 +582,26 @@ export class RpGetSitchActivityComposer extends RpSitchComposerBase
     }
 }
 
+export class RpGetSitchTrendingComposer extends RpSitchComposerBase
+{
+    constructor() 
+    {
+        super(); this._data = []; 
+    }
+}
+
+export class RpSitchSuppressTagComposer extends RpSitchComposerBase
+{
+    constructor(tag: string, on: boolean) 
+    {
+        super(); this._data = [ tag, on ? 1 : 0 ]; 
+    }
+}
+
+export const SendSitchTrending = (): void => SendMessageComposer(new RpGetSitchTrendingComposer());
+export const SendSitchSuppressTag = (tag: string, on: boolean): void =>
+    SendMessageComposer(new RpSitchSuppressTagComposer(tag, on));
+
 export const SendSitchFeed = (following: boolean): void => SendMessageComposer(new RpGetSitchFeedComposer(following));
 export const SendSitchThread = (postId: number): void => SendMessageComposer(new RpGetSitchThreadComposer(postId));
 export const SendSitchProfile = (userId: number = 0): void => SendMessageComposer(new RpGetSitchProfileComposer(userId));
@@ -604,7 +715,8 @@ export const RegisterRpSitchMessages = () =>
             [ RP_SITCH_THREAD, RpSitchThreadEvent ],
             [ RP_SITCH_PROFILE, RpSitchProfileEvent ],
             [ RP_SITCH_ACTIVITY, RpSitchActivityEvent ],
-            [ RP_SITCH_SEARCH_RESULT, RpSitchSearchEvent ]
+            [ RP_SITCH_SEARCH_RESULT, RpSitchSearchEvent ],
+            [ RP_SITCH_TRENDING, RpSitchTrendingEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_GET_SITCH_FEED, RpGetSitchFeedComposer ],
@@ -618,7 +730,9 @@ export const RegisterRpSitchMessages = () =>
             [ RP_SITCH_DELETE, RpSitchDeleteComposer ],
             [ RP_SITCH_SET_BIO, RpSitchSetBioComposer ],
             [ RP_SITCH_SET_SONG, RpSitchSetSongComposer ],
-            [ RP_SITCH_SEARCH, RpSitchSearchComposer ]
+            [ RP_SITCH_SEARCH, RpSitchSearchComposer ],
+            [ RP_GET_SITCH_TRENDING, RpGetSitchTrendingComposer ],
+            [ RP_SITCH_SUPPRESS_TAG, RpSitchSuppressTagComposer ]
         ])
     });
 

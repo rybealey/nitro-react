@@ -41,6 +41,9 @@ const FA_MAP: Record<string, string> = {
     // Writing something NEW, as against editing something that exists. The two
     // were the same glyph and the compose button read as "edit this".
     'compose': 'feather-pointed',
+    // Staff quieting a trending tag: nothing is deleted, it just stops being
+    // amplified - which is what a slash through a circle says and a bin does not.
+    'ban': 'ban',
     'phone': 'phone',
     'plus': 'plus',
     'search': 'magnifying-glass',

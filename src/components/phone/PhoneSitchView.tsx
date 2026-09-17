@@ -1,6 +1,6 @@
 import { cloneElement, FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
-import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchThread, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt, SitchSongUrl } from '../../api/rp-phone/RpSitchMessages';
+import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, RpSitchTrendingEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchSuppressTag, SendSitchThread, SendSitchTrending, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt, SitchSongUrl, SitchTalkedAbout, SitchTrend } from '../../api/rp-phone/RpSitchMessages';
 import { useMessageEvent } from '../../hooks';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
@@ -104,6 +104,8 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
     const [ people, setPeople ] = useState<SitchPerson[]>([]);
     const [ found, setFound ] = useState<SitchPost[]>([]);
     const [ searched, setSearched ] = useState(false);
+    const [ trendTags, setTrendTags ] = useState<SitchTrend[]>([]);
+    const [ trendPeople, setTrendPeople ] = useState<SitchTalkedAbout[]>([]);
     const { photos = [], photosLoaded = false, requestPhotos = null } = usePhonePhotos();
     const { markAppSeen = null } = usePhoneNotifications();
     const playingSong = useSitchSong();
@@ -129,6 +131,9 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
             // describe, so opening it reads them.
             if(markAppSeen) markAppSeen('sitch');
         }
+        // Trending is the Search tab at rest, so it is fetched on arrival
+        // rather than waiting for somebody to type.
+        else if(tab === 'search') SendSitchTrending();
         else if(tab === 'profile') 
         {
             if(viewing >= 0) SendSitchProfile(viewing); 
@@ -169,6 +174,17 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         setPeople(parser.people);
         setFound(parser.posts);
         setSearched(true);
+    });
+
+    useMessageEvent<RpSitchTrendingEvent>(RpSitchTrendingEvent, event =>
+    {
+        const parser = event.getParser();
+
+        setTrendTags(parser.tags);
+        setTrendPeople(parser.people);
+        // The trending packet carries it too, so a staff member who opened
+        // straight into Search still gets the button.
+        setCanModerate(parser.canModerate);
     });
 
     useMessageEvent<RpSitchFeedEvent>(RpSitchFeedEvent, event =>
@@ -591,7 +607,46 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                                     <PhoneIcon icon="close" size={ 13 } />
                                 </div> }
                         </div>
-                        { !query.trim().length && emptyState('search') }
+                        { /* The Search tab at rest. Trending is the answer to
+                             "what is going on", which is what somebody opening
+                             search usually wants before they know what to type.
+                             The blank prompt stays as the fallback for a quiet
+                             hotel with nothing to show. */ }
+                        { !query.trim().length && (!trendTags.length && !trendPeople.length) && emptyState('search') }
+                        { !query.trim().length && !!trendTags.length &&
+                            <>
+                                <div className="phone-app-kicker phone-sitch-kicker phone-sitch-section">TRENDING</div>
+                                { trendTags.map(entry => (
+                                    <div key={ entry.tag } className="phone-sitch-trend">
+                                        <div className="phone-sitch-trend-text phone-tap" onClick={ () => setQuery('#' + entry.tag) }>
+                                            <div className="phone-sitch-trend-tag">#{ entry.tag }</div>
+                                            <div className="phone-sitch-trend-count">
+                                                { entry.posts.toLocaleString('en-US') } { (entry.posts === 1) ? 'post' : 'posts' }
+                                            </div>
+                                        </div>
+                                        { canModerate &&
+                                            <div className="phone-tap phone-sitch-trend-hush" title="Suppress this tag"
+                                                onClick={ () => SendSitchSuppressTag(entry.tag, true) }>
+                                                <PhoneIcon icon="ban" size={ 15 } />
+                                            </div> }
+                                    </div>
+                                )) }
+                            </> }
+                        { !query.trim().length && !!trendPeople.length &&
+                            <>
+                                <div className="phone-app-kicker phone-sitch-kicker phone-sitch-section">TALKED ABOUT</div>
+                                { trendPeople.map(person => (
+                                    <div key={ person.userId } className="phone-sitch-person phone-tap" onClick={ () => openProfile(person.userId) }>
+                                        <PhoneFace id={ person.userId } figure={ person.figure } name={ person.username } size={ 34 } className="phone-sitch-face" />
+                                        <div className="phone-sitch-person-text">
+                                            <div className="phone-sitch-post-name">{ person.username }</div>
+                                            <div className="phone-sitch-person-sub">
+                                                mentioned by { person.mentions.toLocaleString('en-US') } { (person.mentions === 1) ? 'person' : 'people' }
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) }
+                            </> }
                         { (searched && !!query.trim().length && !people.length && !found.length) && emptyState('nothing') }
                         { !!people.length &&
                             <>
