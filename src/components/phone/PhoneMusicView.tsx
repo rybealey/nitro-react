@@ -729,7 +729,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     )) }
                 </div> }
             { personal &&
-                <div className="phone-music-now" key={ personal.videoId }>
+                <div className="phone-music-now is-personal" key={ personal.videoId }>
                     <div className="phone-music-coverwrap">
                         <div className={ `phone-music-cover${ personalPaused ? '' : ' is-playing' }` }>
                             <img src={ `https://i.ytimg.com/vi/${ personal.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
@@ -823,6 +823,19 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div>
                         <input type="range" min={ 0 } max={ 100 } value={ songVolume } style={ { '--fill': `${ songVolume }%` } as React.CSSProperties } onChange={ event => SetSongVolume(parseInt(event.target.value)) } />
                         <PhoneIcon icon="volume-high" size={ 13 } />
+                    </div>
+                    { /* ADD SONG, the same pill the room's queue screen has.
+                         Adding was only ever reachable from the queue screen,
+                         which is a strange place to have to go: the screen you
+                         are looking at is the one playing the music, and it was
+                         the one screen with no way to put anything on.
+
+                         In a jam it goes to the jam and carries your name; on
+                         your own it joins your own queue. Same button, and the
+                         sheet it opens says which. */ }
+                    <div className="phone-tap phone-music-pill is-add" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
+                        <PhoneIcon icon="plus" size={ 15 } />
+                        Add song
                     </div>
                     <div className="phone-music-spacer" />
                 </div> }

@@ -1328,31 +1328,56 @@ $phone-scale: 0.8;
         padding: 4px 0 8px;
     }
 
-    // A JAM INVITE in the thread. Shaped like the room invite above it - centred,
-    // dashed, not a speech bubble, because neither of them is something somebody
-    // typed - but green rather than pink, and with a button, because this one
-    // does something when you press it.
+    // A JAM INVITE in the thread. A CARD, not an outline.
+    //
+    // It borrowed the room invite's dashed border, on the reasoning that neither
+    // is something a person typed. That reads as a placeholder - a dashed box is
+    // what an interface draws where content is missing - and this is the one
+    // thing in a thread that actually does something when you press it. A solid
+    // card with a filled button says "press me"; a dotted rectangle says
+    // "something failed to load".
+    //
+    // The green lives in the badge and the button now, where it marks the
+    // action, rather than being stretched around the whole thing as a line.
     .phone-thread-jam {
         align-self: center;
         display: flex;
         align-items: center;
-        gap: 8px;
-        max-width: 92%;
-        margin: 4px 0;
-        padding: 8px 10px 8px 12px;
-        border: 1.5px dashed #2bd66a;
-        border-radius: 14px;
+        gap: 10px;
+        width: 92%;
+        margin: 6px 0;
+        padding: 9px 9px 9px 11px;
+        border-radius: 16px;
+        background: var(--ph-inset);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .14);
         color: var(--ph-text);
-        font-size: calc(12px * var(--ph-text-scale, 1));
-
-        .phone-pi { flex: none; color: #2bd66a; }
     }
 
-    .phone-thread-jam-text { min-width: 0; line-height: 1.4; }
+    .phone-thread-jam-badge {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #2bd66a;
+
+        .phone-pi { color: #0b1a10; }
+    }
+
+    .phone-thread-jam-text { flex: 1; min-width: 0; line-height: 1.35; }
+
+    .phone-thread-jam-title { font-size: calc(12.5px * var(--ph-text-scale, 1)); font-weight: 700; }
+
+    .phone-thread-jam-sub { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-soft); }
 
     .phone-thread-jam-join {
         flex: none;
-        padding: 5px 12px;
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
         border-radius: 12px;
         background: #2bd66a;
         color: #0b1a10;
@@ -2231,6 +2256,18 @@ $phone-scale: 0.8;
     // the cover: a YouTube 16:9 thumbnail cropped square, deep shadow, a slow
     // breathe while this player is listening
     .phone-music-coverwrap { flex: none; display: flex; justify-content: center; padding: 14px 0 22px; }
+
+    // ROOM FOR THE ADD BUTTON. This column is fixed and does not scroll, and at
+    // 272px the cover was 44% of it - with a tenth row added there was nothing
+    // left to give, and what falls off the bottom of this screen when it
+    // overflows is the source line.
+    //
+    // Only the personal screen. The room's player next door has no add pill in
+    // its column - its own is on the queue screen - so its cover keeps the size.
+    .phone-music-now.is-personal .phone-music-cover { width: 232px; height: 232px; }
+
+    // Shorter than the app's other pills, for the same reason the cover shrank.
+    .phone-music-pill.is-add { height: 40px; border-radius: 20px; margin: 12px 22px 0; font-size: calc(13px * var(--ph-text-scale, 1)); }
 
     .phone-music-cover {
         width: 272px;

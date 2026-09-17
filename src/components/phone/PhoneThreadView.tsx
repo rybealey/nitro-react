@@ -315,8 +315,13 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                         {
                             return (
                                 <div key={ key } className="phone-thread-jam">
-                                    <PhoneIcon icon="user-music" size={ 15 } />
-                                    <span className="phone-thread-jam-text">{ jamInvite.text }</span>
+                                    <div className="phone-thread-jam-badge">
+                                        <PhoneIcon icon="music" size={ 15 } />
+                                    </div>
+                                    <div className="phone-thread-jam-text">
+                                        <div className="phone-thread-jam-title">Jam session</div>
+                                        <div className="phone-thread-jam-sub">{ jamInvite.text }</div>
+                                    </div>
                                     <div className="phone-tap phone-thread-jam-join" onClick={ event => { JoinJam(jamInvite.jamId); CreateLinkEvent('phone/music-jam'); } }>Join</div>
                                 </div>
                             );
