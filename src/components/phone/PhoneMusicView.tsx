@@ -70,6 +70,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ personalUrl, setPersonalUrl ] = useState('');
     const personal = useSitchSong();
     const personalPlayback = useSitchPlayback();
+    // your song wins: it is the one taking your ears
+    const hero = (personal ?? current);
     const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
@@ -405,34 +407,46 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const homeScreen = (
         <div className="phone-music-pane">
             { topBar('chevron-down', () => (onBack && onBack()), 'SPOTIFY') }
-            <div className="phone-music-coverwrap">
-                <div className={ `phone-music-cover${ current ? ' is-playing' : ' is-empty' }` }>
-                    { current
-                        ? <img src={ `https://i.ytimg.com/vi/${ current.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+            { /* THE HERO IS WHATEVER YOU CAN HEAR.
+                 Your own song takes your ears from the room, so when one is
+                 playing it takes the cover too. The room's track was being shown
+                 as NOW PLAYING while being, for you, silent - and then the song
+                 you could actually hear was repeated underneath it in the same
+                 art-and-title shape. That was the duplicate: two songs drawn,
+                 one audible. One song here, ever; the room keeps its name on its
+                 own button. */ }
+            <div className={ `phone-music-coverwrap${ personal ? ' phone-tap' : '' }` } onClick={ event => (personal && go('personal')) }>
+                <div className={ `phone-music-cover${ hero ? ' is-playing' : ' is-empty' }` }>
+                    { hero
+                        ? <img src={ `https://i.ytimg.com/vi/${ hero.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         : <PhoneIcon icon="waveform-lines" size={ 88 } /> }
                 </div>
             </div>
-            <div className="phone-music-titles">
+            <div className={ `phone-music-titles${ personal ? ' phone-tap' : '' }` } onClick={ event => (personal && go('personal')) }>
                 <div className="phone-music-titles-text">
-                    { /* Only when something IS playing - over "No track is
-                         playing" it would be a label arguing with its own
-                         heading. */ }
-                    { current &&
-                        <div className="phone-music-nowkicker">NOW PLAYING</div> }
-                    <div className="phone-music-title">{ current ? current.title : 'No track is playing' }</div>
-                    <div className="phone-music-sub is-wrap">{ current
-                        ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
-                        : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.') }</div>
+                    { hero &&
+                        <div className="phone-music-nowkicker">{ personal ? 'JUST FOR YOU' : 'NOW PLAYING' }</div> }
+                    <div className="phone-music-title">{ personal ? (personal.title || 'Your song') : (current ? current.title : 'No track is playing') }</div>
+                    <div className="phone-music-sub is-wrap">{ personal
+                        ? (personal.author || 'Nobody else can hear this')
+                        : (current
+                            ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
+                            : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.')) }</div>
                 </div>
             </div>
-            { personalSection }
-            { /* The room's half. Something playing gets you a way in to it; an
-                 empty jukebox gets you a way to start it; no jukebox gets
-                 neither, and the line above already said why. */ }
+            { /* Only the way IN to a song of your own. Once there is one it is
+                 the hero above, and a row repeating it is the duplicate we just
+                 took out. */ }
+            { !personal && personalSection }
+            { /* The room's half. With your song on the cover this button is the
+                 only thing naming the room's, so it carries the title. */ }
             { current &&
-                <div className="phone-music-pill is-quiet phone-tap" onClick={ event => go('now') }>
+                <div className="phone-music-pill is-quiet is-stacked phone-tap" onClick={ event => go('now') }>
                     <PhoneIcon icon="waveform-lines" size={ 16 } />
-                    Join the room jukebox session
+                    <span className="phone-music-pilltext">
+                        Join the room jukebox session
+                        <span className="phone-music-pillsub">{ current.title }</span>
+                    </span>
                 </div> }
             { !current && present &&
                 <div className="phone-music-pill is-quiet phone-tap" onClick={ openRequest }>
@@ -486,7 +500,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-play${ personalPlayback.paused ? '' : ' is-on' }` } title={ personalPlayback.paused ? 'Play' : 'Pause' } onClick={ event => ToggleSitchSongPaused() }>
                             <PhoneIcon icon={ personalPlayback.paused ? 'play' : 'pause' } size={ 26 } />
                         </div>
-                        <div className="phone-tap phone-music-sidebtn is-skip" title="Stop" onClick={ stopPersonal }>
+                        <div className="phone-tap phone-music-sidebtn is-stop" title="Stop" onClick={ stopPersonal }>
                             <PhoneIcon icon="stop" size={ 22 } />
                         </div>
                     </div>
