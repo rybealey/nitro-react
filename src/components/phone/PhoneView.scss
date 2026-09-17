@@ -2620,29 +2620,35 @@ $phone-scale: 0.8;
         &.is-away { opacity: .45; }
     }
 
-    // THE FLOATING INVITE. Bottom right, over the pane, clear of the source line
-    // that sits at the bottom of the column. It floats because the column is
-    // fixed and full: a tenth row in it would have pushed the source line off
-    // the bottom of the phone, which is the exact bug the split screens fixed.
+    // THE INVITE. Bottom right, floating over the pane rather than in the column,
+    // because the column is fixed and full - a tenth row in it would have pushed
+    // the source line off the bottom of the phone, which is the exact bug the
+    // split screens fixed.
+    //
+    // A BARE ICON. It was a green disc with a drop shadow, which is the one
+    // heavy object on a screen whose whole style is flat rows and a single
+    // accent - it read as pasted on. Green ink alone says the same thing.
+    //
+    // Sized and placed to sit ON the source line's row rather than hovering
+    // above it: 34px is that row's height and 22px is the pane's own bottom
+    // padding, so the two centres land on the same line and the button reads as
+    // part of the bottom of the screen instead of on top of it.
     .phone-music-fab {
         position: absolute;
         right: 18px;
-        bottom: 46px;
-        width: 46px;
-        height: 46px;
-        border-radius: 23px;
+        bottom: 22px;
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: $mu-green;
-        color: $mu-ink;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, .45);
-        transition: transform .12s ease, filter .12s ease;
+        color: $mu-green;
+        transition: transform .12s ease, opacity .12s ease;
         z-index: 3;
 
         .phone-pi { color: inherit; }
 
-        &:active { transform: scale(.93); filter: brightness(.92); opacity: 1; }
+        &:active { transform: scale(.9); opacity: .6; }
     }
 
     // The invite sheet rides the phone's own theme, not the app's dark ground -
