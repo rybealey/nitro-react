@@ -246,11 +246,21 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // sits above the source line rather than up by the cover: the pane does not
     // scroll, so it goes where there is give, and the give is at the bottom.
     //
+    // NO HEADING, and a shorter pill than the app's others. The Now Playing
+    // screen is a fixed column in a 700px phone and was using nearly all of it
+    // before this block arrived; a "Just for you" heading over a control that
+    // already reads "Play a song just for you" was the one part paying rent
+    // without saying anything, and it was pushing the source line off the
+    // bottom.
+    //
+    // This buys about 45px. The accessibility text-size setting scales all of
+    // it, so a player on a large size can still run out of room - the real fix
+    // is for the middle of this screen to scroll.
+    //
     // A song playing only for you is also easy to forget about, and until this
     // the only stop button was on the profile that started it.
     const personalSection = (
         <div className="phone-music-personal">
-            <div className="phone-music-section">Just for you</div>
             { personal &&
                 <div className="phone-music-row is-playing">
                     <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />

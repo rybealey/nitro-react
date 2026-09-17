@@ -2345,13 +2345,17 @@ $phone-scale: 0.8;
 
     // The green pill is the app's one primary action. A second green one beside
     // it would be two primaries and no hierarchy, so the personal-song entry is
-    // the same shape in the app's inset grey.
+    // the same shape in the app's inset grey - and shorter, because it shares
+    // the Now Playing screen's fixed height with a 272px cover.
     .phone-music-pill.is-quiet {
-        margin: 6px 18px 10px;
-        height: 42px;
+        margin: 2px 18px 6px;
+        height: 36px;
         background: var(--ph-inset);
         color: var(--ph-text);
     }
+
+    // Same reason: the row is the queue list's, and the queue list scrolls.
+    .phone-music-personal .phone-music-row { padding: 4px 18px; }
 
     .phone-music-pill {
         flex: none;
