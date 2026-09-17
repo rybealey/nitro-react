@@ -4,7 +4,7 @@ import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { GetRoomEngine } from '../../api';
 import { useRoomEngineEvent } from '../../hooks';
 import { SetJukeboxMuted, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
-import { useSitchSong } from './SitchSongStore';
+import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 import { SiriView } from './SiriView';
 import { SiriWave } from './SiriWave';
 
@@ -23,7 +23,10 @@ export const MusicPlayerView: FC<{}> = props =>
     // yields to it. The speaker showing anything else would be describing sound
     // nobody is hearing.
     const personal = useSitchSong();
-    const silenced = (muted || !!personal);
+    const personalPaused = useSitchSongPaused();
+    // only while it is actually PLAYING: paused, the room has its sound back
+    const songHasEars = (!!personal && !personalPaused);
+    const silenced = (muted || songHasEars);
 
     // Double-clicking the jukebox summons Siri. The renderer's jukebox
     // furni logic swallows the generic double-click and fires the
@@ -84,9 +87,9 @@ export const MusicPlayerView: FC<{}> = props =>
                          is safe here (unlike the FA kit's swapped-in icons) */ }
                     { silenced
                         ? <FaVolumeMute
-                            className={ `fa-icon music-player-mute is-muted${ personal ? ' is-forced' : '' }` }
-                            title={ personal ? 'Your own song is playing - stop it to hear the room' : 'Unmute' }
-                            onClick={ personal ? undefined : toggleMuted } />
+                            className={ `fa-icon music-player-mute is-muted${ songHasEars ? ' is-forced' : '' }` }
+                            title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : 'Unmute' }
+                            onClick={ songHasEars ? undefined : toggleMuted } />
                         : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
                     <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
                         onChange={ event => updateVolume(parseInt(event.target.value)) } />

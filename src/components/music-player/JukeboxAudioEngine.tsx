@@ -3,7 +3,7 @@ import { FC, useEffect } from 'react';
 import { useMessageEvent, useRoom } from '../../hooks';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { SetJukeboxState, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
-import { useSitchSong } from './SitchSongStore';
+import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 
 // THE one place a room's jukebox is heard. Mounted once at the app root, so
 // audio keeps going when the phone is closed, when the player leaves a room,
@@ -26,6 +26,7 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     // furni picks up wherever the room has got to rather than where it left
     // off.
     const sitchSong = useSitchSong();
+    const sitchPaused = useSitchSongPaused();
 
     // Timing arrives as elapsed seconds; anchor it to the local clock on
     // receipt so the player can seek. present is this room's flag.
@@ -64,7 +65,11 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     // true whenever current was, and the app's play/pause could not affect the
     // sound at all. present is not consulted here any more for the same reason -
     // it is implied by there being something to play.
-    const shouldPlay = (!!current && !roomPaused && !sitchSong);
+    // ONE SET OF EARS, two sources, exactly one of them playing. The room
+    // yields to a song of your own while that song is PLAYING - it used to
+    // yield while one merely existed, so pausing yours left you with silence
+    // from both rather than handing the room back.
+    const shouldPlay = (!!current && !roomPaused && !(sitchSong && !sitchPaused));
 
     if(!shouldPlay) return null;
 

@@ -72,16 +72,45 @@ export const useSitchPlayback = (): SitchPlayback =>
     return playback;
 }
 
-// The screen holds the buttons; the player holds the iframe. This is the wire
-// between them - the player registers what it can do on ready and lets go on
-// unmount, so a button pressed after the song stopped reaches nothing.
-export interface SitchSongControls { toggle: () => void; }
+// PAUSED IS AN INTENT, held here, not a reading taken off the iframe.
+//
+// It used to be the other way round: the button reached into the player and
+// asked it to pause, and the paused state came back by polling once a second.
+// That was fine while it only drew a button - but the audio engine decides
+// whether the ROOM plays from this now, and a decision a second late is a
+// second of silence after you press something.
+//
+// The player follows this rather than the other way round.
+let songPaused = false;
 
-let controls: SitchSongControls = null;
+export const GetSitchSongPaused = () => songPaused;
 
-export const SetSitchSongControls = (next: SitchSongControls) => { controls = next; };
+export const SetSitchSongPaused = (paused: boolean) =>
+{
+    if(songPaused === paused) return;
 
-export const ToggleSitchSongPaused = () => controls?.toggle();
+    songPaused = paused;
+
+    notify();
+}
+
+export const ToggleSitchSongPaused = () => SetSitchSongPaused(!songPaused);
+
+export const useSitchSongPaused = (): boolean =>
+{
+    const [ , setTick ] = useState(0);
+
+    useEffect(() =>
+    {
+        const listener = () => setTick(tick => (tick + 1));
+
+        listeners.add(listener);
+
+        return () => { listeners.delete(listener); };
+    }, []);
+
+    return songPaused;
+}
 
 export const GetSitchSong = () => song;
 
@@ -101,6 +130,7 @@ export const PlaySitchSong = (next: SitchSong) =>
     if(!next || !next.videoId) return;
 
     song = next;
+    songPaused = false;
 
     notify();
 }
@@ -212,6 +242,7 @@ export const AdvanceSitchSong = () =>
 
     song = queue[0];
     queue = queue.slice(1);
+    songPaused = false;
 
     notify();
 }
@@ -242,6 +273,7 @@ export const StopSitchSong = () =>
 
     song = null;
     queue = [];
+    songPaused = false;
 
     notify();
 }

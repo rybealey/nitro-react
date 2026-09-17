@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetJukeboxPrefs, useJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
-import { AdvanceSitchSong, GetSitchRepeat, SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, useSitchSong } from './SitchSongStore';
+import { AdvanceSitchSong, GetSitchRepeat, SetSitchPlayback, SetSitchSongMeta, useSitchSong, useSitchSongPaused } from './SitchSongStore';
 
 // The one place a profile's favorite song is heard. Mounted at the app root
 // beside JukeboxAudioEngine, for the same reason that one is: audio should not
@@ -15,6 +15,7 @@ export const SitchSongPlayer: FC<{}> = props =>
 {
     const song = useSitchSong();
     const { songVolume, songMuted } = useJukeboxPrefs();
+    const songPaused = useSitchSongPaused();
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const loadedVideoIdRef = useRef<string>(null);
@@ -45,18 +46,6 @@ export const SitchSongPlayer: FC<{}> = props =>
                         playerRef.current.loadVideoById?.({ videoId: song.videoId });
                         loadedVideoIdRef.current = song.videoId;
 
-                        // The screen's play/pause reaches the iframe through
-                        // this. Registered on ready and dropped on unmount, so a
-                        // button pressed after the song stopped reaches nothing.
-                        SetSitchSongControls({
-                            toggle: () =>
-                            {
-                                const state = playerRef.current?.getPlayerState?.();
-
-                                if(state === (window as any).YT.PlayerState.PLAYING) playerRef.current?.pauseVideo?.();
-                                else playerRef.current?.playVideo?.();
-                            }
-                        });
                     },
                     // A song the player chose to start is not autoplay, but the
                     // browser does not know that. Fall back the way the station
@@ -123,7 +112,6 @@ export const SitchSongPlayer: FC<{}> = props =>
         return () =>
         {
             window.clearInterval(clock);
-            SetSitchSongControls(null);
             SetSitchPlayback({ elapsedSec: 0, durationSec: 0, paused: false });
             disposed = true;
             playerRef.current?.destroy?.();
@@ -151,6 +139,21 @@ export const SitchSongPlayer: FC<{}> = props =>
         if(songMuted) player.mute?.();
         else player.unMute?.();
     }, [ songVolume, songMuted, song?.videoId ]);
+
+    // The player FOLLOWS the store's paused intent. It used to be asked to
+    // toggle and then polled for the answer - too slow to decide with, now that
+    // whether the ROOM plays hangs on it.
+    useEffect(() =>
+    {
+        const player = playerRef.current;
+
+        if(!player?.getPlayerState) return;
+
+        const playing = (player.getPlayerState() === (window as any).YT.PlayerState.PLAYING);
+
+        if(songPaused && playing) player.pauseVideo?.();
+        else if(!songPaused && !playing) player.playVideo?.();
+    }, [ songPaused, song?.videoId ]);
 
     if(!song) return null;
 

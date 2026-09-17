@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
 import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong } from '../music-player/SitchSongStore';
+import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, StopSitchSong, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 import { PhoneMarquee } from './PhoneMarquee';
@@ -76,11 +76,15 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const personalPlayback = useSitchPlayback();
     // your song wins: it is the one taking your ears
     const hero = (personal ?? current);
+    const personalPaused = useSitchSongPaused();
     // The same answer the room HUD's speaker gives. A song of your own already
     // silences the room - the audio engine yields to it - so the room is muted
     // for you whether or not you pressed anything, and a speaker on this screen
     // saying otherwise would disagree with the one in the corner about a fact.
-    const roomSilenced = (muted || !!personal);
+    // Your song holds the ears only while it is PLAYING. Paused, the room has
+    // them back, and both speakers say so.
+    const songHasEars = (!!personal && !personalPaused);
+    const roomSilenced = (muted || songHasEars);
     const personalQueue = useSitchQueue();
     const personalRepeat = useSitchRepeat();
     const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
@@ -511,7 +515,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { personal &&
                 <div className="phone-music-now" key={ personal.videoId }>
                     <div className="phone-music-coverwrap">
-                        <div className={ `phone-music-cover${ personalPlayback.paused ? '' : ' is-playing' }` }>
+                        <div className={ `phone-music-cover${ personalPaused ? '' : ' is-playing' }` }>
                             <img src={ `https://i.ytimg.com/vi/${ personal.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         </div>
                     </div>
@@ -546,8 +550,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-sidebtn${ personalRepeat ? ' is-on' : '' }` } title={ personalRepeat ? 'Repeat is on' : 'Repeat this song' } onClick={ event => ToggleSitchRepeat() }>
                             <PhoneIcon icon="repeat" size={ 22 } />
                         </div>
-                        <div className={ `phone-tap phone-music-play${ personalPlayback.paused ? '' : ' is-on' }` } title={ personalPlayback.paused ? 'Play' : 'Pause' } onClick={ event => ToggleSitchSongPaused() }>
-                            <PhoneIcon icon={ personalPlayback.paused ? 'play' : 'pause' } size={ 26 } />
+                        <div className={ `phone-tap phone-music-play${ personalPaused ? '' : ' is-on' }` } title={ personalPaused ? 'Play' : 'Pause' } onClick={ event => ToggleSitchSongPaused() }>
+                            <PhoneIcon icon={ personalPaused ? 'play' : 'pause' } size={ 26 } />
                         </div>
                         <div className="phone-tap phone-music-sidebtn is-skip" title={ personalQueue.length ? 'Next in your queue' : 'Nothing queued - this ends your session' } onClick={ event => AdvanceSitchSong() }>
                             <PhoneIcon icon="forward-step" size={ 22 } />
@@ -643,7 +647,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                          still hearing it - so a bar crawling along while your
                          sound is off would be counting something you are not
                          part of. It comes back where the room has got to. */ }
-                    { !roomPaused &&
+                    { !(roomPaused || songHasEars) &&
                         <div className="phone-music-progress">
                             <div className="phone-music-track">
                                 <div className="phone-music-fill" style={ { width: `${ progress }%` } } />
@@ -668,8 +672,16 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             onClick={ event => (!personal && SetJukeboxMuted(!muted)) }>
                             <PhoneIcon icon={ roomSilenced ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
-                        <div className={ `phone-tap phone-music-play${ roomPaused ? '' : ' is-on' }` } title={ roomPaused ? 'Listen' : 'Pause (just for you)' } onClick={ event => toggleRadio() }>
-                            <PhoneIcon icon={ roomPaused ? 'play' : 'pause' } size={ 26 } />
+                        { /* Shown as paused whenever you cannot hear it, whether
+                             that is your own pause or your own song holding the
+                             ears - which is what makes joining look right before
+                             you have pressed anything.
+
+                             Pressing play takes the ears back: your song pauses,
+                             and the rule in the audio engine hands the room its
+                             sound with nothing else to set. */ }
+                        <div className={ `phone-tap phone-music-play${ (roomPaused || songHasEars) ? '' : ' is-on' }` } title={ (roomPaused || songHasEars) ? 'Listen' : 'Pause (just for you)' } onClick={ event => (songHasEars ? SetSitchSongPaused(true) : toggleRadio()) }>
+                            <PhoneIcon icon={ (roomPaused || songHasEars) ? 'play' : 'pause' } size={ 26 } />
                         </div>
                         { canManage &&
                             <div className="phone-tap phone-music-sidebtn is-skip" title="Skip for everyone" onClick={ event => setConfirmSkip(true) }>
