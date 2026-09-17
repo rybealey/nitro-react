@@ -12,6 +12,12 @@ import { usePhoneNotifications } from './usePhoneNotifications';
 // row. Everything is server-authoritative (RpCalendarEvent), and the server
 // re-sends it to everyone after any staff change, so the view redraws live.
 // Staff (canEdit) get a + button, and Edit / Delete on an event's sheet.
+//
+// The month button beside the + flips to a month grid: the same events and
+// birthdays, one square per day, a dot on any day with something on it. That
+// button is for everyone, staff or not, so it sits outside the canEdit gate.
+// Tapping a square drops back into the day view on that day, and the back
+// chevron steps month -> day before it closes the app.
 
 interface PhoneCalendarViewProps
 {
@@ -28,6 +34,8 @@ const ACCENT = '#f5352b';
 
 const startOfDay = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const addDays = (date: Date, days: number): Date => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+const startOfMonth = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), 1);
+const addMonths = (date: Date, months: number): Date => new Date(date.getFullYear(), date.getMonth() + months, 1);
 const sameDay = (a: Date, b: Date): boolean => ((a.getFullYear() === b.getFullYear()) && (a.getMonth() === b.getMonth()) && (a.getDate() === b.getDate()));
 // both follow Settings > General (24-hour by default)
 const formatTime = (unix: number): string => FormatClock(unix * 1000);
@@ -78,6 +86,10 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     const [ now, setNow ] = useState(() => Date.now());
     // which way the last date change went, so the day slides in from that side
     const [ slideDir, setSlideDir ] = useState<'left' | 'right'>('right');
+    const [ view, setView ] = useState<'day' | 'month'>('day');
+    // the month the grid is showing, held apart from the selected day so that
+    // paging through months does not drag the day view along with it
+    const [ monthAnchor, setMonthAnchor ] = useState<Date>(() => startOfMonth(HotelDate()));
 
     const selectDay = (day: Date) =>
     {
@@ -122,13 +134,13 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     // the way a day view should - not on midnight
     useEffect(() =>
     {
-        if(!isToday || !scrollRef.current || !nowRef.current) return;
+        if(!isToday || (view !== 'day') || !scrollRef.current || !nowRef.current) return;
 
         const container = scrollRef.current;
         const target = (nowRef.current.offsetTop + (container.querySelector<HTMLElement>('.phone-calendar-timeline')?.offsetTop ?? 0)) - (container.clientHeight * 0.45);
 
         container.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
-    }, [ isToday, selected ]);
+    }, [ isToday, selected, view ]);
 
     // the week strip shows the Sunday-to-Saturday week around the selected day
     const week = useMemo(() =>
@@ -140,6 +152,20 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
 
     const eventsOn = (day: Date) => events.filter(item => sameDay(HotelDate(item.startsAt * 1000), day)).sort((a, b) => (a.startsAt - b.startsAt));
     const birthdaysOn = (day: Date) => birthdays.filter(item => ((item.month === (day.getMonth() + 1)) && (item.day === day.getDate())));
+
+    // always six rows, so a 28-day February and a 31-day month starting on a
+    // Saturday are the same height and the grid never jumps as you page
+    const monthGrid = useMemo(() =>
+    {
+        const first = startOfMonth(monthAnchor);
+        const sunday = addDays(first, -first.getDay());
+
+        return Array.from({ length: 42 }, (_, index) => addDays(sunday, index));
+    }, [ monthAnchor ]);
+
+    // worked out in one pass rather than two filters per square. Everything the
+    // grid needs is already in memory - the month view asks the server nothing.
+    const busyDays = useMemo(() => new Set(monthGrid.filter(day => ((eventsOn(day).length > 0) || (birthdaysOn(day).length > 0))).map(day => day.getTime())), [ monthGrid, events, birthdays ]);
 
     const dayEvents = eventsOn(selected);
     const allDayEvents = dayEvents.filter(item => item.allDay);
@@ -205,6 +231,37 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
     // short weekday so 'Wednesday 16' never wraps beside the header buttons
     const titleFor = (day: Date) => (sameDay(day, today) ? `Today, ${ day.getDate() }` : `${ WEEKDAYS[day.getDay()].slice(0, 3) } ${ day.getDate() }`);
 
+    // the grid opens on the month the selected day is in, wherever you paged to last
+    const showMonth = () =>
+    {
+        setMonthAnchor(startOfMonth(selected));
+        setView('month');
+    }
+
+    const pickFromMonth = (day: Date) =>
+    {
+        selectDay(day);
+        setView('day');
+    }
+
+    const goMonth = (delta: number) =>
+    {
+        setSlideDir((delta >= 0) ? 'right' : 'left');
+        setMonthAnchor(addMonths(monthAnchor, delta));
+    }
+
+    // in the grid, Today also has to bring the grid home - otherwise you can
+    // page off to next year and the only way back is paging
+    const onCurrentMonth = ((monthAnchor.getFullYear() === today.getFullYear()) && (monthAnchor.getMonth() === today.getMonth()));
+    const showToday = ((view === 'month') ? (!isToday || !onCurrentMonth) : !isToday);
+
+    const goToday = () =>
+    {
+        selectDay(today);
+
+        if(view === 'month') setMonthAnchor(startOfMonth(today));
+    }
+
     return (
         <div className="phone-screen phone-app-screen phone-calendar">
             <div ref={ scrollRef } className="phone-app-scroll">
@@ -212,7 +269,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                 <div className="phone-calendar-sticky">
                 <div className="phone-app-header">
                     <div className="phone-app-header-lead">
-                        <div className="phone-tap phone-thread-back phone-calendar-back" onClick={ event => (onBack && onBack()) }>
+                        <div className="phone-tap phone-thread-back phone-calendar-back" onClick={ event => ((view === 'month') ? setView('day') : (onBack && onBack())) }>
                             <PhoneIcon icon="chevron-left" size={ 24 } />
                         </div>
                         <div>
@@ -221,14 +278,19 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         </div>
                     </div>
                     <div className="phone-calendar-header-actions">
-                        { !isToday &&
-                            <div className="phone-tap phone-calendar-today" onClick={ event => selectDay(today) }>Today</div> }
+                        { showToday &&
+                            <div className="phone-tap phone-calendar-today" onClick={ event => goToday() }>Today</div> }
+                        { /* everyone gets this, staff or not - deliberately outside the canEdit gate the + sits behind */ }
+                        <div className={ `phone-tap phone-calendar-months${ (view === 'month') ? ' is-active' : '' }` } title={ (view === 'month') ? 'Day view' : 'Month view' } onClick={ event => ((view === 'month') ? setView('day') : showMonth()) }>
+                            <PhoneIcon icon="calendar-days" size={ 16 } />
+                        </div>
                         { canEdit &&
                             <div className="phone-tap phone-calendar-add" title="New event" onClick={ newDraft }>
                                 <PhoneIcon icon="plus" size={ 16 } />
                             </div> }
                     </div>
                 </div>
+                { (view === 'day') &&
                 <div key={ week[0].getTime() } className={ `phone-calendar-week is-from-${ slideDir }` }>
                     <div className="phone-tap phone-calendar-week-nav" onClick={ event => selectDay(addDays(selected, -7)) }><PhoneIcon icon="chevron-left" size={ 16 } /></div>
                     { week.map(day =>
@@ -246,9 +308,9 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         );
                     }) }
                     <div className="phone-tap phone-calendar-week-nav" onClick={ event => selectDay(addDays(selected, 7)) }><PhoneIcon icon="chevron-right" size={ 16 } /></div>
-                </div>
+                </div> }
                 { /* the all-day row stays pinned with the header; the timeline scrolls under it */ }
-                { ((allDayEvents.length > 0) || (dayBirthdays.length > 0)) &&
+                { (view === 'day') && ((allDayEvents.length > 0) || (dayBirthdays.length > 0)) &&
                     <div key={ `allday-${ selected.getTime() }` } className={ `phone-calendar-allday is-from-${ slideDir }` }>
                         <div className="phone-calendar-allday-label">all-day</div>
                         <div className="phone-calendar-allday-list">
@@ -268,8 +330,38 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                         </div>
                     </div> }
                 </div>
+                { (view === 'month') &&
+                <div key={ monthAnchor.getTime() } className={ `phone-calendar-month is-from-${ slideDir }` }>
+                    <div className="phone-calendar-month-nav">
+                        <div className="phone-tap phone-calendar-week-nav" onClick={ event => goMonth(-1) }><PhoneIcon icon="chevron-left" size={ 16 } /></div>
+                        <div className="phone-calendar-month-label">{ `${ MONTHS[monthAnchor.getMonth()] } ${ monthAnchor.getFullYear() }` }</div>
+                        <div className="phone-tap phone-calendar-week-nav" onClick={ event => goMonth(1) }><PhoneIcon icon="chevron-right" size={ 16 } /></div>
+                    </div>
+                    <div className="phone-calendar-month-weekdays">
+                        { WEEKDAYS.map(name => (
+                            <span key={ name }>{ name.charAt(0) }</span>
+                        )) }
+                    </div>
+                    <div className="phone-calendar-month-grid">
+                        { monthGrid.map(day =>
+                        {
+                            // the spill-over days from the months either side are still
+                            // real days: they show their dot and they are tappable
+                            const outside = (day.getMonth() !== monthAnchor.getMonth());
+                            const weekend = ((day.getDay() === 0) || (day.getDay() === 6));
+
+                            return (
+                                <div key={ day.getTime() } className={ `phone-tap phone-calendar-monthcell${ outside ? ' is-outside' : '' }${ weekend ? ' is-weekend' : '' }${ sameDay(day, today) ? ' is-today' : '' }${ sameDay(day, selected) ? ' is-selected' : '' }` } onClick={ event => pickFromMonth(day) }>
+                                    <span className="phone-calendar-daynum">{ day.getDate() }</span>
+                                    <span className={ `phone-calendar-daydot${ busyDays.has(day.getTime()) ? ' is-busy' : '' }` } />
+                                </div>
+                            );
+                        }) }
+                    </div>
+                </div> }
                 { /* keyed by the day: a date change remounts this block and the
                      slide-in animation runs from the side you moved towards */ }
+                { (view === 'day') &&
                 <div key={ selected.getTime() } className={ `phone-calendar-day is-from-${ slideDir }` }>
                 { loaded && (dayEvents.length === 0) && (dayBirthdays.length === 0) &&
                     <div className="phone-calendar-empty">
@@ -300,7 +392,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
                             <span className="phone-calendar-now-label">{ FormatClock(now) }</span>
                         </div> }
                 </div>
-                </div>
+                </div> }
                 <div className="phone-scroll-spacer" />
             </div>
 
