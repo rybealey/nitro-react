@@ -744,19 +744,21 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                              can want, and leaving is the control a guest most
                              needs and had nowhere to press. */ }
                         { /* Repeat has no meaning on a timeline five people
-                             share, so in a jam this slot is the HOST's handover:
-                             step out and the jam carries on under whoever has
-                             been here longest. A guest's way out is the labelled
-                             red button at the bottom instead - it is the thing
-                             they most need to find, and an unlabelled icon is
-                             not findable. An empty slot keeps the play button
-                             centred. */ }
+                             share, so in a jam this slot is empty - and empty
+                             rather than filled, because the two things it could
+                             hold both belong elsewhere.
+
+                             The host's handover used to live here. It is gone:
+                             a host has one ending now, End jam, and it stops the
+                             session for everybody. A guest's way out is the
+                             labelled red button at the bottom, because leaving
+                             is the thing a guest most needs to find and an
+                             unlabelled icon is not findable.
+
+                             The empty slot stays so the play button keeps its
+                             place in the middle. */ }
                         { inJam
-                            ? (jam.isHost
-                                ? <div className="phone-tap phone-music-sidebtn" title="Step out - the jam passes to whoever has been here longest" onClick={ event => LeaveJam() }>
-                                    <PhoneIcon icon="arrow-right-from-bracket" size={ 22 } />
-                                </div>
-                                : <div className="phone-music-sidebtn" />)
+                            ? <div className="phone-music-sidebtn" />
                             : <div className={ `phone-tap phone-music-sidebtn${ personalRepeat ? ' is-on' : '' }` } title={ personalRepeat ? 'Repeat is on' : 'Repeat this song' } onClick={ event => ToggleSitchRepeat() }>
                                 <PhoneIcon icon="repeat" size={ 22 } />
                             </div> }
@@ -797,10 +799,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                  there and no place at all before that - the one thing a guest
                  most needs to find was the least labelled control on the screen.
 
-                 The host does NOT get this. Their leaving hands the jam on,
-                 which is a quieter act than a red button describes, and they
-                 have End jam in the invite sheet for the loud one. The door
-                 stays in their transport.
+                 The host does NOT get this one. Theirs is End jam, in the
+                 invite sheet, and it stops the session for everybody - a host
+                 has one ending, not a choice of two to tell apart at the moment
+                 they have already decided to stop.
 
                  Deliberately shorter than the app's other pills: this screen is
                  a fixed column that has twice run out of room, and the source
