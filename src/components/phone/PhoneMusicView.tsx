@@ -595,6 +595,16 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             : null));
 
 
+    // THE SAME LINE, MINUS THE ROOM. On your own session's screen the room's
+    // half is the room talking over it: this screen is about what YOU have on,
+    // its title says so, and the room has a whole screen of its own one tap
+    // away. Pausing your song made the bottom of "Just for you" start reporting
+    // the jukebox, which is the one thing that screen is not about.
+    //
+    // Blank when your song is not playing, rather than falling back to the room
+    // - a line reporting silence is worse than no line.
+    const personalSourceRow = (songHasEars ? sourceRow : null);
+
     const queueRow = (entry: { videoId: string, title: string, queuedBy: string }, index: number, playing: boolean = false) => (
         <div key={ `${ entry.videoId }-${ index }` } className={ `phone-music-row${ playing ? ' is-playing' : '' }` } style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
             <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
@@ -853,7 +863,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <div className="phone-tap phone-music-leavejam" title="Leave this jam" onClick={ event => LeaveJam() }>
                     <PhoneIcon icon="arrow-right-from-bracket" size={ 20 } />
                 </div> }
-            { sourceRow }
+            { personalSourceRow }
             { /* BOTTOM RIGHT, floating over the pane rather than in the column.
                  Everything else on this screen is one fixed stack in a phone
                  that does not scroll, and a tenth row would have pushed the
