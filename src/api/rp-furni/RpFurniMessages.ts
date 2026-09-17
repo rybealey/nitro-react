@@ -9,6 +9,7 @@ const RP_FURNI_ALPHA = 3926; // both directions
 const RP_FURNI_FUNCTION = 4111; // both directions
 const RP_REQUEST_FURNI_FUNCTION = 4112; // client -> server
 const RP_DELETE_INVENTORY_FURNI = 4113; // client -> server
+const RP_CATALOG_RENAME_FURNI = 4142; // client -> server
 
 export interface RpFurniAlpha
 {
@@ -237,6 +238,37 @@ export class RpFurniFunctionEvent extends MessageEvent implements IMessageEvent
         return this.parser as RpFurniFunctionParser;
     }
 }
+
+/**
+ * Rename a furni DEFINITION from the catalog, without owning one.
+ *
+ * The Function tool can only rename a piece placed in the room you are standing
+ * in - that is its proof you were looking at it. In the shop the equivalent
+ * proof is that the definition is on a page, which the server checks; the id
+ * here is not trusted on its own.
+ */
+export class RpCatalogRenameFurniComposer implements IMessageComposer<(string | number)[]>
+{
+    private _data: (string | number)[];
+
+    constructor(definitionId: number, publicName: string)
+    {
+        this._data = [ definitionId, publicName ];
+    }
+
+    public getMessageArray() 
+    {
+        return this._data; 
+    }
+
+    public dispose(): void 
+    {
+        return; 
+    }
+}
+
+export const SendRpCatalogRenameFurni = (definitionId: number, publicName: string): void =>
+    SendMessageComposer(new RpCatalogRenameFurniComposer(definitionId, publicName));
 
 export class RpRequestFurniFunctionComposer implements IMessageComposer<number[]>
 {
@@ -499,7 +531,8 @@ export const RegisterRpFurniMessages = () =>
             [ RP_FURNI_ALPHA, RpSetFurniAlphaComposer ],
             [ RP_FURNI_FUNCTION, RpSetFurniFunctionComposer ],
             [ RP_REQUEST_FURNI_FUNCTION, RpRequestFurniFunctionComposer ],
-            [ RP_DELETE_INVENTORY_FURNI, RpDeleteInventoryFurniComposer ]
+            [ RP_DELETE_INVENTORY_FURNI, RpDeleteInventoryFurniComposer ],
+            [ RP_CATALOG_RENAME_FURNI, RpCatalogRenameFurniComposer ]
         ])
     });
 
