@@ -125,11 +125,93 @@ export const SetSitchSongMeta = (videoId: string, title: string, author: string)
     notify();
 }
 
+// YOUR queue. Nothing like the room's, because it is nobody else's: the room's
+// rules - a cooldown, one pending song each, a cap of twenty - all exist to
+// stop one player crowding out the others, and there are no others here. The
+// only limit is a ceiling so a stuck loop cannot grow without end.
+const QUEUE_MAX = 50;
+
+let queue: SitchSong[] = [];
+
+export const GetSitchQueue = () => queue;
+
+/// Plays now if nothing is, joins the back of the queue otherwise. Returns
+/// whether it started, so the caller can decide where to send the player.
+export const EnqueueSitchSong = (next: SitchSong): boolean =>
+{
+    if(!next || !next.videoId) return false;
+
+    if(!song)
+    {
+        PlaySitchSong(next);
+
+        return true;
+    }
+
+    if(queue.length >= QUEUE_MAX) return false;
+
+    queue = [ ...queue, next ];
+
+    notify();
+
+    return false;
+}
+
+export const RemoveSitchSongAt = (index: number) =>
+{
+    if((index < 0) || (index >= queue.length)) return;
+
+    queue = queue.filter((entry, at) => (at !== index));
+
+    notify();
+}
+
+/// What happens when a song ends: the next one, or silence.
+///
+/// Not PlaySitchSong, which also stops the station - that already happened when
+/// this session started, and calling it again would be a second stop of
+/// something already stopped.
+export const AdvanceSitchSong = () =>
+{
+    if(!queue.length)
+    {
+        StopSitchSong();
+
+        return;
+    }
+
+    song = queue[0];
+    queue = queue.slice(1);
+
+    notify();
+}
+
+export const useSitchQueue = (): SitchSong[] =>
+{
+    const [ , setTick ] = useState(0);
+
+    useEffect(() =>
+    {
+        const listener = () => setTick(tick => (tick + 1));
+
+        listeners.add(listener);
+
+        return () => { listeners.delete(listener); };
+    }, []);
+
+    return queue;
+}
+
+/// Ends the session, queue and all. The line at the bottom of the app calls
+/// this "your session" rather than "your song" for exactly this reason - one
+/// stop, and the whole thing is over. Taking songs out one at a time is what
+/// the queue screen is for.
 export const StopSitchSong = () =>
 {
-    if(!song) return;
+    if(!song && !queue.length) return;
 
     song = null;
+    queue = [];
 
     notify();
 }

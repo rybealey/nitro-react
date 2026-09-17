@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent } from '../../hooks';
 import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { ParseVideoId, PlaySitchSong, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchSong } from '../music-player/SitchSongStore';
+import { EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -44,7 +44,7 @@ interface PhoneMusicViewProps
 // that in a row: the source line clipped, then the buttons overlapped the up
 // next card, then the block without flex: none squashed under its own content.
 // Splitting the screen ends the arithmetic rather than winning it.
-type MusicView = 'home' | 'personal' | 'now' | 'queue';
+type MusicView = 'home' | 'personal' | 'personalqueue' | 'now' | 'queue';
 
 const formatClock = (seconds: number): string =>
 {
@@ -72,6 +72,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const personalPlayback = useSitchPlayback();
     // your song wins: it is the one taking your ears
     const hero = (personal ?? current);
+    const personalQueue = useSitchQueue();
     const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
@@ -126,7 +127,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 
     useEffect(() =>
     {
-        if((view !== 'personal') || personal) return;
+        if(((view !== 'personal') && (view !== 'personalqueue')) || personal) return;
 
         setView('home');
     }, [ view, personal ]);
@@ -193,10 +194,17 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         // userId 0: this came from a link, not somebody's profile, so no
         // profile card should light up as playing it. Nothing reads the field
         // but that card, which matches on the video id anyway.
-        PlaySitchSong({ videoId, title: '', author: '', userId: 0 });
+        // userId 0: this came from a link, not somebody's profile, so no
+        // profile card should light up as playing it.
+        const started = EnqueueSitchSong({ videoId, title: '', author: '', userId: 0 });
+
         setPersonalUrl('');
         setPersonalOpen(false);
-        go('personal');
+
+        // Straight to it if it started; if it joined the back of the queue,
+        // taking the player there would be showing them the wrong song.
+        if(started) go('personal');
+        else showToast('Added to your queue.');
     }
 
     const stopPersonal = () =>
@@ -473,7 +481,11 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // staff skip, because stopping yours is yours to do.
     const personalScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-left', () => go('home'), 'JUST FOR YOU') }
+            { topBar('chevron-left', () => go('home'), 'JUST FOR YOU',
+                <div className="phone-tap phone-music-topbtn phone-music-queuebtn" title="Your queue" onClick={ event => go('personalqueue') }>
+                    <PhoneIcon icon="list-music" size={ 22 } />
+                    { (personalQueue.length > 0) && <span className="phone-music-badge">{ personalQueue.length }</span> }
+                </div>) }
             { personal &&
                 <div className="phone-music-now" key={ personal.videoId }>
                     <div className="phone-music-coverwrap">
@@ -519,6 +531,50 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <div className="phone-music-spacer" />
                 </div> }
             { sourceRow }
+        </div>
+    );
+
+    // Your queue. The room's screen next door reads almost the same and is a
+    // different thing underneath: that one is shared and governed - a cooldown,
+    // one song each, staff who can remove yours - and this one is yours, so
+    // anything in it can go at a tap and nothing is rationed.
+    const personalQueueScreen = (
+        <div className="phone-music-pane">
+            { topBar('chevron-left', () => go('personal'), 'YOUR QUEUE') }
+            <div className="phone-music-list">
+                { personal &&
+                    <>
+                        <div className="phone-music-section">Playing now</div>
+                        <div className="phone-music-row is-playing">
+                            <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                            <div className="phone-music-row-text">
+                                <div className="phone-music-row-title">{ personal.title || 'Your song' }</div>
+                                <div className="phone-music-row-by">{ personal.author || 'Nobody else can hear this' }</div>
+                            </div>
+                            { eq }
+                        </div>
+                    </> }
+                <div className="phone-music-section">Next up</div>
+                { (personalQueue.length === 0) &&
+                    <div className="phone-music-emptyline">Nothing queued. Paste another link and it plays after this one.</div> }
+                { personalQueue.map((entry, index) => (
+                    <div key={ `${ entry.videoId }-${ index }` } className="phone-music-row" style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
+                        <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                        <div className="phone-music-row-text">
+                            <div className="phone-music-row-title">{ entry.title || 'Your song' }</div>
+                            <div className="phone-music-row-by">{ entry.author || 'Waiting its turn' }</div>
+                        </div>
+                        <div className="phone-tap phone-music-rowbtn" title="Take it out" onClick={ event => RemoveSitchSongAt(index) }>
+                            <PhoneIcon icon="xmark" size={ 17 } />
+                        </div>
+                    </div>
+                )) }
+            </div>
+            <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
+                <PhoneIcon icon="plus" size={ 16 } />
+                Add a song
+            </div>
+            <div className="phone-music-note">Only you hear any of this, so nothing here is rationed - take anything out at a tap.</div>
         </div>
     );
 
@@ -624,7 +680,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     return (
         <div className="phone-screen phone-app-screen phone-music">
             <div key={ view } className={ `phone-music-anim is-${ slide }` }>
-                { (view === 'home') ? homeScreen : ((view === 'personal') ? personalScreen : ((view === 'now') ? nowScreen : queueScreen)) }
+                { (view === 'home')
+                    ? homeScreen
+                    : ((view === 'personal')
+                        ? personalScreen
+                        : ((view === 'personalqueue')
+                            ? personalQueueScreen
+                            : ((view === 'now') ? nowScreen : queueScreen))) }
             </div>
             { toast &&
                 <div key={ toast } className="phone-music-toast">

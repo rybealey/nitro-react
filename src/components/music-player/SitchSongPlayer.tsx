@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
-import { SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, StopSitchSong, useSitchSong } from './SitchSongStore';
+import { AdvanceSitchSong, SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, useSitchSong } from './SitchSongStore';
 
 // The one place a profile's favorite song is heard. Mounted at the app root
 // beside JukeboxAudioEngine, for the same reason that one is: audio should not
@@ -66,7 +66,8 @@ export const SitchSongPlayer: FC<{}> = props =>
                     },
                     onStateChange: (event: any) =>
                     {
-                        if(event.data === (window as any).YT.PlayerState.ENDED) StopSitchSong();
+                        // the next one of yours, or silence and the room back
+                        if(event.data === (window as any).YT.PlayerState.ENDED) AdvanceSitchSong();
                         if(event.data === (window as any).YT.PlayerState.PLAYING)
                         {
                             if(!playerRef.current?.isMuted?.()) setNeedsUnmute(false);
@@ -79,9 +80,10 @@ export const SitchSongPlayer: FC<{}> = props =>
                             if(data?.video_id) SetSitchSongMeta(data.video_id, data.title, data.author);
                         }
                     },
-                    // Private, removed or embed-disabled. Nothing to advance to,
-                    // so stop and give the room's jukebox its ears back.
-                    onError: () => StopSitchSong()
+                    // Private, removed or embed-disabled. Skip it the way an
+                    // ended song is skipped, so one dead link in a queue does
+                    // not end the whole session.
+                    onError: () => AdvanceSitchSong()
                 }
             });
         });
