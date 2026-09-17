@@ -41,7 +41,7 @@ export const ParsePhotoMessage = (message: string): string =>
 // screen). New apps get appended to the stored layout on load; unknown stored
 // keys (renamed/removed apps) are dropped.
 export const DEFAULT_DOCK_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App Store' ];
-// What a new phone ships with. Tunes, Weather and News are deliberately NOT
+// What a new phone ships with. Spotify, Weather and News are deliberately NOT
 // here: they are the phone's optional, ambient apps, so they start in the App
 // Store and a player installs the ones they want. Everything here is either a
 // system app or one the phone is not much use without.
@@ -253,7 +253,7 @@ const parsePrefs = (raw: string): PhonePrefs =>
         {
             const parsed = JSON.parse(raw);
             // apps renamed since a layout was saved keep their slot
-            const RENAMED: Record<string, string> = { 'Music': 'Tunes' };
+            const RENAMED: Record<string, string> = { 'Music': 'Spotify', 'Tunes': 'Spotify' };
             const readStrings = (value: unknown) => (Array.isArray(value) ? value.filter((key: unknown) => (typeof key === 'string')).map((key: string) => (RENAMED[key] ?? key)) : []);
             // A stored layout from an older roster version is discarded so the
             // new default arrangement shows; pins/mutes/theme are preserved.

@@ -439,7 +439,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     <div className="phone-app-kicker phone-sitch-kicker">FAVORITE SONG</div>
                     <input className="phone-sitch-line" type="text" value={ songUrl } spellCheck={ false }
                         placeholder="Paste a YouTube link" onChange={ event => setSongUrl(event.target.value) } />
-                    <div className="phone-sitch-note">One song sits on your profile, and saving a new one replaces it. It never joins the hotel queue and never plays on its own &mdash; people tap it to listen, and it takes over from Tunes and the room&rsquo;s jukebox while it does. For the room, use Tunes. Clear this box to take it off.</div>
+                    <div className="phone-sitch-note">One song sits on your profile, and saving a new one replaces it. It never joins the hotel queue and never plays on its own &mdash; people tap it to listen, and it takes over from Spotify and the room&rsquo;s jukebox while it does. For the room, use Spotify. Clear this box to take it off.</div>
                 </div>
             </div>
         );
@@ -587,7 +587,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                                             { !!profile.favoriteAuthor && <div className="phone-sitch-song-author">{ profile.favoriteAuthor }</div> }
                                         </div>
                                         { /* Playing is this listener's own business: nobody else
-                                             hears it, and it stops Tunes and talks over the room's
+                                             hears it, and it stops Spotify and talks over the room's
                                              jukebox for as long as it runs. */ }
                                         <div className={ 'phone-sitch-song-play phone-tap' + ((playingSong?.videoId === profile.favoriteVideoId) ? ' is-on' : '') }
                                             title={ (playingSong?.videoId === profile.favoriteVideoId) ? 'Stop' : 'Play' }

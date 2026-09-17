@@ -54,7 +54,7 @@ const APP_SCREENS: Record<string, PhoneScreen> = {
     'Photos': 'photos',
     'Settings': 'settings',
     'Calendar': 'calendar',
-    'Tunes': 'music',
+    'Spotify': 'music',
     'Notes': 'notes',
     'Weather': 'weather',
     'News': 'news',

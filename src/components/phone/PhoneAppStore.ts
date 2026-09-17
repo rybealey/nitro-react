@@ -80,7 +80,7 @@ export const STORE_APPS: StoreApp[] = [
         price: { kind: 'free' }
     },
     {
-        key: 'Tunes',
+        key: 'Spotify',
         tagline: 'Know what the room is playing.',
         category: 'Music',
         blurb: 'What is playing in the room.',

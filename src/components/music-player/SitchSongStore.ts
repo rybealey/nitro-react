@@ -32,7 +32,7 @@ export const GetSitchSong = () => song;
 
 /// Start a profile's song.
 ///
-/// The Tunes radio is STOPPED rather than suppressed: phoneOn is this player's
+/// The Spotify radio is STOPPED rather than suppressed: phoneOn is this player's
 /// own play/pause switch, so turning it off leaves the Music app showing
 /// paused, which is the honest reading of what just happened. A jukebox in the
 /// room cannot be stopped - it belongs to the room, not to you - so that half

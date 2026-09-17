@@ -19,7 +19,7 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     const { present, current } = useJukeboxState();
     const { phoneOn, volume, muted } = useJukeboxPrefs();
     // A favorite song playing off somebody's Sitch profile takes the ears for
-    // as long as it lasts. Tunes was already switched off by PlaySitchSong -
+    // as long as it lasts. Spotify was already switched off by PlaySitchSong -
     // that is a real stop the player can see - but a jukebox belongs to the
     // room rather than to you, so it cannot be stopped, only waited out. The
     // station keeps its own timeline the whole time, so when the song ends the

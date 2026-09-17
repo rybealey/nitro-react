@@ -476,7 +476,7 @@ export const SendSitchProfileByName = (username: string): void => SendMessageCom
 export const SendSitchSearch = (query: string): void => SendMessageComposer(new RpSitchSearchComposer(query));
 export const SendSitchActivity = (): void => SendMessageComposer(new RpGetSitchActivityComposer());
 
-/** Cover art for a favorite song, built from the id the way Tunes does it. */
+/** Cover art for a favorite song, built from the id the way Spotify does it. */
 export const SitchSongArt = (videoId: string): string => (videoId ? `https://i.ytimg.com/vi/${ videoId }/mqdefault.jpg` : '');
 
 /**

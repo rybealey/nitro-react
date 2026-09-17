@@ -8,7 +8,7 @@ import { StopSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
-// Tunes app: the hotel station on your phone, in a streaming-app idiom - an
+// Spotify app: the hotel station on your phone, in a streaming-app idiom - an
 // always-dark ground, big square cover, one green for "playing" and the
 // primary action, flat rows for the queue. Now Playing shows the track the
 // whole hotel hears (state is server-authoritative and pushed to everyone);
@@ -133,7 +133,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // Tuning in is the inverse of a Sitch profile song taking over, and it is
     // the one control a listener can always reach: the stop button for a song
     // lives on the profile that started it, which may be several taps away.
-    const toggleTunes = () =>
+    const toggleRadio = () =>
     {
         StopSitchSong();
         SetJukeboxPhoneOn(!phoneOn);
@@ -250,7 +250,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 
     const nowScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-down', () => (onBack && onBack()), 'PIXELRP RADIO', queueButton) }
+            { topBar('chevron-down', () => (onBack && onBack()), 'SPOTIFY', queueButton) }
             { !current &&
                 <>
                     <div className="phone-music-coverwrap">
@@ -302,7 +302,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className={ `phone-tap phone-music-sidebtn${ volumeOpen ? ' is-on' : '' }` } title="Volume" onClick={ event => setVolumeOpen(!volumeOpen) }>
                             <PhoneIcon icon={ volume === 0 ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
-                        <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => toggleTunes() }>
+                        <div className={ `phone-tap phone-music-play${ phoneOn ? ' is-on' : '' }` } title={ phoneOn ? 'Pause (just for you)' : 'Listen' } onClick={ event => toggleRadio() }>
                             <PhoneIcon icon={ phoneOn ? 'pause' : 'play' } size={ 26 } />
                         </div>
                         { canManage &&
