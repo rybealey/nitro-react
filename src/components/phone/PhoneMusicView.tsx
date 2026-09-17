@@ -241,9 +241,13 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         </>
     );
 
-    // Shown wherever the app is: a song playing only for you is easy to forget
-    // about, and until now the only stop button was on the profile that started
-    // it.
+    // On the front page, because it is half of what the app is for and the other
+    // half - the room's jukebox - is not there at all when no jukebox is. It
+    // sits above the source line rather than up by the cover: the pane does not
+    // scroll, so it goes where there is give, and the give is at the bottom.
+    //
+    // A song playing only for you is also easy to forget about, and until this
+    // the only stop button was on the profile that started it.
     const personalSection = (
         <div className="phone-music-personal">
             <div className="phone-music-section">Just for you</div>
@@ -435,6 +439,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <div className="phone-music-upnext-by">{ byName(queue[0].queuedBy) }</div>
                         </div> }
                 </div> }
+            { personalSection }
             { current && sourceRow }
             { !current && <div className="phone-music-spacer" /> }
             { !current && sourceRow }
@@ -445,7 +450,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         <div className="phone-music-pane">
             { topBar('chevron-left', () => go('now'), 'QUEUE') }
             <div className="phone-music-list">
-                { personalSection }
                 { current &&
                     <>
                         <div className="phone-music-section">Now playing</div>
