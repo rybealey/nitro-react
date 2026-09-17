@@ -1,5 +1,6 @@
 import { RpJukeboxAddComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SendMessageComposer } from '../../api';
 import { useJukeboxState } from './JukeboxStore';
 import { SiriWave } from './SiriWave';
@@ -13,6 +14,15 @@ import { SiriWave } from './SiriWave';
 //
 // The queue itself stays server-authoritative and visible in the music
 // player panel (UP NEXT); skipping lives there too.
+//
+// RENDERED INTO document.body, not where it is mounted. It lives under
+// RightSideView, which sets z-index 69 and so opens a stacking context - and a
+// z-index inside a stacking context is only ever relative to it. This box asks
+// for 85 and got 69, which put it UNDER the toolbar at 70, sitting along the
+// same bottom edge. It still painted, because the toolbar does not cover all
+// of it, but the toolbar took the clicks: the Add button did nothing while the
+// keyboard worked perfectly, because a keypress never asks what is on top.
+// A portal takes it out of that context so its 85 means 85.
 //
 // It refuses to take a link when the server says there is no jukebox here, and
 // says so. The two ends disagreed about what a jukebox IS: the double-click
@@ -138,7 +148,7 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
         }
     }, []);
 
-    return (
+    return createPortal((
         <div ref={ wrapRef } className={ `nitro-siri siri-${ phase }` }>
             <div className="siri-halo" />
             <div className="siri-plate">
@@ -192,5 +202,5 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
                     </div> }
             </div>
         </div>
-    );
+    ), document.body);
 }
