@@ -2,11 +2,12 @@ import { RpJukeboxAddComposer, RpJukeboxRemoveComposer, RpJukeboxSkipComposer } 
 import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
-import { useMessageEvent } from '../../hooks';
+import { useMessageEvent, useNavigator } from '../../hooks';
 import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
+import { PhoneMarquee } from './PhoneMarquee';
 
 // Spotify app: THIS ROOM's jukebox on your phone, in a streaming-app idiom - an
 // always-dark ground, big square cover, one green for "playing" and the
@@ -58,6 +59,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const { onBack = null } = props;
     const { current, queue, present } = useJukeboxState();
     const { phoneOn, volume } = useJukeboxPrefs();
+    // the room's own name, the same place the title card in the corner reads it
+    const { navigatorData = null } = useNavigator();
+    const roomName = (navigatorData?.enteredGuestRoom?.roomName || '');
     const [ view, setView ] = useState<MusicView>('home');
     const [ slide, setSlide ] = useState<'right' | 'left'>('right');
     const [ requesting, setRequesting ] = useState(false);
@@ -306,7 +310,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <div className="phone-tap phone-music-row is-playing" onClick={ event => go('personal') }>
                     <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                     <div className="phone-music-row-text">
-                        <div className="phone-music-row-title">{ personal.title || 'Your song' }</div>
+                        <PhoneMarquee className="phone-music-row-title" text={ personal.title || 'Your song' } />
                         <div className="phone-music-row-by">{ personal.author || 'Playing in your ears only' }</div>
                     </div>
                     { eq }
@@ -395,7 +399,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         <div key={ `${ entry.videoId }-${ index }` } className={ `phone-music-row${ playing ? ' is-playing' : '' }` } style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
             <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
             <div className="phone-music-row-text">
-                <div className="phone-music-row-title">{ entry.title }</div>
+                <PhoneMarquee className="phone-music-row-title" text={ entry.title } />
                 <div className="phone-music-row-by">Requested by { byName(entry.queuedBy) }</div>
             </div>
             { playing && eq }
@@ -439,8 +443,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             <div className={ `phone-music-titles${ personal ? ' phone-tap' : '' }` } onClick={ event => (personal && go('personal')) }>
                 <div className="phone-music-titles-text">
                     { hero &&
-                        <div className="phone-music-nowkicker">{ personal ? 'JUST FOR YOU' : 'NOW PLAYING' }</div> }
-                    <div className="phone-music-title">{ personal ? (personal.title || 'Your song') : (current ? current.title : 'No track is playing') }</div>
+                        <PhoneMarquee className="phone-music-nowkicker" text={ personal
+                            ? 'JUST FOR YOU'
+                            : `NOW PLAYING${ roomName ? ` (IN ${ roomName.toUpperCase() })` : '' }` } /> }
+                    <PhoneMarquee className="phone-music-title" text={ personal ? (personal.title || 'Your song') : (current ? current.title : 'No track is playing') } />
                     <div className="phone-music-sub is-wrap">{ personal
                         ? (personal.author || 'Nobody else can hear this')
                         : (current
@@ -459,7 +465,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <PhoneIcon icon="waveform-lines" size={ 16 } />
                     <span className="phone-music-pilltext">
                         Join the room jukebox session
-                        <span className="phone-music-pillsub">{ current.title }</span>
+                        <PhoneMarquee className="phone-music-pillsub" text={ current.title } />
                     </span>
                 </div> }
             { !current && present &&
@@ -497,7 +503,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className="phone-music-titles-text">
                             { /* title and channel come off the running player, so
                                  for a second after pasting there is only the id */ }
-                            <div className="phone-music-title">{ personal.title || 'Your song' }</div>
+                            <PhoneMarquee className="phone-music-title" text={ personal.title || 'Your song' } />
                             <div className="phone-music-sub">{ personal.author || 'Nobody else can hear this' }</div>
                         </div>
                     </div>
@@ -548,7 +554,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <div className="phone-music-row is-playing">
                             <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                             <div className="phone-music-row-text">
-                                <div className="phone-music-row-title">{ personal.title || 'Your song' }</div>
+                                <PhoneMarquee className="phone-music-row-title" text={ personal.title || 'Your song' } />
                                 <div className="phone-music-row-by">{ personal.author || 'Nobody else can hear this' }</div>
                             </div>
                             { eq }
@@ -561,7 +567,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <div key={ `${ entry.videoId }-${ index }` } className="phone-music-row" style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
                         <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         <div className="phone-music-row-text">
-                            <div className="phone-music-row-title">{ entry.title || 'Your song' }</div>
+                            <PhoneMarquee className="phone-music-row-title" text={ entry.title || 'Your song' } />
                             <div className="phone-music-row-by">{ entry.author || 'Waiting its turn' }</div>
                         </div>
                         <div className="phone-tap phone-music-rowbtn" title="Take it out" onClick={ event => RemoveSitchSongAt(index) }>
@@ -590,7 +596,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     </div>
                     <div className="phone-music-titles">
                         <div className="phone-music-titles-text">
-                            <div className="phone-music-title">{ current.title }</div>
+                            <PhoneMarquee className="phone-music-title" text={ current.title } />
                             <div className="phone-music-sub">{ current.author ? `${ current.author } · ` : '' }requested by { byName(current.queuedBy) }</div>
                         </div>
                         { present &&
@@ -641,7 +647,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <img className="phone-music-upnext-art" src={ `https://i.ytimg.com/vi/${ queue[0].videoId }/mqdefault.jpg` } alt="" draggable={ false } />
                             <div className="phone-music-upnext-text">
                                 <div className="phone-music-upnext-kicker">UP NEXT</div>
-                                <div className="phone-music-upnext-title">{ queue[0].title }</div>
+                                <PhoneMarquee className="phone-music-upnext-title" text={ queue[0].title } />
                             </div>
                             <div className="phone-music-upnext-by">{ byName(queue[0].queuedBy) }</div>
                         </div> }
