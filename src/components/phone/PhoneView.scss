@@ -7843,14 +7843,22 @@ $phone-scale: 0.8;
         overflow: hidden;
     }
 
+    // One surface, not two. The head used to sit on glass while the rows sat
+    // on the solid screen background, so the sheet read as a translucent panel
+    // with an opaque block dropped into it - the home-screen icons showed
+    // through the top half and stopped dead at the first row.
+    //
+    // Solid wins over making the rows glass instead: the rows are the part you
+    // have to READ, and app icons behind a notification is what made the
+    // boundary obvious in the first place. The scrim behind the sheet is what
+    // separates it from the home screen; it does not need to be see-through as
+    // well.
     .phone-notify-sheet-glass {
         position: absolute;
         inset: 0;
         z-index: 0;
         border-radius: 0 0 30px 30px;
-        background: var(--ph-glass2);
-        backdrop-filter: var(--ph-glass-blur);
-        -webkit-backdrop-filter: var(--ph-glass-blur);
+        background: $phone-screen-bg;
     }
 
     .phone-notify-sheet-body {
@@ -7890,7 +7898,9 @@ $phone-scale: 0.8;
     }
 
     .phone-notify-list {
-        background: $phone-screen-bg;
+        // The sheet behind it is this colour now, so the rows only need the
+        // hairline that divides them from the head.
+        background: transparent;
         border-top: 1px solid $phone-hairline;
         overflow-y: auto;
         min-height: 0;
