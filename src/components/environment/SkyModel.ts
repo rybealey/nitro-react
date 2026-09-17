@@ -26,7 +26,6 @@ export interface SkyLook
     daylight: number;
     stars: boolean;
     fog: boolean;
-    rain: boolean;
 }
 
 const hex = (value: string): Rgb => [ parseInt(value.slice(1, 3), 16), parseInt(value.slice(3, 5), 16), parseInt(value.slice(5, 7), 16) ];
@@ -156,8 +155,7 @@ export const ComputeSky = (snapshot: WeatherSnapshot, now: number): SkyLook =>
         horizon: `radial-gradient(ellipse 60% 50% at 50% 50%, ${ cssA(horizon, glow) } 0%, ${ cssA(horizon, glow * .45) } 45%, rgba(0, 0, 0, 0) 100%)`,
         daylight,
         stars: (((kind === 'clear') || (kind === 'partly')) && (daylight < .3)),
-        fog: ((kind === 'fog') || (kind === 'cloud') || (kind === 'snow')),
-        rain: (kind === 'wet')
+        fog: ((kind === 'fog') || (kind === 'cloud') || (kind === 'snow'))
     };
 }
 

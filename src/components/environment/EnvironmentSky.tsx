@@ -40,7 +40,6 @@ const SkyLayers: FC<{ look: SkyLook, className?: string }> = ({ look, className 
                 <div className="env-sky-fog is-a" />
                 <div className="env-sky-fog is-b" />
             </> }
-        { look.rain && <div className="env-sky-rain" /> }
         { look.stars && <div className="env-sky-stars" style={ { opacity: (1 - (look.daylight / .3)) } } /> }
         <div className="env-sky-vignette" />
     </div>
