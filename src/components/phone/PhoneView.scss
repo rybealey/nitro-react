@@ -4071,6 +4071,30 @@ $phone-scale: 0.8;
 
     .phone-sitch-post-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 
+    // A reposted post on a profile. The line sits ABOVE the card and lines up
+    // with the name rather than the head, which is where X and Threads put it -
+    // it is a note about how the post got here, not part of the post.
+    .phone-sitch-repost {
+        // The card below keeps its own hairline, so the wrapper only has to
+        // take over the top padding the line now sits in.
+        padding-top: 11px;
+
+        .phone-sitch-post { padding-top: 0; }
+    }
+
+    .phone-sitch-repost-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        // Lines up with the author's name below: 14px of card padding, the 34px
+        // head, and the 10px gap between them.
+        padding-left: 58px;
+        padding-bottom: 6px;
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        color: var(--ph-faint);
+    }
+
     .phone-sitch-post-head { display: flex; align-items: baseline; gap: 6px; }
     .phone-sitch-post-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); letter-spacing: -.1px; }
     .phone-sitch-post-ago { margin-left: auto; flex: none; font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-faint); }

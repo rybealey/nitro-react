@@ -53,6 +53,14 @@ export interface SitchPost
     /** Whether the VIEWER has liked or reposted this, not the author. */
     liked: boolean;
     reposted: boolean;
+    /**
+     * On a PROFILE, who put this post there by reposting it - empty when they
+     * wrote it themselves. This is how a timeline can carry somebody else's
+     * post and still say whose shelf it is sitting on.
+     */
+    repostedBy: string;
+    /** When the repost happened; the profile is ordered by it. */
+    repostedAt: number;
 }
 
 export interface SitchProfile
@@ -110,7 +118,10 @@ const readPost = (wrapper: IMessageDataWrapper): SitchPost => ({
     likes: wrapper.readInt(),
     reposts: wrapper.readInt(),
     liked: (wrapper.readInt() === 1),
-    reposted: (wrapper.readInt() === 1)
+    reposted: (wrapper.readInt() === 1),
+    // Only a profile ever fills these in; everywhere else they arrive empty.
+    repostedBy: wrapper.readString(),
+    repostedAt: wrapper.readInt()
 });
 
 const readPosts = (wrapper: IMessageDataWrapper): SitchPost[] =>

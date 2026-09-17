@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from 'react';
+import { cloneElement, FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchThread, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt, SitchSongUrl } from '../../api/rp-phone/RpSitchMessages';
 import { useMessageEvent } from '../../hooks';
@@ -314,8 +314,31 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         );
     }
 
-    const postRow = (post: SitchPost, inThread: boolean = false, canDelete: boolean = false) => (
-        <div key={ post.id } className={ 'phone-sitch-post' + (inThread ? ' is-reply' : '') }>
+    /**
+     * One post. On a profile it may be somebody else's, put there by a repost -
+     * in which case the card keeps the ORIGINAL author's name and head, exactly
+     * as X and Threads do, and a line above says who passed it on. Attributing
+     * it to the reposter would be quietly rewriting who said it.
+     */
+    const postRow = (post: SitchPost, inThread: boolean = false, canDelete: boolean = false) =>
+    {
+        const card = postCard(post, inThread, canDelete);
+
+        if(!post.repostedBy) return cloneElement(card, { key: post.id });
+
+        return (
+            <div key={ post.id } className="phone-sitch-repost">
+                <div className="phone-sitch-repost-head">
+                    <PhoneIcon icon="repeat" size={ 12 } />
+                    <span>{ post.repostedBy } reposted</span>
+                </div>
+                { card }
+            </div>
+        );
+    }
+
+    const postCard = (post: SitchPost, inThread: boolean, canDelete: boolean) => (
+        <div className={ 'phone-sitch-post' + (inThread ? ' is-reply' : '') }>
             <PhoneFace id={ post.userId } figure={ post.figure } name={ post.username } size={ 34 } className="phone-sitch-face" onClick={ () => openProfile(post.userId) } />
             <div className="phone-sitch-post-body">
                 <div className="phone-sitch-post-head">
