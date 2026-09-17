@@ -38,6 +38,9 @@ const FA_MAP: Record<string, string> = {
     'moon': 'moon',
     'more-vertical': 'ellipsis-vertical',
     'pencil': 'pen-to-square',
+    // Writing something NEW, as against editing something that exists. The two
+    // were the same glyph and the compose button read as "edit this".
+    'compose': 'feather-pointed',
     'phone': 'phone',
     'plus': 'plus',
     'search': 'magnifying-glass',

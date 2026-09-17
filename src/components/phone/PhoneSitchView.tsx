@@ -490,7 +490,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                         </div>
                         { !!root &&
                             <div className="phone-fab phone-tap" onClick={ () => openCompose(root.id) }>
-                                <PhoneIcon icon="pencil" size={ 17 } />
+                                <PhoneIcon icon="compose" size={ 17 } />
                             </div> }
                     </div>
                     { thread.map((post, index) => postRow(post, index > 0, deletable(post))) }
@@ -516,7 +516,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
                     </div>
                     { (tab === 'feed') &&
                         <div className="phone-fab phone-tap" onClick={ () => openCompose(0) }>
-                            <PhoneIcon icon="pencil" size={ 17 } />
+                            <PhoneIcon icon="compose" size={ 17 } />
                         </div> }
                     { (tab === 'profile') && !!mine &&
                         <div className="phone-fab phone-tap"
