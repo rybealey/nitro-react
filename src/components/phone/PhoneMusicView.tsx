@@ -367,17 +367,23 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { topBar('chevron-down', () => (onBack && onBack()), 'SPOTIFY', queueButton) }
             { !current &&
                 <>
+                    { /* With the room playing nothing, the cover is free, so a
+                         song of your own gets it rather than leaving a blank
+                         square above artwork-sized silence. Breathing, like the
+                         room's cover does, because it IS playing. */ }
                     <div className="phone-music-coverwrap">
-                        <div className="phone-music-cover is-empty">
-                            <PhoneIcon icon="waveform-lines" size={ 88 } />
+                        <div className={ `phone-music-cover${ personal ? ' is-playing' : ' is-empty' }` }>
+                            { personal
+                                ? <img src={ `https://i.ytimg.com/vi/${ personal.videoId }/hqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                                : <PhoneIcon icon="waveform-lines" size={ 88 } /> }
                         </div>
                     </div>
                     <div className="phone-music-titles">
                         <div className="phone-music-titles-text">
-                            <div className="phone-music-title">{ present ? 'Nothing playing in this room' : 'No jukebox in this room' }</div>
-                            <div className="phone-music-sub is-wrap">{ present
-                                ? 'Request a song and it starts right away for everyone here — or play one just for yourself, which nobody else hears.'
-                                : 'Nothing to request into. Play a song just for yourself instead — it follows you from room to room, and nobody else hears it.' }</div>
+                            <div className="phone-music-title">{ personal ? 'Playing just for you' : 'No track is playing' }</div>
+                            <div className="phone-music-sub is-wrap">{ personal
+                                ? 'Only you can hear it.'
+                                : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.') }</div>
                         </div>
                     </div>
                 </> }
