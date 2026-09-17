@@ -1,6 +1,7 @@
 import { RpJukeboxAddComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useRef, useState } from 'react';
 import { SendMessageComposer } from '../../api';
+import { useJukeboxState } from './JukeboxStore';
 import { SiriWave } from './SiriWave';
 
 // Siri — the jukebox prompt as a chat-bar popover. Springs up from behind
@@ -12,6 +13,16 @@ import { SiriWave } from './SiriWave';
 //
 // The queue itself stays server-authoritative and visible in the music
 // player panel (UP NEXT); skipping lives there too.
+//
+// It refuses to take a link when the server says there is no jukebox here, and
+// says so. The two ends disagreed about what a jukebox IS: the double-click
+// that opens this matches the furni's CLASSNAME, while the server accepts on
+// the BEHAVIOUR the Function Tool hands out - deliberately, so a builder can
+// use a booth or a radio. A jukebox-shaped furni without the behaviour would
+// open this box and then have the request refused, and the refusal arrives as
+// a system whisper while this popover is covering the chat bar, so it read as
+// nothing happening at all. `present` is the server's own answer, so asking it
+// is the one check that cannot drift from what the server will accept.
 
 type SiriPhase = 'open' | 'done' | 'closing';
 
@@ -22,6 +33,7 @@ const FOCUS_DELAY_MS = 460;
 export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
 {
     const [ phase, setPhase ] = useState<SiriPhase>('open');
+    const { present } = useJukeboxState();
     const [ url, setUrl ] = useState('');
     const wrapRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +52,7 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
     const submit = () =>
     {
         if(phaseRef.current !== 'open') return;
+        if(!present) return;
         if(!url.trim().length) return;
 
         SendMessageComposer(new RpJukeboxAddComposer(url.trim()));
@@ -86,7 +99,12 @@ export const SiriView: FC<{ onClose: () => void }> = ({ onClose = null }) =>
         <div ref={ wrapRef } className={ `nitro-siri siri-${ phase }` }>
             <div className="siri-halo" />
             <div className="siri-plate">
-                { (phase !== 'done') &&
+                { (phase !== 'done') && !present &&
+                    <div className="siri-row siri-none">
+                        <SiriWave />
+                        <span className="siri-nonetext">No jukebox in this room</span>
+                    </div> }
+                { (phase !== 'done') && present &&
                     <div className="siri-row">
                         <SiriWave />
                         <input ref={ inputRef } className="siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link"

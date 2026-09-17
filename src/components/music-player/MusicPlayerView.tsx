@@ -28,7 +28,12 @@ export const MusicPlayerView: FC<{}> = props =>
     {
         const roomObject = GetRoomEngine().getRoomObject(event.roomId, event.objectId, event.category);
 
-        if(roomObject && (roomObject.type === 'jukebox')) setIsSiriOpen(true);
+        // Either end saying yes is enough to OPEN it - the classname the
+        // renderer fires this for, or the server's own present flag, which is
+        // what a builder gets by giving some other furni the jukebox behaviour.
+        // Siri itself refuses the link when the server says no, so opening
+        // generously costs nothing and reaches both.
+        if(roomObject && ((roomObject.type === 'jukebox') || present)) setIsSiriOpen(true);
     });
 
     const updateVolume = (value: number) => SetJukeboxVolume(value);

@@ -282,6 +282,15 @@ $player-teal: #1E7295;
 // so its footprint starts ~6px off the viewport bottom. While Siri is
 // mounted, body.siri-active fades the chat bar out (see ChatInputView.scss);
 // unmounting restores it, whatever closed Siri.
+// The no-jukebox state: the same row without an input, so it reads as a
+// statement rather than a dead box you can type into.
+.siri-none .siri-nonetext {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: .7;
+}
+
 .nitro-siri {
     position: fixed;
     left: 50%;
