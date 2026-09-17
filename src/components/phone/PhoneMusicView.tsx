@@ -274,7 +274,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     </div>
                 </div> }
             { !personal &&
-                <div className="phone-tap phone-music-pill is-quiet" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
+                <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
                     <PhoneIcon icon="play" size={ 15 } />
                     Play a song just for you
                 </div> }
@@ -378,11 +378,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <div className="phone-music-sub is-wrap">{ present ? 'Nothing is queued in this room. Request a song and it starts right away for everyone here.' : 'No jukebox in this room, so there is nothing to request into. Play a song just for yourself instead.' }</div>
                         </div>
                     </div>
-                    { present &&
-                        <div className="phone-music-pill phone-tap" onClick={ openRequest }>
-                            <PhoneIcon icon="plus" size={ 16 } />
-                            Request a song in this room
-                        </div> }
                 </> }
             { current &&
                 <div className="phone-music-now" key={ current.videoId }>
@@ -450,6 +445,16 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div> }
                 </div> }
             { personalSection }
+            { /* Under Just for you, and in the quieter colour. Green is this
+                 app's "the thing to do", and the thing you can always do is
+                 play your own song - requesting only works with a jukebox
+                 standing in the room. Same show/hide rule it had inside the
+                 nothing-playing branch it used to live in. */ }
+            { !current && present &&
+                <div className="phone-music-pill is-quiet phone-tap" onClick={ openRequest }>
+                    <PhoneIcon icon="plus" size={ 16 } />
+                    Request a song in this room
+                </div> }
             { current && sourceRow }
             { !current && <div className="phone-music-spacer" /> }
             { !current && sourceRow }

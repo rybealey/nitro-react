@@ -2343,16 +2343,24 @@ $phone-scale: 0.8;
         &.is-on { color: $mu-green; }
     }
 
-    // The green pill is the app's one primary action. A second green one beside
-    // it would be two primaries and no hierarchy, so the personal-song entry is
-    // the same shape in the app's inset grey - and shorter, because it shares
-    // the Now Playing screen's fixed height with a 272px cover.
+    // is-quiet is COLOUR ONLY. It used to carry a height and margins too, which
+    // is why the two front-page buttons were different sizes; the size now comes
+    // from the base pill and both match whichever of them is wearing this.
+    //
+    // Green is the app's "the thing to do". On the front page that is playing
+    // your own song - it works anywhere - rather than requesting, which needs a
+    // jukebox standing in the room.
     .phone-music-pill.is-quiet {
-        margin: 2px 18px 6px;
-        height: 36px;
         background: var(--ph-inset);
         color: var(--ph-text);
     }
+
+    // The pair stacks closer than the queue screen's single pill, which keeps
+    // its own 22px. This screen is a fixed column sharing its height with a
+    // 272px cover, and the two of them at the queue screen's spacing is 44px of
+    // margin for 96px of button.
+    .phone-music-personal .phone-music-pill { margin: 2px 18px 4px; }
+    .phone-music-pill.is-quiet { margin: 0 18px 4px; }
 
     // Same reason: the row is the queue list's, and the queue list scrolls.
     .phone-music-personal .phone-music-row { padding: 4px 18px; }
