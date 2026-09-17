@@ -390,24 +390,30 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // never for the room jukebox, which was a line about a session you had not
     // joined, on the screen whose whole job is offering to join it. The room's
     // line belongs on the room's screen.
-    const sourceRow = (personal
+    // It names what has your EARS, and says nothing when nothing does.
+    //
+    // It used to ask whether a song of yours EXISTED, so a paused session had it
+    // reading "Your session" while you sat listening to the room - the last
+    // place still asking the old question after everything else moved to asking
+    // whether a thing is playing.
+    //
+    // Blank when paused or quiet, rather than a line reporting silence: the
+    // button is a play again, the cover has stopped and the sound has gone.
+    const sourceRow = (songHasEars
         ? (
             <div className="phone-music-source is-on">
                 <PhoneIcon icon="mobile-screen" size={ 14 } />
                 <span>Your session</span>
             </div>
         )
-        : (
-            // Nothing when paused. The button has turned back into a play, the
-            // cover has stopped pulsing and the sound has gone - a line saying
-            // so as well is the fourth thing telling you the same fact.
-            roomPaused ? null : (
+        : (roomHasEars
+            ? (
                 <div className="phone-music-source is-on">
                     <PhoneIcon icon="radio" size={ 14 } />
                     <span>Playing on the room jukebox</span>
                 </div>
             )
-        ));
+            : null));
 
 
     const queueRow = (entry: { videoId: string, title: string, queuedBy: string }, index: number, playing: boolean = false) => (
@@ -495,7 +501,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     Request a song in this room
                 </div> }
             <div className="phone-music-spacer" />
-            { personal && sourceRow }
+            { songHasEars && sourceRow }
         </div>
     );
 
@@ -669,8 +675,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                          something else would have traded one for the other. */ }
                     <div className="phone-music-transport">
                         <div className={ `phone-tap phone-music-sidebtn${ roomSilenced ? ' is-muted' : '' }` }
-                            title={ personal ? 'Your own song is playing - stop it to hear the room' : (muted ? 'Unmute' : 'Mute') }
-                            onClick={ event => (!personal && SetJukeboxMuted(!muted)) }>
+                            title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : (muted ? 'Unmute' : 'Mute') }
+                            onClick={ event => (!songHasEars && SetJukeboxMuted(!muted)) }>
                             { /* zero is silence, whatever the mute says */ }
                             <PhoneIcon icon={ (roomSilenced || (volume === 0)) ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
