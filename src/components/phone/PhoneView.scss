@@ -2329,30 +2329,9 @@ $phone-scale: 0.8;
 
     .phone-music-spacer { flex: 1; min-height: 8px; }
 
-    .phone-music-upnext {
-        flex: none;
-        margin: 0 18px 8px;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: $mu-lift;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        animation: phone-cal-rise .32s cubic-bezier(.2, .8, .2, 1) .18s both;
-        transition: background .15s ease;
-
-        &:active { background: $mu-lift2; opacity: 1; }
-    }
-
-    .phone-music-upnext-art { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex: none; background: $mu-lift2; }
-    .phone-music-upnext-text { flex: 1; min-width: 0; }
-    // The same treatment the UP NEXT card's kicker gets, so the two read as one
-    // family rather than two ideas about what a small label looks like.
+    // Small-caps label over a title. It was matched to the UP NEXT card's
+    // kicker, which has gone - the pairing is why it looks the way it does.
     .phone-music-nowkicker { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; color: $mu-faint; margin-bottom: 2px; }
-
-    .phone-music-upnext-kicker { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; color: $mu-faint; }
-    .phone-music-upnext-title { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .phone-music-upnext-by { font-size: calc(11px * var(--ph-text-scale, 1)); color: $mu-faint; flex: none; }
 
     .phone-music-source {
         flex: none;
@@ -2542,8 +2521,8 @@ $phone-scale: 0.8;
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .phone-music-anim, .phone-music-cover, .phone-music-titles, .phone-music-progress, .phone-music-transport, .phone-music-volume, .phone-music-upnext, .phone-music-source, .phone-music-pill, .phone-music-section, .phone-music-row, .phone-music-eq i, .phone-music-staffline, .phone-music-toast { animation: none; }
-        .phone-music-fill, .phone-music-knob, .phone-music-play, .phone-music-sidebtn, .phone-music-topbtn, .phone-music-addbtn, .phone-music-pill, .phone-music-upnext, .phone-music-source, .phone-music-cover img, .phone-music-row-art { transition: none; }
+        .phone-music-anim, .phone-music-cover, .phone-music-titles, .phone-music-progress, .phone-music-transport, .phone-music-volume, .phone-music-source, .phone-music-pill, .phone-music-section, .phone-music-row, .phone-music-eq i, .phone-music-staffline, .phone-music-toast { animation: none; }
+        .phone-music-fill, .phone-music-knob, .phone-music-play, .phone-music-sidebtn, .phone-music-topbtn, .phone-music-addbtn, .phone-music-pill, .phone-music-source, .phone-music-cover img, .phone-music-row-art { transition: none; }
     }
 
     // request sheet: the Siri bar, halo and all

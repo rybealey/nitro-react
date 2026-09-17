@@ -703,15 +703,6 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <PhoneIcon icon="volume-high" size={ 13 } />
                         </div> }
                     <div className="phone-music-spacer" />
-                    { (queue.length > 0) &&
-                        <div className="phone-tap phone-music-upnext" onClick={ event => go('queue') }>
-                            <img className="phone-music-upnext-art" src={ `https://i.ytimg.com/vi/${ queue[0].videoId }/mqdefault.jpg` } alt="" draggable={ false } />
-                            <div className="phone-music-upnext-text">
-                                <div className="phone-music-upnext-kicker">UP NEXT</div>
-                                <PhoneMarquee className="phone-music-upnext-title" text={ queue[0].title } />
-                            </div>
-                            <div className="phone-music-upnext-by">{ byName(queue[0].queuedBy) }</div>
-                        </div> }
                 </div> }
             { sourceRow }
         </div>
