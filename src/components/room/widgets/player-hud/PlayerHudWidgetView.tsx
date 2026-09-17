@@ -354,7 +354,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                         </span>
                         { targetGang &&
                             <span className="hud-gang" title={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` } onClick={ () => CreateLinkEvent(`rp-gangs/view/${ targetGang.gangId }`) }>
-                                <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 40 } />
+                                { /* 56 to match .hud-avatar, so the crest reads as
+                                     the portrait's equal rather than a footnote
+                                     beside it. */ }
+                                <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 56 } />
                             </span> }
                         <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>
                         {

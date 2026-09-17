@@ -351,8 +351,12 @@
     .hud-gang {
         position: absolute;
         top: 0;
-        right: -75px;
-        width: 44px;
+        // -81 rather than -75 because the box widened 44 -> 56: an absolutely
+        // positioned element grows from its RIGHT edge here, so keeping the
+        // same `right` would have walked the crest 6px left of where it sat.
+        // The slot is now square with the portrait it stands beside.
+        right: -81px;
+        width: 56px;
         height: 56px;
         display: flex;
         align-items: center;
