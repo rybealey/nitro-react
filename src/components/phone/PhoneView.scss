@@ -4454,11 +4454,16 @@ $phone-scale: 0.8;
     }
 
     // The compose sheet's song box, beside a small note glyph.
+    //
+    // 16px sides because that is this sheet's gutter everywhere else - the
+    // textarea above is 14px 16px and the footer below is 10px 16px 22px - and
+    // a field running wider than the row of controls under it reads as a
+    // different sheet. The bottom padding keeps it off the footer's hairline.
     .phone-sitch-draft-song {
         display: flex;
         align-items: center;
         gap: 9px;
-        padding: 0 2px;
+        padding: 0 16px 12px;
         color: var(--ph-faint);
 
         .phone-sitch-line { flex: 1; min-width: 0; }
