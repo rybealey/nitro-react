@@ -113,8 +113,13 @@ export const ChatHistoryView: FC<{}> = props =>
         <NitroCardView resizable uniqueKey="chat-history" className="nitro-chat-history" theme="primary-slim">
             <NitroCardHeaderView headerText={ LocalizeText('room.chathistory.button.text') } onCloseClick={ event => setIsVisible(false) }/>
             <NitroCardTabsView>
+                { /* "World" rather than the window's own name: a tab repeating
+                     the title says nothing, and World/Mentions reads as what
+                     the two actually are - everything said in the room, and the
+                     part of it aimed at you. The header and the room-tools
+                     button keep the localized name. */ }
                 <NitroCardTabsItemView isActive={ (tab === 'all') } onClick={ event => setTab('all') }>
-                    { LocalizeText('room.chathistory.button.text') }
+                    World
                 </NitroCardTabsItemView>
                 <NitroCardTabsItemView isActive={ (tab === 'mentions') } count={ mentionsUnread } onClick={ event => setTab('mentions') }>
                     Mentions

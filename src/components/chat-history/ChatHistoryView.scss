@@ -1,4 +1,13 @@
 .nitro-chat-history {
+    // Chrome tab strip, the same include every other tabbed window uses. Without
+    // it this window fell back to the stock nitro theme, so its tabs sat on a
+    // blue bar while the Shop, Inventory, Groups and the rest were on the dark
+    // plate - the one window in the hotel that looked like a different client.
+    &.theme-primary .nitro-card-tabs,
+    &.theme-primary-slim .nitro-card-tabs {
+        @include prp-chrome-tab-strip;
+    }
+
     // starting size; the corner grip writes inline width/height over these
     width: $chat-history-width;
     height: $chat-history-height;
