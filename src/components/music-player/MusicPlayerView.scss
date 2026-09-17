@@ -135,6 +135,15 @@ $player-teal: #1E7295;
 
     // Pushed to the end of the kicker's row and set in tabular figures, so the
     // digits do not shuffle sideways every second as their widths change.
+    // The same plum-to-teal fill over an ink track the volume uses, so the panel
+    // keeps one idea of what a bar looks like rather than growing a second.
+    .music-player-progress {
+        height: 4px;
+        margin-top: 3px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, $player-plum, $player-teal) 0 0 / var(--fill, 0%) 100% no-repeat, rgba($player-ink, 0.15);
+    }
+
     .music-player-clock {
         margin-left: auto;
         flex: none;
@@ -183,9 +192,12 @@ $player-teal: #1E7295;
         }
 
         // plum->teal fill up to the thumb (--fill set inline), ink track
+        // Deliberately stubby. It was flex: 1, which made it as wide as the
+        // progress bar - two bars of a size read as a pair of equals and you have
+        // to look twice to tell which is which. The size is the hierarchy.
         input[type='range'] {
-            flex: 1;
-            min-width: 0;
+            flex: none;
+            width: 56px;
             appearance: none;
             -webkit-appearance: none;
             height: 4px;

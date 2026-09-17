@@ -89,6 +89,8 @@ export const MusicPlayerView: FC<{}> = props =>
             : FormatClock(elapsed))
         : '');
 
+    const progress = ((duration > 0) ? Math.min(100, ((elapsed / duration) * 100)) : 0);
+
     const updateVolume = (value: number) =>
     {
         SetJukeboxVolume(value);
@@ -129,6 +131,16 @@ export const MusicPlayerView: FC<{}> = props =>
                              phone uses - its styles moved out of the phone's scope
                              so this panel could have them. */ }
                         <PhoneMarquee className="music-player-title" text={ current ? current.title : 'Queue a song to get started' } />
+                        { /* Under the title and inside its column, so it starts
+                             where the text starts rather than under the artwork,
+                             and runs the widest thing on the panel.
+
+                             NOT draggable. The room owns this track's clock, so a
+                             thumb would be offering a seek that cannot happen -
+                             which is also what tells it apart at a glance from
+                             the volume beside it, which has one. */ }
+                        { current &&
+                            <div className="music-player-progress" style={ { '--fill': `${ progress }%` } as React.CSSProperties } /> }
                     </div>
                 </div>
                 <div className="music-player-controls">
