@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import {
-    RpJamAddComposer, RpJamBackComposer, RpJamEndComposer, RpJamInviteComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
+    RpJamAddComposer, RpJamBackComposer, RpJamEndComposer, RpJamInviteComposer, RpJamKickComposer, RpJamJoinComposer, RpJamLeaveComposer, RpJamPauseComposer,
     RpJamRemoveComposer, RpJamReportComposer, RpJamSkipComposer, RpJamStartComposer, RpJamStateRequestComposer
 } from '../../api/rp-phone/RpJamMessages';
 
@@ -100,6 +100,12 @@ export const InviteToJam = (username: string) => SendMessageComposer(new RpJamIn
 export const JoinJam = (jamId: number) => SendMessageComposer(new RpJamJoinComposer(jamId));
 
 export const LeaveJam = () => SendMessageComposer(new RpJamLeaveComposer());
+
+/// The host puts somebody out, and NOBODY is told - not the jam, not the room,
+/// not the person. Their music stops and their app shows them no jam, which is
+/// answer enough. They cannot walk back in on the invite still sitting in their
+/// messages either, or it would be a nudge rather than a kick.
+export const KickFromJam = (userId: number) => SendMessageComposer(new RpJamKickComposer(userId));
 
 /// The HOST's, and not the same button as leaving.
 ///

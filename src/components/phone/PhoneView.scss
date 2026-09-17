@@ -2216,6 +2216,12 @@ $phone-scale: 0.8;
     $mu-track: #4d4d4d;
     $mu-green: #2bd66a;
     $mu-ink: #0b1a10;
+    // Red appears nowhere else in this app - the whole thing is one green accent
+    // on a dark ground - which is exactly why it is right for the three controls
+    // that take something away from other people: leaving, ending, and putting
+    // somebody out. Up here with the rest of the palette because a colour
+    // declared halfway down is a colour half the file cannot see.
+    $mu-red: #e2453c;
 
     .phone-music {
         background: $mu-bg;
@@ -2632,6 +2638,7 @@ $phone-scale: 0.8;
     }
 
     .phone-music-jammer {
+        position: relative;
         display: inline-flex;
         align-items: center;
         gap: 4px;
@@ -2655,6 +2662,35 @@ $phone-scale: 0.8;
         // Mid-refresh, not gone. Faded rather than removed, because removing
         // them for ninety seconds would read as having left.
         &.is-away { opacity: .45; }
+    }
+
+    // OVER the name, not beside it. Beside it, the row would reflow the instant
+    // the pointer arrived and every other name would shift under it - and there
+    // would be a second thing to hit a few pixels from the one being pointed at.
+    // Covering the chip means nothing moves and the whole chip is the target.
+    .phone-music-jammer-kick {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba($mu-red, .94);
+        opacity: 0;
+        transition: opacity .12s ease;
+
+        .phone-pi { color: #ffffff; }
+
+        &:active { background: rgba($mu-red, 1); opacity: 1; }
+    }
+
+    .phone-music-jammer:hover .phone-music-jammer-kick { opacity: 1; }
+
+    // A pointer is the only thing that can reveal this. Where there is none the
+    // chip would be an unexplained red square on first touch, so it stays shown
+    // instead - the host can still reach it, and nobody else ever sees one.
+    @media (hover: none) {
+        .phone-music-jammer-kick { position: static; inset: auto; margin-left: 2px; width: 14px; height: 14px; border-radius: 7px; opacity: 1; }
     }
 
     // THE INVITE. Bottom right, floating over the pane rather than in the column,
@@ -2739,12 +2775,6 @@ $phone-scale: 0.8;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-
-    // RED, for the two ways a session ends. Red appears nowhere else in this
-    // app - the whole thing is one green accent on a dark ground - which is
-    // exactly why it is right here: these are the only controls that take
-    // something away from other people.
-    $mu-red: #e2453c;
 
     // The host's, at the foot of a sheet they had to open. Not within a thumb's
     // width of Invite.

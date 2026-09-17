@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useFriends, useMessageEvent, useNavigator } from '../../hooks';
-import { AddToJam, BackJam, EndJam, InviteToJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
+import { AddToJam, BackJam, EndJam, InviteToJam, KickFromJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
 import { FormatClock, JukeboxSoundBack, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, SongSoundBack, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
@@ -735,6 +735,16 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         <span key={ member.id } className={ `phone-music-jammer${ member.away ? ' is-away' : '' }${ (member.id === jam.hostId) ? ' is-host' : '' }` }>
                             { (member.id === jam.hostId) && <PhoneIcon icon="crown" size={ 10 } /> }
                             { byName(member.username) }
+                            { /* PUT SOMEBODY OUT. Only the host, never on
+                                 themselves - ending the jam is a different
+                                 button - and it lies over the name rather than
+                                 sitting beside it, so nothing moves when it
+                                 appears and there is no second target to aim
+                                 at next to the one you are pointing at. */ }
+                            { inJam && jam.isHost && (member.id !== jam.hostId) &&
+                                <span className="phone-tap phone-music-jammer-kick" title={ `Remove ${ member.username } from the jam` } onClick={ event => KickFromJam(member.id) }>
+                                    <PhoneIcon icon="xmark" size={ 12 } />
+                                </span> }
                         </span>
                     )) }
                 </div> }
