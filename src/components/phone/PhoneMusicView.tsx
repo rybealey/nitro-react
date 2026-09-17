@@ -857,7 +857,17 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                             <div className="phone-music-row-text">
                                 <PhoneMarquee className="phone-music-row-title" text={ personal.title || 'Your song' } />
-                                <div className="phone-music-row-by">{ personal.author }</div>
+                                { /* WHO ASKED FOR IT, like every row under it.
+                                     This one showed the YouTube channel instead,
+                                     which made the song actually playing the only
+                                     entry in the list that did not say whose it
+                                     was - and in a jam that is the first thing
+                                     you want to know about it. Outside a jam the
+                                     answer is always you, so the channel keeps
+                                     the space. */ }
+                                <div className="phone-music-row-by">{ (inJam && jam.current)
+                                    ? `Requested by ${ byName(jam.current.queuedBy) }`
+                                    : personal.author }</div>
                             </div>
                             { eq }
                         </div>
