@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
-import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
@@ -58,7 +58,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 {
     const { onBack = null } = props;
     const { current, queue, present } = useJukeboxState();
-    const { roomPaused, volume, muted } = useJukeboxPrefs();
+    const { roomPaused, volume, muted, songVolume, songMuted } = useJukeboxPrefs();
     // the room's own name, the same place the title card in the corner reads it
     const { navigatorData = null } = useNavigator();
     const roomName = (navigatorData?.enteredGuestRoom?.roomName || '');
@@ -465,7 +465,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             : `NOW PLAYING${ roomName ? ` (IN ${ roomName.toUpperCase() })` : '' }` } /> }
                     <PhoneMarquee className="phone-music-title" text={ personal ? (personal.title || 'Your song') : (current ? current.title : 'No track is playing') } />
                     <div className="phone-music-sub is-wrap">{ personal
-                        ? (personal.author || 'Nobody else can hear this')
+                        ? personal.author
                         : (current
                             ? `${ current.author ? `${ current.author } · ` : '' }requested by ${ byName(current.queuedBy) }`
                             : (present ? 'Request one for the room, or play one just for you.' : 'No jukebox here. Play one just for you.')) }</div>
@@ -521,7 +521,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             { /* title and channel come off the running player, so
                                  for a second after pasting there is only the id */ }
                             <PhoneMarquee className="phone-music-title" text={ personal.title || 'Your song' } />
-                            <div className="phone-music-sub">{ personal.author || 'Nobody else can hear this' }</div>
+                            <div className="phone-music-sub">{ personal.author }</div>
                         </div>
                     </div>
                     <div className="phone-music-progress">
@@ -554,10 +554,20 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <PhoneIcon icon="forward-step" size={ 22 } />
                         </div>
                     </div>
+                    { /* ITS OWN volume and mute, not the room's. Two different
+                         sounds that can play at different moments - turning the
+                         room down to hear this over it is exactly what one
+                         shared slider made impossible.
+
+                         The speaker at the left of the slider is the mute, so
+                         the transport stays the three controls that act on the
+                         song. */ }
                     <div className="phone-music-volume">
-                            <PhoneIcon icon="volume-low" size={ 13 } />
-                            <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties } onChange={ event => SetJukeboxVolume(parseInt(event.target.value)) } />
-                            <PhoneIcon icon="volume-high" size={ 13 } />
+                        <div className={ `phone-tap phone-music-volbtn${ songMuted ? ' is-muted' : '' }` } title={ songMuted ? 'Unmute your song' : 'Mute your song' } onClick={ event => SetSongMuted(!songMuted) }>
+                            <PhoneIcon icon={ songMuted ? 'volume-x' : 'volume-low' } size={ 13 } />
+                        </div>
+                        <input type="range" min={ 0 } max={ 100 } value={ songVolume } style={ { '--fill': `${ songVolume }%` } as React.CSSProperties } onChange={ event => SetSongVolume(parseInt(event.target.value)) } />
+                        <PhoneIcon icon="volume-high" size={ 13 } />
                     </div>
                     <div className="phone-music-spacer" />
                 </div> }
@@ -580,7 +590,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                             <div className="phone-music-row-text">
                                 <PhoneMarquee className="phone-music-row-title" text={ personal.title || 'Your song' } />
-                                <div className="phone-music-row-by">{ personal.author || 'Nobody else can hear this' }</div>
+                                <div className="phone-music-row-by">{ personal.author }</div>
                             </div>
                             { eq }
                         </div>

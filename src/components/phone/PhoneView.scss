@@ -2324,6 +2324,18 @@ $phone-scale: 0.8;
         &:active { transform: scale(.94); opacity: 1; }
     }
 
+    // The mute at the head of the song's own slider, so the transport stays the
+    // three controls that act on the song itself.
+    .phone-music-volbtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $mu-sub;
+        transition: color .15s ease;
+
+        &.is-muted { color: $mu-faint; }
+    }
+
     .phone-music-volume {
         flex: none;
         margin: 12px 22px 0;

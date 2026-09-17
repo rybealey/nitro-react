@@ -1,5 +1,5 @@
 import { FC, useEffect, useRef, useState } from 'react';
-import { GetJukeboxPrefs } from './JukeboxStore';
+import { GetJukeboxPrefs, useJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
 import { AdvanceSitchSong, GetSitchRepeat, SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, useSitchSong } from './SitchSongStore';
 
@@ -14,6 +14,7 @@ import { AdvanceSitchSong, GetSitchRepeat, SetSitchPlayback, SetSitchSongControl
 export const SitchSongPlayer: FC<{}> = props =>
 {
     const song = useSitchSong();
+    const { songVolume, songMuted } = useJukeboxPrefs();
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const loadedVideoIdRef = useRef<string>(null);
@@ -36,9 +37,11 @@ export const SitchSongPlayer: FC<{}> = props =>
                     onReady: () =>
                     {
                         playerRef.current.unMute?.();
-                        // Rides the same volume slider as the station: one
-                        // "how loud is this hotel" control, not two.
-                        playerRef.current.setVolume?.(GetJukeboxPrefs().volume);
+                        // Its OWN volume, not the room's. They are different
+                        // sounds that can play at different moments, and turning
+                        // the room down to hear this over it is exactly what one
+                        // shared slider made impossible.
+                        playerRef.current.setVolume?.(GetJukeboxPrefs().songVolume);
                         playerRef.current.loadVideoById?.({ videoId: song.videoId });
                         loadedVideoIdRef.current = song.videoId;
 
@@ -133,12 +136,28 @@ export const SitchSongPlayer: FC<{}> = props =>
         // down a playing one and start it again from zero.
     }, [ song?.videoId, song?.userId ]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Volume and mute applied as they CHANGE. Its own effect on purpose: the one
+    // above is keyed on the SONG, so setting them there meant the slider moved
+    // and nothing happened until the next track - the value was read once at
+    // load and never read again.
+    useEffect(() =>
+    {
+        const player = playerRef.current;
+
+        if(!player) return;
+
+        player.setVolume?.(songVolume);
+
+        if(songMuted) player.mute?.();
+        else player.unMute?.();
+    }, [ songVolume, songMuted, song?.videoId ]);
+
     if(!song) return null;
 
     const unmute = () =>
     {
         playerRef.current?.unMute?.();
-        playerRef.current?.setVolume?.(GetJukeboxPrefs().volume);
+        playerRef.current?.setVolume?.(GetJukeboxPrefs().songVolume);
         playerRef.current?.playVideo?.();
         setNeedsUnmute(false);
     }

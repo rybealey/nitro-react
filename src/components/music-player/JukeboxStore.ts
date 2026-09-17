@@ -29,13 +29,22 @@ export interface JukeboxPrefs
     // New storage key, so nobody inherits a stale answer to the old question.
     roomPaused: boolean;
     volume: number;
-    // the room panel's mute; the phone source ignores it
+    // the room's mute, set from either speaker and honoured everywhere
     muted: boolean;
+    // A SONG OF YOUR OWN gets its own volume and mute. It used to ride the
+    // room's, on the reasoning that there is one "how loud is this hotel"
+    // control - but they are not the same sound, they can play at different
+    // times, and turning the room down to hear your own song over it is
+    // exactly the thing sharing one slider makes impossible.
+    songVolume: number;
+    songMuted: boolean;
 }
 
 const ROOM_PAUSED_KEY = 'pixelrp.jukebox.roompaused';
 const VOLUME_KEY = 'pixelrp.jukebox.volume';
 const MUTED_KEY = 'pixelrp.jukebox.muted';
+const SONG_VOLUME_KEY = 'pixelrp.song.volume';
+const SONG_MUTED_KEY = 'pixelrp.song.muted';
 
 const read = (key: string): string =>
 {
@@ -53,7 +62,9 @@ let state: JukeboxState = { present: false, current: null, queue: [] };
 let prefs: JukeboxPrefs = {
     roomPaused: (read(ROOM_PAUSED_KEY) === 'true'),
     volume: (() => { const stored = parseInt(read(VOLUME_KEY)); return isNaN(stored) ? 50 : Math.min(100, Math.max(0, stored)); })(),
-    muted: (read(MUTED_KEY) === 'true')
+    muted: (read(MUTED_KEY) === 'true'),
+    songVolume: (() => { const stored = parseInt(read(SONG_VOLUME_KEY)); return isNaN(stored) ? 50 : Math.min(100, Math.max(0, stored)); })(),
+    songMuted: (read(SONG_MUTED_KEY) === 'true')
 };
 
 const listeners = new Set<() => void>();
@@ -75,6 +86,20 @@ export const SetJukeboxPresent = (present: boolean) =>
     if(state.present === present) return;
 
     state = { ...state, present };
+    notify();
+}
+
+export const SetSongVolume = (songVolume: number) =>
+{
+    prefs = { ...prefs, songVolume };
+    write(SONG_VOLUME_KEY, songVolume.toString());
+    notify();
+}
+
+export const SetSongMuted = (songMuted: boolean) =>
+{
+    prefs = { ...prefs, songMuted };
+    write(SONG_MUTED_KEY, songMuted.toString());
     notify();
 }
 
