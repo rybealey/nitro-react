@@ -62,22 +62,45 @@ const COMPANIONS: { [key: string]: { field: 'vendingIds' | 'effectId' | 'behavio
 // The builder-facing subset. The emulator understands 107 interaction types,
 // but the rest are engine plumbing - minigame tiles, pet dyes, wired blocks -
 // that a builder should never be setting on a chair by hand.
-const BEHAVIOURS: [ string, string ][] = [
+// Behaviours, in two groups.
+//
+// The split is not cosmetic: the second group only does anything on THIS
+// hotel. A behaviour that opens the Clothing Store or the bank teller means
+// nothing on stock Plus, and somebody setting one needs to know they are
+// reaching for a pixelrp feature rather than a Habbo one - particularly when
+// the name is close to a stock behaviour's ("Dressing booth" is ours; "Mood
+// light" is not).
+//
+// Jukebox, Dressing booth and the ATM sit here because all three are OUR
+// behaviour-driven versions: the interaction is a behaviour rather than a
+// classname check, so any piece of furni can be one.
+const PIXELRP_BEHAVIOURS: [ string, string ][] = [
+    [ 'jukebox', 'Jukebox' ],
+    [ 'dressing_booth', 'Dressing booth' ],
+    [ 'zara_shop', 'Zara shop (walk on)' ],
+    [ 'atm', 'ATM' ],
+    [ 'pressure_pad', 'Pressure pad' ]
+];
+
+const HABBO_BEHAVIOURS: [ string, string ][] = [
     [ 'default', 'None (plain furni)' ], [ 'gate', 'Door' ], [ 'onewaygate', 'One-way door' ],
     [ 'vip_gate', 'VIP door' ], [ 'gld_gate', 'Group door' ], [ 'teleport', 'Teleport' ],
     [ 'hopper', 'Room hopper' ], [ 'roller', 'Roller' ], [ 'bed', 'Bed' ],
     [ 'tent_small', 'Tent (small)' ], [ 'tent', 'Tent' ], [ 'dimmer', 'Mood light' ],
-    [ 'postit', 'Sticky note' ], [ 'stacktool', 'Stack helper' ], [ 'pressure_pad', 'Pressure pad' ],
-    [ 'dressing_booth', 'Dressing booth' ], [ 'effect', 'Grants an effect' ],
+    [ 'postit', 'Sticky note' ], [ 'stacktool', 'Stack helper' ],
+    [ 'effect', 'Grants an effect' ],
     [ 'fx_provider', 'Hands out an effect' ], [ 'vendingmachine', 'Vending machine' ],
     [ 'exchange', 'Credit exchange' ], [ 'counter', 'Timer' ], [ 'alert', 'Alert' ],
     [ 'arrow', 'Arrow' ], [ 'gift', 'Gift' ], [ 'trophy', 'Trophy' ],
-    [ 'scoreboard', 'Scoreboard' ], [ 'television', 'Television' ], [ 'jukebox', 'Jukebox' ],
-    [ 'atm', 'ATM' ],
+    [ 'scoreboard', 'Scoreboard' ], [ 'television', 'Television' ],
     [ 'musicdisc', 'Music disc' ], [ 'camera_picture', 'Photo' ], [ 'mannequin', 'Mannequin' ],
     [ 'bot', 'Bot' ], [ 'pet', 'Pet' ], [ 'deal', 'Bundle' ], [ 'roomdeal', 'Room bundle' ],
     [ 'purchasable_clothing', 'Clothing box' ]
 ];
+
+// One flat list for the label lookup and the "is this a known behaviour" test,
+// so adding to either group above is enough.
+const BEHAVIOURS: [ string, string ][] = [ ...HABBO_BEHAVIOURS, ...PIXELRP_BEHAVIOURS ];
 
 const PRESETS: [ string, string, { walkable: boolean; seat: boolean; stackable: boolean; height?: number } ][] = [
     [ 'wall', 'Wall', { walkable: false, seat: false, stackable: false } ],
@@ -533,7 +556,12 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     <label className="rp-furni-function-field">
                         <span>Behaviour</span>
                         <select value={ draft.interactionType } onChange={ event => update({ interactionType: event.target.value }) }>
-                            { BEHAVIOURS.map(([ id, label ]) => <option key={ id } value={ id }>{ label }</option>) }
+                            <optgroup label="PixelRP behaviours">
+                                { PIXELRP_BEHAVIOURS.map(([ id, label ]) => <option key={ id } value={ id }>{ label }</option>) }
+                            </optgroup>
+                            <optgroup label="Habbo behaviours">
+                                { HABBO_BEHAVIOURS.map(([ id, label ]) => <option key={ id } value={ id }>{ label }</option>) }
+                            </optgroup>
                             { !BEHAVIOURS.some(entry => (entry[0] === draft.interactionType)) &&
                                 <option value={ draft.interactionType }>{ draft.interactionType } (advanced)</option> }
                         </select>
