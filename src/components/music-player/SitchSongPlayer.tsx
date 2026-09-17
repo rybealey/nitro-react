@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
-import { AdvanceSitchSong, SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, useSitchSong } from './SitchSongStore';
+import { AdvanceSitchSong, GetSitchRepeat, SetSitchPlayback, SetSitchSongControls, SetSitchSongMeta, useSitchSong } from './SitchSongStore';
 
 // The one place a profile's favorite song is heard. Mounted at the app root
 // beside JukeboxAudioEngine, for the same reason that one is: audio should not
@@ -66,8 +66,21 @@ export const SitchSongPlayer: FC<{}> = props =>
                     },
                     onStateChange: (event: any) =>
                     {
-                        // the next one of yours, or silence and the room back
-                        if(event.data === (window as any).YT.PlayerState.ENDED) AdvanceSitchSong();
+                        if(event.data === (window as any).YT.PlayerState.ENDED)
+                        {
+                            // Repeat is about THIS song, so it wins over the
+                            // queue - seek and play rather than reload, which
+                            // would buffer the whole video again for a song the
+                            // player already has.
+                            if(GetSitchRepeat())
+                            {
+                                playerRef.current?.seekTo?.(0, true);
+                                playerRef.current?.playVideo?.();
+                            }
+                            // otherwise the next one of yours, or silence and
+                            // the room back
+                            else AdvanceSitchSong();
+                        }
                         if(event.data === (window as any).YT.PlayerState.PLAYING)
                         {
                             if(!playerRef.current?.isMuted?.()) setNeedsUnmute(false);

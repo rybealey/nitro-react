@@ -519,3 +519,11 @@ $player-teal: #1E7295;
         border: 0;
     }
 }
+
+// Muted because a song of the player's own is playing, not because they pressed
+// anything: it reads as muted but does not offer a toggle, since unmuting would
+// not produce sound while their own song holds the ears.
+.music-player-mute.is-forced {
+    cursor: default;
+    opacity: .55;
+}

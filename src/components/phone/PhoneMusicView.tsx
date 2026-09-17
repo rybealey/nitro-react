@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
 import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchSong } from '../music-player/SitchSongStore';
+import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, StopSitchSong, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 import { PhoneMarquee } from './PhoneMarquee';
@@ -77,6 +77,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // your song wins: it is the one taking your ears
     const hero = (personal ?? current);
     const personalQueue = useSitchQueue();
+    const personalRepeat = useSitchRepeat();
     const personalProgress = ((personalPlayback.durationSec > 0) ? Math.min(100, (personalPlayback.elapsedSec / personalPlayback.durationSec) * 100) : 0);
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
@@ -533,23 +534,31 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                             <span>{ (personalPlayback.durationSec > 0) ? formatClock(personalPlayback.durationSec) : 'live' }</span>
                         </div>
                     </div>
+                    { /* Repeat, play, skip - the room's three slots with its
+                         staff skip replaced by one that is yours to press.
+                         Volume leaves the row and its slider simply stays open:
+                         with three controls that all do something to the song,
+                         a fourth that only opens a drawer was the odd one.
+
+                         SKIP IS ALSO THE STOP. Advancing with nothing queued
+                         ends the session, which is what the square stop did, so
+                         removing it costs nothing - the last skip stops you. */ }
                     <div className="phone-music-transport">
-                        <div className={ `phone-tap phone-music-sidebtn${ volumeOpen ? ' is-on' : '' }` } title="Volume" onClick={ event => setVolumeOpen(!volumeOpen) }>
-                            <PhoneIcon icon={ volume === 0 ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
+                        <div className={ `phone-tap phone-music-sidebtn${ personalRepeat ? ' is-on' : '' }` } title={ personalRepeat ? 'Repeat is on' : 'Repeat this song' } onClick={ event => ToggleSitchRepeat() }>
+                            <PhoneIcon icon="repeat" size={ 22 } />
                         </div>
                         <div className={ `phone-tap phone-music-play${ personalPlayback.paused ? '' : ' is-on' }` } title={ personalPlayback.paused ? 'Play' : 'Pause' } onClick={ event => ToggleSitchSongPaused() }>
                             <PhoneIcon icon={ personalPlayback.paused ? 'play' : 'pause' } size={ 26 } />
                         </div>
-                        <div className="phone-tap phone-music-sidebtn is-stop" title="Stop" onClick={ stopPersonal }>
-                            <PhoneIcon icon="stop" size={ 22 } />
+                        <div className="phone-tap phone-music-sidebtn is-skip" title={ personalQueue.length ? 'Next in your queue' : 'Nothing queued - this ends your session' } onClick={ event => AdvanceSitchSong() }>
+                            <PhoneIcon icon="forward-step" size={ 22 } />
                         </div>
                     </div>
-                    { volumeOpen &&
-                        <div className="phone-music-volume">
+                    <div className="phone-music-volume">
                             <PhoneIcon icon="volume-low" size={ 13 } />
                             <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties } onChange={ event => SetJukeboxVolume(parseInt(event.target.value)) } />
                             <PhoneIcon icon="volume-high" size={ 13 } />
-                        </div> }
+                    </div>
                     <div className="phone-music-spacer" />
                 </div> }
             { sourceRow }

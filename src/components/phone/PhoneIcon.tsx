@@ -15,6 +15,7 @@ const FA_MAP: Record<string, string> = {
     'calendar-days': 'calendar-days',
     'music': 'music',
     'play': 'play',
+    'repeat': 'repeat',
     'pause': 'pause',
     'stop': 'stop',
     'volume-low': 'volume-low',

@@ -135,6 +135,36 @@ let queue: SitchSong[] = [];
 
 export const GetSitchQueue = () => queue;
 
+// Repeat the one song, rather than the queue. In memory only: it is a choice
+// about the song you are listening to right now, and a session does not outlive
+// the page anyway - the queue does not either.
+let repeatOne = false;
+
+export const GetSitchRepeat = () => repeatOne;
+
+export const ToggleSitchRepeat = () =>
+{
+    repeatOne = !repeatOne;
+
+    notify();
+}
+
+export const useSitchRepeat = (): boolean =>
+{
+    const [ , setTick ] = useState(0);
+
+    useEffect(() =>
+    {
+        const listener = () => setTick(tick => (tick + 1));
+
+        listeners.add(listener);
+
+        return () => { listeners.delete(listener); };
+    }, []);
+
+    return repeatOne;
+}
+
 /// Plays now if nothing is, joins the back of the queue otherwise. Returns
 /// whether it started, so the caller can decide where to send the player.
 export const EnqueueSitchSong = (next: SitchSong): boolean =>
