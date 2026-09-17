@@ -580,12 +580,27 @@ export const usePhoneNotifications = () => useBetween(usePhoneNotificationsState
 ///
 /// Messages and Contacts keep counting the way they always have - unread
 /// threads and pending requests are already the right number, and they clear
-/// themselves. The other four count unread notifications.
+/// themselves. The others count unread notifications.
+///
+/// An app that is not ON the home screen scores zero, and that is the whole
+/// reason this is not just a sum. News and Sitch ship in the App Store rather
+/// than installed, but a news story is pushed to the WHOLE hotel
+/// (RpSaveNewsPostEvent -> PushAll), so a player who never installed News still
+/// got the notification. It could not badge a tile that is not there, but it
+/// still reached the toolbar's total - which is how the phone icon ended up
+/// wearing a number that no app on the phone could account for.
+///
+/// The notification itself is kept: the Notification Center still lists the
+/// story, so nothing is lost. A badge means "go and look at this app", and
+/// there is no app to look at.
 export const usePhoneAppBadges = () =>
 {
     const { unreadMessages = 0, requestCount = 0 } = usePhoneBadges();
     const { unseen } = usePhoneNotifications();
-    const { notify } = usePhonePrefs();
+    // gridOrder/dockOrder rather than the prefs' own isInstalled(): that is a
+    // plain function rebuilt every render, so depending on it would defeat the
+    // memo below. These two are the state it reads.
+    const { notify, gridOrder, dockOrder } = usePhonePrefs();
 
     return useMemo(() =>
     {
@@ -593,16 +608,23 @@ export const usePhoneAppBadges = () =>
         // whose reason the player has switched off is worse than no number.
         // It also zeroes anything counted before the switch was flipped.
         const on = (key: keyof PhoneNotify) => (notify.allow && notify[key]);
+        // An empty string is an empty grid slot, not an app.
+        const onHome = new Set([ ...gridOrder, ...dockOrder ].filter(key => !!key));
+        // tile is the home-screen name; key is the preference. A badge needs
+        // both the switch on and somewhere to sit.
+        const badge = (tile: string, key: keyof PhoneNotify, count: number) =>
+            ((on(key) && onHome.has(tile)) ? count : 0);
+
         const counts: Record<string, number> = {
-            Messages: on('messages') ? unreadMessages : 0,
-            Contacts: on('contacts') ? requestCount : 0,
-            Photos: on('photos') ? (unseen.photos ?? 0) : 0,
-            Calendar: on('calendar') ? (unseen.calendar ?? 0) : 0,
-            Notes: on('notes') ? (unseen.notes ?? 0) : 0,
-            News: on('news') ? (unseen.news ?? 0) : 0,
-            Sitch: on('sitch') ? (unseen.sitch ?? 0) : 0
+            Messages: badge('Messages', 'messages', unreadMessages),
+            Contacts: badge('Contacts', 'contacts', requestCount),
+            Photos: badge('Photos', 'photos', (unseen.photos ?? 0)),
+            Calendar: badge('Calendar', 'calendar', (unseen.calendar ?? 0)),
+            Notes: badge('Notes', 'notes', (unseen.notes ?? 0)),
+            News: badge('News', 'news', (unseen.news ?? 0)),
+            Sitch: badge('Sitch', 'sitch', (unseen.sitch ?? 0))
         };
 
         return { counts, total: Object.values(counts).reduce((sum, count) => (sum + count), 0) };
-    }, [ unreadMessages, requestCount, unseen, notify ]);
+    }, [ unreadMessages, requestCount, unseen, notify, gridOrder, dockOrder ]);
 }
