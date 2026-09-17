@@ -2321,6 +2321,10 @@ $phone-scale: 0.8;
 
     .phone-music-upnext-art { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex: none; background: $mu-lift2; }
     .phone-music-upnext-text { flex: 1; min-width: 0; }
+    // The same treatment the UP NEXT card's kicker gets, so the two read as one
+    // family rather than two ideas about what a small label looks like.
+    .phone-music-nowkicker { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; color: $mu-faint; margin-bottom: 2px; }
+
     .phone-music-upnext-kicker { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; color: $mu-faint; }
     .phone-music-upnext-title { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .phone-music-upnext-by { font-size: calc(11px * var(--ph-text-scale, 1)); color: $mu-faint; flex: none; }

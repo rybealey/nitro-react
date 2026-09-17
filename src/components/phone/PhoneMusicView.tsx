@@ -403,6 +403,11 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             </div>
             <div className="phone-music-titles">
                 <div className="phone-music-titles-text">
+                    { /* Only when something IS playing - over "No track is
+                         playing" it would be a label arguing with its own
+                         heading. */ }
+                    { (personal || current) &&
+                        <div className="phone-music-nowkicker">NOW PLAYING</div> }
                     <div className="phone-music-title">{ personal ? 'Playing just for you' : (current ? current.title : 'No track is playing') }</div>
                     <div className="phone-music-sub is-wrap">{ personal
                         ? 'Only you can hear it.'
