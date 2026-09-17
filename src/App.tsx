@@ -23,6 +23,7 @@ import { RegisterRpNewsMessages } from './api/rp-phone/RpNewsMessages';
 import { RegisterRpSitchMessages } from './api/rp-phone/RpSitchMessages';
 import { RegisterRpNotificationMessages } from './api/rp-phone/RpNotificationMessages';
 import { RegisterRpStocksMessages } from './api/rp-phone/RpStocksMessages';
+import { RegisterRpJamMessages } from './api/rp-phone/RpJamMessages';
 import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
@@ -149,6 +150,7 @@ export const App: FC<{}> = props =>
                 RegisterRpNotificationMessages();
                 RegisterRpStocksMessages();
                 RegisterRpTunesMessages();
+                RegisterRpJamMessages();
                 RegisterRpClothingMessages();
 
                 GetNitroInstance().init();

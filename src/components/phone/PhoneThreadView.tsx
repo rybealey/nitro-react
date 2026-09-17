@@ -3,6 +3,7 @@ import { GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThrea
 import { MESSENGER_RECEIPT_NOT_DELIVERED, MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
 import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatar } from './PhoneAvatar';
+import { JoinJam, ParseJamInvite } from '../music-player/JamStore';
 import { PhoneIcon } from './PhoneIcon';
 import { MakePhotoMessage, ParsePhotoMessage, usePhonePhotos, usePhonePrefs } from './usePhone';
 
@@ -298,6 +299,25 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                                 <div key={ key } className="phone-thread-invite">
                                     <PhoneIcon icon="map-pin-home" size={ 16 } />
                                     <span>{ chat.message }</span>
+                                </div>
+                            );
+                        }
+
+                        // A JAM INVITE. It travels as an ordinary message so it
+                        // lands in the thread like anything else that person
+                        // sent - the marker in its text is what turns it back
+                        // into something pressable here. A client that did not
+                        // know the marker would still show a readable sentence,
+                        // which is why the sentence is in there.
+                        const jamInvite = ParseJamInvite(chat.message);
+
+                        if(jamInvite)
+                        {
+                            return (
+                                <div key={ key } className="phone-thread-jam">
+                                    <PhoneIcon icon="user-music" size={ 15 } />
+                                    <span className="phone-thread-jam-text">{ jamInvite.text }</span>
+                                    <div className="phone-tap phone-thread-jam-join" onClick={ event => JoinJam(jamInvite.jamId) }>Join</div>
                                 </div>
                             );
                         }

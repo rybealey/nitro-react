@@ -1328,6 +1328,41 @@ $phone-scale: 0.8;
         padding: 4px 0 8px;
     }
 
+    // A JAM INVITE in the thread. Shaped like the room invite above it - centred,
+    // dashed, not a speech bubble, because neither of them is something somebody
+    // typed - but green rather than pink, and with a button, because this one
+    // does something when you press it.
+    .phone-thread-jam {
+        align-self: center;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 92%;
+        margin: 4px 0;
+        padding: 8px 10px 8px 12px;
+        border: 1.5px dashed #2bd66a;
+        border-radius: 14px;
+        color: var(--ph-text);
+        font-size: calc(12px * var(--ph-text-scale, 1));
+
+        .phone-pi { flex: none; color: #2bd66a; }
+    }
+
+    .phone-thread-jam-text { min-width: 0; line-height: 1.4; }
+
+    .phone-thread-jam-join {
+        flex: none;
+        padding: 5px 12px;
+        border-radius: 12px;
+        background: #2bd66a;
+        color: #0b1a10;
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        transition: transform .12s ease, filter .12s ease;
+
+        &:active { transform: scale(.94); filter: brightness(.92); opacity: 1; }
+    }
+
     .phone-thread-invite {
         align-self: center;
         display: flex;
@@ -2174,7 +2209,10 @@ $phone-scale: 0.8;
         &.is-left { animation: phone-cal-slide-left .26s cubic-bezier(.2, .8, .2, 1) both; }
     }
 
-    .phone-music-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 44px 0 22px; }
+    // position: relative so the floating invite button has something to be
+    // bottom-right OF. Everything else in here is one fixed column; the button
+    // deliberately is not part of it.
+    .phone-music-pane { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 44px 0 22px; }
 
     .phone-music-top {
         flex: none;
@@ -2538,6 +2576,133 @@ $phone-scale: 0.8;
     .phone-music-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
     .phone-music-sheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 2px; }
     .phone-music-sheet-note { margin-top: 12px; font-size: calc(11px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-faint); text-align: center; }
+
+    // ----- jam -----
+    // A session with other people in it. The screen is the personal one and
+    // stays the personal one; these are the parts that only exist once somebody
+    // else is listening.
+
+    // WHO IS HERE, under the title. A row of names rather than avatars: at this
+    // width four avatars would be four indistinct heads, and the thing worth
+    // knowing is who, which is what a name says.
+    .phone-music-jammers {
+        flex: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 2px 22px 0;
+        animation: phone-cal-rise .24s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .phone-music-jammer {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        max-width: 120px;
+        padding: 3px 8px;
+        border-radius: 10px;
+        background: $mu-lift;
+        color: $mu-sub;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        .phone-pi { color: inherit; }
+
+        // The one who can pause everybody. Green is the app's "this is the
+        // thing", and hosting is the thing on this row.
+        &.is-host { color: $mu-green; }
+
+        // Mid-refresh, not gone. Faded rather than removed, because removing
+        // them for ninety seconds would read as having left.
+        &.is-away { opacity: .45; }
+    }
+
+    // THE FLOATING INVITE. Bottom right, over the pane, clear of the source line
+    // that sits at the bottom of the column. It floats because the column is
+    // fixed and full: a tenth row in it would have pushed the source line off
+    // the bottom of the phone, which is the exact bug the split screens fixed.
+    .phone-music-fab {
+        position: absolute;
+        right: 18px;
+        bottom: 46px;
+        width: 46px;
+        height: 46px;
+        border-radius: 23px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: $mu-green;
+        color: $mu-ink;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .45);
+        transition: transform .12s ease, filter .12s ease;
+        z-index: 3;
+
+        .phone-pi { color: inherit; }
+
+        &:active { transform: scale(.93); filter: brightness(.92); opacity: 1; }
+    }
+
+    // The invite sheet rides the phone's own theme, not the app's dark ground -
+    // it is a sheet like the others, and a black panel sliding up over a light
+    // phone would be the only one.
+    .phone-music-invite-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+
+    .phone-music-invite-input {
+        flex: 1;
+        min-width: 0;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--ph-hairline);
+        border-radius: 8px;
+        background: var(--ph-inset);
+        color: var(--ph-text);
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        outline: none;
+
+        &::placeholder { color: var(--ph-faint); }
+    }
+
+    .phone-music-invite-list {
+        margin-top: 10px;
+        max-height: 208px;
+        overflow-y: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar { display: none; }
+    }
+
+    .phone-music-invite-friend {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 2px;
+        color: var(--ph-text);
+        transition: opacity .12s ease;
+
+        .phone-pi { flex: none; color: var(--ph-soft); }
+        &:active { opacity: .6; }
+    }
+
+    .phone-music-invite-name {
+        flex: 1;
+        min-width: 0;
+        font-size: calc(13px * var(--ph-text-scale, 1));
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .phone-music-invite-empty {
+        padding: 14px 2px 6px;
+        font-size: calc(12px * var(--ph-text-scale, 1));
+        line-height: 1.5;
+        color: var(--ph-faint);
+    }
 
     // ----- Notes app -----
     // Yellow accent like the tile; deeper in light mode so it reads on white.

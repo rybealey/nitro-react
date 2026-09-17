@@ -24,6 +24,7 @@ import { PhoneView } from '../phone/PhoneView';
 import { RightSideView } from '../right-side/RightSideView';
 import { EnvironmentSky } from '../environment/EnvironmentSky';
 import { JukeboxAudioEngine } from '../music-player/JukeboxAudioEngine';
+import { JamSync } from '../music-player/JamSync';
 import { SitchSongPlayer } from '../music-player/SitchSongPlayer';
 import { RoomView } from '../room/RoomView';
 import { ToolbarView } from '../toolbar/ToolbarView';
@@ -109,6 +110,7 @@ export const MainView: FC<{}> = props =>
             <RightSideView />
             <JukeboxAudioEngine />
             <SitchSongPlayer />
+            <JamSync />
             <UserSettingsView />
             <RpSettingsView />
             <RpInventoryView />

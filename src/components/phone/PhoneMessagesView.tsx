@@ -3,6 +3,7 @@ import { GetGroupChatData, MessengerFriend, MessengerThread, MessengerThreadChat
 import { useFriends, useMessenger } from '../../hooks';
 import { HotelDate } from '../../api/prefs/HotelTime';
 import { PhoneAvatar } from './PhoneAvatar';
+import { ParseJamInvite } from '../music-player/JamStore';
 import { PhoneIcon } from './PhoneIcon';
 import { ParsePhotoMessage, usePhonePrefs } from './usePhone';
 
@@ -46,6 +47,10 @@ export const ThreadPreview = (thread: MessengerThread): string =>
             if(chat.type === MessengerThreadChat.SECURITY_NOTIFICATION) continue;
 
             if(chat.type === MessengerThreadChat.ROOM_INVITE) return 'Room invite';
+
+            // Its text carries a marker the thread turns into a Join button.
+            // Unparsed, that marker would be the first thing in the preview.
+            if(ParseJamInvite(chat.message)) return 'Jam invite';
 
             const isPhoto = !!ParsePhotoMessage(chat.message);
 

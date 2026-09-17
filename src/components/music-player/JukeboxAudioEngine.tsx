@@ -2,6 +2,7 @@ import { RpJukeboxStateEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect } from 'react';
 import { useMessageEvent, useRoom } from '../../hooks';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
+import { useJamState } from './JamStore';
 import { SetJukeboxState, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 
@@ -27,6 +28,13 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     // off.
     const sitchSong = useSitchSong();
     const sitchPaused = useSitchSongPaused();
+    // A JAM OUTRANKS THE ROOM, in every room, always. Its track already arrives
+    // as a song of your own, so the rule below would mostly cover it - except
+    // while the host has it paused, and a room jukebox breaking into that
+    // silence would be a session you are still in losing your ears to one you
+    // did not choose. Being in a jam with something on it is enough.
+    const jam = useJamState();
+    const jamHasEars = (jam.inJam && !!jam.current);
 
     // Timing arrives as elapsed seconds; anchor it to the local clock on
     // receipt so the player can seek. present is this room's flag.
@@ -69,7 +77,7 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     // yields to a song of your own while that song is PLAYING - it used to
     // yield while one merely existed, so pausing yours left you with silence
     // from both rather than handing the room back.
-    const shouldPlay = (!!current && !roomPaused && !(sitchSong && !sitchPaused));
+    const shouldPlay = (!!current && !roomPaused && !jamHasEars && !(sitchSong && !sitchPaused));
 
     if(!shouldPlay) return null;
 

@@ -71,6 +71,12 @@ const FA_MAP: Record<string, string> = {
     'user-group': 'user-group',
     'note': 'note-sticky',
     'pin': 'thumbtack',
+    // Who is hosting a jam. A crown rather than a star or a dot: the host is the
+    // one who can pause everybody, and that is a rank, not a favourite.
+    'crown': 'crown',
+    // Somebody is in the jam. Used at 10px beside a name, where a full avatar
+    // would not fit and would not add anything a name does not already say.
+    'user-music': 'user-music',
     'circle': 'circle',
     'circle-check': 'circle-check',
     'arrow-right-from-bracket': 'arrow-right-from-bracket',

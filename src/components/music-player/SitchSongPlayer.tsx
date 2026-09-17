@@ -1,7 +1,8 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetJukeboxPrefs, useJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
-import { AdvanceSitchSong, GetSitchRepeat, SetSitchPlayback, SetSitchSongMeta, useSitchSong, useSitchSongPaused } from './SitchSongStore';
+import { GetJamState, ReportJam, useJamState } from './JamStore';
+import { AdvanceSitchSong, GetSitchRepeat, GetSitchSong, SetSitchPlayback, SetSitchSongMeta, useSitchSong, useSitchSongPaused } from './SitchSongStore';
 
 // The one place a profile's favorite song is heard. Mounted at the app root
 // beside JukeboxAudioEngine, for the same reason that one is: audio should not
@@ -16,6 +17,12 @@ export const SitchSongPlayer: FC<{}> = props =>
     const song = useSitchSong();
     const { songVolume, songMuted } = useJukeboxPrefs();
     const songPaused = useSitchSongPaused();
+    // The HOST's pause is everyone's, so it stops this player too. Your own
+    // pause is still your own: a guest pressing pause silences themselves and
+    // leaves the other four listening, which is the only pause a guest is
+    // given - see JamSession.TrySetPaused on the server.
+    const jam = useJamState();
+    const jamPaused = (!!song?.jamId && jam.paused);
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const loadedVideoIdRef = useRef<string>(null);
@@ -43,7 +50,9 @@ export const SitchSongPlayer: FC<{}> = props =>
                         // the room down to hear this over it is exactly what one
                         // shared slider made impossible.
                         playerRef.current.setVolume?.(GetJukeboxPrefs().songVolume);
-                        playerRef.current.loadVideoById?.({ videoId: song.videoId });
+                        // startSeconds is how a guest joins mid-song: the jam
+                        // says where it is, and the player opens there.
+                        playerRef.current.loadVideoById?.({ videoId: song.videoId, startSeconds: (song.startAtSec || 0) });
                         loadedVideoIdRef.current = song.videoId;
 
                     },
@@ -60,11 +69,16 @@ export const SitchSongPlayer: FC<{}> = props =>
                     {
                         if(event.data === (window as any).YT.PlayerState.ENDED)
                         {
+                            // A JAM's timeline is not yours to advance, and
+                            // repeat has no meaning on one five people share -
+                            // so the end is REPORTED and the server decides
+                            // what everybody hears next.
+                            if(GetSitchSong()?.jamId) ReportJam(0, true);
                             // Repeat is about THIS song, so it wins over the
                             // queue - seek and play rather than reload, which
                             // would buffer the whole video again for a song the
                             // player already has.
-                            if(GetSitchRepeat())
+                            else if(GetSitchRepeat())
                             {
                                 playerRef.current?.seekTo?.(0, true);
                                 playerRef.current?.playVideo?.();
@@ -88,7 +102,7 @@ export const SitchSongPlayer: FC<{}> = props =>
                     // Private, removed or embed-disabled. Skip it the way an
                     // ended song is skipped, so one dead link in a queue does
                     // not end the whole session.
-                    onError: () => AdvanceSitchSong()
+                    onError: () => (GetSitchSong()?.jamId ? ReportJam(0, true) : AdvanceSitchSong())
                 }
             });
         });
@@ -102,11 +116,38 @@ export const SitchSongPlayer: FC<{}> = props =>
 
             if(!player?.getDuration) return;
 
+            const elapsedSec = Math.floor(player.getCurrentTime?.() ?? 0);
+            const durationSec = Math.floor(player.getDuration?.() ?? 0);
+
             SetSitchPlayback({
-                elapsedSec: Math.floor(player.getCurrentTime?.() ?? 0),
-                durationSec: Math.floor(player.getDuration?.() ?? 0),
+                elapsedSec,
+                durationSec,
                 paused: (player.getPlayerState?.() === (window as any).YT.PlayerState.PAUSED)
             });
+
+            // ---- the jam's half of this clock ---------------------------
+            const playing = GetSitchSong();
+
+            if(!playing?.jamId) return;
+
+            const state = GetJamState();
+
+            if(!state.inJam || (state.current?.videoId !== playing.videoId)) return;
+
+            // The server starts a track not knowing how long it is; whoever's
+            // player finds out first says so, and everyone else's report is
+            // ignored. Sent once, while the length is still unknown.
+            if((state.current.durationSec === 0) && (durationSec >= 10) && (durationSec <= 7200)) ReportJam(durationSec, false);
+
+            // DRIFT. Five browsers buffering separately do not stay together on
+            // their own, and a jam whose listeners are eight seconds apart is
+            // not a shared session. Corrected only past three seconds: closer
+            // than that, a seek is more disruptive than the gap it closes.
+            if(state.paused) return;
+
+            const expected = ((Date.now() - state.current.startedAtMs) / 1000);
+
+            if(Math.abs(expected - elapsedSec) > 3) player.seekTo?.(expected, true);
         }, 1000);
 
         return () =>
@@ -150,10 +191,11 @@ export const SitchSongPlayer: FC<{}> = props =>
         if(!player?.getPlayerState) return;
 
         const playing = (player.getPlayerState() === (window as any).YT.PlayerState.PLAYING);
+        const paused = (songPaused || jamPaused);
 
-        if(songPaused && playing) player.pauseVideo?.();
-        else if(!songPaused && !playing) player.playVideo?.();
-    }, [ songPaused, song?.videoId ]);
+        if(paused && playing) player.pauseVideo?.();
+        else if(!paused && !playing) player.playVideo?.();
+    }, [ songPaused, jamPaused, song?.videoId ]);
 
     if(!song) return null;
 

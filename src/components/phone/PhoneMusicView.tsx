@@ -2,10 +2,12 @@ import { RpJukeboxAddComposer, RpJukeboxRemoveComposer, RpJukeboxSkipComposer } 
 import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
-import { useMessageEvent, useNavigator } from '../../hooks';
+import { useFriends, useMessageEvent, useNavigator } from '../../hooks';
+import { AddToJam, InviteToJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
 import { FormatClock, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
+import { PhoneAvatar } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
 import { PhoneMarquee } from './PhoneMarquee';
 
@@ -68,16 +70,32 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ url, setUrl ] = useState('');
     const [ personalOpen, setPersonalOpen ] = useState(false);
     const [ personalUrl, setPersonalUrl ] = useState('');
+    const [ inviteOpen, setInviteOpen ] = useState(false);
+    const [ inviteName, setInviteName ] = useState('');
     const personal = useSitchSong();
     const personalPlayback = useSitchPlayback();
     const personalPaused = useSitchSongPaused();
+    // YOUR SESSION, with people in it. Everything about the personal screen
+    // holds - same cover, same transport, same slider - and these three lines
+    // are the whole of what changes: whose name is on it, whose queue it shows,
+    // and which of the controls reach past your own ears.
+    const jam = useJamState();
+    const inJam = jam.inJam;
+    const { onlineFriends = [] } = useFriends();
     // The same answer the room HUD's speaker gives. A song of your own already
     // silences the room - the audio engine yields to it - so the room is muted
     // for you whether or not you pressed anything, and a speaker on this screen
     // saying otherwise would disagree with the one in the corner about a fact.
     // Your song holds the ears only while it is PLAYING. Paused, the room has
     // them back, and both speakers say so.
-    const songHasEars = (!!personal && !personalPaused);
+    // A jam the host has paused is your session not playing, the same as your
+    // own pause - so it answers here too, or the cover and the moving bars would
+    // report sound that stopped a moment ago.
+    const songHasEars = (!!personal && !personalPaused && !(inJam && jam.paused));
+    // What the play button draws. Your own pause and the host's both leave you
+    // sitting in silence, and a button showing "pause" over silence would be the
+    // app arguing with your ears about whether anything is playing.
+    const songPaused = (personalPaused || (inJam && jam.paused));
     const roomSilenced = (muted || songHasEars);
     // Which session is the one in your ears. Exactly one can be, which is what
     // makes the moving bars worth having: they are a readout of where your sound
@@ -145,7 +163,11 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 
     useEffect(() =>
     {
-        if(((view !== 'personal') && (view !== 'personalqueue')) || personal) return;
+        // A JAM WITH NOTHING ON IT is still a jam. Without this, starting one
+        // and then skipping its last song threw you back to the home screen and
+        // took the invite button with it - the one control you would be reaching
+        // for at exactly that moment.
+        if(((view !== 'personal') && (view !== 'personalqueue')) || personal || inJam) return;
 
         setView('home');
     }, [ view, personal ]);
@@ -195,6 +217,79 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 
     const canRemove = (entry: { queuedBy: string }) => (canManage || (entry.queuedBy === ownName));
 
+    // ---- your session, shared -------------------------------------------
+    // The personal screen is the jam's screen. These are the only places the
+    // difference reaches: whose name is on it, whose queue it shows, and which
+    // of the three controls travel past your own ears.
+    const sessionTitle = (inJam ? `${ jam.hostName.toUpperCase() }'S JAM` : 'JUST FOR YOU');
+    const sessionQueue = (inJam ? jam.queue : personalQueue);
+
+    // PAUSE IS TWO BUTTONS WEARING ONE FACE.
+    //
+    // The host's stops the song for everybody, so it goes to the server. A
+    // guest's stops their own player and leaves the other four listening - it
+    // is the only pause a guest is given, and it never leaves this browser.
+    // Both of them draw the same pause glyph, because from where the player is
+    // standing both do the obvious thing.
+    const togglePlay = () =>
+    {
+        if(inJam && jam.isHost)
+        {
+            SetJamPaused(!jam.paused);
+
+            return;
+        }
+
+        ToggleSitchSongPaused();
+    }
+
+    // ANY member may skip - see JamSession.TrySkip for why that sits next to a
+    // pause only the host has. Outside a jam this is the local advance it has
+    // always been, and the last skip with nothing queued still ends the session.
+    const skipSession = () => (inJam ? SkipJam() : AdvanceSitchSong());
+
+    const removeFromSession = (index: number) =>
+    {
+        if(!inJam)
+        {
+            RemoveSitchSongAt(index);
+
+            return;
+        }
+
+        const entry = jam.queue[index];
+
+        if(!entry) return;
+
+        RemoveFromJam(index);
+        showToast(`Removed ${ entry.title } from the jam.`);
+    }
+
+    // Yours to pull, always; anyone's while you are hosting. The same rule the
+    // room's queue uses, with the host standing where room rights stand.
+    const canRemoveFromJam = (entry: { queuedBy: string }) => (jam.isHost || (entry.queuedBy === ownName));
+
+    const invite = (username: string) =>
+    {
+        const name = (username || '').trim();
+
+        if(!name.length) return;
+
+        InviteToJam(name);
+        setInviteName('');
+    }
+
+    // Starting one, or opening the list to add to it. One button, because from
+    // the player's side it is one intention - get somebody else in here - and
+    // whether a jam exists yet is the app's problem, not theirs.
+    const openInvite = () =>
+    {
+        if(!inJam) StartJam();
+
+        setInviteName('');
+        setInviteOpen(true);
+    }
+
     // Starting one is a stop for the station, which PlaySitchSong does itself -
     // two songs at once is not a feature. A bad link leaves the sheet open with
     // what was typed, rather than clearing it and saying nothing.
@@ -205,6 +300,20 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         if(!videoId)
         {
             showToast('That does not look like a YouTube link.');
+
+            return;
+        }
+
+        // IN A JAM THE LINK GOES TO THE SERVER. It has to: the others cannot
+        // hear a song that only exists in this browser, and the title has to be
+        // resolved somewhere a browser is allowed to ask - which is also how the
+        // queue ends up knowing whose request each song was.
+        if(inJam)
+        {
+            AddToJam(personalUrl.trim());
+            setPersonalUrl('');
+            setPersonalOpen(false);
+            showToast('Added to the jam.');
 
             return;
         }
@@ -283,7 +392,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             <div className="phone-calendar-scrim" onClick={ event => setPersonalOpen(false) } />
             <div className="phone-calendar-sheet phone-music-sheet">
                 <div className="phone-calendar-grabber" />
-                <div className="phone-music-sheet-title">Start your own jam session</div>
+                <div className="phone-music-sheet-title">{ inJam ? 'Add a song to the jam' : 'Play a song just for you' }</div>
                 <div className="phone-music-siri">
                     <div className="phone-music-siri-halo" />
                     <div className="phone-music-siri-plate">
@@ -323,11 +432,49 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // and is gone with it.
     const personalSection = (
         <div className="phone-music-personal">
+            { /* It said "start your own jam session" until a jam became a real
+                 thing with other people in it. One word cannot mean both a
+                 session nobody else can hear and a session you invite people
+                 to, a tap apart on the same screen. */ }
             <div className="phone-tap phone-music-pill" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
                 <PhoneIcon icon="music" size={ 15 } />
-                Start your own jam session
+                Play a song just for you
             </div>
         </div>
+    );
+
+    // WHO ELSE. Friends who are online are one tap, because they are who you
+    // will invite most; the box above them reaches anybody, because a jam is not
+    // a thing you should have to be friends first to be asked to.
+    //
+    // Only online people can be invited at all - a jam is happening now, and an
+    // invite to somebody who is not here has nothing to offer them - so the list
+    // is the online half of the friend list and the box quietly refuses the rest.
+    const inviteSheet = (
+        <>
+            <div className="phone-calendar-scrim" onClick={ event => setInviteOpen(false) } />
+            <div className="phone-calendar-sheet phone-music-sheet">
+                <div className="phone-calendar-grabber" />
+                <div className="phone-music-sheet-title">{ inJam && !jam.isHost ? `Invite to ${ jam.hostName }'s jam` : 'Invite to your jam' }</div>
+                <div className="phone-music-invite-row">
+                    <input className="phone-music-invite-input" type="text" spellCheck={ false } placeholder="Any username" autoFocus
+                        value={ inviteName } onChange={ event => setInviteName(event.target.value) }
+                        onKeyDown={ event => { if(event.key !== 'Enter') return; event.preventDefault(); event.stopPropagation(); invite(inviteName); } } />
+                    <button className="phone-music-siri-add" type="button" onClick={ event => invite(inviteName) }>Invite</button>
+                </div>
+                <div className="phone-music-invite-list">
+                    { onlineFriends.filter(friend => !jam.members.some(member => member.id === friend.id)).map(friend => (
+                        <div key={ friend.id } className="phone-tap phone-music-invite-friend" onClick={ event => invite(friend.name) }>
+                            <PhoneAvatar id={ friend.id } figure={ friend.figure } size={ 34 } online={ true } />
+                            <span className="phone-music-invite-name">{ friend.name }</span>
+                            <PhoneIcon icon="plus" size={ 14 } />
+                        </div>
+                    )) }
+                    { !onlineFriends.some(friend => !jam.members.some(member => member.id === friend.id)) &&
+                        <div className="phone-music-invite-empty">No friends online right now. The box above reaches anyone who is.</div> }
+                </div>
+            </div>
+        </>
     );
 
     const skipSheet = current && (
@@ -395,8 +542,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const sourceRow = (songHasEars
         ? (
             <div className="phone-music-source is-on">
-                <PhoneIcon icon="mobile-screen" size={ 14 } />
-                <span>Your session</span>
+                <PhoneIcon icon={ inJam ? 'user-music' : 'mobile-screen' } size={ 14 } />
+                <span>{ inJam ? (jam.isHost ? 'Playing in your jam' : `Playing in ${ jam.hostName }'s jam`) : 'Your session' }</span>
             </div>
         )
         : (roomHasEars
@@ -472,10 +619,15 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                  not have gets a way to start one. Either way it is the green
                  button, because playing something of your own is the thing you
                  can always do - the room's half below needs a jukebox. */ }
-            { personal
+            { /* "Your jam session" used to be this button's label for the solo
+                 case, which stopped working the day a jam became a real thing
+                 with other people in it - one word, two meanings, one tap
+                 apart. Solo is "your session" now, and a jam carries the host's
+                 name, the same name its own screen shows. */ }
+            { (personal || inJam)
                 ? <div className="phone-tap phone-music-pill" onClick={ event => go('personal') }>
-                    { songHasEars ? eq : <PhoneIcon icon="music" size={ 16 } /> }
-                    Your jam session
+                    { songHasEars ? eq : <PhoneIcon icon={ inJam ? 'user-music' : 'music' } size={ 16 } /> }
+                    { inJam ? `${ byName(jam.hostName) === 'you' ? 'Your' : `${ jam.hostName }'s` } jam` : 'Your session' }
                 </div>
                 : personalSection }
             { /* The room's half. With your song on the cover this button is the
@@ -514,11 +666,29 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // staff skip, because stopping yours is yours to do.
     const personalScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-left', () => go('home'), 'JUST FOR YOU',
-                <div className="phone-tap phone-music-topbtn phone-music-queuebtn" title="Your queue" onClick={ event => go('personalqueue') }>
+            { /* The host's name, not "just for you", the moment anyone else is
+                 listening. It is the one place the screen has to say out loud
+                 that this is no longer private - everything else about it is
+                 identical, which is the point. */ }
+            { topBar('chevron-left', () => go('home'), sessionTitle,
+                <div className="phone-tap phone-music-topbtn phone-music-queuebtn" title={ inJam ? "The jam's queue" : 'Your queue' } onClick={ event => go('personalqueue') }>
                     <PhoneIcon icon="list-music" size={ 22 } />
-                    { (personalQueue.length > 0) && <span className="phone-music-badge">{ personalQueue.length }</span> }
+                    { (sessionQueue.length > 0) && <span className="phone-music-badge">{ sessionQueue.length }</span> }
                 </div>) }
+            { /* WHO IS HERE. Only in a jam, because outside one the answer is
+                 "you", which the screen already said in its title. Somebody
+                 mid-refresh is shown faded rather than removed: they are still
+                 in the jam, and dropping them from the list for ninety seconds
+                 would look like they left. */ }
+            { inJam &&
+                <div className="phone-music-jammers">
+                    { jam.members.map(member => (
+                        <span key={ member.id } className={ `phone-music-jammer${ member.away ? ' is-away' : '' }${ (member.id === jam.hostId) ? ' is-host' : '' }` }>
+                            { (member.id === jam.hostId) && <PhoneIcon icon="crown" size={ 10 } /> }
+                            { byName(member.username) }
+                        </span>
+                    )) }
+                </div> }
             { personal &&
                 <div className="phone-music-now" key={ personal.videoId }>
                     <div className="phone-music-coverwrap">
@@ -554,13 +724,29 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                          ends the session, which is what the square stop did, so
                          removing it costs nothing - the last skip stops you. */ }
                     <div className="phone-music-transport">
-                        <div className={ `phone-tap phone-music-sidebtn${ personalRepeat ? ' is-on' : '' }` } title={ personalRepeat ? 'Repeat is on' : 'Repeat this song' } onClick={ event => ToggleSitchRepeat() }>
-                            <PhoneIcon icon="repeat" size={ 22 } />
+                        { /* REPEAT BECOMES LEAVE in a jam. Repeating one song on
+                             a timeline five people share is not a thing anybody
+                             can want, and leaving is the control a guest most
+                             needs and had nowhere to press. */ }
+                        { inJam
+                            ? <div className="phone-tap phone-music-sidebtn" title={ jam.isHost ? 'Leave - the jam passes to whoever has been here longest' : 'Leave this jam' } onClick={ event => LeaveJam() }>
+                                <PhoneIcon icon="arrow-right-from-bracket" size={ 22 } />
+                            </div>
+                            : <div className={ `phone-tap phone-music-sidebtn${ personalRepeat ? ' is-on' : '' }` } title={ personalRepeat ? 'Repeat is on' : 'Repeat this song' } onClick={ event => ToggleSitchRepeat() }>
+                                <PhoneIcon icon="repeat" size={ 22 } />
+                            </div> }
+                        <div className={ `phone-tap phone-music-play${ songPaused ? '' : ' is-on' }` }
+                            title={ songPaused
+                                ? (inJam && !jam.isHost ? 'Play - only you stopped' : 'Play')
+                                : (inJam && jam.isHost ? 'Pause for everyone' : (inJam ? 'Pause - only for you' : 'Pause')) }
+                            onClick={ event => togglePlay() }>
+                            <PhoneIcon icon={ songPaused ? 'play' : 'pause' } size={ 26 } />
                         </div>
-                        <div className={ `phone-tap phone-music-play${ personalPaused ? '' : ' is-on' }` } title={ personalPaused ? 'Play' : 'Pause' } onClick={ event => ToggleSitchSongPaused() }>
-                            <PhoneIcon icon={ personalPaused ? 'play' : 'pause' } size={ 26 } />
-                        </div>
-                        <div className="phone-tap phone-music-sidebtn is-skip" title={ personalQueue.length ? 'Next in your queue' : 'Nothing queued - this ends your session' } onClick={ event => AdvanceSitchSong() }>
+                        <div className="phone-tap phone-music-sidebtn is-skip"
+                            title={ inJam
+                                ? (sessionQueue.length ? 'Next in the jam - for everyone' : 'Nothing queued - this stops the jam')
+                                : (sessionQueue.length ? 'Next in your queue' : 'Nothing queued - this ends your session') }
+                            onClick={ event => skipSession() }>
                             <PhoneIcon icon="forward-step" size={ 22 } />
                         </div>
                     </div>
@@ -582,6 +768,17 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <div className="phone-music-spacer" />
                 </div> }
             { sourceRow }
+            { /* BOTTOM RIGHT, floating over the pane rather than in the column.
+                 Everything else on this screen is one fixed stack in a phone
+                 that does not scroll, and a tenth row would have pushed the
+                 source line off the bottom the way the last one did.
+
+                 One button for two jobs, because from the player's side it is
+                 one intention - get somebody else in here. Whether a jam has to
+                 be started first is the app's problem, not theirs. */ }
+            <div className="phone-tap phone-music-fab" title={ inJam ? 'Invite someone else' : 'Start a jam and invite people' } onClick={ event => openInvite() }>
+                <PhoneIcon icon="user-plus" size={ 20 } />
+            </div>
         </div>
     );
 
@@ -591,7 +788,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // anything in it can go at a tap and nothing is rationed.
     const personalQueueScreen = (
         <div className="phone-music-pane">
-            { topBar('chevron-left', () => go('personal'), 'YOUR QUEUE') }
+            { topBar('chevron-left', () => go('personal'), inJam ? 'THE JAM QUEUE' : 'YOUR QUEUE') }
             <div className="phone-music-list">
                 { personal &&
                     <>
@@ -606,18 +803,27 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                         </div>
                     </> }
                 <div className="phone-music-section">Next up</div>
-                { (personalQueue.length === 0) &&
-                    <div className="phone-music-emptyline">Nothing queued. Paste another link and it plays after this one.</div> }
-                { personalQueue.map((entry, index) => (
+                { (sessionQueue.length === 0) &&
+                    <div className="phone-music-emptyline">{ inJam
+                        ? 'Nothing queued. Anyone here can paste a link and it plays next.'
+                        : 'Nothing queued. Paste another link and it plays after this one.' }</div> }
+                { /* WHO ASKED FOR IT, in a jam. Outside one the answer is always
+                     you, and a line saying so under every row would be noise -
+                     so the channel keeps that space instead, which is what it
+                     said before anybody else was here. */ }
+                { sessionQueue.map((entry: any, index: number) => (
                     <div key={ `${ entry.videoId }-${ index }` } className="phone-music-row" style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
                         <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ entry.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
                         <div className="phone-music-row-text">
                             <PhoneMarquee className="phone-music-row-title" text={ entry.title || 'Your song' } />
-                            <div className="phone-music-row-by">{ entry.author || 'Waiting its turn' }</div>
+                            <div className="phone-music-row-by">{ inJam
+                                ? `Requested by ${ byName(entry.queuedBy) }`
+                                : (entry.author || 'Waiting its turn') }</div>
                         </div>
-                        <div className="phone-tap phone-music-rowbtn" title="Take it out" onClick={ event => RemoveSitchSongAt(index) }>
-                            <PhoneIcon icon="xmark" size={ 17 } />
-                        </div>
+                        { (!inJam || canRemoveFromJam(entry)) &&
+                            <div className="phone-tap phone-music-rowbtn" title={ inJam && jam.isHost && (entry.queuedBy !== ownName) ? 'Remove their request' : 'Take it out' } onClick={ event => removeFromSession(index) }>
+                                <PhoneIcon icon="xmark" size={ 17 } />
+                            </div> }
                     </div>
                 )) }
             </div>
@@ -625,7 +831,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <PhoneIcon icon="plus" size={ 16 } />
                 Add a song
             </div>
-            <div className="phone-music-note">Only you hear any of this, so nothing here is rationed - take anything out at a tap.</div>
+            <div className="phone-music-note">{ inJam
+                ? 'Everyone here can queue, and your name goes on what you add. One song every thirty seconds each.'
+                : 'Only you hear any of this, so nothing here is rationed - take anything out at a tap.' }</div>
         </div>
     );
 
@@ -760,6 +968,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
             { requesting && requestSheet }
             { personalOpen && !requesting && personalSheet }
             { confirmSkip && !requesting && !personalOpen && skipSheet }
+            { inviteOpen && !requesting && !personalOpen && inviteSheet }
         </div>
     );
 }

@@ -20,6 +20,21 @@ export interface SitchSong
     // whose profile it came from, so the card that started it is the card that
     // shows as playing
     userId: number;
+    // Set when this song is the JAM's rather than yours alone.
+    //
+    // A jam is deliberately not a third source of sound. It is this session with
+    // other people in it, so it arrives here as an ordinary song and everything
+    // downstream - the player, the room panel, the home screen, the audio
+    // engine's one-set-of-ears rule - carries on working without knowing.
+    // What the marker changes is the handful of places where the difference is
+    // real: the track ending is reported to the server instead of advancing a
+    // local queue, and repeat has no meaning on a timeline five people share.
+    jamId?: number;
+    // Where the jam had got to when this arrived. A guest joining halfway
+    // through has to start halfway through, or they are listening to the same
+    // song as everybody else at the wrong moment, which is worse than not
+    // listening at all.
+    startAtSec?: number;
 }
 
 let song: SitchSong = null;
@@ -242,6 +257,23 @@ export const AdvanceSitchSong = () =>
 
     song = queue[0];
     queue = queue.slice(1);
+    songPaused = false;
+
+    notify();
+}
+
+/// The jam's track, taking over the ears.
+///
+/// Your own queue goes with it, deliberately. You are in one session at a time,
+/// and leaving a personal queue lying underneath a jam would mean songs you
+/// queued privately started playing the moment the jam ended - hours later,
+/// unprompted, with no screen that ever showed they were still there.
+export const PlayJamSong = (next: SitchSong) =>
+{
+    if(!next || !next.videoId) return;
+
+    song = next;
+    queue = [];
     songPaused = false;
 
     notify();
