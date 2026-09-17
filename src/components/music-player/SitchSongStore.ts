@@ -76,3 +76,25 @@ export const useSitchSong = (): SitchSong =>
 
     return song;
 }
+
+// A YouTube link to its video id, or null.
+//
+// Mirrors JukeboxStation.ParseVideoId on the server, deliberately: a link the
+// room jukebox would take must not be refused by the phone's own player, and a
+// player pasting the same link into both should not meet two different ideas of
+// what counts. Bare ids, watch, youtu.be, shorts and embed - the same five.
+//
+// Client-side because a song played only for you never reaches the server:
+// there is nothing to ask and nobody to ask.
+export const ParseVideoId = (input: string): string =>
+{
+    if(!input) return null;
+
+    const trimmed = input.trim();
+
+    if(/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+    const match = trimmed.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+
+    return (match ? match[1] : null);
+}

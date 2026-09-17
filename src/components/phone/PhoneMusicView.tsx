@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent } from '../../hooks';
 import { SetJukeboxPhoneOn, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
-import { StopSitchSong } from '../music-player/SitchSongStore';
+import { ParseVideoId, PlaySitchSong, StopSitchSong, useSitchSong } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -18,6 +18,14 @@ import { PhoneIcon } from './PhoneIcon';
 // Requests go through the same Siri-style sheet as the room jukebox.
 // Staff (RpTunesAccess) can skip the playing song - hotel-wide, so it asks
 // once - and remove any request; players can remove their own.
+//
+// JUST FOR YOU is the other half: a link played for this listener and nobody
+// else. It is the same private player a Sitch profile song uses, so it stops
+// the station, waits out a room jukebox rather than fighting it, and keeps
+// going when the phone closes. Nothing is sent to the server - which is also
+// why there is no title to show, only the video's own artwork. The stop button
+// lives here because until now the only one was on the profile that started
+// the song, which could be several taps away.
 
 interface PhoneMusicViewProps
 {
@@ -44,6 +52,9 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     const [ canManage, setCanManage ] = useState(false);
     const [ toast, setToast ] = useState<string>(null);
     const [ url, setUrl ] = useState('');
+    const [ personalOpen, setPersonalOpen ] = useState(false);
+    const [ personalUrl, setPersonalUrl ] = useState('');
+    const personal = useSitchSong();
     const [ sent, setSent ] = useState(false);
     const [ now, setNow ] = useState(() => Date.now());
     const toastTimer = useRef<number>(0);
@@ -130,6 +141,34 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
 
     const canRemove = (entry: { queuedBy: string }) => (canManage || (entry.queuedBy === ownName));
 
+    // Starting one is a stop for the station, which PlaySitchSong does itself -
+    // two songs at once is not a feature. A bad link leaves the sheet open with
+    // what was typed, rather than clearing it and saying nothing.
+    const playPersonal = () =>
+    {
+        const videoId = ParseVideoId(personalUrl);
+
+        if(!videoId)
+        {
+            showToast('That does not look like a YouTube link.');
+
+            return;
+        }
+
+        // userId 0: this came from a link, not somebody's profile, so no
+        // profile card should light up as playing it. Nothing reads the field
+        // but that card, which matches on the video id anyway.
+        PlaySitchSong({ videoId, title: '', author: '', userId: 0 });
+        setPersonalUrl('');
+        setPersonalOpen(false);
+    }
+
+    const stopPersonal = () =>
+    {
+        StopSitchSong();
+        showToast('Stopped your song.');
+    }
+
     // Tuning in is the inverse of a Sitch profile song taking over, and it is
     // the one control a listener can always reach: the stop button for a song
     // lives on the profile that started it, which may be several taps away.
@@ -171,6 +210,58 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                 <div className="phone-music-sheet-note">One request at a time per player. The room jukebox and this app share the same queue.</div>
             </div>
         </>
+    );
+
+    const eq = <span className="phone-music-eq"><i /><i /><i /><i /></span>;
+
+    const personalSheet = (
+        <>
+            <div className="phone-calendar-scrim" onClick={ event => setPersonalOpen(false) } />
+            <div className="phone-calendar-sheet phone-music-sheet">
+                <div className="phone-calendar-grabber" />
+                <div className="phone-music-sheet-title">Play just for you</div>
+                <div className="phone-music-sheet-sub">Paste a YouTube link. It plays in your ears only - nobody else in the room hears it, and it never joins the queue.</div>
+                <div className="phone-music-siri">
+                    <div className="phone-music-siri-halo" />
+                    <div className="phone-music-siri-plate">
+                        <div className="phone-music-siri-row">
+                            <SiriWave />
+                            <input className="phone-music-siri-input" type="text" spellCheck={ false } placeholder="Paste a YouTube link" autoFocus
+                                value={ personalUrl } onChange={ event => setPersonalUrl(event.target.value) }
+                                onKeyDown={ event => { if(event.key !== 'Enter') return; event.preventDefault(); event.stopPropagation(); playPersonal(); } } />
+                            <button className="phone-music-siri-add" type="button" onClick={ playPersonal }>Play</button>
+                        </div>
+                    </div>
+                </div>
+                <div className="phone-music-sheet-note">The station pauses while this plays. A room jukebox keeps its own time and picks up where the room has got to when your song ends.</div>
+            </div>
+        </>
+    );
+
+    // Shown wherever the app is: a song playing only for you is easy to forget
+    // about, and until now the only stop button was on the profile that started
+    // it.
+    const personalSection = (
+        <div className="phone-music-personal">
+            <div className="phone-music-section">Just for you</div>
+            { personal &&
+                <div className="phone-music-row is-playing">
+                    <img className="phone-music-row-art" src={ `https://i.ytimg.com/vi/${ personal.videoId }/mqdefault.jpg` } alt="" draggable={ false } onLoad={ event => event.currentTarget.classList.add('is-loaded') } />
+                    <div className="phone-music-row-text">
+                        <div className="phone-music-row-title">{ personal.title || 'Your song' }</div>
+                        <div className="phone-music-row-by">{ personal.author || 'Playing in your ears only' }</div>
+                    </div>
+                    { eq }
+                    <div className="phone-tap phone-music-rowbtn" title="Stop" onClick={ stopPersonal }>
+                        <PhoneIcon icon="stop" size={ 17 } />
+                    </div>
+                </div> }
+            { !personal &&
+                <div className="phone-tap phone-music-pill is-quiet" onClick={ event => { setPersonalUrl(''); setPersonalOpen(true); } }>
+                    <PhoneIcon icon="play" size={ 15 } />
+                    Play a song just for you
+                </div> }
+        </div>
     );
 
     const skipSheet = current && (
@@ -220,14 +311,20 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     );
 
     // where the sound is coming from for THIS player
-    const sourceRow = (
-        <div className={ `phone-music-source${ phoneOn ? ' is-on' : '' }` }>
-            <PhoneIcon icon={ phoneOn ? 'mobile-screen' : (present ? 'radio' : 'mobile-screen') } size={ 14 } />
-            <span>{ phoneOn ? 'Playing on your phone' : (present ? 'Playing on the room jukebox' : 'Paused on your phone') }</span>
-        </div>
-    );
+    const sourceRow = (personal
+        ? (
+            <div className="phone-tap phone-music-source is-on" title="Stop your song" onClick={ stopPersonal }>
+                <PhoneIcon icon="mobile-screen" size={ 14 } />
+                <span>Playing your song &middot; tap to stop</span>
+            </div>
+        )
+        : (
+            <div className={ `phone-music-source${ phoneOn ? ' is-on' : '' }` }>
+                <PhoneIcon icon={ phoneOn ? 'mobile-screen' : (present ? 'radio' : 'mobile-screen') } size={ 14 } />
+                <span>{ phoneOn ? 'Playing on your phone' : (present ? 'Playing on the room jukebox' : 'Paused on your phone') }</span>
+            </div>
+        ));
 
-    const eq = <span className="phone-music-eq"><i /><i /><i /><i /></span>;
 
     const queueRow = (entry: { videoId: string, title: string, queuedBy: string }, index: number, playing: boolean = false) => (
         <div key={ `${ entry.videoId }-${ index }` } className={ `phone-music-row${ playing ? ' is-playing' : '' }` } style={ { animationDelay: `${ 40 + Math.min(index, 8) * 40 }ms` } }>
@@ -343,6 +440,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
         <div className="phone-music-pane">
             { topBar('chevron-left', () => go('now'), 'QUEUE') }
             <div className="phone-music-list">
+                { personalSection }
                 { current &&
                     <>
                         <div className="phone-music-section">Now playing</div>
@@ -374,7 +472,8 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <span>{ toast }</span>
                 </div> }
             { requesting && requestSheet }
-            { confirmSkip && !requesting && skipSheet }
+            { personalOpen && !requesting && personalSheet }
+            { confirmSkip && !requesting && !personalOpen && skipSheet }
         </div>
     );
 }

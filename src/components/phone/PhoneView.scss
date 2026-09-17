@@ -2343,6 +2343,16 @@ $phone-scale: 0.8;
         &.is-on { color: $mu-green; }
     }
 
+    // The green pill is the app's one primary action. A second green one beside
+    // it would be two primaries and no hierarchy, so the personal-song entry is
+    // the same shape in the app's inset grey.
+    .phone-music-pill.is-quiet {
+        margin: 6px 18px 10px;
+        height: 42px;
+        background: var(--ph-inset);
+        color: var(--ph-text);
+    }
+
     .phone-music-pill {
         flex: none;
         margin: 22px 22px 0;
