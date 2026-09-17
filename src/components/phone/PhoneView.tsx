@@ -11,6 +11,7 @@ import { PhoneStocksView } from './PhoneStocksView';
 import { PhoneAccountView } from './PhoneAccountView';
 import { PhoneAccessibilityView } from './PhoneAccessibilityView';
 import { PhoneAppearanceView } from './PhoneAppearanceView';
+import { SetMusicOpenTarget } from '../music-player/JukeboxStore';
 import { PhoneCalendarView } from './PhoneCalendarView';
 import { PhoneMusicView } from './PhoneMusicView';
 import { PhoneNotesView } from './PhoneNotesView';
@@ -465,6 +466,12 @@ export const PhoneView: FC<{}> = props =>
                         return;
                     case 'news':
                         show('news');
+                        return;
+                    // the room panel's queue chip: the music app, opened on this
+                    // room's queue rather than its own home screen
+                    case 'music-queue':
+                        SetMusicOpenTarget('queue');
+                        show('music');
                         return;
                 }
             },

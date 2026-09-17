@@ -3,7 +3,7 @@ import React, { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useMessageEvent, useNavigator } from '../../hooks';
-import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneIcon } from './PhoneIcon';
@@ -62,7 +62,10 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // the room's own name, the same place the title card in the corner reads it
     const { navigatorData = null } = useNavigator();
     const roomName = (navigatorData?.enteredGuestRoom?.roomName || '');
-    const [ view, setView ] = useState<MusicView>('home');
+    // home, unless somebody outside asked for a particular screen - the room
+    // panel's queue chip does. Read once at mount and cleared, so it is not
+    // sticky for every later open.
+    const [ view, setView ] = useState<MusicView>(() => ((TakeMusicOpenTarget() as MusicView) ?? 'home'));
     const [ slide, setSlide ] = useState<'right' | 'left'>('right');
     const [ requesting, setRequesting ] = useState(false);
     const [ confirmSkip, setConfirmSkip ] = useState(false);

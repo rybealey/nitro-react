@@ -71,6 +71,22 @@ const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
 
 export const GetJukeboxState = () => state;
+
+// Which screen the music app should open on, for a caller outside it - the room
+// panel's queue chip. Consumed once and cleared, so it opens there that time and
+// on its own home screen every time after.
+let musicOpenTarget: string = null;
+
+export const SetMusicOpenTarget = (target: string) => { musicOpenTarget = target; };
+
+export const TakeMusicOpenTarget = () =>
+{
+    const target = musicOpenTarget;
+
+    musicOpenTarget = null;
+
+    return target;
+}
 export const GetJukeboxPrefs = () => prefs;
 
 export const SetJukeboxState = (next: JukeboxState) =>

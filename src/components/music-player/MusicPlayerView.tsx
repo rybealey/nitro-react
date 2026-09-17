@@ -1,9 +1,10 @@
 import { RoomEngineTriggerWidgetEvent } from '@nitrots/nitro-renderer';
 import React, { FC, useState } from 'react';
 import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
-import { GetRoomEngine } from '../../api';
+import { CreateLinkEvent, GetRoomEngine } from '../../api';
 import { useRoomEngineEvent } from '../../hooks';
 import { SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
+import { PhoneMarquee } from '../phone/PhoneMarquee';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 import { SiriView } from './SiriView';
 import { SiriWave } from './SiriWave';
@@ -98,7 +99,10 @@ export const MusicPlayerView: FC<{}> = props =>
                             <SiriWave className="music-player-wave" />
                             <span className="music-player-kicker">{ current ? 'NOW PLAYING' : 'NOTHING PLAYING' }</span>
                         </div>
-                        <div className="music-player-title" title={ current ? `${ current.title }${ current.author ? ` - ${ current.author }` : '' }` : '' }>{ current ? current.title : 'Queue a song to get started' }</div>
+                        { /* Scrolls when it does not fit, the same component the
+                             phone uses - its styles moved out of the phone's scope
+                             so this panel could have them. */ }
+                        <PhoneMarquee className="music-player-title" text={ current ? current.title : 'Queue a song to get started' } />
                     </div>
                 </div>
                 <div className="music-player-controls">
@@ -123,8 +127,11 @@ export const MusicPlayerView: FC<{}> = props =>
                          says how many are waiting, and only when any are. An
                          empty queue has nothing to report, so it is not there to
                          be pressed at all. */ }
+                    { /* Opens the phone on this room's queue. Still cannot ADD a
+                         song - that is the furni's job - but looking at a list is
+                         not adding, so it is pressable again and says so. */ }
                     { (queue.length > 0) &&
-                        <span className="music-player-queue is-readout" title={ `Up next: ${ queue[0].title }` }>
+                        <span className="music-player-queue" title={ `Up next: ${ queue[0].title }` } onClick={ event => CreateLinkEvent('phone/music-queue') }>
                             { queue.length } QUEUED
                         </span> }
                 </div>

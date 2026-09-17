@@ -1,0 +1,40 @@
+// Scrolling text, for PhoneMarquee.
+//
+// TOP LEVEL, not inside .pixelrp-phone, because the room's jukebox panel uses
+// this too - it lived in the phone's scope while the phone was the only caller,
+// and a component whose styles only work in one place is not really a component.
+//
+// The wrapper carries the caller's own class as well, so the nowrap and overflow
+// it needs are usually already there; this adds the sliding.
+//
+// Both halves move by their own width, which is what makes the loop seamless -
+// as the first leaves, the second is exactly where it started.
+.phone-marquee {
+    display: flex;
+    overflow: hidden;
+    white-space: nowrap;
+
+    .phone-marquee-text { flex: none; }
+
+    &.is-scrolling .phone-marquee-text {
+        padding-right: 36px;
+        animation: phone-marquee-roll var(--marquee-duration, 10s) linear infinite;
+    }
+}
+
+// Standing still is the fallback, not a broken half-scroll: the second copy goes
+// and the single line trails off with an ellipsis, which is what these titles
+// did before any of this.
+@media (prefers-reduced-motion: reduce) {
+    .phone-marquee.is-scrolling {
+        text-overflow: ellipsis;
+
+        .phone-marquee-text { animation: none; padding-right: 0; }
+        .phone-marquee-text + .phone-marquee-text { display: none; }
+    }
+}
+
+@keyframes phone-marquee-roll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+}
