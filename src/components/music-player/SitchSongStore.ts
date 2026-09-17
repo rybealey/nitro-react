@@ -150,6 +150,29 @@ export const PlaySitchSong = (next: SitchSong) =>
     notify();
 }
 
+/// The song you are ALREADY playing becomes the jam's, without restarting it.
+///
+/// Deliberately not PlayJamSong. That replaces the song, and the player rebuilds
+/// on a new video - which for the host who just started a jam on the track they
+/// were listening to would mean their own music stopping and starting again for
+/// no reason they could see. videoId and userId are both left exactly as they
+/// are, because those two are what the player watches to decide whether to
+/// rebuild.
+///
+/// The local queue DOES go, though. Those songs travelled to the server when the
+/// jam started and are coming back as the jam's, so keeping a second copy here
+/// would leave a private queue sitting underneath a shared one - and the moment
+/// the jam ran dry it would start playing songs only the host can hear.
+export const ClaimSitchSongForJam = (jamId: number) =>
+{
+    if(!song || song.jamId === jamId) return;
+
+    song = { ...song, jamId };
+    queue = [];
+
+    notify();
+}
+
 /// The title and channel, once the player knows them.
 ///
 /// A song started from a pasted link arrives here with neither: that path never

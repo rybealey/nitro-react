@@ -78,7 +78,15 @@ export const useJamState = (): JamState =>
 
 export const RequestJamState = () => SendMessageComposer(new RpJamStateRequestComposer());
 
-export const StartJam = () => SendMessageComposer(new RpJamStartComposer());
+/// Starts a jam ON WHAT YOU ARE ALREADY PLAYING.
+///
+/// A song of your own never reaches the server, so without this the jam began
+/// empty: the host carried on hearing their song and every guest arrived to
+/// silence. What goes up is the video, how far in it is, and the queue behind
+/// it - enough for the server to start the jam mid-song rather than from
+/// nothing.
+export const StartJam = (videoId: string = '', elapsedSec: number = 0, queueIds: string[] = []) =>
+    SendMessageComposer(new RpJamStartComposer(videoId || '', Math.max(0, Math.floor(elapsedSec || 0)), queueIds.length, ...queueIds));
 
 /// BY NAME. The picker offers friends as taps and a box for anyone else, and a
 /// name typed into that box is all this has - the client is never told a

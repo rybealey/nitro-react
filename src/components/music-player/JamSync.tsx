@@ -2,7 +2,7 @@ import { FC, useEffect } from 'react';
 import { RpJamStateEvent } from '../../api/rp-phone/RpJamMessages';
 import { useMessageEvent } from '../../hooks';
 import { GetJamState, RequestJamState, SetJamState, useJamState } from './JamStore';
-import { GetSitchSong, PlayJamSong, SetSitchSongMeta, StopSitchSong } from './SitchSongStore';
+import { ClaimSitchSongForJam, GetSitchSong, PlayJamSong, SetSitchSongMeta, StopSitchSong } from './SitchSongStore';
 
 // The jam, joined to the rest of the app.
 //
@@ -80,6 +80,18 @@ export const JamSync: FC<{}> = props =>
         if(state.inJam && state.current)
         {
             const same = (!!song && (song.jamId === state.jamId) && (song.videoId === state.current.videoId));
+
+            // THE SONG THAT WAS ALREADY PLAYING. When a host starts a jam on the
+            // track they were listening to, it comes back down as the jam's -
+            // same video, now with a jam behind it. Replacing it here would
+            // rebuild the player and restart their music for no reason they
+            // could see, so it is claimed in place instead.
+            if(!same && song && !song.jamId && (song.videoId === state.current.videoId))
+            {
+                ClaimSitchSongForJam(state.jamId);
+
+                return;
+            }
 
             if(!same)
             {

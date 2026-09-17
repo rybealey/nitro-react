@@ -284,7 +284,11 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // whether a jam exists yet is the app's problem, not theirs.
     const openInvite = () =>
     {
-        if(!inJam) StartJam();
+        // STARTING A JAM TAKES YOUR SESSION WITH IT. Your song has never left
+        // this browser, so a jam started without telling the server about it
+        // began empty - you kept hearing your music and everyone you invited
+        // arrived to silence.
+        if(!inJam) StartJam((personal && !personal.jamId) ? personal.videoId : '', personalPlayback.elapsedSec, personalQueue.map(entry => entry.videoId));
 
         setInviteName('');
         setInviteOpen(true);
