@@ -191,10 +191,28 @@ export const SitchSongPlayer: FC<{}> = props =>
 
         if(!player) return;
 
-        player.setVolume?.(songVolume);
+        // ZERO IS SILENCE, AND IT HAS TO BE SAID AS A MUTE.
+        //
+        // This set the volume and THEN unmuted, which is backwards. YouTube
+        // treats a volume of zero as muted, and unMute() puts back the level the
+        // player had before that - so dragging the slider to the bottom set zero
+        // and undid it in the same breath, and the music carried on at the old
+        // volume underneath a speaker icon that had already flipped to mute.
+        //
+        // The room's player has always done these two the other way round, which
+        // is exactly why only this one had the bug.
+        const silent = (songMuted || (songVolume === 0));
 
-        if(songMuted) player.mute?.();
-        else player.unMute?.();
+        if(silent)
+        {
+            player.setVolume?.(0);
+            player.mute?.();
+
+            return;
+        }
+
+        player.unMute?.();
+        player.setVolume?.(songVolume);
     }, [ songVolume, songMuted, song?.videoId ]);
 
     // The player FOLLOWS the store's paused intent. It used to be asked to

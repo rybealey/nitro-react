@@ -115,11 +115,47 @@ export const SetJukeboxPresent = (present: boolean) =>
     notify();
 }
 
+// WHERE THE SPEAKER PUTS YOU BACK.
+//
+// A slider at the bottom is silence, and both speakers say so - but until now
+// pressing one at that point set a real mute and changed nothing you could hear,
+// because the volume was still zero underneath it. A button that cannot undo the
+// silence it is reporting is a button that does nothing.
+//
+// Not persisted. It only has to outlive a click, and a remembered level from
+// three days ago is a worse guess than the default.
+let lastAudibleVolume = (() => { const stored = parseInt(read(VOLUME_KEY)); return (isNaN(stored) || (stored <= 0)) ? 50 : stored; })();
+let lastAudibleSongVolume = (() => { const stored = parseInt(read(SONG_VOLUME_KEY)); return (isNaN(stored) || (stored <= 0)) ? 50 : stored; })();
+
 export const SetSongVolume = (songVolume: number) =>
 {
+    if(songVolume > 0) lastAudibleSongVolume = songVolume;
+
     prefs = { ...prefs, songVolume };
     write(SONG_VOLUME_KEY, songVolume.toString());
     notify();
+}
+
+/// Sound again, from a speaker rather than a slider.
+///
+/// Lifts a mute AND brings the slider back off the bottom, because those are two
+/// ways into the same silence and a speaker that only knows about one of them is
+/// dead half the time.
+///
+/// Deliberately NOT what the sliders call. Reaching for a slider and dragging it
+/// to zero must be allowed to leave it at zero - restoring it there would fight
+/// the hand that moved it.
+export const SongSoundBack = () =>
+{
+    if(prefs.songMuted) SetSongMuted(false);
+    if(prefs.songVolume === 0) SetSongVolume(lastAudibleSongVolume);
+}
+
+export const JukeboxSoundBack = () =>
+{
+    if(prefs.muted) SetJukeboxMuted(false);
+    if(prefs.roomPaused) SetJukeboxRoomPaused(false);
+    if(prefs.volume === 0) SetJukeboxVolume(lastAudibleVolume);
 }
 
 export const SetSongMuted = (songMuted: boolean) =>
@@ -138,6 +174,8 @@ export const SetJukeboxRoomPaused = (roomPaused: boolean) =>
 
 export const SetJukeboxVolume = (volume: number) =>
 {
+    if(volume > 0) lastAudibleVolume = volume;
+
     prefs = { ...prefs, volume };
     write(VOLUME_KEY, volume.toString());
     notify();

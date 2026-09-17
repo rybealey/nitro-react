@@ -3,7 +3,7 @@ import React, { FC, useEffect, useState } from 'react';
 import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { CreateLinkEvent, GetRoomEngine } from '../../api';
 import { useRoomEngineEvent } from '../../hooks';
-import { FormatClock, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
+import { FormatClock, JukeboxSoundBack, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { PhoneMarquee } from '../phone/PhoneMarquee';
 import { useJamState } from './JamStore';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
@@ -102,7 +102,17 @@ export const MusicPlayerView: FC<{}> = props =>
         listenAgain();
     }
 
-    const toggleMuted = () => (silenced ? listenAgain() : SetJukeboxMuted(true));
+    // looksSilent, not silenced. The two were deliberately kept apart because
+    // lifting a mute you never set would leave the volume at zero and the sound
+    // still off - a button that appears to do nothing. That reasoning was right
+    // about the problem and wrong about the fix: the answer is for the speaker to
+    // bring the slider back up with it, which is what JukeboxSoundBack does, not
+    // for the speaker to stop trying.
+    //
+    // The slider still calls listenAgain rather than this. Dragging it to zero
+    // has to be allowed to leave it at zero, or the control fights the hand
+    // moving it.
+    const toggleMuted = () => (looksSilent ? JukeboxSoundBack() : SetJukeboxMuted(true));
 
     // The panel slides in only while something is queued or playing; the
     // double-click hook and Siri stay live while it's hidden so the first
@@ -169,7 +179,7 @@ export const MusicPlayerView: FC<{}> = props =>
                     { looksSilent
                         ? <FaVolumeMute
                             className={ `fa-icon music-player-mute is-muted${ songHasEars ? ' is-forced' : '' }` }
-                            title={ songHasEars
+                            title={ (!songHasEars && (volume === 0) && !muted && !roomPaused) ? 'Volume is at zero - click to listen again' : songHasEars
                                 ? (jam.inJam
                                     ? (jam.isHost ? 'Your jam is playing - pause it to hear the room' : `You're in ${ jam.hostName }'s jam - leave it to hear the room`)
                                     : 'Your own song is playing - pause it to hear the room')

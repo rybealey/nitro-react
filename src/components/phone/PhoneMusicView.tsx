@@ -4,7 +4,7 @@ import { GetSessionDataManager, SendMessageComposer } from '../../api';
 import { RpGetTunesAccessComposer, RpTunesAccessEvent } from '../../api/rp-phone/RpTunesMessages';
 import { useFriends, useMessageEvent, useNavigator } from '../../hooks';
 import { AddToJam, EndJam, InviteToJam, LeaveJam, RemoveFromJam, SetJamPaused, SkipJam, StartJam, useJamState } from '../music-player/JamStore';
-import { FormatClock, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
+import { FormatClock, JukeboxSoundBack, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, SetSongMuted, SetSongVolume, SongSoundBack, TakeMusicOpenTarget, useJukeboxPrefs, useJukeboxState } from '../music-player/JukeboxStore';
 import { AdvanceSitchSong, EnqueueSitchSong, ParseVideoId, RemoveSitchSongAt, SetSitchSongPaused, ToggleSitchRepeat, ToggleSitchSongPaused, useSitchPlayback, useSitchQueue, useSitchRepeat, useSitchSong, useSitchSongPaused } from '../music-player/SitchSongStore';
 import { SiriWave } from '../music-player/SiriWave';
 import { PhoneAvatar } from './PhoneAvatar';
@@ -96,7 +96,12 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
     // sitting in silence, and a button showing "pause" over silence would be the
     // app arguing with your ears about whether anything is playing.
     const songPaused = (personalPaused || (inJam && jam.paused));
+    // SILENT, by whichever route. A mute and a slider at the bottom are two ways
+    // into the same silence, and a speaker that only knows about one of them
+    // reports the wrong thing half the time and cannot undo it the other half.
+    const songSilent = (songMuted || (songVolume === 0));
     const roomSilenced = (muted || songHasEars);
+    const roomLooksSilent = (roomSilenced || (volume === 0));
     // Which session is the one in your ears. Exactly one can be, which is what
     // makes the moving bars worth having: they are a readout of where your sound
     // is coming from, and neither moving means nothing has it.
@@ -805,8 +810,14 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                          the transport stays the three controls that act on the
                          song. */ }
                     <div className="phone-music-volume">
-                        <div className={ `phone-tap phone-music-volbtn${ songMuted ? ' is-muted' : '' }` } title={ songMuted ? 'Unmute your song' : 'Mute your song' } onClick={ event => SetSongMuted(!songMuted) }>
-                            <PhoneIcon icon={ (songMuted || (songVolume === 0)) ? 'volume-x' : 'volume-low' } size={ 13 } />
+                        { /* A slider at the bottom is silence too, so pressing
+                             this at that point has to bring the slider back with
+                             it - otherwise the button reports a silence it
+                             cannot undo, which is a button that does nothing. */ }
+                        <div className={ `phone-tap phone-music-volbtn${ songSilent ? ' is-muted' : '' }` }
+                            title={ songSilent ? 'Listen again' : 'Mute your song' }
+                            onClick={ event => (songSilent ? SongSoundBack() : SetSongMuted(true)) }>
+                            <PhoneIcon icon={ songSilent ? 'volume-x' : 'volume-low' } size={ 13 } />
                         </div>
                         <input type="range" min={ 0 } max={ 100 } value={ songVolume } style={ { '--fill': `${ songVolume }%` } as React.CSSProperties } onChange={ event => SetSongVolume(parseInt(event.target.value)) } />
                         <PhoneIcon icon="volume-high" size={ 13 } />
@@ -954,7 +965,7 @@ export const PhoneMusicView: FC<PhoneMusicViewProps> = props =>
                     <div className="phone-music-transport">
                         <div className={ `phone-tap phone-music-sidebtn${ roomSilenced ? ' is-muted' : '' }` }
                             title={ songHasEars ? 'Your own song is playing - pause it to hear the room' : (muted ? 'Unmute' : 'Mute') }
-                            onClick={ event => (!songHasEars && SetJukeboxMuted(!muted)) }>
+                            onClick={ event => (!songHasEars && (roomLooksSilent ? JukeboxSoundBack() : SetJukeboxMuted(true))) }>
                             { /* zero is silence, whatever the mute says */ }
                             <PhoneIcon icon={ (roomSilenced || (volume === 0)) ? 'volume-xmark' : (volume < 50 ? 'volume-low' : 'volume-high') } size={ 22 } />
                         </div>
