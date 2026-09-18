@@ -7438,6 +7438,129 @@ $phone-scale: 0.8;
         &.is-br { bottom: 112px; right: 14px; border-left: 0; border-top: 0; border-bottom-right-radius: 6px; }
     }
 
+    // ---- held wide -------------------------------------------------------
+    //
+    // The shell's own rotation already puts the controls where they belong: the
+    // bar sits on the phone's bottom edge, and turning the phone counter-
+    // clockwise carries that edge to the right of the screen. Nothing here
+    // moves anything.
+    //
+    // What the rotation does NOT fix is the writing. Every label and glyph
+    // turned with the case and is now lying on its side, so each one is turned
+    // back the other way. That is the difference between a phone held wide and
+    // a picture of a phone that someone rotated.
+    .phone-shell.is-landscape {
+        .phone-camera-mode-option,
+        .phone-camera-mode.is-recording,
+        .phone-camera-chip,
+        .phone-camera-rotate .phone-pi,
+        .phone-camera-exit .phone-pi,
+        .phone-camera-thumb .phone-pi,
+        .phone-camera-thumb img {
+            transform: rotate(90deg);
+        }
+
+        // Reading order follows the turn too: a row that ran left to right now
+        // runs bottom to top, which would put PHOTO under VIDEO.
+        .phone-camera-mode { flex-direction: row-reverse; }
+
+        // The chip is centred along an edge that is now vertical, so its own
+        // box has to turn with its text or it reads as a bar down the screen.
+        .phone-camera-chip { flex-direction: row-reverse; }
+    }
+
+    // Orientation, above the frame and outside both modes. Round, thumb-sized,
+    // and lit when the phone is being held wide - the one control whose state
+    // you can also read from the shape of the phone in your hand.
+    .phone-camera-rotate {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(0, 0, 0, 0.5);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        z-index: 3;
+
+        &.is-on {
+            border-color: transparent;
+            background: rgba(245, 197, 66, 0.92);
+            color: #2a2010;
+        }
+    }
+
+    // The status line above the frame: the GIF budget before you press, the
+    // clock against it once you have.
+    .phone-camera-chip {
+        position: absolute;
+        top: 24px;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: fit-content;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        font-family: 'Ubuntu', sans-serif;
+        font-weight: 500;
+        font-size: calc(11px * var(--ph-text-scale, 1));
+        letter-spacing: 1px;
+        color: rgba(255, 255, 255, 0.82);
+        z-index: 2;
+
+        &.is-rec { background: rgba(0, 0, 0, 0.62); color: #ffffff; letter-spacing: .6px; }
+    }
+
+    .phone-camera-rec-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #e4483a;
+    }
+
+    // The record button and its 30-second budget. The ring is the only place
+    // the limit is visible once recording starts, so it reads as spending
+    // rather than as decoration.
+    .phone-camera-record-wrap {
+        position: relative;
+        width: 82px;
+        height: 82px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-camera-progress {
+        position: absolute;
+        inset: 0;
+        width: 82px;
+        height: 82px;
+        transform: rotate(-90deg);
+    }
+
+    .phone-camera-progress-track { fill: none; stroke: rgba(255, 255, 255, 0.22); stroke-width: 4; }
+
+    .phone-camera-progress-value {
+        fill: none;
+        stroke: #e4483a;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-dasharray: 232.5;
+        transition: stroke-dashoffset .2s linear;
+    }
+
+    // Keeps the shutter centred when the thumbnail and close button stand down.
+    .phone-camera-bar-spacer { width: 40px; }
+
     // The mode switcher, in the iOS place: a row of words above the shutter,
     // the selected one lit.
     .phone-camera-mode {
@@ -7461,6 +7584,11 @@ $phone-scale: 0.8;
         transition: color .12s ease;
 
         &.is-on { color: #f5c542; }
+    }
+
+    .phone-camera-mode.is-recording {
+        color: rgba(255, 255, 255, 0.4);
+        justify-content: center;
     }
 
     .phone-camera-bar {

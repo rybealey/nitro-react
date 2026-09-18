@@ -18,6 +18,9 @@ const FA_MAP: Record<string, string> = {
     'repeat': 'repeat',
     'pause': 'pause',
     'stop': 'stop',
+    // Turning the phone itself, not rotating an image - the device glyph
+    // is what says that.
+    'rotate': 'rotate',
     'volume-low': 'volume-low',
     'camera': 'camera',
     'cellular-signal-3': 'signal',

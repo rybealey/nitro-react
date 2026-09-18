@@ -3818,6 +3818,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"gifenc@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "gifenc@npm:1.0.3"
+  checksum: 10c0/34fc6b2c66c305fc556cd2f475154ce2ad68384a52ceb8253b901c8c7d9c63f2c0a5d109ceb3cb46e44c2c6155009920a286cf08a621105863aa43468e345229
+  languageName: node
+  linkType: hard
+
 "gifuct-js@npm:^2.1.2":
   version: 2.1.2
   resolution: "gifuct-js@npm:2.1.2"
@@ -4529,6 +4536,7 @@ __metadata:
     eslint-plugin-jsx-a11y: "npm:^6.6.0"
     eslint-plugin-react: "npm:^7.30.1"
     eslint-plugin-react-hooks: "npm:^4.6.0"
+    gifenc: "npm:^1.0.3"
     html-to-image: "npm:^1.11.13"
     pixelarticons: "npm:^2.4.1"
     react: "npm:^18.2.0"
