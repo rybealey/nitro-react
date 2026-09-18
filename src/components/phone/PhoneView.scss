@@ -7468,6 +7468,38 @@ $phone-scale: 0.8;
             width: max-content;
             transform: translateX(-50%) rotate(90deg);
         }
+
+        // The shot itself. The capture is already wide - the viewfinder's
+        // on-screen box is what gets grabbed, and turning the case turned that
+        // box - but it lands in a screen that is still 324 across in its own
+        // coordinates, so cover() cropped a 1.86:1 picture into a 0.62:1 hole
+        // and kept the middle third at double size. That is why a landscape
+        // shot came back looking like a zoomed portrait one.
+        //
+        // So the picture gets a box the shape it will be AFTER it turns - the
+        // preview area with its sides swapped - and turns back level for
+        // whoever is holding the phone, the same quarter turn the labels take.
+        .phone-camera-preview img {
+            flex: none;
+            position: absolute;
+            top: 260px;  // half of the 520px above the bar
+            left: 162px; // half of the 324px across
+            width: 520px;
+            height: 324px;
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        // Taking the picture out of the flow leaves the bar as the only item in
+        // a column, which would ride up to the top of the screen. It is pinned
+        // to the edge it belongs on instead.
+        .phone-camera-preview-bar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .phone-camera-preview-btn { transform: rotate(90deg); }
     }
 
     // Orientation: round, thumb-sized, sitting inside the viewfinder's own
@@ -8540,12 +8572,17 @@ $phone-scale: 0.8;
 
     // Full-bleed: the photo owns the entire screen; chrome floats over it
     // on gradient scrims and hides on tap.
+    //
+    // contain, not cover, because a landscape shot is a different shape from
+    // the screen it is being looked at on: cover would crop it to a portrait
+    // sliver and hide most of the picture. An upright shot is exactly the
+    // screen's own shape, so nothing changes for one - it still fills.
     .phone-photos-viewer-image {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
         image-rendering: pixelated;
         cursor: pointer;
     }
