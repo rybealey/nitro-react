@@ -14,13 +14,23 @@ import { usePhonePhotos } from './usePhone';
 
 interface PhoneCameraViewProps
 {
+    landscape: boolean;
+    setLandscape: (value: boolean) => void;
     openPhotos: () => void;
     onExit: () => void;
 }
 
+// The capture modes, in the order the switcher reads them. Portrait and
+// landscape are not a crop: the whole PHONE turns, so the viewfinder really is
+// wider and the shot really is a different shape. getBoundingClientRect returns
+// the axis-aligned box of a rotated element, and for an exact quarter turn that
+// IS the rotated rectangle - so the capture and the avatar tagging both follow
+// the rotation without either of them knowing about it.
+const MODES: [ boolean, string ][] = [ [ false, 'PORTRAIT' ], [ true, 'LANDSCAPE' ] ];
+
 export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
 {
-    const { openPhotos = null, onExit = null } = props;
+    const { landscape = false, setLandscape = null, openPhotos = null, onExit = null } = props;
     const { photos = [], requestPhotos = null } = usePhonePhotos();
     const [ inRoom, setInRoom ] = useState(() => !!GetRoomSession());
     const [ capturedUrl, setCapturedUrl ] = useState<string>(null);
@@ -150,7 +160,12 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
                         <div className="phone-camera-corner is-bl" />
                         <div className="phone-camera-corner is-br" />
                     </div>
-                    <div className="phone-camera-mode">PHOTO</div>
+                    <div className="phone-camera-mode">
+                        { MODES.map(([ value, label ]) => (
+                            <div key={ label } className={ 'phone-tap phone-camera-mode-option' + ((landscape === value) ? ' is-on' : '') }
+                                onClick={ () => (setLandscape && setLandscape(value)) }>{ label }</div>
+                        )) }
+                    </div>
                     <div className="phone-camera-bar">
                         <div className="phone-tap phone-camera-thumb" title="Photos" onClick={ event => (openPhotos && openPhotos()) }>
                             { latestPhoto &&

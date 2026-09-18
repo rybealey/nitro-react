@@ -117,6 +117,12 @@ export const PhoneView: FC<{}> = props =>
     // The Notification Center rides over whatever screen is open rather than
     // being one of its own, the way it pulls down over anything on a phone.
     const [ centerOpen, setCenterOpen ] = useState(false);
+    // Camera orientation. Lives here rather than in the camera view because the
+    // thing that turns is the PHONE - the shell, the case, the whole object -
+    // not something inside the screen. Kept between visits to the camera, and
+    // only ever applied while the camera is open, so leaving it never strands
+    // the phone on its side.
+    const [ cameraLandscape, setCameraLandscape ] = useState(false);
     const { visibleThreads = [], getMessageThread = null, setActiveThreadId = null } = useMessenger();
     const { requestFriend = null, getFriend = null } = useFriends();
     const { ensureLoaded, access } = usePhonePrefs();
@@ -554,7 +560,7 @@ export const PhoneView: FC<{}> = props =>
     return (
         <DraggableWindow uniqueKey="pixelrp-phone" handleSelector=".phone-drag-handle" windowPosition={ DraggableWindowPosition.CENTER } minVisible={ 48 }>
             <div className="pixelrp-phone">
-                <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }` }>
+                <div className={ `phone-shell${ (screen === 'camera') ? ' is-camera' : '' }${ ((screen === 'camera') && cameraLandscape) ? ' is-landscape' : '' }` }>
                     <div ref={ displayRef } className={ `phone-display${ (screen === 'camera') ? ' is-camera' : '' }${ resolvedDark ? ' is-dark' : '' }${ access.bold ? ' is-a11y-bold' : '' }${ access.contrast ? ' is-a11y-contrast' : '' }${ access.opaque ? ' is-a11y-opaque' : '' }${ access.switchLabels ? ' is-a11y-labels' : '' }${ access.reduceMotion ? ' is-a11y-still' : '' }` } style={ { '--ph-text-scale': TEXT_SIZE_SCALES[access.textSize] } as CSSProperties }>
                         <div className={ `phone-status-bar${ onLightScreen ? ' on-light' : '' }${ isScrolled ? ' is-scrolled' : '' }` } title={ centerOpen ? 'Close notifications' : 'Notifications' } onClick={ event => setCenterOpen(value => !value) }>
                             <div className="phone-status-time">{ clock }</div>
@@ -578,7 +584,8 @@ export const PhoneView: FC<{}> = props =>
                             { (screen === 'contacts') &&
                                 <PhoneContactsView openThreadForUser={ openThreadForUser } startCall={ userId => setCallFriendId(userId) } onBack={ () => go('home') } /> }
                             { (screen === 'camera') &&
-                                <PhoneCameraView openPhotos={ () => go('photos') } onExit={ () => go('home') } /> }
+                                <PhoneCameraView landscape={ cameraLandscape } setLandscape={ setCameraLandscape }
+                                    openPhotos={ () => go('photos') } onExit={ () => go('home') } /> }
                             { (screen === 'photos') &&
                                 <PhonePhotosView openCamera={ () => go('camera') } onBack={ () => go('home') } /> }
                             { (screen === 'settings') &&

@@ -36,8 +36,15 @@ $phone-scale: 0.8;
         position: relative;
         width: 336px;
         height: 700px;
-        transform: scale($phone-scale);
+        // The translate/rotate/translate pair is an identity here - it exists so
+        // this and .is-landscape have the SAME function list, which is what lets
+        // the browser interpolate the angle instead of decomposing two mismatched
+        // lists into matrices. The transition lives on the base rule, not on
+        // .is-landscape, or turning back to portrait would snap: the class that
+        // carried it would already be gone.
+        transform: scale($phone-scale) translate(50%, 50%) rotate(0deg) translate(-50%, -50%);
         transform-origin: top left;
+        transition: transform .38s cubic-bezier(.2, .8, .2, 1);
         border-radius: 48px;
         padding: 6px;
         background: linear-gradient(150deg, #a4596b, #73273c 55%, #521b2b);
@@ -7367,6 +7374,25 @@ $phone-scale: 0.8;
     // viewfinder: the display goes transparent AND the shell stops painting
     // behind it — its gradient is re-drawn as a bezel-only ring (masked so
     // just the 6px frame is filled), leaving the center see-through.
+    // Held wide. The whole shell turns - case, screen, buttons - because that is
+    // what picking the phone up sideways does, and it is why the viewfinder
+    // genuinely becomes a landscape frame rather than a letterboxed portrait
+    // one.
+    //
+    // transform-origin moves to the centre for this: the shell's usual origin
+    // is top left (it is scaled from there), and rotating about that corner
+    // would swing the phone off the side of its own window instead of turning
+    // it on the spot. Composed with the scale rather than replacing it, or the
+    // phone would jump to full size as it turned.
+    .phone-shell.is-landscape {
+        transform: scale($phone-scale) translate(50%, 50%) rotate(-90deg) translate(-50%, -50%);
+    }
+
+    // Reduce Motion. The blanket rule above covers .phone-display and its
+    // descendants, and the shell is its PARENT - so the one transform that is
+    // not inside the screen needs saying separately, upward, with :has().
+    .phone-shell:has(.phone-display.is-a11y-still) { transition: none; }
+
     .phone-shell.is-camera {
         background: transparent;
 
@@ -7412,18 +7438,29 @@ $phone-scale: 0.8;
         &.is-br { bottom: 112px; right: 14px; border-left: 0; border-top: 0; border-bottom-right-radius: 6px; }
     }
 
+    // The mode switcher, in the iOS place: a row of words above the shutter,
+    // the selected one lit.
     .phone-camera-mode {
         position: absolute;
         left: 0;
         right: 0;
         bottom: 102px;
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
         font-size: calc(11px * var(--ph-text-scale, 1));
         letter-spacing: 1.5px;
-        color: #f5c542;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .phone-camera-mode-option {
+        color: rgba(255, 255, 255, 0.55);
+        transition: color .12s ease;
+
+        &.is-on { color: #f5c542; }
     }
 
     .phone-camera-bar {
