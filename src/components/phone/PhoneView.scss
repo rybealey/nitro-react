@@ -7450,12 +7450,23 @@ $phone-scale: 0.8;
     // back the other way. That is the difference between a phone held wide and
     // a picture of a phone that someone rotated.
     .phone-shell.is-landscape {
-        .phone-camera-mode,
         .phone-camera-rotate .phone-pi,
         .phone-camera-exit .phone-pi,
         .phone-camera-thumb .phone-pi,
         .phone-camera-thumb img {
             transform: rotate(90deg);
+        }
+
+        // The label needs a box its own size BEFORE it turns. Upright it is a
+        // full-width strip centred by text-align, and a 324px-wide box rotated
+        // a quarter turn is 324px TALL - taller than the room it has above the
+        // bar, so it hung out of the side of the case. Shrunk to its own text
+        // and centred by its own middle, it turns inside the screen.
+        .phone-camera-mode {
+            left: 50%;
+            right: auto;
+            width: max-content;
+            transform: translateX(-50%) rotate(90deg);
         }
     }
 
