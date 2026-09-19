@@ -349,7 +349,10 @@ const useCatalogState = () =>
                 if((n === targetNode.parent) && n.children.length) n.open();
             }
 
-            if(isActive && isOpen) targetNode.close();
+            // Clicking a category twice folds it away, but arriving with an
+            // item to select is not a second click: Buy on furni from the page
+            // already open must not collapse the branch under it.
+            if(isActive && isOpen && (offerId < 0)) targetNode.close();
             else targetNode.open();
 
             return nodes;

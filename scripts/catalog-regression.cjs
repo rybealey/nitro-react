@@ -155,4 +155,17 @@ state.openPageById(50); render(); search();
 receive('CatalogPageMessageEvent', page(50, -1, [offer(7)]));
 assert.equal(state.currentPage.pageId, -1, 'late navigation response preserves newer search');
 assert.equal(state.isBusy, false, 'late response does not leave the catalog permanently busy');
-console.log('Catalog regressions passed: search quantities, restrictions, stale replies, first-open navigation and item selection.');
+// Navigating to a category twice folds it away - that is the sidebar's toggle.
+// Arriving with an item to select is not a second click, so Buy on furni sold
+// from the page already open must leave the branch standing.
+reset(); state.setIsVisible(true); render();
+receive('CatalogPagesListEvent', {root: node(-1, 'root', [node(50, 'furni', [node(51, 'child')])])});
+const branch = state.getNodeById(51, state.rootNode);
+assert.ok(branch.isOpen, 'the catalog lands on a category with it open');
+state.activateNode(branch, 7); render();
+assert.ok(branch.isOpen, 'Buy into the category already open keeps it open');
+assert.equal(packets.filter(p => p.constructor.key === 'GetCatalogPageComposer').at(-1).args[1], 7, 'Buy still asks for its item');
+state.activateNode(branch); render();
+assert.equal(branch.isOpen, false, 'plain navigation still toggles the category shut');
+
+console.log('Catalog regressions passed: search quantities, restrictions, stale replies, first-open navigation, item selection and Buy-into-open-category.');
