@@ -38,11 +38,11 @@ import { GetRoomSessionManager } from '../nitro/session/GetRoomSessionManager';
 //
 // Cost when disarmed: none. The ticker callback is not registered.
 //
-//     pixelrpProximityTrace()          arm, capture up to 3 events
-//     pixelrpProximityTrace(true, 10)  arm, capture up to 10
+//     pixelrpProximityTrace()          arm, UNLIMITED events until stopped
+//     pixelrpProximityTrace(true, 10)  arm, stop after 10 events
 //     pixelrpProximityTrace(false)     disarm
 //     pixelrpProximityTrace.last       last event: summary, verdicts, rows
-//     pixelrpProximityTrace.all        every event captured since arming
+//     pixelrpProximityTrace.all        recent events, newest last (see MAX_KEPT)
 // ---------------------------------------------------------------------------
 
 const NEAR_TILES = 2;
@@ -134,6 +134,13 @@ let aId = 0;
 let bId = 0;
 let tail = 0;
 let prevTick = NaN;
+// `all` is a convenience mirror, not the record - the console.log of each dump
+// is. Unlimited arming runs for as long as someone leaves it on, so this is
+// capped: every event still fires and still prints, but only the most recent
+// MAX_KEPT are held. Each payload can carry MAX_FRAMES row objects, so an
+// uncapped array in a busy room is hundreds of thousands of live objects in
+// the page's own heap within the hour.
+const MAX_KEPT = 50;
 const events: any[] = [];
 
 const cellKey = (cx: number, cy: number): number => (((cx + KEY_OFFSET) * KEY_BASE) + (cy + KEY_OFFSET));
@@ -506,9 +513,15 @@ const finish = (): void =>
 
     const captured = rows;
 
-    if(capturesLeft > 0) capturesLeft--;
+    // capturesLeft < 0 is UNLIMITED: never decremented, never disarms itself.
+    // The test has to sit inside the branch - run unconditionally it would read
+    // the sentinel as "budget exhausted" and disarm on the very first event.
+    if(capturesLeft > 0)
+    {
+        capturesLeft--;
 
-    if(capturesLeft <= 0) armed = false;
+        if(capturesLeft <= 0) armed = false;
+    }
 
     if(!armed) detach();
 
@@ -887,6 +900,8 @@ const dump = (count: number): void =>
 
     events.push(payload);
 
+    while(events.length > MAX_KEPT) events.shift();
+
     const publish = (target: any) =>
     {
         if(!target || !target.pixelrpProximityTrace) return;
@@ -936,10 +951,13 @@ const detach = (): void =>
     attached = false;
 }
 
-export const ArmProximityTrace = (on = true, captures = 3): string =>
+export const ArmProximityTrace = (on = true, captures = 0): string =>
 {
     armed = !!on;
-    capturesLeft = (armed ? Math.max(1, captures) : 0);
+    // 0, a negative, or a non-finite count all mean UNLIMITED, held as -1.
+    // Math.max(1, captures) used to be here, which made 0 mean "one event" and
+    // left no way to say "keep going".
+    capturesLeft = (armed ? (((captures > 0) && Number.isFinite(captures)) ? captures : -1) : 0);
     tracing = false;
     rows = 0;
     cooldown = 0;
@@ -957,7 +975,7 @@ export const ArmProximityTrace = (on = true, captures = 3): string =>
     else detach();
 
     return (armed
-        ? '[MV2/PROXIMITY-TRACE] armed for ' + capturesLeft + ' event(s). Two real players, both walking, within ' + NEAR_TILES + ' tiles - it keeps ' + PRE_FRAMES + ' frames of run-up and dumps itself once they separate.'
+        ? '[MV2/PROXIMITY-TRACE] armed for ' + ((capturesLeft < 0) ? 'UNLIMITED events - call pixelrpProximityTrace(false) to stop' : (capturesLeft + ' event(s)')) + '. Two real players, both walking, within ' + NEAR_TILES + ' tiles - it keeps ' + PRE_FRAMES + ' frames of run-up and dumps itself once they separate.'
         : '[MV2/PROXIMITY-TRACE] disarmed.');
 }
 
@@ -971,7 +989,10 @@ export const InstallProximityTrace = (): void =>
 
     const install = (target: any) =>
     {
-        const handle: any = (on = true, captures = 3) =>
+        // Mirrors ArmProximityTrace's default: 0 means UNLIMITED. This default
+        // is the one that actually applies to a bare pixelrpProximityTrace(),
+        // so leaving it at 3 here would silently cap every call.
+        const handle: any = (on = true, captures = 0) =>
         {
             const message = ArmProximityTrace(on, captures);
 
