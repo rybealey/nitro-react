@@ -653,4 +653,40 @@
     }
 
     .atm-helper { color: $cello-light; }
+
+    // The fee notice. A tinted strip rather than one more grey line, because
+    // it is the only thing on this screen that costs the player something and
+    // it has to survive being skimmed. Amber, not red: this is a price, not an
+    // error, and the refusal messages directly above it are already red.
+    .atm-fee {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        padding: 5px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(180, 122, 0, 0.35);
+        background: rgba(255, 196, 61, 0.14);
+
+        .atm-fee-rate {
+            color: #8a5d00;
+            margin-bottom: 2px;
+        }
+
+        // The figures earn the darker ink: the rate explains the charge, these
+        // two are the charge.
+        .atm-fee-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            color: #7a5200;
+
+            &.is-net {
+                color: #4a3100;
+                border-top: 1px solid rgba(180, 122, 0, 0.3);
+                padding-top: 2px;
+                margin-top: 1px;
+            }
+        }
+    }
 }

@@ -33,7 +33,20 @@ import { Button, Column, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCa
 
 const QUICK_ADD: number[] = [ 3, 15, 100, 150, 500 ];
 
+// The machine's cut of a deposit, in basis points, and the same integer maths
+// the server uses so the preview matches the receipt to the coin. Mirrors
+// BankUtility.DepositFeeBps / BankUtility.DepositFee - change one and change
+// the other. The server is the authority; this only ever tells you in advance.
+//
+// Withdrawals are free, so this is never applied to that side.
+const DEPOSIT_FEE_BPS = 290;
+
+const DepositFee = (amount: number): number =>
+    (amount <= 0) ? 0 : Math.floor((amount * DEPOSIT_FEE_BPS) / 10000);
+
 const FormatCredits = (value: number): string => Math.max(0, value || 0).toLocaleString('en-US');
+
+const FormatRate = (bps: number): string => String(bps / 100).replace(/\.0$/, '');
 
 export const FurnitureAtmView: FC<{}> = props =>
 {
@@ -146,6 +159,34 @@ export const FurnitureAtmView: FC<{}> = props =>
                             : (withdrawing ? `You can take out up to ${ FormatCredits(available) }c.` : `You are carrying ${ FormatCredits(available) }c.`) }
                     </Text> }
                 { !!note && <Text small className="text-danger">{ note }</Text> }
+                { /* The fee is disclosed on the deposit side WHENEVER that side
+                     is showing, not only once an amount has been typed: a
+                     charge you find out about after committing to a number has
+                     not been disclosed, it has been confessed. With an amount
+                     in hand it stops being a rate and becomes two figures -
+                     what the machine keeps and what actually lands - because
+                     that is the part a player would otherwise work out by
+                     subtraction after the fact. */ }
+                { !withdrawing &&
+                    <div className="atm-fee">
+                        <Text small className="atm-fee-rate">{ FormatRate(DEPOSIT_FEE_BPS) }% machine fee on deposits</Text>
+                        { /* Label and figure on one row each, the same shape as
+                             the balances at the top of the card - a sentence
+                             wraps to two lines the moment the numbers get long,
+                             and these two are meant to be compared at a glance
+                             rather than read. */ }
+                        { !!amount &&
+                            <>
+                                <div className="atm-fee-row">
+                                    <Text small>Fee</Text>
+                                    <Text small>{ FormatCredits(DepositFee(amount)) }c</Text>
+                                </div>
+                                <div className="atm-fee-row is-net">
+                                    <Text small bold>Reaches your account</Text>
+                                    <Text small bold>{ FormatCredits(amount - DepositFee(amount)) }c</Text>
+                                </div>
+                            </> }
+                    </div> }
                 <Button fullWidth variant="success" disabled={ !amount } onClick={ commit }>
                     { amount
                         ? `${ withdrawing ? 'Withdraw' : 'Deposit' } ${ FormatCredits(amount) }c`
