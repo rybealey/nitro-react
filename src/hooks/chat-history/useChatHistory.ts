@@ -9,11 +9,15 @@ const CHAT_HISTORY_MAX = 1000;
 // log on demand: the log keeps only the last CHAT_HISTORY_MAX lines, so in a
 // busy room a mention would quietly age out of the tab while still unread.
 const MENTIONS_MAX = 200;
+// Gang chat is kept in its own list for the same reason as mentions: it is a
+// conversation, and one busy room would age it out of a filtered view.
+const GANG_CHAT_MAX = 200;
 const ROOM_HISTORY_MAX = 10;
 const MESSENGER_HISTORY_MAX = 1000;
 
 let CHAT_HISTORY_COUNTER: number = 0;
 let MENTIONS_COUNTER: number = 0;
+let GANG_CHAT_COUNTER: number = 0;
 let MESSENGER_HISTORY_COUNTER: number = 0;
 
 const useChatHistoryState = () =>
@@ -23,6 +27,8 @@ const useChatHistoryState = () =>
     const [ messengerHistory, setMessengerHistory ] = useState<IChatEntry[]>([]);
     const [ mentions, setMentions ] = useState<IChatEntry[]>([]);
     const [ mentionsUnread, setMentionsUnread ] = useState(0);
+    const [ gangChat, setGangChat ] = useState<IChatEntry[]>([]);
+    const [ gangUnread, setGangUnread ] = useState(0);
     const [ needsRoomInsert, setNeedsRoomInsert ] = useState(false);
 
     const addChatEntry = (entry: IChatEntry) =>
@@ -60,6 +66,25 @@ const useChatHistoryState = () =>
     }
 
     const clearMentionsUnread = () => setMentionsUnread(0);
+
+    // Its own copy and its own counter, exactly as addMention does.
+    const addGangEntry = (entry: IChatEntry) =>
+    {
+        entry.id = GANG_CHAT_COUNTER++;
+
+        setGangChat(prevValue =>
+        {
+            const newValue = [ ...prevValue, entry ];
+
+            if(newValue.length > GANG_CHAT_MAX) newValue.shift();
+
+            return newValue;
+        });
+
+        setGangUnread(prevValue => (prevValue + 1));
+    }
+
+    const clearGangUnread = () => setGangUnread(0);
 
     const addRoomHistoryEntry = (entry: IRoomHistoryEntry) =>
     {
@@ -125,7 +150,7 @@ const useChatHistoryState = () =>
         addMessengerEntry({ id: -1, webId: parser.senderId, entityId: -1, name: '', message: parser.messageText, roomId: -1, timestamp: MessengerHistoryCurrentDate(), type: ChatEntryType.TYPE_IM });
     });
     
-    return { addChatEntry, addMention, clearMentionsUnread, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread };
+    return { addChatEntry, addMention, clearMentionsUnread, addGangEntry, clearGangUnread, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread, gangChat, gangUnread };
 }
 
 export const useChatHistory = () => useBetween(useChatHistoryState);

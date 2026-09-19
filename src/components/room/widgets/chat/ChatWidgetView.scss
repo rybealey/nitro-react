@@ -156,3 +156,4 @@
 // are often the same specificity, and the source stylesheet resolves that by
 // order. Anything that must beat a chat style has to come after this line.
 @import './ChatBubbleStyles';
+@import './RpChatBubbleStyles';

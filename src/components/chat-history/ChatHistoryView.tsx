@@ -6,26 +6,26 @@ import { Flex, InfiniteScroll, NitroCardContentView, NitroCardHeaderView, NitroC
 import { useChatHistory } from '../../hooks';
 import { UsernameIconGlyph } from '../rp-settings/UsernameIconGlyph';
 
-type HistoryTab = 'all' | 'mentions';
+type HistoryTab = 'all' | 'mentions' | 'gang';
 
 export const ChatHistoryView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
     const [ searchText, setSearchText ] = useState<string>('');
     const [ tab, setTab ] = useState<HistoryTab>('all');
-    const { chatHistory = [], mentions = [], mentionsUnread = 0, clearMentionsUnread = null } = useChatHistory();
+    const { chatHistory = [], mentions = [], mentionsUnread = 0, clearMentionsUnread = null, gangChat = [], gangUnread = 0, clearGangUnread = null } = useChatHistory();
     const elementRef = useRef<HTMLDivElement>(null);
 
     const rows = useMemo(() =>
     {
-        const source = ((tab === 'mentions') ? mentions : chatHistory);
+        const source = ((tab === 'mentions') ? mentions : (tab === 'gang') ? gangChat : chatHistory);
 
         if(searchText.length === 0) return source;
 
         let text = searchText.toLowerCase();
 
         return source.filter(entry => ((entry.message && entry.message.toLowerCase().includes(text))) || (entry.name && entry.name.toLowerCase().includes(text)));
-    }, [ chatHistory, mentions, searchText, tab ]);
+    }, [ chatHistory, mentions, gangChat, searchText, tab ]);
 
     useEffect(() =>
     {
@@ -39,6 +39,11 @@ export const ChatHistoryView: FC<{}> = props =>
     {
         if(isVisible && (tab === 'mentions') && clearMentionsUnread) clearMentionsUnread();
     }, [ isVisible, tab, mentions.length ]);
+
+    useEffect(() =>
+    {
+        if(isVisible && (tab === 'gang') && clearGangUnread) clearGangUnread();
+    }, [ isVisible, tab, gangChat.length ]);
 
     useEffect(() =>
     {
@@ -124,11 +129,16 @@ export const ChatHistoryView: FC<{}> = props =>
                 <NitroCardTabsItemView isActive={ (tab === 'mentions') } count={ mentionsUnread } onClick={ event => setTab('mentions') }>
                     Mentions
                 </NitroCardTabsItemView>
+                <NitroCardTabsItemView isActive={ (tab === 'gang') } count={ gangUnread } onClick={ event => setTab('gang') }>
+                    Gang Chat
+                </NitroCardTabsItemView>
             </NitroCardTabsView>
             <NitroCardContentView innerRef={ elementRef } overflow="hidden" gap={ 2 }>
                 <input type="text" className="form-control form-control-sm" placeholder={ LocalizeText('generic.search') } value={ searchText } onChange={ event => setSearchText(event.target.value) } />
                 { (tab === 'mentions') && !mentions.length &&
                     <Text variant="muted" className="p-1">Nobody has @ mentioned you yet.</Text> }
+                { (tab === 'gang') && !gangChat.length &&
+                    <Text variant="muted" className="p-1">No gang chat yet. Send some with :ga.</Text> }
                 <InfiniteScroll rows={ rows } scrollToBottom={ true } rowRender={ renderRow } />
             </NitroCardContentView>
         </NitroCardView>

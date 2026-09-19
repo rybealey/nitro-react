@@ -1,0 +1,23 @@
+// pixelrp: bubbles the SERVER hands out, which no player can choose.
+//
+// Kept out of ChatBubbleStyles.scss on purpose. That file is generated from an
+// extracted collection and says so at the top - anything added there is lost
+// the next time it is regenerated.
+//
+// These ids start at 200, clear of the collection (0-124 and 143), and have NO
+// row in `room_chat_styles`. That table is the gate for anything a player
+// sends, so a missing row means the style cannot be picked in the style
+// selector or spoken in by :bubble. Server-sent whispers skip the gate
+// entirely (GameClientExtensions.SendWhisper writes the id straight into
+// WhisperComposer), which is what makes these usable but private.
+//
+// Being private is not just tidiness. It is what lets Chat History sort on the
+// style alone: see the note in api/rp-chat/Mention.ts for what happens with a
+// style players CAN pick - mentions have to match the name in the text too,
+// because anyone using bubble 25 would otherwise ping the whole room.
+
+// bubble 200 - gang alert (:ga). Green, so it cannot be mistaken for the
+// corporation alert on 11, and drawn from bubble 12's artwork with its hue
+// rotated, which is why the shape and shading match the rest of the set.
+.bubble-container .chat-bubble.bubble-200{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_200_background-01.png')}
+.bubble-container .chat-bubble.bubble-200 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_200_pointer-02.png')}

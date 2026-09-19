@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, IRoomChatSettings, LocalizeText, PlayMentionSound, PlaySound, RoomChatFormatter } from '../../../api';
 import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { IsMentionOfMe } from '../../../api/rp-chat/Mention';
+import { IsGangAlert } from '../../../api/rp-chat/GangAlert';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
 
@@ -21,7 +22,7 @@ const useChatWidgetState = () =>
         protection: RoomChatSettings.FLOOD_FILTER_NORMAL
     });
     const { roomSession = null } = useRoom();
-    const { addChatEntry, addMention } = useChatHistory();
+    const { addChatEntry, addMention, addGangEntry } = useChatHistory();
     const isDisposed = useRef(false);
 
     const getScrollSpeed = useMemo(() =>
@@ -237,6 +238,10 @@ const useChatWidgetState = () =>
 
         // a copy, because each list stamps the row with an id from its own counter
         if(isMention) addMention({ ...entry });
+
+        // The bubble is the whole test here - nobody but the server can send
+        // it. See api/rp-chat/GangAlert.ts.
+        if(IsGangAlert(styleId)) addGangEntry({ ...entry });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
