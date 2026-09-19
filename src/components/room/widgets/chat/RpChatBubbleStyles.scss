@@ -16,8 +16,11 @@
 // style players CAN pick - mentions have to match the name in the text too,
 // because anyone using bubble 25 would otherwise ping the whole room.
 
-// bubble 200 - gang alert (:ga). Green, so it cannot be mistaken for the
-// corporation alert on 11, and drawn from bubble 12's artwork with its hue
-// rotated, which is why the shape and shading match the rest of the set.
+// bubble 200 - gang alert (:ga). Deep forest green (body #cdffc9, border
+// #357b2e), so it cannot be mistaken for the corporation alert on 11. Drawn
+// from bubble 12's artwork: hue rotated, saturation eased, and the value
+// pulled down on the saturated pixels - keeping the pink's brightness there
+// is what made the first attempt look neon. Shape and shading still match the
+// rest of the set.
 .bubble-container .chat-bubble.bubble-200{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_200_background-01.png')}
 .bubble-container .chat-bubble.bubble-200 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_200_pointer-02.png')}

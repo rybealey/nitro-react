@@ -3,6 +3,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatBubbleMessage, GetRoomEngine } from '../../../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/NarratedBubble';
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
+import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../../../api/rp-chat/GangAlert';
 
 interface ChatWidgetMessageViewProps
 {
@@ -85,6 +86,13 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
     const isActionBubble = IsNarratedBubble(chat.styleId, chat.text);
     const formattedText = isActionBubble ? NarratedBubbleText(chat.formattedText) : chat.formattedText;
 
+    // A gang alert is whispered to the recipient's OWN avatar, so the name the
+    // bubble would show is theirs, with the real sender buried in the text.
+    // Credit the sender and tag the line: "[GA] Ryan: hello".
+    const gangAlert = IsGangAlert(chat.styleId) ? ParseGangAlert(formattedText) : null;
+    const displayName = gangAlert ? `${ GANG_ALERT_PREFIX } ${ gangAlert.sender }` : chat.username;
+    const displayText = gangAlert ? gangAlert.message : formattedText;
+
     return (
         <div ref={ elementRef } className={ `bubble-container ${ isVisible ? 'visible' : 'invisible' }` } onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>
             { (chat.styleId === 0) &&
@@ -97,8 +105,8 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                 <div className="chat-content">
                     { chat.usernameIcon &&
                         <b className="username mr-1"><UsernameIconGlyph iconClass={ chat.usernameIcon } />{ ' ' }</b> }
-                    <b className="username mr-1">{ isActionBubble && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: chat.username } } />{ isActionBubble ? ' ' : ': ' }</b>
-                    <span className="message" dangerouslySetInnerHTML={ { __html: formattedText } } />
+                    <b className="username mr-1">{ isActionBubble && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: displayName } } />{ isActionBubble ? ' ' : ': ' }</b>
+                    <span className="message" dangerouslySetInnerHTML={ { __html: displayText } } />
                 </div>
                 <div className="pointer" />
             </div>
