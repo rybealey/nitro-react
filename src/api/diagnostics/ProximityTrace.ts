@@ -127,6 +127,59 @@ const bucketNext = new Int32Array(MAX_UNITS);
 const bucketHead: Map<number, number> = new Map();
 const lastEdgeOf: Map<number, number> = new Map();
 
+// ---- non-contiguous handoff capture -----------------------------------------
+//
+// A handoff is contiguous when the edge being left ends exactly where the edge
+// being entered begins: previous.to == new.from. When it does not, the avatar
+// is being handed a chain with a hole in it, and the render has no choice but
+// to jump the gap. That is invisible in a per-frame position series - the jump
+// looks like one large step - so it is detected HERE, at the moment of the
+// handoff, where the edge queue that explains it still exists. By dump time
+// the queue has usually been pruned.
+//
+// Event-driven, never per frame: the comparison is two integer tests, and
+// nothing is allocated, formatted or logged unless a hole is actually found.
+const MAX_HANDOFF_ANOMALIES = 50;
+
+// Console warnings are capped even though a hole is rare. The previous round of
+// forensics stalled the main thread by ~900ms with retained console objects and
+// then reported the edges it had caused to be skipped; a runaway fault here
+// must not be able to do that again. Recording continues after the cap.
+const HANDOFF_WARN_LIMIT = 20;
+
+const handoffAnomalies: any[] = [];
+let handoffWarnings = 0;
+
+// Previous sample per unit, allocated once each and MUTATED in place, so the
+// per-frame path stays allocation-free.
+const prevSampleOf: Map<number, any> = new Map();
+
+// index / revision / cycleStart / from / to for the edges either side of the
+// handoff. Allocated only when an anomaly is being recorded.
+const queueSnapshot = (edges: any[], activeIndex: number): any[] =>
+{
+    const out: any[] = [];
+
+    for(let i = 0; i < edges.length; i++)
+    {
+        const e = edges[i];
+        const d = (e.edgeIndex - activeIndex);
+
+        if((d < -2) || (d > 3)) continue;
+
+        out.push({
+            index: e.edgeIndex,
+            revision: e.revision,
+            provisional: !!e.provisional,
+            cycleStart: e.cycleStart,
+            from: [ e.sx, e.sy ],
+            to: [ e.gx, e.gy ]
+        });
+    }
+
+    return out;
+}
+
 // ---- state -------------------------------------------------------------------
 
 let armed = false;
@@ -247,6 +300,108 @@ const sampleFrame = (perfNow: number, tickerNow: number, slot: number): number =
         }
 
         lastEdgeOf.set(id, edge.edgeIndex);
+
+        // ---- non-contiguous handoff ----------------------------------------
+        const prev = prevSampleOf.get(id);
+
+        if(prev && (prev.session === edge.session) && (prev.edgeIndex !== edge.edgeIndex)
+            && ((prev.toX !== edge.sx) || (prev.toY !== edge.sy)))
+        {
+            const gapX = (edge.sx - prev.toX);
+            const gapY = (edge.sy - prev.toY);
+            const jumpX = ((location ? location.x : NaN) - prev.actualX);
+            const jumpY = ((location ? location.y : NaN) - prev.actualY);
+
+            const anomaly = {
+                anomaly: 'NON_CONTIGUOUS_HANDOFF',
+                traceId,
+                frame: frameCount,
+                unitId: id,
+                walkSessionId: edge.session,
+
+                previousRouteRevision: prev.revision,
+                newRouteRevision: edge.revision,
+
+                previousEdgeIndex: prev.edgeIndex,
+                newEdgeIndex: edge.edgeIndex,
+                edgeIndexDelta: (edge.edgeIndex - prev.edgeIndex),
+
+                previousCycleStart: prev.cycleStart,
+                newCycleStart: edge.cycleStart,
+
+                previousFromX: prev.fromX, previousFromY: prev.fromY,
+                previousToX: prev.toX, previousToY: prev.toY,
+
+                newFromX: edge.sx, newFromY: edge.sy,
+                newToX: edge.gx, newToY: edge.gy,
+
+                gapX,
+                gapY,
+                gapTiles: +Math.sqrt((gapX * gapX) + (gapY * gapY)).toFixed(5),
+
+                previousPhase: +prev.phase.toFixed(5),
+                newPhase: +phase.toFixed(5),
+
+                previousActualX: +prev.actualX.toFixed(5),
+                previousActualY: +prev.actualY.toFixed(5),
+                newActualX: (location ? +location.x.toFixed(5) : null),
+                newActualY: (location ? +location.y.toFixed(5) : null),
+                actualPositionJump: +Math.sqrt((jumpX * jumpX) + (jumpY * jumpY)).toFixed(5),
+
+                tickerNow,
+                tickerDelta: +(tickerNow - prevTick).toFixed(3),
+                perfNow: +perfNow.toFixed(3),
+                estimatedServerNow: Math.round(estServerNow),
+
+                queue: queueSnapshot(edges, edge.edgeIndex)
+            };
+
+            handoffAnomalies.push(anomaly);
+
+            while(handoffAnomalies.length > MAX_HANDOFF_ANOMALIES) handoffAnomalies.shift();
+
+            // ONE warning per anomaly, and never while a frame is being
+            // recorded frame-by-frame - a hole in the chain is an event.
+            if(handoffWarnings < HANDOFF_WARN_LIMIT)
+            {
+                handoffWarnings++;
+
+                console.warn('[MV2/HANDOFF] NON_CONTIGUOUS_HANDOFF unit ' + id
+                    + ' edge ' + prev.edgeIndex + '->' + edge.edgeIndex
+                    + ' rev ' + prev.revision + '->' + edge.revision
+                    + ' ends ' + prev.toX + ',' + prev.toY
+                    + ' but next starts ' + edge.sx + ',' + edge.sy
+                    + ' (gap ' + gapX + ',' + gapY + ') - pixelrpHandoffAnomalies['
+                    + (handoffAnomalies.length - 1) + ']');
+
+                if(handoffWarnings === HANDOFF_WARN_LIMIT)
+                    console.warn('[MV2/HANDOFF] warning cap reached - still recording into pixelrpHandoffAnomalies, no further warnings.');
+            }
+        }
+
+        if(prev)
+        {
+            prev.session = edge.session;
+            prev.revision = edge.revision;
+            prev.edgeIndex = edge.edgeIndex;
+            prev.cycleStart = edge.cycleStart;
+            prev.fromX = edge.sx; prev.fromY = edge.sy;
+            prev.toX = edge.gx; prev.toY = edge.gy;
+            prev.phase = phase;
+            prev.actualX = (location ? location.x : NaN);
+            prev.actualY = (location ? location.y : NaN);
+        }
+        else
+        {
+            prevSampleOf.set(id, {
+                session: edge.session, revision: edge.revision, edgeIndex: edge.edgeIndex,
+                cycleStart: edge.cycleStart,
+                fromX: edge.sx, fromY: edge.sy, toX: edge.gx, toY: edge.gy,
+                phase,
+                actualX: (location ? location.x : NaN),
+                actualY: (location ? location.y : NaN)
+            });
+        }
 
         const o = (base + (n * U_STRIDE));
 
@@ -568,6 +723,7 @@ const dump = (count: number): void =>
     let maxPosErr = 0, maxPosErrAt = 0;
     let maxSpacing = 0, maxSpacingAt = 0;
     let handoffs = 0, nonContiguous = 0, multiSkips = 0;
+    let firstNonContigAt = -1;
     let rewrites = 0, rewriteAt = -1;
     let backwards = 0, ownershipLoss = 0, depthSwaps = 0;
     let drawSwaps = 0, tieBreakFrames = 0, orderDisagreeFrames = 0;
@@ -654,7 +810,12 @@ const dump = (count: number): void =>
 
                         contiguity = +gap.toFixed(4);
 
-                        if(gap > T_CONTIGUITY) nonContiguous++;
+                        if(gap > T_CONTIGUITY)
+                        {
+                            nonContiguous++;
+
+                            if(firstNonContigAt < 0) firstNonContigAt = i;
+                        }
                     }
                     else
                     {
@@ -885,6 +1046,7 @@ const dump = (count: number): void =>
         firstGeometryRewriteAtFrame: rewriteAt,
         edgeHandoffCount: handoffs,
         nonContiguousHandoffCount: nonContiguous,
+        firstNonContiguousHandoffFrame: firstNonContigAt,
         multiEdgeSkipCount: multiSkips,
         backwardsProgressCount: backwards,
         ownershipLossCount: ownershipLoss,
@@ -1046,6 +1208,13 @@ export const ArmProximityTrace = (on = true, captures = 0): string =>
     ringFilled = 0;
     prevTick = NaN;
     lastEdgeOf.clear();
+    prevSampleOf.clear();
+
+    if(armed)
+    {
+        handoffAnomalies.length = 0;
+        handoffWarnings = 0;
+    }
 
     if(armed)
     {
@@ -1083,6 +1252,11 @@ export const InstallProximityTrace = (): void =>
 
         handle.last = null;
         handle.all = [];
+
+        // The array itself, not a getter, so `pixelrpHandoffAnomalies` typed
+        // bare in DevTools prints the records. Mutated in place, so the handle
+        // stays live across captures.
+        target.pixelrpHandoffAnomalies = handoffAnomalies;
 
         target.pixelrpProximityTrace = handle;
         // the previous name, kept so it still answers rather than throwing
