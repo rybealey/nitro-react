@@ -51,6 +51,10 @@ const NEAR_SQ = (NEAR_TILES * NEAR_TILES);
 // frames kept before the trigger, so the approach into the 2-tile window is in
 // the record rather than starting at it
 const PRE_FRAMES = 10;
+// RoomSpriteCanvas's overlap tie-break, mirrored so drawOrder can reproduce it.
+// Keep in step with @nitrots-nitro-renderer-patch-41e6484439.patch.
+const OVERLAP_TILES = 1;
+const DEPTH_TIE = 0.01;
 
 // keep recording after they separate; the pull-apart is where a hitch shows
 const TAIL_FRAMES = 18;
@@ -94,12 +98,16 @@ const T_CONTIGUITY = 0.05; // tiles between prev edge end and next start
 const G_STRIDE = 8;
 const G_TRACE = 0, G_FRAME = 1, G_PERF = 2, G_TICK = 3, G_DT = 4, G_SRV = 5, G_DIST = 6, G_HIDDEN = 7;
 
-const U_STRIDE = 20;
+const U_STRIDE = 21;
 const U_ID = 0, U_SESSION = 1, U_REVISION = 2, U_EDGE = 3, U_CYCLE = 4, U_PHASE = 5;
 const U_X = 6, U_Y = 7, U_Z = 8;
 const U_FX = 9, U_FY = 10, U_FZ = 11;
 const U_TX = 12, U_TY = 13, U_TZ = 14;
 const U_DIR = 15, U_OWNED = 16, U_HOLD = 17, U_DEPTH = 18, U_SKIPLEN = 19;
+// RoomObjectVariable.OWN_USER, read exactly as RoomSpriteCanvas reads it. Only
+// filled for the two traced units, alongside depth, so it is NaN on pre-roll
+// frames for the same reason depth is.
+const U_OWNUSER = 20;
 
 const ROW = (G_STRIDE + (2 * U_STRIDE));
 
@@ -263,6 +271,7 @@ const sampleFrame = (perfNow: number, tickerNow: number, slot: number): number =
         // depth costs an allocating geometry call, so it is filled in later and
         // only for the two units actually being traced
         ringUnits[o + U_DEPTH] = NaN;
+        ringUnits[o + U_OWNUSER] = NaN;
         ringUnits[o + U_SKIPLEN] = skipLen;
 
         n++;
@@ -432,6 +441,14 @@ const emitRow = (slot: number, count: number, live: boolean): void =>
 
             buf[r + G_STRIDE + U_DEPTH] = (aScreen ? aScreen.z : NaN);
             buf[r + G_STRIDE + U_STRIDE + U_DEPTH] = (bScreen ? bScreen.z : NaN);
+
+            // The same flag the canvas sorts on. Read here rather than once at
+            // arming because it costs nothing on a block that already resolves
+            // both objects, and it cannot then go stale.
+            buf[r + G_STRIDE + U_OWNUSER] =
+                (aObject && aObject.model ? (aObject.model.getValue('own_user') > 0 ? 1 : 0) : NaN);
+            buf[r + G_STRIDE + U_STRIDE + U_OWNUSER] =
+                (bObject && bObject.model ? (bObject.model.getValue('own_user') > 0 ? 1 : 0) : NaN);
         }
     }
 
@@ -553,8 +570,10 @@ const dump = (count: number): void =>
     let handoffs = 0, nonContiguous = 0, multiSkips = 0;
     let rewrites = 0, rewriteAt = -1;
     let backwards = 0, ownershipLoss = 0, depthSwaps = 0;
+    let drawSwaps = 0, tieBreakFrames = 0, orderDisagreeFrames = 0;
     let minDist = Number.POSITIVE_INFINITY, minDistAt = 0;
     let prevDepthOrder = 0;
+    let prevDrawOrder = 0;
 
     for(let i = 0; i < count; i++)
     {
@@ -707,6 +726,7 @@ const dump = (count: number): void =>
                 v2OwnsXYZ: !!buf[b + U_OWNED],
                 pendingHold: !!buf[b + U_HOLD],
                 depth: (Number.isNaN(buf[b + U_DEPTH]) ? null : +buf[b + U_DEPTH].toFixed(5)),
+                ownUser: (Number.isNaN(buf[b + U_OWNUSER]) ? null : !!buf[b + U_OWNUSER]),
                 positionDeltaTiles: +moved.toFixed(5),
                 expectedSpatialDelta: (Number.isNaN(expected) ? null : +expected.toFixed(5)),
                 positionError: (Number.isNaN(posError) ? null : +posError.toFixed(5)),
@@ -739,6 +759,13 @@ const dump = (count: number): void =>
 
         row.unexplainedSpacingChange = +unexplained.toFixed(5);
 
+        // -1 = A drawn on top, +1 = B drawn on top, 0 = unknown.
+        //
+        // depthOrder is the RAW numeric depth comparison. It is NOT what the
+        // screen shows: RoomSpriteCanvas applies a tie-break BEFORE falling
+        // back to depth, so for overlapping units the numeric answer can be
+        // exactly backwards. Reporting only that is how an instrument ends up
+        // describing something adjacent to what it claims.
         const order = ((row.a.depth === null || row.b.depth === null) ? 0 : (row.a.depth < row.b.depth ? -1 : 1));
 
         row.depthOrder = order;
@@ -750,6 +777,53 @@ const dump = (count: number): void =>
         }
 
         if(order) prevDepthOrder = order;
+
+        // drawOrder REPRODUCES RoomSpriteCanvas's comparator:
+        //
+        //   different units, within OVERLAP_TILES in BOTH axes, and depths
+        //   within DEPTH_TIE  ->  the local player's stack wins; otherwise the
+        //                         lower instance id wins
+        //   anything else     ->  plain numeric depth
+        //
+        // Sign convention matches depthOrder. In the canvas the sprite that
+        // sorts LATER is drawn on top, so `own ? 1 : -1` there means the local
+        // player is on top, which is -1 here.
+        //
+        // The canvas also requires both sprites to be above-ground
+        // (relativeDepth < 0.5). A unit's body stack always is - shadows are
+        // separate sprites this trace never sees - so that term is assumed
+        // true rather than reproduced.
+        let draw = order;
+        let tied = false;
+
+        if((row.a.depth !== null) && (row.b.depth !== null)
+            && (row.a.unitId !== row.b.unitId)
+            && (Math.abs(row.a.x - row.b.x) < OVERLAP_TILES)
+            && (Math.abs(row.a.y - row.b.y) < OVERLAP_TILES)
+            && (Math.abs(row.a.depth - row.b.depth) < DEPTH_TIE))
+        {
+            tied = true;
+            tieBreakFrames++;
+
+            if((row.a.ownUser !== null) && (row.b.ownUser !== null) && (row.a.ownUser !== row.b.ownUser))
+                draw = (row.a.ownUser ? -1 : 1);
+            else
+                draw = ((row.a.unitId < row.b.unitId) ? -1 : 1);
+        }
+
+        row.drawOrder = draw;
+        row.overlapTieBreakApplied = tied;
+        row.drawOrderDiffersFromDepth = (!!draw && !!order && (draw !== order));
+
+        if(row.drawOrderDiffersFromDepth) orderDisagreeFrames++;
+
+        if(draw && prevDrawOrder && (draw !== prevDrawOrder))
+        {
+            drawSwaps++;
+            row.drawOrderChanged = true;
+        }
+
+        if(draw) prevDrawOrder = draw;
 
         out.push(row);
     }
@@ -815,6 +889,9 @@ const dump = (count: number): void =>
         backwardsProgressCount: backwards,
         ownershipLossCount: ownershipLoss,
         depthOrderChangeCount: depthSwaps,
+        drawOrderChangeCount: drawSwaps,
+        overlapTieBreakFrames: tieBreakFrames,
+        drawOrderDisagreedWithDepthFrames: orderDisagreeFrames,
 
         gridPhaseA: gridA,
         gridPhaseB: gridB,
@@ -878,9 +955,12 @@ const dump = (count: number): void =>
     const worstAt = [ maxDtAt, maxPhaseErrAt, maxPosErrAt, maxSpacingAt ];
     let orderCorrelated = false;
 
+    // Judged on drawOrder, not depthOrder: the question is whether the worst
+    // measured moment landed on a frame where the ORDER ON SCREEN flipped, and
+    // for overlapping units numeric depth is not that.
     for(let i = 0; i < out.length; i++)
     {
-        if(!out[i].depthOrderChanged) continue;
+        if(!out[i].drawOrderChanged) continue;
 
         for(let k = 0; k < worstAt.length; k++)
         {
