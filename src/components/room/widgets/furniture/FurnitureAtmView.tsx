@@ -33,16 +33,29 @@ import { Button, Column, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCa
 
 const QUICK_ADD: number[] = [ 3, 15, 100, 150, 500 ];
 
-// The machine's cut of a deposit, in basis points, and the same integer maths
-// the server uses so the preview matches the receipt to the coin. Mirrors
-// BankUtility.DepositFeeBps / BankUtility.DepositFee - change one and change
-// the other. The server is the authority; this only ever tells you in advance.
+// The machine's cut of a deposit - a percentage in basis points plus a flat
+// coin - using the same integer maths as the server so the preview matches the
+// receipt exactly. Mirrors BankUtility.DepositFeeBps / DepositFeeFlat /
+// DepositFee: change one and change the other. The server is the authority;
+// this only ever tells you in advance.
 //
-// Withdrawals are free, so this is never applied to that side.
+// Withdrawals are free, so none of this touches that side.
 const DEPOSIT_FEE_BPS = 290;
+const DEPOSIT_FEE_FLAT = 3;
 
 const DepositFee = (amount: number): number =>
-    (amount <= 0) ? 0 : Math.floor((amount * DEPOSIT_FEE_BPS) / 10000);
+    (amount <= 0) ? 0 : Math.floor((amount * DEPOSIT_FEE_BPS) / 10000) + DEPOSIT_FEE_FLAT;
+
+// The flat coin can equal or exceed a small enough deposit, so there is a floor
+// below which the machine refuses. Derived the same way the server derives it,
+// rather than written down as 4: that is only right while the percentage
+// rounds away at this size.
+const MIN_DEPOSIT = ((): number =>
+{
+    for(let amount = 1; amount <= 100000; amount++) if(amount > DepositFee(amount)) return amount;
+
+    return 100000;
+})();
 
 const FormatCredits = (value: number): string => Math.max(0, value || 0).toLocaleString('en-US');
 
@@ -71,6 +84,8 @@ export const FurnitureAtmView: FC<{}> = props =>
 
     const available = withdrawing ? state.current : state.cash;
     const empty = (available <= 0);
+    // Only deposits have a floor, and only because of the flat half of the fee.
+    const tooSmall = (!withdrawing && !!amount && (amount < MIN_DEPOSIT));
 
     const close = () =>
     {
@@ -100,7 +115,7 @@ export const FurnitureAtmView: FC<{}> = props =>
 
     const commit = () =>
     {
-        if(!amount) return;
+        if(!amount || tooSmall) return;
 
         SendRpAtmTransaction(withdrawing ? ATM_WITHDRAW : ATM_DEPOSIT, amount);
     };
@@ -169,13 +184,19 @@ export const FurnitureAtmView: FC<{}> = props =>
                      subtraction after the fact. */ }
                 { !withdrawing &&
                     <div className="atm-fee">
-                        <Text small className="atm-fee-rate">{ FormatRate(DEPOSIT_FEE_BPS) }% machine fee on deposits</Text>
+                        <Text small className="atm-fee-rate">{ FormatRate(DEPOSIT_FEE_BPS) }% + { DEPOSIT_FEE_FLAT }c machine fee on deposits</Text>
+                        { /* Below the floor the fee would take the whole thing,
+                             so say which figure is the problem rather than
+                             showing a net of zero and letting the server
+                             refuse it after the button has been pressed. */ }
+                        { (!!amount && (amount < MIN_DEPOSIT)) &&
+                            <Text small bold className="atm-fee-under">{ `Pay in at least ${ MIN_DEPOSIT }c - the fee would take it all` }</Text> }
                         { /* Label and figure on one row each, the same shape as
                              the balances at the top of the card - a sentence
                              wraps to two lines the moment the numbers get long,
                              and these two are meant to be compared at a glance
                              rather than read. */ }
-                        { !!amount &&
+                        { (!!amount && (amount >= MIN_DEPOSIT)) &&
                             <>
                                 <div className="atm-fee-row">
                                     <Text small>Fee</Text>
@@ -187,7 +208,7 @@ export const FurnitureAtmView: FC<{}> = props =>
                                 </div>
                             </> }
                     </div> }
-                <Button fullWidth variant="success" disabled={ !amount } onClick={ commit }>
+                <Button fullWidth variant="success" disabled={ !amount || tooSmall } onClick={ commit }>
                     { amount
                         ? `${ withdrawing ? 'Withdraw' : 'Deposit' } ${ FormatCredits(amount) }c`
                         : (withdrawing ? 'Withdraw' : 'Deposit') }

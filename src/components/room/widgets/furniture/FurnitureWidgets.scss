@@ -672,6 +672,11 @@
             margin-bottom: 2px;
         }
 
+        // Below the floor. Still inside the amber strip rather than promoted to
+        // a red error, because nothing has gone wrong yet - the player is being
+        // told a price before they act on it, which is what this whole box is.
+        .atm-fee-under { color: #8a3a00; }
+
         // The figures earn the darker ink: the rate explains the charge, these
         // two are the charge.
         .atm-fee-row {
