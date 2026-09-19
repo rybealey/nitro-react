@@ -17,6 +17,9 @@ import { Product } from './Product';
  * numbers a purchase actually needs: the page it is sold on and its catalog
  * item id.
  *
+ * This is a search tile, not purchase metadata. Selecting it loads its real
+ * catalog page and uses that page's Offer for all purchase controls.
+ *
  * IT KEEPS ITS OWN PAGE. CatalogPage's constructor assigns itself to every
  * offer it is given, so dropping these into a results page would overwrite the
  * one thing that makes them buyable. The setter is deliberately inert: the
@@ -145,7 +148,7 @@ export class SearchOffer implements IPurchasableOffer
 
     public get isLazy(): boolean
     {
-        return false;
+        return true;
     }
 
     public get priceInDiamonds(): number

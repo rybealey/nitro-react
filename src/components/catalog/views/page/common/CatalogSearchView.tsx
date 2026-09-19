@@ -8,7 +8,7 @@ import { useCatalog } from '../../../../../hooks';
 export const CatalogSearchView: FC<{}> = props =>
 {
     const [ searchValue, setSearchValue ] = useState('');
-    const { currentType = null, rootNode = null, offersToNodes = null, searchResult = null, setSearchResult = null, setCurrentPage = null } = useCatalog();
+    const { currentType = null, rootNode = null, offersToNodes = null, searchResult = null, setSearchResult = null, setCurrentPage = null, setCurrentOffer } = useCatalog();
 
     // pixelrp: the search runs on the server.
     //
@@ -71,9 +71,10 @@ export const CatalogSearchView: FC<{}> = props =>
             FilterCatalogNode(query.toLowerCase().replace(/\s+/g, ''), [], rootNode, nodes);
 
             setSearchResult(new SearchResult(query, offers, nodes.filter(node => (node.isVisible))));
+            setCurrentOffer(null);
             setCurrentPage((new CatalogPage(-1, 'default_3x3', new PageLocalization([], []), offers, false, 1) as ICatalogPage));
         });
-    }, [ searchValue, rootNode, setSearchResult, setCurrentPage ]);
+    }, [ searchValue, rootNode, setSearchResult, setCurrentPage, setCurrentOffer ]);
 
     return (
         <Flex gap={ 1 }>

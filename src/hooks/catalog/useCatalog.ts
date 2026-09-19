@@ -43,6 +43,16 @@ const useCatalogState = () =>
     const [ secondsLeftWithGrace, setSecondsLeftWithGrace ] = useState(0);
     const { simpleAlert = null } = useNotification();
     const requestedPage = useRef(new RequestedPage());
+    const searchOfferRequest = useRef<{ pageId: number; itemId: number; resultsPage: ICatalogPage }>(null);
+
+    const requestSearchOffer = useCallback((offer: IPurchasableOffer) =>
+    {
+        // Search hits are only tiles. Fetch the real offer before displaying
+        // prices, quantities, packs, gifts or limited-edition availability.
+        searchOfferRequest.current = { pageId: offer.page.pageId, itemId: offer.offerId, resultsPage: currentPage };
+        setCurrentOffer(null);
+        SendMessageComposer(new GetCatalogPageComposer(offer.page.pageId, offer.offerId, currentType));
+    }, [ currentPage, currentType ]);
 
     const resetState = useCallback(() =>
     {
@@ -269,6 +279,8 @@ const useCatalogState = () =>
 
         setIsBusy(true);
         setPageId(pageId);
+        setCurrentOffer(null);
+        searchOfferRequest.current = null;
 
         if(pageId > -1) SendMessageComposer(new GetCatalogPageComposer(pageId, offerId, currentType));
     }, [ currentType ]);
@@ -281,24 +293,14 @@ const useCatalogState = () =>
         setPreviousPageId(prevValue => ((pageId !== -1) ? pageId : prevValue));
         setNavigationHidden(false);
 
-        if((offerId > -1) && catalogPage.offers.length)
-        {
-            for(const offer of catalogPage.offers)
-            {
-                if(offer.offerId !== offerId) continue;
-
-                setCurrentOffer(offer)
-
-                break;
-            }
-        }
+        setCurrentOffer(catalogPage.offers.find(offer => offer.offerId === offerId) || null);
     }, []);
 
     const activateNode = useCallback((targetNode: ICatalogNode, offerId: number = -1) =>
     {
         cancelObjectMover();
 
-        if(targetNode.parent.pageName === 'root')
+        if((offerId < 0) && (targetNode.parent.pageName === 'root'))
         {
             if(targetNode.children.length)
             {
@@ -356,13 +358,20 @@ const useCatalogState = () =>
         if(targetNode.pageId > -1) loadCatalogPage(targetNode.pageId, offerId);
     }, [ setActiveNodes, loadCatalogPage, cancelObjectMover ]);
 
-    const openPageById = useCallback((id: number) =>
+    const openPageById = useCallback((id: number, offerId: number = -1) =>
     {
-        if(id !== -1) setSearchResult(null);
+        if(id !== -1)
+        {
+            setSearchResult(null);
+            // Leaving search for an explicit destination must not trigger
+            // the search-clear effect's return to the previously browsed page.
+            setCurrentPage(previous => previous?.pageId === -1 ? null : previous);
+        }
 
-        if(!isVisible)
+        if(!isVisible || !rootNode)
         {
             requestedPage.current.requestById = id;
+            requestedPage.current.selectedOfferId = offerId;
 
             setIsVisible(true);
         }
@@ -370,7 +379,7 @@ const useCatalogState = () =>
         {
             const node = getNodeById(id, rootNode);
 
-            if(node) activateNode(node);
+            if(node) activateNode(node, offerId);
         }
     }, [ isVisible, rootNode, getNodeById, activateNode ]);
 
@@ -471,6 +480,29 @@ const useCatalogState = () =>
         }
 
         if(parser.frontPageItems && parser.frontPageItems.length) setFrontPageItems(parser.frontPageItems);
+
+        const pending = searchOfferRequest.current;
+        if(pending && currentPage === pending.resultsPage && searchResult &&
+            parser.pageId === pending.pageId && parser.offerId === pending.itemId)
+        {
+            searchOfferRequest.current = null;
+            // CatalogPage attaches the real page to each offer, so purchases
+            // from a search result retain their authoritative destination.
+            const page = new CatalogPage(parser.pageId, parser.layoutCode,
+                new PageLocalization(parser.localization.images.concat(), parser.localization.texts.concat()),
+                purchasableOffers, parser.acceptSeasonCurrencyAsCredits);
+            const selected = page.offers.find(offer => offer.offerId === pending.itemId);
+            if(selected)
+            {
+                setCurrentOffer(selected);
+                if(selected.product?.productType === ProductTypeEnum.WALL)
+                    setPurchaseOptions(previous => ({ ...previous, extraData: selected.product.extraParam || null }));
+            }
+            return;
+        }
+
+        // A detail response must not navigate away from a newer search.
+        if(searchResult) return;
 
         setIsBusy(false);
 
@@ -831,17 +863,12 @@ const useCatalogState = () =>
 
     useEffect(() =>
     {
-        return () => setCurrentOffer(null);
-    }, [ currentPage ]);
-
-    useEffect(() =>
-    {
         if(!isVisible || !rootNode || !offersToNodes || !requestedPage.current) return;
 
         switch(requestedPage.current.requestType)
         {
             case RequestedPage.REQUEST_TYPE_NONE:
-                if(currentPage) return;
+                if(currentPage || isBusy) return;
 
                 if(rootNode.isBranch)
                 {
@@ -857,7 +884,7 @@ const useCatalogState = () =>
                 }
                 return;
             case RequestedPage.REQUEST_TYPE_ID:
-                openPageById(requestedPage.current.requestById);
+                openPageById(requestedPage.current.requestById, requestedPage.current.selectedOfferId);
                 requestedPage.current.resetRequest();
                 return;
             case RequestedPage.REQUEST_TYPE_OFFER:
@@ -869,18 +896,18 @@ const useCatalogState = () =>
                 requestedPage.current.resetRequest();
                 return;
         }
-    }, [ isVisible, rootNode, offersToNodes, currentPage, activateNode, openPageById, openPageByOfferId, openPageByName ]);
+    }, [ isVisible, isBusy, rootNode, offersToNodes, currentPage, activateNode, openPageById, openPageByOfferId, openPageByName ]);
 
     useEffect(() =>
     {
-        if(!searchResult && currentPage && (currentPage.pageId === -1)) openPageById(previousPageId);
-    }, [ searchResult, currentPage, previousPageId, openPageById ]);
+        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1)) openPageById(previousPageId);
+    }, [ searchResult, isBusy, currentPage, previousPageId, openPageById ]);
 
     useEffect(() =>
     {
         if(!currentOffer) return;
 
-        setPurchaseOptions({ quantity: 1, extraData: null, extraParamRequired: false, previewStuffData: null });
+        setPurchaseOptions({ quantity: 1, extraData: currentOffer.product?.productType === ProductTypeEnum.WALL ? currentOffer.product.extraParam || null : null, extraParamRequired: false, previewStuffData: null });
     }, [ currentOffer ]);
 
     useEffect(() =>
@@ -908,7 +935,7 @@ const useCatalogState = () =>
         }
     }, []);
 
-    return { isVisible, setIsVisible, isBusy, pageId, previousPageId, currentType, rootNode, offersToNodes, currentPage, setCurrentPage, currentOffer, setCurrentOffer, activeNodes, searchResult, setSearchResult, frontPageItems, roomPreviewer, navigationHidden, setNavigationHidden, purchaseOptions, setPurchaseOptions, catalogOptions, setCatalogOptions, getNodeById, getNodeByName, getNodesByOfferId, activateNode, openPageById, openPageByName, openPageByOfferId, requestOfferToMover };
+    return { isVisible, setIsVisible, isBusy, pageId, previousPageId, currentType, rootNode, offersToNodes, currentPage, setCurrentPage, currentOffer, setCurrentOffer, activeNodes, searchResult, setSearchResult, frontPageItems, roomPreviewer, navigationHidden, setNavigationHidden, purchaseOptions, setPurchaseOptions, catalogOptions, setCatalogOptions, getNodeById, getNodeByName, getNodesByOfferId, activateNode, openPageById, openPageByName, openPageByOfferId, requestOfferToMover, requestSearchOffer };
 }
 
 export const useCatalog = () => useBetween(useCatalogState);

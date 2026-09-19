@@ -9,6 +9,7 @@ export class RequestedPage
     private _requestById: number;
     private _requestedByOfferId: number;
     private _requestByName: string;
+    public selectedOfferId: number = -1;
 
     constructor()
     {
@@ -19,6 +20,7 @@ export class RequestedPage
     {
         this._requestType = RequestedPage.REQUEST_TYPE_NONE;
         this._requestById = -1;
+        this.selectedOfferId = -1;
         this._requestedByOfferId = -1;
         this._requestByName = null;
     }

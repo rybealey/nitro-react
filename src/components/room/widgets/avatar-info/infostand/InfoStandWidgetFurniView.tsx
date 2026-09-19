@@ -9,6 +9,7 @@ import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
 import { CanUseFurniFunction, IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CatalogLocation, LocateCatalogFurniture } from '../../../../../api/rp-catalog/RpCatalogLocateMessages';
 
 interface InfoStandWidgetFurniViewProps
 {
@@ -39,6 +40,21 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
 {
     const { avatarInfo = null, onClose = null } = props;
     const { roomSession = null } = useRoom();
+    const [ catalogLocation, setCatalogLocation ] = useState<{ info: AvatarInfoFurni; location: CatalogLocation }>(null);
+    const buyLocation = catalogLocation?.info === avatarInfo ? catalogLocation.location : null;
+
+    useEffect(() =>
+    {
+        setCatalogLocation(null);
+        if(!avatarInfo || !roomSession) return;
+        const object = GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category);
+        if(!object) return;
+        const spriteId = object.model.getValue<number>(RoomObjectVariable.FURNITURE_TYPE_ID);
+        return LocateCatalogFurniture(spriteId, avatarInfo.category === RoomObjectCategory.WALL, location =>
+        {
+            if(location.pageId >= 0 && location.itemId > 0) setCatalogLocation({ info: avatarInfo, location });
+        });
+    }, [ avatarInfo, roomSession ]);
     
     const [ pickupMode, setPickupMode ] = useState(0);
     const [ canMove, setCanMove ] = useState(false);
@@ -402,7 +418,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         switch(action)
         {
             case 'buy_one':
-                CreateLinkEvent(`catalog/open/offerId/${ avatarInfo.purchaseOfferId }`);
+                if(buyLocation) CreateLinkEvent(`catalog/open/pageId/${ buyLocation.pageId }/${ buyLocation.itemId }`);
                 return;
             case 'move':
                 GetRoomEngine().processRoomObjectOperation(avatarInfo.id, avatarInfo.category, RoomObjectOperationType.OBJECT_MOVE);
@@ -527,7 +543,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                                 { LocalizeText('furni.owner', [ 'name' ], [ avatarInfo.ownerName ]) }
                             </Text>
                         </Flex>
-                        { (avatarInfo.purchaseOfferId > 0) &&
+                        { buyLocation &&
                             <Flex>
                                 <Text variant="white" small underline pointer onClick={ event => processButtonAction('buy_one') }>
                                     { LocalizeText('infostand.button.buy') }
