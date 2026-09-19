@@ -155,6 +155,17 @@ state.openPageById(50); render(); search();
 receive('CatalogPageMessageEvent', page(50, -1, [offer(7)]));
 assert.equal(state.currentPage.pageId, -1, 'late navigation response preserves newer search');
 assert.equal(state.isBusy, false, 'late response does not leave the catalog permanently busy');
+// A page the navigation tree has no node for must still load. The shop serves
+// it regardless - the tree only decides what can be browsed to - and dropping
+// the link left the pending-page effect to open the default page instead,
+// which is what "Buy only opens the front page" looked like.
+reset(); state.setIsVisible(true); render();
+receive('CatalogPagesListEvent', {root: node(-1, 'root', [node(50, 'furni', [node(51, 'child')])])});
+state.openPageById(949101, 12345); render();
+const orphan = packets.filter(p => p.constructor.key === 'GetCatalogPageComposer').at(-1);
+assert.equal(orphan.args[0], 949101, 'a page outside the tree is still requested');
+assert.equal(orphan.args[1], 12345, 'and keeps the item it was asked to select');
+
 // Navigating to a category twice folds it away - that is the sidebar's toggle.
 // Arriving with an item to select is not a second click, so Buy on furni sold
 // from the page already open must leave the branch standing.
@@ -168,4 +179,4 @@ assert.equal(packets.filter(p => p.constructor.key === 'GetCatalogPageComposer')
 state.activateNode(branch); render();
 assert.equal(branch.isOpen, false, 'plain navigation still toggles the category shut');
 
-console.log('Catalog regressions passed: search quantities, restrictions, stale replies, first-open navigation, item selection and Buy-into-open-category.');
+console.log('Catalog regressions passed: search quantities, restrictions, stale replies, first-open navigation, item selection, pages outside the tree and Buy-into-open-category.');

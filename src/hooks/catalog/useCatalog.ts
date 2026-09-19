@@ -382,9 +382,27 @@ const useCatalogState = () =>
         {
             const node = getNodeById(id, rootNode);
 
-            if(node) activateNode(node, offerId);
+            if(node)
+            {
+                activateNode(node, offerId);
+
+                return;
+            }
+
+            // No node for this page. The shop will still serve it - the tree
+            // only decides what can be BROWSED to - so load it directly rather
+            // than dropping the link, which left the pending-page effect to
+            // fall through and open the default page instead.
+            //
+            // -1 is not a destination: the search-clear effect passes it when
+            // there is no previous page to go back to.
+            if(id === -1) return;
+
+            console.warn(`[catalog] page ${ id } is not in the navigation tree; loading it directly.`);
+
+            loadCatalogPage(id, offerId);
         }
-    }, [ isVisible, rootNode, getNodeById, activateNode ]);
+    }, [ isVisible, rootNode, getNodeById, activateNode, loadCatalogPage ]);
 
     const openPageByName = useCallback((name: string) =>
     {
