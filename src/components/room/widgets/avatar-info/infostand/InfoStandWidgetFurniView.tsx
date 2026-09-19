@@ -52,19 +52,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         const spriteId = object.model.getValue<number>(RoomObjectVariable.FURNITURE_TYPE_ID);
         return LocateCatalogFurniture(spriteId, avatarInfo.category === RoomObjectCategory.WALL, location =>
         {
-            if((location.status === CatalogLocateStatus.FOUND) && (location.pageId >= 0) && (location.itemId > 0))
-            {
-                setCatalogLocation({ info: avatarInfo, location });
-
-                return;
-            }
-
-            // Two of the reasons are worth saying out loud. NOT_SOLD is the
-            // ordinary case for furni the shop does not stock, and NOT_PERMITTED
-            // is every non-staff player, so neither is news.
-            if(location.status === CatalogLocateStatus.NOT_REACHABLE) console.warn(`[catalog] ${ avatarInfo.name } (sprite ${ spriteId }) is in the shop, but only on a page this account cannot reach.`);
-
-            if(location.status === CatalogLocateStatus.NO_REPLY) console.warn(`[catalog] no answer from the shop for ${ avatarInfo.name } (sprite ${ spriteId }); the Buy button is hidden because the lookup was lost, not because the furni is unsold.`);
+            if((location.status === CatalogLocateStatus.FOUND) && (location.pageId >= 0) && (location.itemId > 0)) setCatalogLocation({ info: avatarInfo, location });
         });
     }, [ avatarInfo, roomSession ]);
     
