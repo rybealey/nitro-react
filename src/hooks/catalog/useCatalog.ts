@@ -486,6 +486,7 @@ const useCatalogState = () =>
             parser.pageId === pending.pageId && parser.offerId === pending.itemId)
         {
             searchOfferRequest.current = null;
+            setIsBusy(false);
             // CatalogPage attaches the real page to each offer, so purchases
             // from a search result retain their authoritative destination.
             const page = new CatalogPage(parser.pageId, parser.layoutCode,
@@ -502,7 +503,11 @@ const useCatalogState = () =>
         }
 
         // A detail response must not navigate away from a newer search.
-        if(searchResult) return;
+        if(searchResult)
+        {
+            setIsBusy(false);
+            return;
+        }
 
         setIsBusy(false);
 

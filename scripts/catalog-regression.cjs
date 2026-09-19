@@ -151,4 +151,8 @@ assert.equal(fromSearch.args[1], 8, 'default-page loading must not replace the r
 receive('CatalogPageMessageEvent', page(51, 8, [offer(8)]));
 assert.equal(state.currentPage.pageId, 51);
 assert.equal(state.currentOffer.offerId, 8);
+state.openPageById(50); render(); search();
+receive('CatalogPageMessageEvent', page(50, -1, [offer(7)]));
+assert.equal(state.currentPage.pageId, -1, 'late navigation response preserves newer search');
+assert.equal(state.isBusy, false, 'late response does not leave the catalog permanently busy');
 console.log('Catalog regressions passed: search quantities, restrictions, stale replies, first-open navigation and item selection.');
