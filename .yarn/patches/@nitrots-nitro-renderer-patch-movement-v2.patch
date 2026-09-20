@@ -1543,7 +1543,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,585 @@
+@@ -0,0 +1,628 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1638,15 +1638,34 @@ index 0000000..19b0227
 +    private static readonly CLOCK_REBASE_MS = 5000;
 +
 +    /**
-+     * The most the offset may move in ONE correction, in either direction.
++     * The most the offset may move in ONE application, in either direction.
 +     *
 +     * Chosen against a frame rather than plucked: one 60fps frame of ordinary
-+     * walking advances 16.7/500 of a tile, and this shifts the phase by
-+     * 6/500 - roughly a third of that. A correction can therefore never present
-+     * as a jump, because it is always smaller than the motion already happening
-+     * around it.
++     * walking advances 16.7/500 of a tile, and this shifts the phase by 4/500 -
++     * under a eighth of that.
 +     */
-+    private static readonly CLOCK_MAX_CORRECTION_MS = 6;
++    private static readonly CLOCK_MAX_CORRECTION_MS = 4;
++
++    /**
++     * The most the offset may move PER SECOND, which is the bound that actually
++     * matters - a per-application cap alone does not hold.
++     *
++     * updateClock runs once per 4110, and a frame carries ONE RECORD PER
++     * WALKER, all sent back to back with a single serverNow sampled at seal
++     * time. So a room with twenty walkers delivers twenty near-identical
++     * samples inside one event-loop turn. Capping each application would let
++     * them accumulate - twenty applications in one frame - and reinstate
++     * exactly the visible step this change exists to remove.
++     *
++     * Budgeting by ELAPSED TIME instead makes the result independent of packet
++     * rate, room population and frame rate. Inside a single 60fps frame the
++     * whole budget is 50 * 0.0167 = 0.83ms however many packets arrive, which
++     * shifts the phase by 0.0017 of a tile against the 0.033 a frame of normal
++     * walking already moves - around five per cent of the motion around it.
++     * Across a second it still closes 50ms, so a 120ms floor shift converges in
++     * roughly two and a half seconds rather than snapping.
++     */
++    private static readonly CLOCK_MAX_CORRECTION_MS_PER_SEC = 50;
 +
 +    /** How often the observed floor is allowed to push the offset upward. */
 +    private static readonly CLOCK_FLOOR_WINDOW_MS = 1000;
@@ -1666,6 +1685,7 @@ index 0000000..19b0227
 +    private _clockOffset = NaN;
 +    private _windowStart = 0;
 +    private _windowMin = NaN;
++    private _clockAdjustedAt = 0;
 +
 +    /** Spike instrumentation only. */
 +    // holdFrames is the whole diagnostic for this change: every increment is
@@ -1780,9 +1800,12 @@ index 0000000..19b0227
 +     * - a glide or a lurch, and worse on higher-ping clients because their floor
 +     * moves further between windows.
 +     *
-+     * Every adjustment is now capped at CLOCK_MAX_CORRECTION_MS, so the offset
-+     * converges instead of stepping. The two directions are deliberately not
-+     * symmetric, because the evidence is not symmetric:
++     * Every adjustment is now bounded twice - once per application and once per
++     * second - so the offset converges instead of stepping. The RATE bound is
++     * the one that matters: a frame carries one record per walker, all with a
++     * single serverNow, so a per-application cap alone would let a busy room
++     * apply twenty corrections inside one frame. The two directions are
++     * deliberately not symmetric, because the evidence is not symmetric:
 +     *
 +     *   DOWN  a packet faster than the current offset is direct proof the true
 +     *         offset is no greater than that, so it applies on the spot - but
@@ -1808,14 +1831,29 @@ index 0000000..19b0227
 +            this._clockOffset = sample;
 +            this._windowStart = clientNowPerf;
 +            this._windowMin = sample;
++            this._clockAdjustedAt = clientNowPerf;
 +
 +            return;
 +        }
 +
++        // One budget, spent by whichever direction moves. Time-based, so a
++        // burst of packets in one frame gets the same allowance as a single
++        // packet would - the second and subsequent records of a frame see
++        // elapsed near zero and therefore move the offset by near nothing.
++        const elapsed = Math.max(0, (clientNowPerf - this._clockAdjustedAt));
++        const budget = Math.min(
++            PixelRPMovementV2.CLOCK_MAX_CORRECTION_MS,
++            ((PixelRPMovementV2.CLOCK_MAX_CORRECTION_MS_PER_SEC * elapsed) / 1000));
++
 +        if(sample < this._clockOffset)
 +        {
-+            this._clockOffset -= Math.min(
-+                (this._clockOffset - sample), PixelRPMovementV2.CLOCK_MAX_CORRECTION_MS);
++            const step = Math.min((this._clockOffset - sample), budget);
++
++            if(step > 0)
++            {
++                this._clockOffset -= step;
++                this._clockAdjustedAt = clientNowPerf;
++            }
 +        }
 +
 +        this._windowMin = Number.isFinite(this._windowMin) ? Math.min(this._windowMin, sample) : sample;
@@ -1824,8 +1862,13 @@ index 0000000..19b0227
 +        {
 +            if(Number.isFinite(this._windowMin) && (this._windowMin > this._clockOffset))
 +            {
-+                this._clockOffset += Math.min(
-+                    (this._windowMin - this._clockOffset), PixelRPMovementV2.CLOCK_MAX_CORRECTION_MS);
++                const step = Math.min((this._windowMin - this._clockOffset), budget);
++
++                if(step > 0)
++                {
++                    this._clockOffset += step;
++                    this._clockAdjustedAt = clientNowPerf;
++                }
 +            }
 +
 +            this._windowStart = clientNowPerf;
