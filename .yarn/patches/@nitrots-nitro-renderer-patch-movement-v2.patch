@@ -1543,7 +1543,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,529 @@
+@@ -0,0 +1,585 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1630,6 +1630,26 @@ index 0000000..19b0227
 +     * hold exists to fix.
 +     */
 +    private static readonly MAX_HOLD_MS = 1200;
++
++    /**
++     * A sample this far from the current offset is not a correction, it is a
++     * different clock: a tab wake, a suspend, a reconnect. Re-acquire outright.
++     */
++    private static readonly CLOCK_REBASE_MS = 5000;
++
++    /**
++     * The most the offset may move in ONE correction, in either direction.
++     *
++     * Chosen against a frame rather than plucked: one 60fps frame of ordinary
++     * walking advances 16.7/500 of a tile, and this shifts the phase by
++     * 6/500 - roughly a third of that. A correction can therefore never present
++     * as a jump, because it is always smaller than the motion already happening
++     * around it.
++     */
++    private static readonly CLOCK_MAX_CORRECTION_MS = 6;
++
++    /** How often the observed floor is allowed to push the offset upward. */
++    private static readonly CLOCK_FLOOR_WINDOW_MS = 1000;
 +
 +    private static _instance: PixelRPMovementV2 = null;
 +
@@ -1747,15 +1767,43 @@ index 0000000..19b0227
 +    public get clockOffset(): number { return this._clockOffset; }
 +
 +    /**
-+     * One connection-wide offset: the MINIMUM observed (clientNow - serverNow)
-+     * over a rolling window, i.e. the fastest packet. Per-packet latency must
-+     * never become a per-avatar phase origin.
++     * One connection-wide offset, tracking the FLOOR of (clientNow - serverNow)
++     * - the fastest packet - because per-packet latency must never become a
++     * per-avatar phase origin.
++     *
++     * IT MOVES IN BOTH DIRECTIONS AND NEVER IN ONE STEP. This used to ratchet
++     * downward only, then hard-snap to the window minimum every 30 seconds.
++     * Between snaps a rising floor could not be followed at all, so the error
++     * accumulated for up to half a minute and was then paid off instantly. That
++     * snap is a discontinuity in estServerNow, and estServerNow over the
++     * interval IS the phase, so every in-flight edge in the room jumped at once
++     * - a glide or a lurch, and worse on higher-ping clients because their floor
++     * moves further between windows.
++     *
++     * Every adjustment is now capped at CLOCK_MAX_CORRECTION_MS, so the offset
++     * converges instead of stepping. The two directions are deliberately not
++     * symmetric, because the evidence is not symmetric:
++     *
++     *   DOWN  a packet faster than the current offset is direct proof the true
++     *         offset is no greater than that, so it applies on the spot - but
++     *         still capped, because the first fast packet after a rebase could
++     *         otherwise be one large move.
++     *   UP    a slow packet proves nothing; it may just be one slow packet.
++     *         Only the FLOOR of a whole window may raise the offset, and then
++     *         by one capped step, so jitter cannot drag it upward.
++     *
++     * NOTHING ELSE CHANGES. cycleStart, the 500ms interval, the interpolation,
++     * server authority and walking speed are untouched. This alters only how
++     * quickly the client's estimate of server time converges - never what it
++     * converges to.
 +     */
 +    public updateClock(clientNowPerf: number, serverNow: number): void
 +    {
 +        const sample = (clientNowPerf - serverNow);
 +
-+        if(!Number.isFinite(this._clockOffset) || (Math.abs(sample - this._clockOffset) > 5000))
++        // Not a correction - a different clock. Re-acquire and restart the window.
++        if(!Number.isFinite(this._clockOffset)
++            || (Math.abs(sample - this._clockOffset) > PixelRPMovementV2.CLOCK_REBASE_MS))
 +        {
 +            this._clockOffset = sample;
 +            this._windowStart = clientNowPerf;
@@ -1764,13 +1812,21 @@ index 0000000..19b0227
 +            return;
 +        }
 +
-+        if(sample < this._clockOffset) this._clockOffset = sample;
++        if(sample < this._clockOffset)
++        {
++            this._clockOffset -= Math.min(
++                (this._clockOffset - sample), PixelRPMovementV2.CLOCK_MAX_CORRECTION_MS);
++        }
 +
 +        this._windowMin = Number.isFinite(this._windowMin) ? Math.min(this._windowMin, sample) : sample;
 +
-+        if((clientNowPerf - this._windowStart) > 30000)
++        if((clientNowPerf - this._windowStart) >= PixelRPMovementV2.CLOCK_FLOOR_WINDOW_MS)
 +        {
-+            if(Number.isFinite(this._windowMin)) this._clockOffset = this._windowMin;
++            if(Number.isFinite(this._windowMin) && (this._windowMin > this._clockOffset))
++            {
++                this._clockOffset += Math.min(
++                    (this._windowMin - this._clockOffset), PixelRPMovementV2.CLOCK_MAX_CORRECTION_MS);
++            }
 +
 +            this._windowStart = clientNowPerf;
 +            this._windowMin = NaN;
