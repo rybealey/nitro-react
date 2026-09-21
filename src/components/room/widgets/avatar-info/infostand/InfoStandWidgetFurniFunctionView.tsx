@@ -56,7 +56,8 @@ const COMPANIONS: { [key: string]: { field: 'vendingIds' | 'effectId' | 'behavio
     effect: { field: 'effectId', label: 'Effect id', placeholder: '9', note: 'Without an effect id nothing is applied when someone stands on it.' },
     fx_provider: { field: 'effectId', label: 'Effect id', placeholder: '12', note: 'Without an effect id this hands out nothing.' },
     exchange: { field: 'behaviourData', label: 'Credit value', placeholder: '50', note: 'An exchange with no value redeems for nothing.' },
-    gld_gate: { field: 'behaviourData', label: 'Group id', placeholder: '3', note: 'A group door with no group lets everyone through.' }
+    gld_gate: { field: 'behaviourData', label: 'Group id', placeholder: '3', note: 'A group door with no group lets everyone through.' },
+    medical_bed: { field: 'vendingIds', label: 'Discharge furni ids', placeholder: '106754,106755', note: 'A medical bed with nowhere to discharge to heals people and then keeps them.' }
 };
 
 // The builder-facing subset. The emulator understands 107 interaction types,
@@ -81,7 +82,8 @@ const PIXELRP_BEHAVIOURS: [ string, string ][] = [
     [ 'atm', 'ATM' ],
     [ 'pressure_pad', 'Pressure pad' ],
     [ 'corp_gate', 'Corporation gate (on duty only)' ],
-    [ 'paramedic_dropoff', 'Paramedic dropoff' ]
+    [ 'paramedic_dropoff', 'Paramedic dropoff' ],
+    [ 'medical_bed', 'Medical bed' ]
 ];
 
 const HABBO_BEHAVIOURS: [ string, string ][] = [

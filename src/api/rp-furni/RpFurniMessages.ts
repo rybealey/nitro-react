@@ -378,7 +378,7 @@ const PatchFurnitureData = (data: RpFurniFunction) =>
     writable._canSitOn = data.seat;
     // Laying has no column of its own - the emulator reads it off the
     // behaviour, so the client has to derive it the same way.
-    writable._canLayOn = ((data.interactionType === 'bed') || (data.interactionType === 'tent_small'));
+    writable._canLayOn = ((data.interactionType === 'bed') || (data.interactionType === 'tent_small') || (data.interactionType === 'medical_bed'));
 
     if(data.heightMarker) heightMarkerOn.add(data.spriteId);
     else heightMarkerOn.delete(data.spriteId);
