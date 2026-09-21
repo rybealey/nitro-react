@@ -18,14 +18,28 @@ import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, N
 // every new one. Each row counts that down (mm:ss) and the store drops the
 // entry at zero; the charges themselves stay on the sheet.
 
-// "14:59" - time left on the list. Never negative: the store prunes at zero.
+// How long a charge keeps somebody on the list, and therefore what a full bar
+// means. The server owns the real figure; this only scales the bar, so being a
+// little out of step with it costs a few pixels and nothing else.
+const WANTED_WINDOW_MS = 15 * 60 * 1000;
+
+// "2m 40s", or "47s" inside the last minute. Never negative: the store prunes
+// at zero. Spelled out rather than "2:40" because the row now says "Time left"
+// in front of it, and "Time left: 2:40" reads like a clock time rather than a
+// duration.
 const countdown = (expiresAt: number): string =>
 {
     const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
     const minutes = Math.floor(seconds / 60);
 
-    return `${ minutes }:${ String(seconds % 60).padStart(2, '0') }`;
+    if(!minutes) return `${ seconds }s`;
+
+    return `${ minutes }m ${ String(seconds % 60).padStart(2, '0') }s`;
 }
+
+// Seconds left, for the things that care how close to zero it is rather than
+// what to print: the drain bar and the last-minute amber.
+const secondsLeft = (expiresAt: number): number => Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 
 // Where a hovered row wants its tooltip: to the right of the window, so it is
 // never clipped by the list's scroller; flipped to the left when the window
@@ -120,17 +134,33 @@ const WantedRow: FC<{
         });
     }
 
+    const left = secondsLeft(player.expiresAt);
+
+    // Under a minute the countdown turns amber. Nothing flashes: this window
+    // sits open beside a room people are playing in.
+    const urgent = (left <= 60);
+
     return (
-        <div className="rp-wanted-row" onClick={ () => GetUserProfile(player.userId) }
+        <div className={ `rp-wanted-row is-level-${ player.level }${ urgent ? ' is-urgent' : '' }` }
+            onClick={ () => GetUserProfile(player.userId) }
             onMouseEnter={ hover } onMouseLeave={ onLeave }>
+            { /* A bust, not a head. `headOnly` would crop to the face and
+                 leave it floating; the full figure framed by background-position
+                 puts the shoulders against the bottom of the window, which is
+                 what makes the tile read as a mugshot rather than a contact
+                 card. Same technique the HUD portrait uses. */ }
             <div className="rp-wanted-face">
-                <LayoutAvatarImageView figure={ player.figure } direction={ 2 } headOnly />
+                <LayoutAvatarImageView figure={ player.figure } direction={ 2 } />
             </div>
             <div className="rp-wanted-who">
                 <div className="rp-wanted-name">{ player.username }</div>
                 <WantedStars level={ player.level } />
+                <div className="rp-wanted-time">Time left: <span>{ countdown(player.expiresAt) }</span></div>
             </div>
-            <div className="rp-wanted-since">{ countdown(player.expiresAt) }</div>
+            { /* Drains over the sentence. Decorative - the figure beside it is
+                 the one anybody reads - so it is hidden from the reader. */ }
+            <div className="rp-wanted-bar" aria-hidden="true"
+                style={ { width: `${ Math.min(100, (left / (WANTED_WINDOW_MS / 1000)) * 100) }%` } } />
         </div>
     );
 }
@@ -241,10 +271,11 @@ export const RpWantedView: FC<{}> = props =>
     return (
         <NitroCardView resizable uniqueKey="rp-wanted" className="rp-wanted-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Wanted List" onCloseClick={ () => setIsVisible(false) } />
-            <NitroCardContentView className="text-black">
+            <NitroCardContentView>
                 <div className="rp-wanted-list">
                     { !entries.length
                         ? <div className="rp-wanted-none">
+                            <FaRegStar />
                             <div className="rp-wanted-none-text">Nobody is wanted right now.</div>
                         </div>
                         : entries.map(player => (

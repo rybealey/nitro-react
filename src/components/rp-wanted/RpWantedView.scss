@@ -1,6 +1,17 @@
 // Wanted List: a narrow single-column roster of charged players. Fixed width
 // to match the reference mock; the list is the ONE scroller (the content area
 // itself does not scroll, so the two can never fight).
+//
+// The content area is dark while the Nitro frame around it is untouched. The
+// list is a wall of mugshots and it wants a wall to hang on; the window chrome
+// belongs to the client, not to this feature.
+$wanted-well: #141820;       // behind the tiles
+$wanted-tile: #242a35;       // one entry
+$wanted-tile-edge: #333c4c;
+$wanted-ink: #f0f3f8;
+$wanted-ink-dim: #98a2b6;    // 5.6:1 on the tile
+$wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
+
 .nitro-card.rp-wanted-window {
     // starting size; the corner grip writes inline width/height over these
     width: 260px;
@@ -16,11 +27,16 @@
         font-size: 13px !important;
     }
 
+    // Only the CONTENT area goes dark. The Nitro frame - header, close button,
+    // resize grip, theme-primary-slim - is left exactly as it is, because every
+    // other window in the hotel wears it and a one-off dark title bar here
+    // would read as a different app rather than a different list.
     .nitro-card-content {
         display: flex;
         flex-direction: column;
         overflow: hidden;
         padding: 0;
+        background: $wanted-well;
     }
 
     // fills whatever height the window is dragged to - a fixed max-height
@@ -31,52 +47,68 @@
         overflow-y: auto;
         display: flex;
         flex-direction: column;
+        gap: 5px;
+        padding: 7px;
     }
 
-    // One row per wanted player: head, name over stars, and how long they
-    // have been on the list. Clicking anywhere on the row opens the profile,
-    // which is the only thing a reader of this list wants to do next.
-    //
-    // Striped rather than ruled: alternate rows carry a faint tint and there
-    // are no dividers, so the eye tracks a row across without hairlines
-    // competing with the stars. Hover darkens whichever row it is on.
+    // One entry per wanted player, each its own tile rather than a stripe in a
+    // table. A row in a list is a record; a tile with a portrait in it is a
+    // person, which is what an officer scanning this is actually looking for.
+    // Clicking anywhere on it opens the profile.
     .rp-wanted-row {
         display: flex;
         align-items: center;
-        gap: 8px;
-        height: 54px;
+        gap: 10px;
         flex-shrink: 0;
-        padding: 0 8px;
+        padding: 7px 9px 7px 7px;
         cursor: pointer;
         position: relative;
-
-        &:nth-child(even) {
-            background: rgba(0, 0, 0, 0.035);
-        }
+        overflow: hidden;
+        background: $wanted-tile;
+        border: 1px solid $wanted-tile-edge;
+        border-radius: 6px;
 
         &:hover {
-            background: rgba(0, 0, 0, 0.08);
+            background: lighten($wanted-tile, 4%);
+            border-color: lighten($wanted-tile-edge, 10%);
         }
     }
 
-    // The head-only sprite is still drawn on the 90x130 avatar canvas, so the
-    // box offsets the canvas to land on the head (the Gang and Group member
-    // lists' crop, nudged for a square). Masked to a circle with a hairline
-    // ring and NO fill - the row's stripe shows through around the face.
+    // THE MASK. A bust in a tall rounded window, not a head in a circle: a
+    // circle reads as a contact card, and this list is a set of mugshots.
+    //
+    // Fed by the FULL 90x130 sprite (no `headOnly`), framed by
+    // background-position the way the HUD portrait is - the second value is
+    // the crop, more negative raising the avatar in the window. -24px lands
+    // the head high with the shoulders running off the bottom edge, so the
+    // figure is held by the frame instead of floating in it. Tune that one
+    // number if the framing wants nudging; nothing else here depends on it.
+    //
     // Never scaled: resampling blurs the pixel art.
     .rp-wanted-face {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 54px;
         flex-shrink: 0;
         position: relative;
         overflow: hidden;
-        border-radius: 50%;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+        border-radius: 7px;
+        // The severity ring and the ground it stands on are set per level
+        // below; this is the floor both of them build on.
+        box-shadow:
+            inset 0 0 0 1.5px rgba(255, 255, 255, 0.14),
+            inset 0 -12px 16px -9px rgba(0, 0, 0, 0.9);
 
         .avatar-image {
             position: absolute;
-            left: -21px;
-            top: -19px;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: none;
+            background-size: auto;
+            background-position: center -24px;
+            background-repeat: no-repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
             image-rendering: pixelated;
         }
     }
@@ -84,24 +116,94 @@
     .rp-wanted-who {
         flex: 1;
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
     .rp-wanted-name {
-        font-size: 12px;
-        margin-bottom: 3px;
+        font-size: 13px;
         font-weight: 700;
+        line-height: 1.1;
+        color: $wanted-ink;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    // The HUD's stars, exactly: same 11px size, same amber, same glint walking
-    // left to right every ~4s (`hud-star-glint`, declared with the HUD). The
-    // one difference is the unlit star - the HUD's near-white outline would
-    // vanish on this light list, so it is the same tone inverted.
+    // "Time left: 2m 40s". The label earns its keep: a bare clock reading next
+    // to a name is as easily read as a score or a room number.
+    .rp-wanted-time {
+        font-size: 10.5px;
+        line-height: 1;
+        color: $wanted-ink-dim;
+        font-variant-numeric: tabular-nums;
+
+        span {
+            font-weight: 500;
+        }
+    }
+
+    // Drains across the bottom edge over the sentence. Two pixels, severity
+    // coloured, no label - it answers "how much longer" at a glance for the
+    // whole list at once, which reading four countdowns cannot.
+    .rp-wanted-bar {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 2px;
+        opacity: 0.9;
+        background: rgba(255, 255, 255, 0.3);
+        transition: width 1s linear;
+    }
+
+    // SEVERITY TINTS THE MASK, NEVER THE STARS. The ring around the portrait
+    // and the ground under it carry the level, so five amber stars stay one
+    // scale with more of it lit rather than turning into five different marks.
+    @each $level, $ring, $ground in
+        (1, #6d7488, #232833),
+        (2, #8d94a8, #262b36),
+        (3, #e0a13a, #332a1d),
+        (4, #e0703a, #36261f),
+        (5, #d9453f, #3b2126)
+    {
+        .rp-wanted-row.is-level-#{$level} {
+            .rp-wanted-face {
+                background: linear-gradient(180deg, $ground 0%, #12161d 100%);
+                box-shadow:
+                    inset 0 0 0 1.5px $ring,
+                    inset 0 -12px 16px -9px rgba(0, 0, 0, 0.9);
+            }
+
+            .rp-wanted-bar {
+                background: $ring;
+            }
+        }
+    }
+
+    // The last minute. The countdown and its own bar go amber together, so the
+    // two say the same thing rather than the label alone changing.
+    .rp-wanted-row.is-urgent {
+        .rp-wanted-time {
+            color: $wanted-urgent;
+        }
+
+        .rp-wanted-bar {
+            background: $wanted-urgent;
+            opacity: 1;
+        }
+    }
+
+    // The HUD's stars, unchanged in kind: same amber, same hairline outline,
+    // same glint walking left to right every ~4s (`hud-star-glint`, declared
+    // with the HUD). Two things moved with the dark ground - they sit on their
+    // own line now rather than sharing one with the name, so 13px instead of
+    // 11px, and the unlit star goes back to the HUD's own near-white, which is
+    // what it was always meant to be. The inverted one was a concession to the
+    // light list this replaces.
     .rp-wanted-stars {
         display: flex;
-        gap: 1px;
+        gap: 2px;
         line-height: 1;
 
         span {
@@ -117,10 +219,10 @@
         // units is about 1.1px at 11px, half of it visible. Round joins - the
         // star's points would throw long spikes on a miter.
         svg {
-            width: 11px;
-            height: 11px;
+            width: 13px;
+            height: 13px;
             paint-order: stroke fill;
-            stroke: rgba(0, 0, 0, 0.4);
+            stroke: rgba(0, 0, 0, 0.5);
             stroke-width: 60;
             stroke-linejoin: round;
         }
@@ -131,7 +233,7 @@
         }
 
         .off {
-            color: rgba(0, 0, 0, 0.25);
+            color: rgba(255, 255, 255, 0.22);
         }
 
         .on svg {
@@ -149,25 +251,30 @@
         }
     }
 
-    .rp-wanted-since {
-        flex-shrink: 0;
-        font-size: 10px;
-        color: rgba(0, 0, 0, 0.45);
-        font-variant-numeric: tabular-nums;
-    }
-
+    // Nothing to show. An outlined star rather than a bare sentence: it is the
+    // same mark the filled ones in a populated list carry, so an empty list
+    // reads as this list with its lights off rather than as a blank panel.
     .rp-wanted-none {
         flex: 1;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 12px;
+        gap: 11px;
+        padding: 20px;
         text-align: center;
+
+        svg {
+            width: 34px;
+            height: 34px;
+            color: #3b455a;
+        }
     }
 
     .rp-wanted-none-text {
-        font-size: 11px;
-        color: rgba(0, 0, 0, 0.45);
+        font-size: 12px;
+        line-height: 1.5;
+        color: #7e8798;
     }
 }
 
