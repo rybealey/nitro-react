@@ -321,7 +321,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,77 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,121 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -366,6 +366,15 @@ index 2ff0e23..09de3d7 100644
 +
 +        const clientNow = performance.now();
 +
++        // SAMPLED BEFORE recordEdge, AND THAT ORDERING IS THE WHOLE TEST.
++        // Once the new edge is in the store the drawn position comes FROM it,
++        // so handoffGap would read 0.00 every time whether or not a real gap
++        // existed - evidence that looks clean and means nothing.
++        const joinEdge0 = ((parser.edgeIndex === 0) && (parser.startDelayMs > 0));
++        const joinInterval = ((parser.intervalMs > 0) ? parser.intervalMs : 500);
++        const joinBefore = joinEdge0 ? store.pixelrpPositionOf(parser.virtualId, clientNow) : null;
++        const joinMaster = joinEdge0 ? store.pixelrpMaster(parser.virtualId, clientNow, joinInterval) : null;
++
 +        store.recordEdge(
 +            parser.virtualId, parser.walkSessionId, parser.routeRevision, parser.edgeIndex,
 +            parser.fromX, parser.fromY, parser.fromZ,
@@ -373,15 +382,14 @@ index 2ff0e23..09de3d7 100644
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
 +            clientNow, parser.lookahead, parser.startDelayMs);
 +
-+        // TEMPORARY: Pending -> Moving joins only, edge 0, once per session.
++        // TEMPORARY, on the same clock as the startDelayMs wire field: both
++        // exist to explain the joiner departure hitch and both come out
++        // together. Edge 0 of an aligned join only, once per session.
 +        //
-+        // phaseNow is the whole point. It is how far through its own 500ms cycle
-+        // edge 0 already is at the instant it arrives. Anything meaningfully
-+        // above 0 means the client starts rendering the first edge part-way
-+        // along, which puts the avatar straight onto a position it has not
-+        // walked to - the jump on join. Sampled AFTER recordEdge so the clock
-+        // offset already includes this packet.
-+        if((parser.edgeIndex === 0) && (parser.startDelayMs > 0))
++        // EVENT-BASED AND THRESHOLDED. Nothing prints unless one of the three
++        // conditions below trips, because live logging on the movement path is
++        // itself a measurable cost - that mistake has been made here before.
++        if(joinEdge0)
 +        {
 +            const last = this._pixelrpJoinLogged.get(parser.virtualId);
 +
@@ -390,17 +398,53 @@ index 2ff0e23..09de3d7 100644
 +                this._pixelrpJoinLogged.set(parser.virtualId, parser.walkSessionId);
 +
 +                const estServerNow = (clientNow - store.clockOffset);
-+                const interval = ((parser.intervalMs > 0) ? parser.intervalMs : 500);
++                const phaseNow = ((estServerNow - parser.cycleStart) / joinInterval);
 +
-+                console.log('[MV2/JOIN]', {
-+                    unit: parser.virtualId,
-+                    cycleStart: parser.cycleStart,
-+                    estServerNow: Math.round(estServerNow),
-+                    phaseNow: ((estServerNow - parser.cycleStart) / interval).toFixed(3),
-+                    startDelayMs: parser.startDelayMs,
-+                    from: `${parser.fromX},${parser.fromY}`,
-+                    to: `${parser.toX},${parser.toY}`
-+                });
++                // THE A-vs-B DISCRIMINATOR. Zero means the first edge starts
++                // from exactly where the avatar already was, so nothing
++                // teleported and the visible fault is the wait itself.
++                const gap = joinBefore
++                    ? Math.hypot(joinBefore.x - parser.fromX, joinBefore.y - parser.fromY)
++                    : NaN;
++
++                // AT START, not at request - the client cannot observe the
++                // request, and either avatar may have moved during the wait.
++                const sameTile = (joinBefore && joinMaster)
++                    ? ((Math.abs(joinBefore.x - joinMaster.x) < 0.5)
++                        && (Math.abs(joinBefore.y - joinMaster.y) < 0.5))
++                    : false;
++
++                const loud = (parser.startDelayMs > 200)
++                    || (gap > 0.05)
++                    || (phaseNow > 0.05);
++
++                if(loud)
++                {
++                    console.log('[MV2/JOIN-START]', {
++                        unit: parser.virtualId,
++                        session: parser.walkSessionId,
++                        actualStartNow: Math.round(estServerNow),
++                        scheduledBoundary: parser.cycleStart,
++                        computedStartDelayMs: parser.startDelayMs,
++                        phaseNow: +phaseNow.toFixed(4),
++                        actualPositionBefore: joinBefore
++                            ? `${joinBefore.x.toFixed(3)},${joinBefore.y.toFixed(3)}`
++                            : 'none',
++                        edge0From: `${parser.fromX},${parser.fromY}`,
++                        handoffGap: Number.isFinite(gap) ? +gap.toFixed(4) : 'n/a',
++                        edge0To: `${parser.toX},${parser.toY}`,
++                        masterUnit: joinMaster ? joinMaster.unit : 'none',
++                        masterPhase: joinMaster ? joinMaster.phase : 'n/a',
++                        sameTileAsMasterAtStart: sameTile,
++                        clockOffsetMs: Math.round(store.clockOffset)
++                    });
++                }
++
++                // Armed either way, so a clean start followed by a bad first
++                // edge - case D - still reports.
++                store.pixelrpWatchJoinEnd(
++                    parser.virtualId, parser.walkSessionId, parser.edgeIndex,
++                    parser.cycleStart, joinInterval, parser.toX, parser.toY, loud);
 +            }
 +        }
      }
@@ -1543,7 +1587,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,628 @@
+@@ -0,0 +1,745 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1619,6 +1663,25 @@ index 0000000..19b0227
 +{
 +    /** Drop a unit's timed state after this long with no packet -> native. */
 +    private static readonly STALE_MS = 1400;
++
++    // ---- JOIN diagnostics -------------------------------------------------
++    //
++    // TEMPORARY, on the same clock as the startDelayMs wire field: both exist
++    // to explain the joiner departure hitch and both come out together.
++    //
++    // EVENT-BASED AND THRESHOLDED, never per-frame. Nothing is printed unless
++    // one of these trips, because live console logging on the movement path is
++    // itself a measurable cost - that mistake has been made here before.
++    // Only the edge-end threshold lives here; the JOIN-START ones sit with
++    // that log in RoomMessageHandler, because private statics are not visible
++    // from there and exporting them for a temporary diagnostic is not worth it.
++    private static readonly JOIN_DIAG_ERROR = 0.05;
++
++    /** One-shot first-edge-end checks, armed by the JOIN-START log. */
++    private _joinWatch = new Map<number, {
++        session: number; edgeIndex: number; deadline: number; interval: number;
++        toX: number; toY: number; loud: boolean;
++    }>();
 +    private static readonly MAX_EDGES = 8;
 +
 +    /**
@@ -2027,6 +2090,67 @@ index 0000000..19b0227
 +     * so the avatar holds at the real terminal tile. It never speeds up and
 +     * never skips - there is no catch-up path to write.
 +     */
++    /**
++     * Where this unit is being drawn RIGHT NOW, from the record the store
++     * currently holds.
++     *
++     * MUST BE CALLED BEFORE recordEdge FOR THE JOIN DIAGNOSTIC. After the new
++     * edge is in, the position comes from that edge, so handoffGap would read
++     * 0.00 every time whether or not a real gap existed - clean-looking
++     * evidence that means nothing.
++     */
++    public pixelrpPositionOf(virtualId: number, tickerNow: number): { x: number, y: number }
++    {
++        const a = this.getActive(virtualId, tickerNow);
++
++        if(!a) return null;
++
++        return {
++            x: (a.sx + ((a.gx - a.sx) * a.phase)),
++            y: (a.sy + ((a.gy - a.sy) * a.phase))
++        };
++    }
++
++    /**
++     * The unit whose phase this join is aligning to: any OTHER unit with a
++     * live edge. The server picks by scanning its own states; this is the
++     * client's view of the same thing, which is what the log can actually
++     * observe. Phase is cycleStart modulo the interval - the shared remainder
++     * an aligned walker's own cycleStart should match.
++     */
++    public pixelrpMaster(excludeVirtualId: number, tickerNow: number, interval: number):
++        { unit: number, phase: number, x: number, y: number }
++    {
++        for(const [ id ] of this._units)
++        {
++            if(id === excludeVirtualId) continue;
++
++            const a = this.getActive(id, tickerNow);
++
++            if(!a) continue;
++
++            return {
++                unit: id,
++                phase: (((a.cycleStart % interval) + interval) % interval),
++                x: (a.sx + ((a.gx - a.sx) * a.phase)),
++                y: (a.sy + ((a.gy - a.sy) * a.phase))
++            };
++        }
++
++        return null;
++    }
++
++    /** Arm the one-shot first-edge-end check for a join just logged. */
++    public pixelrpWatchJoinEnd(
++        virtualId: number, session: number, edgeIndex: number, cycleStart: number,
++        interval: number, toX: number, toY: number, loud: boolean): void
++    {
++        this._joinWatch.set(virtualId, {
++            session, edgeIndex, interval, toX, toY, loud,
++            deadline: (cycleStart + interval)
++        });
++    }
++
 +    public getActive(virtualId: number, tickerNow: number): PixelRPV2Active
 +    {
 +        if(!Number.isFinite(this._clockOffset)) return null;
@@ -2094,6 +2218,43 @@ index 0000000..19b0227
 +        if(raw > 1) this.stats.starvations++;
 +
 +        const phase = Math.min(1, Math.max(0, raw));
++
++        // ---- JOIN-FIRST-EDGE-END, one shot -------------------------------
++        //
++        // Here rather than on a timer because this is the one place the drawn
++        // position is already computed. One map lookup per frame per unit, and
++        // only while a watch is armed.
++        const watch = this._joinWatch.get(virtualId);
++
++        if(watch && (estServerNow >= watch.deadline))
++        {
++            this._joinWatch.delete(virtualId);
++
++            const atX = (edge.sx + ((edge.gx - edge.sx) * phase));
++            const atY = (edge.sy + ((edge.gy - edge.sy) * phase));
++            const error = Math.hypot(atX - watch.toX, atY - watch.toY);
++
++            if(watch.loud || (error > PixelRPMovementV2.JOIN_DIAG_ERROR))
++            {
++                console.log('[MV2/JOIN-FIRST-EDGE-END]', {
++                    unit: virtualId,
++                    session: watch.session,
++                    edgeIndex: watch.edgeIndex,
++                    expectedEndTime: Math.round(watch.deadline),
++                    actualNow: Math.round(estServerNow),
++                    lateByMs: Math.round(estServerNow - watch.deadline),
++                    actualPosition: `${atX.toFixed(3)},${atY.toFixed(3)}`,
++                    expectedTo: `${watch.toX},${watch.toY}`,
++                    positionError: +error.toFixed(4)
++                });
++            }
++        }
++        else if(watch && (estServerNow > (watch.deadline + watch.interval)))
++        {
++            // Overshot without ever being sampled at the boundary; drop it
++            // rather than leave a watch to fire arbitrarily later.
++            this._joinWatch.delete(virtualId);
++        }
 +
 +        return {
 +            sx: edge.sx, sy: edge.sy, sz: edge.sz,
