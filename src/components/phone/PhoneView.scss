@@ -22,6 +22,11 @@ $phone-red: #e03131;
 // always matches what's visible on screen (drag bounds depend on it).
 $phone-scale: 0.8;
 
+// The camera preview's action bar. Named because the landscape rules size the
+// picture against "the screen minus this", and the two drifting apart is what
+// left a held-wide capture 84px short of the screen and 42px off centre.
+$camera-bar-height: 84px;
+
 .pixelrp-phone {
     position: relative;
     user-select: none;
@@ -7505,13 +7510,23 @@ $phone-scale: 0.8;
         // So the picture gets a box the shape it will be AFTER it turns - the
         // preview area with its sides swapped - and turns back level for
         // whoever is holding the phone, the same quarter turn the labels take.
+        // The picture turns a quarter turn, so its box needs the screen's axes
+        // SWAPPED: as wide as the area above the bar is tall, as tall as the
+        // screen is wide.
+        //
+        // Container units, not numbers. The numbers this replaces were measured
+        // off a 604px-tall screen and were wrong the moment the camera screen
+        // was 688 - the picture came out short of the edge and off centre,
+        // while portrait, which only ever says 100%, was unaffected. Nothing
+        // here knows the screen's size any more, so there is nothing left to
+        // fall out of step.
         .phone-camera-preview img {
             flex: none;
             position: absolute;
-            top: 260px;  // half of the 520px above the bar
-            left: 162px; // half of the 324px across
-            width: 520px;
-            height: 324px;
+            top: calc((100cqh - #{$camera-bar-height}) / 2);
+            left: 50%;
+            width: calc(100cqh - #{$camera-bar-height});
+            height: 100cqw;
             transform: translate(-50%, -50%) rotate(90deg);
         }
 
@@ -7648,6 +7663,10 @@ $phone-scale: 0.8;
         background: #000;
         display: flex;
         flex-direction: column;
+        // What 100cqw / 100cqh above resolve against. Safe here because the
+        // box is inset:0 on the screen, so its size comes from its parent and
+        // never from the picture inside it.
+        container-type: size;
 
         img {
             flex: 1;
@@ -7659,7 +7678,7 @@ $phone-scale: 0.8;
     }
 
     .phone-camera-preview-bar {
-        height: 84px;
+        height: $camera-bar-height;
         padding: 0 26px 14px;
         background: rgba(0, 0, 0, 0.85);
         display: flex;
