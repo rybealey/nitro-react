@@ -80,7 +80,8 @@ const PIXELRP_BEHAVIOURS: [ string, string ][] = [
     [ 'zara_shop', 'Zara shop (walk on)' ],
     [ 'atm', 'ATM' ],
     [ 'pressure_pad', 'Pressure pad' ],
-    [ 'corp_gate', 'Corporation gate (on duty only)' ]
+    [ 'corp_gate', 'Corporation gate (on duty only)' ],
+    [ 'paramedic_dropoff', 'Paramedic dropoff' ]
 ];
 
 const HABBO_BEHAVIOURS: [ string, string ][] = [
