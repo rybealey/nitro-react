@@ -2173,7 +2173,7 @@ index 0000000..19b0227
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 2276481..7be2d0b 100644
+index 2276481..c9f237d 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -9,7 +9,6 @@ import { Nitro } from '../../nitro/Nitro';
@@ -2184,30 +2184,41 @@ index 2276481..7be2d0b 100644
  import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
-@@ -20,6 +19,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -20,6 +19,33 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // layer into this engine-level class.
      private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
  
-+    // PixelRP: how close two units must be to count as SHARING A TILE, in room
-+    // units, where a tile is 1.
++    // PixelRP: the cheap pre-filter. Room units, where a tile is 1. It only
++    // rejects units that are obviously nowhere near; PIXELRP_DEPTH_TIE below is
++    // what actually decides.
++    private static PIXELRP_NEAR_TILES: number = 1;
++
++    // AND THE TEST THAT MATTERS. Two units count as sharing a tile when their
++    // DEPTHS are this close, not when their coordinates are.
 +    //
-+    // Not an equality test, because getLocation() is the RENDERED position and
-+    // V2 makes it fractional mid-step. Rounding to a tile would be worse than
-+    // this: two avatars walking onto one tile from opposite sides both round to
-+    // it while still most of a tile apart, so it would fire when they are
-+    // plainly not together. Measuring separation says what it means - zero when
-+    // both are at rest on one tile, over half a tile while one is mid-stride
-+    // somewhere else.
++    // THIS IS NOT AN INDIRECT WAY OF SAYING "SAME TILE" - it is the reason the
++    // switch is invisible, and removing it on 2026-09-21 caused a visible one.
++    // Depth IS what decides draw order, so requiring near-equal depth means the
++    // promotion only ever reorders sprites that were already visually
++    // ambiguous. Vanilla flips two crossing avatars at the instant their depths
++    // meet, when they are maximally on top of each other and the swap changes
++    // almost nothing - this keeps the promotion at that same moment.
 +    //
-+    // No hysteresis is needed. Within a single 500ms edge the separation moves
-+    // monotonically, so this threshold is crossed at most once per step; there
-+    // is no boundary for a pair to oscillate on.
-+    private static PIXELRP_SAME_TILE: number = 0.5;
++    // A per-axis separation test does NOT: someone approaching diagonally sits
++    // within half a tile on both axes while still most of a row in front, so
++    // the swap lands while they are clearly nearer the camera and changes a lot
++    // of the picture in one frame. The feet never move, so the eye reads it as
++    // the avatar jumping. It also breaks the rule outright, because somebody in
++    // front is supposed to stay in front.
++    //
++    // 0.01 is far below the depth difference between adjacent rows while still
++    // absorbing floating-point noise on a true tie.
++    private static PIXELRP_DEPTH_TIE: number = 0.01;
 +
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -64,10 +79,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -64,10 +90,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // early-return samples an offset avatar at animation FPS (~24Hz) while
      // its native location is clamped, and a released offset could latch on
      // screen until an unrelated visual update.
@@ -2218,7 +2229,7 @@ index 2276481..7be2d0b 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -416,8 +428,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -416,8 +439,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
                  && a.sprite && (a.sprite.relativeDepth < 0.5)
                  && b.sprite && (b.sprite.relativeDepth < 0.5))
              {
@@ -2243,7 +2254,7 @@ index 2276481..7be2d0b 100644
                  return (bUnit.id - aUnit.id);
              }
  
-@@ -426,6 +452,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -426,6 +463,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
@@ -2254,7 +2265,7 @@ index 2276481..7be2d0b 100644
          let iterator = 0;
  
          while(iterator < spriteCount)
-@@ -504,7 +534,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -504,7 +545,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
  
          if(locationCache.locationChanged) update = true;
@@ -2262,7 +2273,7 @@ index 2276481..7be2d0b 100644
  
          if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
          {
-@@ -542,60 +571,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -542,60 +582,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
              unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
  
@@ -2323,7 +2334,7 @@ index 2276481..7be2d0b 100644
          }
          else
          {
-@@ -675,6 +650,101 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -675,6 +661,107 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          return spriteCount;
      }
  
@@ -2347,12 +2358,17 @@ index 2276481..7be2d0b 100644
 +     * laying, while a shadow is exactly 1 (AvatarVisualization). Shadows keep
 +     * plain depth and stay under every body.
 +     *
-+     * THE TILE COMES FROM __pixelrpUnit, which the build loop assigns to EVERY
-+     * sprite of a unit from one shared object - so this needs no per-sprite
-+     * geometry, no texture bounds and no flip handling. An earlier version of
-+     * this compared body rectangles in pixels; that also promoted the local
-+     * avatar over anyone on an ADJACENT tile, because a body is taller than a
-+     * tile and adjacent tiles are only a (32, 16) pixel offset apart.
++     * SHARING A TILE IS DECIDED BY DEPTH, not by coordinates - see
++     * PIXELRP_DEPTH_TIE, which is the load-bearing part of this. Coordinates
++     * are only the cheap pre-filter.
++     *
++     * EVERYTHING IT NEEDS COMES FROM __pixelrpUnit, which the build loop
++     * assigns to EVERY sprite of a unit from one shared object - so this needs
++     * no per-sprite geometry, no texture bounds and no flip handling. Two
++     * earlier versions got the trigger wrong: body rectangles in pixels, which
++     * promoted over anyone on an adjacent tile because a body is taller than a
++     * tile; and per-axis separation, which promoted over anyone approaching
++     * diagonally while they were still most of a row in front.
 +     *
 +     * WHAT IT NEVER TOUCHES. Remote-vs-remote order, shadows, positions,
 +     * timing, and depth anywhere else.
@@ -2394,8 +2410,9 @@ index 2276481..7be2d0b 100644
 +
 +            if(!sprite || !(sprite.relativeDepth < 0.5)) continue;
 +
-+            if(Math.abs(unit.tx - ownUnit.tx) >= RoomSpriteCanvas.PIXELRP_SAME_TILE) continue;
-+            if(Math.abs(unit.ty - ownUnit.ty) >= RoomSpriteCanvas.PIXELRP_SAME_TILE) continue;
++            if(Math.abs(unit.tx - ownUnit.tx) >= RoomSpriteCanvas.PIXELRP_NEAR_TILES) continue;
++            if(Math.abs(unit.ty - ownUnit.ty) >= RoomSpriteCanvas.PIXELRP_NEAR_TILES) continue;
++            if(Math.abs(unit.depth - ownUnit.depth) >= RoomSpriteCanvas.PIXELRP_DEPTH_TIE) continue;
 +
 +            if(i > promoteAfter) promoteAfter = i;
 +        }

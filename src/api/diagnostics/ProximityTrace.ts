@@ -939,12 +939,24 @@ const dump = (count: number): void =>
 
         if(order) prevDepthOrder = order;
 
-        // drawOrder REPRODUCES RoomSpriteCanvas's comparator:
+        // drawOrder REPRODUCES RoomSpriteCanvas's ORDERING, which since
+        // 2026-09-21 is reached two different ways:
         //
         //   different units, within OVERLAP_TILES in BOTH axes, and depths
         //   within DEPTH_TIE  ->  the local player's stack wins; otherwise the
         //                         lower instance id wins
         //   anything else     ->  plain numeric depth
+        //
+        // The local-player half is no longer a comparator arm. The canvas sorts
+        // by plain depth for own-vs-remote and then promotes the local unit's
+        // whole above-ground stack in a post-sort pass
+        // (pixelrpPromoteLocalOverlap). The RESULTING order is what this
+        // reproduces, so the expression below still stands - but OVERLAP_TILES
+        // and DEPTH_TIE here must stay equal to PIXELRP_NEAR_TILES and
+        // PIXELRP_DEPTH_TIE there, or this trace reports a rule the canvas is
+        // not using. That happened: a version of the canvas triggered on body
+        // rectangles in pixels, and another on per-axis separation, while this
+        // still claimed the depth tie.
         //
         // Sign convention matches depthOrder. In the canvas the sprite that
         // sorts LATER is drawn on top, so `own ? 1 : -1` there means the local
