@@ -1,8 +1,9 @@
-import { ILinkEventTracker } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RoomSessionChatEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FaRegStar, FaStar } from 'react-icons/fa';
-import { AddEventLinkTracker, GetUserProfile, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, GetRoomSession, GetRoomSessionManager, RemoveLinkEventTracker } from '../../api';
+import { TargetState } from '../../hooks/rooms/targetState';
 import { GetRpCanPardon, GetRpWantedList, RpWantedPlayer, SendRpDropCharge, SubscribeRpWanted } from '../../api/rp-wanted/RpWantedMessages';
 import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 
@@ -15,8 +16,8 @@ import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, N
 // severity among their open charges, decided server-side.
 //
 // Being wanted is temporary: 15 minutes from the latest charge, restarted by
-// every new one. Each row counts that down (mm:ss) and the store drops the
-// entry at zero; the charges themselves stay on the sheet.
+// every new one. Each row counts that down and the store drops the entry at
+// zero; the charges themselves stay on the sheet.
 
 // "2m 40s", or "47s" inside the last minute. Never negative: the store prunes
 // at zero. Spelled out rather than "2:40" because the row now says "Time left"
@@ -32,8 +33,8 @@ const countdown = (expiresAt: number): string =>
     return `${ minutes }m ${ String(seconds % 60).padStart(2, '0') }s`;
 }
 
-// Seconds left, for the things that care how close to zero it is rather than
-// what to print: the drain bar and the last-minute amber.
+// Seconds left, for the one thing that cares how close to zero it is rather
+// than what to print: the last-minute amber.
 const secondsLeft = (expiresAt: number): number => Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 
 // Where a hovered row wants its tooltip: to the right of the window, so it is
@@ -52,6 +53,45 @@ const TIP_GAP = 8;
 // enough to cross the gap between the window and the tooltip without hurrying,
 // short enough that it does not linger over the room.
 const TIP_GRACE = 260;
+
+// The hotel's own voice, not a player's - the same style the ":t" command
+// answers in, so targeting from here and targeting by command read alike.
+const SYSTEM_WHISPER_STYLE = 1;
+
+// Clicking a row TARGETS that player - it is what an officer reading this list
+// wants to do next, and it is what the HUD's own portraits do. The profile is
+// still a click away from the target plate once they are selected.
+//
+// The lookup only sees the CURRENT ROOM, which matters more here than it does
+// for ":t": a wanted list is mostly people who are not standing next to you.
+// Each outcome is answered out loud rather than left silent, or a click that
+// found nobody is indistinguishable from a broken row.
+const targetFromRow = (username: string): void =>
+{
+    const roomSession = GetRoomSession();
+
+    const say = (message: string) =>
+    {
+        if(!roomSession) return;
+
+        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(
+            RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex,
+            message, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
+    };
+
+    const result = TargetState.selectByName?.(username) ?? null;
+
+    if(result?.status === 'selected') return;
+
+    if(result?.status === 'locked')
+    {
+        say(`Unlock your target on ${ result.name } before switching targets.`);
+
+        return;
+    }
+
+    say(`${ username } is not in this room.`);
+}
 
 const WantedStars: FC<{ level: number }> = ({ level }) => (
     <div className="rp-wanted-stars">
@@ -135,7 +175,7 @@ const WantedRow: FC<{
 
     return (
         <div className={ `rp-wanted-row is-level-${ player.level }${ urgent ? ' is-urgent' : '' }` }
-            onClick={ () => GetUserProfile(player.userId) }
+            onClick={ () => targetFromRow(player.username) }
             onMouseEnter={ hover } onMouseLeave={ onLeave }>
             { /* A bust, not a head. `headOnly` would crop to the face and
                  leave it floating; the full figure framed by background-position
