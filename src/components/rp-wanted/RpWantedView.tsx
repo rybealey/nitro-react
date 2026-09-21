@@ -18,11 +18,6 @@ import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, N
 // every new one. Each row counts that down (mm:ss) and the store drops the
 // entry at zero; the charges themselves stay on the sheet.
 
-// How long a charge keeps somebody on the list, and therefore what a full bar
-// means. The server owns the real figure; this only scales the bar, so being a
-// little out of step with it costs a few pixels and nothing else.
-const WANTED_WINDOW_MS = 15 * 60 * 1000;
-
 // "2m 40s", or "47s" inside the last minute. Never negative: the store prunes
 // at zero. Spelled out rather than "2:40" because the row now says "Time left"
 // in front of it, and "Time left: 2:40" reads like a clock time rather than a
@@ -134,11 +129,9 @@ const WantedRow: FC<{
         });
     }
 
-    const left = secondsLeft(player.expiresAt);
-
     // Under a minute the countdown turns amber. Nothing flashes: this window
     // sits open beside a room people are playing in.
-    const urgent = (left <= 60);
+    const urgent = (secondsLeft(player.expiresAt) <= 60);
 
     return (
         <div className={ `rp-wanted-row is-level-${ player.level }${ urgent ? ' is-urgent' : '' }` }
@@ -157,10 +150,6 @@ const WantedRow: FC<{
                 <WantedStars level={ player.level } />
                 <div className="rp-wanted-time">Time left: <span>{ countdown(player.expiresAt) }</span></div>
             </div>
-            { /* Drains over the sentence. Decorative - the figure beside it is
-                 the one anybody reads - so it is hidden from the reader. */ }
-            <div className="rp-wanted-bar" aria-hidden="true"
-                style={ { width: `${ Math.min(100, (left / (WANTED_WINDOW_MS / 1000)) * 100) }%` } } />
         </div>
     );
 }
