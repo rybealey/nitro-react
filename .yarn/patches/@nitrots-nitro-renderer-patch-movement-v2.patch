@@ -2173,7 +2173,7 @@ index 0000000..19b0227
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 2276481..db05a34 100644
+index 2276481..ec9c328 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -9,7 +9,6 @@ import { Nitro } from '../../nitro/Nitro';
@@ -2184,7 +2184,36 @@ index 2276481..db05a34 100644
  import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
-@@ -64,10 +63,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -20,6 +19,17 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     // layer into this engine-level class.
+     private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
+ 
++    // PixelRP overlap promotion. Pixels, deliberately tiny: it exists only so a
++    // pair sitting exactly on the overlap boundary cannot alternate every frame,
++    // not to bias the decision. Engaging needs OVERLAP greater than the margin;
++    // disengaging needs SEPARATION greater than it.
++    private static PIXELRP_OVERLAP_HYSTERESIS: number = 2;
++
++    // Tile pre-filter for the same. Cheap, and generous enough that it can never
++    // be the thing that rejects a genuine pixel overlap - a body is about one
++    // tile wide, so two tiles of separation cannot overlap.
++    private static PIXELRP_OVERLAP_TILES: number = 2;
++
+     private _id: number;
+     private _container: IRoomSpriteCanvasContainer;
+ 
+@@ -34,6 +44,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+     private _mask: Graphics;
+ 
+     private _sortableSprites: SortableSprite[];
++    // Remote unit ids whose body overlapped the local body on the PREVIOUS
++    // frame. The whole of the hysteresis state, and the reason this decision
++    // cannot live in the sort comparator - a comparator has nowhere to remember.
++    private _pixelrpOverlapping = new Set<number>();
+     private _spriteCount: number;
+     private _activeSpriteCount: number;
+     private _spritePool: ExtendedSprite[];
+@@ -64,10 +78,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // early-return samples an offset avatar at animation FPS (~24Hz) while
      // its native location is clamped, and a released offset could latch on
      // screen until an unrelated visual update.
@@ -2195,7 +2224,46 @@ index 2276481..db05a34 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -504,7 +500,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -416,8 +427,25 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+                 && a.sprite && (a.sprite.relativeDepth < 0.5)
+                 && b.sprite && (b.sprite.relativeDepth < 0.5))
+             {
+-                if(aUnit.own !== bUnit.own) return (aUnit.own ? 1 : -1);
+-
++                // OWN vs REMOTE IS NO LONGER DECIDED HERE. It used to put the
++                // local avatar on top of anything on a near-equal depth, which
++                // fires on depth rather than on the bodies actually overlapping.
++                // It is decided after the sort instead, from real body bounds -
++                // see pixelrpPromoteLocalOverlap. Falling through to plain depth
++                // keeps this comparator consistent: an overlap rule applied here
++                // is not transitive (own over A, A behind B by depth, own not
++                // overlapping B) and an inconsistent comparator makes Array.sort
++                // return an unspecified order, which is the flicker it was meant
++                // to cure.
++                if(aUnit.own !== bUnit.own) return (b.z - a.z);
++
++                // REMOTE vs REMOTE IS UNCHANGED, and deliberately not reverted
++                // to vanilla. z carries a 3.7e-11 per-sprite bias, so exact ties
++                // never happen, but NEAR ties do and the bias comes from
++                // enumeration order, which can change between frames. Tile
++                // overlap is globally enabled in this hotel, so two players on
++                // one tile is ordinary rather than rare; without this the pair
++                // would swap every time the enumeration did.
+                 return (bUnit.id - aUnit.id);
+             }
+ 
+@@ -426,6 +454,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+ 
+         if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
+ 
++        // Render-only, local-only, and after the trim so it only ever sees live
++        // sprites. Nothing above this line changed order for the local avatar.
++        this.pixelrpPromoteLocalOverlap();
++
+         let iterator = 0;
+ 
+         while(iterator < spriteCount)
+@@ -504,7 +536,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
  
          if(locationCache.locationChanged) update = true;
@@ -2203,7 +2271,7 @@ index 2276481..db05a34 100644
  
          if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
          {
-@@ -542,60 +537,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -542,60 +573,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
              unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
  
@@ -2264,3 +2332,157 @@ index 2276481..db05a34 100644
          }
          else
          {
+@@ -675,6 +652,153 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         return spriteCount;
+     }
+ 
++    /**
++     * PixelRP: the local avatar wins an overlap, decided from BODY BOUNDS.
++     *
++     * WHY AFTER THE SORT. "Own goes on top of whatever it overlaps" is not a
++     * transitive relation, so it cannot be expressed as a comparator without
++     * making Array.sort's result unspecified. Sorting by depth exactly as
++     * vanilla does and then moving one stack is both consistent and cheaper:
++     * two linear scans and one splice, for the local unit only, rather than
++     * extra work inside every one of O(n log n) comparisons.
++     *
++     * WHAT TRIGGERS IT. Only the avatar BODY texture, identified by
++     * spriteType AVATAR / AVATAR_OWN - AvatarVisualization sets that on the
++     * figure sprite alone, and leaves effects, the typing bubble and every
++     * other addition at DEFAULT. So a tall chat bubble cannot drag the local
++     * avatar forward.
++     *
++     * WHAT MOVES. The whole above-ground stack of the local unit, together and
++     * in its existing internal order, so body, effects and bubbles never come
++     * apart. relativeDepth < 0.5 is the above-ground test: bodies sit at
++     * -0.01 standing, -0.409 or -0.5 laying, and a shadow is exactly 1
++     * (AvatarVisualization), so shadows keep plain depth and stay under every
++     * body.
++     *
++     * WHAT IT NEVER TOUCHES. Remote-vs-remote order, shadows, positions,
++     * timing, and depth anywhere else. It gives the local avatar no standing
++     * priority either - with no overlap, normal isometric depth decides.
++     */
++    private pixelrpBodyRect(entry: SortableSprite): { left: number, top: number, right: number, bottom: number }
++    {
++        const sprite = entry.sprite;
++        const texture = sprite && sprite.texture;
++
++        if(!texture) return null;
++
++        const width = texture.width;
++        const height = texture.height;
++
++        // flipH is drawn as scale.x = -1 AT sprite.x, so a mirrored sprite
++        // occupies [x - width, x]. Avatars are mirrored for half the facings,
++        // so assuming [x, x + width] would be a full body width out on every
++        // one of them. Matches the checkX/checkY convention the build loop
++        // already uses for its own visibility test.
++        const left = sprite.flipH ? (entry.x - width) : entry.x;
++        const top = sprite.flipV ? (entry.y - height) : entry.y;
++
++        return { left, top, right: (left + width), bottom: (top + height) };
++    }
++
++    private pixelrpPromoteLocalOverlap(): void
++    {
++        const sprites = this._sortableSprites;
++
++        let ownBody: SortableSprite = null;
++        let ownUnit: any = null;
++        const ownStack: number[] = [];
++
++        for(let i = 0; i < sprites.length; i++)
++        {
++            const entry = sprites[i];
++            const unit = (entry as any).__pixelrpUnit;
++
++            if(!unit || !unit.own) continue;
++
++            const sprite = entry.sprite;
++
++            if(!sprite || !(sprite.relativeDepth < 0.5)) continue;
++
++            ownStack.push(i);
++            ownUnit = unit;
++
++            if((sprite.spriteType === RoomObjectSpriteType.AVATAR_OWN) || (sprite.spriteType === RoomObjectSpriteType.AVATAR)) ownBody = entry;
++        }
++
++        if(!ownBody || !ownStack.length) return;
++
++        const own = this.pixelrpBodyRect(ownBody);
++
++        if(!own) return;
++
++        const previous = this._pixelrpOverlapping;
++        const current = new Set<number>();
++        let promoteAfter = -1;
++
++        for(let i = 0; i < sprites.length; i++)
++        {
++            const entry = sprites[i];
++            const unit = (entry as any).__pixelrpUnit;
++
++            if(!unit || unit.own || (unit.id === ownUnit.id)) continue;
++
++            const sprite = entry.sprite;
++
++            if(!sprite || !(sprite.relativeDepth < 0.5)) continue;
++            if((sprite.spriteType !== RoomObjectSpriteType.AVATAR) && (sprite.spriteType !== RoomObjectSpriteType.AVATAR_OWN)) continue;
++
++            // Cheap pre-filter FIRST, so a crowded room does no rectangle work
++            // for avatars nowhere near the local one.
++            if(Math.abs(unit.tx - ownUnit.tx) > RoomSpriteCanvas.PIXELRP_OVERLAP_TILES) continue;
++            if(Math.abs(unit.ty - ownUnit.ty) > RoomSpriteCanvas.PIXELRP_OVERLAP_TILES) continue;
++
++            const other = this.pixelrpBodyRect(entry);
++
++            if(!other) continue;
++
++            // One margin, its SIGN carrying the hysteresis: already overlapping
++            // widens the test so it takes real separation to let go; not
++            // overlapping narrows it so it takes real overlap to engage.
++            const margin = previous.has(unit.id)
++                ? RoomSpriteCanvas.PIXELRP_OVERLAP_HYSTERESIS
++                : -(RoomSpriteCanvas.PIXELRP_OVERLAP_HYSTERESIS);
++
++            const overlaps = (own.left < (other.right + margin))
++                && (other.left < (own.right + margin))
++                && (own.top < (other.bottom + margin))
++                && (other.top < (own.bottom + margin));
++
++            if(!overlaps) continue;
++
++            current.add(unit.id);
++
++            if(i > promoteAfter) promoteAfter = i;
++        }
++
++        this._pixelrpOverlapping = current;
++
++        if(promoteAfter < 0) return;
++        // Already in front of everything it overlaps: leave the array alone.
++        if(ownStack[0] > promoteAfter) return;
++
++        const moving: SortableSprite[] = [];
++
++        for(const index of ownStack) moving.push(sprites[index]);
++
++        // Remove high-to-low so the earlier indexes stay valid, then reinsert
++        // as one block. Length is unchanged, which the draw loop relies on.
++        for(let k = (ownStack.length - 1); k >= 0; k--) sprites.splice(ownStack[k], 1);
++
++        let insertAt = (promoteAfter + 1);
++
++        for(const index of ownStack)
++        {
++            if(index <= promoteAfter) insertAt--;
++        }
++
++        sprites.splice(insertAt, 0, ...moving);
++    }
++
+     private getExtendedSprite(index: number): ExtendedSprite
+     {
+         if((index < 0) || (index >= this._spriteCount)) return null;
