@@ -342,12 +342,38 @@ $phone-scale: 0.8;
     // list scrolls behind it (sticky against its natural end-of-list spot).
     // Solid app background so rows never show through, padded to clear the
     // home indicator.
+    //
+    // PADDING, not margin, for the air above the eyebrow: the block's own
+    // background is what stops friend rows showing through as they scroll
+    // under it, and a margin would put that gap OUTSIDE the background. The
+    // eyebrow cannot supply it either - it is :first-child here, which is
+    // exactly the case .phone-section-label zeroes its top margin for.
     .phone-contacts-add {
         position: sticky;
         bottom: 0;
         z-index: 5;
         background: var(--ph-bg);
+        padding-top: 18px;
         padding-bottom: 14px;
+        // Pushed to the bottom edge by layout, not only by sticky. A sticky
+        // bottom only pins once the content is taller than the scrollport;
+        // below that it sits at its natural end-of-list spot, which on a short
+        // friends list is the middle of the screen. With this, that case is
+        // handled by the flow and sticky is left to do only the long-list half.
+        margin-top: auto;
+    }
+
+    // The column the auto margin above needs. Scoped to Contacts because
+    // .phone-app-scroll is shared by every app on the phone, and children keep
+    // their natural heights - a flex column would otherwise let a long friends
+    // list be squashed to fit instead of scrolling.
+    .phone-contacts .phone-app-scroll {
+        display: flex;
+        flex-direction: column;
+
+        > * {
+            flex-shrink: 0;
+        }
     }
 
     .phone-tap {
