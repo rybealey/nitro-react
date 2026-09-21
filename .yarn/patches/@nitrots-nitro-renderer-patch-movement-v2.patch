@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..9670f16
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,158 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -271,6 +271,23 @@ index 0000000..9670f16
 +
 +    /** flags bit 0x0002 - this walk session is over. */
 +    public get isWalkEnd(): boolean { return (this._flags & 0x0002) !== 0; }
++
++    /**
++     * flags bit 0x0080 - TEMPORARY DIAGNOSTIC, edge 0 only. The joiner was on
++     * the SAME TILE as the walker whose phase it aligned to, at the instant
++     * the walk was REQUESTED.
++     *
++     * Only the server can answer this: at request time it plans the route and
++     * emits nothing until the boundary, so by the time this packet arrives the
++     * phase holder has kept walking and its tile at the request is gone.
++     * "Stacked at start", which the client can compute itself, is a different
++     * question - the two together tell you whether the holder moved during the
++     * wait.
++     *
++     * Reads false against an emulator that does not set it, which is why the
++     * two halves did not have to ship together.
++     */
++    public get isJoinStackedAtRequest(): boolean { return (this._flags & 0x0080) !== 0; }
 +}
 +
 +export class RpMovementV2Event extends MessageEvent implements IMessageEvent
@@ -321,7 +338,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,121 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,140 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -400,6 +417,17 @@ index 2ff0e23..09de3d7 100644
 +                const estServerNow = (clientNow - store.clockOffset);
 +                const phaseNow = ((estServerNow - parser.cycleStart) / joinInterval);
 +
++                // DERIVED, NOT SENT. The server computes origin = now + delta
++                // and puts origin on the wire as cycleStart with delta as
++                // startDelayMs, so the request instant is exactly the
++                // difference - in server clock, the same domain as cycleStart.
++                const requestTime = (parser.cycleStart - parser.startDelayMs);
++
++                // Equal to computedStartDelayMs by construction: cycleStart IS
++                // the scheduled boundary. phaseNow is the cross-check - near
++                // zero means it was honoured, so intended and actual agree.
++                const actualWaitMs = (parser.cycleStart - requestTime);
++
 +                // THE A-vs-B DISCRIMINATOR. Zero means the first edge starts
 +                // from exactly where the avatar already was, so nothing
 +                // teleported and the visible fault is the wait itself.
@@ -416,7 +444,8 @@ index 2ff0e23..09de3d7 100644
 +
 +                const loud = (parser.startDelayMs > 200)
 +                    || (gap > 0.05)
-+                    || (phaseNow > 0.05);
++                    || (phaseNow > 0.05)
++                    || parser.isJoinStackedAtRequest;
 +
 +                if(loud)
 +                {
@@ -435,7 +464,14 @@ index 2ff0e23..09de3d7 100644
 +                        edge0To: `${parser.toX},${parser.toY}`,
 +                        masterUnit: joinMaster ? joinMaster.unit : 'none',
 +                        masterPhase: joinMaster ? joinMaster.phase : 'n/a',
++                        // AT REQUEST comes from the server, on a flag bit -
++                        // the client cannot see the request. AT START is the
++                        // client's own view an interval later. A true/false
++                        // pair means the holder moved during the wait.
++                        sameTileAsMasterAtRequest: parser.isJoinStackedAtRequest,
 +                        sameTileAsMasterAtStart: sameTile,
++                        requestTime,
++                        actualWaitMs,
 +                        clockOffsetMs: Math.round(store.clockOffset)
 +                    });
 +                }
