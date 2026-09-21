@@ -117,12 +117,13 @@ $wanted-urgent: #a35a00;     // 5.2:1 - the warning amber darkened to carry on w
             // THE number that sets the framing, and the only one: more negative
             // raises the figure in the window, less lowers it.
             //
-            // -24 originally, which cut the chest off too high and left tall
-            // hair against the frame; -14 dropped the whole figure and showed
-            // dead space over the head. -22 sits between them, and it is safe
-            // to crop into hair now that the frame is a real border - the
-            // figure is clipped INSIDE it rather than drawn across it.
-            background-position: center -22px;
+            // Settled by eye against real avatars rather than by arithmetic on
+            // the sprite: -24, then -14 (too low, dead space over the head),
+            // then -22, then this. Cropping into hair is fine now that the
+            // frame is a real border - the figure is clipped INSIDE it rather
+            // than drawn across it, which is what the shallower values were
+            // working around.
+            background-position: center -32px;
             background-repeat: no-repeat;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
