@@ -2,15 +2,13 @@
 // to match the reference mock; the list is the ONE scroller (the content area
 // itself does not scroll, so the two can never fight).
 //
-// The content area is dark while the Nitro frame around it is untouched. The
-// list is a wall of mugshots and it wants a wall to hang on; the window chrome
-// belongs to the client, not to this feature.
-$wanted-well: #141820;       // behind the tiles
-$wanted-tile: #242a35;       // one entry
-$wanted-tile-edge: #333c4c;
-$wanted-ink: #f0f3f8;
-$wanted-ink-dim: #98a2b6;    // 5.6:1 on the tile
-$wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
+// Nitro's own grey, untouched. The window chrome AND the field it sits on
+// belong to the client - this feature restyles the ENTRY, not the panel.
+$wanted-tile: #ffffff;       // one entry, lifted off the stock grey
+$wanted-tile-edge: rgba(0, 0, 0, 0.14);
+$wanted-ink: #1b1b1b;        // 17.2:1 on the tile
+$wanted-ink-dim: #6b6b6b;    // 5.3:1 on the tile
+$wanted-urgent: #a35a00;     // 5.2:1 - the warning amber darkened to carry on white
 
 .nitro-card.rp-wanted-window {
     // starting size; the corner grip writes inline width/height over these
@@ -27,21 +25,22 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
         font-size: 13px !important;
     }
 
-    // Only the CONTENT area goes dark. The Nitro frame - header, close button,
-    // resize grip, theme-primary-slim - is left exactly as it is, because every
-    // other window in the hotel wears it and a one-off dark title bar here
-    // would read as a different app rather than a different list.
+    // The Nitro frame - header, close button, resize grip, theme-primary-slim -
+    // and the grey field inside it are left exactly as they are, because every
+    // other window in the hotel wears them.
     //
-    // `.content-area` is the class NitroCardContentView actually renders;
-    // `.nitro-card-content` matches nothing, which is how the well stayed the
-    // stock #dfdfdf under dark tiles and made them look like a mistake. Its own
-    // padding is zeroed so the list below is the only thing spacing the tiles.
+    // NO background here: the field stays whatever Nitro paints every other
+    // window's content area. Only the padding is taken out, so the list below
+    // is the one thing spacing the tiles.
+    //
+    // `.content-area` is the class NitroCardContentView actually renders -
+    // `.nitro-card-content` matches nothing, which is worth knowing before
+    // reaching for it again.
     .content-area {
         display: flex;
         flex-direction: column;
         overflow: hidden;
         padding: 0;
-        background: $wanted-well;
     }
 
     // fills whatever height the window is dragged to - a fixed max-height
@@ -74,8 +73,8 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
         border-radius: 6px;
 
         &:hover {
-            background: lighten($wanted-tile, 4%);
-            border-color: lighten($wanted-tile-edge, 10%);
+            border-color: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
         }
     }
 
@@ -104,7 +103,7 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
         // Ring only. No vignette and no gradient: a shadow across the foot of
         // the window read as a smudge under the avatar rather than as ground,
         // and there is nothing for the figure to be standing on anyway.
-        box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.14);
+        box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.16);
 
         .avatar-image {
             position: absolute;
@@ -158,11 +157,11 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
     // the figure goes with it - enough to tell a red frame from a grey one at
     // a glance across the list, not enough to be a second background.
     @each $level, $ring, $ground in
-        (1, #6d7488, #1e222c),
-        (2, #8d94a8, #20242f),
-        (3, #e0a13a, #272219),
-        (4, #e0703a, #29201b),
-        (5, #d9453f, #2b1d20)
+        (1, #8a91a3, #f0f1f4),
+        (2, #6f7688, #ebedf1),
+        (3, #c78a1e, #faf3e2),
+        (4, #cf5f26, #fbece2),
+        (5, #c8352f, #fce4e2)
     {
         .rp-wanted-row.is-level-#{$level} .rp-wanted-face {
             background: $ground;
@@ -177,11 +176,8 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
 
     // The HUD's stars, unchanged in kind: same amber, same hairline outline,
     // same glint walking left to right every ~4s (`hud-star-glint`, declared
-    // with the HUD). Two things moved with the dark ground - they sit on their
-    // own line now rather than sharing one with the name, so 13px instead of
-    // 11px, and the unlit star goes back to the HUD's own near-white, which is
-    // what it was always meant to be. The inverted one was a concession to the
-    // light list this replaces.
+    // with the HUD). One change: they sit on their own line now rather than
+    // sharing one with the name, so 13px instead of 11px.
     .rp-wanted-stars {
         display: flex;
         gap: 2px;
@@ -203,7 +199,7 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
             width: 13px;
             height: 13px;
             paint-order: stroke fill;
-            stroke: rgba(0, 0, 0, 0.5);
+            stroke: rgba(0, 0, 0, 0.4);
             stroke-width: 60;
             stroke-linejoin: round;
         }
@@ -214,7 +210,7 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
         }
 
         .off {
-            color: rgba(255, 255, 255, 0.22);
+            color: rgba(0, 0, 0, 0.25);
         }
 
         .on svg {
@@ -248,14 +244,14 @@ $wanted-urgent: #f0a93b;     // under a minute, and the HUD's own warning amber
         svg {
             width: 34px;
             height: 34px;
-            color: #3b455a;
+            color: rgba(0, 0, 0, 0.22);
         }
     }
 
     .rp-wanted-none-text {
         font-size: 12px;
         line-height: 1.5;
-        color: #7e8798;
+        color: #5f5f5f;
     }
 }
 
