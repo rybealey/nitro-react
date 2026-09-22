@@ -1,5 +1,5 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
@@ -44,6 +44,10 @@ export const App: FC<{}> = props =>
     const [ percent, setPercent ] = useState(0);
     const [ imageRendering, setImageRendering ] = useState<boolean>(true);
     const [ isDeploying, setIsDeploying ] = useState(false);
+    // `handler` is memoized on checkForDeployment alone, so it can never read
+    // a fresh `isReady`. The ref is what lets the disconnect paths below tell
+    // "we never got in" from "we were in and the line dropped".
+    const isReadyRef = useRef(false);
 
     if(!GetNitroInstance())
     {
@@ -168,16 +172,25 @@ export const App: FC<{}> = props =>
                 return;
             case NitroCommunicationDemoEvent.CONNECTION_CLOSED:
                 //if(GetNitroInstance().roomEngine) GetNitroInstance().roomEngine.dispose();
-                //setIsError(true);
                 checkForDeployment(() =>
                 {
                     setMessage('Connection Error');
+
+                    // The server closing the socket during login - a refused
+                    // ticket, a hotel that will not have us - used to leave the
+                    // bar sitting at 60% with no error, which reads as a hang
+                    // and sends you looking for the wrong fault entirely. Say
+                    // so instead. Only before we are in: once the hotel is up,
+                    // a dropped line is handled by the client's own reconnect
+                    // and must not be painted over with the loading screen.
+                    if(!isReadyRef.current) setIsError(true);
 
                     HabboWebTools.send(-1, 'client.init.handshake.fail');
                 });
                 return;
             case RoomEngineEvent.ENGINE_INITIALIZED:
                 setPercent(prevValue => (prevValue + 20));
+                isReadyRef.current = true;
 
                 // Nitro sets maxFPS from system.fps.max during bootstrap, so
                 // the player's own cap has to be re-applied after the ticker
