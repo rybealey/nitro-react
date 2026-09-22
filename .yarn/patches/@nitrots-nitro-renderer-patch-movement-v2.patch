@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..9670f16
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,172 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -288,6 +288,20 @@ index 0000000..9670f16
 +     * two halves did not have to ship together.
 +     */
 +    public get isJoinStackedAtRequest(): boolean { return (this._flags & 0x0080) !== 0; }
++
++    /**
++     * flags bit 0x0100 - TEMPORARY DIAGNOSTIC. This edge's geometry was
++     * restaged by :forceredirect rather than by a player's click, and
++     * startDelayMs carries the margin the harness ACTUALLY achieved, in
++     * milliseconds before the boundary.
++     *
++     * Negative means it overshot - the boundary had already passed when the
++     * server decided - which is itself a result worth seeing rather than an
++     * error.
++     *
++     * Reads false against an emulator that does not set it.
++     */
++    public get isForcedRedirect(): boolean { return (this._flags & 0x0100) !== 0; }
 +}
 +
 +export class RpMovementV2Event extends MessageEvent implements IMessageEvent
@@ -338,7 +352,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,140 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,171 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -398,6 +412,37 @@ index 2ff0e23..09de3d7 100644
 +            parser.toX, parser.toY, parser.toZ,
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
 +            clientNow, parser.lookahead, parser.startDelayMs);
++
++        // TEMPORARY DIAGNOSTIC, and the browser half of :forceredirect.
++        //
++        // NOT behind pixelrpMovementDebug, unlike [MV2/rx]. A forced redirect
++        // only ever happens because somebody deliberately armed the harness on
++        // themselves, for a bounded number of runs - so there is no such thing
++        // as spam here, and needing to remember a second switch in the console
++        // is how a test session produces nothing and looks broken.
++        if(parser.isForcedRedirect)
++        {
++            const forcedServerNow = (clientNow - store.clockOffset);
++            const forcedStep = ((parser.intervalMs > 0) ? parser.intervalMs : 500);
++            const forcedPhase = ((forcedServerNow - parser.cycleStart) / forcedStep);
++
++            console.log('[MV2/FORCED]', {
++                unit: parser.virtualId,
++                session: parser.walkSessionId,
++                revision: parser.routeRevision,
++                edge: parser.edgeIndex,
++                // The margin the SERVER achieved before the boundary. Only it
++                // can know this - the client never sees the moment it decided.
++                serverMarginMs: parser.startDelayMs,
++                // What the CLIENT had already done about that edge. Above zero
++                // means it was already being drawn when the rewrite landed,
++                // which is the hitch, measured on the side that renders it.
++                phaseNow: +forcedPhase.toFixed(4),
++                alreadyDrawing: (forcedPhase > 0),
++                to: `${parser.toX},${parser.toY}`,
++                cycleStart: parser.cycleStart
++            });
++        }
 +
 +        // TEMPORARY, on the same clock as the startDelayMs wire field: both
 +        // exist to explain the joiner departure hitch and both come out
