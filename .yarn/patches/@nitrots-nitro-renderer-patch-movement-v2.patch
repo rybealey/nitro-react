@@ -352,7 +352,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,171 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,219 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -406,6 +406,25 @@ index 2ff0e23..09de3d7 100644
 +        const joinBefore = joinEdge0 ? store.pixelrpPositionOf(parser.virtualId, clientNow) : null;
 +        const joinMaster = joinEdge0 ? store.pixelrpMaster(parser.virtualId, clientNow, joinInterval) : null;
 +
++        // SAMPLED BEFORE recordEdge, for exactly the reason the join sample
++        // above is: recordEdge upserts the corrected edge, so joinerTargetBefore
++        // read afterwards would BE the target after the redirect and every run
++        // would show the two as identical. Reads only - getActive,
++        // pixelrpPositionOf and pixelrpMaster already exist and compute
++        // nothing new. Guarded on the flag, so an ordinary packet does one
++        // boolean test and no work at all.
++        const forcedMaster = parser.isForcedRedirect
++            ? store.pixelrpMaster(parser.virtualId, clientNow, joinInterval)
++            : null;
++        const forcedPre = parser.isForcedRedirect
++            ? {
++                joiner: store.getActive(parser.virtualId, clientNow),
++                joinerPos: store.pixelrpPositionOf(parser.virtualId, clientNow),
++                master: forcedMaster,
++                masterActive: forcedMaster ? store.getActive(forcedMaster.unit, clientNow) : null
++            }
++            : null;
++
 +        store.recordEdge(
 +            parser.virtualId, parser.walkSessionId, parser.routeRevision, parser.edgeIndex,
 +            parser.fromX, parser.fromY, parser.fromZ,
@@ -440,7 +459,36 @@ index 2ff0e23..09de3d7 100644
 +                phaseNow: +forcedPhase.toFixed(4),
 +                alreadyDrawing: (forcedPhase > 0),
 +                to: `${parser.toX},${parser.toY}`,
-+                cycleStart: parser.cycleStart
++                cycleStart: parser.cycleStart,
++                // ---- MASTER/JOINER context, all read before recordEdge ----
++                masterTile: (forcedPre && forcedPre.master)
++                    ? `${Math.round(forcedPre.master.x)},${Math.round(forcedPre.master.y)}`
++                    : null,
++                joinerTile: (forcedPre && forcedPre.joinerPos)
++                    ? `${Math.round(forcedPre.joinerPos.x)},${Math.round(forcedPre.joinerPos.y)}`
++                    : null,
++                masterEdge: (forcedPre && forcedPre.masterActive)
++                    ? forcedPre.masterActive.edgeIndex
++                    : null,
++                joinerEdge: (forcedPre && forcedPre.joiner)
++                    ? forcedPre.joiner.edgeIndex
++                    : null,
++                joinerTargetBefore: (forcedPre && forcedPre.joiner)
++                    ? `${forcedPre.joiner.gx},${forcedPre.joiner.gy}`
++                    : null,
++                joinerTargetAfter: `${parser.toX},${parser.toY}`,
++                // Half a tile, the same threshold the JOIN-START sample uses,
++                // because both positions are interpolated rather than snapped.
++                sameTile: (forcedPre && forcedPre.master && forcedPre.joinerPos)
++                    ? ((Math.abs(forcedPre.joinerPos.x - forcedPre.master.x) < 0.5)
++                        && (Math.abs(forcedPre.joinerPos.y - forcedPre.master.y) < 0.5))
++                    : null,
++                // NULL ON PURPOSE. The client keeps EDGES per unit, never
++                // routes - only the server knows what route either walker is
++                // on. Answering this here would mean building route state the
++                // renderer does not have, which is a movement change, not
++                // instrumentation.
++                sameRoute: null
 +            });
 +        }
 +
