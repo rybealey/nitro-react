@@ -45,7 +45,10 @@ export const DEFAULT_DOCK_APPS: string[] = [ 'Phone', 'Messages', 'Camera', 'App
 // here: they are the phone's optional, ambient apps, so they start in the App
 // Store and a player installs the ones they want. Everything here is either a
 // system app or one the phone is not much use without.
-export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Wallet', 'Calendar', 'Notes', 'Settings' ];
+// Support sits here rather than in the Store, and cannot be uninstalled for
+// the same reason: it is the way to reach staff. An app you can delete and
+// then need is the one app the phone must not have.
+export const DEFAULT_GRID_APPS: string[] = [ 'Contacts', 'Photos', 'Wallet', 'Calendar', 'Notes', 'Support', 'Settings' ];
 export const DOCK_CAPACITY: number = 4;
 
 // Fixed home-screen slot matrix (iOS-style): apps sit in any slot, empty
