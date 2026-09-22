@@ -1716,7 +1716,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,745 @@
+@@ -0,0 +1,814 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1811,6 +1811,13 @@ index 0000000..19b0227
 +        session: number; edgeIndex: number; deadline: number; interval: number;
 +        toX: number; toY: number; loud: boolean;
 +    }>();
++    /**
++     * Smallest rendered shift worth reporting as a jump, in tiles. Well under
++     * a pixel at any sane zoom, so this only filters float noise - not real
++     * movement.
++     */
++    private static readonly JUMP_MIN_TILES = 0.001;
++
 +    private static readonly MAX_EDGES = 8;
 +
 +    /**
@@ -1885,7 +1892,7 @@ index 0000000..19b0227
 +    // was held at the authoritative from-tile instead. Read it from the
 +    // console as pixelrpMovementV2.stats.holdFrames - it should be non-zero
 +    // after any walk that joined the phase, and the jitter should be gone.
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0, jumps: 0, worstJumpTiles: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2099,6 +2106,68 @@ index 0000000..19b0227
 +            unit = { id: virtualId, session, revision, edges: [], lastPacketAtClient: clientNowPerf };
 +
 +            this._units.set(virtualId, unit);
++        }
++
++        // ---- RENDERED-POSITION JUMP DETECTOR, always on ---------------------
++        //
++        // A correction for an edge the renderer has ALREADY STARTED does not
++        // arrive as a fault - it arrives as a perfectly ordinary packet. The
++        // geometry is swapped, and the very next frame draws the avatar
++        // somewhere else. Nothing downstream can tell that happened, because
++        // by then the old geometry is gone.
++        //
++        // So it is measured HERE, in the only moment both versions exist, and
++        // in the units that matter: where the avatar WAS being drawn, and where
++        // it will be drawn now, at the same phase.
++        //
++        // A PURE READ. It never calls getActive - that method drops stale units
++        // and consumes the join watch, so calling it from a packet handler
++        // changes behaviour instead of observing it. Phase is derived here from
++        // the stored edge's own cycleStart, exactly as getActive would.
++        //
++        // Gated on 0 < phase < 1 so it reports only a genuine mid-edge swap: at
++        // phase 0 nothing has been drawn yet and there is nothing to disturb,
++        // and past 1 that edge is finished.
++        //
++        // Always on, not behind pixelrpMovementDebug, because it is silent
++        // unless the thing it looks for actually happens - and needing to
++        // remember a switch is how a session produces no evidence.
++        if((unit.session === session) && Number.isFinite(this._clockOffset))
++        {
++            const prior = unit.edges.find(e => (e.edgeIndex === edgeIndex));
++
++            if(prior && ((prior.gx !== gx) || (prior.gy !== gy) || (prior.sx !== sx) || (prior.sy !== sy)))
++            {
++                const at = (((clientNowPerf - this._clockOffset) - prior.cycleStart) / (prior.interval || 500));
++
++                if((at > 0) && (at < 1))
++                {
++                    const bx = (prior.sx + ((prior.gx - prior.sx) * at));
++                    const by = (prior.sy + ((prior.gy - prior.sy) * at));
++                    const ax = (sx + ((gx - sx) * at));
++                    const ay = (sy + ((gy - sy) * at));
++                    const shift = Math.hypot((ax - bx), (ay - by));
++
++                    if(shift > PixelRPMovementV2.JUMP_MIN_TILES)
++                    {
++                        this.stats.jumps++;
++
++                        if(shift > this.stats.worstJumpTiles) this.stats.worstJumpTiles = +shift.toFixed(4);
++
++                        console.warn('[MV2/JUMP]', {
++                            unit: virtualId,
++                            session, revision, edge: edgeIndex,
++                            phase: +at.toFixed(3),
++                            shiftTiles: +shift.toFixed(4),
++                            renderedBefore: `${bx.toFixed(3)},${by.toFixed(3)}`,
++                            renderedAfter: `${ax.toFixed(3)},${ay.toFixed(3)}`,
++                            wasFrom: `${prior.sx},${prior.sy}`, wasTo: `${prior.gx},${prior.gy}`,
++                            nowFrom: `${sx},${sy}`, nowTo: `${gx},${gy}`,
++                            wasProvisional: prior.provisional
++                        });
++                    }
++                }
++            }
 +        }
 +
 +        // Newer session wipes the queue; older is dropped outright.
