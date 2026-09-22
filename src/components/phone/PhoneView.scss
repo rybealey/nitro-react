@@ -8991,3 +8991,276 @@ $camera-bar-height: 84px;
 
 @keyframes phone-music-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
 @keyframes phone-music-eq { 0%, 100% { height: 4px; } 50% { height: 12px; } }
+
+// pixelrp Support app -------------------------------------------------------
+// A player's half and a staff member's half of the same screen. The palette is
+// the phone's own ($phone-* roles), so the app follows a wallpaper/dark change
+// without knowing about either.
+.phone-support {
+    --sup-accent: #b8501c;
+    --sup-mine: #ffe8db;
+
+    .phone-support-empty {
+        padding: 10px 20px 14px;
+        font-size: 12.5px;
+        color: $phone-muted-text;
+    }
+
+    .phone-support-start {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 20px 14px;
+        padding: 13px 15px;
+        border-radius: 16px;
+        background: var(--ph-inset);
+    }
+
+    .phone-support-start-title { font-size: 14.5px; font-weight: 600; }
+    .phone-support-start-sub { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
+
+    .phone-support-row {
+        display: flex;
+        gap: 11px;
+        align-items: flex-start;
+        padding: 11px 16px;
+        border-bottom: 1px solid $phone-hairline;
+
+        &.is-mine { background: var(--ph-hover); }
+    }
+
+    .phone-support-avatar {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 19px;
+        background: var(--ph-bubble);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &.is-done { color: $phone-muted-text; }
+    }
+
+    .phone-support-row-main { flex-grow: 1; min-width: 0; }
+    .phone-support-row-top { display: flex; align-items: center; gap: 7px; }
+    .phone-support-row-name { font-size: 14.5px; font-weight: 600; }
+    .phone-support-row-meta { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
+    .phone-support-row-last {
+        margin-top: 3px;
+        font-size: 12.5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .phone-support-chip {
+        flex: none;
+        padding: 3px 8px;
+        border-radius: 9px;
+        background: var(--ph-inset);
+        font-size: 10px;
+        font-weight: 700;
+        color: $phone-soft;
+
+        &.is-offer { background: #fdf1dd; color: #7a4f00; }
+    }
+
+    // staff: the availability toggle. The rotation only means anything if
+    // somebody can say they are not here.
+    .phone-support-duty {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 20px 14px;
+        padding: 12px 15px;
+        border-radius: 16px;
+        background: var(--ph-inset);
+
+        &.is-on { background: #eaf5ee; }
+    }
+
+    .phone-support-duty-text { flex-grow: 1; }
+    .phone-support-duty-title { font-size: 14px; font-weight: 600; }
+    .phone-support-duty-sub { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
+
+    .phone-support-switch {
+        flex: none;
+        position: relative;
+        width: 48px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 14px;
+        background: var(--ph-send-idle);
+        cursor: pointer;
+
+        &.is-on { background: #147d4a; }
+
+        .phone-support-knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            background: #fff;
+            transition: left 140ms ease;
+        }
+
+        &.is-on .phone-support-knob { left: 23px; }
+    }
+
+    // the bar over a conversation and the compose screen
+    .phone-support-bar {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 18px 14px 10px;
+        border-bottom: 1px solid $phone-hairline;
+    }
+
+    .phone-support-back { color: var(--sup-accent); display: flex; }
+    .phone-support-bar-main { flex-grow: 1; min-width: 0; }
+    .phone-support-bar-title { font-size: 15px; font-weight: 600; }
+    .phone-support-bar-sub { font-size: 11.5px; color: $phone-muted-text; }
+    .phone-support-resolve {
+        flex: none;
+        padding: 6px 11px;
+        border-radius: 11px;
+        background: #eaf5ee;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #0e5733;
+    }
+
+    .phone-support-lede { padding: 10px 20px 4px; font-size: 12.5px; color: $phone-soft; }
+
+    .phone-support-cat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 8px 20px 0;
+        padding: 12px 14px;
+        border: 1px solid var(--ph-input-border);
+        border-radius: 14px;
+
+        &.is-on { border-color: var(--sup-accent); background: var(--ph-hover); color: var(--sup-accent); }
+    }
+
+    .phone-support-cat-text { flex-grow: 1; }
+    .phone-support-cat-title { font-size: 13.5px; font-weight: 600; }
+    .phone-support-cat-hint { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
+
+    .phone-support-text {
+        display: block;
+        box-sizing: border-box;
+        width: calc(100% - 40px);
+        margin: 8px 20px 0;
+        padding: 11px 12px;
+        border: 1px solid var(--ph-input-border);
+        border-radius: 14px;
+        background: var(--ph-bg);
+        color: var(--ph-text);
+        font: inherit;
+        font-size: 13px;
+        resize: none;
+    }
+
+    .phone-support-note { padding: 7px 20px 0; font-size: 11px; color: $phone-muted-text; }
+
+    .phone-support-send-btn {
+        display: block;
+        width: calc(100% - 40px);
+        margin: 14px 20px 20px;
+        padding: 13px;
+        border: none;
+        border-radius: 15px;
+        background: var(--sup-accent);
+        color: #fff;
+        font: inherit;
+        font-size: 14.5px;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:disabled { background: var(--ph-send-idle); color: $phone-faint-text; cursor: default; }
+    }
+
+    // the conversation itself
+    .phone-support-thread {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .phone-support-bubble {
+        max-width: 78%;
+        padding: 9px 12px;
+        font-size: 13px;
+        line-height: 1.45;
+        word-break: break-word;
+
+        &.is-them { align-self: flex-start; border-radius: 16px 16px 16px 5px; background: var(--ph-bubble); }
+        &.is-me { align-self: flex-end; border-radius: 16px 16px 5px 16px; background: var(--sup-mine); color: #1a0a14; }
+    }
+
+    .phone-support-status {
+        align-self: center;
+        padding: 4px 10px;
+        border-radius: 10px;
+        background: var(--ph-inset);
+        font-size: 10.5px;
+        color: $phone-soft;
+    }
+
+    .phone-support-composer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px 16px;
+        border-top: 1px solid $phone-hairline;
+    }
+
+    .phone-support-input {
+        flex-grow: 1;
+        height: 38px;
+        box-sizing: border-box;
+        padding: 0 14px;
+        border: 1px solid var(--ph-input-border);
+        border-radius: 19px;
+        background: var(--ph-bg);
+        color: var(--ph-text);
+        font: inherit;
+        font-size: 13.5px;
+    }
+
+    .phone-support-send {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 19px;
+        background: var(--sup-accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+
+        &:disabled { background: var(--ph-send-idle); color: $phone-faint-text; cursor: default; }
+    }
+}
+
+.phone-display.is-dark .phone-support {
+    --sup-accent: #ff8f5a;
+    --sup-mine: #4a2a1c;
+
+    .phone-support-duty.is-on { background: #16321f; }
+    .phone-support-duty.is-on .phone-support-duty-title { color: #8fe3b0; }
+    .phone-support-resolve { background: #16321f; color: #8fe3b0; }
+    .phone-support-chip.is-offer { background: #3a2a10; color: #f0c674; }
+    .phone-support-bubble.is-me { color: #f7ece6; }
+}

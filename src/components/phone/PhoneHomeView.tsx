@@ -96,6 +96,11 @@ export const APP_DEFS: Record<string, PhoneAppDef> = {
     // (green comment-dots) - so a different hue and a different shape, not a
     // second speech bubble.
     'Sitch': { icon: 'at', active: true, plate: 'linear-gradient(160deg, #3aa79c, #1f7a74 58%, #0f4a48)', sec: '#9ff0e6' },
+    // pixelrp Support: indigo plate, life ring. Not another speech bubble -
+    // Messages is green comment-dots and Sitch is teal at, and a third bubble
+    // is a third tile nobody can tell apart at 30px. A ring says "help" and
+    // nothing else does.
+    'Support': { icon: 'life-ring', active: true, plate: 'linear-gradient(160deg, #7b8cff, #4c5fe0 55%, #2f3db8)', sec: '#d7dcff' },
     'Translate': { icon: 'language', plate: 'linear-gradient(160deg, #8fc7c2, #5a9a95 55%, #3a6b67)' },
     'Settings': { icon: 'gear', active: true, plate: 'linear-gradient(160deg, #c2c6ce, #9096a0 55%, #5c616b)', sec: '#5c616b' }
 };
