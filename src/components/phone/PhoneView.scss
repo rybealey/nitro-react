@@ -9111,13 +9111,30 @@ $camera-bar-height: 84px;
         &.is-on .phone-support-knob { left: 23px; }
     }
 
-    // the bar over a conversation and the compose screen
+    // The bar over a conversation. 46px of top padding, the same as
+    // .phone-thread-header, because this one sits OUTSIDE .phone-app-scroll -
+    // the scroll container is what insets the other screens past the status
+    // bar (padding-top: 44px), and a fixed header gets no such help. At 18px
+    // it sat under the clock.
     .phone-support-bar {
         display: flex;
         align-items: center;
         gap: 9px;
-        padding: 18px 14px 10px;
+        padding: 46px 12px 8px;
+        background: var(--ph-glass2);
+        backdrop-filter: var(--ph-glass-blur);
+        -webkit-backdrop-filter: var(--ph-glass-blur);
         border-bottom: 1px solid $phone-hairline;
+        z-index: 20;
+    }
+
+    // The compose screen's bar rides inside the scroll, which already insets.
+    .phone-app-scroll .phone-support-bar {
+        padding-top: 4px;
+        background: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        z-index: auto;
     }
 
     .phone-support-back { color: var(--sup-accent); display: flex; }
@@ -9205,6 +9222,34 @@ $camera-bar-height: 84px;
 
         &.is-them { align-self: flex-start; border-radius: 16px 16px 16px 5px; background: var(--ph-bubble); }
         &.is-me { align-self: flex-end; border-radius: 16px 16px 5px 16px; background: var(--sup-mine); color: #1a0a14; }
+    }
+
+    // An empty conversation says what to do rather than showing a blank wall.
+    .phone-support-blank {
+        margin: auto;
+        padding: 20px 26px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .phone-support-blank-mark {
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background: var(--ph-inset);
+        color: var(--sup-accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-support-blank-text {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--ph-soft);
     }
 
     .phone-support-status {

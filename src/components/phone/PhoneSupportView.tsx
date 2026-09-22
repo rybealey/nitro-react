@@ -35,6 +35,9 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     const [ messages, setMessages ] = useState<SupportMessage[]>([]);
     const [ openId, setOpenId ] = useState<number>(0);
     const [ screen, setScreen ] = useState<Screen>('list');
+    // Which way the last move went, so a screen slides in from the side it
+    // came from - the same 26ms-per-30px feel as the phone's own transitions.
+    const [ nav, setNav ] = useState<'fwd' | 'back'>('fwd');
     const [ category, setCategory ] = useState<string>('report');
     const [ draft, setDraft ] = useState<string>('');
     const [ reply, setReply ] = useState<string>('');
@@ -86,10 +89,15 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         element.scrollTop = element.scrollHeight;
     }, [ screen, messages ]);
 
+    // phone-slide-right enters from the right (going deeper), -left from the
+    // left (coming back), which is the same pair PhoneView uses between apps.
+    const anim = ((nav === 'fwd') ? ' phone-anim-slide-right' : ' phone-anim-slide-left');
+
     const open = useMemo(() => threads.find(thread => (thread.id === openId)) ?? null, [ threads, openId ]);
 
     const openThread = (id: number) =>
     {
+        setNav('fwd');
         setOpenId(id);
         setScreen('thread');
         setReply('');
@@ -98,6 +106,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
     const backToList = () =>
     {
+        setNav('back');
         setOpenId(0);
         setScreen('list');
         SendMessageComposer(new RpSupportOpenComposer(0));
@@ -111,6 +120,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
         SendMessageComposer(new RpSupportStartComposer(category, body.substring(0, MAX_BODY)));
         setDraft('');
+        setNav('fwd');
         setScreen('thread');
     }
 
@@ -143,7 +153,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         const queued = threads.filter(thread => (thread.status === 'waiting'));
 
         return (
-            <div className="phone-screen phone-app-screen phone-support">
+            <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
                 <div className="phone-app-scroll">
                     <div className="phone-app-header">
                         <div>
@@ -205,19 +215,19 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     if(screen === 'list')
     {
         return (
-            <div className="phone-screen phone-app-screen phone-support">
+            <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
                 <div className="phone-app-scroll">
                     <div className="phone-app-header">
                         <div>
                             <div className="phone-app-kicker">PIXELRP SUPPORT</div>
                             <div className="phone-app-title">Support</div>
                         </div>
-                        <div className="phone-tap phone-fab" title="Start a conversation" onClick={ event => setScreen('compose') }>
+                        <div className="phone-tap phone-fab" title="Start a conversation" onClick={ event => { setNav('fwd'); setScreen('compose'); } }>
                             <PhoneIcon icon="plus" size={ 16 } />
                         </div>
                     </div>
 
-                    <div className="phone-tap phone-support-start" onClick={ event => setScreen('compose') }>
+                    <div className="phone-tap phone-support-start" onClick={ event => { setNav('fwd'); setScreen('compose'); } }>
                         <PhoneIcon icon="comment-dots" size={ 18 } />
                         <div className="phone-support-start-text">
                             <div className="phone-support-start-title">Start a conversation</div>
@@ -252,10 +262,10 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     if(screen === 'compose')
     {
         return (
-            <div className="phone-screen phone-app-screen phone-support">
+            <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
                 <div className="phone-app-scroll">
                     <div className="phone-support-bar">
-                        <div className="phone-tap phone-support-back" onClick={ event => setScreen('list') }>
+                        <div className="phone-tap phone-support-back" onClick={ event => { setNav('back'); setScreen('list'); } }>
                             <PhoneIcon icon="chevron-left" size={ 16 } />
                         </div>
                         <div className="phone-support-bar-title">New request</div>
@@ -287,7 +297,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     // ---- one conversation -------------------------------------------------
 
     return (
-        <div className="phone-screen phone-app-screen phone-support">
+        <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
             <div className="phone-support-bar">
                 <div className="phone-tap phone-support-back" onClick={ event => backToList() }>
                     <PhoneIcon icon="chevron-left" size={ 16 } />
@@ -301,6 +311,11 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
             </div>
 
             <div ref={ scrollRef } className="phone-support-thread">
+                { !messages.length &&
+                    <div className="phone-support-blank">
+                        <div className="phone-support-blank-mark"><PhoneIcon icon="life-ring" size={ 22 } /></div>
+                        <div className="phone-support-blank-text">{ isStaff ? 'No messages yet.' : 'Say what happened and Trina will pick it up.' }</div>
+                    </div> }
                 { messages.map(message => (
                     <div key={ message.id } className={ `phone-support-bubble${ (message.fromStaff === !isStaff) ? ' is-them' : ' is-me' }` }>{ message.body }</div>
                 )) }
