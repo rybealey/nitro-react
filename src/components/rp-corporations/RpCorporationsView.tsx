@@ -252,7 +252,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                             <div key={ rank.id } className="rp-corps-rank">
                                                 <div className="rp-corps-rank-row">
                                                     <span className="rp-corps-rank-name">{ rank.name }</span>
-                                                    <span className="rp-corps-rank-pay">{ rank.pay }c</span>
+                                                    <span className="rp-corps-rank-pay">${ rank.pay }</span>
                                                 </div>
                                                 { (rank.employees.length === 0) &&
                                                     <div className="rp-corps-rank-none">No employees</div> }

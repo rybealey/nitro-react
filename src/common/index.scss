@@ -229,6 +229,31 @@
     background-repeat: no-repeat;
     width: 15px;
     height: 15px;
+
+    // pixelrp: the hotel's money is dollars, so type -1 draws a "$" in the box
+    // the sprite used to occupy. Only centring is set here - every ancestor
+    // rule that sizes this element for the sprite still applies, which is what
+    // keeps one currency looking the same on a dozen screens.
+    &.is-money {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        line-height: 1;
+        // No sprite to reserve a square for, so it hugs the glyph. Ancestor
+        // rules that size the icon for a particular screen still win, and a
+        // "$" centred in a 13px box is fine - this only tidies the places
+        // with no such rule, like the HUD purse.
+        width: auto;
+        min-width: 0;
+
+        // A dollar goes IN FRONT of the number. Half the call sites write the
+        // amount first and the icon after, which was right for a coin and
+        // reads as "1,234 $" for a mark - so the mark moves itself to the
+        // front of the row instead of ten layouts being reordered by hand.
+        // Where it is already first this changes nothing.
+        order: -1;
+    }
 }
 
 .nitro-item-count {

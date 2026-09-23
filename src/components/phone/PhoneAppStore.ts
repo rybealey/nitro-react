@@ -8,7 +8,7 @@
 // today; the shape is here so an app can be priced in either currency without
 // reworking the Store, and so that a paid app already knows the rule that
 // matters - you buy it once. Removing an app keeps it in `owned`, so putting
-// it back is always free. What is paid is a SINK: the coins or diamonds leave
+// it back is always free. What is paid is a SINK: the money or diamonds leave
 // the economy, they are not credited to anyone.
 //
 // Before any app can actually carry a price, `owned` has to become the
@@ -66,8 +66,8 @@ export const STORE_APPS: StoreApp[] = [
     {
         key: 'Mercury',
         category: 'Finance',
-        blurb: 'Every coin, accounted for.',
-        tagline: 'Every coin, accounted for.',
+        blurb: 'Every dollar, accounted for.',
+        tagline: 'Every dollar, accounted for.',
         about: 'Your checking and savings, and every movement in either of them. Wages as they land, interest as it accrues, transfers between your own two accounts, and every note counted out at an ATM \u2014 each with the balance it left behind. Mercury reads the accounts you already hold; you open those in your Wallet.',
         price: { kind: 'free' }
     },
@@ -132,7 +132,7 @@ export const STORE_APPS: StoreApp[] = [
 export const FindStoreApp = (key: string): StoreApp => STORE_APPS.find(app => (app.key === key));
 
 // Currency types as the purse uses them - the number is the wallet icon's
-// filename (wallet/<type>.png), so a price shows the same coin or diamond the
+// filename (wallet/<type>.png), so a price shows the same $ or diamond the
 // player already reads in the toolbar rather than spelling the currency out.
 export const COINS_TYPE: number = -1;
 export const DIAMONDS_TYPE: number = 5;

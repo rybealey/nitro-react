@@ -34,7 +34,7 @@ type StoreScreen = 'discover' | 'library';
 const StorePlate: FC<{ appKey: string, size: number }> = ({ appKey, size }) =>
     <AppPlate appKey={ appKey } size={ size } className="phone-store-plate" />;
 
-// A price: the amount beside the coin or diamond the player already knows from
+// A price: the amount beside the $ or diamond the player already knows from
 // the toolbar. A free app just says GET.
 const PriceTag: FC<{ price: AppPrice }> = ({ price }) =>
 {

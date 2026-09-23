@@ -512,7 +512,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                                     <div className="phone-pay-kicker">{ outgoing ? 'YOU SENT' : `${ (participant?.name ?? 'THEY').toUpperCase() } SENT YOU` }</div>
                                     <div className={ `phone-pay-card${ outgoing ? ' is-out' : ' is-in' }` }>
                                         <div className="phone-pay-amount">
-                                            <span className="phone-pay-unit">c</span>
+                                            <span className="phone-pay-unit">$</span>
                                             <span className="phone-pay-figure">{ record.amount.toLocaleString() }</span>
                                         </div>
                                         { !!record.note.length &&
@@ -608,7 +608,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 
                                 <label className="phone-pay-label" htmlFor="phone-pay-amount">AMOUNT</label>
                                 <div className="phone-pay-entry">
-                                    <span className="phone-pay-entry-unit">c</span>
+                                    <span className="phone-pay-entry-unit">$</span>
                                     <input id="phone-pay-amount" type="text" inputMode="numeric" autoComplete="off" value={ payAmount } placeholder="0"
                                         onChange={ event => setPayAmount(event.target.value.replace(/[^0-9]/g, '').substring(0, 6)) } />
                                 </div>
@@ -626,14 +626,14 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 
                                 <div className="phone-pay-allowance">
                                     <span>Left to send today</span>
-                                    <strong>c { payState.remainingToday.toLocaleString() }</strong>
+                                    <strong>${ payState.remainingToday.toLocaleString() }</strong>
                                 </div>
 
                                 { !!payError &&
                                     <div className="phone-pay-error">{ payError }</div> }
 
                                 <button type="button" className="phone-pay-go" disabled={ !payValid } onClick={ event => setPaySheet('confirm') }>
-                                    { payValue > 0 ? `Send c ${ payValue.toLocaleString() }` : 'Send' }
+                                    { payValue > 0 ? `Send $${ payValue.toLocaleString() }` : 'Send' }
                                 </button>
                                 <div className="phone-pay-small">Comes out of checking. Sent money cannot be taken back.</div>
                             </> }
@@ -642,7 +642,7 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                             <>
                                 <div className="phone-pay-kicker phone-pay-centre">CONFIRM</div>
                                 <div className="phone-pay-entry is-static">
-                                    <span className="phone-pay-entry-unit">c</span>
+                                    <span className="phone-pay-entry-unit">$</span>
                                     <span className="phone-pay-entry-figure">{ payValue.toLocaleString() }</span>
                                 </div>
                                 <div className="phone-pay-to">to <strong>{ participant?.name }</strong></div>
@@ -652,14 +652,14 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
                                 <div className="phone-pay-rows">
                                     <div className="phone-pay-row"><span>From</span><strong>Checking</strong></div>
                                     <div className="phone-pay-row"><span>Fee</span><strong className="is-good">None</strong></div>
-                                    <div className="phone-pay-row"><span>Left to send today</span><strong>c { Math.max(0, payState.remainingToday - payValue).toLocaleString() }</strong></div>
+                                    <div className="phone-pay-row"><span>Left to send today</span><strong>${ Math.max(0, payState.remainingToday - payValue).toLocaleString() }</strong></div>
                                 </div>
 
                                 { /* The sheet closes on the SERVER's answer, never on
                                      the tap - that is how a player ends up believing
                                      money moved when it did not. */ }
                                 <button type="button" className="phone-pay-go" disabled={ payBusy } onClick={ event => confirmPay() }>
-                                    { payBusy ? 'Sending…' : `Send c ${ payValue.toLocaleString() }` }
+                                    { payBusy ? 'Sending…' : `Send $${ payValue.toLocaleString() }` }
                                 </button>
                                 <button type="button" className="phone-pay-back" disabled={ payBusy } onClick={ event => setPaySheet('amount') }>Back</button>
                             </> }

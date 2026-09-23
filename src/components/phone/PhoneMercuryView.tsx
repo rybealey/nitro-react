@@ -560,8 +560,9 @@ export const PhoneMercuryView: FC<PhoneMercuryViewProps> = props =>
                             </div>
                             <div className="phone-merc-detail">
                                 <div className="phone-merc-detail-key">Balance after</div>
-                                { /* The coin, not a trailing "c" - every other figure on
-                                     this sheet carries the icon, and "0c" read as a typo. */ }
+                                { /* The leading "$", not a trailing unit - every other
+                                     figure on this sheet is written the same way,
+                                     and "0c" read as a typo. */ }
                                 <div className="phone-merc-detail-val is-money">
                                     <LayoutCurrencyIcon type={ -1 } />{ Money(open.balanceAfter) }
                                 </div>

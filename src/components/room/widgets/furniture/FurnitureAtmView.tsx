@@ -27,14 +27,15 @@ import { Button, Column, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCa
 // metaphor; a field and five quick-adds is what every other widget uses, and
 // it removes the back-navigation entirely.
 //
-// Figures are credits with the hotel's own credits icon rather than a dollar
-// sign. The HUD purse sits on the same screen, and a second currency symbol
-// next to it would read as a second currency.
+// Figures carry the hotel's currency mark, which is a "$" - the same one the
+// HUD purse on the same screen shows, because they are the same money. One
+// mark, set once in LayoutCurrencyIcon; a machine that wrote it differently
+// from the purse beside it would read as a second currency.
 
 const QUICK_ADD: number[] = [ 3, 15, 100, 150, 500 ];
 
 // The machine's cut of a deposit - a percentage in basis points plus a flat
-// coin - using the same integer maths as the server so the preview matches the
+// dollar - using the same integer maths as the server so the preview matches the
 // receipt exactly. Mirrors BankUtility.DepositFeeBps / DepositFeeFlat /
 // DepositFee: change one and change the other. The server is the authority;
 // this only ever tells you in advance.
@@ -46,7 +47,7 @@ const DEPOSIT_FEE_FLAT = 3;
 const DepositFee = (amount: number): number =>
     (amount <= 0) ? 0 : Math.floor((amount * DEPOSIT_FEE_BPS) / 10000) + DEPOSIT_FEE_FLAT;
 
-// The flat coin can equal or exceed a small enough deposit, so there is a floor
+// The flat charge can equal or exceed a small enough deposit, so there is a floor
 // below which the machine refuses. Derived the same way the server derives it,
 // rather than written down as 4: that is only right while the percentage
 // rounds away at this size.
@@ -171,7 +172,7 @@ export const FurnitureAtmView: FC<{}> = props =>
                     <Text small className={ empty ? 'text-danger' : 'atm-helper' }>
                         { empty
                             ? (withdrawing ? 'There is nothing in your account to take out.' : 'You are not carrying any cash to pay in.')
-                            : (withdrawing ? `You can take out up to ${ FormatCredits(available) }c.` : `You are carrying ${ FormatCredits(available) }c.`) }
+                            : (withdrawing ? `You can take out up to $${ FormatCredits(available) }.` : `You are carrying $${ FormatCredits(available) }.`) }
                     </Text> }
                 { !!note && <Text small className="text-danger">{ note }</Text> }
                 { /* The fee is disclosed on the deposit side WHENEVER that side
@@ -184,13 +185,13 @@ export const FurnitureAtmView: FC<{}> = props =>
                      subtraction after the fact. */ }
                 { !withdrawing &&
                     <div className="atm-fee">
-                        <Text small className="atm-fee-rate">{ FormatRate(DEPOSIT_FEE_BPS) }% + { DEPOSIT_FEE_FLAT }c machine fee on deposits</Text>
+                        <Text small className="atm-fee-rate">{ FormatRate(DEPOSIT_FEE_BPS) }% + ${ DEPOSIT_FEE_FLAT } machine fee on deposits</Text>
                         { /* Below the floor the fee would take the whole thing,
                              so say which figure is the problem rather than
                              showing a net of zero and letting the server
                              refuse it after the button has been pressed. */ }
                         { (!!amount && (amount < MIN_DEPOSIT)) &&
-                            <Text small bold className="atm-fee-under">{ `Pay in at least ${ MIN_DEPOSIT }c - the fee would take it all` }</Text> }
+                            <Text small bold className="atm-fee-under">{ `Pay in at least $${ MIN_DEPOSIT } - the fee would take it all` }</Text> }
                         { /* Label and figure on one row each, the same shape as
                              the balances at the top of the card - a sentence
                              wraps to two lines the moment the numbers get long,
@@ -200,17 +201,17 @@ export const FurnitureAtmView: FC<{}> = props =>
                             <>
                                 <div className="atm-fee-row">
                                     <Text small>Fee</Text>
-                                    <Text small>{ FormatCredits(DepositFee(amount)) }c</Text>
+                                    <Text small>${ FormatCredits(DepositFee(amount)) }</Text>
                                 </div>
                                 <div className="atm-fee-row is-net">
                                     <Text small bold>Reaches your account</Text>
-                                    <Text small bold>{ FormatCredits(amount - DepositFee(amount)) }c</Text>
+                                    <Text small bold>${ FormatCredits(amount - DepositFee(amount)) }</Text>
                                 </div>
                             </> }
                     </div> }
                 <Button fullWidth variant="success" disabled={ !amount || tooSmall } onClick={ commit }>
                     { amount
-                        ? `${ withdrawing ? 'Withdraw' : 'Deposit' } ${ FormatCredits(amount) }c`
+                        ? `${ withdrawing ? 'Withdraw' : 'Deposit' } $${ FormatCredits(amount) }`
                         : (withdrawing ? 'Withdraw' : 'Deposit') }
                 </Button>
                 <Flex center>
