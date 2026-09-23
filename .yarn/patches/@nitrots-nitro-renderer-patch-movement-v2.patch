@@ -2327,7 +2327,7 @@ index 0000000..19b0227
 +
 +            if(off > this.stats.worstWalkEndTiles) this.stats.worstWalkEndTiles = +off.toFixed(4);
 +
-+            console.warn('[MV2/WALKEND]', {
++            console.log('[MV2/WALKEND]', {
 +                unit: virtualId,
 +                session: unit.session, revision: unit.revision,
 +                edgeIndex: edge.edgeIndex,
@@ -2720,7 +2720,7 @@ index 0000000..19b0227
 +
 +            if(!this.mayLog(virtualId, clientNow)) return;
 +
-+            console.warn('[MV2/ANOMALY]', {
++            console.log('[MV2/ANOMALY]', {
 +                jumpDetected: true,
 +                hitchDetected: (shift > PixelRPMovementAnomaly.HITCH_TILES),
 +                unit: virtualId, session, revision, edgeIndex,
@@ -2791,7 +2791,7 @@ index 0000000..19b0227
 +
 +            if(!this.mayLog(virtualId, time)) return;
 +
-+            console.warn('[MV2/ANOMALY]', {
++            console.log('[MV2/ANOMALY]', {
 +                hitchDetected: true,
 +                jumpDetected: false,
 +                unit: virtualId,
