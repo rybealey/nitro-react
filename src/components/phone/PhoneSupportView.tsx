@@ -28,6 +28,10 @@ const MAX_BODY = 1000;
 // is worse than one that disappears.
 const PENDING_TIMEOUT = 8000;
 
+// How long a brand-new conversation may wait for the server to name it before
+// the app gives up and hands the player their words back.
+const START_TIMEOUT = 6000;
+
 export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 {
     const { onBack = null } = props;
@@ -59,6 +63,11 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     // Whether this conversation has already been laid out once, so the first
     // paint jumps to the bottom and later messages glide there.
     const settledRef = useRef<boolean>(false);
+    // The words of a conversation we have asked the server to open and that it
+    // has not answered yet. A ref rather than state because the packet handler
+    // has to see it the moment it arrives, and because losing it means losing
+    // what the player typed.
+    const pendingStartRef = useRef<string | null>(null);
 
     // Braces, not a concise arrow body: SendMessageComposer returns a value and
     // React would take it for a cleanup function.
@@ -74,10 +83,29 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     // with an empty message list - which is exactly what every push generated
     // by the OTHER person's message looked like. The server now remembers what
     // each viewer has open, and this is the belt to that braces.
+    // The server refused to open the conversation - it whispers why. Put the
+    // player back on the form with what they wrote still in it, rather than
+    // leaving them on a thread screen with no id, which could not send and
+    // said "Sending…" forever.
+    const abandonStart = () =>
+    {
+        const body = pendingStartRef.current;
+
+        if(body === null) return;
+
+        pendingStartRef.current = null;
+
+        setPending([]);
+        setMessages([]);
+        setDraft(body);
+        go('compose', 'back');
+    }
+
     const applyMessages = (openThreadId: number, incoming: SupportMessage[]) =>
     {
         if(openThreadId > 0)
         {
+            pendingStartRef.current = null;
             setOpenId(openThreadId);
             setMessages(incoming);
             // Anything the server has now said back is no longer pending.
@@ -86,8 +114,16 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
             return;
         }
 
-        // No conversation in this payload: only safe to clear when the viewer
-        // is not sitting in one.
+        // A view with no conversation, while we are waiting on one, IS the
+        // refusal: the server sends the list back when a start does not take.
+        if(pendingStartRef.current !== null)
+        {
+            abandonStart();
+
+            return;
+        }
+
+        // Otherwise only safe to clear when the viewer is not sitting in one.
         setOpenId(prevValue =>
         {
             if(!prevValue) setMessages([]);
@@ -160,6 +196,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
     const openThread = (id: number) =>
     {
+        pendingStartRef.current = null;
         setOpenId(id);
         setPending([]);
         setReply('');
@@ -169,6 +206,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
     const backToList = () =>
     {
+        pendingStartRef.current = null;
         setOpenId(0);
         setPending([]);
         go('list', 'back');
@@ -191,8 +229,12 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         // rather than silently swallowing a second message.
         setOpenId(0);
         setPending([]);
+        pendingStartRef.current = body;
         queueBubble(body, false);
         go('thread', 'fwd');
+        // And if no answer comes at all, hand the words back rather than
+        // leaving a screen that cannot send.
+        window.setTimeout(abandonStart, START_TIMEOUT);
     }
 
     const send = () =>

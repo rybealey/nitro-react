@@ -9216,6 +9216,13 @@ $camera-bar-height: 84px;
         display: flex;
         flex-direction: column;
         gap: 8px;
+
+        // A closed conversation has no composer under it, so the thread runs
+        // to the bottom of the screen - straight into the home indicator,
+        // which sits 7px up and is itself clickable. :last-child is exactly
+        // "the composer is not there", so the inset appears only when it is
+        // needed. Same clearance as the composer's own.
+        &:last-child { padding-bottom: 26px; }
     }
 
     .phone-support-bubble {
@@ -9278,7 +9285,9 @@ $camera-bar-height: 84px;
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 9px 12px 16px;
+        // 22px at the bottom, not 16 - the same clearance .phone-thread-input
+        // keeps, so the send button is not sitting on the home indicator.
+        padding: 9px 12px 22px;
         border-top: 1px solid $phone-hairline;
     }
 
