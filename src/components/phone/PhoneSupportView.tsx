@@ -386,7 +386,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
                 <div ref={ scrollRef } className="phone-support-thread">
                     { !shown.length &&
                         <div className="phone-support-blank">
-                            <div className="phone-support-blank-mark"><PhoneIcon icon="life-ring" size={ 22 } /></div>
+                            <div className="phone-support-blank-mark"><PhoneIcon icon="headset" size={ 22 } /></div>
                             <div className="phone-support-blank-text">{ isStaff ? 'No messages yet.' : 'Say what happened and Trina will pick it up.' }</div>
                         </div> }
                     { shown.map(message => (

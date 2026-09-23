@@ -80,6 +80,10 @@ const FA_MAP: Record<string, string> = {
     // Somebody is in the jam. Used at 10px beside a name, where a full avatar
     // would not fit and would not add anything a name does not already say.
     'user-music': 'user-music',
+    // Support. Not life-ring, which is what this was: FA draws it as a notched
+    // circle, and at tile size that reads as a donut. A headset is what says
+    // "somebody will answer", and it does not collide with Messages' bubble.
+    'headset': 'headset',
     'circle': 'circle',
     'circle-check': 'circle-check',
     'arrow-right-from-bracket': 'arrow-right-from-bracket',
