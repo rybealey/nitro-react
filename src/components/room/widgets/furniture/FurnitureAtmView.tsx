@@ -27,10 +27,11 @@ import { Button, Column, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCa
 // metaphor; a field and five quick-adds is what every other widget uses, and
 // it removes the back-navigation entirely.
 //
-// Figures carry the hotel's currency mark, which is a "$" - the same one the
-// HUD purse on the same screen shows, because they are the same money. One
-// mark, set once in LayoutCurrencyIcon; a machine that wrote it differently
-// from the purse beside it would read as a second currency.
+// A balance carries the hotel's coin, the same sprite the HUD purse on the
+// same screen shows, because they are the same money. Figures WRITTEN OUT in
+// a sentence - the fee, the floor, the button - take a "$" instead: a sprite
+// mid-sentence is a hole in the text, and the two are the same currency said
+// two ways rather than two currencies.
 
 const QUICK_ADD: number[] = [ 3, 15, 100, 150, 500 ];
 
