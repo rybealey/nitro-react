@@ -1,4 +1,4 @@
-import { FC, KeyboardEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { cloneElement, FC, KeyboardEvent, ReactElement, ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CreateLinkEvent, GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
 import { MESSENGER_RECEIPT_NOT_DELIVERED, MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
 import { HotelDate } from '../../api/prefs/HotelTime';
@@ -50,6 +50,14 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     const toastTimer = useRef<number>(0);
     const typingSentRef = useRef(false);
     const typingStopTimer = useRef<number>(0);
+    // Which arrivals have already been drawn once, so only the NEW ones play
+    // their entrance. Identity is the item's own time rather than its index:
+    // indices shift when the messenger regroups, and a bubble replaying its
+    // arrival because something above it moved is the exact noise this is
+    // meant to avoid. Times only ever go up, so "newer than the newest I have
+    // drawn" is the whole test.
+    const seenTimeRef = useRef<number>(0);
+    const seenThreadRef = useRef<number>(0);
     // Pixel Cash. `paySheet` is null when closed, 'amount' or 'confirm' when
     // open; `payBusy` is the window between the tap and the server's answer,
     // which is what stops a double tap paying twice.
@@ -101,6 +109,26 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
         setPayNote('');
         setPayError(null);
     }), []);
+
+    // After the paint, not during it: the render above reads these to decide
+    // what is new, so they can only move once it has.
+    useLayoutEffect(() =>
+    {
+        const otherId = (participant?.id ?? 0);
+        let newest = 0;
+
+        // Reduced rather than spread into Math.max: a long conversation is
+        // more arguments than a call frame wants.
+        if(thread) for(const group of thread.groups)
+        {
+            for(const chat of group.chats) newest = Math.max(newest, (chat.date.getTime() - (chat.secondsSinceSent * 1000)));
+        }
+
+        for(const record of GetRpPayRecords(otherId)) newest = Math.max(newest, (record.createdAt * 1000));
+
+        seenTimeRef.current = Math.max(((seenThreadRef.current === otherId) ? seenTimeRef.current : 0), newest);
+        seenThreadRef.current = otherId;
+    });
 
     const payState = useMemo(() =>
         ((participant && !isGroup) ? GetRpPayState(participant.id) : null),
@@ -502,7 +530,23 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
 
                     timeline.sort((a, b) => (a.time - b.time));
 
-                    return timeline.map(entry => entry.node);
+                    // Opening a conversation is not forty things arriving at
+                    // once. On the first paint of a thread nothing animates;
+                    // after that, anything newer than the newest already drawn
+                    // does.
+                    const sameThread = (seenThreadRef.current === (participant?.id ?? 0));
+                    const drawnUpTo = (sameThread ? seenTimeRef.current : Number.MAX_SAFE_INTEGER);
+
+                    return timeline.map(entry =>
+                    {
+                        if(entry.time <= drawnUpTo) return entry.node;
+
+                        const element = (entry.node as ReactElement);
+
+                        return cloneElement(element, {
+                            className: `${ element.props.className ?? '' } is-arriving`
+                        });
+                    });
                 })() }
                 { receiptText && !isTyping &&
                     <div className={ `phone-thread-receipt${ receiptError ? ' is-error' : '' }` }>{ receiptText }</div> }

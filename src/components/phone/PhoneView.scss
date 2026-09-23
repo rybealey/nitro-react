@@ -1638,6 +1638,10 @@ $camera-bar-height: 84px;
             width: 100%;
             object-fit: cover;
             image-rendering: pixelated;
+            // The bubble arrives with the rest of the thread; the picture
+            // inside it fades rather than snapping, which is what a cached
+            // photo otherwise does the instant the bubble lands.
+            animation: phone-fade 0.28s ease both;
         }
 
         &.is-mine {
@@ -8935,6 +8939,27 @@ $camera-bar-height: 84px;
     to { opacity: 1; transform: scale(1); }
 }
 
+// A message landing. Mine comes up from the composer and settles; theirs
+// arrives from its own side. 30ms apart in duration so a rally of two does not
+// look like one animation playing twice.
+@keyframes phone-msg-in-mine {
+    from { opacity: 0; transform: translateY(10px) scale(0.94); transform-origin: bottom right; }
+    to { opacity: 1; transform: translateY(0) scale(1); transform-origin: bottom right; }
+}
+
+@keyframes phone-msg-in-theirs {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); transform-origin: bottom left; }
+    to { opacity: 1; transform: translateY(0) scale(1); transform-origin: bottom left; }
+}
+
+// A payment is the heavier thing in a thread and is allowed to say so: it
+// rises a little further, and a touch slower, than a sentence does.
+@keyframes phone-pay-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.965); }
+    60% { opacity: 1; }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes phone-support-pop {
     from { opacity: 0; transform: translateY(6px) scale(0.985); }
     to { opacity: 1; transform: translateY(0) scale(1); }
@@ -9001,6 +9026,34 @@ $camera-bar-height: 84px;
 // A player's half and a staff member's half of the same screen. The palette is
 // the phone's own ($phone-* roles), so the app follows a wallpaper/dark change
 // without knowing about either.
+// ----- a message arriving -----
+//
+// Only on arrival. `is-arriving` is put on by PhoneThreadView and only ever on
+// items newer than the newest it has already drawn, so opening a conversation
+// is not forty things animating at once - and a bubble does not replay its
+// entrance because something above it moved.
+//
+// Reduced motion is handled globally by .phone-display.is-a11y-still, which
+// kills every animation under the screen.
+
+.phone-thread-bubble-row.is-arriving {
+    animation: phone-msg-in-theirs 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+
+    &.is-mine { animation: phone-msg-in-mine 0.23s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+}
+
+// The things that are not ordinary bubbles but still land in the thread: a
+// room invite, a jam, a system line. Same arrival, no side to come from.
+.phone-thread-invite.is-arriving,
+.phone-thread-jam.is-arriving,
+.phone-thread-system.is-arriving {
+    animation: phone-msg-in-theirs 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.phone-pay-card-row.is-arriving {
+    animation: phone-pay-in 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
 // ----- Pixel Cash -----
 //
 // Weight lives in the numeral and nowhere else. Everything around it is quiet,
