@@ -14,7 +14,7 @@ interface ToastVariant
 }
 
 const TOAST_VARIANTS: { [key: string]: ToastVariant } = {
-    [NotificationBubbleType.PLATFORM]: { badge: 'Platform', classNames: [ 'platform' ], persistent: false },
+    [NotificationBubbleType.PLATFORM]: { badge: 'City Hall', classNames: [ 'platform' ], persistent: false },
     [NotificationBubbleType.MODERATION]: { badge: 'Moderation', classNames: [ 'platform', 'moderation' ], persistent: true },
     [NotificationBubbleType.INFORMATION]: { badge: 'Information', classNames: [ 'platform', 'information' ], persistent: false }
 };
