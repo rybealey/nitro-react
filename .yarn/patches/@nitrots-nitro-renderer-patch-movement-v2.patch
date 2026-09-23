@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..9670f16
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,172 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -288,6 +288,20 @@ index 0000000..9670f16
 +     * two halves did not have to ship together.
 +     */
 +    public get isJoinStackedAtRequest(): boolean { return (this._flags & 0x0080) !== 0; }
++
++    /**
++     * flags bit 0x0100 - TEMPORARY DIAGNOSTIC. This edge's geometry was
++     * restaged by :forceredirect rather than by a player's click, and
++     * startDelayMs carries the margin the harness ACTUALLY achieved, in
++     * milliseconds before the boundary.
++     *
++     * Negative means it overshot - the boundary had already passed when the
++     * server decided - which is itself a result worth seeing rather than an
++     * error.
++     *
++     * Reads false against an emulator that does not set it.
++     */
++    public get isForcedRedirect(): boolean { return (this._flags & 0x0100) !== 0; }
 +}
 +
 +export class RpMovementV2Event extends MessageEvent implements IMessageEvent
@@ -321,7 +335,7 @@ index 2ff0e23..09de3d7 100644
 +++ b/src/nitro/room/RoomMessageHandler.ts
 @@ -1,7 +1,7 @@
 -import { PixelRPMovementAuthority } from '../../room/renderer/PixelRPMovementAuthority';
-+import { PixelRPMovementV2 } from '../../room/renderer/PixelRPMovementV2';
++import { PixelRPMovementAnomaly, PixelRPMovementV2 } from '../../room/renderer/PixelRPMovementV2';
  import { AvatarGuideStatus, IConnection, IRoomCreator, IVector3D, LegacyDataType, ObjectRolling, PetType, RoomObjectType, RoomObjectUserType, RoomObjectVariable, Vector3d } from '../../api';
  import { Disposable } from '../../core';
 -import { DiceValueMessageEvent, FloorHeightMapEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureDataEvent, FurnitureFloorAddEvent, FurnitureFloorDataParser, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateEvent, FurnitureWallAddEvent, FurnitureWallDataParser, FurnitureWallEvent, FurnitureWallRemoveEvent, FurnitureWallUpdateEvent, GetRoomEntryDataMessageComposer, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionStartedMessageEvent, IgnoreResultEvent, ItemDataUpdateMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OneWayDoorStatusMessageEvent, PetExperienceEvent, PetFigureUpdateEvent, RoomEntryTileMessageEvent, RoomEntryTileMessageParser, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomUnitChatEvent, RoomUnitChatShoutEvent, RoomUnitChatWhisperEvent, RoomUnitDanceEvent, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RpMovementCycleEvent, RoomUnitHandItemEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitNumberEvent, RoomUnitRemoveEvent, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomVisualizationSettingsEvent, UserInfoEvent, YouArePlayingGameEvent } from '../communication';
@@ -338,7 +352,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,140 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,232 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -373,7 +387,11 @@ index 2ff0e23..09de3d7 100644
 +
 +        if(parser.isWalkEnd)
 +        {
-+            store.forget(parser.virtualId);
++            // The marker carries the tile the server actually finished on.
++            // walkEnd() compares it with what the renderer had, reports any
++            // mismatch and its direction, and forgets the unit exactly as this
++            // line always did. It corrects nothing - see PixelRPMovementV2.walkEnd.
++            store.walkEnd(parser.virtualId, parser.toX, parser.toY, parser.toZ, performance.now());
  
 -        PixelRPMovementAuthority.instance.record(parser.virtualId, parser.seq, parser.onGrid,
 -            parser.fromX, parser.fromY, parser.fromZ, parser.toX, parser.toY, parser.toZ,
@@ -392,12 +410,100 @@ index 2ff0e23..09de3d7 100644
 +        const joinBefore = joinEdge0 ? store.pixelrpPositionOf(parser.virtualId, clientNow) : null;
 +        const joinMaster = joinEdge0 ? store.pixelrpMaster(parser.virtualId, clientNow, joinInterval) : null;
 +
++        // SAMPLED BEFORE recordEdge, for exactly the reason the join sample
++        // above is: recordEdge upserts the corrected edge, so joinerTargetBefore
++        // read afterwards would BE the target after the redirect and every run
++        // would show the two as identical. Reads only - getActive,
++        // pixelrpPositionOf and pixelrpMaster already exist and compute
++        // nothing new. Guarded on the flag, so an ordinary packet does one
++        // boolean test and no work at all.
++        const forcedMaster = parser.isForcedRedirect
++            ? store.pixelrpMaster(parser.virtualId, clientNow, joinInterval)
++            : null;
++        const forcedPre = parser.isForcedRedirect
++            ? {
++                joiner: store.getActive(parser.virtualId, clientNow),
++                joinerPos: store.pixelrpPositionOf(parser.virtualId, clientNow),
++                master: forcedMaster,
++                masterActive: forcedMaster ? store.getActive(forcedMaster.unit, clientNow) : null
++            }
++            : null;
++
++        // DIAGNOSTIC ONLY - see PixelRPMovementAnomaly. BEFORE recordEdge,
++        // because that call is what replaces the geometry this needs to read,
++        // and this is the only moment both versions exist. Pure reads of the
++        // store; it never calls getActive, which has side effects.
++        PixelRPMovementAnomaly.instance.onPacket(
++            store, parser.virtualId, parser.walkSessionId, parser.routeRevision, parser.edgeIndex,
++            parser.fromX, parser.fromY, parser.toX, parser.toY,
++            parser.cycleStart, parser.intervalMs, clientNow, parser.lookahead.length);
++
 +        store.recordEdge(
 +            parser.virtualId, parser.walkSessionId, parser.routeRevision, parser.edgeIndex,
 +            parser.fromX, parser.fromY, parser.fromZ,
 +            parser.toX, parser.toY, parser.toZ,
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
 +            clientNow, parser.lookahead, parser.startDelayMs);
++
++        // TEMPORARY DIAGNOSTIC, and the browser half of :forceredirect.
++        //
++        // NOT behind pixelrpMovementDebug, unlike [MV2/rx]. A forced redirect
++        // only ever happens because somebody deliberately armed the harness on
++        // themselves, for a bounded number of runs - so there is no such thing
++        // as spam here, and needing to remember a second switch in the console
++        // is how a test session produces nothing and looks broken.
++        if(parser.isForcedRedirect)
++        {
++            const forcedServerNow = (clientNow - store.clockOffset);
++            const forcedStep = ((parser.intervalMs > 0) ? parser.intervalMs : 500);
++            const forcedPhase = ((forcedServerNow - parser.cycleStart) / forcedStep);
++
++            console.log('[MV2/FORCED]', {
++                unit: parser.virtualId,
++                session: parser.walkSessionId,
++                revision: parser.routeRevision,
++                edge: parser.edgeIndex,
++                // The margin the SERVER achieved before the boundary. Only it
++                // can know this - the client never sees the moment it decided.
++                serverMarginMs: parser.startDelayMs,
++                // What the CLIENT had already done about that edge. Above zero
++                // means it was already being drawn when the rewrite landed,
++                // which is the hitch, measured on the side that renders it.
++                phaseNow: +forcedPhase.toFixed(4),
++                alreadyDrawing: (forcedPhase > 0),
++                to: `${parser.toX},${parser.toY}`,
++                cycleStart: parser.cycleStart,
++                // ---- MASTER/JOINER context, all read before recordEdge ----
++                masterTile: (forcedPre && forcedPre.master)
++                    ? `${Math.round(forcedPre.master.x)},${Math.round(forcedPre.master.y)}`
++                    : null,
++                joinerTile: (forcedPre && forcedPre.joinerPos)
++                    ? `${Math.round(forcedPre.joinerPos.x)},${Math.round(forcedPre.joinerPos.y)}`
++                    : null,
++                masterEdge: (forcedPre && forcedPre.masterActive)
++                    ? forcedPre.masterActive.edgeIndex
++                    : null,
++                joinerEdge: (forcedPre && forcedPre.joiner)
++                    ? forcedPre.joiner.edgeIndex
++                    : null,
++                joinerTargetBefore: (forcedPre && forcedPre.joiner)
++                    ? `${forcedPre.joiner.gx},${forcedPre.joiner.gy}`
++                    : null,
++                joinerTargetAfter: `${parser.toX},${parser.toY}`,
++                // Half a tile, the same threshold the JOIN-START sample uses,
++                // because both positions are interpolated rather than snapped.
++                sameTile: (forcedPre && forcedPre.master && forcedPre.joinerPos)
++                    ? ((Math.abs(forcedPre.joinerPos.x - forcedPre.master.x) < 0.5)
++                        && (Math.abs(forcedPre.joinerPos.y - forcedPre.master.y) < 0.5))
++                    : null,
++                // NULL ON PURPOSE. The client keeps EDGES per unit, never
++                // routes - only the server knows what route either walker is
++                // on. Answering this here would mean building route state the
++                // renderer does not have, which is a movement change, not
++                // instrumentation.
++                sameRoute: null
++            });
++        }
 +
 +        // TEMPORARY, on the same clock as the startDelayMs wire field: both
 +        // exist to explain the joiner departure hitch and both come out
@@ -515,11 +621,11 @@ index ac3907b..ec7370e 100644
 @@ -1,5 +1,6 @@
  import { IRoomObjectController, IRoomObjectUpdateMessage, IVector3D, RoomObjectVariable, Vector3d } from '../../../../api';
  import { RoomObjectLogicBase } from '../../../../room';
-+import { PixelRPMovementV2 } from '../../../../room/renderer/PixelRPMovementV2';
++import { PixelRPMovementAnomaly, PixelRPMovementV2 } from '../../../../room/renderer/PixelRPMovementV2';
  import { ObjectMoveUpdateMessage } from '../../messages';
  
  export class MovingObjectLogic extends RoomObjectLogicBase
-@@ -64,6 +65,73 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +65,84 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -547,6 +653,17 @@ index ac3907b..ec7370e 100644
 +            if(locationOffset) vector.add(locationOffset);
 +
 +            this.object.setLocation(vector);
++
++            // DIAGNOSTIC ONLY - see PixelRPMovementAnomaly. Reads the position
++            // back off the object immediately after writing it, so a gap between
++            // what V2 computed and what the object actually holds is visible.
++            // This is also the only place that legitimately knows which edge is
++            // live, which is why the packet side asks this rather than getActive.
++            const anomalyAt = this.object.getLocation();
++
++            PixelRPMovementAnomaly.instance.onRender(
++                PixelRPMovementV2.instance, this.object.id, pixelrpV2,
++                vector.x, vector.y, anomalyAt.x, anomalyAt.y, this.time);
 +
 +            // Keep native's baseline consistent so a release to native (stale,
 +            // displacement, missing 4110) continues from where V2 left off
@@ -1623,7 +1740,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,745 @@
+@@ -0,0 +1,1140 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1718,6 +1835,16 @@ index 0000000..19b0227
 +        session: number; edgeIndex: number; deadline: number; interval: number;
 +        toX: number; toY: number; loud: boolean;
 +    }>();
++    /**
++     * How far the drawn position may sit from the authoritative walk-end tile
++     * before it counts as a mismatch, in tiles.
++     *
++     * It cannot be an equality test: the drawn position is an interpolation and
++     * is almost never a whole number. 0.05 matches JOIN_DIAG_ERROR, which asks
++     * the same question of the same quantity.
++     */
++    private static readonly WALKEND_MIN_TILES = 0.05;
++
 +    private static readonly MAX_EDGES = 8;
 +
 +    /**
@@ -1792,7 +1919,9 @@ index 0000000..19b0227
 +    // was held at the authoritative from-tile instead. Read it from the
 +    // console as pixelrpMovementV2.stats.holdFrames - it should be non-zero
 +    // after any walk that joined the phase, and the jitter should be gone.
-+    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0 };
++    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0,
++        walkEndMismatches: 0, walkEndBackward: 0, walkEndForward: 0, walkEndLateral: 0,
++        walkEndFromPreview: 0, worstWalkEndTiles: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2116,6 +2245,117 @@ index 0000000..19b0227
 +    }
 +
 +    /**
++     * WALK-END INSPECTION. Report where the renderer had the avatar against
++     * where the server says the walk finished, then forget the unit exactly as
++     * before.
++     *
++     * IT CORRECTS NOTHING, DELIBERATELY. An earlier version walked the gap with
++     * a short settling edge; it was withdrawn before anyone saw it, because a
++     * mismatch is not always in the direction you would want to move. A walk
++     * stopped mid-step collapses to that step's ORIGIN server-side, so the
++     * honest correction is often BACKWARDS - the avatar retreating to where it
++     * came from. That may be authoritative and still be the wrong thing to
++     * show a player. Which direction is safe to reconcile, and how, is a
++     * decision to make from the numbers rather than in advance.
++     *
++     * SO THIS MEASURES AND CLASSIFIES. Direction comes from the sign of the dot
++     * product of the edge's own travel vector with the correction vector:
++     * positive means the avatar fell short and the server is further along,
++     * negative means it over-ran and the server is behind it, and near zero
++     * means the truth lies off the line entirely.
++     *
++     * wasPreview IS THE FIELD THAT MATTERS. Every staged edge carries a preview
++     * of the next few tiles, and the renderer draws a previewed edge the moment
++     * its cycleStart passes without waiting for a packet. If the walk stops
++     * before that edge is really walked, the avatar has been drawn onto a tile
++     * the server never moved it to. If wasPreview is true on most mismatches,
++     * that is the root cause, and correcting the symptom at walk end is the
++     * lesser fix.
++     *
++     * Behaviour is unchanged from before any of this: forget() runs on every
++     * path, exactly as it always did.
++     */
++    public walkEnd(virtualId: number, toX: number, toY: number, toZ: number, clientNowPerf: number): void
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit) return;
++
++        try
++        {
++            if(!Number.isFinite(this._clockOffset)) return;
++
++            const estServerNow = (clientNowPerf - this._clockOffset);
++
++            // THE SAME SELECTION getActive MAKES, AND DELIBERATELY NOT A CALL
++            // TO IT. getActive drops stale units, deletes the join watch and
++            // moves three counters; running it from a packet handler would
++            // change behaviour rather than read it.
++            let edge: PixelRPV2Edge = null;
++
++            for(let i = (unit.edges.length - 1); i >= 0; i--)
++            {
++                if(unit.edges[i].cycleStart <= estServerNow) { edge = unit.edges[i]; break; }
++            }
++
++            // Nothing started, so V2 drew nothing to disagree with.
++            if(!edge) return;
++
++            const raw = ((estServerNow - edge.cycleStart) / (edge.interval || 500));
++            const phase = Math.min(1, Math.max(0, raw));
++            const cx = (edge.sx + ((edge.gx - edge.sx) * phase));
++            const cy = (edge.sy + ((edge.gy - edge.sy) * phase));
++            const off = Math.hypot((cx - toX), (cy - toY));
++
++            if(off <= PixelRPMovementV2.WALKEND_MIN_TILES) return;
++
++            const dx = (edge.gx - edge.sx);
++            const dy = (edge.gy - edge.sy);
++            const dot = ((dx * (toX - cx)) + (dy * (toY - cy)));
++            const direction = ((Math.abs(dot) < 1e-6) ? 'lateral' : ((dot > 0) ? 'forward' : 'backward'));
++
++            const atOrigin = ((Math.abs(toX - edge.sx) < 1e-6) && (Math.abs(toY - edge.sy) < 1e-6));
++            const atGoal = ((Math.abs(toX - edge.gx) < 1e-6) && (Math.abs(toY - edge.gy) < 1e-6));
++
++            this.stats.walkEndMismatches++;
++
++            if(direction === 'backward') this.stats.walkEndBackward++;
++            else if(direction === 'forward') this.stats.walkEndForward++;
++            else this.stats.walkEndLateral++;
++
++            if(edge.provisional) this.stats.walkEndFromPreview++;
++
++            if(off > this.stats.worstWalkEndTiles) this.stats.worstWalkEndTiles = +off.toFixed(4);
++
++            console.warn('[MV2/WALKEND]', {
++                unit: virtualId,
++                session: unit.session, revision: unit.revision,
++                edgeIndex: edge.edgeIndex,
++                wasPreview: edge.provisional,
++                direction,
++                deltaTiles: +off.toFixed(4),
++                drawnAt: (cx.toFixed(3) + ',' + cy.toFixed(3)),
++                authoritative: (toX + ',' + toY + ',' + toZ),
++                relation: (atOrigin ? 'edgeOrigin' : (atGoal ? 'edgeDestination' : 'elsewhere')),
++                edgeFrom: (edge.sx + ',' + edge.sy), edgeTo: (edge.gx + ',' + edge.gy),
++                raw: +raw.toFixed(4), phase: +phase.toFixed(4),
++                cycleStart: edge.cycleStart, interval: (edge.interval || 500),
++                bufferCount: unit.edges.length,
++                bufferIndices: unit.edges.map(e => e.edgeIndex),
++                bufferProvisional: unit.edges.map(e => (e.provisional ? 1 : 0)),
++                msSinceLastPacket: Math.round(clientNowPerf - unit.lastPacketAtClient)
++            });
++        }
++        catch(e) { /* a diagnostic must never break the packet path */ }
++        finally
++        {
++            // UNCHANGED FROM BEFORE ANY OF THIS. Every path forgets the unit,
++            // including the ones that returned early above.
++            this._units.delete(virtualId);
++        }
++    }
++
++    /**
 +     * THE render-path query. `tickerNow` MUST be GetTickerTime()/performance.now().
 +     *
 +     * Returns the edge covering the estimated server time, with its clamped
@@ -2314,6 +2554,274 @@ index 0000000..19b0227
 + * The virtual ids are the same ones :movementtrace prints server-side, so the
 + * two halves of the comparison line up by unit id.
 + */
++/**
++ * pixelrp Movement V2: the anomaly watcher. DIAGNOSTIC ONLY - it reads state
++ * and writes console lines, and changes no movement behaviour whatsoever.
++ *
++ * TWO DETECTIONS, DELIBERATELY SEPARATE, because they answer different
++ * questions and can occur independently:
++ *
++ *   jumpDetected   an incoming packet changes the geometry of an edge the
++ *                  renderer has ALREADY STARTED. Measured on the packet side,
++ *                  in the only moment both the old and the new geometry exist.
++ *   hitchDetected  the drawn position moved more than HITCH_TILES between two
++ *                  consecutive frames. Measured on the render side, and it
++ *                  catches a discontinuity WHATEVER caused it - including
++ *                  something outside this system entirely.
++ *
++ * IT NEVER CALLS getActive. That method drops stale units, deletes the join
++ * watch and moves three counters, so calling it from a packet handler changes
++ * behaviour instead of observing it. The packet side derives phase from the
++ * stored edge's own cycleStart, exactly as getActive would; everything about
++ * which edge is live and where the avatar is drawn comes from the render path,
++ * which already holds that data legitimately once a frame.
++ *
++ * SPAM IS BOUNDED THREE WAYS: nothing prints unless a threshold is crossed,
++ * one unit may print at most every THROTTLE_MS, and a page load prints at most
++ * MAX_LOGS lines. The counters keep rising after that, so `suppressed` says
++ * whether what you are reading is the whole story.
++ */
++export class PixelRPMovementAnomaly
++{
++    private static _instance: PixelRPMovementAnomaly = null;
++
++    public static get instance(): PixelRPMovementAnomaly
++    {
++        if(!PixelRPMovementAnomaly._instance) PixelRPMovementAnomaly._instance = new PixelRPMovementAnomaly();
++
++        return PixelRPMovementAnomaly._instance;
++    }
++
++    /** Drawn movement between two frames that counts as a hitch, in tiles. */
++    private static readonly HITCH_TILES = 0.20;
++
++    /** Float noise floor. */
++    private static readonly MIN_TILES = 0.001;
++
++    /** Events kept per unit and attached to every report. */
++    private static readonly HISTORY = 20;
++
++    private static readonly THROTTLE_MS = 750;
++    private static readonly MAX_LOGS = 60;
++
++    public enabled = true;
++
++    public stats = { jumps: 0, hitches: 0, worstJumpTiles: 0, worstHitchTiles: 0, logged: 0, suppressed: 0 };
++
++    private readonly _trace = new Map<number, any[]>();
++    private readonly _render = new Map<number, any>();
++    private readonly _loggedAt = new Map<number, number>();
++
++    public history(virtualId: number): any[] { return (this._trace.get(virtualId) || []).slice(); }
++
++    public reset(): void
++    {
++        this._trace.clear();
++        this._render.clear();
++        this._loggedAt.clear();
++        this.stats = { jumps: 0, hitches: 0, worstJumpTiles: 0, worstHitchTiles: 0, logged: 0, suppressed: 0 };
++    }
++
++    private note(virtualId: number, entry: any): void
++    {
++        let list = this._trace.get(virtualId);
++
++        if(!list) { list = []; this._trace.set(virtualId, list); }
++
++        list.push(entry);
++
++        if(list.length > PixelRPMovementAnomaly.HISTORY) list.splice(0, (list.length - PixelRPMovementAnomaly.HISTORY));
++    }
++
++    private mayLog(virtualId: number, now: number): boolean
++    {
++        if(this.stats.logged >= PixelRPMovementAnomaly.MAX_LOGS) { this.stats.suppressed++; return false; }
++
++        const last = this._loggedAt.get(virtualId);
++
++        if((last !== undefined) && ((now - last) < PixelRPMovementAnomaly.THROTTLE_MS)) { this.stats.suppressed++; return false; }
++
++        this._loggedAt.set(virtualId, now);
++        this.stats.logged++;
++
++        return true;
++    }
++
++    private unitOf(store: any, virtualId: number): any
++    {
++        try { return store._units.get(virtualId) || null; } catch(e) { return null; }
++    }
++
++    private bufferOf(unit: any): any
++    {
++        if(!unit) return null;
++
++        return {
++            count: unit.edges.length,
++            indices: unit.edges.map(e => e.edgeIndex),
++            destinations: unit.edges.map(e => (e.gx + ',' + e.gy)),
++            provisional: unit.edges.map(e => (e.provisional ? 1 : 0)),
++            unitSession: unit.session,
++            unitRevision: unit.revision
++        };
++    }
++
++    /**
++     * Called from RoomMessageHandler BEFORE recordEdge, which is the only
++     * moment the buffer still holds the geometry about to be replaced.
++     */
++    public onPacket(
++        store: any, virtualId: number, session: number, revision: number, edgeIndex: number,
++        sx: number, sy: number, gx: number, gy: number,
++        cycleStart: number, interval: number, clientNow: number, lookaheadCount: number): void
++    {
++        if(!this.enabled) return;
++
++        try
++        {
++            const unit = this.unitOf(store, virtualId);
++            const step = ((interval > 0) ? interval : 500);
++            const correction = (!!unit && (session === unit.session) && (revision > unit.revision));
++            const msSincePacket = unit ? Math.round(clientNow - unit.lastPacketAtClient) : -1;
++
++            this.note(virtualId, {
++                t: Math.round(clientNow), kind: 'packet', session, revision, edge: edgeIndex,
++                from: (sx + ',' + sy), to: (gx + ',' + gy), cycleStart, interval: step,
++                lookahead: lookaheadCount, correction
++            });
++
++            if(!unit || (session !== unit.session)) return;
++
++            const prior = unit.edges.find(e => (e.edgeIndex === edgeIndex));
++
++            if(!prior) return;
++            if((prior.gx === gx) && (prior.gy === gy) && (prior.sx === sx) && (prior.sy === sy)) return;
++
++            const shown = this._render.get(virtualId);
++            const at = (((clientNow - store.clockOffset) - prior.cycleStart) / (prior.interval || 500));
++            const drawing = (!!shown && (shown.edgeIndex === edgeIndex) && (shown.raw > 0) && (shown.raw < 1));
++
++            if(!drawing && !((at > 0) && (at < 1))) return;
++
++            const phase = (drawing ? shown.phase : Math.min(1, Math.max(0, at)));
++            const bx = (prior.sx + ((prior.gx - prior.sx) * phase));
++            const by = (prior.sy + ((prior.gy - prior.sy) * phase));
++            const nx = (sx + ((gx - sx) * phase));
++            const ny = (sy + ((gy - sy) * phase));
++            const shift = Math.hypot((nx - bx), (ny - by));
++
++            if(shift <= PixelRPMovementAnomaly.MIN_TILES) return;
++
++            this.stats.jumps++;
++
++            if(shift > this.stats.worstJumpTiles) this.stats.worstJumpTiles = +shift.toFixed(4);
++
++            this.note(virtualId, { t: Math.round(clientNow), kind: 'jump', edge: edgeIndex, deltaTiles: +shift.toFixed(4) });
++
++            if(!this.mayLog(virtualId, clientNow)) return;
++
++            console.warn('[MV2/ANOMALY]', {
++                jumpDetected: true,
++                hitchDetected: (shift > PixelRPMovementAnomaly.HITCH_TILES),
++                unit: virtualId, session, revision, edgeIndex,
++                phase: +phase.toFixed(4),
++                oldDestination: (prior.gx + ',' + prior.gy), newDestination: (gx + ',' + gy),
++                oldFrom: (prior.sx + ',' + prior.sy), newFrom: (sx + ',' + sy),
++                activeEdgeBefore: (shown ? shown.edgeIndex : null),
++                activeEdgeAfter: edgeIndex,
++                activeEdgeChanged: (!!shown && (shown.edgeIndex !== edgeIndex)),
++                activeFromBefore: (shown ? (shown.sx + ',' + shown.sy) : null),
++                activeToBefore: (shown ? (shown.gx + ',' + shown.gy) : null),
++                rawBefore: (shown ? +shown.raw.toFixed(4) : null),
++                rawAfter: +at.toFixed(4),
++                phaseBefore: (shown ? +shown.phase.toFixed(4) : null),
++                phaseAfter: +phase.toFixed(4),
++                v2PositionBefore: (shown ? (shown.ix.toFixed(3) + ',' + shown.iy.toFixed(3)) : null),
++                v2PositionProjected: (nx.toFixed(3) + ',' + ny.toFixed(3)),
++                objectPositionBefore: (shown ? (shown.ax.toFixed(3) + ',' + shown.ay.toFixed(3)) : null),
++                deltaTiles: +shift.toFixed(4),
++                cycleStart: prior.cycleStart, interval: (prior.interval || 500),
++                buffer: this.bufferOf(unit),
++                msSinceLastPacket: msSincePacket,
++                correction,
++                history: this.history(virtualId)
++            });
++        }
++        catch(e) { /* a diagnostic must never break the packet path */ }
++    }
++
++    /**
++     * Called from MovingObjectLogic AFTER setLocation, with the position read
++     * back off the object - so a mismatch between what V2 computed and what the
++     * object actually holds is visible here and nowhere else.
++     */
++    public onRender(
++        store: any, virtualId: number, active: any,
++        ix: number, iy: number, ax: number, ay: number, time: number): void
++    {
++        if(!this.enabled || !active) return;
++
++        try
++        {
++            const unit = this.unitOf(store, virtualId);
++            const live = unit ? unit.edges.find(e => (e.edgeIndex === active.edgeIndex)) : null;
++            const step = ((live && live.interval) ? live.interval : 500);
++            const raw = ((active.estServerNow - active.cycleStart) / step);
++            const prev = this._render.get(virtualId);
++
++            this._render.set(virtualId, {
++                edgeIndex: active.edgeIndex,
++                sx: active.sx, sy: active.sy, gx: active.gx, gy: active.gy,
++                phase: active.phase, raw,
++                cycleStart: active.cycleStart, interval: step,
++                ix, iy, ax, ay, t: time
++            });
++
++            if(!prev) return;
++
++            const moved = Math.hypot((ix - prev.ix), (iy - prev.iy));
++
++            if(moved <= PixelRPMovementAnomaly.HITCH_TILES) return;
++
++            this.stats.hitches++;
++
++            if(moved > this.stats.worstHitchTiles) this.stats.worstHitchTiles = +moved.toFixed(4);
++
++            this.note(virtualId, { t: Math.round(time), kind: 'hitch', edge: active.edgeIndex, deltaTiles: +moved.toFixed(4) });
++
++            if(!this.mayLog(virtualId, time)) return;
++
++            console.warn('[MV2/ANOMALY]', {
++                hitchDetected: true,
++                jumpDetected: false,
++                unit: virtualId,
++                session: active.session, revision: active.revision, edgeIndex: active.edgeIndex,
++                phase: +active.phase.toFixed(4),
++                oldDestination: (prev.gx + ',' + prev.gy), newDestination: (active.gx + ',' + active.gy),
++                oldFrom: (prev.sx + ',' + prev.sy), newFrom: (active.sx + ',' + active.sy),
++                activeEdgeBefore: prev.edgeIndex,
++                activeEdgeAfter: active.edgeIndex,
++                activeEdgeChanged: (prev.edgeIndex !== active.edgeIndex),
++                activeFromBefore: (prev.sx + ',' + prev.sy), activeToBefore: (prev.gx + ',' + prev.gy),
++                rawBefore: +prev.raw.toFixed(4), rawAfter: +raw.toFixed(4),
++                phaseBefore: +prev.phase.toFixed(4), phaseAfter: +active.phase.toFixed(4),
++                v2PositionBefore: (prev.ix.toFixed(3) + ',' + prev.iy.toFixed(3)),
++                v2PositionAfter: (ix.toFixed(3) + ',' + iy.toFixed(3)),
++                objectPositionBefore: (prev.ax.toFixed(3) + ',' + prev.ay.toFixed(3)),
++                objectPositionAfter: (ax.toFixed(3) + ',' + ay.toFixed(3)),
++                deltaTiles: +moved.toFixed(4),
++                frameGapMs: Math.round(time - prev.t),
++                cycleStart: active.cycleStart, interval: step,
++                buffer: this.bufferOf(unit),
++                msSinceLastPacket: (unit ? Math.round(time - unit.lastPacketAtClient) : -1),
++                correction: false,
++                history: this.history(virtualId)
++            });
++        }
++        catch(e) { /* a diagnostic must never break the render path */ }
++    }
++}
++
 +if(typeof window !== 'undefined')
 +{
 +    const install = (target: any) =>
@@ -2344,6 +2852,10 @@ index 0000000..19b0227
 +        // even arriving?" without tracing anything, and `.trackedUnits` gives
 +        // the exact virtual ids to pass to pixelrpMovementDebug().
 +        target.pixelrpMovementV2 = PixelRPMovementV2.instance;
++
++        // The anomaly watcher: always on, and its counters survive a cleared
++        // console. `.history(id)` replays the last events for one unit.
++        target.pixelrpMovementAnomaly = PixelRPMovementAnomaly.instance;
 +    };
 +
 +    install(window);
