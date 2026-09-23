@@ -1,5 +1,5 @@
-import { IPartColor } from '@nitrots/nitro-renderer';
-import { GetAvatarPalette, GetAvatarRenderManager, GetAvatarSetType, GetClubMemberLevel, GetConfiguration } from '../nitro';
+import { IPartColor, SecurityLevel } from '@nitrots/nitro-renderer';
+import { GetAvatarPalette, GetAvatarRenderManager, GetAvatarSetType, GetClubMemberLevel, GetConfiguration, GetSessionDataManager } from '../nitro';
 import { AvatarEditorGridColorItem } from './AvatarEditorGridColorItem';
 import { AvatarEditorGridPartItem } from './AvatarEditorGridPartItem';
 import { CategoryBaseModel } from './CategoryBaseModel';
@@ -126,6 +126,12 @@ export class AvatarEditorUtilities
         }
 
         const usesColors = (name !== FigureData.FACE);
+        // pixelrp: staff get every face, owned or not and selectable or not.
+        // Everyone else keeps exactly the selection they had. Rank 5 is the
+        // same line the server draws (Habbo.IsStaff), which also lets a staff
+        // face through ProcessFigure - one without the other would show a face
+        // the save then takes away.
+        const allFaces = ((name === FigureData.FACE) && (GetSessionDataManager().securityLevel >= SecurityLevel.MODERATOR));
         const partSets = setType.partSets;
         const totalPartSets = partSets.length;
 
@@ -150,11 +156,11 @@ export class AvatarEditorUtilities
             // pixelrp: HC/VIP no longer gates editor clothing - every
             // selectable set shows for everyone (sellable sets still need
             // ownership via FIGURE_SET_IDS).
-            if(partSet.isSelectable && isValidGender)
+            if((partSet.isSelectable || allFaces) && isValidGender)
             {
                 let isValid = true;
 
-                if(partSet.isSellable) isValid = this.hasFigureSetId(partSet.id);
+                if(partSet.isSellable && !allFaces) isValid = this.hasFigureSetId(partSet.id);
 
                 if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, false));
             }
