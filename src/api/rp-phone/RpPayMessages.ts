@@ -215,6 +215,15 @@ export class RpPaySendComposer extends RpPayComposerBase
     }
 }
 
+// What a payment says where a message would - the conversation list and the
+// phone's banner - from the side of whoever is reading it.
+export const DescribeRpPay = (record: PayRecord, viewerId: number): string =>
+{
+    const amount = `$${ Math.max(0, (record?.amount || 0)).toLocaleString('en-US') }`;
+
+    return ((record?.senderId === viewerId) ? `You sent ${ amount }` : `Sent you ${ amount }`);
+}
+
 // ---- the store --------------------------------------------------------------
 //
 // Keyed by the OTHER person, because a receipt can arrive while you are

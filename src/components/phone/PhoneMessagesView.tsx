@@ -36,6 +36,9 @@ export const ThreadPreview = (thread: MessengerThread): string =>
 {
     if(!thread) return '';
 
+    // A payment newer than the last message says so in its place.
+    if(thread.activity) return thread.activity;
+
     for(let i = (thread.groups.length - 1); i >= 0; i--)
     {
         const group = thread.groups[i];

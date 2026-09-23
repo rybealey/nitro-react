@@ -2,6 +2,7 @@ import { NewConsoleMessageEvent, RoomInviteErrorEvent, RoomInviteEvent, RpMessen
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBetween } from 'use-between';
 import { CloneObject, GetSessionDataManager, LocalizeText, MessengerIconState, MessengerThread, MessengerThreadChat, NotificationAlertType, PlaySound, SendMessageComposer, SoundNames } from '../../api';
+import { DescribeRpPay, RpPayReceiptEvent } from '../../api/rp-phone/RpPayMessages';
 import { useMessageEvent } from '../events';
 import { useNotification } from '../notification';
 import { useFriends } from './useFriends';
@@ -181,6 +182,52 @@ const useMessengerState = () =>
         setFriendTyping(parser.senderId, false);
 
         sendMessage(thread, parser.senderId, parser.messageText, parser.secondsSinceSent, parser.extraData);
+    });
+
+    // pixelrp Pixel Cash: money arriving in a conversation is a new message in
+    // it. Unread for the person paid, unless they are reading it right now
+    // (then it is read, and the payer's phone is told so); either way the
+    // thread moves up and its preview says what happened. The sender's own
+    // copy moves up too but is never unread - nobody is notified of their
+    // own payment. Offline payments come through here as well, replayed at
+    // messenger init.
+    useMessageEvent<RpPayReceiptEvent>(RpPayReceiptEvent, event =>
+    {
+        const record = event.getParser()?.record;
+
+        if(!record || (record.id <= 0)) return;
+
+        const myId = GetSessionDataManager().userId;
+        const incoming = (record.recipientId === myId);
+        const thread = getMessageThread(incoming ? record.senderId : record.recipientId);
+
+        if(!thread) return;
+
+        const reading = (activeThreadId === thread.threadId);
+
+        if(incoming)
+        {
+            setFriendTyping(record.senderId, false);
+
+            if(reading) sendMarkRead(thread);
+            else PlaySound(SoundNames.MESSENGER_MESSAGE_RECEIVED);
+        }
+
+        setMessageThreads(prevValue =>
+        {
+            const index = prevValue.findIndex(entry => (entry.threadId === thread.threadId));
+
+            if(index === -1) return prevValue;
+
+            const newValue = [ ...prevValue ];
+            const updated = CloneObject(newValue[index]);
+
+            updated.addActivity(DescribeRpPay(record, myId), (incoming && !reading));
+
+            newValue[index] = updated;
+
+            return newValue;
+        });
     });
 
     useMessageEvent<RoomInviteEvent>(RoomInviteEvent, event =>

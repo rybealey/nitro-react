@@ -14,6 +14,7 @@ export class MessengerThread
     private _groups: MessengerThreadChatGroup[];
     private _lastUpdated: Date;
     private _unreadCount: number;
+    private _activity: string;
 
     constructor(participant: MessengerFriend)
     {
@@ -22,6 +23,7 @@ export class MessengerThread
         this._groups = [];
         this._lastUpdated = new Date();
         this._unreadCount = 0;
+        this._activity = null;
     }
 
     public addMessage(senderId: number, message: string, secondsSinceSent: number = 0, extraData: string = null, type: number = 0): MessengerThreadChat
@@ -40,6 +42,8 @@ export class MessengerThread
         group.addChat(chat);
 
         this._lastUpdated = new Date();
+
+        this._activity = null;
         
         this._unreadCount++;
 
@@ -57,6 +61,21 @@ export class MessengerThread
         this._groups.push(group);
 
         return group;
+    }
+
+    // pixelrp: something that happened in the conversation without being a
+    // chat line - a Pixel Cash payment. It moves the thread up and, for the
+    // person on the receiving end, counts as unread exactly as a message
+    // does. The text stands in for the preview until the next real message
+    // replaces it, which is why it is kept on the thread rather than worked
+    // out from timestamps: a payment's time is the server's clock and a
+    // chat's is this one's, and the two need not agree.
+    public addActivity(preview: string, unread: boolean): void
+    {
+        this._activity = preview;
+        this._lastUpdated = new Date();
+
+        if(unread) this._unreadCount++;
     }
 
     public setRead(): void
@@ -82,6 +101,11 @@ export class MessengerThread
     public get lastUpdated(): Date
     {
         return this._lastUpdated;
+    }
+
+    public get activity(): string
+    {
+        return this._activity;
     }
 
     public get unreadCount(): number
