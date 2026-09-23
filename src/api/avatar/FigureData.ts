@@ -23,6 +23,8 @@ export class FigureData
     public static TROUSERS: string = 'lg';
     public static SHOES: string = 'sh';
     public static TROUSER_ACCESSORIES: string = 'wa';
+    // pixelrp: pets, drawn since ExtendAvatarStructure taught the renderer the type.
+    public static PET: string = 'pt';
     public static SET_TYPES = [ FigureData.FACE, FigureData.HAIR, FigureData.HAT, FigureData.HEAD_ACCESSORIES, FigureData.EYE_ACCESSORIES, FigureData.FACE_ACCESSORIES, FigureData.JACKET, FigureData.SHIRT, FigureData.CHEST_ACCESSORIES, FigureData.CHEST_PRINTS, FigureData.TROUSERS, FigureData.SHOES, FigureData.TROUSERS ];
 
     private _data: Map<string, number>;

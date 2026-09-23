@@ -1,6 +1,7 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
+import { ExtendAvatarStructure } from './api/avatar/ExtendAvatarStructure';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
@@ -55,6 +56,10 @@ export const App: FC<{}> = props =>
     {
         //@ts-ignore
         if(!NitroConfig) throw new Error('NitroConfig is not defined!');
+
+        // Before bootstrap: the renderer reads its avatar tables once, at
+        // init, and misc items and pets have to be in them by then.
+        ExtendAvatarStructure();
 
         Nitro.bootstrap();
     }
