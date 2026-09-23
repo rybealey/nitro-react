@@ -1,0 +1,176 @@
+// PixelRP :offer / :sell — the card above the chat bar.
+//
+// Every colour here is a --prp-chrome-* token, so the card wears whatever
+// chrome the person looking at it picked in Settings. Buyer and seller can
+// have chosen different ones and neither is told about the other's; the only
+// literals are the two semantic colours the HUD bar already owns (the accept
+// green and the expiring red), which mean the same thing on every chrome.
+
+.rp-offer {
+    position: absolute;
+    left: 50%;
+    // Anchored by its BOTTOM to just above the chat bar's top edge. The bar is
+    // 44px tall and centred on this container, so 50% is its middle, +22px is
+    // its top, and +10px is the gap. Anchoring the bottom rather than the top
+    // means a card that grows a line pushes upward and the gap never moves.
+    bottom: calc(50% + 32px);
+    transform: translateX(-50%);
+    width: 564px;
+    box-sizing: border-box;
+    z-index: 26;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--prp-chrome-95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+    color: var(--prp-text, #f2eee9);
+    animation: rp-offer-in 0.2s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+
+    &.is-leaving {
+        animation: rp-offer-out 0.18s ease both;
+        pointer-events: none;
+    }
+
+    @include media-breakpoint-down(sm) {
+        width: calc(100% - 24px);
+        max-width: 360px;
+    }
+}
+
+.rp-offer-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px 10px;
+}
+
+.rp-offer-mark {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--prp-chrome-hi);
+    border: 1px solid rgba(0, 0, 0, 0.42);
+    color: var(--hud-orange, #e87332);
+}
+
+.rp-offer-text {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.rp-offer-kicker {
+    font-family: 'Silkscreen', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.9px;
+    color: var(--hud-orange, #e87332);
+
+    &.is-urgent { color: var(--hud-danger, #e03131); }
+}
+
+.rp-offer-queued {
+    margin-left: 5px;
+    opacity: 0.75;
+}
+
+.rp-offer-line {
+    margin-top: 4px;
+    font-size: 13.5px;
+    line-height: 1.35;
+    // One row, never two: the card is as wide as the chat bar and a name plus
+    // a quantity has to fit beside two buttons without pushing them anywhere.
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    strong { font-weight: 700; }
+}
+
+.rp-offer-price {
+    margin-top: 3px;
+    font-size: 12px;
+    opacity: 0.72;
+
+    strong { font-weight: 700; opacity: 1; }
+}
+
+// Replaces the price rather than sitting under it: the reason you cannot press
+// the tick matters more than what it would have cost.
+.rp-offer-blocked {
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hud-warning, #f5c542);
+}
+
+.rp-offer-actions {
+    flex: none;
+    display: flex;
+    gap: 6px;
+}
+
+.rp-offer-accept,
+.rp-offer-decline {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+
+    &:active { transform: scale(0.93); }
+
+    &:disabled {
+        opacity: 0.32;
+        cursor: default;
+        transform: none;
+    }
+}
+
+.rp-offer-accept {
+    background: #2f9e4a;
+    color: #ffffff;
+
+    &:hover:not(:disabled) { background: #37b656; }
+}
+
+.rp-offer-decline {
+    background: var(--prp-chrome-hover);
+    color: var(--prp-text, #f2eee9);
+
+    &:hover:not(:disabled) { background: var(--prp-chrome-hi); }
+}
+
+.rp-offer-rail {
+    height: 3px;
+    background: rgba(0, 0, 0, 0.42);
+}
+
+.rp-offer-rail-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--hud-orange, #e87332), var(--hud-warning, #f5c542));
+    // Matches the one-second tick that drives it, so the bar slides rather
+    // than stepping.
+    transition: width 1s linear;
+
+    &.is-urgent { background: var(--hud-danger, #e03131); }
+}
+
+// Up from the bar it belongs to, not down from nowhere.
+@keyframes rp-offer-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes rp-offer-out {
+    from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    to { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.98); }
+}
