@@ -1,5 +1,5 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
@@ -111,21 +111,27 @@ const HudAvatar: FC<{ figure: string, gender?: string, variant: 'self' | 'target
 // not a standing order to re-target them wherever you next meet.
 const REACQUIRE_WINDOW_MS = 8000;
 
+// MODULE SCOPE, NOT A REF, and that is the whole point of it.
+//
+// RoomView renders `{ roomSession && <RoomWidgetsView /> }`, so leaving a room
+// UNMOUNTS this component and every piece of React state in it. A ref cannot
+// carry anything across a room change because there is nothing alive to hold
+// it - which is why keeping the target in one did not work. This lives outside
+// React and outlives the teardown; the new mount reads it back.
+//
+// Not persisted anywhere: a target is a thing about the session you are in, and
+// coming back tomorrow to find somebody still in your sights would be wrong.
+let rememberedTarget: { webID: number, locked: boolean } = null;
+
+// When the remembered target is allowed to re-acquire itself. Set on mount,
+// which IS the room change here, and closed as soon as it is used.
+let reacquireUntil = 0;
+
 export const PlayerHudWidgetView: FC<{}> = () =>
 {
     const [ ownFigure, setOwnFigure ] = useState<string>(() => GetSessionDataManager().figure);
     const [ target, setTarget ] = useState<AvatarInfoUser>(null);
     const [ locked, setLocked ] = useState<boolean>(false);
-    // WHO is targeted, not where they are standing. roomIndex is room-local and
-    // means nothing the moment you walk through a door, so a target could never
-    // survive one; webID is the player. Kept in a ref rather than state because
-    // it must outlive the room teardown that clears `target`.
-    const lastTargetRef = useRef<{ webID: number, locked: boolean }>(null);
-    // A remembered target may only re-acquire itself inside this window, which a
-    // ROOM CHANGE opens. Without it, a target who walked out on you would come
-    // back the moment they walked in again, which is a different rule than the
-    // one this app has always had.
-    const reacquireUntilRef = useRef<number>(0);
     const [ , setStatsVersion ] = useState<number>(0);
     const { roomSession } = useRoom();
 
@@ -180,26 +186,47 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     // Room changed: roomIndexes reset, stale stats must not bleed across rooms.
     //
-    // It is also the one moment a remembered target is allowed to come back.
-    // The room may already hold them (you followed them in, or they were here
-    // first) or they may be a beat behind you through the same teleport, so
-    // both are covered: a sweep now, and the USER_ADDED handler below for
-    // however long the window stays open.
+    // Because the widget tree unmounts on leave, this effect running IS the
+    // room change - there is no previous instance to have kept anything. It is
+    // where a remembered target gets its one chance to come back.
+    //
+    // POLLED, not assumed. The room's units arrive asynchronously and can land
+    // before this mount or well after it, so neither "look once now" nor "wait
+    // to be told" is sufficient by itself: whichever you pick alone, the other
+    // ordering is the one that silently does nothing. The USER_ADDED handler
+    // below is still there because it reacts instantly; this is the net under
+    // it.
     useEffect(() =>
     {
         rpStatsStore.clear();
 
-        if(!lastTargetRef.current) return;
+        if(!rememberedTarget) return;
 
-        reacquireUntilRef.current = (Date.now() + REACQUIRE_WINDOW_MS);
+        reacquireUntil = (Date.now() + REACQUIRE_WINDOW_MS);
 
-        const info = findRoomUserById(lastTargetRef.current.webID);
+        const attempt = (): boolean =>
+        {
+            if(!rememberedTarget || (Date.now() > reacquireUntil)) return true;
 
-        if(!info) return;
+            const info = findRoomUserById(rememberedTarget.webID);
 
-        setTarget(info);
-        setLocked(lastTargetRef.current.locked);
-        reacquireUntilRef.current = 0;
+            if(!info) return false;
+
+            setTarget(info);
+            setLocked(rememberedTarget.locked);
+            reacquireUntil = 0;
+
+            return true;
+        };
+
+        if(attempt()) return;
+
+        const timer = window.setInterval(() =>
+        {
+            if(attempt()) window.clearInterval(timer);
+        }, 400);
+
+        return () => window.clearInterval(timer);
     }, [ roomSession, findRoomUserById ]);
 
     // Keep the player's own portrait current when they change clothes.
@@ -242,7 +269,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // torn down, and that must not be mistaken for letting somebody go.
     useEffect(() =>
     {
-        if(target) lastTargetRef.current = { webID: target.webID, locked };
+        if(target) rememberedTarget = { webID: target.webID, locked };
     }, [ target, locked ]);
 
     // The other half of the room change: somebody who lands after you do. The
@@ -250,10 +277,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // the captor and arrives into a room you are already standing in.
     useUiEvent<RoomWidgetUpdateRoomObjectEvent>(RoomWidgetUpdateRoomObjectEvent.USER_ADDED, event =>
     {
-        const remembered = lastTargetRef.current;
+        const remembered = rememberedTarget;
 
         if(!remembered || target) return;
-        if(Date.now() > reacquireUntilRef.current) return;
+        if(Date.now() > reacquireUntil) return;
         if(event.category !== RoomObjectCategory.UNIT) return;
 
         const userData = roomSession?.userDataManager?.getUserDataByIndex(event.id);
@@ -266,15 +293,15 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
         setTarget(info);
         setLocked(remembered.locked);
-        reacquireUntilRef.current = 0;
+        reacquireUntil = 0;
     });
 
     const closeTarget = () =>
     {
         // The one deliberate clear. Everything else is the room moving around
         // underneath a target that is still wanted.
-        lastTargetRef.current = null;
-        reacquireUntilRef.current = 0;
+        rememberedTarget = null;
+        reacquireUntil = 0;
         setTarget(null);
         setLocked(false);
     }
