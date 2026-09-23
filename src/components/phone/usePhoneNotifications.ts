@@ -7,6 +7,7 @@ import { HotelDate } from '../../api/prefs/HotelTime';
 import { FormatClock } from '../../api/prefs/UnitsStore';
 import { CalendarEvent, RpCalendarEvent } from '../../api/rp-phone/RpCalendarMessages';
 import { NewsPost, RpNewsEvent } from '../../api/rp-phone/RpNewsMessages';
+import { DescribeRpPay, RpPayReceiptEvent } from '../../api/rp-phone/RpPayMessages';
 import { NotifyApp, NotifyKind, NotifyPush, RpNotificationEvent } from '../../api/rp-phone/RpNotificationMessages';
 import { useFriends, useMessageEvent, useMessenger } from '../../hooks';
 import { ParsePhotoMessage, PhoneNotify, useAirplane, usePhoneBadges, usePhonePrefs } from './usePhone';
@@ -435,6 +436,24 @@ const usePhoneNotificationsState = () =>
 
         load();
         add({ app: 'messages', kind: 'message', subject: (photo ? 'Sent you a photo' : parser.messageText), actor: name, targetId: parser.senderId, extra: 0, transient: false });
+    });
+
+    // Money is a message too (see useMessenger), and gets the same banner and
+    // row - only for the person paid, never for the payer's own receipt.
+    // The name comes from the friend list, not getMessageThread: the
+    // messenger is opening the thread for this same packet, and asking it to
+    // here as well could open it twice.
+    useMessageEvent<RpPayReceiptEvent>(RpPayReceiptEvent, event =>
+    {
+        const record = event.getParser()?.record;
+        const userId = GetSessionDataManager().userId;
+
+        if(!record || (record.id <= 0) || (record.recipientId !== userId)) return;
+
+        const friend = (getFriend ? getFriend(record.senderId) : null);
+
+        load();
+        add({ app: 'messages', kind: 'message', subject: DescribeRpPay(record, userId), actor: (friend?.name || 'Someone'), targetId: record.senderId, extra: 0, transient: false });
     });
 
     // Friend requests: the list is already live, so a new id in it is the
