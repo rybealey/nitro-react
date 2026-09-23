@@ -12,6 +12,7 @@ import { RegisterRpRoomRightsMessages } from './api/rp-rights/RpRoomRightsMessag
 import { RegisterRpCatalogSearchMessages } from './api/rp-catalog/RpCatalogSearchMessages';
 import { RegisterRpTellerMessages } from './api/rp-teller/RpTellerMessages';
 import { RegisterRpBankMessages } from './api/rp-phone/RpBankMessages';
+import { RegisterRpPayMessages } from './api/rp-phone/RpPayMessages';
 import { CHARACTER_RELOAD, RegisterRpCharacterMessages, SubscribeRpCharacterResult } from './api/rp-phone/RpCharacterMessages';
 import { RegisterRpPrivacyMessages } from './api/rp-phone/RpPrivacyMessages';
 import { RegisterRpWantedMessages } from './api/rp-wanted/RpWantedMessages';
@@ -142,6 +143,7 @@ export const App: FC<{}> = props =>
                 RegisterRpRegionMessages();
                 RegisterRpCharacterMessages();
                 RegisterRpBankMessages();
+                RegisterRpPayMessages();
                 RegisterRpRoomRightsMessages();
                 RegisterRpTellerMessages();
                 RegisterRpCatalogSearchMessages();

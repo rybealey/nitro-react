@@ -1,4 +1,4 @@
-import { FC, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, KeyboardEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { CreateLinkEvent, GetGroupChatData, GetSessionDataManager, GetUserProfile, MessengerThread, MessengerThreadChat, ReportType } from '../../api';
 import { MESSENGER_RECEIPT_NOT_DELIVERED, MESSENGER_RECEIPT_READ, useFriends, useHelp, useMessenger } from '../../hooks';
 import { HotelDate } from '../../api/prefs/HotelTime';
@@ -6,13 +6,19 @@ import { PhoneAvatar } from './PhoneAvatar';
 import { JoinJam, ParseJamInvite } from '../music-player/JamStore';
 import { PhoneIcon } from './PhoneIcon';
 import { MakePhotoMessage, ParsePhotoMessage, usePhonePhotos, usePhonePrefs } from './usePhone';
+import { GetRpPayRecords, GetRpPayState, PAY_OK, PAY_UNAVAILABLE, PayRecord, SendRpPay, SendRpPayOpen, SubscribeRpPay, SubscribeRpPayResult } from '../../api/rp-phone/RpPayMessages';
 
 // One conversation: chat bubbles + composer. The header's speaker icon
 // mutes the conversation (drops it from badge counts); the overflow menu
 // carries the classic messenger actions (follow, profile, report, delete).
-// The composer's + button opens the attach menu — Share Photo for now —
-// which multi-selects from the player's library and sends each shot as a
-// photo bubble.
+// The composer's + button opens the attach menu — Share Photo, and Send
+// Money when both people bank with Mercury — which multi-selects from the
+// player's library and sends each shot as a photo bubble.
+//
+// PIXEL CASH IS NOT A MESSAGE. A payment card is drawn from the server's own
+// record of the payment, never from text in the thread, because a card that
+// can be typed is a card that can be faked. So the cards are merged into the
+// conversation here by time rather than living inside it.
 
 // Enough for a good dump, few enough to stay clear of the messenger's
 // server-side flood counter.
@@ -44,6 +50,15 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     const toastTimer = useRef<number>(0);
     const typingSentRef = useRef(false);
     const typingStopTimer = useRef<number>(0);
+    // Pixel Cash. `paySheet` is null when closed, 'amount' or 'confirm' when
+    // open; `payBusy` is the window between the tap and the server's answer,
+    // which is what stops a double tap paying twice.
+    const [ paySheet, setPaySheet ] = useState<'amount' | 'confirm'>(null);
+    const [ payAmount, setPayAmount ] = useState('');
+    const [ payNote, setPayNote ] = useState('');
+    const [ payBusy, setPayBusy ] = useState(false);
+    const [ payError, setPayError ] = useState<string>(null);
+    const [ payTick, setPayTick ] = useState(0);
 
     const participant = (thread ? thread.participant : null);
     const isGroup = (participant && (participant.id <= 0));
@@ -52,6 +67,88 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
     const muted = ((participant && !isGroup) ? (mutedIds.indexOf(participant.id) >= 0) : false);
     const ownUserId = GetSessionDataManager().userId;
     const isTyping = (!!participant && !isGroup && (typingFriendIds.indexOf(participant.id) >= 0));
+
+    // ---- Pixel Cash ------------------------------------------------------
+
+    // Whether money is possible in THIS conversation is a question only the
+    // server can answer: the client knows whether it banks anywhere and
+    // nothing at all about whether the other person does.
+    useEffect(() =>
+    {
+        if(!participant || isGroup || (participant.id <= 0)) return;
+
+        SendRpPayOpen(participant.id);
+    }, [ participant, isGroup ]);
+
+    useEffect(() => SubscribeRpPay(() => setPayTick(value => (value + 1))), []);
+
+    useEffect(() => SubscribeRpPayResult((ok, message) =>
+    {
+        setPayBusy(false);
+
+        if(!ok)
+        {
+            // Stay on the sheet with the amount kept: being thrown out and
+            // made to type it again is the worst way to be told no.
+            setPayError(message);
+            setPaySheet('amount');
+
+            return;
+        }
+
+        setPaySheet(null);
+        setPayAmount('');
+        setPayNote('');
+        setPayError(null);
+    }), []);
+
+    const payState = useMemo(() =>
+        ((participant && !isGroup) ? GetRpPayState(participant.id) : null),
+    [ participant, isGroup, payTick ]);
+
+    const payRecords = useMemo(() =>
+        ((participant && !isGroup) ? GetRpPayRecords(participant.id) : []),
+    [ participant, isGroup, payTick ]);
+
+    const payOffered = (!!payState && (payState.state !== PAY_UNAVAILABLE));
+    const payReady = (!!payState && (payState.state === PAY_OK));
+
+    const payValue = useMemo(() =>
+    {
+        const digits = payAmount.replace(/[^0-9]/g, '');
+
+        return (digits.length ? parseInt(digits, 10) : 0);
+    }, [ payAmount ]);
+
+    // Clamped as they type rather than refused after the fact.
+    const payCeiling = Math.min((payState?.max ?? 10000), (payState?.remainingToday ?? 0));
+    const payValid = (payReady && (payValue >= (payState?.min ?? 10)) && (payValue > 0) && (payValue <= payCeiling));
+
+    const openPaySheet = () =>
+    {
+        setAttachOpen(false);
+
+        if(!payReady)
+        {
+            CreateLinkEvent('phone/mercury');
+
+            return;
+        }
+
+        setPayError(null);
+        setPayAmount('');
+        setPayNote('');
+        setPaySheet('amount');
+    }
+
+    const confirmPay = () =>
+    {
+        if(!payValid || payBusy || !participant) return;
+
+        setPayBusy(true);
+        setPayError(null);
+        SendRpPay(participant.id, payValue, payNote.trim());
+    }
 
     const chatCount = useMemo(() =>
     {
@@ -280,80 +377,133 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
             <div ref={ messagesBox } className="phone-app-scroll phone-thread-messages">
                 { firstDate &&
                     <div className="phone-thread-daystamp">{ `${ HotelDate(firstDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase() } ${ HotelDate(firstDate).getHours().toString().padStart(2, '0') }:${ HotelDate(firstDate).getMinutes().toString().padStart(2, '0') }` }</div> }
-                { thread.groups.map((group, groupIndex) =>
+                { /* Chats and payments are two different sources for one
+                     timeline, so they are collected with a time each and
+                     merged, rather than one being appended after the other.
+                     A chat's own `date` is when this client BUILT it, which
+                     for replayed history is the moment you opened the app -
+                     `secondsSinceSent` is what makes it the moment it was
+                     sent. */ }
+                { (() =>
                 {
-                    const mine = (group.userId === ownUserId);
+                    const timeline: { key: string, time: number, node: ReactNode }[] = [];
 
-                    return group.chats.map((chat, chatIndex) =>
+                    thread.groups.forEach((group, groupIndex) =>
                     {
-                        const key = `${ groupIndex }-${ chatIndex }`;
+                        const mine = (group.userId === ownUserId);
 
-                        if(chat.type === MessengerThreadChat.SECURITY_NOTIFICATION)
+                        group.chats.forEach((chat, chatIndex) =>
                         {
-                            return <div key={ key } className="phone-thread-system">{ chat.message }</div>;
-                        }
+                            const key = `${ groupIndex }-${ chatIndex }`;
+                            const time = (chat.date.getTime() - (chat.secondsSinceSent * 1000));
+                            const push = (node: ReactNode) => timeline.push({ key, time, node });
 
-                        if(chat.type === MessengerThreadChat.ROOM_INVITE)
-                        {
-                            return (
-                                <div key={ key } className="phone-thread-invite">
-                                    <PhoneIcon icon="map-pin-home" size={ 16 } />
-                                    <span>{ chat.message }</span>
+                            if(chat.type === MessengerThreadChat.SECURITY_NOTIFICATION)
+                            {
+                                push(<div key={ key } className="phone-thread-system">{ chat.message }</div>);
+
+                                return;
+                            }
+
+                            if(chat.type === MessengerThreadChat.ROOM_INVITE)
+                            {
+                                push(
+                                    <div key={ key } className="phone-thread-invite">
+                                        <PhoneIcon icon="map-pin-home" size={ 16 } />
+                                        <span>{ chat.message }</span>
+                                    </div>
+                                );
+
+                                return;
+                            }
+
+                            // A JAM INVITE. It travels as an ordinary message so it
+                            // lands in the thread like anything else that person
+                            // sent - the marker in its text is what turns it back
+                            // into something pressable here. A client that did not
+                            // know the marker would still show a readable sentence,
+                            // which is why the sentence is in there.
+                            const jamInvite = ParseJamInvite(chat.message);
+
+                            if(jamInvite)
+                            {
+                                push(
+                                    <div key={ key } className="phone-thread-jam">
+                                        <div className="phone-thread-jam-badge">
+                                            <PhoneIcon icon="music" size={ 15 } />
+                                        </div>
+                                        <div className="phone-thread-jam-text">
+                                            <div className="phone-thread-jam-title">Jam session</div>
+                                            <div className="phone-thread-jam-sub">{ jamInvite.text }</div>
+                                        </div>
+                                        <div className="phone-tap phone-thread-jam-join" onClick={ event => { JoinJam(jamInvite.jamId); CreateLinkEvent('phone/music-jam'); } }>Join</div>
+                                    </div>
+                                );
+
+                                return;
+                            }
+
+                            const groupChatData = ((isGroup && chat.extraData) ? GetGroupChatData(chat.extraData) : null);
+                            const groupMine = (groupChatData ? (groupChatData.userId === ownUserId) : mine);
+                            const showSender = (isGroup && !groupMine && groupChatData && (chatIndex === 0));
+                            const photoUrl = ParsePhotoMessage(chat.message);
+
+                            push(
+                                <div key={ key } className={ `phone-thread-bubble-row${ groupMine ? ' is-mine' : '' }` }>
+                                    <div className="phone-thread-bubble-stack">
+                                        { showSender &&
+                                            <div className="phone-thread-sender">{ groupChatData.username }</div> }
+                                        { photoUrl &&
+                                            <div className="phone-thread-photo-wrap">
+                                                <div className={ `phone-tap phone-thread-photo${ groupMine ? ' is-mine' : '' }` } title="View photo" onClick={ event => setPhotoViewer({ url: photoUrl, mine: groupMine }) }>
+                                                    <img src={ photoUrl } alt="Shared photo" loading="lazy" />
+                                                </div>
+                                                { !groupMine &&
+                                                    <div className="phone-tap phone-thread-photo-save" title="Save to Photos" onClick={ event => savePhotoToLibrary(photoUrl) }>
+                                                        <PhoneIcon icon="download" size={ 14 } />
+                                                    </div> }
+                                            </div> }
+                                        { !photoUrl &&
+                                            <div className={ `phone-thread-bubble${ groupMine ? ' is-mine' : '' }` }>{ chat.message }</div> }
+                                    </div>
                                 </div>
                             );
-                        }
-
-                        // A JAM INVITE. It travels as an ordinary message so it
-                        // lands in the thread like anything else that person
-                        // sent - the marker in its text is what turns it back
-                        // into something pressable here. A client that did not
-                        // know the marker would still show a readable sentence,
-                        // which is why the sentence is in there.
-                        const jamInvite = ParseJamInvite(chat.message);
-
-                        if(jamInvite)
-                        {
-                            return (
-                                <div key={ key } className="phone-thread-jam">
-                                    <div className="phone-thread-jam-badge">
-                                        <PhoneIcon icon="music" size={ 15 } />
-                                    </div>
-                                    <div className="phone-thread-jam-text">
-                                        <div className="phone-thread-jam-title">Jam session</div>
-                                        <div className="phone-thread-jam-sub">{ jamInvite.text }</div>
-                                    </div>
-                                    <div className="phone-tap phone-thread-jam-join" onClick={ event => { JoinJam(jamInvite.jamId); CreateLinkEvent('phone/music-jam'); } }>Join</div>
-                                </div>
-                            );
-                        }
-
-                        const groupChatData = ((isGroup && chat.extraData) ? GetGroupChatData(chat.extraData) : null);
-                        const groupMine = (groupChatData ? (groupChatData.userId === ownUserId) : mine);
-                        const showSender = (isGroup && !groupMine && groupChatData && (chatIndex === 0));
-                        const photoUrl = ParsePhotoMessage(chat.message);
-
-                        return (
-                            <div key={ key } className={ `phone-thread-bubble-row${ groupMine ? ' is-mine' : '' }` }>
-                                <div className="phone-thread-bubble-stack">
-                                    { showSender &&
-                                        <div className="phone-thread-sender">{ groupChatData.username }</div> }
-                                    { photoUrl &&
-                                        <div className="phone-thread-photo-wrap">
-                                            <div className={ `phone-tap phone-thread-photo${ groupMine ? ' is-mine' : '' }` } title="View photo" onClick={ event => setPhotoViewer({ url: photoUrl, mine: groupMine }) }>
-                                                <img src={ photoUrl } alt="Shared photo" loading="lazy" />
-                                            </div>
-                                            { !groupMine &&
-                                                <div className="phone-tap phone-thread-photo-save" title="Save to Photos" onClick={ event => savePhotoToLibrary(photoUrl) }>
-                                                    <PhoneIcon icon="download" size={ 14 } />
-                                                </div> }
-                                        </div> }
-                                    { !photoUrl &&
-                                        <div className={ `phone-thread-bubble${ groupMine ? ' is-mine' : '' }` }>{ chat.message }</div> }
-                                </div>
-                            </div>
-                        );
+                        });
                     });
-                }) }
+
+                    payRecords.forEach((record: PayRecord) =>
+                    {
+                        const outgoing = (record.senderId === ownUserId);
+                        const key = `pay-${ record.id }`;
+
+                        timeline.push({
+                            key,
+                            time: (record.createdAt * 1000),
+                            node: (
+                                <div key={ key } className={ `phone-pay-card-row${ outgoing ? ' is-mine' : '' }` }>
+                                    <div className="phone-pay-kicker">{ outgoing ? 'YOU SENT' : `${ (participant?.name ?? 'THEY').toUpperCase() } SENT YOU` }</div>
+                                    <div className={ `phone-pay-card${ outgoing ? ' is-out' : ' is-in' }` }>
+                                        <div className="phone-pay-amount">
+                                            <span className="phone-pay-unit">c</span>
+                                            <span className="phone-pay-figure">{ record.amount.toLocaleString() }</span>
+                                        </div>
+                                        { !!record.note.length &&
+                                            <div className="phone-pay-note">&ldquo;{ record.note }&rdquo;</div> }
+                                        <div className="phone-pay-foot">
+                                            <PhoneIcon icon={ outgoing ? 'check' : 'arrow-down' } size={ 12 } />
+                                            <span className="phone-pay-status">{ outgoing ? 'PAID' : 'IN CHECKING' }</span>
+                                            <span className="phone-pay-time">{ HotelDate(record.createdAt * 1000).getHours().toString().padStart(2, '0') }:{ HotelDate(record.createdAt * 1000).getMinutes().toString().padStart(2, '0') }</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        });
+                    });
+
+                    timeline.sort((a, b) => (a.time - b.time));
+
+                    return timeline.map(entry => entry.node);
+                })() }
                 { receiptText && !isTyping &&
                     <div className={ `phone-thread-receipt${ receiptError ? ' is-error' : '' }` }>{ receiptText }</div> }
                 { isTyping &&
@@ -375,10 +525,100 @@ export const PhoneThreadView: FC<PhoneThreadViewProps> = props =>
             { attachOpen &&
                 <div className="phone-thread-menu-backdrop" onClick={ event => setAttachOpen(false) }>
                     <div className="phone-thread-attach-menu" onClick={ event => event.stopPropagation() }>
+                        { /* Money is the heavier action, so it sits on top.
+                             It is absent entirely when the other person has no
+                             account: saying why would tell you something about
+                             their finances that they did not. */ }
+                        { payOffered &&
+                            <div className={ `phone-tap phone-pin-menu-item phone-pay-item${ payReady ? '' : ' is-locked' }` } onClick={ openPaySheet }>
+                                <span>
+                                    Send Money
+                                    { !payReady &&
+                                        <em className="phone-pay-item-hint">Open an account with Mercury</em> }
+                                </span>
+                                <PhoneIcon icon="money-card" size={ 18 } />
+                            </div> }
                         <div className="phone-tap phone-pin-menu-item" onClick={ openPhotoPicker }>
                             <span>Share Photo</span>
                             <PhoneIcon icon="image" size={ 18 } />
                         </div>
+                    </div>
+                </div> }
+            { !!paySheet && !!payState &&
+                <div className="phone-pay-backdrop" onClick={ event => (!payBusy && setPaySheet(null)) }>
+                    <div className="phone-pay-sheet" onClick={ event => event.stopPropagation() }>
+                        <div className="phone-pay-grab" />
+
+                        { (paySheet === 'amount') &&
+                            <>
+                                <div className="phone-pay-head">
+                                    <div className="phone-pay-badge"><PhoneIcon icon="money-card" size={ 17 } /></div>
+                                    <div className="phone-pay-head-text">
+                                        <div className="phone-pay-kicker">SEND MONEY</div>
+                                        <div className="phone-pay-head-title">To { participant?.name }</div>
+                                    </div>
+                                    <button type="button" aria-label="Close" className="phone-pay-close" onClick={ event => setPaySheet(null) }>
+                                        <PhoneIcon icon="close" size={ 14 } />
+                                    </button>
+                                </div>
+
+                                <label className="phone-pay-label" htmlFor="phone-pay-amount">AMOUNT</label>
+                                <div className="phone-pay-entry">
+                                    <span className="phone-pay-entry-unit">c</span>
+                                    <input id="phone-pay-amount" type="text" inputMode="numeric" autoComplete="off" value={ payAmount } placeholder="0"
+                                        onChange={ event => setPayAmount(event.target.value.replace(/[^0-9]/g, '').substring(0, 6)) } />
+                                </div>
+
+                                <div className="phone-pay-chips">
+                                    { [ 50, 100, 250, 500 ].map(chip => (
+                                        <button key={ chip } type="button" className={ `phone-pay-chip${ (payValue === chip) ? ' is-on' : '' }` }
+                                            disabled={ chip > payCeiling } onClick={ event => setPayAmount(chip.toString()) }>{ chip }</button>
+                                    )) }
+                                </div>
+
+                                <label className="phone-pay-label" htmlFor="phone-pay-note">NOTE (OPTIONAL)</label>
+                                <input id="phone-pay-note" type="text" className="phone-pay-note-input" maxLength={ 64 } value={ payNote }
+                                    placeholder="What's it for?" onChange={ event => setPayNote(event.target.value) } />
+
+                                <div className="phone-pay-allowance">
+                                    <span>Left to send today</span>
+                                    <strong>c { payState.remainingToday.toLocaleString() }</strong>
+                                </div>
+
+                                { !!payError &&
+                                    <div className="phone-pay-error">{ payError }</div> }
+
+                                <button type="button" className="phone-pay-go" disabled={ !payValid } onClick={ event => setPaySheet('confirm') }>
+                                    { payValue > 0 ? `Send c ${ payValue.toLocaleString() }` : 'Send' }
+                                </button>
+                                <div className="phone-pay-small">Comes out of checking. Sent money cannot be taken back.</div>
+                            </> }
+
+                        { (paySheet === 'confirm') &&
+                            <>
+                                <div className="phone-pay-kicker phone-pay-centre">CONFIRM</div>
+                                <div className="phone-pay-entry is-static">
+                                    <span className="phone-pay-entry-unit">c</span>
+                                    <span className="phone-pay-entry-figure">{ payValue.toLocaleString() }</span>
+                                </div>
+                                <div className="phone-pay-to">to <strong>{ participant?.name }</strong></div>
+                                { !!payNote.trim().length &&
+                                    <div className="phone-pay-to-note">&ldquo;{ payNote.trim() }&rdquo;</div> }
+
+                                <div className="phone-pay-rows">
+                                    <div className="phone-pay-row"><span>From</span><strong>Checking</strong></div>
+                                    <div className="phone-pay-row"><span>Fee</span><strong className="is-good">None</strong></div>
+                                    <div className="phone-pay-row"><span>Left to send today</span><strong>c { Math.max(0, payState.remainingToday - payValue).toLocaleString() }</strong></div>
+                                </div>
+
+                                { /* The sheet closes on the SERVER's answer, never on
+                                     the tap - that is how a player ends up believing
+                                     money moved when it did not. */ }
+                                <button type="button" className="phone-pay-go" disabled={ payBusy } onClick={ event => confirmPay() }>
+                                    { payBusy ? 'Sending…' : `Send c ${ payValue.toLocaleString() }` }
+                                </button>
+                                <button type="button" className="phone-pay-back" disabled={ payBusy } onClick={ event => setPaySheet('amount') }>Back</button>
+                            </> }
                     </div>
                 </div> }
             { pickerOpen &&

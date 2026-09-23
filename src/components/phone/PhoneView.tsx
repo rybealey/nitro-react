@@ -475,6 +475,12 @@ export const PhoneView: FC<{}> = props =>
                     case 'news':
                         show('news');
                         return;
+                    // The bank, reachable from anywhere that needs to send
+                    // somebody there - Messages does, when a player tries to
+                    // pay somebody without an account of their own.
+                    case 'mercury':
+                        show('mercury');
+                        return;
                     // the room panel's queue chip: the music app, opened on this
                     // room's queue rather than its own home screen
                     case 'music-queue':
