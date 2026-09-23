@@ -13,12 +13,18 @@
     // 44px tall and centred on this container, so 50% is its middle, +22px is
     // its top, and +10px is the gap. Anchoring the bottom rather than the top
     // means a card that grows a line pushes upward and the gap never moves.
+    //
+    // Narrower than the bar by a fifth, and everything inside it with it. Sized
+    // in real values rather than a transform: scale() would blur the text and
+    // fight the translate that centres it, and the animations below own that
+    // transform too. Still centred on the same axis, so it reads as belonging
+    // to the bar without pretending to be part of it.
     bottom: calc(50% + 32px);
     transform: translateX(-50%);
-    width: 564px;
+    width: 452px;
     box-sizing: border-box;
     z-index: 26;
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
     background: var(--prp-chrome-95);
     backdrop-filter: blur(6px);
@@ -35,22 +41,22 @@
 
     @include media-breakpoint-down(sm) {
         width: calc(100% - 24px);
-        max-width: 360px;
+        max-width: 300px;
     }
 }
 
 .rp-offer-body {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 9px 11px 10px;
+    gap: 8px;
+    padding: 7px 9px 8px;
 }
 
 .rp-offer-mark {
     flex: none;
-    width: 44px;
-    height: 44px;
-    border-radius: 9px;
+    width: 35px;
+    height: 35px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -66,21 +72,21 @@
 
 .rp-offer-kicker {
     font-family: 'Silkscreen', monospace;
-    font-size: 8.5px;
-    letter-spacing: 0.9px;
+    font-size: 7.5px;
+    letter-spacing: 0.7px;
     color: var(--hud-orange, #e87332);
 
     &.is-urgent { color: var(--hud-danger, #e03131); }
 }
 
 .rp-offer-queued {
-    margin-left: 5px;
+    margin-left: 4px;
     opacity: 0.75;
 }
 
 .rp-offer-line {
-    margin-top: 4px;
-    font-size: 13.5px;
+    margin-top: 3px;
+    font-size: 11px;
     line-height: 1.35;
     // One row, never two: the card is as wide as the chat bar and a name plus
     // a quantity has to fit beside two buttons without pushing them anywhere.
@@ -92,8 +98,8 @@
 }
 
 .rp-offer-price {
-    margin-top: 3px;
-    font-size: 12px;
+    margin-top: 2px;
+    font-size: 10px;
     opacity: 0.72;
 
     strong { font-weight: 700; opacity: 1; }
@@ -102,8 +108,8 @@
 // Replaces the price rather than sitting under it: the reason you cannot press
 // the tick matters more than what it would have cost.
 .rp-offer-blocked {
-    margin-top: 3px;
-    font-size: 12px;
+    margin-top: 2px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--hud-warning, #f5c542);
 }
@@ -111,15 +117,15 @@
 .rp-offer-actions {
     flex: none;
     display: flex;
-    gap: 6px;
+    gap: 5px;
 }
 
 .rp-offer-accept,
 .rp-offer-decline {
-    width: 34px;
-    height: 34px;
+    width: 27px;
+    height: 27px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;

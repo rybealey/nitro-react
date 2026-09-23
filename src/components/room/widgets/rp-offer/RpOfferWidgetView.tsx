@@ -83,7 +83,7 @@ export const RpOfferWidgetView: FC<{}> = () =>
         <div className={ `rp-offer${ isLeaving ? ' is-leaving' : '' }` }>
             <div className="rp-offer-body">
                 <div className="rp-offer-mark" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="7" width="18" height="13" rx="2" />
                         <path d="M3 11h18" />
                         <path d="M12 7V4" />
@@ -110,13 +110,13 @@ export const RpOfferWidgetView: FC<{}> = () =>
                 <div className="rp-offer-actions">
                     <button type="button" className="rp-offer-accept" aria-label={ `Accept ${ goods } from ${ shown.sellerName }` }
                         disabled={ !!blocked.length || isLeaving } onClick={ event => SendRpOfferReply(shown.id, true) }>
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                         </svg>
                     </button>
                     <button type="button" className="rp-offer-decline" aria-label={ `Decline the offer from ${ shown.sellerName }` }
                         disabled={ isLeaving } onClick={ event => SendRpOfferReply(shown.id, false) }>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                             <path d="M6 6l12 12M18 6L6 18" />
                         </svg>
                     </button>
