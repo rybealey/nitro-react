@@ -159,6 +159,11 @@ export class FigureData
             case FigureData.TROUSERS:
             case FigureData.SHOES:
             case FigureData.TROUSER_ACCESSORIES:
+            // pixelrp: pets. Without this a pet picked in Choose Your Outfit or
+            // tried on in the Clothing Store was dropped right here, before
+            // anything drew it or saved it - the list is the whole wardrobe as
+            // far as this class is concerned.
+            case FigureData.PET:
                 if(partId >= 0)
                 {
                     this._data.set(setType, partId);
@@ -190,6 +195,7 @@ export class FigureData
             case FigureData.TROUSERS:
             case FigureData.SHOES:
             case FigureData.TROUSER_ACCESSORIES:
+            case FigureData.PET:
                 this._colors.set(setType, colorIds);
                 break;
         }
