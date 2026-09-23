@@ -1,4 +1,4 @@
-import { FC, KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { FC, KeyboardEvent, ReactElement, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RpSupportAvailabilityComposer, RpSupportEvent, RpSupportOpenComposer, RpSupportQueueEvent, RpSupportSendComposer, RpSupportStaffComposer, RpSupportStartComposer, SUPPORT_CATEGORIES, SupportByline, SupportCategoryLabel, SupportMessage, SupportThread } from '../../api/rp-phone/RpSupportMessages';
 import { useMessageEvent } from '../../hooks';
@@ -22,6 +22,12 @@ type Screen = 'list' | 'thread' | 'compose';
 
 const MAX_BODY = 1000;
 
+// How long an optimistic bubble may sit unconfirmed before we stop drawing it.
+// The server echoes the real message back within a round trip; anything still
+// pending after this lost its packet, and a bubble that lies about having sent
+// is worse than one that disappears.
+const PENDING_TIMEOUT = 8000;
+
 export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 {
     const { onBack = null } = props;
@@ -33,15 +39,26 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     const [ availableStaff, setAvailableStaff ] = useState<number>(0);
     const [ threads, setThreads ] = useState<SupportThread[]>([]);
     const [ messages, setMessages ] = useState<SupportMessage[]>([]);
+    // Lines this viewer has sent that the server has not echoed back yet. They
+    // render immediately and are reconciled away by the next view: a chat that
+    // waits a round trip before showing your own words reads as broken.
+    const [ pending, setPending ] = useState<SupportMessage[]>([]);
     const [ openId, setOpenId ] = useState<number>(0);
     const [ screen, setScreen ] = useState<Screen>('list');
     // Which way the last move went, so a screen slides in from the side it
     // came from - the same 26ms-per-30px feel as the phone's own transitions.
     const [ nav, setNav ] = useState<'fwd' | 'back'>('fwd');
+    // Bumped on every NAVIGATION, and never by arriving data. It is the
+    // animation wrapper's key, so the slide plays once per move and a message
+    // landing mid-conversation does not replay it.
+    const [ navSeq, setNavSeq ] = useState<number>(0);
     const [ category, setCategory ] = useState<string>('report');
     const [ draft, setDraft ] = useState<string>('');
     const [ reply, setReply ] = useState<string>('');
     const scrollRef = useRef<HTMLDivElement>(null);
+    // Whether this conversation has already been laid out once, so the first
+    // paint jumps to the bottom and later messages glide there.
+    const settledRef = useRef<boolean>(false);
 
     // Braces, not a concise arrow body: SendMessageComposer returns a value and
     // React would take it for a cleanup function.
@@ -49,6 +66,35 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
     {
         SendMessageComposer(new RpSupportOpenComposer(0));
     }, []);
+
+    // A view is authoritative for a conversation only when it carries one.
+    //
+    // THIS IS THE BUG THAT MADE CHATS FLICKER EMPTY. The packet is whole-state,
+    // so a refresh with openThreadId 0 used to overwrite the open conversation
+    // with an empty message list - which is exactly what every push generated
+    // by the OTHER person's message looked like. The server now remembers what
+    // each viewer has open, and this is the belt to that braces.
+    const applyMessages = (openThreadId: number, incoming: SupportMessage[]) =>
+    {
+        if(openThreadId > 0)
+        {
+            setOpenId(openThreadId);
+            setMessages(incoming);
+            // Anything the server has now said back is no longer pending.
+            setPending(prevValue => prevValue.filter(entry => !incoming.some(message => ((message.body === entry.body) && (message.fromStaff === entry.fromStaff)))));
+
+            return;
+        }
+
+        // No conversation in this payload: only safe to clear when the viewer
+        // is not sitting in one.
+        setOpenId(prevValue =>
+        {
+            if(!prevValue) setMessages([]);
+
+            return prevValue;
+        });
+    }
 
     useMessageEvent<RpSupportEvent>(RpSupportEvent, event =>
     {
@@ -60,9 +106,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         setByline(parser.byline);
         setOnline(parser.online);
         setThreads(parser.threads);
-        setMessages(parser.messages);
-
-        if(parser.openThreadId) setOpenId(parser.openThreadId);
+        applyMessages(parser.openThreadId, parser.messages);
     });
 
     useMessageEvent<RpSupportQueueEvent>(RpSupportQueueEvent, event =>
@@ -75,10 +119,20 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         setAvailable(parser.available);
         setAvailableStaff(parser.availableStaff);
         setThreads(parser.threads);
-        setMessages(parser.messages);
-
-        if(parser.openThreadId) setOpenId(parser.openThreadId);
+        applyMessages(parser.openThreadId, parser.messages);
     });
+
+    // A bubble whose packet went missing must not sit there looking sent.
+    useEffect(() =>
+    {
+        if(!pending.length) return;
+
+        const timer = window.setTimeout(() => setPending(prevValue => prevValue.filter(entry => ((Date.now() - (entry.createdAt * 1000)) < PENDING_TIMEOUT))), PENDING_TIMEOUT);
+
+        return () => window.clearTimeout(timer);
+    }, [ pending ]);
+
+    const shown = useMemo(() => [ ...messages, ...pending ], [ messages, pending ]);
 
     useLayoutEffect(() =>
     {
@@ -86,52 +140,70 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
         if(!element || (screen !== 'thread')) return;
 
-        element.scrollTop = element.scrollHeight;
-    }, [ screen, messages ]);
-
-    // phone-slide-right enters from the right (going deeper), -left from the
-    // left (coming back), which is the same pair PhoneView uses between apps.
-    const anim = ((nav === 'fwd') ? ' phone-anim-slide-right' : ' phone-anim-slide-left');
+        // Straight to the bottom the first time this conversation paints, and
+        // eased from then on so an arriving reply reads as arriving.
+        element.scrollTo({ top: element.scrollHeight, behavior: (settledRef.current ? 'smooth' : 'auto') });
+        settledRef.current = true;
+    }, [ screen, shown ]);
 
     const open = useMemo(() => threads.find(thread => (thread.id === openId)) ?? null, [ threads, openId ]);
 
+    // Every navigation goes through this: it is what makes the slide play, and
+    // what keeps the direction and the animation key in step.
+    const go = (next: Screen, direction: 'fwd' | 'back') =>
+    {
+        setNav(direction);
+        setScreen(next);
+        setNavSeq(value => (value + 1));
+        settledRef.current = false;
+    }
+
     const openThread = (id: number) =>
     {
-        setNav('fwd');
         setOpenId(id);
-        setScreen('thread');
+        setPending([]);
         setReply('');
+        go('thread', 'fwd');
         SendMessageComposer(new RpSupportOpenComposer(id));
     }
 
     const backToList = () =>
     {
-        setNav('back');
         setOpenId(0);
-        setScreen('list');
+        setPending([]);
+        go('list', 'back');
         SendMessageComposer(new RpSupportOpenComposer(0));
     }
 
+    const queueBubble = (body: string, fromStaff: boolean) =>
+        setPending(prevValue => [ ...prevValue, { id: -Date.now(), fromStaff, body, createdAt: Math.floor(Date.now() / 1000) } ]);
+
     const start = () =>
     {
-        const body = draft.trim();
+        const body = draft.trim().substring(0, MAX_BODY);
 
         if(!body.length) return;
 
-        SendMessageComposer(new RpSupportStartComposer(category, body.substring(0, MAX_BODY)));
+        SendMessageComposer(new RpSupportStartComposer(category, body));
         setDraft('');
-        setNav('fwd');
-        setScreen('thread');
+        // The thread has no id until the server answers, so the screen opens on
+        // the optimistic first line and the composer stays shut for that beat
+        // rather than silently swallowing a second message.
+        setOpenId(0);
+        setPending([]);
+        queueBubble(body, false);
+        go('thread', 'fwd');
     }
 
     const send = () =>
     {
-        const body = reply.trim();
+        const body = reply.trim().substring(0, MAX_BODY);
 
         if(!body.length || !openId) return;
 
-        SendMessageComposer(new RpSupportSendComposer(openId, body.substring(0, MAX_BODY)));
+        SendMessageComposer(new RpSupportSendComposer(openId, body));
         setReply('');
+        queueBubble(body, isStaff);
     }
 
     const onReplyKey = (event: KeyboardEvent<HTMLInputElement>) =>
@@ -142,8 +214,7 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         send();
     }
 
-    const waiting = useMemo(() => threads.filter(thread => (thread.status !== 'resolved')), [ threads ]);
-    const mine = useMemo(() => threads.filter(thread => (thread.status === 'open')), [ threads ]);
+    let body: ReactElement = null;
 
     // ---- staff ----------------------------------------------------------
 
@@ -152,8 +223,8 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
         const assigned = threads.filter(thread => ((thread.status === 'open') || (thread.status === 'offered')));
         const queued = threads.filter(thread => (thread.status === 'waiting'));
 
-        return (
-            <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
+        body = (
+            <div className="phone-screen phone-app-screen phone-support">
                 <div className="phone-app-scroll">
                     <div className="phone-app-header">
                         <div>
@@ -212,22 +283,22 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
     // ---- the player's list ----------------------------------------------
 
-    if(screen === 'list')
+    else if(screen === 'list')
     {
-        return (
-            <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
+        body = (
+            <div className="phone-screen phone-app-screen phone-support">
                 <div className="phone-app-scroll">
                     <div className="phone-app-header">
                         <div>
                             <div className="phone-app-kicker">PIXELRP SUPPORT</div>
                             <div className="phone-app-title">Support</div>
                         </div>
-                        <div className="phone-tap phone-fab" title="Start a conversation" onClick={ event => { setNav('fwd'); setScreen('compose'); } }>
+                        <div className="phone-tap phone-fab" title="Start a conversation" onClick={ event => go('compose', 'fwd') }>
                             <PhoneIcon icon="plus" size={ 16 } />
                         </div>
                     </div>
 
-                    <div className="phone-tap phone-support-start" onClick={ event => { setNav('fwd'); setScreen('compose'); } }>
+                    <div className="phone-tap phone-support-start" onClick={ event => go('compose', 'fwd') }>
                         <PhoneIcon icon="comment-dots" size={ 18 } />
                         <div className="phone-support-start-text">
                             <div className="phone-support-start-title">Start a conversation</div>
@@ -259,13 +330,13 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
     // ---- a new request ---------------------------------------------------
 
-    if(screen === 'compose')
+    else if(screen === 'compose')
     {
-        return (
-            <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
+        body = (
+            <div className="phone-screen phone-app-screen phone-support">
                 <div className="phone-app-scroll">
                     <div className="phone-support-bar">
-                        <div className="phone-tap phone-support-back" onClick={ event => { setNav('back'); setScreen('list'); } }>
+                        <div className="phone-tap phone-support-back" onClick={ event => go('list', 'back') }>
                             <PhoneIcon icon="chevron-left" size={ 16 } />
                         </div>
                         <div className="phone-support-bar-title">New request</div>
@@ -296,42 +367,59 @@ export const PhoneSupportView: FC<PhoneSupportViewProps> = props =>
 
     // ---- one conversation -------------------------------------------------
 
-    return (
-        <div className={ `phone-screen phone-app-screen phone-support${ anim }` }>
-            <div className="phone-support-bar">
-                <div className="phone-tap phone-support-back" onClick={ event => backToList() }>
-                    <PhoneIcon icon="chevron-left" size={ 16 } />
+    else
+    {
+        body = (
+            <div className="phone-screen phone-app-screen phone-support">
+                <div className="phone-support-bar">
+                    <div className="phone-tap phone-support-back" onClick={ event => backToList() }>
+                        <PhoneIcon icon="chevron-left" size={ 16 } />
+                    </div>
+                    <div className="phone-support-bar-main">
+                        <div className="phone-support-bar-title">{ isStaff ? (open?.playerName ?? 'Conversation') : byline.name }</div>
+                        <div className="phone-support-bar-sub">{ isStaff ? SupportCategoryLabel(open?.category ?? 'other') : 'PixelRP Support' }</div>
+                    </div>
+                    { isStaff && !!open && (open.status !== 'resolved') &&
+                        <div className="phone-tap phone-support-resolve" onClick={ event => { SendMessageComposer(new RpSupportStaffComposer(1, open.id)); backToList(); } }>Resolve</div> }
                 </div>
-                <div className="phone-support-bar-main">
-                    <div className="phone-support-bar-title">{ isStaff ? (open?.playerName ?? 'Conversation') : byline.name }</div>
-                    <div className="phone-support-bar-sub">{ isStaff ? SupportCategoryLabel(open?.category ?? 'other') : 'PixelRP Support' }</div>
-                </div>
-                { isStaff && !!open && (open.status !== 'resolved') &&
-                    <div className="phone-tap phone-support-resolve" onClick={ event => { SendMessageComposer(new RpSupportStaffComposer(1, open.id)); backToList(); } }>Resolve</div> }
-            </div>
 
-            <div ref={ scrollRef } className="phone-support-thread">
-                { !messages.length &&
-                    <div className="phone-support-blank">
-                        <div className="phone-support-blank-mark"><PhoneIcon icon="life-ring" size={ 22 } /></div>
-                        <div className="phone-support-blank-text">{ isStaff ? 'No messages yet.' : 'Say what happened and Trina will pick it up.' }</div>
+                <div ref={ scrollRef } className="phone-support-thread">
+                    { !shown.length &&
+                        <div className="phone-support-blank">
+                            <div className="phone-support-blank-mark"><PhoneIcon icon="life-ring" size={ 22 } /></div>
+                            <div className="phone-support-blank-text">{ isStaff ? 'No messages yet.' : 'Say what happened and Trina will pick it up.' }</div>
+                        </div> }
+                    { shown.map(message => (
+                        <div key={ message.id } className={ `phone-support-bubble${ (message.fromStaff === !isStaff) ? ' is-them' : ' is-me' }${ (message.id < 0) ? ' is-pending' : '' }` }>{ message.body }</div>
+                    )) }
+                    { !isStaff && !!open && (open.status === 'waiting') &&
+                        <div className="phone-support-status">Delivered · waiting for a reply</div> }
+                    { !isStaff && !!open && (open.status === 'resolved') &&
+                        <div className="phone-support-status">This conversation is closed</div> }
+                </div>
+
+                { (!open || (open.status !== 'resolved')) &&
+                    <div className="phone-support-composer">
+                        <input type="text" className="phone-support-input" value={ reply } maxLength={ MAX_BODY } placeholder={ openId ? (isStaff ? 'Reply' : 'Message') : 'Sending…' } disabled={ !openId } onChange={ event => setReply(event.target.value) } onKeyDown={ onReplyKey } />
+                        <button type="button" className="phone-support-send" aria-label="Send message" disabled={ !openId || !reply.trim().length } onClick={ event => send() }>
+                            <PhoneIcon icon="arrow-up" size={ 15 } />
+                        </button>
                     </div> }
-                { messages.map(message => (
-                    <div key={ message.id } className={ `phone-support-bubble${ (message.fromStaff === !isStaff) ? ' is-them' : ' is-me' }` }>{ message.body }</div>
-                )) }
-                { !isStaff && !!open && (open.status === 'waiting') &&
-                    <div className="phone-support-status">Delivered · waiting for a reply</div> }
-                { !isStaff && !!open && (open.status === 'resolved') &&
-                    <div className="phone-support-status">This conversation is closed</div> }
             </div>
+        );
+    }
 
-            { (!open || (open.status !== 'resolved')) &&
-                <div className="phone-support-composer">
-                    <input type="text" className="phone-support-input" value={ reply } maxLength={ MAX_BODY } placeholder={ isStaff ? 'Reply' : 'Message' } onChange={ event => setReply(event.target.value) } onKeyDown={ onReplyKey } />
-                    <button type="button" className="phone-support-send" aria-label="Send message" disabled={ !reply.trim().length } onClick={ event => send() }>
-                        <PhoneIcon icon="arrow-up" size={ 15 } />
-                    </button>
-                </div> }
+    // The animation lives on a WRAPPER, keyed by the navigation counter.
+    //
+    // It used to be a class on the screen itself, which never played: React
+    // reuses that one element across screens, and swapping a class on a live
+    // element does not restart a CSS animation. The keyframes also carry no
+    // duration of their own - .phone-screen-anim is what supplies it - so
+    // without this wrapper the name resolved to a 0s animation regardless.
+    // Same pair, same key trick, as PhoneView uses between apps.
+    return (
+        <div key={ `${ screen }-${ navSeq }` } className={ `phone-screen-anim phone-anim-slide-${ (nav === 'fwd') ? 'right' : 'left' }` }>
+            { body }
         </div>
     );
 }

@@ -8935,6 +8935,11 @@ $camera-bar-height: 84px;
     to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes phone-support-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes phone-slide-right {
     from { opacity: 0.5; transform: translateX(30px); }
     to { opacity: 1; transform: translateX(0); }
@@ -9222,6 +9227,14 @@ $camera-bar-height: 84px;
 
         &.is-them { align-self: flex-start; border-radius: 16px 16px 16px 5px; background: var(--ph-bubble); }
         &.is-me { align-self: flex-end; border-radius: 16px 16px 5px 16px; background: var(--sup-mine); color: #1a0a14; }
+
+        // Yours the instant you press send, before the server has echoed it
+        // back. Faded rather than absent: waiting a round trip to draw your own
+        // words is what made this feel like it had dropped the message.
+        &.is-pending { opacity: 0.58; }
+
+        // Every line arrives; it should look like it.
+        animation: phone-support-pop 0.18s cubic-bezier(0.22, 0.61, 0.36, 1) both;
     }
 
     // An empty conversation says what to do rather than showing a blank wall.
