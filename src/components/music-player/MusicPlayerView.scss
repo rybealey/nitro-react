@@ -266,6 +266,10 @@ $player-teal: #1E7295;
         align-items: center;
         gap: 4px;
         flex-shrink: 0;
+        // Hard right, with the gap between it and the slider doing the
+        // separating. The row is mute / volume / queue, and a chip that sits
+        // wherever the slider happens to end reads as part of the slider.
+        margin-left: auto;
         padding: 3px 8px;
         border-radius: 10px;
         background: rgba($player-teal, 0.10);

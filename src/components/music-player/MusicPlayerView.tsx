@@ -186,7 +186,13 @@ export const MusicPlayerView: FC<{}> = props =>
                                 : (roomPaused ? 'Paused - click to listen again' : 'Unmute') }
                             onClick={ songHasEars ? undefined : toggleMuted } />
                         : <FaVolumeUp className="fa-icon music-player-mute" title="Mute" onClick={ toggleMuted } /> }
-                    <input type="range" min={ 0 } max={ 100 } value={ volume } style={ { '--fill': `${ volume }%` } as React.CSSProperties }
+                    { /* YOUR volume, not the room's. It has only ever set the
+                         local YouTube player and a localStorage key - nothing
+                         here reaches the server - but a slider on a plate that
+                         says NOW PLAYING for everybody reads like a house
+                         fader, so it says which one it is. */ }
+                    <input type="range" min={ 0 } max={ 100 } value={ volume } title="Your volume - only you hear this" aria-label="Your volume"
+                        style={ { '--fill': `${ volume }%` } as React.CSSProperties }
                         onChange={ event => updateVolume(parseInt(event.target.value)) } />
                     { /* A READOUT, not a button. It used to open the paste box,
                          which is now the jukebox furni's job alone - this only

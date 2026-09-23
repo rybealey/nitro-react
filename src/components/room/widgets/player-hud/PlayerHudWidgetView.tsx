@@ -1,5 +1,5 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
@@ -105,13 +105,54 @@ const HudAvatar: FC<{ figure: string, gender?: string, variant: 'self' | 'target
     );
 }
 
+// How long after arriving in a room a remembered target may still turn up and
+// be picked back up. Long enough for somebody who came through the same
+// teleport a beat behind you; short enough that it is about THIS arrival and
+// not a standing order to re-target them wherever you next meet.
+const REACQUIRE_WINDOW_MS = 8000;
+
 export const PlayerHudWidgetView: FC<{}> = () =>
 {
     const [ ownFigure, setOwnFigure ] = useState<string>(() => GetSessionDataManager().figure);
     const [ target, setTarget ] = useState<AvatarInfoUser>(null);
     const [ locked, setLocked ] = useState<boolean>(false);
+    // WHO is targeted, not where they are standing. roomIndex is room-local and
+    // means nothing the moment you walk through a door, so a target could never
+    // survive one; webID is the player. Kept in a ref rather than state because
+    // it must outlive the room teardown that clears `target`.
+    const lastTargetRef = useRef<{ webID: number, locked: boolean }>(null);
+    // A remembered target may only re-acquire itself inside this window, which a
+    // ROOM CHANGE opens. Without it, a target who walked out on you would come
+    // back the moment they walked in again, which is a different rule than the
+    // one this app has always had.
+    const reacquireUntilRef = useRef<number>(0);
     const [ , setStatsVersion ] = useState<number>(0);
     const { roomSession } = useRoom();
+
+    // The same scan as findRoomUserByName, asked by id. Used to pick a
+    // remembered target back up on the other side of a room change.
+    const findRoomUserById = useCallback((webID: number): AvatarInfoUser =>
+    {
+        if(!roomSession || !webID) return null;
+
+        const roomObjects = GetRoomEngine().getRoomObjects(roomSession.roomId, RoomObjectCategory.UNIT);
+
+        for(const roomObject of roomObjects)
+        {
+            const userData = roomSession.userDataManager.getUserDataByIndex(roomObject.id);
+
+            if(!userData || (userData.type !== RoomObjectType.USER)) continue;
+
+            const info = AvatarInfoUtilities.getUserInfo(RoomObjectCategory.UNIT, userData);
+
+            if(!info || info.isOwnUser || (info.webID !== webID)) continue;
+
+            return info;
+        }
+
+        return null;
+    }, [ roomSession ]);
+
 
     // Live RP stats: store by roomIndex and bump a version so the HUD re-renders.
     // Target's gang, for the crest chip beside the plate. Membership is keyed
@@ -138,10 +179,28 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     });
 
     // Room changed: roomIndexes reset, stale stats must not bleed across rooms.
+    //
+    // It is also the one moment a remembered target is allowed to come back.
+    // The room may already hold them (you followed them in, or they were here
+    // first) or they may be a beat behind you through the same teleport, so
+    // both are covered: a sweep now, and the USER_ADDED handler below for
+    // however long the window stays open.
     useEffect(() =>
     {
         rpStatsStore.clear();
-    }, [ roomSession ]);
+
+        if(!lastTargetRef.current) return;
+
+        reacquireUntilRef.current = (Date.now() + REACQUIRE_WINDOW_MS);
+
+        const info = findRoomUserById(lastTargetRef.current.webID);
+
+        if(!info) return;
+
+        setTarget(info);
+        setLocked(lastTargetRef.current.locked);
+        reacquireUntilRef.current = 0;
+    }, [ roomSession, findRoomUserById ]);
 
     // Keep the player's own portrait current when they change clothes.
     useRoomSessionManagerEvent<RoomSessionUserFigureUpdateEvent>(RoomSessionUserFigureUpdateEvent.USER_FIGURE, event =>
@@ -179,8 +238,43 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         }
     });
 
+    // Only ever WRITES, never clears: USER_REMOVED nulls `target` as the room is
+    // torn down, and that must not be mistaken for letting somebody go.
+    useEffect(() =>
+    {
+        if(target) lastTargetRef.current = { webID: target.webID, locked };
+    }, [ target, locked ]);
+
+    // The other half of the room change: somebody who lands after you do. The
+    // escorted case is exactly this - the captive is summoned a moment behind
+    // the captor and arrives into a room you are already standing in.
+    useUiEvent<RoomWidgetUpdateRoomObjectEvent>(RoomWidgetUpdateRoomObjectEvent.USER_ADDED, event =>
+    {
+        const remembered = lastTargetRef.current;
+
+        if(!remembered || target) return;
+        if(Date.now() > reacquireUntilRef.current) return;
+        if(event.category !== RoomObjectCategory.UNIT) return;
+
+        const userData = roomSession?.userDataManager?.getUserDataByIndex(event.id);
+
+        if(!userData || (userData.type !== RoomObjectType.USER)) return;
+
+        const info = AvatarInfoUtilities.getUserInfo(event.category, userData);
+
+        if(!info || info.isOwnUser || (info.webID !== remembered.webID)) return;
+
+        setTarget(info);
+        setLocked(remembered.locked);
+        reacquireUntilRef.current = 0;
+    });
+
     const closeTarget = () =>
     {
+        // The one deliberate clear. Everything else is the room moving around
+        // underneath a target that is still wanted.
+        lastTargetRef.current = null;
+        reacquireUntilRef.current = 0;
         setTarget(null);
         setLocked(false);
     }
