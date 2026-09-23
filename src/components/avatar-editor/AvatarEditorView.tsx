@@ -1,7 +1,7 @@
 import { AvatarEditorFigureCategory, FigureSetIdsMessageEvent, GetWardrobeMessageComposer, HabboClubLevelEnum, IAvatarFigureContainer, ILinkEventTracker, UserFigureComposer, UserWardrobePageEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { FaDice, FaTrash, FaUndo } from 'react-icons/fa';
-import { AddEventLinkTracker, AvatarEditorAction, AvatarEditorUtilities, BodyModel, FigureData, generateRandomFigure, GetAvatarRenderManager, GetConfiguration, GetSessionDataManager, HeadModel, IAvatarEditorCategoryModel, LegModel, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, TorsoModel } from '../../api';
+import { AddEventLinkTracker, AvatarEditorAction, AvatarEditorUtilities, BodyModel, CompanionsModel, FigureData, generateRandomFigure, GetAvatarRenderManager, GetConfiguration, GetSessionDataManager, HeadModel, IAvatarEditorCategoryModel, LegModel, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, TorsoModel } from '../../api';
 import { Button, ButtonGroup, Column, Grid, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { AvatarEditorFigurePreviewView } from './views/AvatarEditorFigurePreviewView';
@@ -76,6 +76,8 @@ export const AvatarEditorView: FC<{}> = props =>
         categories.set(AvatarEditorFigureCategory.HEAD, new HeadModel());
         categories.set(AvatarEditorFigureCategory.TORSO, new TorsoModel());
         categories.set(AvatarEditorFigureCategory.LEGS, new LegModel());
+        // Right of Legs and left of Wardrobe, which is drawn after the models.
+        categories.set(CompanionsModel.NAME, new CompanionsModel());
 
         setCategories(categories);
     }, []);

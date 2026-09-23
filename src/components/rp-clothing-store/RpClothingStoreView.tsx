@@ -16,17 +16,19 @@ import { AvatarEditorIcon } from '../avatar-editor/views/AvatarEditorIcon';
 // Opened by CreateLinkEvent('clothing-store/show|toggle|hide') or the
 // server's RpOpenClothingStoreEvent (the :zara command).
 
-type StoreTab = 'head' | 'torso' | 'legs' | 'ltd';
+type StoreTab = 'head' | 'torso' | 'legs' | 'companions' | 'ltd';
 
 const TABS: { key: StoreTab, label: string, types: string[] }[] = [
     { key: 'head', label: 'Head', types: [ FigureData.HAIR, FigureData.HAT, FigureData.HEAD_ACCESSORIES, FigureData.EYE_ACCESSORIES, FigureData.FACE_ACCESSORIES ] },
     { key: 'torso', label: 'Torso', types: [ FigureData.SHIRT, FigureData.CHEST_PRINTS, FigureData.JACKET, FigureData.CHEST_ACCESSORIES ] },
     { key: 'legs', label: 'Legs', types: [ FigureData.TROUSERS, FigureData.SHOES, FigureData.TROUSER_ACCESSORIES ] },
+    // pixelrp: pets, where Choose Your Outfit has them too - right of Legs.
+    { key: 'companions', label: 'Companions', types: [ FigureData.PET ] },
 ];
 
 const ALL_TYPES: string[] = TABS.flatMap(tab => tab.types);
 
-const TYPE_LABELS: Record<string, string> = { hr: 'hair', ha: 'hats', he: 'head accessories', ea: 'eyewear', fa: 'face accessories', ch: 'shirts', cp: 'prints', cc: 'jackets', ca: 'chest accessories', lg: 'trousers', sh: 'shoes', wa: 'belts' };
+const TYPE_LABELS: Record<string, string> = { hr: 'hair', ha: 'hats', he: 'head accessories', ea: 'eyewear', fa: 'face accessories', ch: 'shirts', cp: 'prints', cc: 'jackets', ca: 'chest accessories', lg: 'trousers', sh: 'shoes', wa: 'belts', pt: 'pets' };
 
 // the shop's LTD category icon (catalogue/icon_145.png)
 const LTD_ICON = '145';

@@ -210,6 +210,18 @@
             background-position: -226px -33px;
         }
     }
+    // pixelrp: pets. Not on the spritesheet, which predates them - its own
+    // pair of images in the sheet's style: a grey outline, and the colour
+    // version when selected.
+    &.pt-icon {
+        width: 26px;
+        height: 24px;
+        background: url('@/assets/images/avatareditor/pt-icon.png') transparent no-repeat;
+
+        &.selected {
+            background-image: url('@/assets/images/avatareditor/pt-selected-icon.png');
+        }
+    }
 }
 
 .nitro-avatar-editor-wardrobe-figure-preview {
