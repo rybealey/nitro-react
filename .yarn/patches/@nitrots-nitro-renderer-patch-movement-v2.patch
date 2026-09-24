@@ -639,7 +639,7 @@ index ac3907b..ec7370e 100644
 +        // this.time is GetTickerTime() = performance.now(), the SAME domain the
 +        // V2 store samples on packet arrival, so no conversion happens here.
 +        const pixelrpV2 = (this.object && (this.object.id !== undefined))
-+            ? PixelRPMovementV2.instance.getActive(this.object.id, this.time)
++            ? PixelRPMovementV2.instance.getActiveForRender(this.object.id, this.time)
 +            : null;
 +
 +        if(pixelrpV2)
@@ -1757,7 +1757,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1229 @@
+@@ -0,0 +1,1330 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1941,6 +1941,11 @@ index 0000000..19b0227
 +    }
 +
 +    private readonly _units = new Map<number, PixelRPV2Unit>();
++
++    /** The one result getActiveForRender rewrites every call - see there. */
++    private readonly _renderActive: PixelRPV2Active = {
++        sx: 0, sy: 0, sz: 0, gx: 0, gy: 0, gz: 0, phase: 0,
++        edgeIndex: -1, session: -1, revision: -1, cycleStart: 0, estServerNow: 0 };
 +
 +    /** performance.now() - serverNow, min-filtered. NaN until the first packet. */
 +    private _clockOffset = NaN;
@@ -2535,6 +2540,29 @@ index 0000000..19b0227
 +
 +    public getActive(virtualId: number, tickerNow: number): PixelRPV2Active
 +    {
++        return this.resolveActive(virtualId, tickerNow, null);
++    }
++
++    /**
++     * getActive for the render path, with no allocation: the result is ONE
++     * object this store owns, rewritten by every call. MovingObjectLogic calls
++     * this for every walking unit on every frame, so a fresh object per call
++     * was thousands of throwaway objects a second in a busy room - garbage the
++     * browser stops to collect, felt as micro-stutter.
++     *
++     * Safe because its one caller uses the result immediately, for that unit,
++     * and keeps nothing: what it hands on (the anomaly watcher, facingToApply,
++     * the debug log) copies the numbers out. ANYTHING THAT NEEDS TWO RESULTS AT
++     * ONCE, OR KEEPS ONE, MUST CALL getActive - the JOIN diagnostics do both.
++     */
++    public getActiveForRender(virtualId: number, tickerNow: number): PixelRPV2Active
++    {
++        return this.resolveActive(virtualId, tickerNow, this._renderActive);
++    }
++
++    /** The body of getActive; fills `out` when given one, else returns a new object. */
++    private resolveActive(virtualId: number, tickerNow: number, out: PixelRPV2Active): PixelRPV2Active
++    {
 +        if(!Number.isFinite(this._clockOffset)) return null;
 +
 +        const unit = this._units.get(virtualId);
@@ -2638,16 +2666,36 @@ index 0000000..19b0227
 +            this._joinWatch.delete(virtualId);
 +        }
 +
-+        return {
-+            sx: edge.sx, sy: edge.sy, sz: edge.sz,
-+            gx: edge.gx, gy: edge.gy, gz: edge.gz,
-+            phase,
-+            edgeIndex: edge.edgeIndex,
-+            session: edge.session,
-+            revision: edge.revision,
-+            cycleStart: edge.cycleStart,
-+            estServerNow
-+        };
++        if(!out)
++        {
++            return {
++                sx: edge.sx, sy: edge.sy, sz: edge.sz,
++                gx: edge.gx, gy: edge.gy, gz: edge.gz,
++                phase,
++                edgeIndex: edge.edgeIndex,
++                session: edge.session,
++                revision: edge.revision,
++                cycleStart: edge.cycleStart,
++                estServerNow
++            };
++        }
++
++        // EVERY field of PixelRPV2Active, every call - a field left unwritten
++        // would carry the previous unit's value into this one.
++        out.sx = edge.sx;
++        out.sy = edge.sy;
++        out.sz = edge.sz;
++        out.gx = edge.gx;
++        out.gy = edge.gy;
++        out.gz = edge.gz;
++        out.phase = phase;
++        out.edgeIndex = edge.edgeIndex;
++        out.session = edge.session;
++        out.revision = edge.revision;
++        out.cycleStart = edge.cycleStart;
++        out.estServerNow = estServerNow;
++
++        return out;
 +    }
 +}
 +
@@ -2870,21 +2918,75 @@ index 0000000..19b0227
 +        try
 +        {
 +            const unit = this.unitOf(store, virtualId);
-+            const live = unit ? unit.edges.find(e => (e.edgeIndex === active.edgeIndex)) : null;
++
++            // A plain loop, not edges.find(e => ...): that allocated a closure
++            // on every call, and this runs per unit per frame.
++            let live: any = null;
++
++            if(unit)
++            {
++                for(let i = 0; i < unit.edges.length; i++)
++                {
++                    if(unit.edges[i].edgeIndex === active.edgeIndex)
++                    {
++                        live = unit.edges[i];
++                        break;
++                    }
++                }
++            }
++
 +            const step = ((live && live.interval) ? live.interval : 500);
 +            const raw = ((active.estServerNow - active.cycleStart) / step);
-+            const prev = this._render.get(virtualId);
 +
-+            this._render.set(virtualId, {
-+                edgeIndex: active.edgeIndex,
-+                sx: active.sx, sy: active.sy, gx: active.gx, gy: active.gy,
-+                phase: active.phase, raw,
-+                cycleStart: active.cycleStart, interval: step,
-+                ix, iy, ax, ay, t: time
-+            });
++            // ONE SAMPLE PER UNIT, REWRITTEN IN PLACE. A fresh object per unit
++            // per frame was garbage the browser had to stop and collect. The
++            // hitch check therefore runs FIRST, while the sample still holds the
++            // previous frame, and only then is it overwritten with this one - in
++            // the other order it would compare a frame with itself and never
++            // find a hitch. Its own try, so a throw in there cannot skip the
++            // rewrite and leave a stale sample behind.
++            let sample = this._render.get(virtualId);
 +
-+            if(!prev) return;
++            if(sample)
++            {
++                try { this.checkHitch(virtualId, unit, active, sample, ix, iy, ax, ay, time, raw, step); }
++                catch(e) { /* the rewrite below must still happen */ }
++            }
++            else
++            {
++                sample = {
++                    edgeIndex: 0, sx: 0, sy: 0, gx: 0, gy: 0, phase: 0, raw: 0,
++                    cycleStart: 0, interval: 0, ix: 0, iy: 0, ax: 0, ay: 0, t: 0 };
++                this._render.set(virtualId, sample);
++            }
 +
++            sample.edgeIndex = active.edgeIndex;
++            sample.sx = active.sx;
++            sample.sy = active.sy;
++            sample.gx = active.gx;
++            sample.gy = active.gy;
++            sample.phase = active.phase;
++            sample.raw = raw;
++            sample.cycleStart = active.cycleStart;
++            sample.interval = step;
++            sample.ix = ix;
++            sample.iy = iy;
++            sample.ax = ax;
++            sample.ay = ay;
++            sample.t = time;
++        }
++        catch(e) { /* a diagnostic must never break the render path */ }
++    }
++
++    /**
++     * The hitch half of onRender. `prev` is the unit's sample as it stood at the
++     * PREVIOUS frame - so this must run before onRender rewrites it.
++     */
++    private checkHitch(
++        virtualId: number, unit: any, active: any, prev: any,
++        ix: number, iy: number, ax: number, ay: number, time: number, raw: number, step: number): void
++    {
++        {
 +            const moved = Math.hypot((ix - prev.ix), (iy - prev.iy));
 +
 +            if(moved <= PixelRPMovementAnomaly.HITCH_TILES) return;
@@ -2924,7 +3026,6 @@ index 0000000..19b0227
 +                history: this.history(virtualId)
 +            });
 +        }
-+        catch(e) { /* a diagnostic must never break the render path */ }
 +    }
 +}
 +
