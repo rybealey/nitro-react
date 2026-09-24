@@ -20,7 +20,7 @@
     .rp-inventory-use-mode {
         position: absolute;
         top: 3px;
-        right: 31px;
+        right: 28px;
         z-index: 20;
     }
 
@@ -28,6 +28,36 @@
     // height in this narrow header is set here, level with the pen beside it.
     .nitro-card-header .nitro-card-header-close {
         top: 3px;
+    }
+
+    // Stands exactly over the close button while an item is dragged - same
+    // size, same corner - and lights up when the item is over it.
+    .rp-inventory-bin {
+        position: absolute;
+        top: 3px;
+        right: 5px;
+        z-index: 25;
+        width: 20px;
+        height: 20px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(0, 0, 0, 0.35);
+        border-radius: 3px;
+        background: #c9453a;
+        color: $white;
+        transition: transform 0.08s ease, background 0.08s ease;
+
+        svg {
+            display: block;
+        }
+
+        &.is-over {
+            background: #e0564a;
+            transform: scale(1.15);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+        }
     }
 
     // The same flat square as the close button - plain fill, thin dark edge,

@@ -4,6 +4,7 @@ import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
@@ -53,6 +54,8 @@ export const RpInventoryView: FC<{}> = props =>
     const [ isVisible, setIsVisible ] = useState(false);
     const [ items, setItems ] = useState<Map<number, { item: string, count: number }>>(new Map());
     const [ dragFrom, setDragFrom ] = useState<number>(-1);
+    // The pointer is over the bin that replaces the close button mid-drag.
+    const [ overBin, setOverBin ] = useState(false);
     const [ dropTarget, setDropTarget ] = useState<number>(-1);
     const [ ghost, setGhost ] = useState<{ x: number, y: number }>(null);
     const [ itemUseMode, setItemUseMode ] = useLocalStorage<ItemUseMode>('pixelrp.backpack.item-use-mode', 'single');
@@ -141,6 +144,8 @@ export const RpInventoryView: FC<{}> = props =>
         return (Number.isFinite(slot) ? slot : -1);
     }
 
+    const binUnderPointer = (clientX: number, clientY: number): boolean => !!document.elementFromPoint(clientX, clientY)?.closest('[data-rp-bin]');
+
     // Window-level drag: pointerdown arms listeners on window, so the drop
     // always lands and state always resets no matter where the pointer ends
     // up (the old per-element pointer-capture version could strand the
@@ -177,6 +182,7 @@ export const RpInventoryView: FC<{}> = props =>
             const over = slotUnderPointer(moveEvent.clientX, moveEvent.clientY);
 
             setDropTarget(((over >= 0) && isDropTarget(over)) ? over : -1);
+            setOverBin(binUnderPointer(moveEvent.clientX, moveEvent.clientY));
         }
 
         const onUp = (upEvent: globalThis.PointerEvent) =>
@@ -189,11 +195,14 @@ export const RpInventoryView: FC<{}> = props =>
             {
                 const over = slotUnderPointer(upEvent.clientX, upEvent.clientY);
 
-                if((over >= 0) && isDropTarget(over)) SendMessageComposer(new RpMoveItemComposer(slot, over));
+                // Dropped on the bin: the whole stack in that slot goes.
+                if(binUnderPointer(upEvent.clientX, upEvent.clientY)) SendRpDiscardItem(slot);
+                else if((over >= 0) && isDropTarget(over)) SendMessageComposer(new RpMoveItemComposer(slot, over));
             }
 
             setDragFrom(-1);
             setDropTarget(-1);
+            setOverBin(false);
             setGhost(null);
         }
 
@@ -236,6 +245,13 @@ export const RpInventoryView: FC<{}> = props =>
     return (
         <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
+            { /* While an item is being dragged the close button becomes a bin:
+                 drop the item on it to throw the stack away. It sits exactly
+                 over the X, so letting go anywhere else changes nothing. */ }
+            { (dragFrom >= 0) &&
+                <div data-rp-bin className={ 'rp-inventory-bin' + (overBin ? ' is-over' : '') } title="Drop here to throw it away" aria-label="Throw away">
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3.5h10" /><path d="M5.5 3.5V2h3v1.5" /><path d="M3.5 3.5l.6 8.5h5.8l.6-8.5" /><path d="M5.8 6v3.8M8.2 6v3.8" /></svg>
+                </div> }
             <div ref={ useModeRef } className="rp-inventory-use-mode">
                 <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
                     <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2l2 2-6 6H2V8z" /><path d="M6.8 3.2l2 2" /></svg>

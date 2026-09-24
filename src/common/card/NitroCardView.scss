@@ -8,20 +8,20 @@ $nitro-card-tabs-height: 33px;
     resize: none;
 
     // Corner grip from the Chat History redesign: two short diagonal strokes
-    // tucked into the bottom-right corner. The grab area is 14px; only the
-    // drawing is 10px, inset 3px from each edge.
+    // tucked into the bottom-right corner. The grab area is 16px; the drawing
+    // is 12px, inset 2px from each edge, dark enough to find on any surface.
     .nitro-card-resize-handle {
         position: absolute;
         right: 0;
         bottom: 0;
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         z-index: 30;
         cursor: nwse-resize;
-        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%239aa0a8' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 3L3 9M9 6L6 9'/%3E%3C/svg%3E") no-repeat right 3px bottom 3px;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%236b7078' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M11 3L3 11M11 7L7 11'/%3E%3C/svg%3E") no-repeat right 2px bottom 2px;
 
         &:hover {
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%235b5f68' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 3L3 9M9 6L6 9'/%3E%3C/svg%3E") no-repeat right 3px bottom 3px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2333363c' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M11 3L3 11M11 7L7 11'/%3E%3C/svg%3E") no-repeat right 2px bottom 2px;
         }
     }
 
