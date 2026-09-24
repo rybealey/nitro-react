@@ -352,7 +352,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +624,242 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,232 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -387,16 +387,6 @@ index 2ff0e23..09de3d7 100644
 +
 +        if(parser.isWalkEnd)
 +        {
-+            // A walk-end for an OLDER session than the one the store holds is
-+            // stale: a newer walk already owns this unit, and forgetting it
-+            // would hand a walking avatar to native mid-route. Dropped whole.
-+            if(store.sessionOf(parser.virtualId) > parser.walkSessionId)
-+            {
-+                store.stats.walkEndStale++;
-+
-+                return;
-+            }
-+
 +            // The marker carries the tile the server actually finished on.
 +            // walkEnd() compares it with what the renderer had, reports any
 +            // mismatch and its direction, and forgets the unit exactly as this
@@ -1750,7 +1740,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1148 @@
+@@ -0,0 +1,1140 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1931,7 +1921,7 @@ index 0000000..19b0227
 +    // after any walk that joined the phase, and the jitter should be gone.
 +    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0,
 +        walkEndMismatches: 0, walkEndBackward: 0, walkEndForward: 0, walkEndLateral: 0,
-+        walkEndFromPreview: 0, worstWalkEndTiles: 0, walkEndStale: 0 };
++        walkEndFromPreview: 0, worstWalkEndTiles: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2385,14 +2375,6 @@ index 0000000..19b0227
 +     * 0.00 every time whether or not a real gap existed - clean-looking
 +     * evidence that means nothing.
 +     */
-+    /** The walk session this store holds for a unit, or -1 when it holds none. */
-+    public sessionOf(virtualId: number): number
-+    {
-+        const unit = this._units.get(virtualId);
-+
-+        return (unit ? unit.session : -1);
-+    }
-+
 +    public pixelrpPositionOf(virtualId: number, tickerNow: number): { x: number, y: number }
 +    {
 +        const a = this.getActive(virtualId, tickerNow);
