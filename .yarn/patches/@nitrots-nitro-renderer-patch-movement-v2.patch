@@ -1757,7 +1757,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1197 @@
+@@ -0,0 +1,1229 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1917,6 +1917,20 @@ index 0000000..19b0227
 +    /** How often the observed floor is allowed to push the offset upward. */
 +    private static readonly CLOCK_FLOOR_WINDOW_MS = 1000;
 +
++    /**
++     * After the offset is (re)acquired, how long a FASTER sample replaces it
++     * outright instead of by capped steps. See updateClock.
++     *
++     * The first sample is the one most likely to be slow - it lands while the
++     * page is still busy loading the room, and it is timed when the handler
++     * runs, not when the packet arrived - and the caps then let that error
++     * shrink by at most 50ms a second. So a startup error of a hundred-odd
++     * milliseconds took seconds to work off, drawing everyone late and then
++     * hurrying them to catch up. One floor window, not a number tuned to any
++     * particular ping.
++     */
++    private static readonly CLOCK_ACQUIRE_MS = 1000;
++
 +    private static _instance: PixelRPMovementV2 = null;
 +
 +    public static get instance(): PixelRPMovementV2
@@ -1933,6 +1947,8 @@ index 0000000..19b0227
 +    private _windowStart = 0;
 +    private _windowMin = NaN;
 +    private _clockAdjustedAt = 0;
++    /** performance.now() until which a faster sample is taken outright - see CLOCK_ACQUIRE_MS. */
++    private _acquireUntil = -Infinity;
 +
 +    /** Spike instrumentation only. */
 +    // holdFrames is the whole diagnostic for this change: every increment is
@@ -1942,7 +1958,8 @@ index 0000000..19b0227
 +    // after any walk that joined the phase, and the jitter should be gone.
 +    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0,
 +        walkEndMismatches: 0, walkEndBackward: 0, walkEndForward: 0, walkEndLateral: 0,
-+        walkEndFromPreview: 0, worstWalkEndTiles: 0 };
++        walkEndFromPreview: 0, worstWalkEndTiles: 0,
++        clockAcquires: 0, clockAcquiredMs: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2064,6 +2081,13 @@ index 0000000..19b0227
 +     *         Only the FLOOR of a whole window may raise the offset, and then
 +     *         by one capped step, so jitter cannot drag it upward.
 +     *
++     * THE ONE EXCEPTION is acquisition: for CLOCK_ACQUIRE_MS after the offset
++     * is (re)based, a faster sample is taken outright. The offset is then one
++     * sample old, with no settled value whose continuity is worth protecting,
++     * and that first sample is the one most likely to be slow. Downward only -
++     * a slower sample still proves nothing - and only in that window, so no
++     * later packet can move the phase in one step.
++     *
 +     * NOTHING ELSE CHANGES. cycleStart, the 500ms interval, the interpolation,
 +     * server authority and walking speed are untouched. This alters only how
 +     * quickly the client's estimate of server time converges - never what it
@@ -2081,6 +2105,7 @@ index 0000000..19b0227
 +            this._windowStart = clientNowPerf;
 +            this._windowMin = sample;
 +            this._clockAdjustedAt = clientNowPerf;
++            this._acquireUntil = (clientNowPerf + PixelRPMovementV2.CLOCK_ACQUIRE_MS);
 +
 +            return;
 +        }
@@ -2096,12 +2121,19 @@ index 0000000..19b0227
 +
 +        if(sample < this._clockOffset)
 +        {
-+            const step = Math.min((this._clockOffset - sample), budget);
++            const acquiring = (clientNowPerf < this._acquireUntil);
++            const step = acquiring ? (this._clockOffset - sample) : Math.min((this._clockOffset - sample), budget);
 +
 +            if(step > 0)
 +            {
 +                this._clockOffset -= step;
 +                this._clockAdjustedAt = clientNowPerf;
++
++                if(acquiring)
++                {
++                    this.stats.clockAcquires++;
++                    this.stats.clockAcquiredMs = Math.round(this.stats.clockAcquiredMs + step);
++                }
 +            }
 +        }
 +
