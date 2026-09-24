@@ -333,10 +333,9 @@ diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHa
 index 2ff0e23..09de3d7 100644
 --- a/src/nitro/room/RoomMessageHandler.ts
 +++ b/src/nitro/room/RoomMessageHandler.ts
-@@ -1,7 +1,8 @@
+@@ -1,7 +1,7 @@
 -import { PixelRPMovementAuthority } from '../../room/renderer/PixelRPMovementAuthority';
 +import { PixelRPMovementAnomaly, PixelRPMovementV2 } from '../../room/renderer/PixelRPMovementV2';
-+import { ObjectMoveUpdateMessage } from './messages';
  import { AvatarGuideStatus, IConnection, IRoomCreator, IVector3D, LegacyDataType, ObjectRolling, PetType, RoomObjectType, RoomObjectUserType, RoomObjectVariable, Vector3d } from '../../api';
  import { Disposable } from '../../core';
 -import { DiceValueMessageEvent, FloorHeightMapEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureDataEvent, FurnitureFloorAddEvent, FurnitureFloorDataParser, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateEvent, FurnitureWallAddEvent, FurnitureWallDataParser, FurnitureWallEvent, FurnitureWallRemoveEvent, FurnitureWallUpdateEvent, GetRoomEntryDataMessageComposer, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionStartedMessageEvent, IgnoreResultEvent, ItemDataUpdateMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OneWayDoorStatusMessageEvent, PetExperienceEvent, PetFigureUpdateEvent, RoomEntryTileMessageEvent, RoomEntryTileMessageParser, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomUnitChatEvent, RoomUnitChatShoutEvent, RoomUnitChatWhisperEvent, RoomUnitDanceEvent, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RpMovementCycleEvent, RoomUnitHandItemEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitNumberEvent, RoomUnitRemoveEvent, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomVisualizationSettingsEvent, UserInfoEvent, YouArePlayingGameEvent } from '../communication';
@@ -344,7 +343,7 @@ index 2ff0e23..09de3d7 100644
  import { RoomPlaneParser } from './object/RoomPlaneParser';
  import { RoomVariableEnum } from './RoomVariableEnum';
  import { FurnitureStackingHeightMap, LegacyWallGeometry } from './utils';
-@@ -82,7 +83,7 @@ export class RoomMessageHandler extends Disposable
+@@ -82,7 +82,7 @@ export class RoomMessageHandler extends Disposable
          this._connection.addMessageEvent(new RoomUnitDanceEvent(this.onRoomUnitDanceEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitEffectEvent(this.onRoomUnitEffectEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitEvent(this.onRoomUnitEvent.bind(this)));
@@ -353,7 +352,7 @@ index 2ff0e23..09de3d7 100644
          this._connection.addMessageEvent(new RoomUnitExpressionEvent(this.onRoomUnitExpressionEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitHandItemEvent(this.onRoomUnitHandItemEvent.bind(this)));
          this._connection.addMessageEvent(new RoomUnitIdleEvent(this.onRoomUnitIdleEvent.bind(this)));
-@@ -624,19 +625,273 @@ export class RoomMessageHandler extends Disposable
+@@ -624,19 +624,242 @@ export class RoomMessageHandler extends Disposable
          this._roomCreator.updateRoomObjectUserEffect(this._currentRoomId, event.getParser().unitId, event.getParser().effectId, event.getParser().delay);
      }
  
@@ -391,49 +390,18 @@ index 2ff0e23..09de3d7 100644
 +            // A walk-end for an OLDER session than the one the store holds is
 +            // stale: a newer walk already owns this unit, and forgetting it
 +            // would hand a walking avatar to native mid-route. Dropped whole.
-+            const ownedSession = store.sessionOf(parser.virtualId);
-+
-+            if(ownedSession > parser.walkSessionId)
++            if(store.sessionOf(parser.virtualId) > parser.walkSessionId)
 +            {
 +                store.stats.walkEndStale++;
 +
 +                return;
 +            }
 +
-+            // Where the avatar is DRAWN, read before V2 lets go of it. The stop
-+            // status reaches the client just before this packet with the right
-+            // tile, but if a frame ran in between, V2 has already drawn over
-+            // it - and once the unit is forgotten, native leaves the avatar
-+            // wherever V2 last put it, until its next walk.
-+            const object = ((ownedSession >= 0) ? this._roomCreator.getRoomObjectUser(this._currentRoomId, parser.virtualId) : null);
-+            const drawn = (object ? object.getLocation() : null);
-+            const drawnX = (drawn ? drawn.x : NaN);
-+            const drawnY = (drawn ? drawn.y : NaN);
-+            const drawnZ = (drawn ? drawn.z : NaN);
-+
 +            // The marker carries the tile the server actually finished on.
 +            // walkEnd() compares it with what the renderer had, reports any
 +            // mismatch and its direction, and forgets the unit exactly as this
-+            // line always did. See PixelRPMovementV2.walkEnd.
++            // line always did. It corrects nothing - see PixelRPMovementV2.walkEnd.
 +            store.walkEnd(parser.virtualId, parser.toX, parser.toY, parser.toZ, performance.now());
-+
-+            // SETTLE ONTO THE SERVER'S TILE AS A GLIDE, NEVER A SNAP. One native
-+            // move from where the avatar is drawn to where the server stopped
-+            // it: MovingObjectLogic's own interpolation over its own 500ms, so
-+            // a whole-tile gap closes at walking pace. Position only - the
-+            // direction is null, and a plain move message leaves posture, head
-+            // direction and vertical offset alone. A later status packet or a
-+            // new walk takes over from wherever the glide has got to.
-+            if(object && Number.isFinite(drawnX)
-+                && (Math.hypot((drawnX - parser.toX), (drawnY - parser.toY)) > PixelRPMovementV2.WALKEND_MIN_TILES))
-+            {
-+                store.stats.walkEndSettled++;
-+
-+                object.processUpdateMessage(new ObjectMoveUpdateMessage(
-+                    new Vector3d(drawnX, drawnY, drawnZ),
-+                    new Vector3d(parser.toX, parser.toY, parser.toZ),
-+                    null));
-+            }
  
 -        PixelRPMovementAuthority.instance.record(parser.virtualId, parser.seq, parser.onGrid,
 -            parser.fromX, parser.fromY, parser.fromZ, parser.toX, parser.toY, parser.toZ,
@@ -1782,7 +1750,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1153 @@
+@@ -0,0 +1,1148 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1885,7 +1853,7 @@ index 0000000..19b0227
 +     * is almost never a whole number. 0.05 matches JOIN_DIAG_ERROR, which asks
 +     * the same question of the same quantity.
 +     */
-+    public static readonly WALKEND_MIN_TILES = 0.05;
++    private static readonly WALKEND_MIN_TILES = 0.05;
 +
 +    private static readonly MAX_EDGES = 8;
 +
@@ -1963,7 +1931,7 @@ index 0000000..19b0227
 +    // after any walk that joined the phase, and the jitter should be gone.
 +    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0,
 +        walkEndMismatches: 0, walkEndBackward: 0, walkEndForward: 0, walkEndLateral: 0,
-+        walkEndFromPreview: 0, worstWalkEndTiles: 0, walkEndStale: 0, walkEndSettled: 0 };
++        walkEndFromPreview: 0, worstWalkEndTiles: 0, walkEndStale: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2299,11 +2267,6 @@ index 0000000..19b0227
 +     * came from. That may be authoritative and still be the wrong thing to
 +     * show a player. Which direction is safe to reconcile, and how, is a
 +     * decision to make from the numbers rather than in advance.
-+     *
-+     * THE CORRECTION NOW LIVES IN THE CALLER: RoomMessageHandler glides the
-+     * avatar onto the server's tile with one native move once this has
-+     * forgotten the unit, so a backward correction is a short slide rather
-+     * than a snap.
 +     *
 +     * SO THIS MEASURES AND CLASSIFIES. Direction comes from the sign of the dot
 +     * product of the edge's own travel vector with the correction vector:
