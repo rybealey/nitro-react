@@ -625,7 +625,7 @@ index ac3907b..ec7370e 100644
  import { ObjectMoveUpdateMessage } from '../../messages';
  
  export class MovingObjectLogic extends RoomObjectLogicBase
-@@ -64,6 +65,84 @@ export class MovingObjectLogic extends RoomObjectLogicBase
+@@ -64,6 +65,101 @@ export class MovingObjectLogic extends RoomObjectLogicBase
              }
          }
  
@@ -653,6 +653,23 @@ index ac3907b..ec7370e 100644
 +            if(locationOffset) vector.add(locationOffset);
 +
 +            this.object.setLocation(vector);
++
++            // FACING FROM THE STEP ITSELF, as each edge starts. V2 moves the
++            // avatar along an edge the moment it begins, but facing used to wait
++            // for the status packet the server sends when it commits that edge -
++            // a network trip later - so every turn walked the new way facing the
++            // old one, and the higher the ping the longer. The server faces a
++            // walking step by the same rule (see PixelRPMovementV2.rotationOf),
++            // so its status confirms this rather than correcting it. Body and
++            // head together, as the server sets both.
++            const pixelrpFacing = PixelRPMovementV2.instance.facingToApply(this.object.id, pixelrpV2);
++
++            if(pixelrpFacing >= 0)
++            {
++                this.object.setDirection(new Vector3d(pixelrpFacing));
++
++                if(model) model.setValue(RoomObjectVariable.HEAD_DIRECTION, pixelrpFacing);
++            }
 +
 +            // DIAGNOSTIC ONLY - see PixelRPMovementAnomaly. Reads the position
 +            // back off the object immediately after writing it, so a gap between
@@ -1740,7 +1757,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1140 @@
+@@ -0,0 +1,1197 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1810,6 +1827,10 @@ index 0000000..19b0227
 +    revision: number;
 +    edges: PixelRPV2Edge[];
 +    lastPacketAtClient: number;
++    /** The edge facingToApply last turned this unit for - session, revision, index. */
++    facedSession?: number;
++    facedRevision?: number;
++    facedEdge?: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -2375,6 +2396,59 @@ index 0000000..19b0227
 +     * 0.00 every time whether or not a real gap existed - clean-looking
 +     * evidence that means nothing.
 +     */
++    /**
++     * The facing, in degrees, to turn a unit to as its active edge STARTS, or
++     * -1 when this edge has already been faced or has no direction.
++     *
++     * Once per edge, keyed by (session, revision, index), so the render path
++     * pays one comparison per frame and the status packet's own direction can
++     * still turn an avatar standing mid-edge afterwards. A higher revision of
++     * the same index is faced again: its geometry may have changed.
++     *
++     * THE ONE KNOWN DISAGREEMENT: an escorted suspect's edges are faced the way
++     * the CAPTOR faces (MovementController.StageShadow), not their own step, and
++     * nothing on the wire marks them. At an escort corner the suspect faces
++     * their step for a moment until the status turns them to the captor's way.
++     */
++    public facingToApply(virtualId: number, active: PixelRPV2Active): number
++    {
++        const unit = this._units.get(virtualId);
++
++        if(!unit || !active) return -1;
++
++        if((unit.facedSession === active.session) && (unit.facedRevision === active.revision)
++            && (unit.facedEdge === active.edgeIndex)) return -1;
++
++        unit.facedSession = active.session;
++        unit.facedRevision = active.revision;
++        unit.facedEdge = active.edgeIndex;
++
++        const rotation = PixelRPMovementV2.rotationOf(active.sx, active.sy, active.gx, active.gy);
++
++        return ((rotation >= 0) ? (rotation * 45) : -1);
++    }
++
++    /**
++     * Emulator Rotation.Calculate, exactly: the server faces every walking step
++     * by this rule (MovementController.PlanNextEdge sets w.Facing from the
++     * edge's own from and to tiles), so the client can face a step the moment
++     * it starts and agree with the status that follows. 0 is north (y - 1),
++     * clockwise in 45-degree steps; -1 for an edge that does not move.
++     */
++    public static rotationOf(x1: number, y1: number, x2: number, y2: number): number
++    {
++        if((x1 > x2) && (y1 > y2)) return 7;
++        if((x1 < x2) && (y1 < y2)) return 3;
++        if((x1 > x2) && (y1 < y2)) return 5;
++        if((x1 < x2) && (y1 > y2)) return 1;
++        if(x1 > x2) return 6;
++        if(x1 < x2) return 2;
++        if(y1 < y2) return 4;
++        if(y1 > y2) return 0;
++
++        return -1;
++    }
++
 +    public pixelrpPositionOf(virtualId: number, tickerNow: number): { x: number, y: number }
 +    {
 +        const a = this.getActive(virtualId, tickerNow);
