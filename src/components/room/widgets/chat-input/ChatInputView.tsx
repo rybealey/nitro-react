@@ -1,5 +1,6 @@
 import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { RpRetainChatPrefixEvent } from '../../../../api/rp-chat/RpChatMessages';
+import { SendRpFireMacro } from '../../../../api/rp-macros/RpMacroMessages';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
@@ -14,7 +15,7 @@ export const ChatInputView: FC<{}> = props =>
 {
     const [ chatValue, setChatValue ] = useState<string>('');
     const { chatStyleId = 0, updateChatStyleId = null } = useSessionInfo();
-    const { selectedUsername = '', floodBlocked = false, floodBlockedSeconds = 0, setIsTyping = null, setIsIdle = null, sendChat = null } = useChatInputWidget();
+    const { selectedUsername = '', floodBlocked = false, floodBlockedSeconds = 0, setIsTyping = null, setIsIdle = null, sendChat = null, prepareChatText = null } = useChatInputWidget();
     const { roomSession = null } = useRoom();
     const inputRef = useRef<HTMLInputElement>();
     // A modifier can be a binding on its own OR the prefix of a combo, and
@@ -156,26 +157,46 @@ export const ChatInputView: FC<{}> = props =>
     // else goes through the normal sendChat, so a macro behaves exactly like
     // typing the command - the client-side commands (:t, :lt, :ping) still work
     // and flood blocking still applies.
-    const fireMacro = useCallback((command: string) =>
+    const fireMacro = useCallback((commands: string[]) =>
     {
-        let text = command;
-
         // The same "x means my HUD target" shorthand the chat box expands,
         // applied here so ":slap x" works from a key. sendChat also expands a
         // bare second-position x from the room selection, which covers the case
         // where nothing is pinned in the HUD.
-        if(TargetState.name)
+        const lines = commands.map(command =>
         {
-            const [ commandKey, ...args ] = text.split(' ');
+            if(!TargetState.name) return command;
 
-            if(args.some(arg => (arg.toLowerCase() === 'x')))
-            {
-                text = [ commandKey, ...args.map(arg => ((arg.toLowerCase() === 'x') ? TargetState.name : arg)) ].join(' ');
-            }
+            const [ commandKey, ...args ] = command.split(' ');
+
+            if(!args.some(arg => (arg.toLowerCase() === 'x'))) return command;
+
+            return [ commandKey, ...args.map(arg => ((arg.toLowerCase() === 'x') ? TargetState.name : arg)) ].join(' ');
+        });
+
+        // One command: ordinary chat, exactly as before.
+        if(lines.length === 1)
+        {
+            sendChat(lines[0], ChatMessageTypeEnum.CHAT_DEFAULT, '', chatStyleId);
+
+            return;
         }
 
-        sendChat(text, ChatMessageTypeEnum.CHAT_DEFAULT, '', chatStyleId);
-    }, [ sendChat, chatStyleId ]);
+        // Several: each is prepared exactly as typed chat is (client-side
+        // commands run here), and whatever is left goes to the server as ONE
+        // press, which it counts against flood control once rather than once a
+        // line - so a key with three commands cannot mute its owner.
+        const outgoing: string[] = [];
+
+        for(const line of lines)
+        {
+            const prepared = prepareChatText(line);
+
+            if(prepared !== null) outgoing.push(prepared);
+        }
+
+        SendRpFireMacro(chatStyleId, outgoing);
+    }, [ sendChat, prepareChatText, chatStyleId ]);
 
     const updateChatInput = useCallback((value: string) =>
     {
@@ -229,12 +250,12 @@ export const ChatInputView: FC<{}> = props =>
                 // modifier was a prefix rather than a binding of its own.
                 modifierUsedAsPrefix.current = true;
 
-                const command = MacroState.bindings.get(binding);
+                const commands = MacroState.bindings.get(binding);
 
-                if(command)
+                if(commands)
                 {
                     event.preventDefault();
-                    fireMacro(command);
+                    fireMacro(commands);
 
                     return;
                 }
@@ -286,12 +307,12 @@ export const ChatInputView: FC<{}> = props =>
         if(floodBlocked || !MacroState.enabled) return;
         if(anotherInputHasFocus()) return;
 
-        const command = MacroState.bindings.get(held);
+        const commands = MacroState.bindings.get(held);
 
-        if(!command) return;
+        if(!commands) return;
 
         event.preventDefault();
-        fireMacro(command);
+        fireMacro(commands);
     }, [ floodBlocked, anotherInputHasFocus, fireMacro ]);
 
     useUiEvent<RoomWidgetUpdateChatInputContentEvent>(RoomWidgetUpdateChatInputContentEvent.CHAT_INPUT_CONTENT, event =>
@@ -401,9 +422,9 @@ export const ChatInputView: FC<{}> = props =>
 
         if(!binding || !IsMouseBinding(binding)) return;
 
-        const command = MacroState.bindings.get(binding);
+        const commands = MacroState.bindings.get(binding);
 
-        if(!command) return;
+        if(!commands) return;
 
         // Middle click would otherwise start an autoscroll drag, and the room
         // canvas has its own onmousedown property handler (RoomView) which
@@ -413,7 +434,7 @@ export const ChatInputView: FC<{}> = props =>
         // Only a bound button is stopped; anything else is left untouched.
         event.preventDefault();
         event.stopPropagation();
-        fireMacro(command);
+        fireMacro(commands);
     }, [ floodBlocked, fireMacro ]);
 
     useEffect(() =>

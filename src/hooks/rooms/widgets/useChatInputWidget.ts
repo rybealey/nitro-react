@@ -26,7 +26,14 @@ const useChatInputWidgetState = () =>
     const { showNitroAlert = null, showConfirm = null } = useNotification();
     const { roomSession = null } = useRoom();
 
-    const sendChat = (text: string, chatType: number, recipientName: string = '', styleId: number = 0) =>
+    // The client-side half of sending a line: the ":cmd x" expansion from the
+    // room selection, and the commands the client handles itself (:shake,
+    // :togglefps and the rest). Returns the text to send, or null when the line
+    // was handled here and nothing should reach the server. Split out of
+    // sendChat so a macro key bound to several commands (ChatInputView) can
+    // prepare each one exactly as typed chat is, and send what is left as one
+    // press.
+    const prepareChatText = (text: string): string =>
     {
         if(text === '') return null;
 
@@ -277,6 +284,17 @@ const useChatInputWidgetState = () =>
             }
         }
 
+        return text;
+    }
+
+    const sendChat = (text: string, chatType: number, recipientName: string = '', styleId: number = 0) =>
+    {
+        const prepared = prepareChatText(text);
+
+        if(prepared === null) return null;
+
+        text = prepared;
+
         switch(chatType)
         {
             case ChatMessageTypeEnum.CHAT_DEFAULT:
@@ -376,7 +394,7 @@ const useChatInputWidgetState = () =>
         }
     }, [ roomSession, isTyping, typingStartedSent ]);
 
-    return { selectedUsername, floodBlocked, floodBlockedSeconds, setIsTyping, setIsIdle, sendChat };
+    return { selectedUsername, floodBlocked, floodBlockedSeconds, setIsTyping, setIsIdle, sendChat, prepareChatText };
 }
 
 export const useChatInputWidget = useChatInputWidgetState;

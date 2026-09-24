@@ -15,7 +15,7 @@ import { SetEnvironmentWeather, useEnvironmentPrefs, useWeatherSnapshot } from '
 import { EnvironmentSkyPreview } from '../environment/EnvironmentSky';
 import { SanFranciscoClock, SkyConditionLabel } from '../environment/SkyModel';
 import { FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
-import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
+import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_KEY, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
@@ -271,13 +271,31 @@ export const RpSettingsView: FC<{}> = props =>
             return;
         }
 
-        // Rebinding an in-use key replaces it rather than adding a second row
-        // for the same key, which would leave one of them permanently dead.
-        const macros = activePreset.macros
-            .filter(macro => (macro.b !== capturedBinding))
-            .concat([ { b: capturedBinding, c: command.substring(0, MACRO_MAX_COMMAND_LENGTH) } ]);
+        // A key can run several commands, top to bottom in list order, so a
+        // key that is already in use gets ANOTHER row rather than having its
+        // command replaced - delete a row to drop one. The same command twice
+        // on one key is refused, and so is a key already at its cap.
+        const text = command.substring(0, MACRO_MAX_COMMAND_LENGTH);
+        const sameKey = activePreset.macros.filter(macro => (macro.b === capturedBinding));
 
-        replaceActivePreset(macros);
+        if(sameKey.some(macro => (macro.c === text)))
+        {
+            notify(`${ capturedBinding } already runs that command.`);
+
+            return;
+        }
+
+        if(sameKey.length >= MACRO_MAX_PER_KEY)
+        {
+            notify(`A key runs at most ${ MACRO_MAX_PER_KEY } commands.`);
+
+            return;
+        }
+
+        replaceActivePreset(activePreset.macros.concat([ { b: capturedBinding, c: text } ]));
+
+        if(sameKey.length) notify(`${ capturedBinding } now runs ${ sameKey.length + 1 } commands, top to bottom.`);
+
         setCapturedBinding(null);
         setDraftCommand('');
     };

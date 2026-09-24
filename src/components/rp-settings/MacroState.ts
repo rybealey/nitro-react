@@ -37,6 +37,10 @@ export const MACRO_MAX_PER_PRESET = 40;
 export const MACRO_MAX_NAME_LENGTH = 24;
 export const MACRO_MAX_COMMAND_LENGTH = 128;
 
+// How many commands one key may run, top to bottom. Mirrored by the emulator's
+// RpFireMacroEvent.MaxLinesPerPress, which refuses a press carrying more.
+export const MACRO_MAX_PER_KEY = 5;
+
 export const MACRO_DEFAULT_PRESET_NAME = 'Default';
 
 // Keys we refuse to bind ON THEIR OWN. Because a bound key is swallowed before
@@ -216,11 +220,12 @@ export const IsBindingAllowed = (binding: string): boolean =>
 };
 
 // Live state for the DOM handlers in ChatInputView. `bindings` is the ACTIVE
-// preset flattened to binding -> command; rebuilt by the settings window
-// whenever the macros, the active preset or the master switch change.
+// preset flattened to binding -> its commands, in list order; rebuilt by the
+// settings window whenever the macros, the active preset or the master switch
+// change.
 export const MacroState = {
     enabled: false,
-    bindings: new Map<string, string>()
+    bindings: new Map<string, string[]>()
 };
 
 export const ApplyMacroState = (document: MacroDocument): void =>
@@ -236,12 +241,19 @@ export const ApplyMacroState = (document: MacroDocument): void =>
     {
         if(!macro.b || !macro.c) continue;
 
-        // First binding wins: a duplicate can exist transiently while the
-        // player is mid-edit, and firing two commands from one key is worse
-        // than quietly honouring the earlier row.
-        if(MacroState.bindings.has(macro.b)) continue;
+        const commands = MacroState.bindings.get(macro.b);
 
-        MacroState.bindings.set(macro.b, macro.c);
+        if(!commands)
+        {
+            MacroState.bindings.set(macro.b, [ macro.c ]);
+
+            continue;
+        }
+
+        // A key runs its commands top to bottom, in the order the list shows
+        // them. Capped, so a hand-edited or imported preset cannot build a press
+        // the server would refuse whole.
+        if(commands.length < MACRO_MAX_PER_KEY) commands.push(macro.c);
     }
 };
 
@@ -457,15 +469,20 @@ export const ParseExportedPreset = (text: string): ImportedPreset =>
             continue;
         }
 
-        // First binding wins, matching how the active preset is flattened.
-        if(macros.some(existing => (existing.b === binding.trim())))
+        const text = command.trim().substring(0, MACRO_MAX_COMMAND_LENGTH);
+        const sameKey = macros.filter(existing => (existing.b === binding.trim()));
+
+        // A key may run several commands, but the same command twice on one key
+        // is a mistake rather than a macro, and past MACRO_MAX_PER_KEY the rest
+        // could never fire.
+        if(sameKey.some(existing => (existing.c === text)) || (sameKey.length >= MACRO_MAX_PER_KEY))
         {
             skipped++;
 
             continue;
         }
 
-        macros.push({ b: binding.trim(), c: command.trim().substring(0, MACRO_MAX_COMMAND_LENGTH) });
+        macros.push({ b: binding.trim(), c: text });
     }
 
     return { name, macros, skipped };
