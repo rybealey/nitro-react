@@ -24,7 +24,14 @@
         z-index: 20;
     }
 
-    .nitro-card-header .nitro-card-header-close,
+    // The close button is the shared flat one (NitroCardView.scss); only its
+    // height in this narrow header is set here, level with the pen beside it.
+    .nitro-card-header .nitro-card-header-close {
+        top: 3px;
+    }
+
+    // The same flat square as the close button - plain fill, thin dark edge,
+    // thin-line icon - in slate, since it opens a menu rather than closing.
     .rp-inventory-use-mode-toggle {
         width: 20px;
         height: 20px;
@@ -32,29 +39,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 2px;
-        border-radius: 2px;
-        box-shadow: 0 0 0 1px $white;
-    }
-
-    .nitro-card-header .nitro-card-header-close {
-        top: 3px;
-    }
-
-    .rp-inventory-use-mode-toggle {
+        padding: 0;
         cursor: pointer;
-        border: 2px solid #56606c;
-        background: linear-gradient(#aab1ba, #747d88);
+        border: 1px solid rgba(0, 0, 0, 0.35);
+        border-radius: 3px;
+        background: #6b7480;
         color: $white;
         line-height: 1;
 
         svg {
-            width: 12px;
-            height: 12px;
+            display: block;
         }
 
-        &:hover { filter: brightness(1.12); }
-        &:active { filter: brightness(0.88); }
+        &:hover { background: #7a838f; }
+        &:active { background: #5d6570; }
     }
 
     .rp-inventory-use-mode-menu {

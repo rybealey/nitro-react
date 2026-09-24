@@ -7,21 +7,21 @@ $nitro-card-tabs-height: 33px;
     // grip below instead (NitroCardView `resizable`).
     resize: none;
 
-    // Triangle grip filling the bottom-right corner. Dark rather than chrome
-    // toned - it sits over the light content area, not the plate.
+    // Corner grip from the Chat History redesign: two short diagonal strokes
+    // tucked into the bottom-right corner. The grab area is 14px; only the
+    // drawing is 10px, inset 3px from each edge.
     .nitro-card-resize-handle {
         position: absolute;
         right: 0;
         bottom: 0;
-        width: 15px;
-        height: 15px;
+        width: 14px;
+        height: 14px;
         z-index: 30;
         cursor: nwse-resize;
-        background: linear-gradient(to top left, rgba(0, 0, 0, 0.3) 0 42%, transparent 42%);
-        transition: background .1s ease;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%239aa0a8' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 3L3 9M9 6L6 9'/%3E%3C/svg%3E") no-repeat right 3px bottom 3px;
 
         &:hover {
-            background: linear-gradient(to top left, rgba(0, 0, 0, 0.5) 0 42%, transparent 42%);
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%235b5f68' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 3L3 9M9 6L6 9'/%3E%3C/svg%3E") no-repeat right 3px bottom 3px;
         }
     }
 

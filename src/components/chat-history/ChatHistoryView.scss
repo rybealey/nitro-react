@@ -26,22 +26,6 @@ $ch-clear: #c9453a;
         border-color: #a9b0b9;
     }
 
-    // The redesign's corner grip: two short diagonal strokes in the footer's
-    // corner rather than the shared dark triangle. Same handle, same drag.
-    // Doubled class so it beats the shared rule whatever order the sheets
-    // load in. The grab area stays 14px; only the drawing is 10px.
-    .nitro-card-resize-handle.nitro-card-resize-handle {
-        right: 0;
-        bottom: 0;
-        width: 14px;
-        height: 14px;
-        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%239aa0a8' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 3L3 9M9 6L6 9'/%3E%3C/svg%3E") no-repeat right 3px bottom 3px;
-
-        &:hover {
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%235b5f68' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M9 3L3 9M9 6L6 9'/%3E%3C/svg%3E") no-repeat right 3px bottom 3px;
-        }
-    }
-
     .rp-ch-tabs {
         flex-shrink: 0;
         height: 38px;
@@ -49,6 +33,7 @@ $ch-clear: #c9453a;
         padding: 6px 5px;
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 2px;
         overflow: hidden;
         background: linear-gradient(#f3f4f6 0, #f3f4f6 5px, #e7e8eb 5px, #e7e8eb calc(100% - 4px), #dcdee2 calc(100% - 4px));

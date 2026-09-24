@@ -2,7 +2,6 @@ import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemCompo
 import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FaPen } from 'react-icons/fa';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -239,7 +238,7 @@ export const RpInventoryView: FC<{}> = props =>
             <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
             <div ref={ useModeRef } className="rp-inventory-use-mode">
                 <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
-                    <FaPen />
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2l2 2-6 6H2V8z" /><path d="M6.8 3.2l2 2" /></svg>
                 </button>
                 { isUseModeOpen &&
                     <div className="rp-inventory-use-mode-menu">
