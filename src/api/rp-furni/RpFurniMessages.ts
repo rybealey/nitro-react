@@ -175,6 +175,8 @@ export interface RpFurniFunction
     vendingIds: string;
     placedCopies: number;
     roomCount: number;
+    /** Avatars lie across this furni instead of along it (laying furni only). */
+    layAcross: boolean;
 }
 
 export class RpFurniFunctionParser implements IMessageParser
@@ -214,7 +216,9 @@ export class RpFurniFunctionParser implements IMessageParser
             behaviourData: wrapper.readInt(),
             vendingIds: wrapper.readString(),
             placedCopies: wrapper.readInt(),
-            roomCount: wrapper.readInt()
+            roomCount: wrapper.readInt(),
+            // last on the wire - see RpFurniFunctionComposer
+            layAcross: wrapper.readBoolean()
         };
 
         return true;
@@ -331,11 +335,13 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
     constructor(definitionId: number, publicName: string, walkable: boolean, walkMask: string,
         seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
         heightMarker: boolean, interactionType: string, modes: number, effectId: number,
-        behaviourData: number, vendingIds: string, scopeItemId: number = 0)
+        behaviourData: number, vendingIds: string, scopeItemId: number = 0, layAcross: boolean = false)
     {
+        // layAcross rides LAST, after scopeItemId, so the emulator can tell a
+        // client that never sent it from one that sent false.
         this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
             Math.round(stackHeight * 100), adjustableHeights, heightMarker, interactionType, modes,
-            effectId, behaviourData, vendingIds, scopeItemId ];
+            effectId, behaviourData, vendingIds, scopeItemId, layAcross ];
     }
 
     public getMessageArray() 

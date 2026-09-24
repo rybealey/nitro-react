@@ -109,23 +109,23 @@ const BEHAVIOURS: [ string, string ][] = [ ...HABBO_BEHAVIOURS, ...PIXELRP_BEHAV
 const PRESETS: [ string, string, { walkable: boolean; seat: boolean; stackable: boolean; height?: number } ][] = [
     [ 'wall', 'Wall', { walkable: false, seat: false, stackable: false } ],
     [ 'through', 'Walk-through', { walkable: true, seat: false, stackable: false } ],
-    [ 'seat', 'Seat', { walkable: false, seat: true, stackable: false } ],
+    [ 'seat', 'Seat', { walkable: false, seat: true, stackable: true } ],
     [ 'table', 'Table', { walkable: false, seat: false, stackable: true } ],
     [ 'rug', 'Rug', { walkable: true, seat: false, stackable: true, height: 0 } ]
 ];
 
 const LABELS: { [key: string]: string } = {
     publicName: 'Name', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
-    heightMarker: 'Height marker',
+    heightMarker: 'Height marker', layAcross: 'Lie across',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
 
-type Draft = Pick<RpFurniFunction, 'publicName' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
+type Draft = Pick<RpFurniFunction, 'publicName' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'layAcross' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
 
 const toDraft = (data: RpFurniFunction): Draft => ({
     publicName: data.publicName, walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
-    stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights, heightMarker: data.heightMarker,
+    stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights, heightMarker: data.heightMarker, layAcross: data.layAcross,
     interactionType: data.interactionType, modes: data.modes, effectId: data.effectId,
     behaviourData: data.behaviourData, vendingIds: data.vendingIds
 });
@@ -359,7 +359,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.publicName, draft.walkable,
             draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.heightMarker, draft.interactionType, draft.modes, draft.effectId, draft.behaviourData,
-            draft.vendingIds, (scoped ? avatarInfo.id : 0)));
+            draft.vendingIds, (scoped ? avatarInfo.id : 0), draft.layAcross));
 
         // Closing is the confirmation: the change is hotel-wide and the
         // window has nothing left to say about it. Staying open would invite a
@@ -477,6 +477,10 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         [ 'Layable', 'Sets Behaviour to Bed - laying has no field of its own', layable, () => update({ interactionType: layable ? 'default' : 'bed' }) ],
         [ 'Stackable', 'Other furni can go on top', draft.stackable, () => update({ stackable: !draft.stackable }) ]
     ];
+
+    // Only a laying furni has a way to lie. The game draws a lying avatar just
+    // two ways, so this is a switch between them rather than a direction.
+    if(layable) toggles.push([ 'Lie across', 'Avatars lie across it instead of along it', draft.layAcross, () => update({ layAcross: !draft.layAcross }) ]);
 
     return createPortal(
         <div className="rp-furni-function" style={ { left: pos.x, top: pos.y } }>
