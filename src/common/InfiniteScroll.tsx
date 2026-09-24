@@ -7,12 +7,14 @@ interface InfiniteScrollProps<T = any>
     rows: T[];
     overscan?: number;
     scrollToBottom?: boolean;
+    // Changing this scrolls to the newest row (Chat History's "Latest").
+    scrollKey?: number;
     rowRender: (row: T) => ReactElement;
 }
 
 export const InfiniteScroll: FC<InfiniteScrollProps> = props =>
 {
-    const { rows = [], overscan = 5, scrollToBottom = false, rowRender = null } = props;
+    const { rows = [], overscan = 5, scrollToBottom = false, scrollKey = 0, rowRender = null } = props;
     const [ scrollIndex, setScrollIndex ] = useState<number>(rows.length - 1);
     const elementRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +33,14 @@ export const InfiniteScroll: FC<InfiniteScrollProps> = props =>
 
         scrollToIndex(scrollIndex);
     }, [ scrollToBottom, scrollIndex, scrollToIndex ]);
+
+    useEffect(() =>
+    {
+        if(!scrollKey || !rows.length) return;
+
+        scrollToIndex(rows.length - 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ scrollKey ]);
 
     return (
         <Base fit innerRef={ elementRef } position="relative" overflow="auto">

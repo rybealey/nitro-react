@@ -4,6 +4,7 @@ import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRend
 import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { IsMentionOfMe } from '../../../api/rp-chat/Mention';
 import { IsGangAlert } from '../../../api/rp-chat/GangAlert';
+import { IsCorpAlert } from '../../../api/rp-chat/CorpAlert';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
 
@@ -22,7 +23,7 @@ const useChatWidgetState = () =>
         protection: RoomChatSettings.FLOOD_FILTER_NORMAL
     });
     const { roomSession = null } = useRoom();
-    const { addChatEntry, addMention, addGangEntry } = useChatHistory();
+    const { addChatEntry, addMention, addGangEntry, addCorpEntry } = useChatHistory();
     const isDisposed = useRef(false);
 
     const getScrollSpeed = useMemo(() =>
@@ -242,6 +243,9 @@ const useChatWidgetState = () =>
         // The bubble is the whole test here - nobody but the server can send
         // it. See api/rp-chat/GangAlert.ts.
         if(IsGangAlert(styleId)) addGangEntry({ ...entry });
+
+        // Bubble, whisper and speaker together - see api/rp-chat/CorpAlert.ts.
+        if(IsCorpAlert(styleId, chatType, username, text)) addCorpEntry({ ...entry });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>

@@ -12,12 +12,15 @@ const MENTIONS_MAX = 200;
 // Gang chat is kept in its own list for the same reason as mentions: it is a
 // conversation, and one busy room would age it out of a filtered view.
 const GANG_CHAT_MAX = 200;
+// Corporation chat (:ca), for the same reason again.
+const CORP_CHAT_MAX = 200;
 const ROOM_HISTORY_MAX = 10;
 const MESSENGER_HISTORY_MAX = 1000;
 
 let CHAT_HISTORY_COUNTER: number = 0;
 let MENTIONS_COUNTER: number = 0;
 let GANG_CHAT_COUNTER: number = 0;
+let CORP_CHAT_COUNTER: number = 0;
 let MESSENGER_HISTORY_COUNTER: number = 0;
 
 const useChatHistoryState = () =>
@@ -29,6 +32,8 @@ const useChatHistoryState = () =>
     const [ mentionsUnread, setMentionsUnread ] = useState(0);
     const [ gangChat, setGangChat ] = useState<IChatEntry[]>([]);
     const [ gangUnread, setGangUnread ] = useState(0);
+    const [ corpChat, setCorpChat ] = useState<IChatEntry[]>([]);
+    const [ corpUnread, setCorpUnread ] = useState(0);
     const [ needsRoomInsert, setNeedsRoomInsert ] = useState(false);
 
     const addChatEntry = (entry: IChatEntry) =>
@@ -85,6 +90,51 @@ const useChatHistoryState = () =>
     }
 
     const clearGangUnread = () => setGangUnread(0);
+
+    // Its own copy and its own counter, exactly as addGangEntry does.
+    const addCorpEntry = (entry: IChatEntry) =>
+    {
+        entry.id = CORP_CHAT_COUNTER++;
+
+        setCorpChat(prevValue =>
+        {
+            const newValue = [ ...prevValue, entry ];
+
+            if(newValue.length > CORP_CHAT_MAX) newValue.shift();
+
+            return newValue;
+        });
+
+        setCorpUnread(prevValue => (prevValue + 1));
+    }
+
+    const clearCorpUnread = () => setCorpUnread(0);
+
+    // The Chat History bin. Each tab empties on its own; 'all' empties every
+    // list, since All is where the others' lines appear too. Only what this
+    // window shows - roomHistory and the messenger log are left alone.
+    const clearHistory = (tab: 'all' | 'mentions' | 'gang' | 'corp') =>
+    {
+        if((tab === 'all') || (tab === 'mentions'))
+        {
+            setMentions([]);
+            setMentionsUnread(0);
+        }
+
+        if((tab === 'all') || (tab === 'gang'))
+        {
+            setGangChat([]);
+            setGangUnread(0);
+        }
+
+        if((tab === 'all') || (tab === 'corp'))
+        {
+            setCorpChat([]);
+            setCorpUnread(0);
+        }
+
+        if(tab === 'all') setChatHistory([]);
+    }
 
     const addRoomHistoryEntry = (entry: IRoomHistoryEntry) =>
     {
@@ -150,7 +200,7 @@ const useChatHistoryState = () =>
         addMessengerEntry({ id: -1, webId: parser.senderId, entityId: -1, name: '', message: parser.messageText, roomId: -1, timestamp: MessengerHistoryCurrentDate(), type: ChatEntryType.TYPE_IM });
     });
     
-    return { addChatEntry, addMention, clearMentionsUnread, addGangEntry, clearGangUnread, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread, gangChat, gangUnread };
+    return { addChatEntry, addMention, clearMentionsUnread, addGangEntry, clearGangUnread, addCorpEntry, clearCorpUnread, clearHistory, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread, gangChat, gangUnread, corpChat, corpUnread };
 }
 
 export const useChatHistory = () => useBetween(useChatHistoryState);

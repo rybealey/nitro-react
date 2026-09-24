@@ -4,6 +4,7 @@ import { ChatBubbleMessage, GetRoomEngine } from '../../../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/NarratedBubble';
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../../../api/rp-chat/GangAlert';
+import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../../../api/rp-chat/CorpAlert';
 
 interface ChatWidgetMessageViewProps
 {
@@ -90,8 +91,11 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
     // bubble would show is theirs, with the real sender buried in the text.
     // Credit the sender and tag the line: "[GA] Ryan: hello".
     const gangAlert = IsGangAlert(chat.styleId) ? ParseGangAlert(formattedText) : null;
-    const displayName = gangAlert ? `${ GANG_ALERT_PREFIX } ${ gangAlert.sender }` : chat.username;
-    const displayText = gangAlert ? gangAlert.message : formattedText;
+    // A corporation alert (:ca) arrives the same way; "[CA] Sana: hello".
+    const corpAlert = (!gangAlert && IsCorpAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseCorpAlert(formattedText) : null;
+    const alert = (gangAlert || corpAlert);
+    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : CORP_ALERT_PREFIX } ${ alert.sender }` : chat.username;
+    const displayText = alert ? alert.message : formattedText;
 
     return (
         <div ref={ elementRef } className={ `bubble-container ${ isVisible ? 'visible' : 'invisible' }` } onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>
