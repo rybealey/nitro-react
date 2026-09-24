@@ -81,6 +81,16 @@ export const ChatHistoryView: FC<{}> = props =>
         return source.filter(entry => (((entry.text || entry.message) && (entry.text || entry.message).toLowerCase().includes(query)) || (entry.name && entry.name.toLowerCase().includes(query))));
     }, [ chatHistory, mentions, gangChat, corpChat, query, tab ]);
 
+    // The list holds still while you read: a new line lands below and nothing
+    // moves. It goes to the newest line only when you open the window, change
+    // tab, or press Latest - InfiniteScroll's scrollToBottom re-scrolled on
+    // every render, so each incoming line yanked the view away from what you
+    // were reading.
+    useEffect(() =>
+    {
+        if(isVisible) setScrollKey(prevValue => (prevValue + 1));
+    }, [ isVisible, tab ]);
+
     const matchCount = useMemo(() => rows.filter(row => (row.type === ChatEntryType.TYPE_CHAT)).length, [ rows ]);
 
     // The count clears whenever the tab is actually in front of the player -
@@ -238,7 +248,7 @@ export const ChatHistoryView: FC<{}> = props =>
                     { !rows.length &&
                         <div className="rp-ch-empty">{ emptyText }</div> }
                     { (rows.length > 0) &&
-                        <InfiniteScroll rows={ rows } scrollToBottom={ true } scrollKey={ scrollKey } rowRender={ renderRow } /> }
+                        <InfiniteScroll rows={ rows } scrollKey={ scrollKey } rowRender={ renderRow } /> }
                 </div>
                 <div className="rp-ch-footer">
                     <span>{ FOOTER_TEXT[tab] }</span>

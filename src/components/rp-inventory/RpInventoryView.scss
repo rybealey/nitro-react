@@ -19,7 +19,7 @@
     }
     .rp-inventory-use-mode {
         position: absolute;
-        top: 5px;
+        top: 3px;
         right: 31px;
         z-index: 20;
     }
@@ -27,7 +27,7 @@
     .nitro-card-header .nitro-card-header-close,
     .rp-inventory-use-mode-toggle {
         width: 20px;
-        height: 16px;
+        height: 20px;
         box-sizing: border-box;
         display: flex;
         align-items: center;
@@ -38,7 +38,7 @@
     }
 
     .nitro-card-header .nitro-card-header-close {
-        top: 5px;
+        top: 3px;
     }
 
     .rp-inventory-use-mode-toggle {

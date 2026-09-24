@@ -274,3 +274,53 @@ $nitro-card-tabs-height: 33px;
         border-bottom: 1px solid rgba($black, 0.2);
     }
 }
+
+// PixelRP: the flat close button from the Chat History redesign, on every
+// window - a plain red square with a thin, round-ended X, in place of the
+// two-tone ringed one. The X is two pseudo-element strokes so its ends can be
+// rounded; the header's icon glyph is hidden rather than removed. The doubled
+// class beats each theme's own close rule above whatever order sheets load in.
+.nitro-card .nitro-card-header .nitro-card-header-close.nitro-card-header-close {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    right: 5px !important;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    border-radius: 3px;
+    box-shadow: none;
+    background: #c9453a;
+
+    .fa-icon {
+        display: none;
+    }
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 11px;
+        height: 2px;
+        border-radius: 1px;
+        background: #ffffff;
+    }
+
+    &::before {
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    &::after {
+        transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    &:hover {
+        filter: none;
+        background: #d55a50;
+    }
+
+    &:active {
+        filter: none;
+        background: #b53b31;
+    }
+}

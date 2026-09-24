@@ -24,56 +24,6 @@ $ch-clear: #c9453a;
 
     &.theme-primary-slim {
         border-color: #a9b0b9;
-
-        // The flat close button from the redesign: a plain red square with a
-        // thin, round-ended X, in place of the two-tone ringed one. The X is
-        // drawn with two pseudo-element strokes so its ends can be rounded;
-        // the card's own icon glyph is hidden rather than removed, so the
-        // shared header component is untouched.
-        .nitro-card-header .nitro-card-header-close.nitro-card-header-close {
-            width: 20px;
-            height: 20px;
-            padding: 0;
-            right: 5px !important;
-            border: 1px solid rgba(0, 0, 0, 0.35);
-            border-radius: 3px;
-            box-shadow: none;
-            background: $ch-clear;
-
-            .fa-icon {
-                display: none;
-            }
-
-            &::before,
-            &::after {
-                content: '';
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 11px;
-                height: 2px;
-                border-radius: 1px;
-                background: #ffffff;
-            }
-
-            &::before {
-                transform: translate(-50%, -50%) rotate(45deg);
-            }
-
-            &::after {
-                transform: translate(-50%, -50%) rotate(-45deg);
-            }
-
-            &:hover {
-                filter: none;
-                background: lighten($ch-clear, 5%);
-            }
-
-            &:active {
-                filter: none;
-                background: darken($ch-clear, 5%);
-            }
-        }
     }
 
     // The redesign's corner grip: two short diagonal strokes in the footer's
