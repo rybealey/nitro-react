@@ -3,6 +3,7 @@ import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { ExtendAvatarStructure } from './api/avatar/ExtendAvatarStructure';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
+import { InstallTurnTrace } from './api/diagnostics/TurnTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
@@ -140,6 +141,9 @@ export const App: FC<{}> = props =>
                 // Console handle only - nothing is registered on the ticker and
                 // nothing is measured until pixelrpCrossingTrace() arms it.
                 InstallProximityTrace();
+                // Always on, unlike the proximity trace: it registers its own
+                // ticker callback and logs only flagged turns, capped.
+                InstallTurnTrace();
                 RegisterRpGangMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
