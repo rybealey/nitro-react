@@ -546,10 +546,10 @@ $furni-function-on: #2e9e4f;
         }
     }
 
-    // Per-tile walkability grid. Plain squares rather than an isometric
-    // diamond: the grid is the furni's OWN frame, not the room's, and drawing
-    // it on the diagonal would imply it maps to fixed map squares when it
-    // actually turns with the item.
+    // Per-tile walkability grid, drawn as the room draws the furni's squares
+    // right now - isometric diamonds, +x down-right and +y down-left - so what
+    // you click is the square on the floor. The stored mask is still the
+    // furni's own frame; the view maps each diamond back into it.
     .rp-furni-function-mask {
         margin-top: 11px;
         padding: 8px;
@@ -571,30 +571,47 @@ $furni-function-on: #2e9e4f;
     }
 
     .rp-furni-function-mask-grid {
-        display: grid;
-        gap: 3px;
-        justify-content: start;
+        position: relative;
+        margin: 2px auto;
     }
 
+    // The outer diamond is the tile's dark edge; the inner span is its face,
+    // inset so neighbouring tiles read as separate squares. clip-path also
+    // clips hit-testing, so a click lands on the diamond it looks like it hits.
     .rp-furni-function-cell {
-        width: 18px;
-        height: 18px;
-        border-radius: 3px;
+        position: absolute;
         cursor: pointer;
-        background: rgba($white, .16);
-        border: 1px solid rgba(0, 0, 0, .35);
-        transition: background-color .1s ease;
+        clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+        background: rgba(0, 0, 0, .45);
 
-        &:hover { background: rgba($white, .26); }
+        span {
+            position: absolute;
+            inset: 2px 4px;
+            clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+            background: rgba($white, .16);
+            transition: background-color .1s ease;
+        }
+
+        &:hover span { background: rgba($white, .26); }
 
         // Open reads as the floor showing through, so it takes the walkable
         // green the movement toggles already use for "yes, you can be here".
         &.is-open {
-            background: $furni-function-on;
-            border-color: rgba(0, 0, 0, .45);
+            span { background: $furni-function-on; }
 
-            &:hover { background: lighten($furni-function-on, 6%); }
+            &:hover span { background: lighten($furni-function-on, 6%); }
         }
+    }
+
+    .rp-furni-function-warning {
+        margin-top: 11px;
+        padding: 7px 9px;
+        border-radius: 6px;
+        font-size: 10.5px;
+        line-height: 1.45;
+        color: #ffd8a8;
+        background: rgba(214, 120, 30, .18);
+        border: 1px solid rgba(214, 120, 30, .45);
     }
 
     .rp-furni-function-mask-note {

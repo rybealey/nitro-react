@@ -1,6 +1,7 @@
+import { RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { ChangeEvent, FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AvatarInfoFurni, SendMessageComposer } from '../../../../../api';
+import { AvatarInfoFurni, GetRoomEngine, GetRoomSession, SendMessageComposer } from '../../../../../api';
 import { AddFurniFunctionListener, RequestFurniFunction, RpFurniFunction, RpSetFurniFunctionComposer } from '../../../../../api/rp-furni/RpFurniMessages';
 
 interface InfoStandWidgetFurniFunctionViewProps
@@ -156,14 +157,48 @@ const describe = (key: string, value: boolean | number | string): string =>
 }
 
 // The mask is width*length characters indexed b * width + a, with `a` running
-// across the width and `b` along the length - the furni's own frame, so it
-// turns with the item rather than staying put on the map while the sofa moves.
+// across the width and `b` along the length - the furni's own frame as it
+// stands at rotation 0, so it turns with the item rather than staying put on
+// the map while the sofa moves.
 const maskCells = (mask: string, width: number, length: number): boolean[] =>
 {
     const size = (width * length);
     const source = ((mask || '').length === size) ? mask : '0'.repeat(size);
 
     return source.split('').map(cell => (cell === '1'));
+}
+
+// The furni's rotation, 0/2/4/6, as it stands in the room right now. Odd
+// rotations take the even one below, as the emulator's footprint does.
+const currentRotation = (furniId: number): number =>
+{
+    const roomSession = GetRoomSession();
+    const roomObject = roomSession ? GetRoomEngine().getRoomObject(roomSession.roomId, furniId, RoomObjectCategory.FLOOR) : null;
+
+    if(!roomObject) return 0;
+
+    const rotation = (Math.round(roomObject.getDirection().x / 45) % 8 + 8) % 8;
+
+    return (rotation - (rotation % 2));
+}
+
+// Which mask character a room square is. `dx`/`dy` are the square's offset
+// from the furni's anchor on the room map. MUST match GameMap.IsMaskedWalkable
+// square for square: each step of 2 is a quarter-turn clockwise seen from
+// above, and the footprint always runs from the anchor towards +x/+y.
+const maskIndexAt = (dx: number, dy: number, rotation: number, width: number, length: number): number =>
+{
+    let a = dx;
+    let b = dy;
+
+    switch(rotation)
+    {
+        case 2: a = dy; b = ((length - 1) - dx); break;
+        case 4: a = ((width - 1) - dx); b = ((length - 1) - dy); break;
+        case 6: a = ((width - 1) - dy); b = dx; break;
+    }
+
+    return ((b * width) + a);
 }
 
 const behaviourLabel = (id: string): string =>
@@ -235,6 +270,50 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         [ draft, saved ]);
 
     const openCount = useMemo(() => cells.filter(Boolean).length, [ cells ]);
+
+    // Read on every render rather than once, so turning the furni while the
+    // window is open redraws the grid the new way round on the next click.
+    const rotation = currentRotation(avatarInfo.id);
+
+    // The squares as they lie in the room: the footprint runs `width` along x
+    // and `length` along y, swapped at 2/6. Drawn as the room draws them, +x
+    // down-right and +y down-left, so the square you click is the square that
+    // opens.
+    const roomTiles = useMemo(() =>
+    {
+        if(!saved) return [];
+
+        const turned = ((rotation === 2) || (rotation === 6));
+        const sizeX = (turned ? saved.length : saved.width);
+        const sizeY = (turned ? saved.width : saved.length);
+        const tileWidth = Math.min(32, Math.floor(288 / Math.max(1, (sizeX + sizeY))) * 2);
+        const tiles: { index: number; left: number; top: number }[] = [];
+
+        for(let dy = 0; dy < sizeY; dy++)
+        {
+            for(let dx = 0; dx < sizeX; dx++)
+            {
+                tiles.push({
+                    index: maskIndexAt(dx, dy, rotation, saved.width, saved.length),
+                    left: ((dx - dy + (sizeY - 1)) * (tileWidth / 2)),
+                    top: ((dx + dy) * (tileWidth / 4))
+                });
+            }
+        }
+
+        return tiles.map(tile => ({ ...tile, width: tileWidth, gridWidth: ((sizeX + sizeY) * (tileWidth / 2)), gridHeight: ((sizeX + sizeY) * (tileWidth / 4)) }));
+    }, [ saved, rotation ]);
+
+    // What the server blocks versus what the artwork covers. They come from
+    // different places (`furniture` against FurnitureData), and when they
+    // disagree the grid has the wrong number of squares because the furni
+    // itself blocks the wrong ones - which no toggle here can fix.
+    const sizeMismatch = useMemo(() =>
+    {
+        if(!saved || (saved.productType === 'i')) return false;
+
+        return ((saved.width !== avatarInfo.tileSizeX) || (saved.length !== avatarInfo.tileSizeY));
+    }, [ saved, avatarInfo.tileSizeX, avatarInfo.tileSizeY ]);
 
     const companion = useMemo(() => (draft ? (COMPANIONS[draft.interactionType] || null) : null), [ draft ]);
 
@@ -518,6 +597,12 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                 <div className="rp-furni-function-row-hint">{ hint }</div>
                             </div>
                         </div>) }
+                    { sizeMismatch &&
+                        <div className="rp-furni-function-warning">
+                            The server has this furni as <b>{ saved.width } x { saved.length }</b>, but its artwork is
+                            <b> { avatarInfo.tileSizeX } x { avatarInfo.tileSizeY }</b>, so it blocks the wrong squares and the
+                            grid below is the wrong size. The size has to be fixed in the database.
+                        </div> }
                     { multiTile &&
                         <div className="rp-furni-function-mask">
                             <div className="rp-furni-function-mask-head">
@@ -527,16 +612,18 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                         onClick={ () => update({ walkMask: '' }) }>Clear</div> }
                             </div>
                             <div className="rp-furni-function-mask-grid"
-                                style={ { gridTemplateColumns: `repeat(${ saved.width }, 18px)` } }>
-                                { cells.map((open, index) =>
-                                    <div key={ index } title={ open ? 'Walkable' : 'Solid' }
-                                        className={ 'rp-furni-function-cell' + (open ? ' is-open' : '') }
-                                        onClick={ () => toggleCell(index) } />) }
+                                style={ { width: roomTiles.length ? roomTiles[0].gridWidth : 0, height: roomTiles.length ? roomTiles[0].gridHeight : 0 } }>
+                                { roomTiles.map(tile =>
+                                    <div key={ tile.index } title={ cells[tile.index] ? 'Walkable' : 'Solid' }
+                                        className={ 'rp-furni-function-cell' + (cells[tile.index] ? ' is-open' : '') }
+                                        style={ { left: tile.left, top: tile.top, width: tile.width, height: (tile.width / 2) } }
+                                        onClick={ () => toggleCell(tile.index) }><span /></div>) }
                             </div>
                             <div className="rp-furni-function-mask-note">
                                 Squares the furni leaves as floor - the inside of an L-shaped sofa, the
-                                gap in a fence. The grid turns with the furni, so a hole stays in the
-                                corner it belongs to.
+                                gap in a fence. Drawn the way the furni sits in the room right now, so
+                                click the square you want open. Turn the furni and the open squares
+                                turn with it.
                             </div>
                         </div> }
                     <div className="rp-furni-function-pair">
@@ -638,7 +725,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     <div className="rp-furni-function-fixed">
                         <div><span>Class</span><b>{ saved.itemName }</b></div>
                         <div><span>Sprite</span><b>{ saved.spriteId }</b></div>
-                        <div><span>Size</span><b>{ saved.width } x { saved.length }</b></div>
+                        <div><span>Size</span><b>{ saved.width } x { saved.length }{ sizeMismatch ? ` (art ${ avatarInfo.tileSizeX } x ${ avatarInfo.tileSizeY })` : '' }</b></div>
                         <div><span>Placement</span><b>{ (saved.productType === 'i') ? 'Wall' : 'Floor' }</b></div>
                     </div>
                     <div className="rp-furni-function-note">Size and placement come from the furni&apos;s artwork, not the database. Changing them here would make the server block tiles the sprite never covers.</div>
