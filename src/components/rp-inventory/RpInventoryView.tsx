@@ -56,6 +56,8 @@ export const RpInventoryView: FC<{}> = props =>
     const [ dragFrom, setDragFrom ] = useState<number>(-1);
     // The pointer is over the bin that replaces the close button mid-drag.
     const [ overBin, setOverBin ] = useState(false);
+    // An item dropped on the bin, waiting for the player to confirm how many.
+    const [ discardSlot, setDiscardSlot ] = useState<number>(-1);
     const [ dropTarget, setDropTarget ] = useState<number>(-1);
     const [ ghost, setGhost ] = useState<{ x: number, y: number }>(null);
     const [ itemUseMode, setItemUseMode ] = useLocalStorage<ItemUseMode>('pixelrp.backpack.item-use-mode', 'single');
@@ -195,8 +197,8 @@ export const RpInventoryView: FC<{}> = props =>
             {
                 const over = slotUnderPointer(upEvent.clientX, upEvent.clientY);
 
-                // Dropped on the bin: the whole stack in that slot goes.
-                if(binUnderPointer(upEvent.clientX, upEvent.clientY)) SendRpDiscardItem(slot);
+                // Dropped on the bin: ask first, and how many.
+                if(binUnderPointer(upEvent.clientX, upEvent.clientY)) setDiscardSlot(slot);
                 else if((over >= 0) && isDropTarget(over)) SendMessageComposer(new RpMoveItemComposer(slot, over));
             }
 
@@ -242,76 +244,171 @@ export const RpInventoryView: FC<{}> = props =>
         setIsUseModeOpen(false);
     }
 
+    const discardEntry = ((discardSlot > 0) ? items.get(discardSlot) : null);
+
     return (
-        <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
-            <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
-            { /* While an item is being dragged the close button becomes a bin:
+        <>
+            <NitroCardView uniqueKey="rp-inventory" className="rp-inventory-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
+                <NitroCardHeaderView headerText="Backpack" onCloseClick={ () => setIsVisible(false) } />
+                { /* While an item is being dragged the close button becomes a bin:
                  drop the item on it to throw the stack away. It sits exactly
                  over the X, so letting go anywhere else changes nothing. */ }
-            { (dragFrom >= 0) &&
+                { (dragFrom >= 0) &&
                 <div data-rp-bin className={ 'rp-inventory-bin' + (overBin ? ' is-over' : '') } title="Drop here to throw it away" aria-label="Throw away">
                     <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3.5h10" /><path d="M5.5 3.5V2h3v1.5" /><path d="M3.5 3.5l.6 8.5h5.8l.6-8.5" /><path d="M5.8 6v3.8M8.2 6v3.8" /></svg>
                 </div> }
-            <div ref={ useModeRef } className="rp-inventory-use-mode">
-                <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2l2 2-6 6H2V8z" /><path d="M6.8 3.2l2 2" /></svg>
-                </button>
-                { isUseModeOpen &&
+                <div ref={ useModeRef } className="rp-inventory-use-mode">
+                    <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2l2 2-6 6H2V8z" /><path d="M6.8 3.2l2 2" /></svg>
+                    </button>
+                    { isUseModeOpen &&
                     <div className="rp-inventory-use-mode-menu">
                         <button type="button" className={ (itemUseMode === 'single') ? 'is-active' : '' } onClick={ () => chooseItemUseMode('single') }>Single Click</button>
                         <button type="button" className={ (itemUseMode === 'double') ? 'is-active' : '' } onClick={ () => chooseItemUseMode('double') }>Double Click</button>
                     </div> }
-            </div>
-            <NitroCardContentView className="text-black">
-                <div className="rp-inventory-gear">
-                    <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
-                        <LuSwords className="rp-inventory-slot-icon" />
-                    </div>
-                    <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
-                        <LuShield className="rp-inventory-slot-icon" />
-                    </div>
                 </div>
-                <div className="rp-inventory-grid">
-                    { CARRY_SLOTS.map(slot =>
-                    {
-                        if((slot > unlockedSlots) && !items.get(slot))
+                <NitroCardContentView className="text-black">
+                    <div className="rp-inventory-gear">
+                        <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
+                            <LuSwords className="rp-inventory-slot-icon" />
+                        </div>
+                        <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
+                            <LuShield className="rp-inventory-slot-icon" />
+                        </div>
+                    </div>
+                    <div className="rp-inventory-grid">
+                        { CARRY_SLOTS.map(slot =>
                         {
-                            return (
-                                <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
-                                    <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
-                                </div>);
-                        }
+                            if((slot > unlockedSlots) && !items.get(slot))
+                            {
+                                return (
+                                    <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
+                                        <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
+                                    </div>);
+                            }
 
-                        const entry = items.get(slot);
-                        const meta = (entry ? resolveItem(entry.item) : null);
+                            const entry = items.get(slot);
+                            const meta = (entry ? resolveItem(entry.item) : null);
 
-                        if(entry && meta)
-                        {
+                            if(entry && meta)
+                            {
+                                return (
+                                    <div key={ slot } data-rp-slot={ slot }
+                                        className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                        title={ meta.name }
+                                        onClick={ () => onItemClick(slot) }
+                                        onDoubleClick={ () => onItemDoubleClick(slot) }
+                                        onPointerDown={ event => onItemDown(event, slot) }>
+                                        <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
+                                        { (entry.count > 1) &&
+                                        <span className="rp-inventory-count">{ entry.count }</span> }
+                                    </div>);
+                            }
+
                             return (
                                 <div key={ slot } data-rp-slot={ slot }
-                                    className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
-                                    title={ meta.name }
-                                    onClick={ () => onItemClick(slot) }
-                                    onDoubleClick={ () => onItemDoubleClick(slot) }
-                                    onPointerDown={ event => onItemDown(event, slot) }>
-                                    <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
-                                    { (entry.count > 1) &&
-                                        <span className="rp-inventory-count">{ entry.count }</span> }
+                                    className={ `rp-inventory-slot${ (dropTarget === slot) ? ' is-drop-target' : '' }` }>
+                                    <span className="rp-inventory-slot-label">{ slot }</span>
                                 </div>);
-                        }
-
-                        return (
-                            <div key={ slot } data-rp-slot={ slot }
-                                className={ `rp-inventory-slot${ (dropTarget === slot) ? ' is-drop-target' : '' }` }>
-                                <span className="rp-inventory-slot-label">{ slot }</span>
-                            </div>);
-                    }) }
-                </div>
-                { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
+                        }) }
+                    </div>
+                    { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
                     createPortal(
                         <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>
                             <div className={ `rp-inventory-item ${ resolveItem(items.get(dragFrom).item)?.cls || '' }` } style={ resolveItem(items.get(dragFrom).item)?.iconUrl ? { backgroundImage: `url(${ resolveItem(items.get(dragFrom).item).iconUrl })` } : undefined } />
                         </div>, document.body) }
+                </NitroCardContentView>
+            </NitroCardView>
+            { discardEntry &&
+            <RpDiscardConfirmView key={ discardSlot } itemName={ resolveItem(discardEntry.item)?.name || discardEntry.item }
+                iconClass={ resolveItem(discardEntry.item)?.cls || '' } iconUrl={ resolveItem(discardEntry.item)?.iconUrl }
+                owned={ discardEntry.count }
+                onConfirm={ count =>
+                {
+                    SendRpDiscardItem(discardSlot, count);
+                    setDiscardSlot(-1);
+                } }
+                onCancel={ () => setDiscardSlot(-1) } /> }
+        </>
+    );
+}
+
+interface RpDiscardConfirmViewProps
+{
+    itemName: string;
+    iconClass: string;
+    iconUrl?: string;
+    owned: number;
+    onConfirm: (count: number) => void;
+    onCancel: () => void;
+}
+
+// "Are you sure?" for the backpack bin, with how many to throw away when the
+// slot holds a stack. Starts at one - the cautious answer - and cannot go past
+// what the slot holds. If the slot empties while this is open (the item was
+// used, or the stack changed), the parent stops rendering it.
+const RpDiscardConfirmView: FC<RpDiscardConfirmViewProps> = props =>
+{
+    const { itemName, iconClass, iconUrl = null, owned, onConfirm, onCancel } = props;
+    const [ count, setCount ] = useState(1);
+    const [ typed, setTyped ] = useState('1');
+
+    const clamp = (value: number) => Math.max(1, Math.min(owned, Math.floor(value) || 1));
+
+    const setBoth = (value: number) =>
+    {
+        const next = clamp(value);
+
+        setCount(next);
+        setTyped(String(next));
+    }
+
+    // The stack can shrink while the window is open; never offer more than is there.
+    useEffect(() =>
+    {
+        if(count > owned) setBoth(owned);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ owned ]);
+
+    return (
+        <NitroCardView uniqueKey="rp-inventory-discard" className="rp-discard-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.CENTER }>
+            <NitroCardHeaderView headerText="Throw away?" onCloseClick={ onCancel } />
+            <NitroCardContentView className="rp-discard-body">
+                <div className="rp-discard-item">
+                    <div className="rp-discard-icon">
+                        <div className={ `rp-inventory-item ${ iconClass }` } style={ iconUrl ? { backgroundImage: `url(${ iconUrl })` } : undefined } />
+                    </div>
+                    <div className="rp-discard-text">
+                        <div className="rp-discard-name">{ itemName }</div>
+                        <div className="rp-discard-owned">You have { owned }.</div>
+                    </div>
+                </div>
+                { (owned > 1) &&
+                    <div className="rp-discard-amount">
+                        <span>How many?</span>
+                        <div className="rp-discard-stepper">
+                            <button type="button" aria-label="One fewer" disabled={ count <= 1 } onClick={ () => setBoth(count - 1) }>&minus;</button>
+                            <input type="number" min={ 1 } max={ owned } aria-label="How many to throw away" value={ typed }
+                                onChange={ event =>
+                                {
+                                    setTyped(event.target.value);
+
+                                    const parsed = parseInt(event.target.value, 10);
+
+                                    if(Number.isFinite(parsed)) setCount(clamp(parsed));
+                                } }
+                                onBlur={ () => setTyped(String(count)) } />
+                            <button type="button" aria-label="One more" disabled={ count >= owned } onClick={ () => setBoth(count + 1) }>+</button>
+                            <button type="button" className="rp-discard-all" disabled={ count >= owned } onClick={ () => setBoth(owned) }>All</button>
+                        </div>
+                    </div> }
+                <div className="rp-discard-warning">This can&apos;t be undone.</div>
+                <div className="rp-discard-actions">
+                    <button type="button" className="rp-discard-cancel" onClick={ onCancel }>Cancel</button>
+                    <button type="button" className="rp-discard-confirm" onClick={ () => onConfirm(count) }>
+                        { (owned > 1) ? `Throw away ${ count }` : 'Throw away' }
+                    </button>
+                </div>
             </NitroCardContentView>
         </NitroCardView>
     );

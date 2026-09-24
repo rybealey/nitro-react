@@ -5,15 +5,16 @@ import { GetConnection, SendMessageComposer } from '../nitro';
 // other rp-* packets. The wire id matches the emulator's Resources/Revisions/1.6.6.json.
 const RP_DISCARD_ITEM = 4055; // client -> server: throw away the stack in a carry slot
 
-// The backpack bin (the emulator's RpDiscardItemEvent): the whole stack in the
-// slot goes, and the server answers with a fresh RpInventory snapshot.
+// The backpack bin (the emulator's RpDiscardItemEvent): `count` of what sits in
+// the slot goes - all of it when the count covers the stack - and the server
+// answers with a fresh RpInventory snapshot.
 class RpDiscardItemComposer implements IMessageComposer<number[]>
 {
     private _data: number[];
 
-    constructor(slot: number)
+    constructor(slot: number, count: number)
     {
-        this._data = [ slot ];
+        this._data = [ slot, count ];
     }
 
     public getMessageArray()
@@ -27,11 +28,11 @@ class RpDiscardItemComposer implements IMessageComposer<number[]>
     }
 }
 
-export const SendRpDiscardItem = (slot: number): void =>
+export const SendRpDiscardItem = (slot: number, count: number): void =>
 {
-    if(!(slot > 0)) return;
+    if(!(slot > 0) || !(count > 0)) return;
 
-    SendMessageComposer(new RpDiscardItemComposer(slot));
+    SendMessageComposer(new RpDiscardItemComposer(slot, Math.floor(count)));
 }
 
 let registered = false;
