@@ -1,5 +1,6 @@
 // Gang window. The no-gang state is content-height (invites + the founding
-// form); once the player is in a gang the window fixes at 520x540 and the
+// form); once the player is in a gang the window opens at 520x540 (resizable
+// from the corner) and the
 // tabs (Info / Manage / Invites) take over - each tab lays its sections out
 // in the content column and scrolls its own list, never the whole card.
 
@@ -13,6 +14,12 @@ $gang-state-off: #b23b3b;
 
     &.is-member {
         height: 540px;
+        // resizable from the corner grip; the floor keeps the three-across
+        // roster and the two-across Manage sections from being squashed
+        min-width: 420px;
+        min-height: 400px;
+        max-width: 96vw;
+        max-height: 92vh;
 
         // the tabs scroll their own lists (roster, members, invites)
         .content-area {

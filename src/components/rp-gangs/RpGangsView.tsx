@@ -156,6 +156,8 @@ export const RpGangsView: FC<{}> = props =>
     const canManage = (!!detail && (HasGangPermission(detail.permissions, GANG_PERM_ADMIN) || HasGangPermission(detail.permissions, GANG_PERM_KICK)));
     const canInvite = (!!detail && HasGangPermission(detail.permissions, GANG_PERM_INVITE));
     const showTabs = (inGang && !viewingOther && (canManage || canInvite));
+    // Only the in-a-gang window resizes: the no-gang one is sized to its form.
+    const isMember = (inGang || viewingOther);
 
     // a permission that went away (role changed under us) drops the viewer back to Info
     useEffect(() =>
@@ -163,10 +165,25 @@ export const RpGangsView: FC<{}> = props =>
         if(((currentTab === 'manage') && !canManage) || ((currentTab === 'invites') && !canInvite)) setCurrentTab('info');
     }, [ currentTab, canManage, canInvite ]);
 
+    // The corner grip writes an inline size. Leaving the gang (or a gang being
+    // viewed) while the window is open would carry that size onto the no-gang
+    // form, so drop it and let the form size itself again.
+    useEffect(() =>
+    {
+        if(isMember) return;
+
+        const card = document.querySelector<HTMLElement>('.nitro-rp-gangs');
+
+        if(!card) return;
+
+        card.style.width = '';
+        card.style.height = '';
+    }, [ isMember ]);
+
     if(!isVisible) return null;
 
     return (
-        <NitroCardView uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ (inGang || viewingOther) ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
+        <NitroCardView resizable={ isMember } uniqueKey="rp-gangs" className={ `nitro-rp-gangs${ isMember ? ' is-member' : '' }${ showTabs ? ' has-tabs' : '' }` } theme="primary-slim" windowPosition={ DraggableWindowPosition.SIDE_DRAWER }>
             <NitroCardHeaderView headerText="Gang" onCloseClick={ () => setIsVisible(false) } />
             { showTabs &&
                 <NitroCardTabsView>
