@@ -1,7 +1,7 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
@@ -21,6 +21,11 @@ import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBi
 // (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
 // placeholders to be filled out as settings are decided.
 const TABS: string[] = [ 'General', 'Macros', 'Social', 'Roleplay', 'UI' ];
+
+// Macro row dragging: how far a press must move before it is a drag, and how
+// close to the list's edge the pointer must be for the list to scroll itself.
+const MACRO_DRAG_SLACK = 4;
+const MACRO_DRAG_EDGE = 28;
 
 // Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
 // settings can be furnished one by one. Macros moved out to its own top-level
@@ -73,14 +78,20 @@ export const RpSettingsView: FC<{}> = props =>
     // Inline rename/create for presets - the design has no dialog for either.
     const [ presetDraft, setPresetDraft ] = useState<string>(null);
     const [ macroNotice, setMacroNotice ] = useState<string>('');
-    // Key group currently being dragged, or null. The list reorders live as the
-    // pointer crosses row midpoints, so this tracks where the held group is NOW.
+    // Key group being dragged, or null: only marks the held row. Set once when
+    // a drag starts and once when it ends - never per pointer move.
     const [ macroDragIndex, setMacroDragIndex ] = useState<number>(null);
     const macroListRef = useRef<HTMLDivElement>(null);
-    const macroDragStart = useRef<{ index: number, y: number }>(null);
-    // The order being built up during a drag. A ref, not state, because each
-    // pointermove reads the previous order and a state read would lag a frame.
-    const macroDragOrder = useRef<MacroBinding[][]>(null);
+    // The drag in progress. Everything that changes per frame lives here and
+    // is written straight to the rows' style, not to React state.
+    const macroDrag = useRef<{
+        from: number, target: number, pointerId: number, startY: number, lastY: number, started: boolean,
+        rows: HTMLElement[], centres: number[], slot: number, scrollStart: number,
+        order: MacroBinding[][], frame: number, detach: () => void
+    }>(null);
+    // Set once a press has become a drag, so the click that follows the
+    // release does not also open the key or command under the pointer.
+    const macroSuppressClick = useRef<boolean>(false);
     // 'export' | 'import' | null. One at a time; both are the same overlay.
     const [ macroDialog, setMacroDialog ] = useState<string>(null);
     const [ importText, setImportText ] = useState<string>('');
@@ -224,17 +235,9 @@ export const RpSettingsView: FC<{}> = props =>
     // wholesale, and it means no mutation can half-apply.
     const commitMacros = (next: MacroDocument) =>
     {
-        applyMacrosLocally(next);
-        SendMessageComposer(new RpSaveMacrosComposer(SerializeMacroDocument(next)));
-    };
-
-    // Same as commitMacros without the save. Used while a row is being dragged:
-    // the order changes on every midpoint crossing, and sending each one would
-    // be a packet per pixel - the drop saves once.
-    const applyMacrosLocally = (next: MacroDocument) =>
-    {
         setMacroDoc(next);
         ApplyMacroState(next);
+        SendMessageComposer(new RpSaveMacrosComposer(SerializeMacroDocument(next)));
     };
 
     const activePreset = macroDoc.presets.find(preset => (preset.name === macroDoc.active)) ?? macroDoc.presets[0] ?? null;
@@ -531,93 +534,232 @@ export const RpSettingsView: FC<{}> = props =>
     // ---- Macro row dragging ----------------------------------------------
     // Pointer events rather than HTML5 drag-and-drop: the rows live inside a
     // scrolling panel in a draggable window, and the native API's drag image
-    // and drop targets fight both. This is the same approach the phone's home
-    // screen uses for reordering app tiles.
+    // and drop targets fight both.
+    //
+    // The held row follows the pointer and the rows it passes slide aside, all
+    // by writing style.transform once per animation frame - no React state
+    // changes mid-drag, so nothing re-renders while the pointer moves. The
+    // real order is written once, on release, and the held row then glides
+    // the last few pixels into its slot.
 
     const withActiveMacros = (macros: MacroBinding[]): MacroDocument => ({
         ...macroDoc,
         presets: macroDoc.presets.map(preset => ((preset.name === (activePreset ? activePreset.name : '')) ? { ...preset, macros } : preset))
     });
 
-    // Which slot the pointer is over, by row midpoints. Read from the DOM so it
-    // stays correct as the list reorders under the cursor mid-drag.
-    const macroRowAt = (clientY: number): number =>
+    const finishMacroDrag = (keep: boolean) =>
     {
-        const list = macroListRef.current;
+        const drag = macroDrag.current;
 
-        if(!list) return -1;
+        if(!drag) return;
 
-        const rows = Array.from(list.querySelectorAll('[data-macro-group]')) as HTMLElement[];
+        macroDrag.current = null;
+        drag.detach();
 
-        for(let index = 0; index < rows.length; index++)
+        if(drag.frame) cancelAnimationFrame(drag.frame);
+
+        // The click that follows the release belongs to the drag, not to the
+        // key or command under the pointer; cleared after it has passed.
+        setTimeout(() => (macroSuppressClick.current = false), 0);
+
+        if(!drag.started) return;
+
+        const held = drag.rows[drag.from];
+
+        if(!keep || (drag.target === drag.from))
         {
-            const rect = rows[index].getBoundingClientRect();
-
-            if(clientY < (rect.top + (rect.height / 2))) return index;
-        }
-
-        return (rows.length - 1);
-    };
-
-    const onMacroPointerDown = (event: ReactPointerEvent<HTMLDivElement>, index: number) =>
-    {
-        // The key, the commands and the row's buttons are all clickable, so a
-        // press on any of them is a click, not the start of a drag.
-        if((event.target as HTMLElement).closest('button, input')) return;
-        if(!activePreset) return;
-
-        try
-        {
-            event.currentTarget.setPointerCapture(event.pointerId);
-        }
-        catch(error)
-        {}
-
-        macroDragStart.current = { index, y: event.clientY };
-        macroDragOrder.current = macroGroups.map(group => group.rows.map(row => activePreset.macros[row.index]));
-    };
-
-    const onMacroPointerMove = (event: ReactPointerEvent<HTMLDivElement>) =>
-    {
-        const start = macroDragStart.current;
-
-        if(!start || !macroDragOrder.current) return;
-
-        // A few pixels of slack, so a sloppy click on a row is not a reorder.
-        if(macroDragIndex === null)
-        {
-            if(Math.abs(event.clientY - start.y) <= 4) return;
-
-            setMacroDragIndex(start.index);
+            // Nothing moves: everything slides back to where it started.
+            flushSync(() => setMacroDragIndex(null));
+            drag.rows.forEach(row => (row.style.transform = ''));
 
             return;
         }
 
-        const target = macroRowAt(event.clientY);
+        const before = held.getBoundingClientRect().top;
+        const order = drag.order.slice();
+        const [ moved ] = order.splice(drag.from, 1);
 
-        if((target < 0) || (target === macroDragIndex)) return;
+        order.splice(drag.target, 0, moved);
 
-        const groups = macroDragOrder.current.slice();
-        const [ moved ] = groups.splice(macroDragIndex, 1);
+        // Drop the transforms and write the new order in the same frame, so
+        // the rows land where the transforms already showed them. Rows are
+        // keyed by their key name, so React moves these same elements.
+        drag.rows.forEach(row =>
+        {
+            row.style.transition = 'none';
+            row.style.transform = '';
+        });
 
-        groups.splice(target, 0, moved);
-        macroDragOrder.current = groups;
-        setMacroDragIndex(target);
-        applyMacrosLocally(withActiveMacros(groups.flat()));
+        flushSync(() =>
+        {
+            setMacroDragIndex(null);
+            commitMacros(withActiveMacros(order.flat()));
+        });
+
+        const offset = (before - held.getBoundingClientRect().top);
+
+        held.style.transform = `translateY(${ offset }px)`;
+        held.getBoundingClientRect();
+
+        requestAnimationFrame(() =>
+        {
+            drag.rows.forEach(row => (row.style.transition = ''));
+            held.style.transform = '';
+        });
     };
 
-    const onMacroPointerUp = () =>
+    const paintMacroDrag = () =>
     {
-        const wasDragging = (macroDragIndex !== null);
-        const order = macroDragOrder.current;
+        const drag = macroDrag.current;
+        const list = macroListRef.current;
 
-        macroDragStart.current = null;
-        macroDragOrder.current = null;
-        setMacroDragIndex(null);
+        if(!drag || !list) return;
 
-        // Only the drop saves, and only if the order actually moved.
-        if(wasDragging && order) commitMacros(withActiveMacros(order.flat()));
+        drag.frame = 0;
+
+        // Held near the list's top or bottom edge, the list scrolls itself,
+        // faster the closer the pointer gets.
+        const bounds = list.getBoundingClientRect();
+        let scroll = 0;
+
+        if(drag.lastY < (bounds.top + MACRO_DRAG_EDGE)) scroll = -Math.ceil(((bounds.top + MACRO_DRAG_EDGE) - drag.lastY) / 3);
+        else if(drag.lastY > (bounds.bottom - MACRO_DRAG_EDGE)) scroll = Math.ceil((drag.lastY - (bounds.bottom - MACRO_DRAG_EDGE)) / 3);
+
+        if(scroll) list.scrollTop += scroll;
+
+        const offset = ((drag.lastY - drag.startY) + (list.scrollTop - drag.scrollStart));
+        const centre = (drag.centres[drag.from] + offset);
+        let target = drag.from;
+
+        // The held row takes a neighbour's slot once its middle passes that
+        // neighbour's middle.
+        while((target < (drag.centres.length - 1)) && (centre > drag.centres[target + 1])) target++;
+        while((target > 0) && (centre < drag.centres[target - 1])) target--;
+
+        drag.target = target;
+
+        drag.rows.forEach((row, index) =>
+        {
+            if(index === drag.from)
+            {
+                row.style.transform = `translateY(${ offset }px)`;
+
+                return;
+            }
+
+            let shift = 0;
+
+            if((drag.from < index) && (index <= target)) shift = -drag.slot;
+            else if((target <= index) && (index < drag.from)) shift = drag.slot;
+
+            row.style.transform = (shift ? `translateY(${ shift }px)` : '');
+        });
+
+        if(scroll) drag.frame = requestAnimationFrame(paintMacroDrag);
     };
+
+    const onMacroPointerDown = (event: ReactPointerEvent<HTMLDivElement>, index: number) =>
+    {
+        // A press anywhere on a row can become a drag - keycap and commands
+        // included, since a press only turns into a drag once it moves. Only
+        // the text box and the small delete / order buttons stay plain clicks.
+        if((event.button !== 0) || !activePreset || macroDrag.current) return;
+        if((event.target as HTMLElement).closest('input, .rp-mx-delete, .rp-mx-command-tools')) return;
+
+        const list = macroListRef.current;
+
+        if(!list) return;
+
+        const rows = Array.from(list.querySelectorAll('[data-macro-group]')) as HTMLElement[];
+        const held = rows[index];
+
+        if(!held) return;
+
+        const top = (list.getBoundingClientRect().top - list.scrollTop);
+        const gap = (parseFloat(getComputedStyle(list).rowGap) || 0);
+
+        const onMove = (move: PointerEvent) =>
+        {
+            const drag = macroDrag.current;
+
+            if(!drag || (move.pointerId !== drag.pointerId)) return;
+
+            drag.lastY = move.clientY;
+
+            if(!drag.started)
+            {
+                // A few pixels of slack, so a sloppy click is not a reorder.
+                if(Math.abs(move.clientY - drag.startY) <= MACRO_DRAG_SLACK) return;
+
+                drag.started = true;
+                macroSuppressClick.current = true;
+                window.getSelection()?.removeAllRanges();
+                setMacroDragIndex(drag.from);
+            }
+
+            if(!drag.frame) drag.frame = requestAnimationFrame(paintMacroDrag);
+        };
+
+        const onUp = (up: PointerEvent) =>
+        {
+            if(macroDrag.current && (up.pointerId === macroDrag.current.pointerId)) finishMacroDrag(up.type === 'pointerup');
+        };
+
+        // Esc puts the row back where it was.
+        const onKey = (key: KeyboardEvent) =>
+        {
+            if((key.key !== 'Escape') || !macroDrag.current || !macroDrag.current.started) return;
+
+            key.preventDefault();
+            key.stopPropagation();
+            finishMacroDrag(false);
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+        window.addEventListener('keydown', onKey, true);
+
+        macroDrag.current = {
+            from: index,
+            target: index,
+            pointerId: event.pointerId,
+            startY: event.clientY,
+            lastY: event.clientY,
+            started: false,
+            rows,
+            centres: rows.map(row =>
+            {
+                const rect = row.getBoundingClientRect();
+
+                return ((rect.top - top) + (rect.height / 2));
+            }),
+            slot: (held.getBoundingClientRect().height + gap),
+            scrollStart: list.scrollTop,
+            order: macroGroups.map(group => group.rows.map(row => activePreset.macros[row.index])),
+            frame: 0,
+            detach: () =>
+            {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                window.removeEventListener('pointercancel', onUp);
+                window.removeEventListener('keydown', onKey, true);
+            }
+        };
+    };
+
+    // A drag's window listeners must not outlive the panel.
+    useEffect(() => () =>
+    {
+        const drag = macroDrag.current;
+
+        if(!drag) return;
+
+        macroDrag.current = null;
+        drag.detach();
+
+        if(drag.frame) cancelAnimationFrame(drag.frame);
+    }, []);
 
     const clearDraft = () =>
     {
@@ -1130,7 +1272,9 @@ export const RpSettingsView: FC<{}> = props =>
                                 onKeyDown={ event => (event.key === 'Enter') && addMacro() } />
                             <button type="button" className="rp-mx-add" onClick={ addMacro }>Add</button>
                         </div>
-                        { isCapturing &&
+                        { /* The hint is for the add row only: rebinding a key in
+                             the list already shows "Press a key" on its keycap. */ }
+                        { (isCapturing && (captureRow === null)) &&
                             <div className="rp-mx-notice" role="status">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="5" /><path d="M6 3.5v3M6 8.5v.01" /></svg>
                                 Press the key or mouse button to bind. Hold CTRL, SHIFT or ALT first for a combination. Left-click cancels.
@@ -1140,16 +1284,22 @@ export const RpSettingsView: FC<{}> = props =>
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="5" /><path d="M6 3.5v3M6 8.5v.01" /></svg>
                                 { macroNotice }
                             </div> }
-                        <div ref={ macroListRef } className="rp-mx-list">
-                            { /* index keys: a key can be mid-rebind while it still
-                                 shares its name with another group */ }
+                        <div ref={ macroListRef } className={ `rp-mx-list ${ (macroDragIndex !== null) ? 'is-sorting' : '' }` }
+                            onClickCapture={ event =>
+                            {
+                                if(!macroSuppressClick.current) return;
+
+                                macroSuppressClick.current = false;
+                                event.preventDefault();
+                                event.stopPropagation();
+                            } }>
+                            { /* keyed by the key name - groups are unique by key - so
+                                 a drop moves these same elements rather than
+                                 re-filling rows in place */ }
                             { macroGroups.map((group, groupIndex) => (
-                                <div key={ groupIndex } data-macro-group={ groupIndex }
+                                <div key={ group.key } data-macro-group={ groupIndex }
                                     className={ `rp-mx-row ${ (macroDragIndex === groupIndex) ? 'is-dragging' : '' }` }
-                                    onPointerDown={ event => onMacroPointerDown(event, groupIndex) }
-                                    onPointerMove={ onMacroPointerMove }
-                                    onPointerUp={ onMacroPointerUp }
-                                    onPointerCancel={ onMacroPointerUp }>
+                                    onPointerDown={ event => onMacroPointerDown(event, groupIndex) }>
                                     <span className="rp-mx-grip" aria-hidden="true">
                                         <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="2" cy="2.5" r="1.2" /><circle cx="6" cy="2.5" r="1.2" /><circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" /><circle cx="2" cy="11.5" r="1.2" /><circle cx="6" cy="11.5" r="1.2" /></svg>
                                     </span>

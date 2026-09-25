@@ -392,6 +392,12 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         svg { flex-shrink: 0; color: $mx-accent-text; }
     }
 
+    // while a row is held, the whole list shows the grabbing hand
+    .rp-mx-list.is-sorting,
+    .rp-mx-list.is-sorting * {
+        cursor: grabbing !important;
+    }
+
     // the one scroller on this tab
     .rp-mx-list {
         flex: 1;
@@ -415,20 +421,23 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         background: $white;
         box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
         // Rows reorder by dragging. touch-action must be none or a touch drag
-        // scrolls the list instead of moving the row.
+        // scrolls the list instead of moving the row; no text selection, or
+        // a drag that starts on a command selects it.
+        position: relative;
         cursor: grab;
         touch-action: none;
-        transition: box-shadow .1s ease, opacity .1s ease;
+        user-select: none;
+        // transform: the rows a drag passes slide aside, and a dropped row
+        // glides into its slot (the drag writes the transforms itself).
+        transition: transform .14s ease, box-shadow .1s ease;
 
-        // The row follows the pointer by reordering the list under it rather
-        // than floating, so the held row is marked by lifting it instead.
+        // The held row rides on top of the others, under the pointer exactly:
+        // no transform transition, or it would trail behind the cursor.
         &.is-dragging {
+            z-index: 2;
             cursor: grabbing;
-            opacity: .9;
-            box-shadow: 0 0 0 1.5px $mx-accent, 0 4px 10px rgba(0, 0, 0, 0.14);
-            // Otherwise the row it swaps with appears to animate into place
-            // while the held row jumps, which reads as lag.
-            transition: none;
+            box-shadow: 0 0 0 1.5px $mx-accent, 0 6px 16px rgba(0, 0, 0, 0.18);
+            transition: box-shadow .1s ease;
         }
 
         &:hover .rp-mx-delete { color: $state-off; }
