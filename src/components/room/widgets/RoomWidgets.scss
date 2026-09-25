@@ -56,8 +56,10 @@
     .side-drawer-item {
         width: 45px;
         height: 45px;
+        box-sizing: border-box;
         background-repeat: no-repeat;
-        background-position: center;
+        // 1px up, so the icon sits centred above the tile's bottom lip
+        background-position: center calc(50% - 1px);
         background-size: auto;
         image-rendering: pixelated;
         // Scheme tint (UiChrome.ts): the ::after overlay is masked to the
@@ -67,15 +69,19 @@
         position: relative;
         isolation: isolate;
 
-        // Hover: a subtle chrome-toned tile behind the icon, the same
-        // treatment the HUD buttons use. --prp-chrome-hover is rewritten by
-        // UiChrome.ts, so the highlight follows the player's colour scheme.
+        // Each icon sits on its own raised tile (Sidebar Icons canvas, "dark
+        // tiles"): a darker fill, a dark edge, a faint light line along the
+        // top and a 3px dark lip along the bottom. All see-through black and
+        // white, so the tile follows whichever colour scheme the player picks.
         // background-COLOR specifically, never the shorthand - the icon
         // itself is this element's background-image.
+        border: 1px solid rgba(0, 0, 0, 0.45);
         border-radius: $border-radius;
+        background-color: rgba(0, 0, 0, 0.2);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
         transition: background-color .1s ease;
 
-        &:hover { background-color: var(--prp-chrome-hover); }
+        &:hover { background-color: rgba(255, 255, 255, 0.05); }
 
         &::after {
             content: '';
@@ -84,9 +90,9 @@
             background: var(--prp-chrome-icon-tint, transparent);
             mix-blend-mode: color;
             mask-repeat: no-repeat;
-            mask-position: center;
+            mask-position: center calc(50% - 1px);
             -webkit-mask-repeat: no-repeat;
-            -webkit-mask-position: center;
+            -webkit-mask-position: center calc(50% - 1px);
             pointer-events: none;
         }
 
