@@ -145,3 +145,51 @@
         }
     }
 }
+
+// The player menus, compact (Player Info Panel canvas): no light outline, the
+// pointer in the menu's own colour, and everything smaller - 95px wide, 19px
+// name, 18px rows, 9px text - with the fold caret trimmed to the glyph.
+.nitro-context-menu.avatar-menu {
+    border: 0;
+    border-radius: 3px;
+    font-size: 9px;
+
+    &:not(.name-only):not(.menu-hidden) { min-width: 95px; }
+
+    &:not(.name-only):after {
+        bottom: -3.5px;
+        width: 7.7px;
+        height: 7.7px;
+        border-width: 3.85px;
+        border-color: transparent var(--prp-chrome-95) var(--prp-chrome-95) transparent;
+    }
+
+    .menu-header {
+        min-width: 89px;
+        height: 19px;
+        max-height: 19px;
+        padding: 3px !important;
+        font-size: 11.4px;
+    }
+
+    .menu-item.list-item {
+        height: 18px;
+        max-height: 18px;
+        padding: 2px;
+
+        .fa-icon { right: 6px; font-size: 7.7px; &.left { left: 6px; } }
+    }
+
+    // The caret glyph fills only the middle of its 1em box; the negative
+    // margins take the empty top and bottom back out.
+    .menu-footer {
+        min-width: 19px;
+        padding: 2px 0 1px;
+        font-size: 12px;
+        line-height: 0;
+
+        .fa-icon { display: block; margin: -4px 0 -3.5px; }
+    }
+
+    &.menu-hidden .menu-footer { padding: 2px 0 0; }
+}

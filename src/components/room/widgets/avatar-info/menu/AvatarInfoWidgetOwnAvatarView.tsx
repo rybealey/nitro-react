@@ -7,7 +7,7 @@ import { HelpNameChangeEvent } from '../../../../../events';
 import { useRoom } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
-import { ContextMenuView } from '../../context-menu/ContextMenuView';
+import { AVATAR_MENU_CLASSES, ContextMenuView } from '../../context-menu/ContextMenuView';
 
 interface AvatarInfoWidgetOwnAvatarViewProps
 {
@@ -95,7 +95,7 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
     const isRidingHorse = IsRidingHorse();
 
     return (
-        <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ avatarInfo.userType } onClose={ onClose } collapsable={ true }>
+        <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ avatarInfo.userType } onClose={ onClose } collapsable={ true } classNames={ AVATAR_MENU_CLASSES }>
             
             <ContextMenuHeaderView className="cursor-pointer" onClick={ event => GetUserProfile(avatarInfo.webID) }>
                 { avatarInfo.name }

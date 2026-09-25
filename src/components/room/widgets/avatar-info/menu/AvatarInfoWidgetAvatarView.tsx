@@ -8,7 +8,7 @@ import { Base, Flex } from '../../../../../common';
 import { useFriends, useHelp, useMessageEvent, useRoom, useSessionInfo } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
-import { ContextMenuView } from '../../context-menu/ContextMenuView';
+import { AVATAR_MENU_CLASSES, ContextMenuView } from '../../context-menu/ContextMenuView';
 
 interface AvatarInfoWidgetAvatarViewProps
 {
@@ -236,7 +236,7 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
     }, [ avatarInfo ]);
 
     return (
-        <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ avatarInfo.userType } onClose={ onClose } collapsable={ true }>
+        <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ avatarInfo.userType } onClose={ onClose } collapsable={ true } classNames={ AVATAR_MENU_CLASSES }>
             <ContextMenuHeaderView className="cursor-pointer" onClick={ event => GetUserProfile(avatarInfo.webID) }>
                 { avatarInfo.name }
             </ContextMenuHeaderView>
