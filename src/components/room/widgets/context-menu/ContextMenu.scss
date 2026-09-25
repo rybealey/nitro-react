@@ -147,48 +147,48 @@
 }
 
 // The player menus, compact (Player Info Panel canvas): no light outline, the
-// pointer in the menu's own colour, and everything smaller - 95px wide, 19px
-// name, 18px rows, 9px text - with the fold caret trimmed to the glyph.
+// pointer in the menu's own colour, and everything smaller - 114px wide, 23px
+// name, 22px rows, 10.8px text - with the fold caret trimmed to the glyph.
 .nitro-context-menu.avatar-menu {
     border: 0;
     border-radius: 3px;
-    font-size: 9px;
+    font-size: 10.8px;
 
-    &:not(.name-only):not(.menu-hidden) { min-width: 95px; }
+    &:not(.name-only):not(.menu-hidden) { min-width: 114px; }
 
     &:not(.name-only):after {
-        bottom: -3.5px;
-        width: 7.7px;
-        height: 7.7px;
-        border-width: 3.85px;
+        bottom: -4.2px;
+        width: 9.2px;
+        height: 9.2px;
+        border-width: 4.6px;
         border-color: transparent var(--prp-chrome-95) var(--prp-chrome-95) transparent;
     }
 
     .menu-header {
-        min-width: 89px;
-        height: 19px;
-        max-height: 19px;
+        min-width: 107px;
+        height: 23px;
+        max-height: 23px;
         padding: 3px !important;
-        font-size: 11.4px;
+        font-size: 13.7px;
     }
 
     .menu-item.list-item {
-        height: 18px;
-        max-height: 18px;
+        height: 22px;
+        max-height: 22px;
         padding: 2px;
 
-        .fa-icon { right: 6px; font-size: 7.7px; &.left { left: 6px; } }
+        .fa-icon { right: 7px; font-size: 9.2px; &.left { left: 7px; } }
     }
 
     // The caret glyph fills only the middle of its 1em box; the negative
     // margins take the empty top and bottom back out.
     .menu-footer {
-        min-width: 19px;
+        min-width: 23px;
         padding: 2px 0 1px;
-        font-size: 12px;
+        font-size: 14.4px;
         line-height: 0;
 
-        .fa-icon { display: block; margin: -4px 0 -3.5px; }
+        .fa-icon { display: block; margin: -4.8px 0 -4.2px; }
     }
 
     &.menu-hidden .menu-footer { padding: 2px 0 0; }
