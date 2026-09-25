@@ -4,7 +4,7 @@ import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
-import { Flex, LayoutAvatarImageView } from '../../../../common';
+import { Flex, HoverBubble, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../../../api/rp-gangs/RpGangMessages';
@@ -444,7 +444,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                     <div className="hud-name-row">
                         <span className="hud-name">{ selfName }</span>
                         { IsRpStaff(roomSession?.ownRoomIndex ?? -1) &&
-                            <i className="fa-solid fa-badge-check hud-verified" title="PixelRP Staff" aria-hidden="true" /> }
+                            <HoverBubble text="PixelRP Staff" placement="bottom"><i className="fa-solid fa-badge-check hud-verified" aria-hidden="true" /></HoverBubble> }
                         { (playerStats.aggressive || playerStats.passive) &&
                             (playerStats.aggressive
                                 ? <span className="hud-state aggressive">AGGRESSIVE</span>
@@ -452,7 +452,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                                     PASSIVE
                                     { /* slides out on hover; ends passive early (server
                                          shouts the roleplay line for the room) */ }
-                                    <span className="hud-state-cancel" title="End passive status" onClick={ event => SendMessageComposer(new RpPassiveCancelComposer()) }>×</span>
+                                    <HoverBubble text="End passive status" placement="bottom"><span className="hud-state-cancel" onClick={ event => SendMessageComposer(new RpPassiveCancelComposer()) }>×</span></HoverBubble>
                                 </span>) }
                     </div>
                     <HudBars stats={ playerStats } />
@@ -467,23 +467,27 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                                 <span className={ `hud-state ${ targetStats.aggressive ? 'aggressive' : 'passive' }` }>{ targetStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span> }
                             { /* mirrored plate: the tick keeps its place beside the name, on the portrait side */ }
                             { IsRpStaff(target.roomIndex) &&
-                                <i className="fa-solid fa-badge-check hud-verified" title="PixelRP Staff" aria-hidden="true" /> }
+                                <HoverBubble text="PixelRP Staff" placement="bottom"><i className="fa-solid fa-badge-check hud-verified" aria-hidden="true" /></HoverBubble> }
                             <span className="hud-name">{ target.name }</span>
                         </div>
                         <HudBars stats={ targetStats } mirrored />
                     </div>
                     <div className="hud-portrait">
-                        <span className="hud-close" title="Clear target" onClick={ closeTarget }><FaTimes /></span>
-                        <span className={ `hud-lock ${ locked ? 'locked' : '' }` } title={ locked ? 'Unlock target' : 'Lock target' } onClick={ toggleTargetLock }>
-                            { locked ? <FaLock /> : <FaLockOpen /> }
-                        </span>
+                        <HoverBubble text="Clear target" placement="bottom"><span className="hud-close" onClick={ closeTarget }><FaTimes /></span></HoverBubble>
+                        <HoverBubble text={ locked ? 'Unlock target' : 'Lock target' } placement="bottom">
+                            <span className={ `hud-lock ${ locked ? 'locked' : '' }` } onClick={ toggleTargetLock }>
+                                { locked ? <FaLock /> : <FaLockOpen /> }
+                            </span>
+                        </HoverBubble>
                         { targetGang &&
-                            <span className="hud-gang" title={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` } onClick={ () => CreateLinkEvent(`rp-gangs/view/${ targetGang.gangId }`) }>
-                                { /* 56 to match .hud-avatar, so the crest reads as
-                                     the portrait's equal rather than a footnote
-                                     beside it. */ }
-                                <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 56 } />
-                            </span> }
+                            <HoverBubble text={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` } placement="bottom">
+                                <span className="hud-gang" onClick={ () => CreateLinkEvent(`rp-gangs/view/${ targetGang.gangId }`) }>
+                                    { /* 56 to match .hud-avatar, so the crest reads as
+                                         the portrait's equal rather than a footnote
+                                         beside it. */ }
+                                    <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 56 } />
+                                </span>
+                            </HoverBubble> }
                         <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>
                         {
                             RpProfileState.name = target.name;

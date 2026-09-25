@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { CreateLinkEvent, GetRoomEngine, LocalizeText } from '../../../../api';
-import { Base, classNames, Flex } from '../../../../common';
+import { classNames, Flex, HoverBubble } from '../../../../common';
 import { useRoom } from '../../../../hooks';
 
 // Zoom and chat logs, reachable by every player. Rendered inside the
@@ -30,13 +30,19 @@ export const RoomQuickToolsView: FC<{}> = props =>
     return (
         <Flex gap={ 1 } className="nitro-room-quick-tools">
             <Flex center className="nitro-room-quick-tool">
-                <i className="cursor-pointer fa-brands fa-discord quick-tool-discord" title="Join us on Discord" aria-hidden="true" onClick={ event => window.open('https://discord.gg/pH5TQF84UZ', '_blank', 'noopener,noreferrer') } />
+                <HoverBubble text="Join us on Discord" placement="bottom">
+                    <i className="cursor-pointer fa-brands fa-discord quick-tool-discord" aria-hidden="true" onClick={ event => window.open('https://discord.gg/pH5TQF84UZ', '_blank', 'noopener,noreferrer') } />
+                </HoverBubble>
             </Flex>
             <Flex center className="nitro-room-quick-tool">
-                <Base pointer title={ LocalizeText('room.zoom.button.text') } onClick={ toggleZoom } className={ classNames('icon', (!isZoomedIn && 'icon-zoom-less'), (isZoomedIn && 'icon-zoom-more')) } />
+                <HoverBubble text={ LocalizeText('room.zoom.button.text') } placement="bottom">
+                    <div onClick={ toggleZoom } className={ classNames('cursor-pointer', 'icon', (!isZoomedIn && 'icon-zoom-less'), (isZoomedIn && 'icon-zoom-more')) } />
+                </HoverBubble>
             </Flex>
             <Flex center className="nitro-room-quick-tool">
-                <Base pointer title={ LocalizeText('room.chathistory.button.text') } onClick={ () => CreateLinkEvent('chat-history/toggle') } className="icon icon-chat-history" />
+                <HoverBubble text={ LocalizeText('room.chathistory.button.text') } placement="bottom">
+                    <div onClick={ () => CreateLinkEvent('chat-history/toggle') } className="cursor-pointer icon icon-chat-history" />
+                </HoverBubble>
             </Flex>
         </Flex>
     );

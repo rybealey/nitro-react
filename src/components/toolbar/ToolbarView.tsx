@@ -1,7 +1,7 @@
 import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { CreateLinkEvent, GetSessionDataManager, HasHabboVip } from '../../api';
-import { Base, Flex, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
+import { Base, Flex, HoverBubble, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
 import { usePhoneAppBadges } from '../phone/usePhoneNotifications';
 import { ToolbarMeView } from './ToolbarMeView';
@@ -73,7 +73,9 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
             <Flex alignItems="center" justifyContent="between" gap={ 2 } className="nitro-toolbar py-1 px-3">
                 <Flex gap={ 2 } alignItems="center">
                     <Flex alignItems="center" gap={ 2 }>
-                        <Base pointer title="Menu" className="navigation-item icon icon-pixelrp" onClick={ event => setMenuExpanded(!isMenuExpanded) } />
+                        <HoverBubble text="Menu">
+                            <div className="cursor-pointer navigation-item icon icon-pixelrp" onClick={ event => setMenuExpanded(!isMenuExpanded) } />
+                        </HoverBubble>
                         <Flex alignItems="center" gap={ 2 } className={ 'toolbar-menu-items' + (isMenuExpanded ? ' expanded' : '') }>
                             { isMod &&
                                 <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } /> }
@@ -94,11 +96,15 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                 </Flex>
                 <Flex alignItems="center" gap={ 2 }>
                     <Flex gap={ 2 }>
-                        <Base pointer title="Diamonds" className="navigation-item icon-diamonds" onClick={ event => CreateLinkEvent('diamonds-store/toggle') } />
-                        <Base pointer title="Phone" className="navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
-                            { (phoneBadge > 0) &&
-                                <LayoutItemCountView count={ phoneBadge } /> }
-                        </Base>
+                        <HoverBubble text="Diamonds">
+                            <div className="cursor-pointer navigation-item icon-diamonds" onClick={ event => CreateLinkEvent('diamonds-store/toggle') } />
+                        </HoverBubble>
+                        <HoverBubble text="Phone">
+                            <div className="cursor-pointer navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
+                                { (phoneBadge > 0) &&
+                                    <LayoutItemCountView count={ phoneBadge } /> }
+                            </div>
+                        </HoverBubble>
                     </Flex>
                 </Flex>
             </Flex>

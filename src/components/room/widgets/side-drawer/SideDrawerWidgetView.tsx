@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { CreateLinkEvent } from '../../../../api';
-import { Base, Flex } from '../../../../common';
+import { Base, Flex, HoverBubble } from '../../../../common';
 import { useLocalStorage } from '../../../../hooks';
 
 // Center-left edge drawer. Expanded by default; the open/collapsed state is
@@ -43,9 +43,11 @@ export const SideDrawerWidgetView: FC<{}> = props =>
                     )) }
                 </Base>
             </Flex>
-            <Base pointer className="side-drawer-toggle" title={ isExpanded ? 'Collapse' : 'Expand' } onClick={ () => setIsExpanded(value => !value) }>
-                { isExpanded ? '‹' : '›' }
-            </Base>
+            <HoverBubble text={ isExpanded ? 'Collapse' : 'Expand' } placement="right">
+                <div className="cursor-pointer side-drawer-toggle" onClick={ () => setIsExpanded(value => !value) }>
+                    { isExpanded ? '‹' : '›' }
+                </div>
+            </HoverBubble>
         </Flex>
     );
 };
