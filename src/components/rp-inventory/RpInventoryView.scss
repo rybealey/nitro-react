@@ -266,6 +266,15 @@
     &.rp-item-vip-token-silver { background-image: url('@/assets/images/rp-items/vip-token-silver.png'); }
 }
 
+// The backpack's hover bubble: the sidebar's black bubble without its arrow,
+// 4px off the slot (the arrow's 6.4px room would leave a gap). Top level, as
+// the bubble portals to <body>.
+.tooltip.rp-inventory-bubble {
+    padding: 4px !important;
+
+    .tooltip-arrow { display: none; }
+}
+
 // Windows-style drag ghost: item art centered exactly under the cursor at
 // reduced opacity.
 .rp-inventory-drag-ghost {

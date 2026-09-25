@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
-import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, HoverBubble, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Backpack
@@ -271,12 +271,16 @@ export const RpInventoryView: FC<{}> = props =>
                      the slots sit from each other */ }
                 <NitroCardContentView className="text-black" gap={ 1 }>
                     <div className="rp-inventory-gear">
-                        <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
-                            <LuSwords className="rp-inventory-gear-icon" />
-                        </div>
-                        <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
-                            <LuShield className="rp-inventory-gear-icon" />
-                        </div>
+                        <HoverBubble text="Weapon" className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
+                            <div className="rp-inventory-slot rp-inventory-slot--gear">
+                                <LuSwords className="rp-inventory-gear-icon" />
+                            </div>
+                        </HoverBubble>
+                        <HoverBubble text="Armor" className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
+                            <div className="rp-inventory-slot rp-inventory-slot--gear">
+                                <LuShield className="rp-inventory-gear-icon" />
+                            </div>
+                        </HoverBubble>
                     </div>
                     <div className="rp-inventory-grid">
                         { CARRY_SLOTS.map(slot =>
@@ -284,9 +288,11 @@ export const RpInventoryView: FC<{}> = props =>
                             if((slot > unlockedSlots) && !items.get(slot))
                             {
                                 return (
-                                    <div key={ slot } className="rp-inventory-slot is-locked" title="Locked">
-                                        <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
-                                    </div>);
+                                    <HoverBubble key={ slot } text="Locked" className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
+                                        <div className="rp-inventory-slot is-locked">
+                                            <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
+                                        </div>
+                                    </HoverBubble>);
                             }
 
                             const entry = items.get(slot);
@@ -294,17 +300,19 @@ export const RpInventoryView: FC<{}> = props =>
 
                             if(entry && meta)
                             {
+                                // hidden while dragging, so bubbles do not pop up over every slot the item crosses
                                 return (
-                                    <div key={ slot } data-rp-slot={ slot }
-                                        className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
-                                        title={ meta.name }
-                                        onClick={ () => onItemClick(slot) }
-                                        onDoubleClick={ () => onItemDoubleClick(slot) }
-                                        onPointerDown={ event => onItemDown(event, slot) }>
-                                        <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
-                                        { (entry.count > 1) &&
-                                        <span className="rp-inventory-count">{ entry.count }</span> }
-                                    </div>);
+                                    <HoverBubble key={ slot } text={ meta.name } className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
+                                        <div data-rp-slot={ slot }
+                                            className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                            onClick={ () => onItemClick(slot) }
+                                            onDoubleClick={ () => onItemDoubleClick(slot) }
+                                            onPointerDown={ event => onItemDown(event, slot) }>
+                                            <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
+                                            { (entry.count > 1) &&
+                                            <span className="rp-inventory-count">{ entry.count }</span> }
+                                        </div>
+                                    </HoverBubble>);
                             }
 
                             return (
