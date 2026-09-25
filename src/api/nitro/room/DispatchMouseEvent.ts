@@ -1,4 +1,5 @@
 import { MouseEventType } from '@nitrots/nitro-renderer';
+import { ROOM_DRAG_STILL_PX, RoomDragUsesLeft } from '../../prefs/RoomDragStore';
 import { GetRoomEngine } from './GetRoomEngine';
 
 let didMouseMove = false;
@@ -24,8 +25,11 @@ let clickCount = 0;
 // already become a click, and delivering a click ends the room's drag - so that
 // press walks and does not pan. Decorating is left alone entirely, and touch has
 // its own path (DispatchTouchEvent).
+//
+// When the player has moved the pan to the right button (Settings > General,
+// RoomDragStore), a left press can only ever be a click, so it is delivered the
+// moment it lands with no timer and no edge.
 const EARLY_CLICK_MS = 40;
-const STILL_PX = 5;
 
 let pressTimer: ReturnType<typeof setTimeout> = null;
 let pressX = 0;
@@ -104,6 +108,17 @@ export const DispatchMouseEvent = (event: MouseEvent, canvasId: number = 1) =>
 
             if((event.button === 0) && !GetRoomEngine().isDecorating)
             {
+                if(!RoomDragUsesLeft())
+                {
+                    dispatch(canvasId, x, y, event.type, altKey, ctrlKey, shiftKey);
+
+                    earlyClickDelivered = true;
+
+                    dispatch(canvasId, x, y, MouseEventType.MOUSE_CLICK, altKey, ctrlKey, shiftKey);
+
+                    return;
+                }
+
                 pressX = x;
                 pressY = y;
 
@@ -117,7 +132,7 @@ export const DispatchMouseEvent = (event: MouseEvent, canvasId: number = 1) =>
             }
             break;
         case MouseEventType.MOUSE_MOVE:
-            if((pressTimer !== null) && ((Math.abs(x - pressX) > STILL_PX) || (Math.abs(y - pressY) > STILL_PX))) cancelPress();
+            if((pressTimer !== null) && ((Math.abs(x - pressX) > ROOM_DRAG_STILL_PX) || (Math.abs(y - pressY) > ROOM_DRAG_STILL_PX))) cancelPress();
             break;
         case MouseEventType.MOUSE_UP:
             cancelPress();

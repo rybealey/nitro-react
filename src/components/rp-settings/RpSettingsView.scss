@@ -640,6 +640,35 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         color: inherit;
     }
 
+    // General > Drag the Room: one of three, as a joined row of segments. The
+    // chosen one takes the solid chrome the macros buttons use.
+    .rp-settings-choice {
+        display: flex;
+        flex-shrink: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--prp-chrome-95);
+    }
+
+    .rp-settings-choice-option {
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.6;
+        white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+        color: rgba(255, 255, 255, 0.65);
+        transition: background-color .1s ease, color .1s ease;
+
+        &:hover { color: $white; }
+
+        &.is-selected {
+            color: $white;
+            background: var(--prp-chrome-hover);
+        }
+    }
+
     .rp-settings-opacity-value {
         min-width: 30px;
         text-align: right;

@@ -1,5 +1,6 @@
 import { FC, useEffect, useRef } from 'react';
 import { DispatchMouseEvent, DispatchTouchEvent, GetNitroInstance } from '../../api';
+import { RoomDragUsesRight } from '../../api/prefs/RoomDragStore';
 import { Base } from '../../common';
 import { useRoom } from '../../hooks';
 import { RoomSpectatorView } from './spectator/RoomSpectatorView';
@@ -20,6 +21,12 @@ export const RoomView: FC<{}> = props =>
         canvas.onmousemove = event => DispatchMouseEvent(event);
         canvas.onmousedown = event => DispatchMouseEvent(event);
         canvas.onmouseup = event => DispatchMouseEvent(event);
+        // With the right button panning, the browser's menu would open on the
+        // press (macOS raises it on mousedown) and swallow the rest of the drag.
+        canvas.oncontextmenu = event =>
+        {
+            if(RoomDragUsesRight()) event.preventDefault();
+        };
 
         canvas.ontouchstart = event => DispatchTouchEvent(event);
         canvas.ontouchmove = event => DispatchTouchEvent(event);

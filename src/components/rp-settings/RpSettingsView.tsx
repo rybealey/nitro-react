@@ -8,6 +8,7 @@ import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardH
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
+import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
 import { UsernameIconGlyph } from './UsernameIconGlyph';
@@ -39,6 +40,9 @@ const SOCIAL_PAGES: string[] = [ 'Color', 'Icon' ];
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
 // Environment pages, same rail under their own eyebrow: the sky behind rooms.
 const ENVIRONMENT_PAGES: string[] = [ 'Weather' ];
+
+// General > Drag the Room: the label on each choice, in RoomDragStore's order.
+const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
 
 export const RpSettingsView: FC<{}> = props =>
 {
@@ -77,6 +81,7 @@ export const RpSettingsView: FC<{}> = props =>
     const exportTextRef = useRef<HTMLTextAreaElement>(null);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const { maxFps } = useFpsPref();
+    const { dragButton } = useRoomDragPref();
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
@@ -1176,6 +1181,21 @@ export const RpSettingsView: FC<{}> = props =>
                                     onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
                                 <Text small className="rp-settings-fps-end">{ FPS_MAX }</Text>
                                 <Text small className="rp-settings-fps-value">{ maxFps }</Text>
+                            </div>
+                        </div>
+                        <div className="rp-settings-section">
+                            <div className="rp-settings-section-info">
+                                <Text bold>Drag the Room</Text>
+                                <Text small className="text-muted">Which mouse button pans the room when you click and drag, saved on this computer. On a trackpad, Right click is the one to try: a left click then walks the moment you press, and dragging with two fingers held down pans. A right-click macro still fires on a right click that doesn't move.</Text>
+                            </div>
+                            <div className="rp-settings-choice" role="radiogroup" aria-label="Drag the room with">
+                                { ROOM_DRAG_BUTTONS.map(button => (
+                                    <div key={ button } role="radio" aria-checked={ (dragButton === button) }
+                                        className={ `rp-settings-choice-option ${ (dragButton === button) ? 'is-selected' : '' }` }
+                                        onClick={ () => SetRoomDragButton(button) }>
+                                        { ROOM_DRAG_LABELS[button] }
+                                    </div>
+                                )) }
                             </div>
                         </div>
                     </Column> }

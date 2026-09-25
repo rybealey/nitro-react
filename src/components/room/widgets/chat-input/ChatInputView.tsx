@@ -8,6 +8,7 @@ import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent, useMessageEvent } from '../../../../hooks';
 import { IsModifierOnlyBinding, IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
 import { TargetState } from '../../../../hooks/rooms/targetState';
+import { ROOM_DRAG_STILL_PX, RoomDragUsesRight } from '../../../../api/prefs/RoomDragStore';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
 
@@ -425,6 +426,46 @@ export const ChatInputView: FC<{}> = props =>
         const commands = MacroState.bindings.get(binding);
 
         if(!commands) return;
+
+        // With the right button panning the room (Settings > General), a right
+        // press is also how a pan starts, so it is left to reach the room and
+        // the macro waits for the release: it fires only if the press stayed
+        // put. A press that moved was a pan, and panning must not fire it.
+        if((event.button === 2) && RoomDragUsesRight())
+        {
+            const startX = event.clientX;
+            const startY = event.clientY;
+            let dragged = false;
+
+            const onMove = (move: MouseEvent) =>
+            {
+                if((Math.abs(move.clientX - startX) > ROOM_DRAG_STILL_PX) || (Math.abs(move.clientY - startY) > ROOM_DRAG_STILL_PX)) dragged = true;
+            };
+
+            const stop = () =>
+            {
+                window.removeEventListener('mousemove', onMove, true);
+                window.removeEventListener('mouseup', onUp, true);
+                window.removeEventListener('blur', stop);
+            };
+
+            const onUp = (up: MouseEvent) =>
+            {
+                if(up.button !== 2) return;
+
+                stop();
+
+                if(!dragged) fireMacro(commands);
+            };
+
+            window.addEventListener('mousemove', onMove, true);
+            window.addEventListener('mouseup', onUp, true);
+            // A release outside the window never arrives, so a lost focus ends
+            // the press rather than leaving it armed for an unrelated release.
+            window.addEventListener('blur', stop);
+
+            return;
+        }
 
         // Middle click would otherwise start an autoscroll drag, and the room
         // canvas has its own onmousedown property handler (RoomView) which
