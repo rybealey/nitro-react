@@ -4,6 +4,8 @@ import { GetRoomEngine } from './GetRoomEngine';
 
 let didMouseMove = false;
 let lastClick = 0;
+let lastClickX = 0;
+let lastClickY = 0;
 let clickCount = 0;
 
 // CLICK ON PRESS, NOT ON RELEASE.
@@ -52,14 +54,24 @@ const dispatch = (canvasId: number, x: number, y: number, type: string, altKey: 
 
     if(eventType === MouseEventType.MOUSE_CLICK)
     {
+        // A second click only pairs with the first when it lands where the
+        // first did. Two quick clicks on DIFFERENT floor tiles are two
+        // steering clicks, but stock Nitro made them a double-click, which the
+        // floor ignores - so the second walk was silently dropped (every other
+        // quick click with the pan on the right button). didMouseMove cannot
+        // catch it: it is reset on each press, not between the two clicks.
+        const samePlace = ((Math.abs(x - lastClickX) <= ROOM_DRAG_STILL_PX) && (Math.abs(y - lastClickY) <= ROOM_DRAG_STILL_PX));
+
         if(lastClick)
         {
             clickCount = 1;
 
-            if(lastClick >= Date.now() - 300) clickCount++;
+            if((lastClick >= Date.now() - 300) && samePlace) clickCount++;
         }
 
         lastClick = Date.now();
+        lastClickX = x;
+        lastClickY = y;
 
         if(clickCount === 2)
         {
