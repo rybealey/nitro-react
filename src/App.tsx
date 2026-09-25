@@ -4,6 +4,7 @@ import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, 
 import { ExtendAvatarStructure } from './api/avatar/ExtendAvatarStructure';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
 import { InstallJitterTrace } from './api/diagnostics/JitterTrace';
+import { InstallFinalStepStance } from './api/nitro/room/FinalStepStance';
 import { InstallTurnTrace } from './api/diagnostics/TurnTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
@@ -150,6 +151,9 @@ export const App: FC<{}> = props =>
                 // Always on, counters only: how unevenly movement packets
                 // arrive. Read as pixelrpJitter in DevTools.
                 InstallJitterTrace();
+                // The walking legs stop the moment the last step is drawn,
+                // not when the stop status arrives (FinalStepStance).
+                InstallFinalStepStance();
                 RegisterRpGangMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
