@@ -2,7 +2,7 @@ import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemCompo
 import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
+import { LuLock } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -267,13 +267,15 @@ export const RpInventoryView: FC<{}> = props =>
                         <button type="button" className={ (itemUseMode === 'double') ? 'is-active' : '' } onClick={ () => chooseItemUseMode('double') }>Double Click</button>
                     </div> }
                 </div>
-                <NitroCardContentView className="text-black">
+                { /* gap 1 (4px): the gear frame sits as far from slots 1 and 2 as
+                     the slots sit from each other */ }
+                <NitroCardContentView className="text-black" gap={ 1 }>
                     <div className="rp-inventory-gear">
                         <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
-                            <LuSwords className="rp-inventory-slot-icon" />
+                            <span className="rp-inventory-gear-label">Weapon</span>
                         </div>
                         <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
-                            <LuShield className="rp-inventory-slot-icon" />
+                            <span className="rp-inventory-gear-label">Armor</span>
                         </div>
                     </div>
                     <div className="rp-inventory-grid">

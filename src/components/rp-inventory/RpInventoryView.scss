@@ -4,11 +4,10 @@
     // cramped.
     width: 124px;
 
-    // Narrow panel: the stock header type is still trimmed so the title, edit
-    // chip and close button share the row, but the wider panel gives it a
-    // little of that back. Left-aligned so they do not collide (stock header
-    // centers it).
-    .nitro-card-header .nitro-card-header-text {
+    // Narrow panel: the title, pen and close share the row, so this one header
+    // keeps its title on the LEFT where every other window centres it. The
+    // doubled class outranks the shared header rule in NitroCardView.scss.
+    .nitro-card-header.nitro-card-header .nitro-card-header-text {
         font-size: 13px !important;
         margin-right: auto;
         // No left padding: the header and the content area are both
@@ -133,16 +132,22 @@
 
     // Equipped-gear row: same slot treatment as the carry grid — only the
     // icons (and a hair of extra spacing below) distinguish gear.
+    // THE LIGHT RESTYLE (Backpack UI canvas, "Restyled, light mode"): a pale
+    // body, white slots that sit slightly raised, the gear pair framed in the
+    // header's orange with word labels, quiet slot numbers and a black count
+    // badge top-right. Same layout and sizes as before - only the look moved.
+    .content-area {
+        background: #f3f3f5;
+    }
+
     .rp-inventory-gear {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 4px;
-        // subtle divider so the gear row reads separate from carry slots.
-        // No margin-bottom: the content area is a Column with a default 8px
-        // gap, so a margin here would stack on top of it and leave the space
-        // below the line twice the space above it.
-        padding-bottom: 8px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 4px;
+        border: 1px solid rgba(232, 115, 50, 0.85);
+        border-radius: 7px;
+        background: rgba(240, 149, 74, 0.7);
     }
 
     .rp-inventory-grid {
@@ -152,27 +157,24 @@
         padding: 0;
     }
 
-    // Every slot is exactly the square its aspect-ratio makes; nothing inside
-    // may size it. The window's height is the sum of these, so a slot that
-    // grew by a pixel when an item landed in it resized the whole panel.
     .rp-inventory-slot {
         position: relative;
         aspect-ratio: 1;
         min-height: 0;
+        box-sizing: border-box;
         overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.04);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 4px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 6px;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.07), 0 1px 1px rgba(0, 0, 0, 0.06);
         cursor: pointer;
         transition: border-color 0.1s ease;
 
-        &:hover { border-color: rgba(0, 0, 0, 0.25); }
+        &:hover { border-color: rgba(0, 0, 0, 0.28); }
 
-        // the item art fills the square from outside the flow, so an occupied
-        // slot has the same in-flow content (none) as an empty one
         > .rp-inventory-item {
             position: absolute;
             inset: 0;
@@ -181,71 +183,69 @@
         }
     }
 
-    // Gear symbols and the placeholder numbers below are deliberately large:
-    // they are the empty slot's only content, so they carry the square.
-    .rp-inventory-slot-icon {
-        width: 20px;
-        height: 20px;
-        color: rgba(0, 0, 0, 0.3);
+    // Gear slots name themselves in small caps rather than with an icon.
+    .rp-inventory-slot--gear {
+        cursor: default;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.12); }
     }
 
-    // Locked carry slots: inert and quieter than the live ones.
+    .rp-inventory-gear-label {
+        font-size: 8px;
+        font-weight: 500;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: #5b5f68;
+        user-select: none;
+    }
+
     .rp-inventory-slot.is-locked {
         cursor: not-allowed;
-        background: rgba(0, 0, 0, 0.02);
+        background: #e8e8ec;
 
-        &:hover { border-color: rgba(0, 0, 0, 0.08); }
+        &:hover { border-color: rgba(0, 0, 0, 0.12); }
     }
 
     .rp-inventory-slot-icon--locked {
-        color: rgba(0, 0, 0, 0.15);
-        width: 16px;
-        height: 16px;
+        color: rgba(0, 0, 0, 0.3);
+        width: 15px;
+        height: 15px;
     }
 
-    // occupied slot: pixel icon at native size, count badge top-right
     .rp-inventory-slot.has-item {
-        background: rgba(0, 0, 0, 0.02);
         touch-action: none;
     }
 
-    // drag-to-organize: the picked-up item's slot dims; the slot under the
-    // pointer highlights while it's a valid landing spot (move or swap)
     .rp-inventory-slot.is-drag-source {
-        opacity: 0.4;
+        opacity: 0.35;
     }
 
-    // valid landing slot: tinted with the player's chosen UI chrome color
     .rp-inventory-slot.is-drop-target {
         border-color: var(--prp-chrome-solid);
-        background: color-mix(in srgb, var(--prp-chrome-solid) 16%, transparent);
+        background: color-mix(in srgb, var(--prp-chrome-solid) 12%, #ffffff);
     }
 
     .rp-inventory-count {
         position: absolute;
-        bottom: 3px;
-        left: 3px;
+        top: 3px;
+        right: 3px;
         min-width: 15px;
-        height: 15px;
+        height: 14px;
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 0 3px;
-        border-radius: 8px;
-        background: rgba(0, 0, 0, 0.8);
+        border-radius: 4px;
+        background: #000000;
         color: $white;
         font-size: 9px;
         font-weight: 700;
     }
 
-    // Scales with the slot: the panel widening enlarged every square, so the
-    // number rides up with it rather than shrinking away inside a bigger box.
     .rp-inventory-slot-label {
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.3);
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.35);
         user-select: none;
     }
 }
@@ -296,7 +296,7 @@
         flex-direction: column;
         gap: 10px;
         padding: 10px;
-        background: #f6f6f7;
+        background: #f3f3f5;
         color: #1c1c20;
         font-family: 'Ubuntu', sans-serif;
     }
@@ -314,9 +314,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 4px;
-        border: 1px solid #c6c9cf;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
         background: #ffffff;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.07), 0 1px 1px rgba(0, 0, 0, 0.06);
 
         .rp-inventory-item {
             width: 40px;
@@ -359,9 +360,10 @@
             height: 26px;
             min-width: 26px;
             padding: 0 6px;
-            border: 1px solid #c6c9cf;
-            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 5px;
             background: #ffffff;
+            box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.07), 0 1px 1px rgba(0, 0, 0, 0.06);
             color: #1c1c20;
             font-family: inherit;
             font-size: 13px;
@@ -382,8 +384,8 @@
             height: 26px;
             box-sizing: border-box;
             padding: 0 4px;
-            border: 1px solid #c6c9cf;
-            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            border-radius: 5px;
             background: #ffffff;
             color: #1c1c20;
             font-family: inherit;
@@ -412,7 +414,7 @@
         button {
             height: 28px;
             padding: 0 12px;
-            border-radius: 4px;
+            border-radius: 5px;
             font-family: inherit;
             font-size: 12px;
             font-weight: 700;
@@ -421,8 +423,9 @@
     }
 
     .rp-discard-cancel {
-        border: 1px solid #c6c9cf;
+        border: 1px solid rgba(0, 0, 0, 0.12);
         background: #ffffff;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.07), 0 1px 1px rgba(0, 0, 0, 0.06);
         color: #1c1c20;
 
         &:hover { background: #eef0f3; }
@@ -430,7 +433,8 @@
 
     // The close button's red: it throws something away for good.
     .rp-discard-confirm {
-        border: 1px solid rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
         background: #c9453a;
         color: #ffffff;
 
