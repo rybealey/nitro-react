@@ -1252,7 +1252,7 @@ export const RpSettingsView: FC<{}> = props =>
                                      destructive one is not next to New. */ }
                                 <span className="rp-mx-bar-divider" />
                                 <button type="button" className="rp-mx-icon-btn rp-mx-icon-btn--danger" title="Delete this preset" aria-label="Delete this preset" onClick={ deleteActivePreset }>
-                                    <svg width="12" height="13" viewBox="0 0 12 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 3.5h9M4.5 3.5V2h3v1.5M2.8 3.5l.6 8h5.2l.6-8" /></svg>
+                                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3.5h10" /><path d="M5.5 3.5V2h3v1.5" /><path d="M3.5 3.5l.6 8.5h5.8l.6-8.5" /><path d="M5.8 6v3.8M8.2 6v3.8" /></svg>
                                 </button>
                             </div>
                         </div>
