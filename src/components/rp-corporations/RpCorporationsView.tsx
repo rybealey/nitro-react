@@ -304,8 +304,9 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                          colorblind legibility */ }
                                                                     <span className={ `rp-corps-dot rp-corps-employee-status ${ employee.onDuty ? 'is-onduty' : (employee.online ? 'is-online' : 'is-offline') }` } />
                                                                     { /* portrait tint doubles as the presence signal:
-                                                                         gray offline, green online, blue on duty */ }
-                                                                    <div className={ `rp-corps-employee-portrait${ employee.onDuty ? ' is-onduty' : (employee.online ? ' is-online' : '') }` }>
+                                                                         gray offline, green online, blue on duty - and
+                                                                         an offline avatar is itself greyed out */ }
+                                                                    <div className={ `rp-corps-employee-portrait${ employee.onDuty ? ' is-onduty' : (employee.online ? ' is-online' : ' is-offline') }` }>
                                                                         <LayoutAvatarImageView figure={ employee.figure } direction={ 2 } />
                                                                     </div>
                                                                     <div className="rp-corps-employee-info">

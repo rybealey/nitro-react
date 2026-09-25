@@ -404,6 +404,13 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         &.is-online { background: $corps-presence-online; }
         &.is-onduty { background: $corps-presence-onduty; }
 
+        // Offline: the avatar itself goes grey and fades, so an absent player
+        // reads as away at a glance rather than only by the tint behind them.
+        &.is-offline .avatar-image {
+            filter: grayscale(1);
+            opacity: .6;
+        }
+
         .avatar-image {
             position: absolute;
             inset: 0;
