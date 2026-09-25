@@ -15,7 +15,9 @@
     // the stack from being pushed off-center.
     .nitro-side-drawer {
         position: relative;
-        background: var(--prp-chrome-plate);
+        // One flat surface (Sidebar UI canvas): no lighter top band or darker
+        // bottom band, which read as shading round the tray.
+        background: var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         border-top-right-radius: $border-radius;
@@ -41,7 +43,7 @@
     }
 
     &.is-expanded {
-        .nitro-side-drawer { padding: 8px; }
+        .nitro-side-drawer { padding: 10px; }
 
         .side-drawer-items {
             width: auto;
@@ -70,18 +72,18 @@
         isolation: isolate;
 
         // Each icon sits on its own raised tile (Sidebar Icons canvas, "dark
-        // tiles"): a darker fill, a dark edge, a faint light line along the
+        // tiles", lightened on Sidebar UI): a faint light fill, a dark edge, a faint light line along the
         // top and a 3px dark lip along the bottom. All see-through black and
         // white, so the tile follows whichever colour scheme the player picks.
         // background-COLOR specifically, never the shorthand - the icon
         // itself is this element's background-image.
         border: 1px solid rgba(0, 0, 0, 0.45);
         border-radius: $border-radius;
-        background-color: rgba(0, 0, 0, 0.2);
+        background-color: rgba(255, 255, 255, 0.05);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
         transition: background-color .1s ease;
 
-        &:hover { background-color: rgba(255, 255, 255, 0.05); }
+        &:hover { background-color: rgba(255, 255, 255, 0.11); }
 
         &::after {
             content: '';
@@ -124,20 +126,18 @@
         align-items: center;
         justify-content: center;
         width: 14px;
-        height: 34px;
-        background: var(--prp-chrome-plate);
+        height: 35px;
+        background: var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         border-radius: 0 6px 6px 0;
         color: rgba($white, .55);
-        font-family: sans-serif;
-        font-style: normal;
-        font-weight: 700;
-        font-size: 13px;
-        line-height: 1;
-        text-align: center;
         user-select: none;
         transition: color .1s ease;
+
+        // A drawn chevron rather than a text glyph, whose font spacing never
+        // sits it in the exact middle of the tab.
+        svg { display: block; }
 
         &:hover {
             color: $white;

@@ -45,7 +45,9 @@ export const SideDrawerWidgetView: FC<{}> = props =>
             </Flex>
             <HoverBubble text={ isExpanded ? 'Collapse' : 'Expand' } placement="right">
                 <div className="cursor-pointer side-drawer-toggle" onClick={ () => setIsExpanded(value => !value) }>
-                    { isExpanded ? '‹' : '›' }
+                    <svg width="6" height="10" viewBox="0 0 7 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d={ isExpanded ? 'M6 1L1 6l5 5' : 'M1 1l5 5-5 5' } />
+                    </svg>
                 </div>
             </HoverBubble>
         </Flex>
