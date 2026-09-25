@@ -1547,7 +1547,7 @@ export const RpSettingsView: FC<{}> = props =>
                         <div className="rp-settings-section">
                             <div className="rp-settings-section-info">
                                 <Text bold>Frame Rate</Text>
-                                <Text small className="text-muted">How often the room is allowed to redraw, saved on this computer rather than to your account. It can only take frames away - your screen sets the real ceiling, so on a 60Hz monitor anything above 60 looks the same. Lowering it is the lever to pull on an older machine.</Text>
+                                <Text small className="text-muted">How often the room is allowed to redraw, saved on this computer rather than to your account. The default of 75 keeps walking smooth on any screen - your screen sets the real ceiling, so a 60Hz monitor still draws 60. Lowering it is the lever to pull on an older machine.</Text>
                             </div>
                             <div className="rp-settings-fps">
                                 <Text small className="rp-settings-fps-end">{ FPS_MIN }</Text>

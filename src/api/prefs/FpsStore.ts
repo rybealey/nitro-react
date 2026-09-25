@@ -45,9 +45,21 @@ catch(e)
 
 const listeners = new Set<() => void>();
 
-// system.fps.max is the operator's value in renderer-config.json; 60 is what
-// the shipped example carries, and the fallback if the key is missing.
-const HotelDefault = (): number => clamp(GetConfiguration<number>('system.fps.max') || 60);
+// The default cap, for a player who has never moved the slider.
+//
+// 75, NOT 60. Pixi paces its frames against the cap with rounding, and a cap
+// of exactly 60 on a 60Hz screen keeps just missing a refresh - it skipped 1-4
+// frames in every 100, and on each skip every walker moved twice as far in one
+// frame. Any cap comfortably above the refresh rate never waits, and a 60Hz
+// screen still only draws 60. On 144Hz it lands on an even ~72 (every other
+// refresh) and on 120Hz an even 60, so fast screens stay smooth without
+// drawing flat out.
+export const FPS_DEFAULT = 75;
+
+// system.fps.max is the operator's value in renderer-config.json. Missing, or 0
+// (which the beta config once used to mean "uncapped" - it never did: `|| 60`
+// read 0 as missing), gives FPS_DEFAULT.
+const HotelDefault = (): number => clamp(GetConfiguration<number>('system.fps.max') || FPS_DEFAULT);
 
 export const GetMaxFps = (): number => ((chosen !== null) ? chosen : HotelDefault());
 
