@@ -134,7 +134,7 @@
     // icons (and a hair of extra spacing below) distinguish gear.
     // THE LIGHT RESTYLE (Backpack UI canvas, "Restyled, light mode"): a pale
     // body, white slots that sit slightly raised, the gear pair framed in the
-    // header's orange with word labels, quiet slot numbers and a black count
+    // header's orange with sword and shield icons, quiet slot numbers and a black count
     // badge top-right. Same layout and sizes as before - only the look moved.
     .content-area {
         background: #f3f3f5;
@@ -145,8 +145,8 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 4px;
         padding: 4px;
-        border: 1px solid rgba(232, 115, 50, 0.85);
-        border-radius: 7px;
+        border: 1px solid #ea8444;
+        border-radius: 5px;
         background: rgba(240, 149, 74, 0.7);
     }
 
@@ -167,9 +167,9 @@
         align-items: center;
         justify-content: center;
         background: #ffffff;
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 6px;
-        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.07), 0 1px 1px rgba(0, 0, 0, 0.06);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05);
         cursor: pointer;
         transition: border-color 0.1s ease;
 
@@ -183,27 +183,24 @@
         }
     }
 
-    // Gear slots name themselves in small caps rather than with an icon.
+    // Gear slots show crossed swords and a shield (the hover title still names them).
     .rp-inventory-slot--gear {
         cursor: default;
 
-        &:hover { border-color: rgba(0, 0, 0, 0.12); }
+        &:hover { border-color: rgba(0, 0, 0, 0.1); }
     }
 
-    .rp-inventory-gear-label {
-        font-size: 8px;
-        font-weight: 500;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: #5b5f68;
-        user-select: none;
+    .rp-inventory-gear-icon {
+        width: 22px;
+        height: 22px;
+        color: rgba(0, 0, 0, 0.3);
     }
 
     .rp-inventory-slot.is-locked {
         cursor: not-allowed;
         background: #e8e8ec;
 
-        &:hover { border-color: rgba(0, 0, 0, 0.12); }
+        &:hover { border-color: rgba(0, 0, 0, 0.1); }
     }
 
     .rp-inventory-slot-icon--locked {

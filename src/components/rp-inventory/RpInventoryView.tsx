@@ -2,7 +2,7 @@ import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemCompo
 import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuLock } from 'react-icons/lu';
+import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -272,10 +272,10 @@ export const RpInventoryView: FC<{}> = props =>
                 <NitroCardContentView className="text-black" gap={ 1 }>
                     <div className="rp-inventory-gear">
                         <div className="rp-inventory-slot rp-inventory-slot--gear" title="Weapon">
-                            <span className="rp-inventory-gear-label">Weapon</span>
+                            <LuSwords className="rp-inventory-gear-icon" />
                         </div>
                         <div className="rp-inventory-slot rp-inventory-slot--gear" title="Armor">
-                            <span className="rp-inventory-gear-label">Armor</span>
+                            <LuShield className="rp-inventory-gear-icon" />
                         </div>
                     </div>
                     <div className="rp-inventory-grid">
