@@ -15,9 +15,13 @@ $corps-presence-online: #2e9e4f;
 $corps-presence-onduty: #2f7fd6;
 
 // Coin gold for the rank pay chips.
-$corps-coin-text: #8a6d1d;
-$corps-coin-fill: rgba(240, 195, 80, 0.18);
-$corps-coin-border: rgba(200, 160, 60, 0.45);
+// Rank pay: a vivid money green (was the coin gold).
+$corps-pay-text: #12803a;
+$corps-pay-fill: rgba(34, 197, 94, 0.2);
+$corps-pay-border: rgba(22, 163, 74, 0.75);
+// The padded rank and options cards.
+$corps-card-fill: rgba(0, 0, 0, 0.045);
+$corps-card-border: rgba(0, 0, 0, 0.09);
 
 // Loading ghosts share one shimmer treatment.
 %rp-corps-shimmer {
@@ -295,29 +299,33 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         padding-right: 2px;
     }
 
-    // Rank header: quiet section label + coin pay chip over a hairline rule.
+    // Each rank is its own padded card (Corporation UI canvas): a faint grey
+    // fill a shade darker than the window, the header in a darker strip inside
+    // it, and the roster below. The options column's cards share the fill.
+    .rp-corps-rank {
+        flex-shrink: 0;
+        padding: 6px;
+        border-radius: 6px;
+        background: $corps-card-fill;
+        border: 1px solid $corps-card-border;
+    }
+
     .rp-corps-rank-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 0 3px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 5px 8px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.06);
     }
 
+    // Near-black and a size up, so the ranks read as the headings they are.
     .rp-corps-rank-name {
-        font-size: 11px;
+        font-size: 12.5px;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.6px;
         text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.5);
-    }
-
-    // Top of the ladder (ranks render highest-first): a short chrome bar on
-    // the name so seniority reads at a glance.
-    .rp-corps-rank:first-child .rp-corps-rank-name {
-        border-left: 3px solid var(--prp-chrome-solid);
-        padding-left: 5px;
-        color: rgba(0, 0, 0, 0.65);
+        color: rgba(0, 0, 0, 0.85);
     }
 
     .rp-corps-rank-pay {
@@ -325,22 +333,22 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         font-weight: 700;
         padding: 1px 7px;
         border-radius: 8px;
-        color: $corps-coin-text;
-        background: $corps-coin-fill;
-        border: 1px solid $corps-coin-border;
+        color: $corps-pay-text;
+        background: $corps-pay-fill;
+        border: 1px solid $corps-pay-border;
     }
 
     .rp-corps-rank-none {
         font-size: 11px;
         color: rgba(0, 0, 0, 0.35);
-        padding: 4px 2px 0;
+        padding: 6px 8px 0;
     }
 
     .rp-corps-employees {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;
-        padding: 6px 2px 2px;
+        padding: 6px 0 0;
     }
 
     // With the options column open the roster loses ~168px, and three cards in
@@ -491,28 +499,37 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
     // overflow clips the contents - the same shape the side drawer uses. The
     // divider needs the transparent-to-colour trick rather than being dropped,
     // or a 1px line would linger after the column has gone.
+    //
+    // Its two groups (Search, Show on cards) are padded cards like the ranks,
+    // each only as tall as what it holds; the cards do the dividing, so the
+    // hairline is gone and the column keeps its old 159px footprint.
     .rp-corps-panel {
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        align-self: flex-start;
+        gap: 8px;
         width: 0;
         margin-right: 0;
-        padding-right: 0;
         overflow: hidden;
         opacity: 0;
-        border-right: 1px solid transparent;
-        transition: width 0.16s ease, margin-right 0.16s ease, padding-right 0.16s ease, opacity 0.14s ease;
+        transition: width 0.16s ease, margin-right 0.16s ease, opacity 0.14s ease;
 
         &.is-open {
-            width: 150px;
-            // Mirrors the rail: content, 8px, the hairline, then the gap the
-            // layout uses between its columns.
-            padding-right: 8px;
+            width: 159px;
             margin-right: 10px;
             opacity: 1;
-            border-right-color: rgba(0, 0, 0, 0.08);
         }
+    }
+
+    .rp-corps-panel-card {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 6px;
+        background: $corps-card-fill;
+        border: 1px solid $corps-card-border;
     }
 
     .rp-corps-panel-title {
@@ -522,8 +539,8 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.35);
 
-        // Two titled groups share this 150px column, so the second one needs
-        // air above it or Find and Show on cards read as one list.
+        // The skeleton's two ghost groups still share one column, so its
+        // second title keeps the air above it.
         &.is-spaced {
             margin-top: 4px;
         }
@@ -604,16 +621,9 @@ $corps-coin-border: rgba(200, 160, 60, 0.45);
         gap: 8px;
         animation: rp-corps-fade 0.12s ease;
 
-        // the panel column keeps its real width/divider but not the open
+        // the panel column keeps its real width but not the open
         // transition (nothing to animate from while loading)
         .rp-corps-panel { transition: none; }
-
-        .rp-corps-rank-row { border-bottom-color: rgba(0, 0, 0, 0.06); }
-
-        .rp-corps-rank:first-child .rp-corps-ghost-rank-name {
-            border-left: 3px solid rgba(0, 0, 0, 0.12);
-            border-radius: 0 6px 6px 0;
-        }
     }
 
     .rp-corps-ghost {

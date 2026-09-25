@@ -221,29 +221,33 @@ export const RpCorporationsView: FC<{}> = props =>
                                          the roster and the employee grid drops from
                                          three across to two to make room. */ }
                                     <div className={ `rp-corps-panel ${ panelOpen ? 'is-open' : '' }` }>
-                                        <div className="rp-corps-panel-title">Find</div>
-                                        <div className="rp-corps-search">
-                                            { /* No autoFocus: this window opens over a live room and
-                                                 stealing the keyboard would swallow chat. */ }
-                                            <input type="text" spellCheck={ false } placeholder="Username..."
-                                                value={ search } onChange={ event => setSearch(event.target.value) }
-                                                onKeyDown={ event => (event.key === 'Escape') && setSearch('') } />
-                                            { !!search &&
-                                                <span className="rp-corps-search-clear" title="Clear" onClick={ () => setSearch('') }>&times;</span> }
+                                        <div className="rp-corps-panel-card">
+                                            <div className="rp-corps-panel-title">Search</div>
+                                            <div className="rp-corps-search">
+                                                { /* No autoFocus: this window opens over a live room and
+                                                     stealing the keyboard would swallow chat. */ }
+                                                <input type="text" spellCheck={ false } placeholder="Username..."
+                                                    value={ search } onChange={ event => setSearch(event.target.value) }
+                                                    onKeyDown={ event => (event.key === 'Escape') && setSearch('') } />
+                                                { !!search &&
+                                                    <span className="rp-corps-search-clear" title="Clear" onClick={ () => setSearch('') }>&times;</span> }
+                                            </div>
                                         </div>
-                                        <div className="rp-corps-panel-title is-spaced">Show on cards</div>
-                                        <label className="rp-corps-check">
-                                            <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />
-                                            <span>Weekly shifts</span>
-                                        </label>
-                                        <label className="rp-corps-check">
-                                            <input type="checkbox" checked={ showTotal } onChange={ event => setShowTotal(event.target.checked) } />
-                                            <span>Total shifts</span>
-                                        </label>
-                                        <label className="rp-corps-check">
-                                            <input type="checkbox" checked={ showLastOnline } onChange={ event => setShowLastOnline(event.target.checked) } />
-                                            <span>Last online</span>
-                                        </label>
+                                        <div className="rp-corps-panel-card">
+                                            <div className="rp-corps-panel-title">Show on cards</div>
+                                            <label className="rp-corps-check">
+                                                <input type="checkbox" checked={ showWeekly } onChange={ event => setShowWeekly(event.target.checked) } />
+                                                <span>Weekly shifts</span>
+                                            </label>
+                                            <label className="rp-corps-check">
+                                                <input type="checkbox" checked={ showTotal } onChange={ event => setShowTotal(event.target.checked) } />
+                                                <span>Total shifts</span>
+                                            </label>
+                                            <label className="rp-corps-check">
+                                                <input type="checkbox" checked={ showLastOnline } onChange={ event => setShowLastOnline(event.target.checked) } />
+                                                <span>Last online</span>
+                                            </label>
+                                        </div>
                                     </div>
                                     <div className="rp-corps-ranks">
                                         { !!query && !visibleRanks.length &&
