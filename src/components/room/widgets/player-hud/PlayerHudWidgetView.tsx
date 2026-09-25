@@ -61,6 +61,10 @@ const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
 
 const HudStars: FC<{ wanted: number }> = ({ wanted }) =>
 {
+    // Not wanted, no stars: five empty outlines under every portrait was noise,
+    // and the row turning up at all is now the signal.
+    if(!(wanted > 0)) return null;
+
     return (
         <div className="hud-stars">
             { /* SVG stars, not font glyphs — ★/☆ aren't in Ubuntu, so the
