@@ -120,7 +120,10 @@ export const RpInventoryView: FC<{}> = props =>
 
     useEffect(() =>
     {
-        if(!isVisible) setIsUseModeOpen(false);
+        if(isVisible) return;
+
+        setIsUseModeOpen(false);
+        setBubbleText(null);
     }, [ isVisible ]);
 
     useEffect(() =>
@@ -136,6 +139,50 @@ export const RpInventoryView: FC<{}> = props =>
 
         return () => document.removeEventListener('pointerdown', onPointerDown);
     }, [ isUseModeOpen ]);
+
+    // 14px right of the pointer, level with it, so it clears the arrow cursor;
+    // flipped to the left when it would run off the right of the screen.
+    const placeBubble = () =>
+    {
+        const bubble = bubbleRef.current;
+
+        if(!bubble) return;
+
+        const { x, y } = pointerRef.current;
+        let left = (x + 14);
+
+        if((left + bubble.offsetWidth) > (window.innerWidth - 4)) left = (x - 14 - bubble.offsetWidth);
+
+        bubble.style.transform = `translate(${ left }px, ${ Math.round(y - (bubble.offsetHeight / 2)) }px)`;
+    }
+
+    const bubbleProps = (text: string) => ({
+        onPointerEnter: (event: ReactPointerEvent<HTMLDivElement>) =>
+        {
+            // No hover on touch screens.
+            if(event.pointerType !== 'mouse') return;
+
+            pointerRef.current = { x: event.clientX, y: event.clientY };
+            setBubbleText(text);
+        },
+        onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) =>
+        {
+            pointerRef.current = { x: event.clientX, y: event.clientY };
+            placeBubble();
+        },
+        onPointerLeave: () => setBubbleText(null)
+    });
+
+    // Placed before paint, so a new bubble never flashes at the corner.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useLayoutEffect(() => placeBubble(), [ bubbleText ]);
+
+    // Hidden while an item is dragged, so no bubble fights the drag ghost; a
+    // new one needs the pointer to enter a slot again.
+    useEffect(() =>
+    {
+        if(dragFrom >= 0) setBubbleText(null);
+    }, [ dragFrom ]);
 
     if(!isVisible) return null;
 
@@ -249,55 +296,6 @@ export const RpInventoryView: FC<{}> = props =>
         setItemUseMode(mode);
         setIsUseModeOpen(false);
     }
-
-    // 14px right of the pointer, level with it, so it clears the arrow cursor;
-    // flipped to the left when it would run off the right of the screen.
-    const placeBubble = () =>
-    {
-        const bubble = bubbleRef.current;
-
-        if(!bubble) return;
-
-        const { x, y } = pointerRef.current;
-        let left = (x + 14);
-
-        if((left + bubble.offsetWidth) > (window.innerWidth - 4)) left = (x - 14 - bubble.offsetWidth);
-
-        bubble.style.transform = `translate(${ left }px, ${ Math.round(y - (bubble.offsetHeight / 2)) }px)`;
-    }
-
-    const bubbleProps = (text: string) => ({
-        onPointerEnter: (event: ReactPointerEvent<HTMLDivElement>) =>
-        {
-            // No hover on touch screens.
-            if(event.pointerType !== 'mouse') return;
-
-            pointerRef.current = { x: event.clientX, y: event.clientY };
-            setBubbleText(text);
-        },
-        onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) =>
-        {
-            pointerRef.current = { x: event.clientX, y: event.clientY };
-            placeBubble();
-        },
-        onPointerLeave: () => setBubbleText(null)
-    });
-
-    // Placed before paint, so a new bubble never flashes at the corner.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useLayoutEffect(() => placeBubble(), [ bubbleText ]);
-
-    // Hidden while an item is dragged, so no bubble fights the drag ghost; a
-    // new one needs the pointer to enter a slot again.
-    useEffect(() =>
-    {
-        if(dragFrom >= 0) setBubbleText(null);
-    }, [ dragFrom ]);
-
-    useEffect(() =>
-    {
-        if(!isVisible) setBubbleText(null);
-    }, [ isVisible ]);
 
     const discardEntry = ((discardSlot > 0) ? items.get(discardSlot) : null);
 
