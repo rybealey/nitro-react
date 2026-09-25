@@ -17,10 +17,11 @@
         // edge, rather than guessing an offset that drifts if the gutter moves.
         padding-left: 0;
     }
+    // 2px from the close button (27 = the close's right 5 + its 20 + 2).
     .rp-inventory-use-mode {
         position: absolute;
         top: 3px;
-        right: 28px;
+        right: 27px;
         z-index: 20;
     }
 
@@ -32,7 +33,7 @@
 
     // Stands over the close button while an item is dragged and lights up
     // when the item is over it. 24px against the X's 20, centred on the same
-    // spot (2px out each way - 1px clear of the pen beside it), and breathing
+    // spot (2px out each way - its edge meets the pen's beside it), and breathing
     // a soft glow: the same red square as the X it replaces read as nothing
     // having changed, so the bin was only found by dragging onto it by chance.
     .rp-inventory-bin {
