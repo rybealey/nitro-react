@@ -439,6 +439,24 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         border: 1px solid rgba(0, 0, 0, .35);
     }
 
+    // Click-to-edit key and command in a list row. A pointer rather than the
+    // row's grab hand, so it reads as editable, not draggable.
+    .rp-macros-editable {
+        cursor: pointer;
+
+        &:hover { box-shadow: inset 0 0 0 1px rgba($white, .35); }
+    }
+
+    .rp-macros-binding.is-capturing {
+        border: 1px dashed rgba($white, .6);
+    }
+
+    .rp-macros-command-input {
+        cursor: text;
+        outline: none;
+        font-family: inherit;
+    }
+
     .rp-settings-skeleton {
         border-radius: 6px;
         background: linear-gradient(90deg, rgba(0, 0, 0, 0.06) 25%, rgba(0, 0, 0, 0.12) 37%, rgba(0, 0, 0, 0.06) 63%);

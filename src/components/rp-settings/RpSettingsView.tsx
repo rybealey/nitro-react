@@ -55,6 +55,14 @@ export const RpSettingsView: FC<{}> = props =>
     // Non-null while "Click to bind" is armed and swallowing the next input.
     const [ capturedBinding, setCapturedBinding ] = useState<string>(null);
     const [ isCapturing, setIsCapturing ] = useState<boolean>(false);
+    // Which list row a capture is rebinding, or null when it is for the
+    // new-macro bar. Set together with isCapturing.
+    const [ captureRow, setCaptureRow ] = useState<number>(null);
+    // The row whose command is open for editing, and its text so far.
+    const [ editingCommand, setEditingCommand ] = useState<{ index: number, text: string }>(null);
+    // Esc closes the command editor through the same blur that saves it, so
+    // this tells the blur to throw the text away instead.
+    const discardCommandEdit = useRef<boolean>(false);
     // Modifiers held during capture, shown live on the button ("CTRL+...") so
     // it is obvious the capture is waiting for the key they prefix.
     const [ capturePrefix, setCapturePrefix ] = useState<string>('');
@@ -305,6 +313,68 @@ export const RpSettingsView: FC<{}> = props =>
         setDraftCommand('');
     };
 
+    // Rewrite one row in place - its key, its command or both - keeping its
+    // position, since a key with several commands runs them in list order. The
+    // same rules as adding apply, measured against every OTHER row, so an edit
+    // can never leave the preset in a state Add would have refused.
+    const editMacro = (index: number, binding: string, command: string) =>
+    {
+        if(!activePreset) return;
+
+        const row = activePreset.macros[index];
+
+        if(!row) return;
+
+        const text = command.trim().substring(0, MACRO_MAX_COMMAND_LENGTH);
+
+        if(!text.length)
+        {
+            notify('A macro needs a command.');
+
+            return;
+        }
+
+        if((binding === row.b) && (text === row.c)) return;
+
+        const sameKey = activePreset.macros.filter((macro, position) => ((position !== index) && (macro.b === binding)));
+
+        if(sameKey.some(macro => (macro.c === text)))
+        {
+            notify(`${ binding } already runs that command.`);
+
+            return;
+        }
+
+        if(sameKey.length >= MACRO_MAX_PER_KEY)
+        {
+            notify(`A key runs at most ${ MACRO_MAX_PER_KEY } commands.`);
+
+            return;
+        }
+
+        replaceActivePreset(activePreset.macros.map((macro, position) => ((position === index) ? { b: binding, c: text } : macro)));
+    };
+
+    const saveCommandEdit = () =>
+    {
+        const edit = editingCommand;
+
+        setEditingCommand(null);
+
+        if(!edit || !activePreset) return;
+
+        if(discardCommandEdit.current)
+        {
+            discardCommandEdit.current = false;
+
+            return;
+        }
+
+        const row = activePreset.macros[edit.index];
+
+        if(row) editMacro(edit.index, row.b, edit.text);
+    };
+
     const deleteMacro = (index: number) =>
     {
         if(!activePreset) return;
@@ -424,7 +494,9 @@ export const RpSettingsView: FC<{}> = props =>
     {
         // Move and Delete live inside the row; a press on either is a click,
         // not the start of a drag.
-        if((event.target as HTMLElement).closest('.rp-macros-btn')) return;
+        // The key and command are click-to-edit, so a press on them is not a
+        // drag either.
+        if((event.target as HTMLElement).closest('.rp-macros-btn, .rp-macros-editable')) return;
         if(!activePreset) return;
 
         try
@@ -485,6 +557,7 @@ export const RpSettingsView: FC<{}> = props =>
         setCapturedBinding(null);
         setDraftCommand('');
         setIsCapturing(false);
+        setCaptureRow(null);
         setCapturePrefix('');
         captureModifier.current = null;
     };
@@ -625,12 +698,26 @@ export const RpSettingsView: FC<{}> = props =>
             {
                 notify(`${ binding } cannot be bound.`);
                 setIsCapturing(false);
+                setCaptureRow(null);
 
                 return;
             }
 
-            setCapturedBinding(binding);
+            // Rebinding a row in the list writes straight to that row; the
+            // new-macro bar only holds the key until Add.
+            if(captureRow !== null)
+            {
+                const row = (activePreset ? activePreset.macros[captureRow] : null);
+
+                if(row) editMacro(captureRow, binding, row.c);
+            }
+            else
+            {
+                setCapturedBinding(binding);
+            }
+
             setIsCapturing(false);
+            setCaptureRow(null);
         };
 
         const onKey = (event: KeyboardEvent) =>
@@ -677,6 +764,7 @@ export const RpSettingsView: FC<{}> = props =>
                 captureModifier.current = null;
                 setCapturePrefix('');
                 setIsCapturing(false);
+                setCaptureRow(null);
 
                 return;
             }
@@ -704,7 +792,7 @@ export const RpSettingsView: FC<{}> = props =>
             window.removeEventListener('mousedown', onMouse, true);
             window.removeEventListener('contextmenu', swallow, true);
         };
-    }, [ isCapturing ]);
+    }, [ isCapturing, captureRow ]);
 
     const saveSettings = (color: string, opacity: number, header: string, uname: string, icon: string, iconColor: string) =>
     {
@@ -955,9 +1043,9 @@ export const RpSettingsView: FC<{}> = props =>
                         { /* new-macro row: capture a key or mouse button, type the
                              command, Add. The trash deletes the whole preset. */ }
                         <Flex alignItems="center" gap={ 2 } className="rp-macros-new">
-                            <div className={ `rp-macros-btn rp-macros-bind ${ isCapturing ? 'is-capturing' : '' }` }
-                                onClick={ () => setIsCapturing(true) }>
-                                { isCapturing
+                            <div className={ `rp-macros-btn rp-macros-bind ${ (isCapturing && (captureRow === null)) ? 'is-capturing' : '' }` }
+                                onClick={ () => { setCaptureRow(null); setIsCapturing(true); } }>
+                                { (isCapturing && (captureRow === null))
                                     ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press any key')
                                     : (capturedBinding ?? 'Click to bind') }
                             </div>
@@ -981,8 +1069,32 @@ export const RpSettingsView: FC<{}> = props =>
                                     onPointerMove={ onMacroPointerMove }
                                     onPointerUp={ onMacroPointerUp }
                                     onPointerCancel={ onMacroPointerUp }>
-                                    <div className="rp-macros-binding" title={ row.b }>{ row.b }</div>
-                                    <div className="rp-macros-command">{ row.c }</div>
+                                    { /* both cells are click-to-edit: the key re-captures
+                                         in place, the command opens as a text box */ }
+                                    <div className={ `rp-macros-binding rp-macros-editable ${ (isCapturing && (captureRow === index)) ? 'is-capturing' : '' }` }
+                                        title={ `${ row.b } - click to change the key` }
+                                        onClick={ () => { setEditingCommand(null); setCaptureRow(index); setIsCapturing(true); } }>
+                                        { (isCapturing && (captureRow === index))
+                                            ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press any key')
+                                            : row.b }
+                                    </div>
+                                    { (editingCommand && (editingCommand.index === index))
+                                        ? <input type="text" autoFocus className="rp-macros-command rp-macros-command-input rp-macros-editable"
+                                            aria-label="Edit macro command" maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ editingCommand.text }
+                                            onChange={ event => setEditingCommand({ index, text: event.target.value }) }
+                                            onKeyDown={ event =>
+                                            {
+                                                if(event.key === 'Enter') event.currentTarget.blur();
+
+                                                if(event.key === 'Escape')
+                                                {
+                                                    discardCommandEdit.current = true;
+                                                    event.currentTarget.blur();
+                                                }
+                                            } }
+                                            onBlur={ saveCommandEdit } />
+                                        : <div className="rp-macros-command rp-macros-editable" title="Click to change the command"
+                                            onClick={ () => setEditingCommand({ index, text: row.c }) }>{ row.c }</div> }
                                     <div className="rp-macros-btn rp-macros-btn--sm rp-macros-move">
                                         Move
                                         <span className="rp-macros-move-arrows">
