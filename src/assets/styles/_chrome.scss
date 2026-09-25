@@ -93,3 +93,45 @@
     --prp-header-border: #{darken(#e87332, 5%)};
     --prp-header-grad: repeating-linear-gradient(var(--prp-header-top), var(--prp-header-top) 50%, var(--prp-header-bottom) 50%, var(--prp-header-bottom) 100%);
 }
+
+// The close button, from the Backpack redesign: a red rounded square with a
+// thin light edge, a soft drop and a thin round-ended X drawn from two
+// pseudo-element strokes. Window headers, the infostand, the Function Tool,
+// the macros dialog and the camera all include this, so every X in the hotel
+// is the same one. $size is 20px in a window header; 16px where the header row
+// is a compact one (the infostand, the small draggable dialogs).
+@mixin prp-close-button($size: 20px) {
+    position: relative;
+    width: $size;
+    height: $size;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    padding: 0;
+    cursor: pointer;
+    opacity: 1;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: if($size >= 20px, 5px, 4px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+    background: #c9453a;
+    filter: none;
+
+    .fa-icon { display: none; }
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: round($size * 0.55);
+        height: 2px;
+        border-radius: 1px;
+        background: #ffffff;
+    }
+
+    &::before { transform: translate(-50%, -50%) rotate(45deg); }
+    &::after { transform: translate(-50%, -50%) rotate(-45deg); }
+
+    &:hover { filter: none; opacity: 1; background: #d55a50; }
+    &:active { filter: none; background: #b53b31; }
+}

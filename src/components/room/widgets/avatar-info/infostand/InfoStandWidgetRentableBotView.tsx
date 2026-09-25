@@ -1,6 +1,5 @@
 import { BotRemoveComposer } from '@nitrots/nitro-renderer';
 import { FC, useMemo } from 'react';
-import { FaTimes } from 'react-icons/fa';
 import { AvatarInfoRentableBot, BotSkillsEnum, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Button, Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text, UserProfileIconView } from '../../../../../common';
 
@@ -34,7 +33,7 @@ export const InfoStandWidgetRentableBotView: FC<InfoStandWidgetRentableBotViewPr
                     <Column gap={ 1 }>
                         <Flex alignItems="center" justifyContent="between" gap={ 1 }>
                             <Text variant="white" small wrap>{ avatarInfo.name }</Text>
-                            <FaTimes className="cursor-pointer fa-icon" onClick={ onClose } />
+                            <span className="prp-close prp-close--sm" title="Close" onClick={ onClose } />
                         </Flex>
                         <hr className="m-0" />
                     </Column>

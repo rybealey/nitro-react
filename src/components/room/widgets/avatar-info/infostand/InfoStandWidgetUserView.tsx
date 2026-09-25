@@ -1,6 +1,5 @@
 import { RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomSessionFavoriteGroupUpdateEvent, RoomSessionUserBadgesEvent, RoomSessionUserFigureUpdateEvent, UserRelationshipsComposer } from '@nitrots/nitro-renderer';
 import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
-import { FaTimes } from 'react-icons/fa';
 import { LuBriefcase } from 'react-icons/lu';
 import { IsRpStaff } from '../../player-hud/PlayerHudWidgetView';
 import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle } from '../../../../../api/rp-employment/RpEmploymentRegistry';
@@ -110,7 +109,7 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                             { IsRpStaff(avatarInfo.roomIndex) &&
                                 <i className="fa-solid fa-badge-check infostand-verified" title="PixelRP Staff" aria-hidden="true" /> }
                         </Flex>
-                        <FaTimes className="cursor-pointer fa-icon" onClick={ onClose } />
+                        <span className="prp-close prp-close--sm" title="Close" onClick={ onClose } />
                     </Flex>
                     <hr className="m-0" />
                 </Column>

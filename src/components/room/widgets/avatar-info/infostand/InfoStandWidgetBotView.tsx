@@ -1,5 +1,4 @@
 import { FC } from 'react';
-import { FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, LocalizeText } from '../../../../../api';
 import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text } from '../../../../../common';
 
@@ -21,7 +20,7 @@ export const InfoStandWidgetBotView: FC<InfoStandWidgetBotViewProps> = props =>
                 <Column gap={ 1 }>
                     <Flex alignItems="center" justifyContent="between" gap={ 1 }>
                         <Text variant="white" small wrap>{ avatarInfo.name }</Text>
-                        <FaTimes className="cursor-pointer fa-icon" onClick={ onClose } />
+                        <span className="prp-close prp-close--sm" title="Close" onClick={ onClose } />
                     </Flex>
                     <hr className="m-0" />
                 </Column>
