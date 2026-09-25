@@ -1757,7 +1757,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1330 @@
+@@ -0,0 +1,1387 @@
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1954,6 +1954,13 @@ index 0000000..19b0227
 +    private _clockAdjustedAt = 0;
 +    /** performance.now() until which a faster sample is taken outright - see CLOCK_ACQUIRE_MS. */
 +    private _acquireUntil = -Infinity;
++    /**
++     * An UPWARD rebase waiting to be proved: when the first too-slow sample
++     * arrived (NaN = none pending), and the fastest of them since. See
++     * updateClock.
++     */
++    private _rebaseUpSince = NaN;
++    private _rebaseUpMin = NaN;
 +
 +    /** Spike instrumentation only. */
 +    // holdFrames is the whole diagnostic for this change: every increment is
@@ -1964,7 +1971,10 @@ index 0000000..19b0227
 +    public stats = { edges: 0, corrections: 0, starvations: 0, staleDrops: 0, displacements: 0, holdFrames: 0,
 +        walkEndMismatches: 0, walkEndBackward: 0, walkEndForward: 0, walkEndLateral: 0,
 +        walkEndFromPreview: 0, worstWalkEndTiles: 0,
-+        clockAcquires: 0, clockAcquiredMs: 0 };
++        clockAcquires: 0, clockAcquiredMs: 0,
++        // an upward rebase held back (a stall's late backlog, ignored), and
++        // the ones a whole second of slow samples then confirmed
++        clockRebaseUpHeld: 0, clockRebaseUp: 0 };
 +
 +    /**
 +     * Paired timing trace, off by default. The render path runs at 60fps per
@@ -2098,22 +2108,69 @@ index 0000000..19b0227
 +     * quickly the client's estimate of server time converges - never what it
 +     * converges to.
 +     */
++    /** Re-acquire the offset outright from `sample` and restart the window. */
++    private rebaseClock(clientNowPerf: number, sample: number): void
++    {
++        this._clockOffset = sample;
++        this._windowStart = clientNowPerf;
++        this._windowMin = sample;
++        this._clockAdjustedAt = clientNowPerf;
++        this._acquireUntil = (clientNowPerf + PixelRPMovementV2.CLOCK_ACQUIRE_MS);
++        this._rebaseUpSince = NaN;
++        this._rebaseUpMin = NaN;
++    }
++
 +    public updateClock(clientNowPerf: number, serverNow: number): void
 +    {
 +        const sample = (clientNowPerf - serverNow);
 +
 +        // Not a correction - a different clock. Re-acquire and restart the window.
++        //
++        // FASTER by more than CLOCK_REBASE_MS (or the first sample ever): at
++        // once, as always - a faster packet proves the offset is no greater.
++        //
++        // SLOWER by more than CLOCK_REBASE_MS: only once a whole
++        // CLOCK_FLOOR_WINDOW_MS of samples agrees, and then to the FASTEST of
++        // them. A single slow packet proves nothing: when a network stall of
++        // over 5s ends, its backlog arrives late all at once, and rebasing on
++        // the first of it pushed the offset up by the whole stall - which put
++        // every walker in the room back where the stall began, redrawn
++        // backwards in one frame. Those late samples are ignored instead; the
++        // fresh packets behind them match the old offset and cancel the
++        // pending rebase. A genuinely different clock (the server restarted)
++        // keeps arriving slow for the whole second and is taken then.
 +        if(!Number.isFinite(this._clockOffset)
-+            || (Math.abs(sample - this._clockOffset) > PixelRPMovementV2.CLOCK_REBASE_MS))
++            || ((this._clockOffset - sample) > PixelRPMovementV2.CLOCK_REBASE_MS))
 +        {
-+            this._clockOffset = sample;
-+            this._windowStart = clientNowPerf;
-+            this._windowMin = sample;
-+            this._clockAdjustedAt = clientNowPerf;
-+            this._acquireUntil = (clientNowPerf + PixelRPMovementV2.CLOCK_ACQUIRE_MS);
++            this.rebaseClock(clientNowPerf, sample);
 +
 +            return;
 +        }
++
++        if((sample - this._clockOffset) > PixelRPMovementV2.CLOCK_REBASE_MS)
++        {
++            if(!Number.isFinite(this._rebaseUpSince))
++            {
++                this._rebaseUpSince = clientNowPerf;
++                this._rebaseUpMin = sample;
++                this.stats.clockRebaseUpHeld++;
++            }
++            else
++            {
++                this._rebaseUpMin = Math.min(this._rebaseUpMin, sample);
++            }
++
++            if((clientNowPerf - this._rebaseUpSince) >= PixelRPMovementV2.CLOCK_FLOOR_WINDOW_MS)
++            {
++                this.stats.clockRebaseUp++;
++                this.rebaseClock(clientNowPerf, this._rebaseUpMin);
++            }
++
++            return;
++        }
++
++        // An ordinary sample: whatever was pending was a stall's backlog.
++        this._rebaseUpSince = NaN;
 +
 +        // One budget, spent by whichever direction moves. Time-based, so a
 +        // burst of packets in one frame gets the same allowance as a single
