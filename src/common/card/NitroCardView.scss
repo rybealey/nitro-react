@@ -275,6 +275,37 @@ $nitro-card-tabs-height: 33px;
     }
 }
 
+// PixelRP: one header for every window, from the Backpack redesign. Both
+// themes get the same 28px bar - the old 33px theme-primary one (Catalog,
+// Navigator, Avatar Editor...) included - with the title on the LEFT at 13px
+// bold rather than centred, so a narrow window and a wide one read as the
+// same family. The doubled class beats each theme's own rules above whatever
+// order sheets load in; the colour still follows the player's header scheme.
+.nitro-card .nitro-card-header.nitro-card-header {
+    min-height: 28px;
+    max-height: 28px;
+    border-bottom: 2px solid var(--prp-header-border);
+
+    .nitro-card-header-text {
+        margin-right: auto;
+        font-size: 13px !important;
+        font-weight: 700;
+        line-height: 1.6;
+        min-height: 0;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+    }
+}
+
+// Every header button - the close and anything a window adds beside it (the
+// Backpack's pen, the camera's report flag) - is a rounded 20px square with a
+// thin light edge and a soft drop, from the same redesign.
+.nitro-card .nitro-card-header .nitro-card-header-report-camera.nitro-card-header-report-camera {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 5px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+    background: #c9453a;
+}
+
 // PixelRP: the flat close button from the Chat History redesign, on every
 // window - a plain red square with a thin, round-ended X, in place of the
 // two-tone ringed one. The X is two pseudo-element strokes so its ends can be
@@ -285,9 +316,9 @@ $nitro-card-tabs-height: 33px;
     height: 20px;
     padding: 0;
     right: 5px !important;
-    border: 1px solid rgba(0, 0, 0, 0.35);
-    border-radius: 3px;
-    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 5px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
     background: #c9453a;
 
     .fa-icon {
