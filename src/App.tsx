@@ -3,6 +3,7 @@ import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { ExtendAvatarStructure } from './api/avatar/ExtendAvatarStructure';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
+import { InstallJitterTrace } from './api/diagnostics/JitterTrace';
 import { InstallTurnTrace } from './api/diagnostics/TurnTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
@@ -146,6 +147,9 @@ export const App: FC<{}> = props =>
                 // Always on, unlike the proximity trace: it registers its own
                 // ticker callback and logs only flagged turns, capped.
                 InstallTurnTrace();
+                // Always on, counters only: how unevenly movement packets
+                // arrive. Read as pixelrpJitter in DevTools.
+                InstallJitterTrace();
                 RegisterRpGangMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
