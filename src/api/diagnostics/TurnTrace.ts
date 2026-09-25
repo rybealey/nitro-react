@@ -309,7 +309,11 @@ const sample = (): void =>
 
     if(!session) return;
 
-    const tickerNow = GetTickerTime();
+    // The time avatars are actually drawn at this frame: the store's own frame
+    // time (see PixelRPMovementV2.renderFrameTime), not GetTickerTime(), which
+    // still holds the previous frame's while listeners run.
+    const frameTime = store.renderFrameTime;
+    const tickerNow = (Number.isFinite(frameTime) ? frameTime : GetTickerTime());
     const estServerNow = (tickerNow - store.clockOffset);
 
     units.forEach((unit, id) =>

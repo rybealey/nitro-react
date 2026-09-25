@@ -1757,7 +1757,9 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1387 @@
+@@ -0,0 +1,1437 @@
++import { GetTicker } from '../../pixi-proxy';
++
 +/**
 + * pixelrp Movement V2 - OPTION B SPIKE (client-local, experimental).
 + *
@@ -1961,6 +1963,54 @@ index 0000000..19b0227
 +     */
 +    private _rebaseUpSince = NaN;
 +    private _rebaseUpMin = NaN;
++
++    /**
++     * THIS frame's time, captured at the very start of each ticker frame.
++     *
++     * Object logic runs on GetTickerTime() = Ticker.lastTime, and Pixi runs every
++     * listener BEFORE it updates lastTime - so all drawing used the PREVIOUS
++     * frame's time. On an even frame rate that is only a constant lag, but a late
++     * frame was drawn at the early time (barely moving) and the frame after it
++     * caught up (moving double): a slow-then-fast pair of frames, a stutter.
++     * lastTime + elapsedMS, read by a listener at the top priority, is the
++     * current frame's own timestamp. NaN until the first frame.
++     */
++    private _frameTime = NaN;
++    private _frameHooked = false;
++
++    /** The current frame's time, for anything that should match what is drawn. */
++    public get renderFrameTime(): number { return this._frameTime; }
++
++    private readonly captureFrame = (): void =>
++    {
++        const ticker = GetTicker();
++
++        if(ticker) this._frameTime = (ticker.lastTime + ticker.elapsedMS);
++    };
++
++    /**
++     * The time the render path should use for `tickerNow`: this frame's own
++     * time, never earlier than the caller's (a draw outside a ticker frame - a
++     * tab becoming visible - keeps the caller's, which is then already current).
++     * Hooks the capture listener on first use; the ticker does not exist when
++     * this store is built.
++     */
++    private frameNow(tickerNow: number): number
++    {
++        if(!this._frameHooked)
++        {
++            const ticker = GetTicker();
++
++            if(ticker)
++            {
++                // 50 = UPDATE_PRIORITY.INTERACTION, the highest: runs first.
++                ticker.add(this.captureFrame, null, 50);
++                this._frameHooked = true;
++            }
++        }
++
++        return ((Number.isFinite(this._frameTime) && (this._frameTime >= tickerNow)) ? this._frameTime : tickerNow);
++    }
 +
 +    /** Spike instrumentation only. */
 +    // holdFrames is the whole diagnostic for this change: every increment is
@@ -2614,7 +2664,7 @@ index 0000000..19b0227
 +     */
 +    public getActiveForRender(virtualId: number, tickerNow: number): PixelRPV2Active
 +    {
-+        return this.resolveActive(virtualId, tickerNow, this._renderActive);
++        return this.resolveActive(virtualId, this.frameNow(tickerNow), this._renderActive);
 +    }
 +
 +    /** The body of getActive; fills `out` when given one, else returns a new object. */
