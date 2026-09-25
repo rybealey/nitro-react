@@ -148,11 +148,11 @@
 
 // The player menus, compact (Player Info Panel canvas): no light outline, the
 // pointer in the menu's own colour, and everything smaller - 114px wide, 23px
-// name, 22px rows, 10.8px text - with the fold caret trimmed to the glyph.
+// name, 22px rows, 12.4px text - with the fold caret trimmed to the glyph.
 .nitro-context-menu.avatar-menu {
     border: 0;
     border-radius: 3px;
-    font-size: 10.8px;
+    font-size: 12.4px;
 
     &:not(.name-only):not(.menu-hidden) { min-width: 114px; }
 
@@ -169,7 +169,7 @@
         height: 23px;
         max-height: 23px;
         padding: 3px !important;
-        font-size: 13.7px;
+        font-size: 15.8px;
     }
 
     .menu-item.list-item {
