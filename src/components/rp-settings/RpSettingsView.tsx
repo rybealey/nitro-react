@@ -2,7 +2,6 @@ import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FaTrash } from 'react-icons/fa';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
@@ -55,8 +54,9 @@ export const RpSettingsView: FC<{}> = props =>
     // Non-null while "Click to bind" is armed and swallowing the next input.
     const [ capturedBinding, setCapturedBinding ] = useState<string>(null);
     const [ isCapturing, setIsCapturing ] = useState<boolean>(false);
-    // Which list row a capture is rebinding, or null when it is for the
-    // new-macro bar. Set together with isCapturing.
+    // Which key group in the list a capture is rebinding (its index in
+    // macroGroups), or null when it is for the new-macro bar. Set together
+    // with isCapturing.
     const [ captureRow, setCaptureRow ] = useState<number>(null);
     // The row whose command is open for editing, and its text so far.
     const [ editingCommand, setEditingCommand ] = useState<{ index: number, text: string }>(null);
@@ -73,14 +73,14 @@ export const RpSettingsView: FC<{}> = props =>
     // Inline rename/create for presets - the design has no dialog for either.
     const [ presetDraft, setPresetDraft ] = useState<string>(null);
     const [ macroNotice, setMacroNotice ] = useState<string>('');
-    // Row index currently being dragged, or null. The list reorders live as the
-    // pointer crosses row midpoints, so this tracks where the held row is NOW.
+    // Key group currently being dragged, or null. The list reorders live as the
+    // pointer crosses row midpoints, so this tracks where the held group is NOW.
     const [ macroDragIndex, setMacroDragIndex ] = useState<number>(null);
     const macroListRef = useRef<HTMLDivElement>(null);
     const macroDragStart = useRef<{ index: number, y: number }>(null);
     // The order being built up during a drag. A ref, not state, because each
     // pointermove reads the previous order and a state read would lag a frame.
-    const macroDragOrder = useRef<MacroBinding[]>(null);
+    const macroDragOrder = useRef<MacroBinding[][]>(null);
     // 'export' | 'import' | null. One at a time; both are the same overlay.
     const [ macroDialog, setMacroDialog ] = useState<string>(null);
     const [ importText, setImportText ] = useState<string>('');
@@ -382,20 +382,89 @@ export const RpSettingsView: FC<{}> = props =>
         replaceActivePreset(activePreset.macros.filter((macro, position) => (position !== index)));
     };
 
-    const moveMacro = (index: number, offset: number) =>
+    // Moves a command one place earlier or later among its OWN key's commands,
+    // which is the only order that changes what a key does. The two rows swap
+    // places in the list; rows of other keys between them stay put.
+    const moveWithinKey = (index: number, offset: number) =>
     {
         if(!activePreset) return;
 
-        const target = (index + offset);
+        const row = activePreset.macros[index];
+
+        if(!row) return;
+
+        let target = (index + offset);
+
+        while((target >= 0) && (target < activePreset.macros.length) && (activePreset.macros[target].b !== row.b)) target += offset;
 
         if((target < 0) || (target >= activePreset.macros.length)) return;
 
         const macros = activePreset.macros.slice();
-        const [ moved ] = macros.splice(index, 1);
 
-        macros.splice(target, 0, moved);
+        macros[index] = macros[target];
+        macros[target] = row;
         replaceActivePreset(macros);
     };
+
+    const deleteKey = (binding: string) =>
+    {
+        if(!activePreset) return;
+
+        replaceActivePreset(activePreset.macros.filter(macro => (macro.b !== binding)));
+    };
+
+    // Rebinds every command of one key at once. The same rules as adding
+    // apply to the key it moves onto: no command twice, at most
+    // MACRO_MAX_PER_KEY. Each row keeps its place, so both keys' run orders
+    // survive a merge.
+    const rebindKey = (from: string, to: string) =>
+    {
+        if(!activePreset || (from === to)) return;
+
+        const moving = activePreset.macros.filter(macro => (macro.b === from));
+        const existing = activePreset.macros.filter(macro => (macro.b === to));
+
+        if(!moving.length) return;
+
+        if(moving.some(macro => existing.some(other => (other.c === macro.c))))
+        {
+            notify(`${ to } already runs that command.`);
+
+            return;
+        }
+
+        if((moving.length + existing.length) > MACRO_MAX_PER_KEY)
+        {
+            notify(`A key runs at most ${ MACRO_MAX_PER_KEY } commands.`);
+
+            return;
+        }
+
+        replaceActivePreset(activePreset.macros.map(macro => ((macro.b === from) ? { ...macro, b: to } : macro)));
+
+        if(existing.length) notify(`${ to } now runs ${ moving.length + existing.length } commands, top to bottom.`);
+    };
+
+    // The list shows one row per key, in the order each key first appears,
+    // holding that key's commands in the order they run. Only the order WITHIN
+    // a key matters to what fires, so grouping never changes behaviour.
+    const macroGroups: { key: string, rows: { index: number, text: string }[] }[] = [];
+
+    if(activePreset)
+    {
+        activePreset.macros.forEach((macro, index) =>
+        {
+            let group = macroGroups.find(existing => (existing.key === macro.b));
+
+            if(!group)
+            {
+                group = { key: macro.b, rows: [] };
+                macroGroups.push(group);
+            }
+
+            group.rows.push({ index, text: macro.c });
+        });
+    }
 
     const selectPreset = (name: string) =>
     {
@@ -478,7 +547,7 @@ export const RpSettingsView: FC<{}> = props =>
 
         if(!list) return -1;
 
-        const rows = Array.from(list.querySelectorAll('[data-macro-index]')) as HTMLElement[];
+        const rows = Array.from(list.querySelectorAll('[data-macro-group]')) as HTMLElement[];
 
         for(let index = 0; index < rows.length; index++)
         {
@@ -492,11 +561,9 @@ export const RpSettingsView: FC<{}> = props =>
 
     const onMacroPointerDown = (event: ReactPointerEvent<HTMLDivElement>, index: number) =>
     {
-        // Move and Delete live inside the row; a press on either is a click,
-        // not the start of a drag.
-        // The key and command are click-to-edit, so a press on them is not a
-        // drag either.
-        if((event.target as HTMLElement).closest('.rp-macros-btn, .rp-macros-editable')) return;
+        // The key, the commands and the row's buttons are all clickable, so a
+        // press on any of them is a click, not the start of a drag.
+        if((event.target as HTMLElement).closest('button, input')) return;
         if(!activePreset) return;
 
         try
@@ -507,7 +574,7 @@ export const RpSettingsView: FC<{}> = props =>
         {}
 
         macroDragStart.current = { index, y: event.clientY };
-        macroDragOrder.current = activePreset.macros.slice();
+        macroDragOrder.current = macroGroups.map(group => group.rows.map(row => activePreset.macros[row.index]));
     };
 
     const onMacroPointerMove = (event: ReactPointerEvent<HTMLDivElement>) =>
@@ -530,13 +597,13 @@ export const RpSettingsView: FC<{}> = props =>
 
         if((target < 0) || (target === macroDragIndex)) return;
 
-        const macros = macroDragOrder.current.slice();
-        const [ moved ] = macros.splice(macroDragIndex, 1);
+        const groups = macroDragOrder.current.slice();
+        const [ moved ] = groups.splice(macroDragIndex, 1);
 
-        macros.splice(target, 0, moved);
-        macroDragOrder.current = macros;
+        groups.splice(target, 0, moved);
+        macroDragOrder.current = groups;
         setMacroDragIndex(target);
-        applyMacrosLocally(withActiveMacros(macros));
+        applyMacrosLocally(withActiveMacros(groups.flat()));
     };
 
     const onMacroPointerUp = () =>
@@ -549,7 +616,7 @@ export const RpSettingsView: FC<{}> = props =>
         setMacroDragIndex(null);
 
         // Only the drop saves, and only if the order actually moved.
-        if(wasDragging && order) commitMacros(withActiveMacros(order));
+        if(wasDragging && order) commitMacros(withActiveMacros(order.flat()));
     };
 
     const clearDraft = () =>
@@ -703,13 +770,13 @@ export const RpSettingsView: FC<{}> = props =>
                 return;
             }
 
-            // Rebinding a row in the list writes straight to that row; the
-            // new-macro bar only holds the key until Add.
+            // Rebinding a key in the list moves all of its commands at once;
+            // the new-macro bar only holds the key until Add.
             if(captureRow !== null)
             {
-                const row = (activePreset ? activePreset.macros[captureRow] : null);
+                const group = macroGroups[captureRow];
 
-                if(row) editMacro(captureRow, binding, row.c);
+                if(group) rebindKey(group.key, binding);
             }
             else
             {
@@ -901,7 +968,7 @@ export const RpSettingsView: FC<{}> = props =>
                     </NitroCardTabsItemView>
                 )) }
             </NitroCardTabsView>
-            <NitroCardContentView className="text-black">
+            <NitroCardContentView className={ `text-black${ (currentTab === 'Macros') ? ' rp-settings-content--light' : '' }` }>
                 { (currentTab === 'UI') &&
                     <div className="prp-subnav-layout">
                         <div className="prp-subnav">
@@ -983,35 +1050,34 @@ export const RpSettingsView: FC<{}> = props =>
                     </div> }
                 { (currentTab === 'Macros') &&
                     <Column gap={ 2 } className="rp-macros" innerRef={ macrosRef }>
-                        <div className="rp-settings-section rp-macros-bar">
-                            { /* Preset leads the row so it lines up with "Click to
-                                 bind" below - both bands carry the same 4px inset.
-                                 The switch sits directly after the picker; both are
-                                 the same 30px box, so they align exactly. */ }
-                            <Flex alignItems="center" gap={ 2 }>
-                                <span className="rp-macros-preset-label">Preset</span>
+                        { /* Light restyle from the Macros tab canvas: preset
+                             controls on one white card, then the add row, then
+                             one row per key with its commands in run order. */ }
+                        <div className="rp-mx-bar">
+                            <div className="rp-mx-bar-group">
+                                <span className="rp-mx-eyebrow">Preset</span>
                                 { (presetDraft === null) &&
-                                    <div className="rp-macros-select-wrap">
-                                        <div className="rp-macros-select" onClick={ () => setPresetOpen(value => !value) }>
+                                    <div className="rp-mx-select-wrap">
+                                        <button type="button" className="rp-mx-select" aria-haspopup="listbox" aria-expanded={ presetOpen }
+                                            onClick={ () => setPresetOpen(value => !value) }>
                                             <span>{ activePreset ? activePreset.name : '' }</span>
-                                            <i className="rp-macros-caret" />
-                                        </div>
+                                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1l4 4 4-4" /></svg>
+                                        </button>
                                         { presetOpen &&
-                                            <div className="rp-macros-select-menu">
+                                            <div className="rp-mx-select-menu" role="listbox">
                                                 { macroDoc.presets.map(preset => (
-                                                    <div key={ preset.name }
-                                                        className={ `rp-macros-select-option ${ (preset.name === macroDoc.active) ? 'is-active' : '' }` }
+                                                    <div key={ preset.name } role="option" aria-selected={ preset.name === macroDoc.active }
+                                                        className={ `rp-mx-select-option ${ (preset.name === macroDoc.active) ? 'is-active' : '' }` }
                                                         onClick={ () => selectPreset(preset.name) }>
                                                         { preset.name }
                                                     </div>
                                                 )) }
                                             </div> }
                                     </div> }
-                                { /* Inline name entry: the design has no dialog for
-                                     creating a preset, so New swaps the picker for a
+                                { /* Inline name entry: New swaps the picker for a
                                      field and Enter or blur commits it. */ }
                                 { (presetDraft !== null) &&
-                                    <input autoFocus type="text" className="rp-macros-input rp-macros-preset-input"
+                                    <input autoFocus type="text" className="rp-mx-field rp-mx-preset-input"
                                         placeholder="Preset name" aria-label="New preset name"
                                         maxLength={ MACRO_MAX_NAME_LENGTH } value={ presetDraft }
                                         onChange={ event => setPresetDraft(event.target.value) }
@@ -1021,93 +1087,140 @@ export const RpSettingsView: FC<{}> = props =>
                                             if(event.key === 'Enter') savePresetDraft();
                                             if(event.key === 'Escape') setPresetDraft(null);
                                         } } /> }
-                                <div className="rp-macros-switch-wrap">
-                                    <div className={ `rp-macros-switch ${ macroDoc.enabled ? 'is-on' : '' }` } role="switch"
-                                        aria-checked={ macroDoc.enabled } aria-label="Macros enabled"
-                                        onClick={ () => commitMacros({ ...macroDoc, enabled: !macroDoc.enabled }) }><span /></div>
-                                    <span className={ `rp-macros-switch-label ${ macroDoc.enabled ? 'is-on' : 'is-off' }` }>{ macroDoc.enabled ? 'On' : 'Off' }</span>
-                                </div>
-                            </Flex>
-                            <Flex alignItems="center" gap={ 2 }>
-                                <div className="rp-macros-btn rp-macros-btn--accent" onClick={ newPreset }>New</div>
-                                <div className="rp-macros-btn" onClick={ () => { setExportCopied(false); openMacroDialog('export'); } }>Export</div>
-                                <div className="rp-macros-btn" onClick={ () => { setImportText(''); openMacroDialog('import'); } }>Import</div>
-                                { /* Deleting the preset belongs with the other
-                                     preset-level actions, and sits last so the
+                                <button type="button" role="switch" aria-checked={ macroDoc.enabled }
+                                    className={ `rp-mx-switch ${ macroDoc.enabled ? 'is-on' : '' }` }
+                                    onClick={ () => commitMacros({ ...macroDoc, enabled: !macroDoc.enabled }) }>
+                                    <span className="rp-mx-switch-track"><span /></span>
+                                    { macroDoc.enabled ? 'Macros on' : 'Macros off' }
+                                </button>
+                            </div>
+                            <div className="rp-mx-bar-group rp-mx-bar-actions">
+                                <button type="button" className="rp-mx-icon-btn" title="New preset" aria-label="New preset" onClick={ newPreset }>
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 1.5v9M1.5 6h9" /></svg>
+                                </button>
+                                <button type="button" className="rp-mx-icon-btn" title="Export preset" aria-label="Export preset"
+                                    onClick={ () => { setExportCopied(false); openMacroDialog('export'); } }>
+                                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 8.5V1.5M3.5 4.5l3-3 3 3M1.5 8.5v3h10v-3" /></svg>
+                                </button>
+                                <button type="button" className="rp-mx-icon-btn" title="Import preset" aria-label="Import preset"
+                                    onClick={ () => { setImportText(''); openMacroDialog('import'); } }>
+                                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 1.5v7M3.5 5.5l3 3 3-3M1.5 8.5v3h10v-3" /></svg>
+                                </button>
+                                { /* Deleting the preset sits last and apart, so the
                                      destructive one is not next to New. */ }
-                                <div className="rp-macros-btn rp-macros-btn--danger rp-macros-trash"
-                                    title="Delete this preset" aria-label="Delete this preset"
-                                    onClick={ deleteActivePreset }><FaTrash /></div>
-                            </Flex>
+                                <span className="rp-mx-bar-divider" />
+                                <button type="button" className="rp-mx-icon-btn rp-mx-icon-btn--danger" title="Delete this preset" aria-label="Delete this preset" onClick={ deleteActivePreset }>
+                                    <svg width="12" height="13" viewBox="0 0 12 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 3.5h9M4.5 3.5V2h3v1.5M2.8 3.5l.6 8h5.2l.6-8" /></svg>
+                                </button>
+                            </div>
                         </div>
                         { /* new-macro row: capture a key or mouse button, type the
-                             command, Add. The trash deletes the whole preset. */ }
-                        <Flex alignItems="center" gap={ 2 } className="rp-macros-new">
-                            <div className={ `rp-macros-btn rp-macros-bind ${ (isCapturing && (captureRow === null)) ? 'is-capturing' : '' }` }
+                             command, Add. */ }
+                        <div className="rp-mx-new">
+                            <button type="button" className={ `rp-mx-bind ${ (isCapturing && (captureRow === null)) ? 'is-capturing' : '' } ${ capturedBinding ? 'is-bound' : '' }` }
+                                title={ capturedBinding ?? undefined }
                                 onClick={ () => { setCaptureRow(null); setIsCapturing(true); } }>
                                 { (isCapturing && (captureRow === null))
-                                    ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press any key')
-                                    : (capturedBinding ?? 'Click to bind') }
-                            </div>
-                            <input type="text" className="rp-macros-input" placeholder="Type command" aria-label="Macro command"
+                                    ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press a key')
+                                    : (capturedBinding ?? 'Bind a key') }
+                            </button>
+                            <input type="text" className="rp-mx-field rp-mx-command-field" placeholder=":command to run" aria-label="Macro command"
                                 maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ draftCommand }
                                 onChange={ event => setDraftCommand(event.target.value) }
                                 onKeyDown={ event => (event.key === 'Enter') && addMacro() } />
-                            <div className="rp-macros-btn" onClick={ addMacro }>Add</div>
-                            <div className="rp-macros-btn" title="Clear the binding and command"
-                                onClick={ clearDraft }>Clear</div>
-                        </Flex>
-                        { (macroNotice.length > 0) &&
-                            <Text className="text-muted">{ macroNotice }</Text> }
-                        <div ref={ macroListRef } className="rp-macros-list">
-                            { /* index keys: the same binding can legitimately appear twice
-                                 while a player is mid-edit, so the binding is not unique */ }
-                            { activePreset && activePreset.macros.map((row, index) => (
-                                <div key={ index } data-macro-index={ index }
-                                    className={ `rp-macros-row ${ (macroDragIndex === index) ? 'is-dragging' : '' }` }
-                                    onPointerDown={ event => onMacroPointerDown(event, index) }
+                            <button type="button" className="rp-mx-add" onClick={ addMacro }>Add</button>
+                        </div>
+                        { isCapturing &&
+                            <div className="rp-mx-notice" role="status">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="5" /><path d="M6 3.5v3M6 8.5v.01" /></svg>
+                                Press the key or mouse button to bind. Hold CTRL, SHIFT or ALT first for a combination. Left-click cancels.
+                            </div> }
+                        { (!isCapturing && (macroNotice.length > 0)) &&
+                            <div className="rp-mx-notice" role="status">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="5" /><path d="M6 3.5v3M6 8.5v.01" /></svg>
+                                { macroNotice }
+                            </div> }
+                        <div ref={ macroListRef } className="rp-mx-list">
+                            { /* index keys: a key can be mid-rebind while it still
+                                 shares its name with another group */ }
+                            { macroGroups.map((group, groupIndex) => (
+                                <div key={ groupIndex } data-macro-group={ groupIndex }
+                                    className={ `rp-mx-row ${ (macroDragIndex === groupIndex) ? 'is-dragging' : '' }` }
+                                    onPointerDown={ event => onMacroPointerDown(event, groupIndex) }
                                     onPointerMove={ onMacroPointerMove }
                                     onPointerUp={ onMacroPointerUp }
                                     onPointerCancel={ onMacroPointerUp }>
-                                    { /* both cells are click-to-edit: the key re-captures
-                                         in place, the command opens as a text box */ }
-                                    <div className={ `rp-macros-binding rp-macros-editable ${ (isCapturing && (captureRow === index)) ? 'is-capturing' : '' }` }
-                                        title={ `${ row.b } - click to change the key` }
-                                        onClick={ () => { setEditingCommand(null); setCaptureRow(index); setIsCapturing(true); } }>
-                                        { (isCapturing && (captureRow === index))
-                                            ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press any key')
-                                            : row.b }
+                                    <span className="rp-mx-grip" aria-hidden="true">
+                                        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="2" cy="2.5" r="1.2" /><circle cx="6" cy="2.5" r="1.2" /><circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" /><circle cx="2" cy="11.5" r="1.2" /><circle cx="6" cy="11.5" r="1.2" /></svg>
+                                    </span>
+                                    <div className="rp-mx-key-cell">
+                                        <button type="button" className={ `rp-mx-keycap ${ (isCapturing && (captureRow === groupIndex)) ? 'is-capturing' : '' }` }
+                                            title={ `${ group.key } - click to change the key` }
+                                            onClick={ () => { setEditingCommand(null); setCaptureRow(groupIndex); setIsCapturing(true); } }>
+                                            { (isCapturing && (captureRow === groupIndex))
+                                                ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press a key')
+                                                : group.key }
+                                        </button>
                                     </div>
-                                    { (editingCommand && (editingCommand.index === index))
-                                        ? <input type="text" autoFocus className="rp-macros-command rp-macros-command-input rp-macros-editable"
-                                            aria-label="Edit macro command" maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ editingCommand.text }
-                                            onChange={ event => setEditingCommand({ index, text: event.target.value }) }
-                                            onKeyDown={ event =>
-                                            {
-                                                if(event.key === 'Enter') event.currentTarget.blur();
+                                    <div className="rp-mx-commands">
+                                        { group.rows.map((row, position) => (
+                                            <div key={ row.index } className="rp-mx-command-slot">
+                                                { (position > 0) &&
+                                                    <svg className="rp-mx-then" aria-label="then" width="12" height="10" viewBox="0 0 12 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5h9M7 2l3 3-3 3" /></svg> }
+                                                { (editingCommand && (editingCommand.index === row.index))
+                                                    ? <input type="text" autoFocus className="rp-mx-command-input"
+                                                        aria-label="Edit macro command" maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ editingCommand.text }
+                                                        onChange={ event => setEditingCommand({ index: row.index, text: event.target.value }) }
+                                                        onKeyDown={ event =>
+                                                        {
+                                                            if(event.key === 'Enter') event.currentTarget.blur();
 
-                                                if(event.key === 'Escape')
-                                                {
-                                                    discardCommandEdit.current = true;
-                                                    event.currentTarget.blur();
-                                                }
-                                            } }
-                                            onBlur={ saveCommandEdit } />
-                                        : <div className="rp-macros-command rp-macros-editable" title="Click to change the command"
-                                            onClick={ () => setEditingCommand({ index, text: row.c }) }>{ row.c }</div> }
-                                    <div className="rp-macros-btn rp-macros-btn--sm rp-macros-move">
-                                        Move
-                                        <span className="rp-macros-move-arrows">
-                                            <i className="is-up" title="Move up" onClick={ () => moveMacro(index, -1) } />
-                                            <i className="is-down" title="Move down" onClick={ () => moveMacro(index, 1) } />
-                                        </span>
+                                                            if(event.key === 'Escape')
+                                                            {
+                                                                discardCommandEdit.current = true;
+                                                                event.currentTarget.blur();
+                                                            }
+                                                        } }
+                                                        onBlur={ saveCommandEdit } />
+                                                    : <span className="rp-mx-command">
+                                                        <button type="button" className="rp-mx-command-text" title="Click to change the command"
+                                                            onClick={ () => setEditingCommand({ index: row.index, text: row.text }) }>{ row.text }</button>
+                                                        { /* Only a key with several commands needs its own
+                                                             order and per-command delete; a single command
+                                                             goes with the row's x. Shown on hover. */ }
+                                                        { (group.rows.length > 1) &&
+                                                            <span className="rp-mx-command-tools">
+                                                                { (position > 0) &&
+                                                                    <button type="button" title="Run earlier" aria-label="Run earlier" onClick={ () => moveWithinKey(row.index, -1) }>
+                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 1L2 4l3 3" /></svg>
+                                                                    </button> }
+                                                                { (position < (group.rows.length - 1)) &&
+                                                                    <button type="button" title="Run later" aria-label="Run later" onClick={ () => moveWithinKey(row.index, 1) }>
+                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 1l3 3-3 3" /></svg>
+                                                                    </button> }
+                                                                <button type="button" title="Remove this command" aria-label="Remove this command" onClick={ () => deleteMacro(row.index) }>
+                                                                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" /></svg>
+                                                                </button>
+                                                            </span> }
+                                                    </span> }
+                                            </div>
+                                        )) }
                                     </div>
-                                    <div className="rp-macros-btn rp-macros-btn--sm rp-macros-btn--danger"
-                                        onClick={ () => deleteMacro(index) }>Delete</div>
+                                    <button type="button" className="rp-mx-delete" title={ `Delete ${ group.key }` } aria-label={ `Delete ${ group.key }` } onClick={ () => deleteKey(group.key) }>
+                                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 2L8 8M8 2L2 8" /></svg>
+                                    </button>
                                 </div>
                             )) }
                             { activePreset && !activePreset.macros.length &&
-                                <Text className="text-muted">No macros in this preset yet.</Text> }
+                                <div className="rp-mx-empty">
+                                    <div className="rp-mx-empty-keys" aria-hidden="true">
+                                        <span className="rp-mx-keycap">F1</span>
+                                        <span className="rp-mx-keycap">F2</span>
+                                        <span className="rp-mx-keycap">F3</span>
+                                    </div>
+                                    <div className="rp-mx-empty-title">No macros in this preset yet</div>
+                                    <button type="button" className="rp-mx-soft-btn" onClick={ () => { setImportText(''); openMacroDialog('import'); } }>Import a preset</button>
+                                </div> }
                         </div>
                         { /* Export and import share one overlay - same frame,
                              same footer, only the copy and the action differ. */ }

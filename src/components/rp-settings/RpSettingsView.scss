@@ -4,11 +4,17 @@
 $state-on: #2e9e4f;
 $state-off: #b23b3b;
 
-// Macros-tab divider. Stronger than the .rp-settings-section hairline the
-// other tabs use (rgba(0,0,0,.08)), which was too faint to separate the bands
-// here. Scoped to this tab on purpose - the shared rule is left alone so the
-// other tabs keep their lighter treatment.
-$macros-divider: 1px solid rgba(0, 0, 0, 0.24);
+// Macros tab, light restyle (the Backpack's family). The accent is the
+// header orange darkened until white text on it passes contrast.
+$mx-body: #f3f3f5;
+$mx-ink: #1c1c20;
+$mx-muted: #5b5f68;
+$mx-accent: #c4561c;
+$mx-accent-text: #8f3c10;
+$mx-accent-tint: #fff4ec;
+$mx-focus: 0 0 0 3px rgba(196, 86, 28, 0.18);
+$mx-raise: 0 1px 0 rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
+$mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
 .nitro-card.rp-settings-window {
     // starting size; the corner grip writes inline width/height over these
@@ -58,11 +64,11 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
     }
 
     // ---- Macros tab -------------------------------------------------------
-    // STATIC SHELL: styled from the reference mock but rebuilt in our own
-    // chrome, so it inherits the player's colour scheme instead of the mock's
-    // fixed red. No behaviour is wired up yet.
+    // The light restyle from the Macros tab canvas, in the Backpack's family:
+    // a pale body, white controls that sit slightly raised, keys drawn as
+    // keycaps, and one row per key holding its commands in the order they run.
     // Fills the content area and owns no scroll itself - the row list below is
-    // the single scroller, so the bar and profile picker stay put. flex/min-0
+    // the single scroller, so the bar and the add row stay put. flex/min-0
     // rather than height:100%, matching .prp-subnav-page, so the content
     // area's own padding can't push it over.
     // Positioning context for the export/import overlay, which sits over the
@@ -74,123 +80,13 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         min-height: 0;
     }
 
-    // top strip: title + master switch on the left, actions on the right
-    // Compound with .rp-settings-section deliberately: that rule sets a
-    // fainter rgba(0,0,0,.08) underline, is defined LATER in this file, and has
-    // the same specificity - so a plain .rp-macros-bar override lost the
-    // cascade and the two dividers came out different colours.
-    .rp-macros-bar.rp-settings-section {
-        padding-top: 0;
-        border-bottom: $macros-divider;
+    // Only this tab is light; the others keep the shared content colour.
+    // Doubled with .content-area so it beats the theme's own rule.
+    .content-area.rp-settings-content--light {
+        background: $mx-body;
     }
 
-    .rp-macros-btn {
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 700;
-        line-height: 1.6;
-        white-space: nowrap;
-        cursor: pointer;
-        user-select: none;
-        color: $white;
-        background: var(--prp-chrome-solid);
-        transition: background-color .1s ease, transform .1s ease;
-
-        &:hover {
-            background-color: var(--prp-chrome-hover);
-            transform: translateY(-1px);
-        }
-
-        &--sm { padding: 3px 10px; font-size: 10px; }
-        &--accent { background: var(--prp-chrome-hover); }
-        &--danger { background: #b23b3b; }
-    }
-
-    // Move: label plus a small stacked up/down pair, hinting the row can go
-    // either way. CSS triangles rather than an icon font - they stay crisp at
-    // this size and inherit the button's colour.
-    .rp-macros-move {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-    }
-
-    .rp-macros-move-arrows {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-
-        i {
-            width: 0;
-            height: 0;
-            border-left: 3px solid transparent;
-            border-right: 3px solid transparent;
-            // Each arrow moves the row on its own, so both are click targets.
-            cursor: pointer;
-            opacity: .75;
-            // A border-drawn triangle is a 6x4 box - far too small to hit
-            // reliably, and it cannot take padding without deforming the
-            // triangle. An invisible expanded overlay gives it a usable target
-            // while the shape stays exactly as designed.
-            position: relative;
-
-            &::after {
-                content: '';
-                position: absolute;
-                inset: -3px -6px;
-            }
-
-            &:hover { opacity: 1; }
-
-            &.is-up { border-bottom: 4px solid rgba($white, .85); }
-            &.is-down { border-top: 4px solid rgba($white, .85); }
-        }
-    }
-
-    // master on/off, with its state spelled out underneath
-    // The switch stack, the caption and the picker have very different
-    // intrinsic heights (~30 / ~10 / ~27px), so left to themselves they centre
-    // against the tallest and read as misaligned. One shared height puts all
-    // three on a single axis.
-    // Label sits BESIDE the track, not under it. Stacked, the track occupied
-    // only the top of the 30px box and its centre line sat above the picker's;
-    // in a row both centre on the same axis.
-    .rp-macros-switch-wrap {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-        height: 30px;
-    }
-
-    .rp-macros-switch-label {
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: .5px;
-        line-height: 1;
-        text-transform: uppercase;
-        user-select: none;
-
-        &.is-on { color: $state-on; }
-        &.is-off { color: $state-off; }
-    }
-
-    // caption for the preset picker beside it
-    .rp-macros-preset-label {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        height: 30px;
-        font-size: 13px;
-        font-weight: 700;
-        line-height: 1;
-        user-select: none;
-        // black, not white: this caption sits on the light settings page, not
-        // on one of the dark chrome controls
-        color: $black;
-    }
-
+    // Still used by Interface > Weather's on/off control.
     .rp-macros-switch {
         position: relative;
         width: 34px;
@@ -219,242 +115,524 @@ $macros-divider: 1px solid rgba(0, 0, 0, 0.24);
         }
     }
 
-    // new-macro row: bind a key, type the command, Add
-    // divider below, so the "add a macro" controls read as their own band
-    // rather than as the first entry in the list underneath. Same hairline the
-    // settings sections use.
-    .rp-macros-new {
-        padding: 0 4px 9px;
-        border-bottom: $macros-divider;
+    // Every control on the tab is a real <button>; strip the browser's own
+    // button look once so each rule below only says what it adds.
+    .rp-macros button {
+        font-family: inherit;
+        cursor: pointer;
+        user-select: none;
     }
 
-    .rp-macros-bind {
-        flex-shrink: 0;
-        // dashed edge marks it as a capture target rather than a plain action
-        border: 1px dashed rgba($white, .35);
-    }
-
-    // Icon-only, so it drops the pill's text padding and stays square instead
-    // of stretching to a label's width. 26px matches what the sibling pills in
-    // the top bar compute to (4px padding + 11px * 1.6 line-height), so the row
-    // reads as one set rather than a short button on the end.
-    .rp-macros-trash {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        width: 26px;
-        height: 26px;
-
-        svg { width: 11px; height: 11px; }
-    }
-
-    .rp-macros-input {
-        flex: 1;
-        min-width: 0;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 11px;
-        color: $white;
-        background: var(--prp-chrome-95);
-        border: 1px solid rgba(0, 0, 0, .35);
-        outline: none;
-
-        &::placeholder { color: rgba($white, .45); }
-    }
-
-    // profile picker. A styled div, not a <select> - it becomes a real
-    // dropdown when profiles are wired up. Sized, not flexed: it sits in the
-    // header strip beside the switch now, so it must not eat the free space.
-    .rp-macros-select {
-        width: 160px;
-        height: 30px;
+    // top card: preset picker and master switch left, preset actions right
+    .rp-mx-bar {
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+        padding: 6px 6px 6px 10px;
+        border-radius: 7px;
+        background: $white;
+        box-shadow: $mx-raise;
+    }
+
+    .rp-mx-bar-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .rp-mx-bar-actions { gap: 4px; }
+
+    .rp-mx-bar-divider {
+        width: 1px;
+        height: 18px;
+        margin: 0 3px;
+        background: rgba(0, 0, 0, 0.12);
+    }
+
+    .rp-mx-eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: $mx-muted;
+        user-select: none;
+    }
+
+    .rp-mx-select-wrap {
+        position: relative;
+    }
+
+    .rp-mx-select {
+        height: 28px;
+        min-width: 128px;
+        max-width: 180px;
         padding: 0 10px;
-        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border-radius: 5px;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        background: #f7f7f9;
         font-size: 12px;
         font-weight: 700;
-        cursor: pointer;
-        user-select: none;
-        color: $white;
-        background: var(--prp-chrome-95);
-        border: 1px solid rgba(0, 0, 0, .35);
+        color: $mx-ink;
 
-        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        svg { flex-shrink: 0; color: $mx-muted; }
+
+        &:hover { border-color: rgba(0, 0, 0, 0.24); }
     }
 
-    // Preset picker popup. The design shows the closed picker only, so the open
-    // menu borrows the picker's own surface, radius and type - it reads as the
-    // control opening rather than as a new kind of panel. Anchored to the
-    // picker (hence the wrapper) and lifted above the rows below it.
-    .rp-macros-select-wrap {
-        position: relative;
-        flex-shrink: 0;
-    }
-
-    .rp-macros-select-menu {
+    .rp-mx-select-menu {
         position: absolute;
         top: calc(100% + 4px);
         left: 0;
-        width: 160px;
-        z-index: 5;
+        z-index: 20;
+        min-width: 100%;
         padding: 4px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
         border-radius: 6px;
-        background: var(--prp-chrome-95);
-        border: 1px solid rgba(0, 0, 0, .35);
-        // Eight presets is the server-side cap; past ~6 the menu would run off
-        // the band, so it scrolls rather than growing.
-        max-height: 184px;
-        overflow-y: auto;
+        background: $white;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
     }
 
-    .rp-macros-select-option {
-        padding: 4px 8px;
+    .rp-mx-select-option {
+        padding: 5px 8px;
         border-radius: 4px;
         font-size: 12px;
         font-weight: 700;
-        color: rgba($white, .7);
-        cursor: pointer;
-        user-select: none;
         white-space: nowrap;
+        cursor: pointer;
+        color: $mx-ink;
+
+        &:hover { background: $mx-body; }
+
+        &.is-active { color: $mx-accent-text; }
+    }
+
+    .rp-mx-field {
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        background: $white;
+        font-size: 12px;
+        color: $mx-ink;
+        outline: none;
+
+        &:focus { border-color: $mx-accent; box-shadow: $mx-focus; }
+    }
+
+    .rp-mx-preset-input {
+        height: 28px;
+        width: 150px;
+        font-weight: 700;
+    }
+
+    .rp-mx-switch {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+        color: $state-off;
+
+        .rp-mx-switch-track {
+            position: relative;
+            display: block;
+            width: 34px;
+            height: 20px;
+            border-radius: 10px;
+            background: $state-off;
+            transition: background-color .15s ease;
+
+            span {
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                display: block;
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                background: $white;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                transition: transform .15s ease;
+            }
+        }
+
+        // darker than the track green so the words pass contrast on white
+        &.is-on {
+            color: #22763b;
+
+            .rp-mx-switch-track {
+                background: $state-on;
+
+                span { transform: translateX(14px); }
+            }
+        }
+    }
+
+    .rp-mx-icon-btn {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 5px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        background: $white;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+        color: $mx-ink;
+        transition: transform .1s ease, border-color .1s ease;
+
+        &:hover { transform: translateY(-1px); border-color: rgba(0, 0, 0, 0.24); }
+
+        &--danger {
+            border-color: rgba(178, 59, 59, 0.3);
+            color: $state-off;
+
+            &:hover { border-color: rgba(178, 59, 59, 0.6); }
+        }
+    }
+
+    // add row: bind a key, type the command, Add
+    .rp-mx-new {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    // dashed while empty - a capture target, not a plain action; a bound key
+    // turns into a keycap-like chip, and a live capture glows in the accent
+    .rp-mx-bind {
+        height: 30px;
+        min-width: 96px;
+        max-width: 150px;
+        flex-shrink: 0;
+        padding: 0 12px;
+        border-radius: 6px;
+        border: 1.5px dashed rgba(0, 0, 0, 0.28);
+        background: transparent;
+        font-family: $mx-mono !important;
+        font-size: 12px;
+        font-weight: 700;
+        color: $mx-muted;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
 
-        &:hover { color: $white; background: var(--prp-chrome-hover); }
+        &:hover { border-color: rgba(0, 0, 0, 0.45); }
 
-        &.is-active { color: $white; background: rgba($white, .1); }
+        &.is-bound {
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.16);
+            border-bottom: 3px solid rgba(0, 0, 0, 0.22);
+            background: $white;
+            color: $mx-ink;
+        }
+
+        &.is-capturing {
+            border: 1.5px solid $mx-accent;
+            background: $mx-accent-tint;
+            box-shadow: $mx-focus;
+            color: $mx-accent-text;
+        }
     }
 
-    // Same 160px slot as the picker it replaces, so the bar does not reflow
-    // while a preset is being named.
-    .rp-macros-preset-input {
-        width: 160px;
+    .rp-mx-command-field {
+        flex: 1;
+        min-width: 0;
+        font-family: $mx-mono;
+    }
+
+    .rp-mx-add {
+        height: 30px;
         flex-shrink: 0;
-    }
-
-    // Armed "Click to bind": the button is waiting to swallow the next key or
-    // mouse button, so it reads as live rather than merely hovered.
-    .rp-macros-bind.is-capturing {
+        padding: 0 16px;
+        border: 0;
+        border-radius: 6px;
+        background: $mx-accent;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+        font-size: 12px;
+        font-weight: 700;
         color: $white;
-        background: var(--prp-chrome-hover);
-        box-shadow: inset 0 0 0 1px rgba($white, .35);
+        transition: transform .1s ease, filter .1s ease;
+
+        &:hover { transform: translateY(-1px); filter: brightness(1.08); }
     }
 
-    .rp-macros-caret {
+    // capture hint and advisory notices share one quiet orange bar
+    .rp-mx-notice {
         flex-shrink: 0;
-        width: 0;
-        height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-top: 5px solid rgba($white, .7);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(196, 86, 28, 0.3);
+        background: $mx-accent-tint;
+        font-size: 11px;
+        color: #6e2f0c;
+
+        svg { flex-shrink: 0; color: $mx-accent-text; }
     }
 
     // the one scroller on this tab
-    .rp-macros-list {
+    .rp-mx-list {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        padding: 2px 4px;
+        gap: 5px;
+        padding: 1px 1px 3px;
     }
 
-    // each binding boxed, so a row reads as one unit rather than four loose
-    // controls drifting across the list
-    .rp-macros-row {
+    // one key per row: grip, keycap, its commands in run order, delete
+    .rp-mx-row {
+        flex-shrink: 0;
+        min-height: 38px;
         display: flex;
         align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-        padding: 5px;
-        border-radius: 6px;
-        // a soft wash rather than an outline: a hairline box round every row
-        // reads as clutter at this density, while a fill groups the row and
-        // still lets the dark chips sit forward of it
-        background: rgba(0, 0, 0, 0.11);
+        gap: 8px;
+        padding: 4px 6px 4px 4px;
+        border-radius: 7px;
+        background: $white;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
         // Rows reorder by dragging. touch-action must be none or a touch drag
         // scrolls the list instead of moving the row.
         cursor: grab;
         touch-action: none;
-        transition: background-color .1s ease, opacity .1s ease;
+        transition: box-shadow .1s ease, opacity .1s ease;
 
         // The row follows the pointer by reordering the list under it rather
-        // than floating, so the held row is marked by lifting it off the wash
-        // instead of by position.
+        // than floating, so the held row is marked by lifting it instead.
         &.is-dragging {
             cursor: grabbing;
-            background: var(--prp-chrome-hover);
-            opacity: .85;
+            opacity: .9;
+            box-shadow: 0 0 0 1.5px $mx-accent, 0 4px 10px rgba(0, 0, 0, 0.14);
             // Otherwise the row it swaps with appears to animate into place
             // while the held row jumps, which reads as lag.
             transition: none;
         }
 
-        // The chips and buttons keep their own cursors; only the row's empty
-        // space should advertise the drag.
-        .rp-macros-btn { cursor: pointer; }
+        &:hover .rp-mx-delete { color: $state-off; }
     }
 
-    // captured key. Fixed width so the command fields line up down the column
-    // however long the key name is; long ones ellipsis rather than push.
-
-    // Wide enough for a one-modifier combo ("CTRL+ARROWLEFT") and for
-    // "SHIFT+Mouse Middle"; a three-modifier binding still ellipsises, which is
-    // why the chip carries the full value as its title.
-    .rp-macros-binding {
-        width: 124px;
+    .rp-mx-grip {
+        width: 14px;
         flex-shrink: 0;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 10px;
+        display: flex;
+        justify-content: center;
+        color: #b0b4bb;
+    }
+
+    // Fixed width so the commands line up down the column however long the
+    // key name is; a long combo ellipsises and the keycap carries it in full
+    // as its title.
+    .rp-mx-key-cell {
+        width: 100px;
+        flex-shrink: 0;
+        display: flex;
+        min-width: 0;
+    }
+
+    .rp-mx-keycap {
+        height: 26px;
+        min-width: 40px;
+        max-width: 100%;
+        padding: 0 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 5px;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-bottom: 3px solid rgba(0, 0, 0, 0.22);
+        background: #fbfbfc;
+        font-family: $mx-mono !important;
+        font-size: 12px;
         font-weight: 700;
-        text-align: center;
+        color: $mx-ink;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: $white;
-        background: var(--prp-chrome-solid);
+        user-select: none;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.3); }
+
+        &.is-capturing {
+            border: 1.5px solid $mx-accent;
+            background: $mx-accent-tint;
+            box-shadow: $mx-focus;
+            color: $mx-accent-text;
+        }
     }
 
-    .rp-macros-command {
+    .rp-mx-commands {
         flex: 1;
         min-width: 0;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 11px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+    }
+
+    .rp-mx-command-slot {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .rp-mx-then {
+        flex-shrink: 0;
+        color: #9aa0a8;
+    }
+
+    .rp-mx-command {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+        max-width: 100%;
+        border-radius: 13px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background: $mx-body;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.22); }
+
+        &:hover .rp-mx-command-tools { display: inline-flex; }
+    }
+
+    .rp-mx-command-text {
+        height: 24px;
+        min-width: 0;
+        padding: 0 10px;
+        border: 0;
+        background: transparent;
+        font-family: $mx-mono !important;
+        font-size: 12px;
+        color: $mx-ink;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: $white;
-        background: var(--prp-chrome-95);
-        border: 1px solid rgba(0, 0, 0, .35);
     }
 
-    // Click-to-edit key and command in a list row. A pointer rather than the
-    // row's grab hand, so it reads as editable, not draggable.
-    .rp-macros-editable {
-        cursor: pointer;
+    // earlier / later / remove for a key with several commands; hidden until
+    // the chip is hovered so a resting row reads as just the commands
+    .rp-mx-command-tools {
+        display: none;
+        align-items: center;
+        gap: 1px;
+        padding-right: 4px;
 
-        &:hover { box-shadow: inset 0 0 0 1px rgba($white, .35); }
+        button {
+            width: 16px;
+            height: 16px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: $mx-muted;
+
+            &:hover { background: rgba(0, 0, 0, 0.08); color: $mx-ink; }
+        }
     }
 
-    .rp-macros-binding.is-capturing {
-        border: 1px dashed rgba($white, .6);
-    }
-
-    .rp-macros-command-input {
-        cursor: text;
+    .rp-mx-command-input {
+        width: 180px;
+        max-width: 100%;
+        height: 26px;
+        padding: 0 10px;
+        border-radius: 13px;
+        border: 1.5px solid $mx-accent;
+        box-shadow: $mx-focus;
+        background: $white;
+        font-family: $mx-mono;
+        font-size: 12px;
+        color: $mx-ink;
         outline: none;
-        font-family: inherit;
+    }
+
+    .rp-mx-delete {
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: #8a8f98;
+
+        &:hover { background: rgba(178, 59, 59, 0.1); }
+    }
+
+    // empty preset: a few keycaps and the way to fill it
+    .rp-mx-empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 150px;
+        border: 1.5px dashed rgba(0, 0, 0, 0.16);
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .rp-mx-empty-keys {
+        display: flex;
+        gap: 6px;
+
+        .rp-mx-keycap {
+            height: 30px;
+            min-width: 34px;
+            background: $white;
+            font-size: 13px;
+        }
+    }
+
+    .rp-mx-empty-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: $mx-ink;
+    }
+
+    .rp-mx-soft-btn {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 5px;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        background: $white;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+        font-size: 11px;
+        font-weight: 700;
+        color: $mx-ink;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.26); }
     }
 
     .rp-settings-skeleton {
