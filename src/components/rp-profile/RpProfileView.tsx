@@ -231,7 +231,9 @@ export const RpProfileView: FC<{}> = props =>
                                     <div className="rp-profile-org-name">{ gang ? gang.name : 'No gang' }</div>
                                     <div className="rp-profile-org-role">{ gang ? (gang.isOwner ? 'Leader' : 'Member') : ' ' }</div>
                                 </div>
-                                <div className="rp-profile-view-gang" onClick={ () => CreateLinkEvent((gang && (gang.gangId !== (GetRpGang(GetSessionDataManager().userId)?.gangId ?? 0))) ? `rp-gangs/view/${ gang.gangId }` : 'rp-gangs/show') }>View</div>
+                                { /* nothing to view for a player with no gang */ }
+                                { gang &&
+                                    <div className="rp-profile-view-gang" onClick={ () => CreateLinkEvent((gang.gangId !== (GetRpGang(GetSessionDataManager().userId)?.gangId ?? 0)) ? `rp-gangs/view/${ gang.gangId }` : 'rp-gangs/show') }>View</div> }
                             </div>
                         </div>
                     </div>
