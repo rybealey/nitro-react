@@ -1757,7 +1757,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1437 @@
+@@ -0,0 +1,1450 @@
 +import { GetTicker } from '../../pixi-proxy';
 +
 +/**
@@ -2407,6 +2407,19 @@ index 0000000..19b0227
 +    public forget(virtualId: number): void
 +    {
 +        this._units.delete(virtualId);
++    }
++
++    /**
++     * Forget every unit - on a room change (called from the client app when a
++     * room session is created or ends). Virtual ids are per ROOM and reused,
++     * and each unit's (session, revision, edge) order restarts in the next
++     * room, so a unit left over from the last room could make its namesake's
++     * new packets look OLDER and have them ignored. The clock offset is kept:
++     * it is the same server.
++     */
++    public clearUnits(): void
++    {
++        this._units.clear();
 +    }
 +
 +    /**

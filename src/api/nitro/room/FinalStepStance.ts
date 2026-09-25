@@ -1,5 +1,6 @@
-import { GetTicker, RoomObjectCategory, RoomObjectVariable, RpMovementV2Event } from '@nitrots/nitro-renderer';
+import { GetTicker, RoomObjectCategory, RoomObjectVariable, RoomSessionEvent, RpMovementV2Event } from '@nitrots/nitro-renderer';
 import { GetCommunication } from '../GetCommunication';
+import { GetRoomSessionManager } from '../session/GetRoomSessionManager';
 import { GetRoomEngine } from './GetRoomEngine';
 
 // PixelRP Movement V2: the legs stop when the walk does.
@@ -99,6 +100,23 @@ const onTick = (): void =>
     }
 }
 
+// A ROOM CHANGE CLEARS MOVEMENT STATE, before the new room's data arrives
+// (a room session is created as the client starts entering, ahead of the
+// server's room packets). Virtual ids are per room and reused, and each unit's
+// (session, revision, edge) order restarts there, so a unit left over from the
+// last room could make its namesake's new steps look OLDER and have them
+// ignored - and a pending stop here could stand the wrong avatar still. The
+// server now sends each walker's current step on entry (EntryCatchUp), and
+// this is what lets the client take it.
+const onRoomChange = (): void =>
+{
+    pending.clear();
+
+    const store = (window as any).pixelrpMovementV2;
+
+    if(store && (typeof store.clearUnits === 'function')) store.clearUnits();
+}
+
 let installed = false;
 
 // Registered once at connection, beside the renderer's own 4110 handler.
@@ -109,6 +127,14 @@ export const InstallFinalStepStance = (): void =>
 
     installed = true;
     GetCommunication().registerMessageEvent(new RpMovementV2Event(onMovement));
+
+    const sessions = GetRoomSessionManager();
+
+    if(sessions && sessions.events)
+    {
+        sessions.events.addEventListener(RoomSessionEvent.CREATED, onRoomChange);
+        sessions.events.addEventListener(RoomSessionEvent.ENDED, onRoomChange);
+    }
 
     const attach = (attempt: number) =>
     {
