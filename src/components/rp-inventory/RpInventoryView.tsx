@@ -1,11 +1,11 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
-import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
-import { DraggableWindowPosition, HoverBubble, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Backpack
@@ -63,6 +63,12 @@ export const RpInventoryView: FC<{}> = props =>
     const [ itemUseMode, setItemUseMode ] = useLocalStorage<ItemUseMode>('pixelrp.backpack.item-use-mode', 'single');
     const [ isUseModeOpen, setIsUseModeOpen ] = useState(false);
     const movedRef = useRef(false);
+    // The slot hover bubble follows the mouse. Only its text is state; its
+    // position is written straight to the element, so moving the mouse never
+    // re-renders the backpack.
+    const [ bubbleText, setBubbleText ] = useState<string>(null);
+    const bubbleRef = useRef<HTMLDivElement>(null);
+    const pointerRef = useRef({ x: 0, y: 0 });
     const useModeRef = useRef<HTMLDivElement>(null);
 
     // Live backpack contents — sent at login and after every change, so the
@@ -244,6 +250,55 @@ export const RpInventoryView: FC<{}> = props =>
         setIsUseModeOpen(false);
     }
 
+    // 14px right of the pointer, level with it, so it clears the arrow cursor;
+    // flipped to the left when it would run off the right of the screen.
+    const placeBubble = () =>
+    {
+        const bubble = bubbleRef.current;
+
+        if(!bubble) return;
+
+        const { x, y } = pointerRef.current;
+        let left = (x + 14);
+
+        if((left + bubble.offsetWidth) > (window.innerWidth - 4)) left = (x - 14 - bubble.offsetWidth);
+
+        bubble.style.transform = `translate(${ left }px, ${ Math.round(y - (bubble.offsetHeight / 2)) }px)`;
+    }
+
+    const bubbleProps = (text: string) => ({
+        onPointerEnter: (event: ReactPointerEvent<HTMLDivElement>) =>
+        {
+            // No hover on touch screens.
+            if(event.pointerType !== 'mouse') return;
+
+            pointerRef.current = { x: event.clientX, y: event.clientY };
+            setBubbleText(text);
+        },
+        onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) =>
+        {
+            pointerRef.current = { x: event.clientX, y: event.clientY };
+            placeBubble();
+        },
+        onPointerLeave: () => setBubbleText(null)
+    });
+
+    // Placed before paint, so a new bubble never flashes at the corner.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useLayoutEffect(() => placeBubble(), [ bubbleText ]);
+
+    // Hidden while an item is dragged, so no bubble fights the drag ghost; a
+    // new one needs the pointer to enter a slot again.
+    useEffect(() =>
+    {
+        if(dragFrom >= 0) setBubbleText(null);
+    }, [ dragFrom ]);
+
+    useEffect(() =>
+    {
+        if(!isVisible) setBubbleText(null);
+    }, [ isVisible ]);
+
     const discardEntry = ((discardSlot > 0) ? items.get(discardSlot) : null);
 
     return (
@@ -271,16 +326,12 @@ export const RpInventoryView: FC<{}> = props =>
                      the slots sit from each other */ }
                 <NitroCardContentView className="text-black" gap={ 1 }>
                     <div className="rp-inventory-gear">
-                        <HoverBubble text="Weapon" className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
-                            <div className="rp-inventory-slot rp-inventory-slot--gear">
-                                <LuSwords className="rp-inventory-gear-icon" />
-                            </div>
-                        </HoverBubble>
-                        <HoverBubble text="Armor" className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
-                            <div className="rp-inventory-slot rp-inventory-slot--gear">
-                                <LuShield className="rp-inventory-gear-icon" />
-                            </div>
-                        </HoverBubble>
+                        <div className="rp-inventory-slot rp-inventory-slot--gear" { ...bubbleProps('Weapon') }>
+                            <LuSwords className="rp-inventory-gear-icon" />
+                        </div>
+                        <div className="rp-inventory-slot rp-inventory-slot--gear" { ...bubbleProps('Armor') }>
+                            <LuShield className="rp-inventory-gear-icon" />
+                        </div>
                     </div>
                     <div className="rp-inventory-grid">
                         { CARRY_SLOTS.map(slot =>
@@ -288,11 +339,9 @@ export const RpInventoryView: FC<{}> = props =>
                             if((slot > unlockedSlots) && !items.get(slot))
                             {
                                 return (
-                                    <HoverBubble key={ slot } text="Locked" className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
-                                        <div className="rp-inventory-slot is-locked">
-                                            <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
-                                        </div>
-                                    </HoverBubble>);
+                                    <div key={ slot } className="rp-inventory-slot is-locked" { ...bubbleProps('Locked') }>
+                                        <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
+                                    </div>);
                             }
 
                             const entry = items.get(slot);
@@ -300,19 +349,17 @@ export const RpInventoryView: FC<{}> = props =>
 
                             if(entry && meta)
                             {
-                                // hidden while dragging, so bubbles do not pop up over every slot the item crosses
                                 return (
-                                    <HoverBubble key={ slot } text={ meta.name } className="rp-inventory-bubble" hidden={ dragFrom >= 0 }>
-                                        <div data-rp-slot={ slot }
-                                            className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
-                                            onClick={ () => onItemClick(slot) }
-                                            onDoubleClick={ () => onItemDoubleClick(slot) }
-                                            onPointerDown={ event => onItemDown(event, slot) }>
-                                            <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
-                                            { (entry.count > 1) &&
-                                            <span className="rp-inventory-count">{ entry.count }</span> }
-                                        </div>
-                                    </HoverBubble>);
+                                    <div key={ slot } data-rp-slot={ slot }
+                                        className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                        { ...bubbleProps(meta.name) }
+                                        onClick={ () => onItemClick(slot) }
+                                        onDoubleClick={ () => onItemDoubleClick(slot) }
+                                        onPointerDown={ event => onItemDown(event, slot) }>
+                                        <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
+                                        { (entry.count > 1) &&
+                                        <span className="rp-inventory-count">{ entry.count }</span> }
+                                    </div>);
                             }
 
                             return (
@@ -322,6 +369,11 @@ export const RpInventoryView: FC<{}> = props =>
                                 </div>);
                         }) }
                     </div>
+                    { bubbleText && (dragFrom < 0) &&
+                    createPortal(
+                        <div ref={ bubbleRef } className="tooltip show rp-inventory-bubble" role="tooltip">
+                            <div className="tooltip-inner">{ bubbleText }</div>
+                        </div>, document.body) }
                     { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
                     createPortal(
                         <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>

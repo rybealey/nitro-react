@@ -12,20 +12,16 @@ interface HoverBubbleProps
 {
     text: string;
     placement?: OverlayTriggerProps['placement'];
-    // Extra class on the bubble itself (it portals to <body>, so style it at top level).
-    className?: string;
-    // Keeps the bubble shut, e.g. while something is being dragged over it.
-    hidden?: boolean;
     children: ReactElement;
 }
 
 export const HoverBubble: FC<HoverBubbleProps> = props =>
 {
-    const { text = '', placement = 'top', className = undefined, hidden = false, children = null } = props;
+    const { text = '', placement = 'top', children = null } = props;
     const id = useId();
 
     return (
-        <OverlayTrigger placement={ placement } show={ hidden ? false : undefined } overlay={ <Tooltip id={ `hover-bubble-${ id }` } className={ className }>{ text }</Tooltip> }>
+        <OverlayTrigger placement={ placement } overlay={ <Tooltip id={ `hover-bubble-${ id }` }>{ text }</Tooltip> }>
             { children }
         </OverlayTrigger>
     );
