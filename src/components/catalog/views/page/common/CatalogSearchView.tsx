@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 import { CatalogPage, FilterCatalogNode, GetSessionDataManager, ICatalogNode, ICatalogPage, IPurchasableOffer, LocalizeText, PageLocalization, SearchOffer, SearchResult } from '../../../../../api';
 import { SendRpCatalogSearch, SubscribeRpCatalogSearch } from '../../../../../api/rp-catalog/RpCatalogSearchMessages';
@@ -9,6 +9,25 @@ export const CatalogSearchView: FC<{}> = props =>
 {
     const [ searchValue, setSearchValue ] = useState('');
     const { currentType = null, rootNode = null, offersToNodes = null, searchResult = null, setSearchResult = null, setCurrentPage = null, setCurrentOffer } = useCatalog();
+    // Whether results for the current text were ever shown - see below.
+    const hadResult = useRef(false);
+
+    useEffect(() =>
+    {
+        if(searchResult)
+        {
+            hadResult.current = true;
+
+            return;
+        }
+
+        // Results that were up are gone while text is still in the box: the
+        // search was left from outside (a category chosen from the results),
+        // so the box empties with it. No results YET, mid-typing, is not that.
+        if(hadResult.current && searchValue.length) setSearchValue('');
+
+        hadResult.current = false;
+    }, [ searchResult ]);
 
     // pixelrp: the search runs on the server.
     //

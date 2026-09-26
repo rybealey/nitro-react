@@ -300,6 +300,15 @@ const useCatalogState = () =>
     {
         cancelObjectMover();
 
+        // pixelrp: choosing a category leaves the search, as openPageById does.
+        // While a search is up, a page response is dropped (so a slow one
+        // cannot overwrite newer results) - which dropped the page of a
+        // category clicked FROM the results too, and it never showed. The
+        // results page is let go as well, or the search-clear effect would
+        // send the player back to whatever they browsed before searching.
+        setSearchResult(null);
+        setCurrentPage(previous => ((previous?.pageId === -1) ? null : previous));
+
         if((offerId < 0) && (targetNode.parent.pageName === 'root'))
         {
             if(targetNode.children.length)
