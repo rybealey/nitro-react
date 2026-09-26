@@ -212,7 +212,6 @@ export const RpCorporationsView: FC<{}> = props =>
                                     </div>
                                 </div>
                                 <div className="rp-corps-legend">
-                                    <span className="rp-corps-legend-item"><i className="rp-corps-dot is-offline" />Offline</span>
                                     <span className="rp-corps-legend-item"><i className="rp-corps-dot is-online" />Online</span>
                                     <span className="rp-corps-legend-item"><i className="rp-corps-dot is-onduty" />On duty</span>
                                 </div>
@@ -305,8 +304,11 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                         CreateLinkEvent('rp-profile/show');
                                                                     } }>
                                                                     { /* second presence signal beside the tint, for
-                                                                         colorblind legibility */ }
-                                                                    <span className={ `rp-corps-dot rp-corps-employee-status ${ employee.onDuty ? 'is-onduty' : (employee.online ? 'is-online' : 'is-offline') }` } />
+                                                                         colorblind legibility - online and on duty
+                                                                         only: an offline employee gets no dot, the
+                                                                         greyed-out avatar alone says it */ }
+                                                                    { (employee.onDuty || employee.online) &&
+                                                                        <span className={ `rp-corps-dot rp-corps-employee-status ${ employee.onDuty ? 'is-onduty' : 'is-online' }` } /> }
                                                                     { /* portrait tint doubles as the presence signal:
                                                                          gray offline, green online, blue on duty - and
                                                                          an offline avatar is itself greyed out */ }
