@@ -10,15 +10,15 @@ import { GetConfiguration } from '../nitro/GetConfiguration';
 // requestAnimationFrame, and the browser never hands out frames faster than
 // the monitor refreshes. So this setting can only ever take frames AWAY: on a
 // 60Hz screen every value at or above 60 looks identical. It is still worth
-// having, because lowering it is the one lever a player on a weak machine
-// has, and a 144Hz or 240Hz monitor genuinely uses the top of the range.
+// having, because a 144Hz or 240Hz monitor genuinely uses the top of the range.
 
 const FPS_KEY = 'pixelrp.prefs.fps.max';
 
-// Pixi clamps maxFPS UP to minFPS (10 by default), so a smaller number would
-// silently become 10 anyway - the floor says so honestly rather than offering
-// a value that does not do what it reads.
-export const FPS_MIN = 10;
+// The floor is the default (FPS_DEFAULT, below): the slider only goes UP from
+// 75. Any cap under the screen's refresh rate is the skipped-frame judder the
+// default exists to avoid, so it is not offered. A value saved before the floor
+// was raised is clamped up to it when read back.
+export const FPS_MIN = 75;
 export const FPS_MAX = 400;
 
 const clamp = (fps: number): number => Math.min(FPS_MAX, Math.max(FPS_MIN, Math.round(fps)));

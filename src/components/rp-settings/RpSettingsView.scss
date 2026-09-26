@@ -80,7 +80,8 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         min-height: 0;
     }
 
-    // Only this tab is light; the others keep the shared content colour.
+    // Every tab is light (the Macros tab canvas, then the Settings Sidebar
+    // canvas for the rest), so the open tab can match the page exactly.
     // Doubled with .content-area so it beats the theme's own rule.
     .content-area.rp-settings-content--light {
         background: $mx-body;
@@ -747,10 +748,23 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
+    // Title and description on the left, the current choice's name on the right.
     .rp-settings-stack-head {
         display: flex;
-        align-items: baseline;
-        gap: 8px;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .rp-settings-stack-head-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .rp-settings-stack-choice {
+        flex-shrink: 0;
+        white-space: nowrap;
     }
 
     // Section that doesn't apply to the current selection (e.g. Icon Color
@@ -784,7 +798,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         position: sticky;
         top: 0;
         z-index: 2;
-        background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)), $light;
+        background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)), $mx-body;
         border: 1px solid rgba(0, 0, 0, 0.1);
         border-radius: $border-radius;
     }
@@ -838,20 +852,78 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         }
     }
 
-    .rp-settings-fps-end,
-    .rp-settings-fps-value {
+    .rp-settings-fps-end {
+        font-family: $mx-mono;
+        font-size: 11px;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
-        color: rgba(255, 255, 255, 0.55);
+        color: $mx-muted;
+    }
+
+    // General > Performance: the FPS setting as one white card (Settings
+    // Sidebar canvas, C's card) - title and the value box on top, the slider
+    // the card's full width underneath.
+    .rp-settings-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        background: $white;
+    }
+
+    .rp-settings-card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .rp-settings-card-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+        color: $mx-ink;
+    }
+
+    .rp-settings-fps-side {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
     }
 
     .rp-settings-fps-value {
-        min-width: 30px;
+        min-width: 64px;
+        box-sizing: border-box;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: $mx-body;
         text-align: right;
-        color: inherit;
+        font-family: $mx-mono;
+        font-size: 14px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: $mx-ink;
+
+        span { font-size: 11px; color: $mx-muted; }
+    }
+
+    .rp-settings-link {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font-size: 11px;
+        font-weight: 700;
+        color: $mx-accent-text;
+        cursor: pointer;
+
+        &:hover { text-decoration: underline; }
     }
 
     // General > Drag the Room: one of three, as a joined row of segments. The
-    // chosen one takes the solid chrome the macros buttons use.
+    // chosen one takes the header's orange, so it follows the header scheme.
     .rp-settings-choice {
         display: flex;
         flex-shrink: 0;
@@ -875,7 +947,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
         &.is-selected {
             color: $white;
-            background: var(--prp-chrome-hover);
+            background: var(--prp-header-bottom);
         }
     }
 
@@ -940,6 +1012,33 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     &.theme-primary-slim .nitro-card-tabs,
     .nitro-card-tabs {
         @include prp-chrome-tab-strip;
+
+        // Settings Sidebar canvas (D): bigger tabs standing on the strip's
+        // bottom edge, the open one in the page's own colour so it runs
+        // straight into the page below.
+        align-items: flex-end;
+        padding: 0 8px !important;
+        min-height: 35px;
+        max-height: 35px;
+
+        .nav-item {
+            height: 29px;
+            padding: 0 18px;
+            border-radius: 5px 5px 0 0 !important;
+            font-size: 11.5px;
+            background: rgba($light, 0.1);
+            color: rgba($light, 0.72);
+
+            &:hover {
+                background: rgba($light, 0.17);
+                color: $white;
+            }
+
+            &.active {
+                background: $mx-body;
+                color: $mx-ink;
+            }
+        }
     }
 }
 

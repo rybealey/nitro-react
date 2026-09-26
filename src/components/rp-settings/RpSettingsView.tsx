@@ -6,7 +6,7 @@ import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, Rem
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
-import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
+import { FPS_DEFAULT, FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
@@ -18,27 +18,25 @@ import { FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_KEY, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
-// (CreateLinkEvent('rp-settings/toggle')). Tabs beyond Interface are
-// placeholders to be filled out as settings are decided.
-const TABS: string[] = [ 'General', 'Macros', 'Social', 'Roleplay', 'UI' ];
+// (CreateLinkEvent('rp-settings/toggle')). Every tab but Macros pairs the tab
+// strip with a left rail of that tab's pages (Settings Sidebar canvas, D/E).
+const TABS: string[] = [ 'General', 'Macros', 'Personalization', 'UI', 'Discord' ];
 
 // Macro row dragging: how far a press must move before it is a drag, and how
 // close to the list's edge the pointer must be for the list to scroll itself.
 const MACRO_DRAG_SLACK = 4;
 const MACRO_DRAG_EDGE = 28;
 
-// Roleplay tab sub-pages (left rail). Empty for now — pages exist so the
-// settings can be furnished one by one. Macros moved out to its own top-level
-// tab, so it is deliberately not listed here any more.
-const ROLEPLAY_PAGES: string[] = [ 'Messages' ];
+// General tab sub-pages (left rail).
+const GENERAL_PAGES: string[] = [ 'Performance', 'Controls' ];
 
 // The Macros tab is live: bindings are saved server-side (RpSaveMacrosComposer)
 // so they follow the player to any browser, and ChatInputView fires them. See
 // MacroState.ts for the document shape and the binding vocabulary.
 
-// Social tab sub-pages (left rail), grouped under the Personalization
+// Personalization tab sub-pages (left rail), grouped under the Username
 // eyebrow; the chat-bubble preview shows on both.
-const SOCIAL_PAGES: string[] = [ 'Color', 'Icon' ];
+const PERSONALIZATION_PAGES: string[] = [ 'Name Color', 'Icon' ];
 
 // Interface tab sub-pages (left rail).
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
@@ -104,8 +102,8 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
-    const [ roleplayPage, setRoleplayPage ] = useState<string>(ROLEPLAY_PAGES[0]);
-    const [ socialPage, setSocialPage ] = useState<string>(SOCIAL_PAGES[0]);
+    const [ generalPage, setGeneralPage ] = useState<string>(GENERAL_PAGES[0]);
+    const [ personalPage, setPersonalPage ] = useState<string>(PERSONALIZATION_PAGES[0]);
     // null = unknown/loading; refreshed every time the Discord page opens
     const [ discordLinked, setDiscordLinked ] = useState<boolean>(null);
     const [ discordLinkedAt, setDiscordLinkedAt ] = useState<number>(0);
@@ -172,12 +170,12 @@ export const RpSettingsView: FC<{}> = props =>
     // Refresh link status whenever the Discord page comes on screen.
     useEffect(() =>
     {
-        if(!isVisible || (currentTab !== 'Social') || (socialPage !== 'Discord')) return;
+        if(!isVisible || (currentTab !== 'Discord')) return;
 
         setDiscordPending(null);
         setConfirmUnlink(false);
         SendMessageComposer(new RpGetDiscordStatusComposer());
-    }, [ isVisible, currentTab, socialPage ]);
+    }, [ isVisible, currentTab ]);
 
     // A player who cancels at Discord's consent screen, or just closes the
     // popup, sends nothing back - never leave the panel stuck in pending.
@@ -1110,7 +1108,7 @@ export const RpSettingsView: FC<{}> = props =>
                     </NitroCardTabsItemView>
                 )) }
             </NitroCardTabsView>
-            <NitroCardContentView className={ `text-black${ (currentTab === 'Macros') ? ' rp-settings-content--light' : '' }` }>
+            <NitroCardContentView className="text-black rp-settings-content--light">
                 { (currentTab === 'UI') &&
                     <div className="prp-subnav-layout">
                         <div className="prp-subnav">
@@ -1409,172 +1407,175 @@ export const RpSettingsView: FC<{}> = props =>
                                 </div>
                             </div>, document.body) }
                     </Column> }
-                { (currentTab === 'Roleplay') &&
-                    <div className="prp-subnav-layout">
-                        <div className="prp-subnav">
-                            <div className="prp-subnav-eyebrow">Functions</div>
-                            { ROLEPLAY_PAGES.map(page => (
-                                <div key={ page }
-                                    className={ `prp-subnav-item ${ (roleplayPage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setRoleplayPage(page) }>
-                                    { page }
-                                </div>
-                            )) }
-                            { /* future group - links land here as their settings ship */ }
-                            <div className="prp-subnav-eyebrow">Interactions</div>
-                        </div>
-                        <Column center fullHeight gap={ 1 } className="rp-settings-placeholder prp-subnav-page">
-                            <Text bold>{ roleplayPage }</Text>
-                            <Text className="text-muted">Nothing here yet.</Text>
-                        </Column>
-                    </div> }
-                { (currentTab === 'Social') &&
+                { (currentTab === 'Personalization') &&
                     <div className="prp-subnav-layout">
                         <div className="prp-subnav">
                             <div className="prp-subnav-eyebrow">Username</div>
-                            { SOCIAL_PAGES.map(page => (
+                            { PERSONALIZATION_PAGES.map(page => (
                                 <div key={ page }
-                                    className={ `prp-subnav-item ${ (socialPage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setSocialPage(page) }>
+                                    className={ `prp-subnav-item ${ (personalPage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setPersonalPage(page) }>
                                     { page }
                                 </div>
                             )) }
-                            { /* future group - links land here as their settings ship */ }
-                            <div className="prp-subnav-eyebrow">Verification</div>
-                            <div className={ `prp-subnav-item ${ (socialPage === 'Discord') ? 'is-active' : '' }` }
-                                onClick={ () => setSocialPage('Discord') }>
-                                Discord
-                            </div>
                         </div>
                         <Column gap={ 2 } className="prp-subnav-page">
-                            <>
-                                { ((socialPage === 'Color') || (socialPage === 'Icon')) &&
-                                <div className="rp-settings-preview">
-                                    <Text small className="text-muted">Preview</Text>
-                                    <div className="bubble-container" style={ { position: 'relative' } }>
-                                        <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
-                                        <div className="chat-bubble bubble-0 type-0" style={ { maxWidth: '100%' } }>
-                                            <div className="user-container">
-                                                { previewFigure?.imageUrl &&
-                                                    <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
-                                            </div>
-                                            <div className="chat-content">
-                                                { usernameIcon &&
-                                                    <b className="username mr-1"><UsernameIconGlyph iconClass={ usernameIcon } />{ ' ' }</b> }
-                                                <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
-                                                <span className="message">Welcome to San Francisco!</span>
-                                            </div>
-                                            <div className="pointer" />
+                            <div className="rp-settings-preview">
+                                <Text small className="text-muted">Preview</Text>
+                                <div className="bubble-container" style={ { position: 'relative' } }>
+                                    <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
+                                    <div className="chat-bubble bubble-0 type-0" style={ { maxWidth: '100%' } }>
+                                        <div className="user-container">
+                                            { previewFigure?.imageUrl &&
+                                                <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
                                         </div>
+                                        <div className="chat-content">
+                                            { usernameIcon &&
+                                                <b className="username mr-1"><UsernameIconGlyph iconClass={ usernameIcon } />{ ' ' }</b> }
+                                            <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
+                                            <span className="message">Welcome to San Francisco!</span>
+                                        </div>
+                                        <div className="pointer" />
                                     </div>
-                                </div> }
-                                { (socialPage === 'Color') &&
-                                <div className="rp-settings-stack-section">
-                                    <div className="rp-settings-stack-head">
-                                        <Text bold>Color</Text>
+                                </div>
+                            </div>
+                            { (personalPage === 'Name Color') &&
+                            <div className="rp-settings-stack-section">
+                                <div className="rp-settings-stack-head">
+                                    <div className="rp-settings-stack-head-text">
+                                        <Text bold>Name Color</Text>
                                         <Text small className="text-muted">The color of your username in your chat bubbles.</Text>
                                     </div>
-                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
-                                        { USERNAME_COLORS.map(entry => (
-                                            <div key={ entry.key } title={ entry.name }
-                                                className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
-                                                style={ { backgroundColor: entry.color } }
-                                                onClick={ () => selectUsernameColor(entry.color) } />
-                                        )) }
-                                    </div>
-                                </div> }
-                                { (socialPage === 'Icon') &&
-                                <div className="rp-settings-stack-section">
-                                    <div className="rp-settings-stack-head">
+                                    <Text small bold className="rp-settings-stack-choice">
+                                        { (usernameColor === DEFAULT_USERNAME_COLOR) ? 'Black (default)' : (USERNAME_COLORS.find(entry => (entry.color === usernameColor))?.name ?? '') }
+                                    </Text>
+                                </div>
+                                <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                    { USERNAME_COLORS.map(entry => (
+                                        <div key={ entry.key } title={ entry.name }
+                                            className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
+                                            style={ { backgroundColor: entry.color } }
+                                            onClick={ () => selectUsernameColor(entry.color) } />
+                                    )) }
+                                </div>
+                            </div> }
+                            { (personalPage === 'Icon') &&
+                            <div className="rp-settings-stack-section">
+                                <div className="rp-settings-stack-head">
+                                    <div className="rp-settings-stack-head-text">
                                         <Text bold>Icon</Text>
                                         <Text small className="text-muted">An icon before your name in chat.</Text>
                                     </div>
-                                    <div className="rp-settings-swatches rp-settings-swatches--wide">
-                                        { USERNAME_ICONS.map(entry => (
-                                            <div key={ entry.key } title={ entry.name }
-                                                className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
-                                                onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
-                                                <UsernameIconGlyph iconClass={ entry.iconClass } />
-                                            </div>
-                                        )) }
-                                    </div>
-                                </div> }
-                                { (socialPage === 'Discord') &&
-                                <Column center fullHeight gap={ 2 } className="rp-settings-discord">
-                                    <i className="fa-brands fa-discord rp-settings-discord-mark" aria-hidden="true" />
-                                    <Text bold>Discord</Text>
-                                    { (discordLinked === null) && <>
-                                        <div className="rp-settings-skeleton rp-settings-skeleton--line" />
-                                        <div className="rp-settings-skeleton rp-settings-skeleton--block" />
-                                        <div className="rp-settings-skeleton rp-settings-skeleton--btn" />
-                                    </> }
-                                    { (discordLinked === true) && <>
-                                        <Text className="rp-settings-discord-linked">Your Discord account is connected.</Text>
-                                        <Text small className="text-muted">Your name in the PixelRP server matches your in-game name, and you carry the Verified role.</Text>
-                                        { discordLinkedSince &&
-                                            <Text small className="text-muted">Connected since { discordLinkedSince }.</Text> }
-                                        { !confirmUnlink && (discordPending !== 'unlink') &&
+                                    <Text small bold className="rp-settings-stack-choice">
+                                        { USERNAME_ICONS.find(entry => ((entry.iconClass ?? '') === usernameIcon))?.name ?? '' }
+                                    </Text>
+                                </div>
+                                <div className="rp-settings-swatches rp-settings-swatches--wide">
+                                    { USERNAME_ICONS.map(entry => (
+                                        <div key={ entry.key } title={ entry.name }
+                                            className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
+                                            onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
+                                            <UsernameIconGlyph iconClass={ entry.iconClass } />
+                                        </div>
+                                    )) }
+                                </div>
+                            </div> }
+                        </Column>
+                    </div> }
+                { (currentTab === 'Discord') &&
+                    <div className="prp-subnav-layout">
+                        <div className="prp-subnav">
+                            <div className="prp-subnav-eyebrow">Discord</div>
+                            <div className="prp-subnav-item is-active">Account</div>
+                        </div>
+                        <Column gap={ 2 } className="prp-subnav-page">
+                            <Column center fullHeight gap={ 2 } className="rp-settings-discord">
+                                <i className="fa-brands fa-discord rp-settings-discord-mark" aria-hidden="true" />
+                                <Text bold>Discord</Text>
+                                { (discordLinked === null) && <>
+                                    <div className="rp-settings-skeleton rp-settings-skeleton--line" />
+                                    <div className="rp-settings-skeleton rp-settings-skeleton--block" />
+                                    <div className="rp-settings-skeleton rp-settings-skeleton--btn" />
+                                </> }
+                                { (discordLinked === true) && <>
+                                    <Text className="rp-settings-discord-linked">Your Discord account is connected.</Text>
+                                    <Text small className="text-muted">Your name in the PixelRP server matches your in-game name, and you carry the Verified role.</Text>
+                                    { discordLinkedSince &&
+                                        <Text small className="text-muted">Connected since { discordLinkedSince }.</Text> }
+                                    { !confirmUnlink && (discordPending !== 'unlink') &&
+                                        <div className="rp-settings-discord-btn rp-settings-discord-btn--danger"
+                                            onClick={ () => setConfirmUnlink(true) }>Disconnect</div> }
+                                    { confirmUnlink && (discordPending !== 'unlink') && <>
+                                        <Text small className="text-muted">Disconnect this account? You will lose the Verified role.</Text>
+                                        <Flex center gap={ 2 }>
                                             <div className="rp-settings-discord-btn rp-settings-discord-btn--danger"
-                                                onClick={ () => setConfirmUnlink(true) }>Disconnect</div> }
-                                        { confirmUnlink && (discordPending !== 'unlink') && <>
-                                            <Text small className="text-muted">Disconnect this account? You will lose the Verified role.</Text>
-                                            <Flex center gap={ 2 }>
-                                                <div className="rp-settings-discord-btn rp-settings-discord-btn--danger"
-                                                    onClick={ disconnectDiscord }>Yes, disconnect</div>
-                                                <Text small underline pointer className="text-muted"
-                                                    onClick={ () => setConfirmUnlink(false) }>Cancel</Text>
-                                            </Flex>
-                                        </> }
-                                        { (discordPending === 'unlink') &&
-                                            <Text small className="text-muted">Disconnecting. Your Discord roles are removed shortly.</Text> }
+                                                onClick={ disconnectDiscord }>Yes, disconnect</div>
+                                            <Text small underline pointer className="text-muted"
+                                                onClick={ () => setConfirmUnlink(false) }>Cancel</Text>
+                                        </Flex>
                                     </> }
-                                    { (discordLinked === false) && <>
-                                        <Text small className="text-muted">Link your Discord account to get the Verified role. Your Discord details are never shown in-game.</Text>
-                                        { (discordPending !== 'connect') &&
-                                            <div className="rp-settings-discord-btn" onClick={ connectDiscord }>Connect Discord</div> }
-                                        { (discordPending === 'connect') &&
-                                            <Text small className="text-muted">Waiting for Discord. Finish in the window that opened, then come back here.</Text> }
-                                    </> }
-                                </Column> }
-                            </>
+                                    { (discordPending === 'unlink') &&
+                                        <Text small className="text-muted">Disconnecting. Your Discord roles are removed shortly.</Text> }
+                                </> }
+                                { (discordLinked === false) && <>
+                                    <Text small className="text-muted">Link your Discord account to get the Verified role. Your Discord details are never shown in-game.</Text>
+                                    { (discordPending !== 'connect') &&
+                                        <div className="rp-settings-discord-btn" onClick={ connectDiscord }>Connect Discord</div> }
+                                    { (discordPending === 'connect') &&
+                                        <Text small className="text-muted">Waiting for Discord. Finish in the window that opened, then come back here.</Text> }
+                                </> }
+                            </Column>
                         </Column>
                     </div> }
                 { (currentTab === 'General') &&
-                    <Column gap={ 2 } className="rp-settings-general">
-                        { /* Plain sections rather than a subnav rail: one setting
-                             behind a one-item rail reads as scaffolding. Macros is
-                             laid out the same way, so the pattern is already here. */ }
-                        <div className="rp-settings-section">
-                            <div className="rp-settings-section-info">
-                                <Text bold>Frame Rate</Text>
-                                <Text small className="text-muted">How often the room is allowed to redraw, saved on this computer rather than to your account. The default of 75 keeps walking smooth on any screen - your screen sets the real ceiling, so a 60Hz monitor still draws 60. Lowering it is the lever to pull on an older machine.</Text>
-                            </div>
-                            <div className="rp-settings-fps">
-                                <Text small className="rp-settings-fps-end">{ FPS_MIN }</Text>
-                                <input type="range" min={ FPS_MIN } max={ FPS_MAX } step={ 5 } value={ maxFps }
-                                    aria-label="Frame rate cap"
-                                    onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
-                                <Text small className="rp-settings-fps-end">{ FPS_MAX }</Text>
-                                <Text small className="rp-settings-fps-value">{ maxFps }</Text>
-                            </div>
+                    <div className="prp-subnav-layout">
+                        <div className="prp-subnav">
+                            <div className="prp-subnav-eyebrow">General</div>
+                            { GENERAL_PAGES.map(page => (
+                                <div key={ page }
+                                    className={ `prp-subnav-item ${ (generalPage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setGeneralPage(page) }>
+                                    { page }
+                                </div>
+                            )) }
                         </div>
-                        <div className="rp-settings-section">
-                            <div className="rp-settings-section-info">
-                                <Text bold>Drag the Room</Text>
-                                <Text small className="text-muted">Which mouse button pans the room when you click and drag, saved on this computer. On a trackpad, Right click is the one to try: a left click then walks the moment you press, and dragging with two fingers held down pans. A right-click macro still fires on a right click that doesn't move.</Text>
-                            </div>
-                            <div className="rp-settings-choice" role="radiogroup" aria-label="Drag the room with">
-                                { ROOM_DRAG_BUTTONS.map(button => (
-                                    <div key={ button } role="radio" aria-checked={ (dragButton === button) }
-                                        className={ `rp-settings-choice-option ${ (dragButton === button) ? 'is-selected' : '' }` }
-                                        onClick={ () => SetRoomDragButton(button) }>
-                                        { ROOM_DRAG_LABELS[button] }
+                        <Column gap={ 2 } className="prp-subnav-page">
+                            { (generalPage === 'Performance') &&
+                            <div className="rp-settings-card">
+                                <div className="rp-settings-card-head">
+                                    <label htmlFor="rp-settings-fps" className="rp-settings-card-title">FPS Setting</label>
+                                    <div className="rp-settings-fps-side">
+                                        <div className="rp-settings-fps-value">{ maxFps } <span>fps</span></div>
+                                        { (maxFps !== FPS_DEFAULT) &&
+                                            <button type="button" className="rp-settings-link" onClick={ () => SetMaxFps(FPS_DEFAULT) }>Reset to { FPS_DEFAULT }</button> }
                                     </div>
-                                )) }
-                            </div>
-                        </div>
-                    </Column> }
-                { (currentTab !== 'General') && (currentTab !== 'UI') && (currentTab !== 'Roleplay') && (currentTab !== 'Social') && (currentTab !== 'Macros') &&
+                                </div>
+                                <div className="rp-settings-fps">
+                                    <span className="rp-settings-fps-end">{ FPS_MIN }</span>
+                                    <input id="rp-settings-fps" type="range" min={ FPS_MIN } max={ FPS_MAX } step={ 5 } value={ maxFps }
+                                        onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
+                                    <span className="rp-settings-fps-end">{ FPS_MAX }</span>
+                                </div>
+                            </div> }
+                            { (generalPage === 'Controls') &&
+                            <div className="rp-settings-section">
+                                <div className="rp-settings-section-info">
+                                    <Text bold>Drag the Room</Text>
+                                    <Text small className="text-muted">Which mouse button pans the room. On a trackpad, try Right click.</Text>
+                                </div>
+                                <div className="rp-settings-choice" role="radiogroup" aria-label="Drag the room with">
+                                    { ROOM_DRAG_BUTTONS.map(button => (
+                                        <div key={ button } role="radio" aria-checked={ (dragButton === button) }
+                                            className={ `rp-settings-choice-option ${ (dragButton === button) ? 'is-selected' : '' }` }
+                                            onClick={ () => SetRoomDragButton(button) }>
+                                            { ROOM_DRAG_LABELS[button] }
+                                        </div>
+                                    )) }
+                                </div>
+                            </div> }
+                        </Column>
+                    </div> }
+                { !TABS.includes(currentTab) &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
                         <Text bold>{ currentTab }</Text>
                         <Text className="text-muted">Nothing here yet.</Text>
