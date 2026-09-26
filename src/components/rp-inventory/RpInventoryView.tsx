@@ -28,6 +28,8 @@ const ITEMS: Record<string, { name: string, cls: string }> = {
     medkit: { name: 'Medkit', cls: 'rp-item-medkit' },
     vip_token_31: { name: 'VIP Token (31 days)', cls: 'rp-item-vip-token-gold' },
     vip_token_14: { name: 'VIP Token (14 days)', cls: 'rp-item-vip-token-silver' },
+    // Unlocks :spit for good; the art is the Blue Paint Splat furni's own icon.
+    spit_token: { name: 'Spit Token', cls: 'rp-item-spit-token' },
 };
 
 interface ItemMeta { name: string; cls: string; iconUrl?: string }
