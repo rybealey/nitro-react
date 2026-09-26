@@ -12,10 +12,6 @@ import { IsRoomOwnerNow } from '../../api/rp-rights/RpRoomRightsMessages';
 const DUMMY_PAGE_ID_FOR_OFFER_SEARCH = -12345678;
 const DRAG_AND_DROP_ENABLED = true;
 
-// pixelrp: TEMPORARY - traces a click from the search results through to the
-// page shown, to find where choosing a category went wrong. Remove once found.
-const rpCatalogTrace = (step: string, data: object) => console.info('[pixelrp catalog] ' + step, data);
-
 const useCatalogState = () =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
@@ -289,7 +285,6 @@ const useCatalogState = () =>
         searchOfferRequest.current = null;
         // the page the player chose - its response is shown even mid-search
         chosenPageId.current = pageId;
-        rpCatalogTrace('loadCatalogPage', { pageId, offerId });
 
         if(pageId > -1) SendMessageComposer(new GetCatalogPageComposer(pageId, offerId, currentType));
     }, [ currentType ]);
@@ -308,8 +303,6 @@ const useCatalogState = () =>
     const activateNode = useCallback((targetNode: ICatalogNode, offerId: number = -1) =>
     {
         cancelObjectMover();
-
-        rpCatalogTrace('activateNode', { page: targetNode?.pageId, name: targetNode?.localization, parent: targetNode?.parent?.pageName, offerId });
 
         // pixelrp: choosing a category leaves the search. The results stay on
         // screen until the chosen page arrives - loadCatalogPage marks it as
@@ -380,7 +373,6 @@ const useCatalogState = () =>
 
     const openPageById = useCallback((id: number, offerId: number = -1) =>
     {
-        rpCatalogTrace('openPageById', { id, offerId });
         if(id !== -1)
         {
             setSearchResult(null);
@@ -493,8 +485,6 @@ const useCatalogState = () =>
     {
         const parser = event.getParser();
 
-        rpCatalogTrace('page arrived', { page: parser.pageId, type: parser.catalogType, currentType, chosen: chosenPageId.current, pageIdState: pageId, searching: !!searchResult, pending: searchOfferRequest.current });
-
         if(parser.catalogType !== currentType) return;
 
         const purchasableOffers: IPurchasableOffer[] = [];
@@ -558,8 +548,6 @@ const useCatalogState = () =>
         // click has re-registered this handler, so `pageId` here can still be
         // the page from before it.
         const show = (chosen || (pageId === parser.pageId));
-
-        rpCatalogTrace('page decision', { page: parser.pageId, chosen, show });
 
         // THE PAGE GOES IN FIRST. use-between runs this hook's effects
         // synchronously inside every setter, so each set below is seen at
@@ -942,7 +930,6 @@ const useCatalogState = () =>
                     {
                         if(child && child.isVisible)
                         {
-                            rpCatalogTrace('no page -> first tab', { tab: child.pageId });
                             activateNode(child);
 
                             return;
@@ -968,11 +955,7 @@ const useCatalogState = () =>
     useEffect(() =>
     {
         // Not while a chosen page is on its way: it replaces the results itself.
-        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1) && (chosenPageId.current === -1))
-        {
-            rpCatalogTrace('search cleared -> back to previous page', { previousPageId });
-            openPageById(previousPageId);
-        }
+        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1) && (chosenPageId.current === -1)) openPageById(previousPageId);
     }, [ searchResult, isBusy, currentPage, previousPageId, openPageById ]);
 
     useEffect(() =>
