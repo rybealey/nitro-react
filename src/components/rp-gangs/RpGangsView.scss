@@ -839,6 +839,50 @@ $gang-state-off: #b23b3b;
         flex-shrink: 0;
     }
 
+    // the search box and the matches floating under it
+    .gang-invite-search { position: relative; }
+
+    .gang-invite-results {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        z-index: 6;
+        max-height: 260px;
+        overflow-y: auto;
+        padding: 4px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 6px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .gang-invite-result {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 6px 2px 2px;
+        border-radius: 4px;
+
+        &:hover { background: #f3f3f5; }
+
+        & + .gang-invite-result { margin-top: 2px; }
+    }
+
+    .gang-invite-result-sent {
+        flex-shrink: 0;
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    .gang-invite-results-empty {
+        padding: 10px;
+        text-align: center;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
     // input + button read as one control
     .gang-invite-form-row {
         display: flex;
