@@ -22,7 +22,12 @@ export interface RpOffer
     // rows in a table, and a client that guessed would eventually guess
     // differently from the server that decides.
     blocked: string;
+    // What the card is asking: 'sale' for goods, 'proposal' when :propose has
+    // borrowed the card. Last on the wire, so the fields above read unchanged.
+    kind: RpOfferKind;
 }
+
+export type RpOfferKind = 'sale' | 'proposal';
 
 export class RpOfferParser implements IMessageParser
 {
@@ -56,7 +61,8 @@ export class RpOfferParser implements IMessageParser
             secondsLeft: wrapper.readInt(),
             lifetime: wrapper.readInt(),
             queued: wrapper.readInt(),
-            blocked: wrapper.readString()
+            blocked: wrapper.readString(),
+            kind: ((wrapper.readString() === 'proposal') ? 'proposal' : 'sale')
         };
 
         return true;

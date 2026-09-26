@@ -4,6 +4,10 @@ import { GetRpOffer, RpOffer, SendRpOfferReply, SubscribeRpOffer } from '../../.
 
 // PixelRP :offer / :sell - the card the buyer answers.
 //
+// :propose borrows it too: a proposal arrives as kind 'proposal' and draws a
+// heart, its own kicker and its own sentence, with no price - the queue, the
+// rail and the two buttons are the same card.
+//
 // It portals into #toolbar-chat-input-container, the SAME element the chat bar
 // portals into, which is what lets it sit directly above the bar and share its
 // width without either one knowing the other's position. Anchored by its
@@ -78,43 +82,52 @@ export const RpOfferWidgetView: FC<{}> = () =>
     const fraction = ((shown.lifetime > 0) ? Math.max(0, Math.min(1, (left / shown.lifetime))) : 0);
     const urgent = (!isLeaving && (left <= 5));
     const goods = ((shown.quantity > 1) ? `${ shown.quantity } ${ shown.label }` : shown.label);
+    const isProposal = (shown.kind === 'proposal');
 
     return createPortal(
-        <div className={ `rp-offer${ isLeaving ? ' is-leaving' : '' }` }>
+        <div className={ `rp-offer${ isLeaving ? ' is-leaving' : '' }${ isProposal ? ' is-proposal' : '' }` }>
             <div className="rp-offer-body">
                 <div className="rp-offer-mark" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="7" width="18" height="13" rx="2" />
-                        <path d="M3 11h18" />
-                        <path d="M12 7V4" />
-                        <path d="M9 4h6" />
-                    </svg>
+                    { isProposal
+                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+                        </svg>
+                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="7" width="18" height="13" rx="2" />
+                            <path d="M3 11h18" />
+                            <path d="M12 7V4" />
+                            <path d="M9 4h6" />
+                        </svg> }
                 </div>
 
                 <div className="rp-offer-text">
                     <div className={ `rp-offer-kicker${ urgent ? ' is-urgent' : '' }` }>
-                        { urgent ? 'EXPIRING' : 'OFFER RECEIVED' }
+                        { urgent ? 'EXPIRING' : (isProposal ? 'PROPOSAL' : 'OFFER RECEIVED') }
                         { (shown.queued > 1) && <span className="rp-offer-queued">&middot; 1 OF { shown.queued }</span> }
                     </div>
-                    <div className="rp-offer-line">
-                        <strong>{ shown.sellerName }</strong> is offering you <strong>{ goods }</strong>
-                    </div>
+                    { isProposal
+                        ? <div className="rp-offer-line">
+                            <strong>{ shown.sellerName }</strong> is proposing to you
+                        </div>
+                        : <div className="rp-offer-line">
+                            <strong>{ shown.sellerName }</strong> is offering you <strong>{ goods }</strong>
+                        </div> }
                     { !!blocked.length &&
                         <div className="rp-offer-blocked">{ blocked }</div> }
-                    { !blocked.length && (shown.total > 0) &&
+                    { !isProposal && !blocked.length && (shown.total > 0) &&
                         <div className="rp-offer-price">for <strong>${ Money(shown.total) }</strong></div> }
-                    { !blocked.length && (shown.total === 0) &&
+                    { !isProposal && !blocked.length && (shown.total === 0) &&
                         <div className="rp-offer-price">free of charge</div> }
                 </div>
 
                 <div className="rp-offer-actions">
-                    <button type="button" className="rp-offer-accept" aria-label={ `Accept ${ goods } from ${ shown.sellerName }` }
+                    <button type="button" className="rp-offer-accept" aria-label={ isProposal ? `Accept ${ shown.sellerName }'s proposal` : `Accept ${ goods } from ${ shown.sellerName }` }
                         disabled={ !!blocked.length || isLeaving } onClick={ event => SendRpOfferReply(shown.id, true) }>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                         </svg>
                     </button>
-                    <button type="button" className="rp-offer-decline" aria-label={ `Decline the offer from ${ shown.sellerName }` }
+                    <button type="button" className="rp-offer-decline" aria-label={ isProposal ? `Decline ${ shown.sellerName }'s proposal` : `Decline the offer from ${ shown.sellerName }` }
                         disabled={ isLeaving } onClick={ event => SendRpOfferReply(shown.id, false) }>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                             <path d="M6 6l12 12M18 6L6 18" />

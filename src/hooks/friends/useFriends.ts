@@ -1,4 +1,4 @@
-import { AcceptFriendMessageComposer, DeclineFriendMessageComposer, FollowFriendMessageComposer, FriendListFragmentEvent, FriendListUpdateComposer, FriendListUpdateEvent, FriendParser, FriendRequestsEvent, GetFriendRequestsComposer, MessengerInitComposer, MessengerInitEvent, NewFriendRequestEvent, RequestFriendComposer, SetRelationshipStatusComposer } from '@nitrots/nitro-renderer';
+import { AcceptFriendMessageComposer, DeclineFriendMessageComposer, FollowFriendMessageComposer, FriendListFragmentEvent, FriendListUpdateComposer, FriendListUpdateEvent, FriendParser, FriendRequestsEvent, GetFriendRequestsComposer, MessengerInitComposer, MessengerInitEvent, NewFriendRequestEvent, RequestFriendComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
 import { CloneObject, GetSessionDataManager, MessengerFriend, MessengerRequest, MessengerSettings, SendMessageComposer, UpdateFriendLookup } from '../../api';
@@ -48,8 +48,6 @@ const useFriendsState = () =>
     }, [ friends ]);
 
     const followFriend = (friend: MessengerFriend) => SendMessageComposer(new FollowFriendMessageComposer(friend.id));
-
-    const updateRelationship = (friend: MessengerFriend, type: number) => ((type !== friend.relationshipStatus) && SendMessageComposer(new SetRelationshipStatusComposer(friend.id, type)));
 
     const getFriend = (userId: number) =>
     {
@@ -263,7 +261,7 @@ const useFriendsState = () =>
         }
     }, []);
 
-    return { friends, requests, sentRequests, settings, onlineFriends, offlineFriends, getFriend, canRequestFriend, requestFriend, requestResponse, followFriend, updateRelationship };
+    return { friends, requests, sentRequests, settings, onlineFriends, offlineFriends, getFriend, canRequestFriend, requestFriend, requestResponse, followFriend };
 }
 
 export const useFriends = () => useBetween(useFriendsState);
