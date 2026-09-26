@@ -44,6 +44,8 @@ const useCatalogState = () =>
     const { simpleAlert = null } = useNotification();
     const requestedPage = useRef(new RequestedPage());
     const searchOfferRequest = useRef<{ pageId: number; itemId: number; resultsPage: ICatalogPage }>(null);
+    // pixelrp: the page last opened on purpose (loadCatalogPage), -1 once shown.
+    const chosenPageId = useRef(-1);
 
     const requestSearchOffer = useCallback((offer: IPurchasableOffer) =>
     {
@@ -281,6 +283,8 @@ const useCatalogState = () =>
         setPageId(pageId);
         setCurrentOffer(null);
         searchOfferRequest.current = null;
+        // the page the player chose - its response is shown even mid-search
+        chosenPageId.current = pageId;
 
         if(pageId > -1) SendMessageComposer(new GetCatalogPageComposer(pageId, offerId, currentType));
     }, [ currentType ]);
@@ -300,14 +304,11 @@ const useCatalogState = () =>
     {
         cancelObjectMover();
 
-        // pixelrp: choosing a category leaves the search, as openPageById does.
-        // While a search is up, a page response is dropped (so a slow one
-        // cannot overwrite newer results) - which dropped the page of a
-        // category clicked FROM the results too, and it never showed. The
-        // results page is let go as well, or the search-clear effect would
-        // send the player back to whatever they browsed before searching.
-        setSearchResult(null);
-        setCurrentPage(previous => ((previous?.pageId === -1) ? null : previous));
+        // pixelrp: choosing a category leaves the search. The results stay on
+        // screen until the chosen page arrives - loadCatalogPage marks it as
+        // asked for, and the page handler shows it and clears the search then.
+        // Emptying the page here instead left the shop with no page while the
+        // search was still set, and it fell back to its first tab.
 
         if((offerId < 0) && (targetNode.parent.pageName === 'root'))
         {
@@ -530,12 +531,19 @@ const useCatalogState = () =>
             return;
         }
 
-        // A detail response must not navigate away from a newer search.
-        if(searchResult)
+        // A detail response must not navigate away from a newer search - unless
+        // it is the page the player just chose, which ends the search.
+        const chosen = (parser.pageId === chosenPageId.current);
+
+        if(chosen) chosenPageId.current = -1;
+
+        if(searchResult && !chosen)
         {
             setIsBusy(false);
             return;
         }
+
+        if(searchResult) setSearchResult(null);
 
         setIsBusy(false);
 
