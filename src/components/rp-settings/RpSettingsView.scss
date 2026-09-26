@@ -866,23 +866,23 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     .rp-settings-card {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        padding: 12px 14px;
+        gap: 8px;
+        padding: 8px 10px;
         border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
+        border-radius: 6px;
         background: $white;
     }
 
     .rp-settings-card-head {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
-        gap: 16px;
+        gap: 12px;
     }
 
     .rp-settings-card-title {
         margin: 0;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
         color: $mx-ink;
     }
@@ -891,30 +891,30 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 4px;
+        gap: 2px;
     }
 
     .rp-settings-fps-value {
-        min-width: 64px;
+        min-width: 48px;
         box-sizing: border-box;
-        padding: 4px 8px;
-        border-radius: 6px;
+        padding: 2px 6px;
+        border-radius: 4px;
         background: $mx-body;
         text-align: right;
         font-family: $mx-mono;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
         color: $mx-ink;
 
-        span { font-size: 11px; color: $mx-muted; }
+        span { font-size: 10px; color: $mx-muted; }
     }
 
     .rp-settings-link {
         padding: 0;
         border: 0;
         background: transparent;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
         color: $mx-accent-text;
         cursor: pointer;
