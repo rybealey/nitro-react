@@ -67,7 +67,7 @@ export const GangCreateView: FC<GangCreateViewProps> = props =>
                             </div>
                         )) }
                     </Column>
-                    <div className="gang-or-divider"><span /> or found your own <span /></div>
+                    <div className="gang-or-divider"><span /> Create your own gang <span /></div>
                 </> }
             <Flex alignItems="center" gap={ 2 }>
                 <GangCrest primary={ primaryHex ?? '#999999' } secondary={ secondaryHex ?? '#4c4c4c' } />
