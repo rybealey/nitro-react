@@ -5,6 +5,7 @@ import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/Na
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../../../api/rp-chat/GangAlert';
 import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../../../api/rp-chat/CorpAlert';
+import { IsStaffAlert, ParseStaffAlert, STAFF_ALERT_PREFIX } from '../../../../api/rp-chat/StaffAlert';
 
 interface ChatWidgetMessageViewProps
 {
@@ -93,8 +94,10 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
     const gangAlert = IsGangAlert(chat.styleId) ? ParseGangAlert(formattedText) : null;
     // A corporation alert (:ca) arrives the same way; "[CA] Sana: hello".
     const corpAlert = (!gangAlert && IsCorpAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseCorpAlert(formattedText) : null;
-    const alert = (gangAlert || corpAlert);
-    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : CORP_ALERT_PREFIX } ${ alert.sender }` : chat.username;
+    // A staff alert (:sa) too; "[SA] Ryan: hello".
+    const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(chat.styleId)) ? ParseStaffAlert(formattedText) : null;
+    const alert = (gangAlert || corpAlert || staffAlert);
+    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : chat.username;
     const displayText = alert ? alert.message : formattedText;
 
     return (

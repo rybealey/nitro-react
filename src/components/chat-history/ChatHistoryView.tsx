@@ -1,27 +1,32 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
-import { AddEventLinkTracker, ChatEntryType, IChatEntry, LocalizeText, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, ChatEntryType, GetSessionDataManager, IChatEntry, LocalizeText, RemoveLinkEventTracker } from '../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../api/rp-chat/NarratedBubble';
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../api/rp-chat/GangAlert';
 import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../api/rp-chat/CorpAlert';
+import { IsStaffAlert, ParseStaffAlert, STAFF_ALERT_MIN_RANK, STAFF_ALERT_PREFIX } from '../../api/rp-chat/StaffAlert';
 import { InfiniteScroll, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useChatHistory } from '../../hooks';
 import { UsernameIconGlyph } from '../rp-settings/UsernameIconGlyph';
 
-type HistoryTab = 'all' | 'mentions' | 'gang' | 'corp';
+type HistoryTab = 'all' | 'mentions' | 'gang' | 'corp' | 'staff';
 
-const TABS: { id: HistoryTab; label: string }[] = [
+// shortLabel is what a tab reads as when the bar is crowded - see visibleTabs.
+const TABS: { id: HistoryTab; label: string; shortLabel?: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'mentions', label: 'Mentions' },
     { id: 'gang', label: 'Gang' },
-    { id: 'corp', label: 'Corporation' }
+    { id: 'corp', label: 'Corporation', shortLabel: 'Corp' },
+    // Staff only - see visibleTabs.
+    { id: 'staff', label: 'Staff' }
 ];
 
 const EMPTY_TEXT: { [tab in HistoryTab]: string } = {
     all: 'Nothing said yet this session.',
     mentions: 'Nobody has @ mentioned you yet.',
     gang: 'No gang chat yet. Send some with :ga.',
-    corp: 'No corporation chat yet. Clock in and send some with :ca.'
+    corp: 'No corporation chat yet. Clock in and send some with :ca.',
+    staff: 'No staff chat yet. Send some with :sa.'
 };
 
 // All has no label: it is the whole log, and saying so said nothing.
@@ -29,14 +34,16 @@ const FOOTER_TEXT: { [tab in HistoryTab]: string } = {
     all: '',
     mentions: 'Lines that @ mention you',
     gang: 'Gang chat this session',
-    corp: 'Corporation chat this session'
+    corp: 'Corporation chat this session',
+    staff: 'Staff chat this session'
 };
 
 const CLEAR_LABEL: { [tab in HistoryTab]: string } = {
     all: 'Clear chat history',
     mentions: 'Clear mentions',
     gang: 'Clear gang chat',
-    corp: 'Clear corporation chat'
+    corp: 'Clear corporation chat',
+    staff: 'Clear staff chat'
 };
 
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -67,19 +74,20 @@ export const ChatHistoryView: FC<{}> = props =>
     const {
         chatHistory = [], mentions = [], mentionsUnread = 0, clearMentionsUnread = null,
         gangChat = [], gangUnread = 0, clearGangUnread = null,
-        corpChat = [], corpUnread = 0, clearCorpUnread = null, clearHistory = null
+        corpChat = [], corpUnread = 0, clearCorpUnread = null,
+        staffChat = [], staffUnread = 0, clearStaffUnread = null, clearHistory = null
     } = useChatHistory();
 
     const query = searchText.trim().toLowerCase();
 
     const rows = useMemo(() =>
     {
-        const source = ((tab === 'mentions') ? mentions : (tab === 'gang') ? gangChat : (tab === 'corp') ? corpChat : chatHistory);
+        const source = ((tab === 'mentions') ? mentions : (tab === 'gang') ? gangChat : (tab === 'corp') ? corpChat : (tab === 'staff') ? staffChat : chatHistory);
 
         if(!query.length) return source;
 
         return source.filter(entry => (((entry.text || entry.message) && (entry.text || entry.message).toLowerCase().includes(query)) || (entry.name && entry.name.toLowerCase().includes(query))));
-    }, [ chatHistory, mentions, gangChat, corpChat, query, tab ]);
+    }, [ chatHistory, mentions, gangChat, corpChat, staffChat, query, tab ]);
 
     // The list holds still while you read: a new line lands below and nothing
     // moves. It goes to the newest line only when you open the window, change
@@ -113,6 +121,11 @@ export const ChatHistoryView: FC<{}> = props =>
 
     useEffect(() =>
     {
+        if(isVisible && (tab === 'staff') && clearStaffUnread) clearStaffUnread();
+    }, [ isVisible, tab, staffChat.length ]);
+
+    useEffect(() =>
+    {
         const linkTracker: ILinkEventTracker = {
             linkReceived: (url: string) =>
             {
@@ -143,12 +156,22 @@ export const ChatHistoryView: FC<{}> = props =>
 
     if(!isVisible) return null;
 
+    // The Staff tab is only worth showing to somebody :sa reaches. Read at
+    // render: the rank arrives with UserRights, after the window may mount.
+    const visibleTabs = TABS.filter(entry => ((entry.id !== 'staff') || (GetSessionDataManager().securityLevel >= STAFF_ALERT_MIN_RANK)));
+    // Five tabs do not fit the bar once unread counts appear - measured at 339px
+    // against 290 at the default width. Crowded, the tabs tighten and the
+    // longest label shortens; the scroll in ChatHistoryView.scss is the last
+    // resort below that. Four tabs always fit, so players never see this.
+    const crowded = (visibleTabs.length > 4);
+
     const unreadOf = (id: HistoryTab) =>
     {
         if(id === tab) return 0;
         if(id === 'mentions') return mentionsUnread;
         if(id === 'gang') return gangUnread;
         if(id === 'corp') return corpUnread;
+        if(id === 'staff') return staffUnread;
 
         return 0;
     }
@@ -188,8 +211,9 @@ export const ChatHistoryView: FC<{}> = props =>
         // Gang and Corporation tabs read exactly like the line in the room.
         const gangAlert = IsGangAlert(row.style) ? ParseGangAlert(message) : null;
         const corpAlert = (!gangAlert && IsCorpAlert(row.style, row.chatType, row.name, row.text)) ? ParseCorpAlert(message) : null;
-        const alert = (gangAlert || corpAlert);
-        const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : CORP_ALERT_PREFIX } ${ alert.sender }` : row.name;
+        const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(row.style)) ? ParseStaffAlert(message) : null;
+        const alert = (gangAlert || corpAlert || staffAlert);
+        const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : row.name;
         const displayText = alert ? alert.message : message;
 
         return (
@@ -218,15 +242,15 @@ export const ChatHistoryView: FC<{}> = props =>
     return (
         <NitroCardView resizable uniqueKey="chat-history" className="nitro-chat-history" theme="primary-slim">
             <NitroCardHeaderView headerText={ LocalizeText('room.chathistory.button.text') } onCloseClick={ event => setIsVisible(false) }/>
-            <div className="rp-ch-tabs" role="tablist" aria-label="Chat history views">
-                { TABS.map(entry =>
+            <div className={ 'rp-ch-tabs' + (crowded ? ' is-crowded' : '') } role="tablist" aria-label="Chat history views">
+                { visibleTabs.map(entry =>
                 {
                     const count = unreadOf(entry.id);
 
                     return (
-                        <button key={ entry.id } type="button" role="tab" aria-selected={ (entry.id === tab) }
+                        <button key={ entry.id } type="button" role="tab" aria-selected={ (entry.id === tab) } title={ (crowded && entry.shortLabel) ? entry.label : undefined }
                             className={ 'rp-ch-tab' + ((entry.id === tab) ? ' is-active' : '') } onClick={ () => setTab(entry.id) }>
-                            { entry.label }
+                            { (crowded && entry.shortLabel) ? entry.shortLabel : entry.label }
                             { (count > 0) && <span className="rp-ch-count">{ count }</span> }
                         </button>
                     );
