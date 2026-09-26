@@ -170,6 +170,18 @@
     &.is-urgent { background: var(--hud-danger, #e03131); }
 }
 
+// A proposal wears bubble 16's pinks - the relationship bubble :propose was
+// asked in - where a sale wears the HUD orange. Only the accent changes; the
+// expiring red still wins, because running out of time means the same thing
+// on either card.
+.rp-offer.is-proposal {
+    .rp-offer-mark { color: #ff567a; }
+
+    .rp-offer-kicker:not(.is-urgent) { color: #ff567a; }
+
+    .rp-offer-rail-fill:not(.is-urgent) { background: linear-gradient(90deg, #ff567a, #ffbac0); }
+}
+
 // Up from the bar it belongs to, not down from nowhere.
 @keyframes rp-offer-in {
     from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.98); }

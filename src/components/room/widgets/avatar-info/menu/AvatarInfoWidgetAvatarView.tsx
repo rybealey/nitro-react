@@ -1,10 +1,9 @@
-import { RoomControllerLevel, RoomObjectCategory, RoomObjectVariable, RoomUnitGiveHandItemComposer, SetRelationshipStatusComposer, TradingOpenComposer } from '@nitrots/nitro-renderer';
+import { RoomControllerLevel, RoomObjectCategory, RoomObjectVariable, RoomUnitGiveHandItemComposer, TradingOpenComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetOwnRoomObject, GetSessionDataManager, GetUserProfile, LocalizeText, MessengerFriend, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
+import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetOwnRoomObject, GetSessionDataManager, GetUserProfile, LocalizeText, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
 import { RpGangInviteComposer, RpUserGangEvent } from '../../../../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../../../../api/rp-gangs/RpGangRegistry';
-import { Base, Flex } from '../../../../../common';
 import { useFriends, useHelp, useMessageEvent, useRoom, useSessionInfo } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
@@ -22,7 +21,6 @@ const MODE_MODERATE_BAN = 2;
 const MODE_MODERATE_MUTE = 3;
 const MODE_AMBASSADOR = 4;
 const MODE_AMBASSADOR_MUTE = 5;
-const MODE_RELATIONSHIP = 6;
 
 export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = props =>
 {
@@ -142,10 +140,6 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                 case 'friend':
                     CreateLinkEvent(`friends/request/${ avatarInfo.webID }/${ avatarInfo.name }`);
                     break;
-                case 'relationship':
-                    hideMenu = false;
-                    setMode(MODE_RELATIONSHIP);
-                    break;
                 case 'ignore':
                     GetSessionDataManager().ignoreUser(avatarInfo.name);
                     break;
@@ -212,18 +206,6 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                 case 'ambassador_mute_18hour':
                     roomSession.sendMuteMessage(avatarInfo.webID, 1080);
                     break;
-                case 'rship_heart':
-                    SendMessageComposer(new SetRelationshipStatusComposer(avatarInfo.webID, MessengerFriend.RELATIONSHIP_HEART));
-                    break;
-                case 'rship_smile':
-                    SendMessageComposer(new SetRelationshipStatusComposer(avatarInfo.webID, MessengerFriend.RELATIONSHIP_SMILE));
-                    break;
-                case 'rship_bobba':
-                    SendMessageComposer(new SetRelationshipStatusComposer(avatarInfo.webID, MessengerFriend.RELATIONSHIP_BOBBA));
-                    break;
-                case 'rship_none':
-                    SendMessageComposer(new SetRelationshipStatusComposer(avatarInfo.webID, MessengerFriend.RELATIONSHIP_NONE));
-                    break;
             }
         }
 
@@ -256,11 +238,9 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         <ContextMenuListItemView onClick={ event => processAction('invite_to_gang') }>
                             Invite to Gang
                         </ContextMenuListItemView> }
-                    { !canRequestFriend(avatarInfo.webID) &&
-                        <ContextMenuListItemView onClick={ event => processAction('relationship') }>
-                            { LocalizeText('infostand.link.relationship') }
-                            <FaChevronRight className="right fa-icon" />
-                        </ContextMenuListItemView> }
+                    { /* pixelrp: no Relationship item. Relationships are earned now -
+                         a partnership made with :propose - and never picked from
+                         here; the server ignores the packet this used to send. */ }
                     { !avatarInfo.isIgnored &&
                         <ContextMenuListItemView onClick={ event => processAction('ignore') }>
                             { LocalizeText('infostand.button.ignore') }
@@ -376,27 +356,6 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         { LocalizeText('infostand.button.mute_18hour') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back_ambassador') }>
-                        <FaChevronLeft className="left fa-icon" />
-                        { LocalizeText('generic.back') }
-                    </ContextMenuListItemView>
-                </> }
-            { (mode === MODE_RELATIONSHIP) &&
-                <>
-                    <Flex className="menu-list-split-3">
-                        <ContextMenuListItemView onClick={ event => processAction('rship_heart') }>
-                            <Base pointer className="nitro-friends-spritesheet icon-heart" />
-                        </ContextMenuListItemView>
-                        <ContextMenuListItemView onClick={ event => processAction('rship_smile') }>
-                            <Base pointer className="nitro-friends-spritesheet icon-smile" />
-                        </ContextMenuListItemView>
-                        <ContextMenuListItemView onClick={ event => processAction('rship_bobba') }>
-                            <Base pointer className="nitro-friends-spritesheet icon-bobba" />
-                        </ContextMenuListItemView>
-                    </Flex>
-                    <ContextMenuListItemView onClick={ event => processAction('rship_none') }>
-                        { LocalizeText('avatar.widget.clear_relationship') }
-                    </ContextMenuListItemView>
-                    <ContextMenuListItemView onClick={ event => processAction('back') }>
                         <FaChevronLeft className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
