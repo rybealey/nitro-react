@@ -553,22 +553,29 @@ const useCatalogState = () =>
             return;
         }
 
-        if(searchResult) setSearchResult(null);
-
-        setIsBusy(false);
-
         // `chosen` comes from a ref, `pageId` from this handler's render. The
         // chosen page's response can land before the render that followed the
         // click has re-registered this handler, so `pageId` here can still be
-        // the page from before it - the chosen page then went unshown, the
-        // cleared search sent the player back to what they had browsed
-        // before searching, and nothing seemed to open.
-        rpCatalogTrace('page decision', { page: parser.pageId, chosen, show: (chosen || (pageId === parser.pageId)) });
+        // the page from before it.
+        const show = (chosen || (pageId === parser.pageId));
 
-        if(chosen || (pageId === parser.pageId))
+        rpCatalogTrace('page decision', { page: parser.pageId, chosen, show });
+
+        // THE PAGE GOES IN FIRST. use-between runs this hook's effects
+        // synchronously inside every setter, so each set below is seen at
+        // once by the effects that watch it. Cleared search and not busy while
+        // the search results were still the current page is exactly what the
+        // search-clear effect answers by going back to the page browsed before
+        // searching - it did, before the chosen page could replace them, and
+        // the chosen category never stayed open.
+        if(show)
         {
             showCatalogPage(parser.pageId, parser.layoutCode, new PageLocalization(parser.localization.images.concat(), parser.localization.texts.concat()), purchasableOffers, parser.offerId, parser.acceptSeasonCurrencyAsCredits);
         }
+
+        if(searchResult) setSearchResult(null);
+
+        setIsBusy(false);
     });
 
     useMessageEvent<PurchaseOKMessageEvent>(PurchaseOKMessageEvent, event =>
@@ -960,7 +967,8 @@ const useCatalogState = () =>
 
     useEffect(() =>
     {
-        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1))
+        // Not while a chosen page is on its way: it replaces the results itself.
+        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1) && (chosenPageId.current === -1))
         {
             rpCatalogTrace('search cleared -> back to previous page', { previousPageId });
             openPageById(previousPageId);
