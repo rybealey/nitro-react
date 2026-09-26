@@ -1,26 +1,15 @@
-import { ColorConverter } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useMemo, useState } from 'react';
-import { GetAvatarPalette, GetAvatarSetType, SendMessageComposer } from '../../api';
+import { FC, useState } from 'react';
+import { SendMessageComposer } from '../../api';
 import { RpBuyGangComposer, RpGangRespondInviteComposer } from '../../api/rp-gangs/RpGangMessages';
 import { FormatGangCountdown, GangIncomingInvite } from '../../api/rp-gangs/RpGangTypes';
 import { Button, Column, Flex, LayoutCurrencyIcon } from '../../common';
+import { GangColourPicker, HexToColourInt } from './GangColourPicker';
+import { GANG_COLOURS } from './GangColours';
 import { GangCrest } from './GangCrest';
 
 type EditingColor = 'primary' | 'secondary';
 
 const GANG_NAME_MAX_LENGTH = 29;
-// the clothing palette - the big standard color grid in Choose Your Looks
-const PALETTE_SET_TYPE = 'ch';
-
-// '#rrggbb', 'rrggbb' or 'rgb(r, g, b)' -> raw RGB int for the wire
-const cssColorToInt = (value: string): number =>
-{
-    const matches = value.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/);
-
-    if(matches) return ((parseInt(matches[1]) << 16) + (parseInt(matches[2]) << 8) + parseInt(matches[3]));
-
-    return (parseInt(value.replace('#', ''), 16) || 0);
-}
 
 interface GangCreateViewProps
 {
@@ -33,48 +22,16 @@ interface GangCreateViewProps
 
 // The window's no-gang state: any invites waiting on the player first (accept
 // or decline right there), then the founding form - crest + name, the palette
-// tabs (the open tab IS the colour being edited), and cost + Create as one
-// control.
+// tabs over the gang colour palette (GangColourPicker), and cost + Create as
+// one control. The colours default to the palette's first two.
 export const GangCreateView: FC<GangCreateViewProps> = props =>
 {
     const { gangCost = 0, buyPending = false, onBuy = null, incomingInvites = [], nowSeconds = 0 } = props;
     const [ gangName, setGangName ] = useState('');
     const [ editing, setEditing ] = useState<EditingColor>('primary');
-    const [ primaryHex, setPrimaryHex ] = useState<string>(null);
-    const [ secondaryHex, setSecondaryHex ] = useState<string>(null);
+    const [ primaryHex, setPrimaryHex ] = useState<string>(GANG_COLOURS[0]);
+    const [ secondaryHex, setSecondaryHex ] = useState<string>(GANG_COLOURS[1]);
 
-    // The Choose Your Looks clothing palette, as CSS colors. Figure data is
-    // loaded long before any window opens in-room, but guard anyway.
-    const palette = useMemo(() =>
-    {
-        const setType = GetAvatarSetType(PALETTE_SET_TYPE);
-
-        if(!setType) return [];
-
-        const avatarPalette = GetAvatarPalette(setType.paletteID);
-
-        if(!avatarPalette) return [];
-
-        const colors: string[] = [];
-
-        for(const partColor of avatarPalette.colors.getValues())
-        {
-            if(partColor && partColor.isSelectable) colors.push(ColorConverter.int2rgb(partColor.rgb));
-        }
-
-        return colors;
-    }, []);
-
-    // default the two gang colors to the palette's first entries once known
-    useEffect(() =>
-    {
-        if(palette.length < 2) return;
-
-        setPrimaryHex(prevValue => (prevValue ?? palette[0]));
-        setSecondaryHex(prevValue => (prevValue ?? palette[1]));
-    }, [ palette ]);
-
-    const activeHex = ((editing === 'primary') ? primaryHex : secondaryHex);
     const canCreate = (!!gangName.trim() && !!primaryHex && !!secondaryHex && !buyPending);
 
     const selectColor = (color: string) =>
@@ -88,7 +45,7 @@ export const GangCreateView: FC<GangCreateViewProps> = props =>
         if(!canCreate) return;
 
         onBuy && onBuy();
-        SendMessageComposer(new RpBuyGangComposer(gangName.trim(), cssColorToInt(primaryHex), cssColorToInt(secondaryHex)));
+        SendMessageComposer(new RpBuyGangComposer(gangName.trim(), HexToColourInt(primaryHex), HexToColourInt(secondaryHex)));
     }
 
     return (
@@ -117,24 +74,7 @@ export const GangCreateView: FC<GangCreateViewProps> = props =>
                 <input className="form-control" type="text" placeholder="Enter gang name..." maxLength={ GANG_NAME_MAX_LENGTH }
                     value={ gangName } onChange={ event => setGangName(event.target.value) } />
             </Flex>
-            <Column gap={ 0 }>
-                { /* the pickers are tabs attached to the palette: the open
-                     tab IS the color being edited */ }
-                <Flex gap={ 1 } className="gang-palette-tabs">
-                    <Flex center pointer gap={ 1 } className={ `gang-palette-tab${ (editing === 'primary') ? ' is-active' : '' }` } onClick={ () => setEditing('primary') }>
-                        <span className="gang-tab-swatch" style={ { backgroundColor: primaryHex } } /> PRIMARY
-                    </Flex>
-                    <Flex center pointer gap={ 1 } className={ `gang-palette-tab${ (editing === 'secondary') ? ' is-active' : '' }` } onClick={ () => setEditing('secondary') }>
-                        <span className="gang-tab-swatch" style={ { backgroundColor: secondaryHex } } /> SECONDARY
-                    </Flex>
-                </Flex>
-                <div className="gang-color-grid">
-                    { palette.map((color, index) => (
-                        <div key={ index } className={ `gang-color-swatch cursor-pointer${ (color === activeHex) ? ' is-selected' : '' }` }
-                            style={ { backgroundColor: color } } onClick={ () => selectColor(color) } />
-                    )) }
-                </div>
-            </Column>
+            <GangColourPicker editing={ editing } onEditing={ setEditing } primary={ primaryHex } secondary={ secondaryHex } onPick={ selectColor } />
             <Flex className="gang-create-row">
                 <Flex center gap={ 1 } className="gang-create-cost">
                     <LayoutCurrencyIcon type={ -1 } /> { gangCost }

@@ -10,6 +10,7 @@ import { GangCreateView } from './GangCreateView';
 import { GangInfoTab } from './GangInfoTab';
 import { GangInvitesTab } from './GangInvitesTab';
 import { GangManageTab } from './GangManageTab';
+import { GangSettingsTab } from './GangSettingsTab';
 
 // the profile's gang card imports the crest from here
 export { GangCrest } from './GangCrest';
@@ -26,7 +27,8 @@ export { GangCrest } from './GangCrest';
 // player. The server pushes a fresh detail to every online member after any
 // change, so nothing here re-requests after acting.
 
-type GangTab = 'info' | 'manage' | 'invites';
+// the strip reads Info, Manage, Settings, Invite
+type GangTab = 'info' | 'manage' | 'settings' | 'invites';
 
 export const RpGangsView: FC<{}> = props =>
 {
@@ -155,15 +157,17 @@ export const RpGangsView: FC<{}> = props =>
     const viewDetail = ((viewingOther && detail && (detail.gangId === viewGangId)) ? detail : null);
     const canManage = (!!detail && (HasGangPermission(detail.permissions, GANG_PERM_ADMIN) || HasGangPermission(detail.permissions, GANG_PERM_KICK)));
     const canInvite = (!!detail && HasGangPermission(detail.permissions, GANG_PERM_INVITE));
-    const showTabs = (inGang && !viewingOther && (canManage || canInvite));
+    // Settings (colours + rename) is the owner's and the admins'
+    const canSettings = (!!detail && HasGangPermission(detail.permissions, GANG_PERM_ADMIN));
+    const showTabs = (inGang && !viewingOther && (canManage || canInvite || canSettings));
     // Only the in-a-gang window resizes: the no-gang one is sized to its form.
     const isMember = (inGang || viewingOther);
 
     // a permission that went away (role changed under us) drops the viewer back to Info
     useEffect(() =>
     {
-        if(((currentTab === 'manage') && !canManage) || ((currentTab === 'invites') && !canInvite)) setCurrentTab('info');
-    }, [ currentTab, canManage, canInvite ]);
+        if(((currentTab === 'manage') && !canManage) || ((currentTab === 'invites') && !canInvite) || ((currentTab === 'settings') && !canSettings)) setCurrentTab('info');
+    }, [ currentTab, canManage, canInvite, canSettings ]);
 
     // The corner grip writes an inline size. Leaving the gang (or a gang being
     // viewed) while the window is open would carry that size onto the no-gang
@@ -190,8 +194,10 @@ export const RpGangsView: FC<{}> = props =>
                     <NitroCardTabsItemView isActive={ currentTab === 'info' } onClick={ () => setCurrentTab('info') }>Info</NitroCardTabsItemView>
                     { canManage &&
                         <NitroCardTabsItemView isActive={ currentTab === 'manage' } onClick={ () => setCurrentTab('manage') }>Manage</NitroCardTabsItemView> }
+                    { canSettings &&
+                        <NitroCardTabsItemView isActive={ currentTab === 'settings' } onClick={ () => setCurrentTab('settings') }>Settings</NitroCardTabsItemView> }
                     { canInvite &&
-                        <NitroCardTabsItemView isActive={ currentTab === 'invites' } onClick={ () => setCurrentTab('invites') }>Invites</NitroCardTabsItemView> }
+                        <NitroCardTabsItemView isActive={ currentTab === 'invites' } onClick={ () => setCurrentTab('invites') }>Invite</NitroCardTabsItemView> }
                 </NitroCardTabsView> }
             <NitroCardContentView className="text-black">
                 { viewingOther && !viewDetail &&
@@ -205,7 +211,9 @@ export const RpGangsView: FC<{}> = props =>
                 { !viewingOther && inGang && detail && (currentTab === 'info') &&
                     <GangInfoTab detail={ detail } /> }
                 { !viewingOther && inGang && detail && (currentTab === 'manage') && canManage &&
-                    <GangManageTab detail={ detail } ownUserId={ ownUserId } onInvite={ () => setCurrentTab('invites') } /> }
+                    <GangManageTab detail={ detail } ownUserId={ ownUserId } /> }
+                { !viewingOther && inGang && detail && (currentTab === 'settings') && canSettings &&
+                    <GangSettingsTab detail={ detail } /> }
                 { !viewingOther && inGang && detail && (currentTab === 'invites') && canInvite &&
                     <GangInvitesTab detail={ detail } nowSeconds={ nowSeconds } /> }
             </NitroCardContentView>

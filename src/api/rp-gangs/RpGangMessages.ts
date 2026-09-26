@@ -22,6 +22,9 @@ const RP_GANG_SAVE_ROLE = 3982;
 const RP_GANG_DELETE_ROLE = 3983;
 const RP_GANG_SET_MEMBER_ROLE = 3984;
 const RP_GANG_REORDER_ROLES = 3985;
+const RP_GANG_RENAME = 4058;
+const RP_GANG_SET_COLOURS = 4059;
+const RP_GANG_TRANSFER_OWNERSHIP = 4060;
 
 // One player's gang membership, keyed by user id; gangId 0 = not in a gang.
 // Colours arrive as '#rrggbb'. gangCost (credits) rides along so the Gang
@@ -141,8 +144,9 @@ export class RpGangDetailParser implements IMessageParser
         }
 
         const inviteHours = wrapper.readInt();
+        const renameCost = wrapper.readInt();
 
-        this._detail = { gangId, name, colourA, colourB, ownerId, ownerName, level, xp, xpCap, createdAt, permissions, roles, members, invites, inviteHours };
+        this._detail = { gangId, name, colourA, colourB, ownerId, ownerName, level, xp, xpCap, createdAt, permissions, roles, members, invites, inviteHours, renameCost };
 
         return true;
     }
@@ -283,7 +287,7 @@ export class RpGangRespondInviteComposer extends RpGangComposer
     }
 }
 
-// leave - or, for the leader, disband
+// leave - or, for the owner, disband
 export class RpGangLeaveComposer extends RpGangComposer
 {
     constructor()
@@ -317,7 +321,7 @@ export class RpGangDeleteRoleComposer extends RpGangComposer
     }
 }
 
-// roleId 0 = plain Member
+// move a member into one of the gang's roles (every member is in a real role)
 export class RpGangSetMemberRoleComposer extends RpGangComposer
 {
     constructor(userId: number, roleId: number)
@@ -326,12 +330,39 @@ export class RpGangSetMemberRoleComposer extends RpGangComposer
     }
 }
 
-// the custom roles' new top-to-bottom order
+// the roles' new top-to-bottom order
 export class RpGangReorderRolesComposer extends RpGangComposer
 {
     constructor(roleIds: number[])
     {
         super(roleIds.length, ...roleIds);
+    }
+}
+
+// Settings tab: a new gang name (unique, costs detail.renameCost credits)
+export class RpGangRenameComposer extends RpGangComposer
+{
+    constructor(name: string)
+    {
+        super(name);
+    }
+}
+
+// Settings tab: the gang's two colours as raw RGB ints, like founding
+export class RpGangSetColoursComposer extends RpGangComposer
+{
+    constructor(colourA: number, colourB: number)
+    {
+        super(colourA, colourB);
+    }
+}
+
+// Manage tab, owner only: hand the gang to another member
+export class RpGangTransferOwnershipComposer extends RpGangComposer
+{
+    constructor(userId: number)
+    {
+        super(userId);
     }
 }
 
@@ -366,7 +397,10 @@ export const RegisterRpGangMessages = () =>
             [ RP_GANG_SAVE_ROLE, RpGangSaveRoleComposer ],
             [ RP_GANG_DELETE_ROLE, RpGangDeleteRoleComposer ],
             [ RP_GANG_SET_MEMBER_ROLE, RpGangSetMemberRoleComposer ],
-            [ RP_GANG_REORDER_ROLES, RpGangReorderRolesComposer ]
+            [ RP_GANG_REORDER_ROLES, RpGangReorderRolesComposer ],
+            [ RP_GANG_RENAME, RpGangRenameComposer ],
+            [ RP_GANG_SET_COLOURS, RpGangSetColoursComposer ],
+            [ RP_GANG_TRANSFER_OWNERSHIP, RpGangTransferOwnershipComposer ]
         ])
     });
 

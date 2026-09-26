@@ -1,23 +1,18 @@
 import { FC } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RpGangLeaveComposer } from '../../api/rp-gangs/RpGangMessages';
-import { FormatGangDate, GANG_PERM_LEADER, GangDetail, GangMember, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
+import { GANG_PERM_LEADER, GangDetail, GangMember, GangRole, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
 import { Button } from '../../common';
 import { useNotification } from '../../hooks';
 import { GangCrest } from './GangCrest';
 import { GangPortrait, OpenGangMemberProfile } from './GangPortrait';
 
-interface RosterGroup
-{
-    key: string;
-    name: string;
-    members: GangMember[];
-}
-
 // What every member sees: the identity header, the level bar (filled with the
-// gang's primary colour) and the roster grouped by role - leader first, the
-// custom roles in their order, plain members last - like the corporation
-// rank ladder. Leave Gang lives here because plain members only see this tab.
+// gang's primary colour) and the roster, one group per role in ladder order.
+// Every role is a real one now - there is no implicit Leader or Member group -
+// and who owns the gang is not shown here (only the Manage tab tags the
+// owner, for the owner and admins). Offline members are greyed out and carry
+// no dot. Only the owner can disband; everyone else sees Leave Gang.
 interface GangInfoTabProps
 {
     detail: GangDetail;
@@ -26,21 +21,32 @@ interface GangInfoTabProps
     onBack?: () => void;
 }
 
+// Each role with its members, in ladder order. A member whose role the
+// packet doesn't carry (never expected) falls into the bottom role rather
+// than vanishing from the roster.
+export const GangRoleGroups = (roles: GangRole[], members: GangMember[]): { role: GangRole, members: GangMember[] }[] =>
+{
+    const known = new Set(roles.map(role => role.id));
+    const bottomId = (roles.length ? roles[roles.length - 1].id : 0);
+
+    return roles.map(role => ({
+        role,
+        members: members
+            .filter(member => ((member.roleId === role.id) || ((role.id === bottomId) && !known.has(member.roleId))))
+            .sort((a, b) => a.username.localeCompare(b.username))
+    }));
+}
+
 export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, onBack = null }) =>
 {
     const { showConfirm = null } = useNotification();
-    const isLeader = HasGangPermission(detail.permissions, GANG_PERM_LEADER);
+    const isOwner = HasGangPermission(detail.permissions, GANG_PERM_LEADER);
     const onlineCount = detail.members.filter(member => member.online).length;
-
-    const groups: RosterGroup[] = [
-        { key: 'leader', name: 'Leader', members: detail.members.filter(member => (member.userId === detail.ownerId)) },
-        ...detail.roles.map(role => ({ key: `role-${ role.id }`, name: role.name, members: detail.members.filter(member => ((member.roleId === role.id) && (member.userId !== detail.ownerId))) })),
-        { key: 'member', name: 'Member', members: detail.members.filter(member => ((member.roleId === 0) && (member.userId !== detail.ownerId))) }
-    ];
+    const groups = GangRoleGroups(detail.roles, detail.members);
 
     const leave = () =>
     {
-        if(isLeader)
+        if(isOwner)
         {
             showConfirm(`Disband ${ detail.name }? Every member is let go and the gang is gone for good.`, () => SendMessageComposer(new RpGangLeaveComposer()), () => {}, 'Disband', 'Keep it', 'Disband gang');
             return;
@@ -57,10 +63,10 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, on
                 </div>
                 <div className="gang-head-info">
                     <div className="gang-title">{ detail.name }</div>
-                    <div className="gang-sub">Led by { detail.ownerName } · { detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' } · founded { FormatGangDate(detail.createdAt) }</div>
+                    <div className="gang-sub">{ detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' }</div>
                 </div>
                 { !readOnly &&
-                    <Button variant="danger" onClick={ leave }>{ isLeader ? 'Disband Gang' : 'Leave Gang' }</Button> }
+                    <Button variant="danger" onClick={ leave }>{ isOwner ? 'Disband Gang' : 'Leave Gang' }</Button> }
                 { readOnly && onBack &&
                     <span className="gang-chrome-btn" onClick={ onBack }>My gang</span> }
             </div>
@@ -72,23 +78,22 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, on
                 <div className="gang-level-value">{ detail.xp } / { detail.xpCap }</div>
             </div>
             <div className="gang-legend">
-                <span className="gang-legend-item"><i className="gang-dot" />Offline</span>
                 <span className="gang-legend-item"><i className="gang-dot is-online" />Online · { onlineCount }</span>
             </div>
             <div className="gang-roster">
-                { groups.map((group, index) => (
-                    <div key={ group.key } className="gang-group">
+                { groups.map(({ role, members }, index) => (
+                    <div key={ role.id } className="gang-group">
                         <div className="gang-group-head">
-                            <span className={ `gang-group-name${ (index === 0) ? ' is-top' : '' }` }>{ group.name }</span>
-                            <span className="gang-group-count">{ group.members.length }</span>
+                            <span className={ `gang-group-name${ (index === 0) ? ' is-top' : '' }` }>{ role.name }</span>
                         </div>
-                        { (group.members.length === 0) &&
+                        { (members.length === 0) &&
                             <div className="gang-group-none">No members</div> }
-                        { (group.members.length > 0) &&
+                        { (members.length > 0) &&
                             <div className="gang-members-grid">
-                                { group.members.map(member => (
-                                    <div key={ member.userId } className="gang-member-card" title={ `${ member.username} - ${ member.online ? 'Online' : 'Offline' }` } onClick={ () => OpenGangMemberProfile(member) }>
-                                        <span className={ `gang-dot gang-member-status${ member.online ? ' is-online' : '' }` } />
+                                { members.map(member => (
+                                    <div key={ member.userId } className={ `gang-member-card${ member.online ? '' : ' is-offline' }` } title={ `${ member.username } - ${ member.online ? 'Online' : 'Offline' }` } onClick={ () => OpenGangMemberProfile(member) }>
+                                        { member.online &&
+                                            <span className="gang-dot gang-member-status is-online" /> }
                                         <GangPortrait figure={ member.figure } online={ member.online } />
                                         <div className="gang-member-info">
                                             <div className="gang-member-name">{ member.username }</div>

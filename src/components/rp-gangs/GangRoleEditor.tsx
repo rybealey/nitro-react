@@ -9,8 +9,8 @@ interface GangRoleEditorProps
 {
     // null = a new role
     role: GangRole;
-    // only the leader may grant Administrator
-    isLeader: boolean;
+    // false for the gang's last role - a gang always keeps one
+    canDelete: boolean;
     onClose: () => void;
 }
 
@@ -21,22 +21,20 @@ const PERMISSIONS: { bit: number, label: string }[] = [
     { bit: GANG_PERM_ADMIN, label: 'Administrator' }
 ];
 
-// The Add / Edit Role popover: anchored under the roles header, over the
-// list. Name, four permission switches (the settings-window switch), Save;
-// an existing role also gets Delete.
-export const GangRoleEditor: FC<GangRoleEditorProps> = ({ role, isLeader, onClose }) =>
+// The Add / Edit Role popover. It hangs under the button that opened it (Add
+// Role, or that role's Edit) - the caller wraps the button in a positioned
+// box - so it floats over the ladder and never resizes the window. Name, four
+// permission switches (the owner and admins may both grant Administrator),
+// Cancel / Save; an existing role also gets Delete Role unless it is the
+// gang's last one.
+export const GangRoleEditor: FC<GangRoleEditorProps> = ({ role, canDelete, onClose }) =>
 {
     const { showConfirm = null } = useNotification();
     const [ name, setName ] = useState(role?.name ?? '');
     const [ flags, setFlags ] = useState(role?.flags ?? 0);
     const canSave = (name.trim().length > 0);
 
-    const toggle = (bit: number) =>
-    {
-        if((bit === GANG_PERM_ADMIN) && !isLeader) return;
-
-        setFlags(prevValue => (prevValue ^ bit));
-    }
+    const toggle = (bit: number) => setFlags(prevValue => (prevValue ^ bit));
 
     const save = () =>
     {
@@ -50,7 +48,7 @@ export const GangRoleEditor: FC<GangRoleEditorProps> = ({ role, isLeader, onClos
     {
         if(!role) return;
 
-        showConfirm(`Delete the ${ role.name } role? Its members become plain members.`, () =>
+        showConfirm(`Delete the ${ role.name } role? Its members move to the bottom role.`, () =>
         {
             SendMessageComposer(new RpGangDeleteRoleComposer(role.id));
             onClose();
@@ -58,17 +56,17 @@ export const GangRoleEditor: FC<GangRoleEditorProps> = ({ role, isLeader, onClos
     }
 
     return (
-        <div className="gang-popover">
+        <div className="gang-popover" onClick={ event => event.stopPropagation() }>
+            <span className="gang-popover-arrow" />
             <input className="form-control" type="text" placeholder="Role name" maxLength={ GANG_ROLE_NAME_MAX_LENGTH } autoFocus
                 value={ name } onChange={ event => setName(event.target.value) } onKeyDown={ event => ((event.key === 'Enter') && save()) } />
             <div className="gang-popover-perms">
                 { PERMISSIONS.map(permission =>
                 {
                     const on = ((flags & permission.bit) !== 0);
-                    const locked = ((permission.bit === GANG_PERM_ADMIN) && !isLeader);
 
                     return (
-                        <div key={ permission.bit } className={ `gang-perm${ locked ? ' is-locked' : '' }` } title={ locked ? 'Only the leader can grant Administrator' : '' } onClick={ () => toggle(permission.bit) }>
+                        <div key={ permission.bit } className="gang-perm" onClick={ () => toggle(permission.bit) }>
                             <span className="gang-perm-label">{ permission.label }</span>
                             <span className={ `gang-switch${ on ? ' is-on' : '' }` }><span /></span>
                         </div>
@@ -76,8 +74,8 @@ export const GangRoleEditor: FC<GangRoleEditorProps> = ({ role, isLeader, onClos
                 }) }
             </div>
             <div className="gang-popover-actions">
-                { role &&
-                    <span className="gang-link-danger" onClick={ remove }>Delete Role</span> }
+                { role && canDelete &&
+                    <Button variant="danger" className="gang-popover-delete" onClick={ remove }>Delete Role</Button> }
                 <span className="gang-chrome-btn" onClick={ onClose }>Cancel</span>
                 <Button variant="success" disabled={ !canSave } onClick={ save }>Save</Button>
             </div>

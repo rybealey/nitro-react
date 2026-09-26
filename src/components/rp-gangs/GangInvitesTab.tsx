@@ -7,7 +7,7 @@ import { GangPortrait } from './GangPortrait';
 
 // Send an invite by name at the top; the pending invites below show who sent
 // them and the time left, with Cancel to revoke. Only players with the invite
-// permission see this tab.
+// permission see this tab (labelled Invite, the last tab).
 export const GangInvitesTab: FC<{ detail: GangDetail, nowSeconds: number }> = ({ detail, nowSeconds }) =>
 {
     const [ username, setUsername ] = useState('');
@@ -34,7 +34,6 @@ export const GangInvitesTab: FC<{ detail: GangDetail, nowSeconds: number }> = ({
             <div className="gang-section gang-section-grow">
                 <div className="gang-section-head">
                     <span className="gang-section-label">Pending</span>
-                    <span className="gang-group-count">{ detail.invites.length }</span>
                 </div>
                 <div className="gang-list gang-list-scroll">
                     { (detail.invites.length === 0) &&

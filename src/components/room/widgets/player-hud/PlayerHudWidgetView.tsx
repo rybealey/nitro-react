@@ -480,7 +480,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             </span>
                         </HoverBubble>
                         { targetGang &&
-                            <HoverBubble text={ `${ targetGang.name } · ${ targetGang.isOwner ? 'Leader' : 'Member' }` } placement="bottom">
+                            <HoverBubble text={ targetGang.name } placement="bottom">
                                 <span className="hud-gang" onClick={ () => CreateLinkEvent(`rp-gangs/view/${ targetGang.gangId }`) }>
                                     { /* 56 to match .hud-avatar, so the crest reads as
                                          the portrait's equal rather than a footnote

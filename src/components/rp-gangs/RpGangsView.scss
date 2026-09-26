@@ -1,7 +1,7 @@
 // Gang window. The no-gang state is content-height (invites + the founding
 // form); once the player is in a gang the window opens at 520x540 (resizable
 // from the corner) and the
-// tabs (Info / Manage / Invites) take over - each tab lays its sections out
+// tabs (Info / Manage / Settings / Invite) take over - each tab lays its sections out
 // in the content column and scrolls its own list, never the whole card.
 
 $gang-online: #2e9e4f;
@@ -98,6 +98,9 @@ $gang-state-off: #b23b3b;
         &:hover { filter: brightness(1.25); }
 
         &.is-small { padding: 3px 10px; }
+
+        // Transfer Ownership: set apart from the chrome buttons beside it
+        &.is-amber { background: #b45309; }
     }
 
     .gang-dot {
@@ -319,6 +322,29 @@ $gang-state-off: #b23b3b;
         }
     }
 
+    .is-offline {
+        .gang-portrait,
+        .gang-member-name {
+            filter: grayscale(1);
+            opacity: 0.45;
+        }
+    }
+
+    // Manage only - who owns the gang is shown to the owner and admins alone
+    .gang-owner-tag {
+        align-self: flex-start;
+        display: inline-block;
+        margin-bottom: 2px;
+        padding: 1px 5px;
+        border-radius: 6px;
+        background: var(--prp-chrome-solid);
+        color: $white;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+    }
+
     .gang-member-status {
         position: absolute;
         top: 5px;
@@ -455,13 +481,20 @@ $gang-state-off: #b23b3b;
     .gang-ladder { gap: 8px; }
 
     .gang-group-card {
+        position: relative;
         padding: 0;
-        overflow: hidden;
         flex-shrink: 0;
-        transition: opacity .15s ease, box-shadow .15s ease;
+        transition: opacity .15s ease, box-shadow .15s ease, border-color .15s ease;
 
-        &.is-draggable .gang-group-band { cursor: grab; }
         &.is-dragging { opacity: 0.5; border-style: dashed; }
+
+        // a member card is being dragged over this role
+        &.is-target {
+            border-color: var(--prp-chrome-solid);
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
+
+            .gang-group-band { background: #e6e6ea; }
+        }
     }
 
     .gang-group-band {
@@ -472,12 +505,71 @@ $gang-state-off: #b23b3b;
         padding: 7px 10px 7px 8px;
         background: #f3f3f5;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 6px 6px 0 0;
+
+        &.is-draggable { cursor: grab; }
     }
+
+    .gang-band-spacer { flex: 1; }
 
     .gang-group-empty {
         padding: 8px 10px;
         font-size: 11px;
         color: rgba(0, 0, 0, 0.4);
+    }
+
+    .gang-manage-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        padding: 6px;
+    }
+
+    .gang-manage-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+        padding: 5px 6px 6px 5px;
+        border-radius: $border-radius;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.9), inset 0 -2px rgba(0, 0, 0, 0.1), 0 1px rgba(0, 0, 0, 0.1);
+
+        &.is-movable { cursor: grab; }
+        &.is-dragging { opacity: 0.45; border-style: dashed; }
+
+        .gang-member-info {
+            display: flex;
+            flex-direction: column;
+        }
+    }
+
+    .gang-manage-card-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .gang-manage-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .gang-role-select {
+            flex: 1;
+            min-width: 0;
+            width: auto;
+            height: 26px;
+            padding: 0 6px;
+        }
+
+        .gang-kick-btn {
+            min-height: 26px;
+            padding: 2px 7px;
+        }
     }
 
     .gang-member-line {
@@ -524,7 +616,9 @@ $gang-state-off: #b23b3b;
 
         &:focus { outline: none; border-color: var(--prp-chrome-solid); }
 
-        // the leader, and anyone an admin may not reassign
+        &.is-wide { width: 100%; }
+
+        // anyone the viewer may not move
         &.is-static {
             cursor: default;
             opacity: 0.55;
@@ -536,9 +630,21 @@ $gang-state-off: #b23b3b;
 
     // ---- Add / Edit Role popover ----------------------------------------
 
+    .gang-section-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    // the button a popover belongs to sits in one of these
+    .gang-pop-anchor {
+        position: relative;
+        flex-shrink: 0;
+    }
+
     .gang-popover {
         position: absolute;
-        top: 100%;
+        top: calc(100% + 8px);
         right: 0;
         z-index: 5;
         width: 300px;
@@ -546,12 +652,35 @@ $gang-state-off: #b23b3b;
         flex-direction: column;
         gap: 8px;
         padding: 10px;
-        margin-top: 6px;
+        cursor: default;
+        text-align: left;
+
+        &.is-narrow { width: 280px; }
         background: $light;
         border: 1px solid $border-color;
         border-radius: 6px;
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
     }
+
+    // points up at the button that opened the popover
+    .gang-popover-arrow {
+        position: absolute;
+        top: -6px;
+        right: 16px;
+        width: 10px;
+        height: 10px;
+        background: $light;
+        border-left: 1px solid $border-color;
+        border-top: 1px solid $border-color;
+        transform: rotate(45deg);
+    }
+
+    .gang-popover-title {
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .gang-popover-delete { margin-right: auto; }
 
     .gang-popover-perms {
         display: grid;
@@ -626,6 +755,79 @@ $gang-state-off: #b23b3b;
         cursor: pointer;
 
         &:hover { text-decoration: underline; }
+    }
+
+    // ---- Settings tab ---------------------------------------------------
+
+    .gang-rename {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        align-self: flex-start;
+        margin-left: -6px;
+        padding: 2px 6px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.2;
+        cursor: text;
+
+        svg { flex-shrink: 0; color: rgba(0, 0, 0, 0.35); }
+
+        &:hover {
+            background: $white;
+            border-color: rgba(0, 0, 0, 0.15);
+
+            svg { color: rgba(0, 0, 0, 0.7); }
+        }
+    }
+
+    .gang-rename-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .gang-rename-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .form-control {
+            flex: 1;
+            min-width: 0;
+            font-weight: 700;
+        }
+    }
+
+    // cost tab + button read as one control, like founding's
+    .gang-cost-button {
+        display: flex;
+        flex-shrink: 0;
+
+        .btn { border-radius: 0 $border-radius $border-radius 0; }
+    }
+
+    .gang-cost-tab {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        background: rgba(40, 63, 93, 0.85);
+        border-radius: $border-radius 0 0 $border-radius;
+        color: $white;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .gang-settings-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
     }
 
     // ---- Invites tab ----------------------------------------------------

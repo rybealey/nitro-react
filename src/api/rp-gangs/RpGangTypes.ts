@@ -1,12 +1,14 @@
 import { HotelDate } from '../prefs/HotelTime';
 // Shapes of the gang detail packets (RpGangDetailEvent / RpGangInvitesEvent)
-// and the permission bits the emulator's GangManager hands out. The leader
-// holds every bit; Administrator implies invite + kick and unlocks the role
-// and member management on the Manage tab.
+// and the permission bits the emulator's GangManager hands out. The OWNER
+// (whoever founded the gang, or was handed it) holds every bit; only they can
+// disband or transfer it, and they can't be kicked. Administrator implies
+// invite + kick and unlocks the Manage and Settings tabs.
 export const GANG_PERM_INVITE = 1;
 export const GANG_PERM_KICK = 2;
 export const GANG_PERM_BANK = 4;
 export const GANG_PERM_ADMIN = 8;
+// the owner's bit (the wire name predates the owner rules)
 export const GANG_PERM_LEADER = 16;
 
 export const GANG_ROLE_NAME_MAX_LENGTH = 29;
@@ -24,7 +26,7 @@ export interface GangMember
     userId: number;
     username: string;
     figure: string;
-    // 0 = plain Member (no custom role)
+    // the role they're ranked in - every member is in a real role
     roleId: number;
     online: boolean;
     joinedAt: number;
@@ -67,6 +69,8 @@ export interface GangDetail
     members: GangMember[];
     invites: GangInvite[];
     inviteHours: number;
+    // credits to rename the gang (Settings tab)
+    renameCost: number;
 }
 
 export const HasGangPermission = (permissions: number, bit: number): boolean => ((permissions & bit) !== 0);

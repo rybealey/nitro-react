@@ -267,7 +267,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                             { gang &&
                                 <div className="phone-wallet-row">
                                     <div className="phone-wallet-row-icon"><GangCrest primary={ gang.colourA } secondary={ gang.colourB } size={ 22 } /></div>
-                                    <div className="phone-wallet-row-text"><b>{ gang.name }</b> · { gang.isOwner ? 'Leader' : 'Member' }</div>
+                                    <div className="phone-wallet-row-text"><b>{ gang.name }</b>{ gang.isOwner ? ' · Owner' : '' }</div>
                                 </div> }
                         </div> }
                     </div>
