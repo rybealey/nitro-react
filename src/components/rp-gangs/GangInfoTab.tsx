@@ -16,9 +16,8 @@ import { GangPortrait, OpenGangMemberProfile } from './GangPortrait';
 interface GangInfoTabProps
 {
     detail: GangDetail;
-    // someone else's gang: no Leave / Disband, and a way back to your own
+    // someone else's gang: no Leave / Disband, and no button at all
     readOnly?: boolean;
-    onBack?: () => void;
 }
 
 // Each role with its members, in ladder order. A member whose role the
@@ -37,7 +36,7 @@ export const GangRoleGroups = (roles: GangRole[], members: GangMember[]): { role
     }));
 }
 
-export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, onBack = null }) =>
+export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) =>
 {
     const { showConfirm = null } = useNotification();
     const isOwner = HasGangPermission(detail.permissions, GANG_PERM_LEADER);
@@ -67,8 +66,6 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, on
                 </div>
                 { !readOnly &&
                     <Button variant="danger" onClick={ leave }>{ isOwner ? 'Disband Gang' : 'Leave Gang' }</Button> }
-                { readOnly && onBack &&
-                    <span className="gang-chrome-btn" onClick={ onBack }>My gang</span> }
             </div>
             <div className="gang-card gang-level">
                 <div className="gang-level-label">Level { detail.level }</div>

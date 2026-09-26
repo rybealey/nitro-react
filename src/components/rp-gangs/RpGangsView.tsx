@@ -203,7 +203,7 @@ export const RpGangsView: FC<{}> = props =>
                 { viewingOther && !viewDetail &&
                     <div className="gang-empty">Loading…</div> }
                 { viewingOther && viewDetail &&
-                    <GangInfoTab detail={ viewDetail } readOnly onBack={ inGang ? () => { setDetail(null); setViewGangId(0); } : null } /> }
+                    <GangInfoTab detail={ viewDetail } readOnly /> }
                 { !viewingOther && !inGang &&
                     <GangCreateView gangCost={ gangCost } buyPending={ buyPending } onBuy={ () => setBuyPending(true) } incomingInvites={ incomingInvites } nowSeconds={ nowSeconds } /> }
                 { !viewingOther && inGang && !detail &&
