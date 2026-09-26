@@ -274,7 +274,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                             const lastSeenLabel = (employee.online ? 'Now' : FormatLastOnline(employee.lastOnline, tickNow));
 
                                                             return (
-                                                                <div key={ employee.username } className="rp-corps-employee" title={ `${ rankLabel } - ${ statusWord }` }
+                                                                <div key={ employee.username } className={ `rp-corps-employee${ (employee.online || employee.onDuty) ? '' : ' is-offline' }` } title={ `${ rankLabel } - ${ statusWord }` }
                                                                     onClick={ () =>
                                                                     {
                                                                         RpProfileState.name = employee.username;
@@ -309,11 +309,11 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                          greyed-out avatar alone says it */ }
                                                                     { (employee.onDuty || employee.online) &&
                                                                         <span className={ `rp-corps-dot rp-corps-employee-status ${ employee.onDuty ? 'is-onduty' : 'is-online' }` } /> }
-                                                                    { /* portrait tint doubles as the presence signal:
-                                                                         gray offline, green online, blue on duty - and
-                                                                         an offline avatar is itself greyed out */ }
-                                                                    <div className={ `rp-corps-employee-portrait${ employee.onDuty ? ' is-onduty' : (employee.online ? ' is-online' : ' is-offline') }` }>
-                                                                        <LayoutAvatarImageView figure={ employee.figure } direction={ 2 } />
+                                                                    { /* the Gang window's card: head-only sprite at
+                                                                         native size, no mask or tint - presence is the
+                                                                         dot, and an offline employee is greyed out */ }
+                                                                    <div className="rp-corps-employee-portrait">
+                                                                        <LayoutAvatarImageView figure={ employee.figure } headOnly={ true } direction={ 2 } />
                                                                     </div>
                                                                     <div className="rp-corps-employee-info">
                                                                         <div className="rp-corps-employee-name-row">
