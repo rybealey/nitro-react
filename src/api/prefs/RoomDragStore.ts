@@ -4,24 +4,23 @@ import { useEffect, useState } from 'react';
 // the frame-rate cap - it describes this machine's mouse or trackpad, not the
 // player's account, so it does not follow them to another computer.
 //
-// WHY IT EXISTS. With the left button doing both, a press cannot know whether
-// it is a click or the start of a pan, so DispatchMouseEvent waits a moment to
-// see if the mouse moves. A MacBook trackpad rests between the press and the
-// slide for longer than that wait, so the press becomes a walk and the pan is
-// lost. Moving the pan to the right button takes the guess away entirely: a
-// left press is a click at once, and a right press is the pan.
+// It was added when a left press became a walk after 40ms held still, which
+// lost the pan on a MacBook trackpad. That early click is gone (clicks are on
+// release again), so the left button always pans; the setting now decides
+// whether the RIGHT button pans too, with the browser menu blocked over the
+// room so it does not swallow the drag.
 //
-//   left  - the left button pans, as it always has (the default)
-//   right - the right button pans; a left press is a click the moment it lands
-//   both  - either button pans
+//   left  - only the left button pans (the default)
+//   right - the right button pans as well
+//   both  - the same as right
 
 export type RoomDragButton = 'left' | 'right' | 'both';
 
 export const ROOM_DRAG_BUTTONS: RoomDragButton[] = [ 'left', 'right', 'both' ];
 
 // How far a press may travel and still be a click rather than a drag. Shared
-// by the early click and the right-button macro so the two agree on what a
-// drag is.
+// by the double-click pairing and the right-button macro so the two agree on
+// what a drag is.
 export const ROOM_DRAG_STILL_PX = 5;
 
 const DRAG_KEY = 'pixelrp.prefs.room.drag';
@@ -42,8 +41,6 @@ catch(e)
 const listeners = new Set<() => void>();
 
 export const GetRoomDragButton = (): RoomDragButton => chosen;
-
-export const RoomDragUsesLeft = (): boolean => (chosen !== 'right');
 
 export const RoomDragUsesRight = (): boolean => (chosen !== 'left');
 

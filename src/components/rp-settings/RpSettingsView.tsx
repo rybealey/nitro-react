@@ -1561,7 +1561,7 @@ export const RpSettingsView: FC<{}> = props =>
                             <div className="rp-settings-section">
                                 <div className="rp-settings-section-info">
                                     <Text bold>Drag the Room</Text>
-                                    <Text small className="text-muted">Which mouse button pans the room. On a trackpad, try Right click.</Text>
+                                    <Text small className="text-muted">The left button always pans. Right click or Either lets the right button pan too.</Text>
                                 </div>
                                 <div className="rp-settings-choice" role="radiogroup" aria-label="Drag the room with">
                                     { ROOM_DRAG_BUTTONS.map(button => (
