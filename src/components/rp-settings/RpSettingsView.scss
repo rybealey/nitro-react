@@ -777,13 +777,16 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
     // Personalization > Chat Bubble (Settings Sidebar canvas, E): every style
     // the player may pick, drawn as a real bubble with no tile behind it, in
-    // equal cells so the rows line up whatever each art's shape: exactly five a
-    // row of a FIXED 96px (the widest style plus its 9px side overhangs), so a
-    // resized window never widens the gaps. The window's min-width is what
-    // guarantees the five fit. 48px leaves room for the tallest styles' pointers.
+    // equal cells so the rows line up whatever each art's shape. Cells are a
+    // FIXED 96px (the widest style plus its 9px side overhangs): a wider window
+    // fits more a row instead of widening the gaps, and the leftover (always
+    // under one cell) is split either side rather than left as a strip on the
+    // right. The window's min-width guarantees at least five fit. 48px leaves
+    // room for the tallest styles' pointers.
     .rp-settings-bubbles {
         display: grid;
-        grid-template-columns: repeat(5, 96px);
+        grid-template-columns: repeat(auto-fill, 96px);
+        justify-content: center;
         gap: 2px;
     }
 
