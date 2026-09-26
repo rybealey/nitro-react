@@ -64,23 +64,6 @@ export const CatalogSpacesWidgetView: FC<CatalogSpacesWidgetViewProps> = props =
             }
         }
 
-        // pixelrp: TEMPORARY diagnostic. On beta every group came up empty, and
-        // nothing in the client explains why, so say what the page did hold.
-        if(groupedOffers.some(group => !group.length))
-        {
-            console.warn('[pixelrp spaces] empty group', {
-                floors: groupedOffers[0].length, walls: groupedOffers[1].length, views: groupedOffers[2].length,
-                offers: currentPage.offers.length,
-                sample: currentPage.offers.slice(0, 8).map(offer => ({
-                    pricingModel: offer.pricingModel,
-                    productType: offer.product?.productType,
-                    classId: offer.product?.productClassId,
-                    className: offer.product?.furnitureData?.className ?? null,
-                    extraParam: offer.product?.extraParam
-                }))
-            });
-        }
-
         setGroupedOffers(groupedOffers);
         setSelectedGroupIndex(0);
         setSelectedOfferForGroup([ groupedOffers[0][0], groupedOffers[1][0], groupedOffers[2][0] ]);
