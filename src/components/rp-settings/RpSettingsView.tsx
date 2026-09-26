@@ -1444,7 +1444,6 @@ export const RpSettingsView: FC<{}> = props =>
                                 <div className="rp-settings-stack-head">
                                     <div className="rp-settings-stack-head-text">
                                         <Text bold>Name Color</Text>
-                                        <Text small className="text-muted">The color of your username in your chat bubbles.</Text>
                                     </div>
                                     <Text small bold className="rp-settings-stack-choice">
                                         { (usernameColor === DEFAULT_USERNAME_COLOR) ? 'Black (default)' : (USERNAME_COLORS.find(entry => (entry.color === usernameColor))?.name ?? '') }
@@ -1464,7 +1463,6 @@ export const RpSettingsView: FC<{}> = props =>
                                 <div className="rp-settings-stack-head">
                                     <div className="rp-settings-stack-head-text">
                                         <Text bold>Icon</Text>
-                                        <Text small className="text-muted">An icon before your name in chat.</Text>
                                     </div>
                                     <Text small bold className="rp-settings-stack-choice">
                                         { USERNAME_ICONS.find(entry => ((entry.iconClass ?? '') === usernameIcon))?.name ?? '' }
