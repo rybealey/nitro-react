@@ -1446,7 +1446,7 @@ export const RpSettingsView: FC<{}> = props =>
                                         <Text bold>Name Color</Text>
                                     </div>
                                     <Text small bold className="rp-settings-stack-choice">
-                                        { (usernameColor === DEFAULT_USERNAME_COLOR) ? 'Black (default)' : (USERNAME_COLORS.find(entry => (entry.color === usernameColor))?.name ?? '') }
+                                        { USERNAME_COLORS.find(entry => (entry.color === usernameColor))?.name ?? '' }
                                     </Text>
                                 </div>
                                 <div className="rp-settings-swatches rp-settings-swatches--wide">
