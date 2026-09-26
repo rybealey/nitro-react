@@ -547,7 +547,13 @@ const useCatalogState = () =>
 
         setIsBusy(false);
 
-        if(pageId === parser.pageId)
+        // `chosen` comes from a ref, `pageId` from this handler's render. The
+        // chosen page's response can land before the render that followed the
+        // click has re-registered this handler, so `pageId` here can still be
+        // the page from before it - the chosen page then went unshown, the
+        // cleared search sent the player back to what they had browsed
+        // before searching, and nothing seemed to open.
+        if(chosen || (pageId === parser.pageId))
         {
             showCatalogPage(parser.pageId, parser.layoutCode, new PageLocalization(parser.localization.images.concat(), parser.localization.texts.concat()), purchasableOffers, parser.offerId, parser.acceptSeasonCurrencyAsCredits);
         }
