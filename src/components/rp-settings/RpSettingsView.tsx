@@ -1445,9 +1445,6 @@ export const RpSettingsView: FC<{}> = props =>
                                     <div className="rp-settings-stack-head-text">
                                         <Text bold>Name Color</Text>
                                     </div>
-                                    <Text small bold className="rp-settings-stack-choice">
-                                        { USERNAME_COLORS.find(entry => (entry.color === usernameColor))?.name ?? '' }
-                                    </Text>
                                 </div>
                                 <div className="rp-settings-swatches rp-settings-swatches--wide">
                                     { USERNAME_COLORS.map(entry => (
@@ -1464,9 +1461,6 @@ export const RpSettingsView: FC<{}> = props =>
                                     <div className="rp-settings-stack-head-text">
                                         <Text bold>Icon</Text>
                                     </div>
-                                    <Text small bold className="rp-settings-stack-choice">
-                                        { USERNAME_ICONS.find(entry => ((entry.iconClass ?? '') === usernameIcon))?.name ?? '' }
-                                    </Text>
                                 </div>
                                 <div className="rp-settings-swatches rp-settings-swatches--wide">
                                     { USERNAME_ICONS.map(entry => (

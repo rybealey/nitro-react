@@ -748,7 +748,6 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
-    // Title and description on the left, the current choice's name on the right.
     .rp-settings-stack-head {
         display: flex;
         align-items: flex-end;
@@ -760,11 +759,6 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         display: flex;
         flex-direction: column;
         gap: 2px;
-    }
-
-    .rp-settings-stack-choice {
-        flex-shrink: 0;
-        white-space: nowrap;
     }
 
     // Section that doesn't apply to the current selection (e.g. Icon Color
