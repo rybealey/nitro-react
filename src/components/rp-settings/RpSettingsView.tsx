@@ -1,10 +1,11 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
-import { FC, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
-import { useMessageEvent } from '../../hooks';
+import { useMessageEvent, useSessionInfo } from '../../hooks';
+import { GetSelectableChatStyleIds } from './ChatStyles';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
@@ -37,6 +38,8 @@ const GENERAL_PAGES: string[] = [ 'Performance', 'Controls' ];
 // Personalization tab sub-pages (left rail), grouped under the Username
 // eyebrow; the chat-bubble preview shows on both.
 const PERSONALIZATION_PAGES: string[] = [ 'Name Color', 'Icon' ];
+// ...and the Chat group below it: the whole bubble, not just the name.
+const CHAT_PAGES: string[] = [ 'Chat Bubble' ];
 
 // Interface tab sub-pages (left rail).
 const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
@@ -99,6 +102,10 @@ export const RpSettingsView: FC<{}> = props =>
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const { maxFps } = useFpsPref();
     const { dragButton } = useRoomDragPref();
+    // Personalization > Chat Bubble saves the same setting as the picker
+    // beside the chat box (RoomUnitChatStyleComposer), from the same list.
+    const { chatStyleId = 0, updateChatStyleId = null } = useSessionInfo();
+    const chatStyleIds = useMemo(() => (isVisible ? GetSelectableChatStyleIds() : []), [ isVisible ]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
@@ -1418,13 +1425,21 @@ export const RpSettingsView: FC<{}> = props =>
                                     { page }
                                 </div>
                             )) }
+                            <div className="prp-subnav-eyebrow">Chat</div>
+                            { CHAT_PAGES.map(page => (
+                                <div key={ page }
+                                    className={ `prp-subnav-item ${ (personalPage === page) ? 'is-active' : '' }` }
+                                    onClick={ () => setPersonalPage(page) }>
+                                    { page }
+                                </div>
+                            )) }
                         </div>
                         <Column gap={ 2 } className="prp-subnav-page">
                             <div className="rp-settings-preview">
                                 <Text small className="text-muted">Preview</Text>
                                 <div className="bubble-container" style={ { position: 'relative' } }>
                                     <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
-                                    <div className="chat-bubble bubble-0 type-0" style={ { maxWidth: '100%' } }>
+                                    <div className={ `chat-bubble bubble-${ chatStyleId } type-0` } style={ { maxWidth: '100%' } }>
                                         <div className="user-container">
                                             { previewFigure?.imageUrl &&
                                                 <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
@@ -1469,6 +1484,33 @@ export const RpSettingsView: FC<{}> = props =>
                                             onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
                                             <UsernameIconGlyph iconClass={ entry.iconClass } />
                                         </div>
+                                    )) }
+                                </div>
+                            </div> }
+                            { (personalPage === 'Chat Bubble') &&
+                            <div className="rp-settings-stack-section">
+                                <div className="rp-settings-stack-head">
+                                    <div className="rp-settings-stack-head-text">
+                                        <Text bold>Chat Bubble</Text>
+                                    </div>
+                                </div>
+                                <div className="rp-settings-bubbles" role="radiogroup" aria-label="Chat bubble">
+                                    { chatStyleIds.map(styleId => (
+                                        <button key={ styleId } type="button" role="radio" aria-checked={ (chatStyleId === styleId) }
+                                            aria-label={ `Bubble ${ styleId }` } title={ `Bubble ${ styleId }` }
+                                            className={ `rp-settings-bubble ${ (chatStyleId === styleId) ? 'is-selected' : '' }` }
+                                            onClick={ () => updateChatStyleId(styleId) }>
+                                            <div className="bubble-container" style={ { position: 'relative' } }>
+                                                <div className="user-container-bg" />
+                                                <div className={ `chat-bubble bubble-${ styleId } type-0` }>
+                                                    <div className="user-container" />
+                                                    <div className="chat-content">
+                                                        <span className="message">Hey!</span>
+                                                    </div>
+                                                    <div className="pointer" />
+                                                </div>
+                                            </div>
+                                        </button>
                                     )) }
                                 </div>
                             </div> }

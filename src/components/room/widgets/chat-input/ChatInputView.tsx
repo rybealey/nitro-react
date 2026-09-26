@@ -1,9 +1,8 @@
-import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { RpRetainChatPrefixEvent } from '../../../../api/rp-chat/RpChatMessages';
 import { SendRpFireMacro } from '../../../../api/rp-macros/RpMacroMessages';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChatMessageTypeEnum, GetClubMemberLevel, GetConfiguration, GetSessionDataManager, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
+import { ChatMessageTypeEnum, GetConfiguration, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent, useMessageEvent } from '../../../../hooks';
 import { IsModifierOnlyBinding, IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
@@ -11,6 +10,7 @@ import { TargetState } from '../../../../hooks/rooms/targetState';
 import { ROOM_DRAG_STILL_PX, RoomDragUsesRight } from '../../../../api/prefs/RoomDragStore';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
+import { GetSelectableChatStyleIds } from '../../../rp-settings/ChatStyles';
 
 export const ChatInputView: FC<{}> = props =>
 {
@@ -329,54 +329,7 @@ export const ChatInputView: FC<{}> = props =>
         }
     });
 
-    const chatStyleIds = useMemo(() =>
-    {
-        let styleIds: number[] = [];
-
-        const styles = GetConfiguration<{ styleId: number, minRank: number, isSystemStyle: boolean, isHcOnly: boolean, isAmbassadorOnly: boolean }[]>('chat.styles');
-
-        for(const style of styles)
-        {
-            if(!style) continue;
-
-            if(style.minRank > 0)
-            {
-                if(GetSessionDataManager().hasSecurity(style.minRank)) styleIds.push(style.styleId);
-
-                continue;
-            }
-
-            if(style.isSystemStyle)
-            {
-                if(GetSessionDataManager().hasSecurity(RoomControllerLevel.MODERATOR))
-                {
-                    styleIds.push(style.styleId);
-
-                    continue;
-                }
-            }
-
-            if(GetConfiguration<number[]>('chat.styles.disabled').indexOf(style.styleId) >= 0) continue;
-
-            if(style.isHcOnly && (GetClubMemberLevel() >= HabboClubLevelEnum.CLUB))
-            {
-                styleIds.push(style.styleId);
-
-                continue;
-            }
-
-            if(style.isAmbassadorOnly && GetSessionDataManager().isAmbassador)
-            {
-                styleIds.push(style.styleId);
-
-                continue;
-            }
-
-            if(!style.isHcOnly && !style.isAmbassadorOnly) styleIds.push(style.styleId);
-        }
-
-        return styleIds;
-    }, []);
+    const chatStyleIds = useMemo(() => GetSelectableChatStyleIds(), []);
 
     useEffect(() =>
     {
