@@ -309,11 +309,12 @@ $corps-card-border: rgba(0, 0, 0, 0.09);
     // Each rank is its own padded card (Corporation UI canvas): a faint grey
     // fill a shade darker than the window, the header in a darker strip inside
     // it, and the roster below. The options column's cards share the fill.
+    // white, so the grey employee cards stand out on it (like the Gang window's role cards)
     .rp-corps-rank {
         flex-shrink: 0;
         padding: 6px;
         border-radius: 6px;
-        background: $corps-card-fill;
+        background: $white;
         border: 1px solid $corps-card-border;
     }
 
