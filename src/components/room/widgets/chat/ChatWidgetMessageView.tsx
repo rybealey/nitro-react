@@ -95,7 +95,7 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
     // A corporation alert (:ca) arrives the same way; "[Corporation] Sana: hello".
     const corpAlert = (!gangAlert && IsCorpAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseCorpAlert(formattedText) : null;
     // A staff alert (:sa) too; "[Staff] Ryan: hello".
-    const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(chat.styleId)) ? ParseStaffAlert(formattedText) : null;
+    const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseStaffAlert(formattedText) : null;
     const alert = (gangAlert || corpAlert || staffAlert);
     const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : chat.username;
     const displayText = alert ? alert.message : formattedText;

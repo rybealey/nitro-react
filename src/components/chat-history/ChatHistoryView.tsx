@@ -211,7 +211,7 @@ export const ChatHistoryView: FC<{}> = props =>
         // Gang and Corporation tabs read exactly like the line in the room.
         const gangAlert = IsGangAlert(row.style) ? ParseGangAlert(message) : null;
         const corpAlert = (!gangAlert && IsCorpAlert(row.style, row.chatType, row.name, row.text)) ? ParseCorpAlert(message) : null;
-        const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(row.style)) ? ParseStaffAlert(message) : null;
+        const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(row.style, row.chatType, row.name, row.text)) ? ParseStaffAlert(message) : null;
         const alert = (gangAlert || corpAlert || staffAlert);
         const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : row.name;
         const displayText = alert ? alert.message : message;

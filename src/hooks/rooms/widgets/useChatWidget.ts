@@ -248,8 +248,8 @@ const useChatWidgetState = () =>
         // Bubble, whisper and speaker together - see api/rp-chat/CorpAlert.ts.
         if(IsCorpAlert(styleId, chatType, username, text)) addCorpEntry({ ...entry });
 
-        // Bubble alone, like gang - see api/rp-chat/StaffAlert.ts.
-        if(IsStaffAlert(styleId)) addStaffEntry({ ...entry });
+        // Bubble, whisper and speaker together, like corp - see api/rp-chat/StaffAlert.ts.
+        if(IsStaffAlert(styleId, chatType, username, text)) addStaffEntry({ ...entry });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
