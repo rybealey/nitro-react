@@ -48,6 +48,13 @@ $corps-card-border: rgba(0, 0, 0, 0.09);
     max-width: 96vw;
     max-height: 92vh;
 
+    // The page is the pale grey the Settings and Gang windows use, not the
+    // stock $light. Four classes deep so it beats the slim theme's own
+    // content-area rule whatever the order.
+    &.theme-primary-slim .content-area {
+        background: #f3f3f5;
+    }
+
     .rp-corps-layout {
         display: flex;
         gap: 10px;
