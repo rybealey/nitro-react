@@ -3209,7 +3209,7 @@ index 0000000..19b0227
 +    }
 +}
 diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
-index 2276481..c9f237d 100644
+index 2276481..c7d6fb2 100644
 --- a/src/room/renderer/RoomSpriteCanvas.ts
 +++ b/src/room/renderer/RoomSpriteCanvas.ts
 @@ -9,7 +9,6 @@ import { Nitro } from '../../nitro/Nitro';
@@ -3220,7 +3220,7 @@ index 2276481..c9f237d 100644
  import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
-@@ -20,6 +19,33 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -20,6 +19,45 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // layer into this engine-level class.
      private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
  
@@ -3251,10 +3251,22 @@ index 2276481..c9f237d 100644
 +    // absorbing floating-point noise on a true tie.
 +    private static PIXELRP_DEPTH_TIE: number = 0.01;
 +
++    // A LYING body is the exception to the depth tie. AvatarVisualization pulls
++    // a lying body forward (relativeDepth -0.409, or -0.5 laying inside), and a
++    // knocked-out player is also lowered 0.35 into the floor by the emulator -
++    // so a standing avatar on top of them is never "level" with them, the tie
++    // never holds, and the lying body was drawn over the one standing on it.
++    // Against a lying unit the local avatar is promoted on proximity alone:
++    // within this many tiles on each axis (its own tile and the eight around
++    // it, which covers the tile a lying body stretches onto). Bodies sit at
++    // -0.01 standing, so anything below this threshold is lying.
++    private static PIXELRP_LYING_DEPTH: number = -0.3;
++    private static PIXELRP_LYING_TILES: number = 1;
++
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -64,10 +90,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -64,10 +102,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // early-return samples an offset avatar at animation FPS (~24Hz) while
      // its native location is clamped, and a released offset could latch on
      // screen until an unrelated visual update.
@@ -3265,7 +3277,7 @@ index 2276481..c9f237d 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -416,8 +439,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -416,8 +451,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
                  && a.sprite && (a.sprite.relativeDepth < 0.5)
                  && b.sprite && (b.sprite.relativeDepth < 0.5))
              {
@@ -3290,7 +3302,7 @@ index 2276481..c9f237d 100644
                  return (bUnit.id - aUnit.id);
              }
  
-@@ -426,6 +463,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -426,6 +475,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
@@ -3301,7 +3313,7 @@ index 2276481..c9f237d 100644
          let iterator = 0;
  
          while(iterator < spriteCount)
-@@ -504,7 +545,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -504,7 +557,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
  
          if(locationCache.locationChanged) update = true;
@@ -3309,7 +3321,7 @@ index 2276481..c9f237d 100644
  
          if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
          {
-@@ -542,60 +582,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -542,60 +594,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
              unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
  
@@ -3370,7 +3382,7 @@ index 2276481..c9f237d 100644
          }
          else
          {
-@@ -675,6 +661,107 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -675,6 +673,126 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          return spriteCount;
      }
  
@@ -3406,6 +3418,13 @@ index 2276481..c9f237d 100644
 +     * tile; and per-axis separation, which promoted over anyone approaching
 +     * diagonally while they were still most of a row in front.
 +     *
++     * LYING UNITS ARE THE EXCEPTION: a standing local avatar goes on top of a
++     * lying one within PIXELRP_LYING_TILES, with no depth tie - see
++     * PIXELRP_LYING_DEPTH for why the tie can never hold there. A lying unit
++     * does not move, so the one switch happens as the local avatar steps
++     * next to it; approaching from in front it is already on top and nothing
++     * changes. The local avatar lying down itself gets no exception.
++     *
 +     * WHAT IT NEVER TOUCHES. Remote-vs-remote order, shadows, positions,
 +     * timing, and depth anywhere else.
 +     */
@@ -3414,6 +3433,7 @@ index 2276481..c9f237d 100644
 +        const sprites = this._sortableSprites;
 +
 +        let ownUnit: any = null;
++        let ownLying = false;
 +        const ownStack: number[] = [];
 +
 +        for(let i = 0; i < sprites.length; i++)
@@ -3429,6 +3449,8 @@ index 2276481..c9f237d 100644
 +
 +            ownStack.push(i);
 +            ownUnit = unit;
++
++            if(sprite.relativeDepth < RoomSpriteCanvas.PIXELRP_LYING_DEPTH) ownLying = true;
 +        }
 +
 +        if(!ownUnit || !ownStack.length) return;
@@ -3446,9 +3468,18 @@ index 2276481..c9f237d 100644
 +
 +            if(!sprite || !(sprite.relativeDepth < 0.5)) continue;
 +
-+            if(Math.abs(unit.tx - ownUnit.tx) >= RoomSpriteCanvas.PIXELRP_NEAR_TILES) continue;
-+            if(Math.abs(unit.ty - ownUnit.ty) >= RoomSpriteCanvas.PIXELRP_NEAR_TILES) continue;
-+            if(Math.abs(unit.depth - ownUnit.depth) >= RoomSpriteCanvas.PIXELRP_DEPTH_TIE) continue;
++            if(!ownLying && (sprite.relativeDepth < RoomSpriteCanvas.PIXELRP_LYING_DEPTH))
++            {
++                // standing on (or right beside) someone lying down: proximity alone
++                if(Math.abs(unit.tx - ownUnit.tx) > RoomSpriteCanvas.PIXELRP_LYING_TILES) continue;
++                if(Math.abs(unit.ty - ownUnit.ty) > RoomSpriteCanvas.PIXELRP_LYING_TILES) continue;
++            }
++            else
++            {
++                if(Math.abs(unit.tx - ownUnit.tx) >= RoomSpriteCanvas.PIXELRP_NEAR_TILES) continue;
++                if(Math.abs(unit.ty - ownUnit.ty) >= RoomSpriteCanvas.PIXELRP_NEAR_TILES) continue;
++                if(Math.abs(unit.depth - ownUnit.depth) >= RoomSpriteCanvas.PIXELRP_DEPTH_TIE) continue;
++            }
 +
 +            if(i > promoteAfter) promoteAfter = i;
 +        }
