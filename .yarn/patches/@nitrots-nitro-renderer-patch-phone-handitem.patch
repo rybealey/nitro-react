@@ -2,7 +2,7 @@ diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/
 index 1111111..2222222 100644
 --- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
 +++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-@@ -9,6 +9,20 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -9,6 +9,23 @@ export class AvatarLogic extends MovingObjectLogic
  {
      private static MAX_HAND_ID: number = 999999999;
      private static MAX_HAND_USE_ID: number = 999;
@@ -19,11 +19,14 @@ index 1111111..2222222 100644
 +    // hides the glitch, an open phone does not.
 +    //
 +    // 299 is what a proposer holds while their :propose card stands.
-+    private static CARRY_ONLY_HAND_IDS: number[] = [ 244, 299 ];
++    //
++    // 400-403 are the weapons - bat, knife, axe, pistol - held while one is
++    // equipped. Carry frames only, and nobody drinks from an axe.
++    private static CARRY_ONLY_HAND_IDS: number[] = [ 244, 299, 400, 401, 402, 403 ];
      private static EFFECT_TYPE_SPLASH: number = 28;
      private static EFFECT_SPLASH_LENGTH: number = 500;
      private static EFFECT_TYPE_SWIM: number = 29;
-@@ -348,7 +362,7 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -348,7 +365,7 @@ export class AvatarLogic extends MovingObjectLogic
                  if(message.itemType < AvatarLogic.MAX_HAND_ID)
                  {
                      this._carryObjectEndTimestamp = 0;
