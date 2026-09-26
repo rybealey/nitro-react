@@ -26,13 +26,24 @@ $ch-clear: #c9453a;
         border-color: #a9b0b9;
     }
 
+    // The header runs straight into the dark tab strip, as on Settings.
+    &.theme-primary-slim .nitro-card-header {
+        border-bottom: 0;
+    }
+
+    // Styled as the Settings window's tab strip (RpSettingsView.scss, Settings
+    // Sidebar canvas D): the dark chrome plate, taller tabs standing on its
+    // bottom edge, and the open one in the page's own colour so it runs
+    // straight into the page below. Only the tab padding is tighter - this
+    // window is 300px against Settings' width, and Settings' 18px would put
+    // the four tabs past the edge.
     .rp-ch-tabs {
         flex-shrink: 0;
-        height: 38px;
+        height: 35px;
         box-sizing: border-box;
-        padding: 6px 5px;
+        padding: 0 8px;
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         // safe: centred while the tabs fit, flush left once they do not, so
         // the first tab is never pushed off the start where no scroll reaches
         justify-content: safe center;
@@ -43,8 +54,9 @@ $ch-clear: #c9453a;
         overflow-x: auto;
         overflow-y: hidden;
         scrollbar-width: none;
-        background: linear-gradient(#f3f4f6 0, #f3f4f6 5px, #e7e8eb 5px, #e7e8eb calc(100% - 4px), #dcdee2 calc(100% - 4px));
-        border-bottom: 1px solid #d0d3d8;
+        background: var(--prp-chrome-plate);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
 
         &::-webkit-scrollbar {
             display: none;
@@ -52,40 +64,41 @@ $ch-clear: #c9453a;
 
         // The Staff tab's fifth slot (see crowded in ChatHistoryView.tsx).
         &.is-crowded {
-            gap: 0;
+            gap: 1px;
 
             .rp-ch-tab {
-                padding: 0 4px;
+                padding: 0 8px;
             }
         }
     }
 
     .rp-ch-tab {
-        height: 26px;
+        flex-shrink: 0;
+        height: 29px;
         box-sizing: border-box;
-        padding: 0 7px;
+        padding: 0 12px;
         border: 0;
-        border-radius: 4px;
+        border-radius: 5px 5px 0 0;
         display: flex;
         align-items: center;
         gap: 4px;
         white-space: nowrap;
         cursor: pointer;
-        background: transparent;
+        background: rgba($light, 0.1);
         font-family: 'Ubuntu', sans-serif;
         font-size: 11.5px;
         font-weight: 700;
-        color: $ch-muted;
+        color: rgba($light, 0.72);
         transition: background 0.1s ease, color 0.1s ease;
 
         &:hover {
-            color: $ch-text;
+            background: rgba($light, 0.17);
+            color: $white;
         }
 
         &.is-active {
-            background: #ffffff;
+            background: $ch-bg;
             color: $ch-text;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px #d0d3d8;
         }
     }
 
