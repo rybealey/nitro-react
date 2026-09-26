@@ -33,11 +33,31 @@ $ch-clear: #c9453a;
         padding: 6px 5px;
         display: flex;
         align-items: center;
-        justify-content: center;
+        // safe: centred while the tabs fit, flush left once they do not, so
+        // the first tab is never pushed off the start where no scroll reaches
+        justify-content: safe center;
         gap: 2px;
-        overflow: hidden;
+        // Scrolls rather than clips when even a crowded bar will not fit (the
+        // window at its narrowest with unread counts up): every tab stays
+        // reachable. The scrollbar itself is hidden - it would not fit in 38px.
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
         background: linear-gradient(#f3f4f6 0, #f3f4f6 5px, #e7e8eb 5px, #e7e8eb calc(100% - 4px), #dcdee2 calc(100% - 4px));
         border-bottom: 1px solid #d0d3d8;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+
+        // The Staff tab's fifth slot (see crowded in ChatHistoryView.tsx).
+        &.is-crowded {
+            gap: 0;
+
+            .rp-ch-tab {
+                padding: 0 4px;
+            }
+        }
     }
 
     .rp-ch-tab {

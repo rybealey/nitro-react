@@ -24,3 +24,10 @@
 // rest of the set.
 .bubble-container .chat-bubble.bubble-200{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_200_background-01.png')}
 .bubble-container .chat-bubble.bubble-200 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_200_pointer-02.png')}
+
+// bubble 201 - staff alert (:sa). Crimson (body #ffc1bf, border #b33037), clear
+// of the gang green on 200 and the corporation blue on 11. Drawn from bubble
+// 12's artwork the same way 200 was: hue rotated (magenta to crimson) and the
+// saturated side pulled down so it reads deep rather than neon.
+.bubble-container .chat-bubble.bubble-201{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_201_background-01.png')}
+.bubble-container .chat-bubble.bubble-201 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_201_pointer-02.png')}

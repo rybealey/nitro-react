@@ -5,6 +5,7 @@ import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from 
 import { IsMentionOfMe } from '../../../api/rp-chat/Mention';
 import { IsGangAlert } from '../../../api/rp-chat/GangAlert';
 import { IsCorpAlert } from '../../../api/rp-chat/CorpAlert';
+import { IsStaffAlert } from '../../../api/rp-chat/StaffAlert';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
 
@@ -23,7 +24,7 @@ const useChatWidgetState = () =>
         protection: RoomChatSettings.FLOOD_FILTER_NORMAL
     });
     const { roomSession = null } = useRoom();
-    const { addChatEntry, addMention, addGangEntry, addCorpEntry } = useChatHistory();
+    const { addChatEntry, addMention, addGangEntry, addCorpEntry, addStaffEntry } = useChatHistory();
     const isDisposed = useRef(false);
 
     const getScrollSpeed = useMemo(() =>
@@ -246,6 +247,9 @@ const useChatWidgetState = () =>
 
         // Bubble, whisper and speaker together - see api/rp-chat/CorpAlert.ts.
         if(IsCorpAlert(styleId, chatType, username, text)) addCorpEntry({ ...entry });
+
+        // Bubble alone, like gang - see api/rp-chat/StaffAlert.ts.
+        if(IsStaffAlert(styleId)) addStaffEntry({ ...entry });
     });
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
