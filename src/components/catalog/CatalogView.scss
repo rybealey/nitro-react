@@ -96,6 +96,18 @@
         border-top: 2px solid #b6bec5;
     }
 
+    // pixelrp: group label row (page_link='heading'), e.g. Builders' Construction.
+    .nitro-catalog-navigation-heading {
+        padding: 10px 4px 2px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #3f4850;
+        cursor: default;
+        user-select: none;
+    }
+
     .layout-grid-item {
         font-size: $font-size-sm;
         height: 23px !important;

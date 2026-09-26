@@ -36,6 +36,14 @@ export const CatalogNavigationItemView: FC<CatalogNavigationItemViewProps> = pro
         return <Base className="nitro-catalog-navigation-divider" />;
     }
 
+    // pixelrp: page_link "heading" is a group label - its caption, padded, over
+    // the categories that follow it. Like a divider it is a disabled page, so
+    // it arrives with no page id and can neither be opened nor searched.
+    if(node?.pageName === 'heading')
+    {
+        return <Base className="nitro-catalog-navigation-heading">{ node.localization }</Base>;
+    }
+
     return (
         <Base className="nitro-catalog-navigation-section">
             <LayoutGridItem innerRef={ rowRef } gap={ 1 } column={ false } itemActive={ node.isActive } onClick={ event => activateNode(node) } className={ child ? 'inset' : '' }>
