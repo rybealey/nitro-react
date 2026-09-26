@@ -861,7 +861,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     }
 
     // General > Performance: the FPS setting as one white card (Settings
-    // Sidebar canvas, C's card) - title and the value box on top, the slider
+    // Sidebar canvas, C's card) - title and the value box on one line, the slider
     // the card's full width underneath.
     .rp-settings-card {
         display: flex;
@@ -887,13 +887,6 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         color: $mx-ink;
     }
 
-    .rp-settings-fps-side {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 2px;
-    }
-
     .rp-settings-fps-value {
         min-width: 48px;
         box-sizing: border-box;
@@ -908,18 +901,6 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         color: $mx-ink;
 
         span { font-size: 10px; color: $mx-muted; }
-    }
-
-    .rp-settings-link {
-        padding: 0;
-        border: 0;
-        background: transparent;
-        font-size: 10px;
-        font-weight: 700;
-        color: $mx-accent-text;
-        cursor: pointer;
-
-        &:hover { text-decoration: underline; }
     }
 
     // General > Drag the Room: one of three, as a joined row of segments. The

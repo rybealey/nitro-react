@@ -6,7 +6,7 @@ import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, Rem
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
-import { FPS_DEFAULT, FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
+import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
@@ -1544,11 +1544,7 @@ export const RpSettingsView: FC<{}> = props =>
                             <div className="rp-settings-card">
                                 <div className="rp-settings-card-head">
                                     <label htmlFor="rp-settings-fps" className="rp-settings-card-title">FPS Setting</label>
-                                    <div className="rp-settings-fps-side">
-                                        <div className="rp-settings-fps-value">{ maxFps } <span>fps</span></div>
-                                        { (maxFps !== FPS_DEFAULT) &&
-                                            <button type="button" className="rp-settings-link" onClick={ () => SetMaxFps(FPS_DEFAULT) }>Reset to { FPS_DEFAULT }</button> }
-                                    </div>
+                                    <div className="rp-settings-fps-value">{ maxFps } <span>fps</span></div>
                                 </div>
                                 <div className="rp-settings-fps">
                                     <span className="rp-settings-fps-end">{ FPS_MIN }</span>
