@@ -4,6 +4,7 @@ import { RpGangKickComposer, RpGangReorderRolesComposer, RpGangSetMemberRoleComp
 import { GANG_PERM_ADMIN, GANG_PERM_KICK, GANG_PERM_LEADER, GangDetail, GangMember, GangRole, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
 import { Button } from '../../common';
 import { useNotification } from '../../hooks';
+import { HexToRgbTriplet } from './GangColourPicker';
 import { GangCrest } from './GangCrest';
 import { GangRoleGroups } from './GangInfoTab';
 import { GangPortrait } from './GangPortrait';
@@ -208,7 +209,7 @@ export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId }) =>
                             </div> }
                     </div>
                 </div>
-                <div className="gang-list gang-list-scroll gang-ladder">
+                <div className="gang-list gang-list-scroll gang-ladder" style={ { ['--gang-rgb' as string]: HexToRgbTriplet(detail.colourA) } }>
                     { groups.map(({ role, members }) => (
                         <div key={ role.id }
                             className={ `gang-card gang-group-card${ ((drag?.kind === 'role') && (drag.id === role.id)) ? ' is-dragging' : '' }${ ((drag?.kind === 'member') && (overRoleId === role.id)) ? ' is-target' : '' }` }

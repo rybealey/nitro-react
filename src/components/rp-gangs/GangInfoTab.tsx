@@ -4,6 +4,7 @@ import { RpGangLeaveComposer } from '../../api/rp-gangs/RpGangMessages';
 import { GANG_PERM_LEADER, GangDetail, GangMember, GangRole, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
 import { Button } from '../../common';
 import { useNotification } from '../../hooks';
+import { HexToRgbTriplet } from './GangColourPicker';
 import { GangCrest } from './GangCrest';
 import { GangPortrait, OpenGangMemberProfile } from './GangPortrait';
 
@@ -77,7 +78,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
             <div className="gang-legend">
                 <span className="gang-legend-item"><i className="gang-dot is-online" />Online · { onlineCount }</span>
             </div>
-            <div className="gang-roster">
+            <div className="gang-roster" style={ { ['--gang-rgb' as string]: HexToRgbTriplet(detail.colourA) } }>
                 { groups.map(({ role, members }, index) => (
                     <div key={ role.id } className="gang-group">
                         <div className="gang-group-head">

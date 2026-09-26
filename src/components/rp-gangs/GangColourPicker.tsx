@@ -12,6 +12,15 @@ export const HexToColourInt = (value: string): number =>
     return (parseInt((value ?? '').replace('#', ''), 16) || 0);
 }
 
+// '#rrggbb' -> 'r, g, b' for the --gang-rgb custom property the member cards
+// tint themselves with (rgba(var(--gang-rgb), a) in RpGangsView.scss)
+export const HexToRgbTriplet = (value: string): string =>
+{
+    const colour = HexToColourInt(value);
+
+    return `${ (colour >> 16) & 255 }, ${ (colour >> 8) & 255 }, ${ colour & 255 }`;
+}
+
 interface GangColourPickerProps
 {
     editing: 'primary' | 'secondary';
