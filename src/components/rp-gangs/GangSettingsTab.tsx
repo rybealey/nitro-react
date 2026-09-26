@@ -77,7 +77,7 @@ export const GangSettingsTab: FC<{ detail: GangDetail }> = ({ detail }) =>
         <>
             <div className="gang-head">
                 <div className="gang-crest-plate">
-                    <GangCrest primary={ primary } secondary={ secondary } size={ 40 } />
+                    <GangCrest primary={ primary } secondary={ secondary } size={ 34 } crop />
                 </div>
                 <div className="gang-head-info">
                     { !renaming &&

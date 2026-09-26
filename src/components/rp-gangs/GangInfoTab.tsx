@@ -59,7 +59,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false, on
         <>
             <div className="gang-head">
                 <div className="gang-crest-plate">
-                    <GangCrest primary={ detail.colourA } secondary={ detail.colourB } size={ 40 } />
+                    <GangCrest primary={ detail.colourA } secondary={ detail.colourB } size={ 34 } crop />
                 </div>
                 <div className="gang-head-info">
                     <div className="gang-title">{ detail.name }</div>
