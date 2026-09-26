@@ -103,9 +103,10 @@ export class RpCatalogSearchComposer implements IMessageComposer<(string | numbe
 {
     private _data: (string | number)[];
 
-    constructor(query: string)
+    // tabId last on the wire: the emulator searches only the pages under it
+    constructor(query: string, tabId: number)
     {
-        this._data = [ query ];
+        this._data = [ query, tabId ];
     }
 
     public getMessageArray()
@@ -119,9 +120,9 @@ export class RpCatalogSearchComposer implements IMessageComposer<(string | numbe
     }
 }
 
-export const SendRpCatalogSearch = (query: string): void =>
+export const SendRpCatalogSearch = (query: string, tabId: number): void =>
 {
-    SendMessageComposer(new RpCatalogSearchComposer(query));
+    SendMessageComposer(new RpCatalogSearchComposer(query, tabId));
 }
 
 let registered = false;

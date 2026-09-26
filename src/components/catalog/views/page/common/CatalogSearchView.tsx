@@ -8,9 +8,16 @@ import { useCatalog } from '../../../../../hooks';
 export const CatalogSearchView: FC<{}> = props =>
 {
     const [ searchValue, setSearchValue ] = useState('');
-    const { currentType = null, rootNode = null, offersToNodes = null, searchResult = null, setSearchResult = null, setCurrentPage = null, setCurrentOffer } = useCatalog();
+    const { currentType = null, rootNode = null, offersToNodes = null, activeNodes = [], searchResult = null, setSearchResult = null, setCurrentPage = null, setCurrentOffer } = useCatalog();
     // Whether results for the current text were ever shown - see below.
     const hadResult = useRef(false);
+    // pixelrp: the search stays inside the tab it is typed in. activeNodes[0]
+    // is the tab of whatever is open; the server searches only the pages under
+    // it, and category matches come from that tab alone. Searching the whole
+    // catalog from Furni listed Builders' and Staff's categories too, and
+    // choosing one of those threw the shop across tabs.
+    const tabNode = ((activeNodes && activeNodes.length) ? activeNodes[0] : null);
+    const tabId = (tabNode ? tabNode.pageId : -1);
 
     useEffect(() =>
     {
@@ -55,10 +62,10 @@ export const CatalogSearchView: FC<{}> = props =>
 
         // Typing is not a query. The debounce is the server's protection as
         // much as the box's responsiveness.
-        const timeout = setTimeout(() => SendRpCatalogSearch(search), 300);
+        const timeout = setTimeout(() => SendRpCatalogSearch(search, tabId), 300);
 
         return () => clearTimeout(timeout);
-    }, [ searchValue, setSearchResult ]);
+    }, [ searchValue, tabId, setSearchResult ]);
 
     useEffect(() =>
     {
@@ -87,13 +94,13 @@ export const CatalogSearchView: FC<{}> = props =>
 
             const nodes: ICatalogNode[] = [];
 
-            FilterCatalogNode(query.toLowerCase().replace(/\s+/g, ''), [], rootNode, nodes);
+            FilterCatalogNode(query.toLowerCase().replace(/\s+/g, ''), [], (tabNode || rootNode), nodes);
 
-            setSearchResult(new SearchResult(query, offers, nodes.filter(node => (node.isVisible))));
+            setSearchResult(new SearchResult(query, offers, nodes.filter(node => (node.isVisible && (node !== tabNode)))));
             setCurrentOffer(null);
             setCurrentPage((new CatalogPage(-1, 'default_3x3', new PageLocalization([], []), offers, false, 1) as ICatalogPage));
         });
-    }, [ searchValue, rootNode, setSearchResult, setCurrentPage, setCurrentOffer ]);
+    }, [ searchValue, rootNode, tabNode, setSearchResult, setCurrentPage, setCurrentOffer ]);
 
     return (
         <Flex gap={ 1 }>
