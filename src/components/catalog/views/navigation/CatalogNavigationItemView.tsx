@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useEffect, useRef } from 'react';
 import { FaCaretDown, FaCaretUp } from 'react-icons/fa';
 import { ICatalogNode } from '../../../../api';
 import { Base, LayoutGridItem, Text } from '../../../../common';
@@ -15,7 +15,19 @@ export interface CatalogNavigationItemViewProps
 export const CatalogNavigationItemView: FC<CatalogNavigationItemViewProps> = props =>
 {
     const { node = null, child = false } = props;
-    const { activateNode = null } = useCatalog();
+    const { activateNode = null, activeNodes = [] } = useCatalog();
+    const rowRef = useRef<HTMLDivElement>();
+    // the page that is open - the last of the active path, not its ancestors
+    const isOpenPage = (!!node && (activeNodes.length > 0) && (activeNodes[activeNodes.length - 1] === node));
+
+    // pixelrp: the open page's row is brought into view. A category chosen from
+    // the search results, or reached by a Buy link, opens deep in a tree the
+    // list may be scrolled well away from; 'nearest' leaves a row that is
+    // already on screen exactly where it is, so browsing by hand never jumps.
+    useEffect(() =>
+    {
+        if(isOpenPage && rowRef.current) rowRef.current.scrollIntoView({ block: 'nearest' });
+    }, [ isOpenPage ]);
 
     // pixelrp: a page whose server-side page_link is "divider" is a non-clickable
     // visual separator in the navigation list, not a real catalog page.
@@ -26,7 +38,7 @@ export const CatalogNavigationItemView: FC<CatalogNavigationItemViewProps> = pro
 
     return (
         <Base className="nitro-catalog-navigation-section">
-            <LayoutGridItem gap={ 1 } column={ false } itemActive={ node.isActive } onClick={ event => activateNode(node) } className={ child ? 'inset' : '' }>
+            <LayoutGridItem innerRef={ rowRef } gap={ 1 } column={ false } itemActive={ node.isActive } onClick={ event => activateNode(node) } className={ child ? 'inset' : '' }>
                 <CatalogIconView icon={ node.iconId } />
                 <Text grow truncate>{ node.localization }</Text>
                 { node.isBranch &&
