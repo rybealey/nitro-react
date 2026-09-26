@@ -19,6 +19,12 @@ import { useLocalStorage, useMessageEvent } from '../../hooks';
 const DRAG_THRESHOLD: number = 6;
 const CARRY_SLOTS: number[] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
 const UNLOCKED_SLOTS: number = 10;
+// The Weapon frame: a reserved backpack row beside the carry slots. The server
+// holds the rules (RpWeapons.cs); these mirror them so a drop that would be
+// refused never lights up as a target.
+const WEAPON_SLOT: number = 101;
+const WEAPON_ITEMS: string[] = [ 'knife', 'baseball_bat', 'axe', 'stun_gun' ];
+const isWeapon = (item: string): boolean => WEAPON_ITEMS.includes(item);
 type ItemUseMode = 'single' | 'double';
 
 // item key -> display name + icon class (icons live in assets/images/rp-items)
@@ -30,6 +36,11 @@ const ITEMS: Record<string, { name: string, cls: string }> = {
     vip_token_14: { name: 'VIP Token (14 days)', cls: 'rp-item-vip-token-silver' },
     // Unlocks :spit for good; the art is the Blue Paint Splat furni's own icon.
     spit_token: { name: 'Spit Token', cls: 'rp-item-spit-token' },
+    // Weapons: use one to equip it, and it is held while equipped.
+    knife: { name: 'Knife', cls: 'rp-item-knife' },
+    baseball_bat: { name: 'Baseball Bat', cls: 'rp-item-baseball-bat' },
+    axe: { name: 'Axe', cls: 'rp-item-axe' },
+    stun_gun: { name: 'Stun Gun', cls: 'rp-item-stun-gun' },
 };
 
 interface ItemMeta { name: string; cls: string; iconUrl?: string }
@@ -219,8 +230,22 @@ export const RpInventoryView: FC<{}> = props =>
         let started = false;
 
         // A drop may land on any unlocked slot, or swap with an occupied
-        // lapsed slot (mirrors the server's placement rule).
-        const isDropTarget = (over: number) => ((over !== slot) && ((over <= unlockedSlots) || !!items.get(over)));
+        // lapsed slot (mirrors the server's placement rule). The Weapon frame
+        // takes only a weapon, and a weapon leaving it can only swap with
+        // another weapon or an empty slot.
+        const dragged = items.get(slot)?.item;
+        const isDropTarget = (over: number) =>
+        {
+            if(over === slot) return false;
+
+            if(over === WEAPON_SLOT) return isWeapon(dragged);
+
+            const target = items.get(over)?.item;
+
+            if((slot === WEAPON_SLOT) && target && !isWeapon(target)) return false;
+
+            return ((over <= unlockedSlots) || !!target);
+        }
 
         const onMove = (moveEvent: globalThis.PointerEvent) =>
         {
@@ -326,9 +351,32 @@ export const RpInventoryView: FC<{}> = props =>
                      the slots sit from each other */ }
                 <NitroCardContentView className="text-black" gap={ 1 }>
                     <div className="rp-inventory-gear">
-                        <div className="rp-inventory-slot rp-inventory-slot--gear" { ...bubbleProps('Weapon') }>
-                            <LuSwords className="rp-inventory-gear-icon" />
-                        </div>
+                        { (() =>
+                        {
+                            // The equipped weapon sits in the frame like any
+                            // slot's item: click it to put it away, drag it out,
+                            // or drop another weapon on it to swap.
+                            const equipped = items.get(WEAPON_SLOT);
+                            const meta = (equipped ? resolveItem(equipped.item) : null);
+
+                            if(equipped && meta)
+                            {
+                                return (
+                                    <div data-rp-slot={ WEAPON_SLOT }
+                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
+                                        { ...bubbleProps(`${ meta.name } (equipped)`) }
+                                        onClick={ () => onItemClick(WEAPON_SLOT) }
+                                        onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
+                                        onPointerDown={ event => onItemDown(event, WEAPON_SLOT) }>
+                                        <div className={ `rp-inventory-item ${ meta.cls }` } />
+                                    </div>);
+                            }
+
+                            return (
+                                <div data-rp-slot={ WEAPON_SLOT } className={ `rp-inventory-slot rp-inventory-slot--gear${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` } { ...bubbleProps('Weapon') }>
+                                    <LuSwords className="rp-inventory-gear-icon" />
+                                </div>);
+                        })() }
                         <div className="rp-inventory-slot rp-inventory-slot--gear" { ...bubbleProps('Armor') }>
                             <LuShield className="rp-inventory-gear-icon" />
                         </div>
