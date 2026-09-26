@@ -44,23 +44,18 @@ $ch-clear: #c9453a;
         padding: 0 8px;
         display: flex;
         align-items: flex-end;
-        // safe: centred while the tabs fit, flush left once they do not, so
-        // the first tab is never pushed off the start where no scroll reaches
-        justify-content: safe center;
+        justify-content: center;
         gap: 2px;
-        // Scrolls rather than clips when even a crowded bar will not fit (the
-        // window at its narrowest with unread counts up): every tab stays
-        // reachable. The scrollbar itself is hidden - it would not fit in 38px.
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: none;
+        // NEVER OVERFLOWS. The tabs keep their natural width while it fits and
+        // share the strip once it does not: each can shrink (min-width 0) and
+        // its label ends in an ellipsis, while the padding and the unread
+        // count hold. At the window's narrowest (260px) with all five tabs and
+        // four counts up, those fixed parts come to under 200px, so there is
+        // always room left for the labels. Nothing scrolls, nothing is cut.
+        overflow: hidden;
         background: var(--prp-chrome-plate);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-
-        &::-webkit-scrollbar {
-            display: none;
-        }
 
         // The Staff tab's fifth slot (see crowded in ChatHistoryView.tsx).
         &.is-crowded {
@@ -73,7 +68,8 @@ $ch-clear: #c9453a;
     }
 
     .rp-ch-tab {
-        flex-shrink: 0;
+        flex: 0 1 auto;
+        min-width: 0;
         height: 29px;
         box-sizing: border-box;
         padding: 0 12px;
@@ -102,7 +98,15 @@ $ch-clear: #c9453a;
         }
     }
 
+    // the part of a tab that gives way when the strip is short of room
+    .rp-ch-tab-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .rp-ch-count {
+        flex-shrink: 0;
         min-width: 14px;
         height: 14px;
         box-sizing: border-box;

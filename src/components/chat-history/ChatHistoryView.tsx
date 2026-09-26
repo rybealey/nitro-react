@@ -161,8 +161,9 @@ export const ChatHistoryView: FC<{}> = props =>
     const visibleTabs = TABS.filter(entry => ((entry.id !== 'staff') || (GetSessionDataManager().securityLevel >= STAFF_ALERT_MIN_RANK)));
     // Five tabs do not fit the bar once unread counts appear - measured at 339px
     // against 290 at the default width. Crowded, the tabs tighten and the
-    // longest label shortens; the scroll in ChatHistoryView.scss is the last
-    // resort below that. Four tabs always fit, so players never see this.
+    // longest label shortens; below that the labels themselves give way to an
+    // ellipsis (ChatHistoryView.scss), so the bar never overflows. Every tab
+    // carries its full name as a tooltip for exactly that case.
     const crowded = (visibleTabs.length > 4);
 
     const unreadOf = (id: HistoryTab) =>
@@ -248,10 +249,11 @@ export const ChatHistoryView: FC<{}> = props =>
                     const count = unreadOf(entry.id);
 
                     return (
-                        <button key={ entry.id } type="button" role="tab" aria-selected={ (entry.id === tab) } title={ (crowded && entry.shortLabel) ? entry.label : undefined }
+                        <button key={ entry.id } type="button" role="tab" aria-selected={ (entry.id === tab) } title={ entry.label }
                             className={ 'rp-ch-tab' + ((entry.id === tab) ? ' is-active' : '') } onClick={ () => setTab(entry.id) }>
-                            { (crowded && entry.shortLabel) ? entry.shortLabel : entry.label }
-                            { (count > 0) && <span className="rp-ch-count">{ count }</span> }
+                            { /* its own element so a squeezed tab can end in an ellipsis */ }
+                            <span className="rp-ch-tab-label">{ (crowded && entry.shortLabel) ? entry.shortLabel : entry.label }</span>
+                            { (count > 0) && <span className="rp-ch-count">{ (count > 99) ? '99+' : count }</span> }
                         </button>
                     );
                 }) }
