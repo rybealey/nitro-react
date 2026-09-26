@@ -18,7 +18,7 @@ export const STAFF_ALERT_MIN_RANK: number = 5;
 
 export const IsStaffAlert = (styleId: number): boolean => (styleId === STAFF_ALERT_BUBBLE_STYLE);
 
-export const STAFF_ALERT_PREFIX = '[SA]';
+export const STAFF_ALERT_PREFIX = '[Staff]';
 
 // The same "[sender]: message" split gang alerts use - see GangAlert.ts.
 export const ParseStaffAlert = ParseGangAlert;

@@ -15,7 +15,7 @@ export const IsGangAlert = (styleId: number): boolean => (styleId === GANG_ALERT
 // GangAlertCommand writes every alert as "[sender]: message", and the whisper
 // it rides is addressed to the RECIPIENT's own avatar - so without this the
 // bubble reads "You: [Ryan]: hello", naming two people and crediting the wrong
-// one. Lift the sender out and the line becomes "[GA] Ryan: hello".
+// one. Lift the sender out and the line becomes "[Gang] Ryan: hello".
 //
 // Anchored to a leading bracket, and a username cannot contain ']', so the
 // first "]:" is the boundary. Safe to run on the FORMATTED text: the formatter
@@ -24,7 +24,7 @@ export const IsGangAlert = (styleId: number): boolean => (styleId === GANG_ALERT
 //
 // Returns null for anything that does not match, so a line that somehow lacks
 // the prefix is left exactly as it arrived rather than mangled.
-export const GANG_ALERT_PREFIX = '[GA]';
+export const GANG_ALERT_PREFIX = '[Gang]';
 
 export const ParseGangAlert = (text: string): { sender: string; message: string } =>
 {
