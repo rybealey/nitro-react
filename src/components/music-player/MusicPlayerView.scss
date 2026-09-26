@@ -539,29 +539,6 @@ $player-teal: #1E7295;
     .siri-wave .siri-wave-breathe { animation: none; }
 }
 
-// Blocked-autoplay fallback: the one audio engine plays muted and offers this
-// tap wherever the player is (no room panel needed - the phone may be the
-// source). Same plate as the room panel's Siri-style controls.
-.jukebox-unmute-toast {
-    position: fixed;
-    left: 50%;
-    bottom: 64px;
-    transform: translateX(-50%);
-    z-index: 85;
-    padding: 6px 14px;
-    border-radius: 14px;
-    background: #1E7295;
-    border: 1px solid #185D79;
-    color: #ffffff;
-    font-family: 'Ubuntu', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-
-    &:hover { filter: brightness(1.08); }
-}
-
 // Audio-only playback: the iframe stays mounted and playing but is visually
 // collapsed to a 1x1 transparent box pinned off in a corner (never
 // display:none - that risks pausing playback in some browsers). Top level:

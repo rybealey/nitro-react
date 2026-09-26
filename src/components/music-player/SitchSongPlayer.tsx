@@ -284,23 +284,34 @@ export const SitchSongPlayer: FC<{}> = props =>
         player.playVideo?.();
     }, [ songPaused, jamPaused, song?.videoId ]);
 
-    if(!song) return null;
-
-    const unmute = () =>
+    // A blocked autoplay leaves the music playing muted. There is no prompt
+    // for it any more: the next click or tap anywhere in the hotel is the user
+    // gesture the browser wants, so it unmutes then, on its own.
+    useEffect(() =>
     {
-        playerRef.current?.unMute?.();
-        playerRef.current?.setVolume?.(GetJukeboxPrefs().songVolume);
-        playerRef.current?.playVideo?.();
-        setNeedsUnmute(false);
-    }
+        if(!needsUnmute) return;
+
+        const unmuteOnGesture = () =>
+        {
+            playerRef.current?.unMute?.();
+            playerRef.current?.setVolume?.(GetJukeboxPrefs().songVolume);
+            // a blocked autoplay may have left the player paused
+            playerRef.current?.playVideo?.();
+            setNeedsUnmute(false);
+        }
+
+        window.addEventListener('pointerdown', unmuteOnGesture, { capture: true, once: true });
+
+        return () => window.removeEventListener('pointerdown', unmuteOnGesture, { capture: true });
+    }, [ needsUnmute ]);
+
+    if(!song) return null;
 
     return (
         <>
             <div className="jukebox-player-hidden" aria-hidden="true">
                 <div ref={ containerRef } className="jukebox-player-frame" />
             </div>
-            { needsUnmute &&
-                <div className="jukebox-unmute-toast" onClick={ unmute }>Tap to unmute the music</div> }
         </>
     );
 }
