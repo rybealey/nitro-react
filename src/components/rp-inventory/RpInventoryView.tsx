@@ -41,6 +41,8 @@ const ITEMS: Record<string, { name: string, cls: string }> = {
     baseball_bat: { name: 'Baseball Bat', cls: 'rp-item-baseball-bat' },
     axe: { name: 'Axe', cls: 'rp-item-axe' },
     stun_gun: { name: 'Stun Gun', cls: 'rp-item-stun-gun' },
+    // Carried by police: :cuff needs a pair in the backpack.
+    handcuffs: { name: 'Handcuffs', cls: 'rp-item-handcuffs' },
 };
 
 interface ItemMeta { name: string; cls: string; iconUrl?: string }
