@@ -2,8 +2,9 @@
 // to match the reference mock; the list is the ONE scroller (the content area
 // itself does not scroll, so the two can never fight).
 //
-// Nitro's own grey, untouched. The window chrome AND the field it sits on
-// belong to the client - this feature restyles the ENTRY, not the panel.
+// The window chrome is Nitro's; the field is the #f3f3f5 every PixelRP
+// window (Gang, Corporations, Backpack, Settings) paints, so the white tiles
+// sit on the same ground as everywhere else.
 $wanted-tile: #ffffff;       // one entry, lifted off the stock grey
 $wanted-tile-edge: rgba(0, 0, 0, 0.14);
 $wanted-ink: #1b1b1b;        // 17.2:1 on the tile
@@ -26,12 +27,8 @@ $wanted-urgent: #a35a00;     // 5.2:1 - the warning amber darkened to carry on w
     }
 
     // The Nitro frame - header, close button, resize grip, theme-primary-slim -
-    // and the grey field inside it are left exactly as they are, because every
-    // other window in the hotel wears them.
-    //
-    // NO background here: the field stays whatever Nitro paints every other
-    // window's content area. Only the padding is taken out, so the list below
-    // is the one thing spacing the tiles.
+    // is left exactly as it is. The padding is taken out, so the list below is
+    // the one thing spacing the tiles.
     //
     // `.content-area` is the class NitroCardContentView actually renders -
     // `.nitro-card-content` matches nothing, which is worth knowing before
@@ -41,6 +38,12 @@ $wanted-urgent: #a35a00;     // 5.2:1 - the warning amber darkened to carry on w
         flex-direction: column;
         overflow: hidden;
         padding: 0;
+    }
+
+    // The shared PixelRP field. Doubled with the theme class so it beats
+    // the slim theme's own content-area rule whatever the order.
+    &.theme-primary-slim .content-area {
+        background: #f3f3f5;
     }
 
     // fills whatever height the window is dragged to - a fixed max-height
