@@ -239,101 +239,118 @@ $gang-state-off: #b23b3b;
 
     // ---- Info roster ----------------------------------------------------
 
-    .gang-legend {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        font-size: 9px;
-        color: rgba(0, 0, 0, 0.45);
-        flex-shrink: 0;
-    }
-
-    .gang-legend-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
+    // Info roster: one panel per role (Gang Window canvas, "member cards by
+    // rank"). Panels wrap, so a small role sits beside another rather than
+    // taking a whole row; a big one grows to the full width.
     .gang-roster {
         flex: 1;
         min-height: 0;
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
+        align-content: flex-start;
         gap: 8px;
         overflow-y: auto;
         padding-right: 2px;
     }
 
-    .gang-group {
+    .gang-rank {
+        flex: 1 1 auto;
+        min-width: 0;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
+        gap: 6px;
+        padding: 6px;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
     }
 
-    .gang-group-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 0 3px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .gang-group-name {
+    .gang-rank-bar {
+        padding: 5px 8px;
+        border-radius: 4px;
+        background: #e6e6ea;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.5px;
         text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.5);
-
-        // top of the ladder: a short chrome bar so seniority reads at a glance
-        &.is-top {
-            border-left: 3px solid var(--prp-chrome-solid);
-            padding-left: 5px;
-            color: rgba(0, 0, 0, 0.65);
-        }
+        color: rgba(0, 0, 0, 0.7);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .gang-group-count {
-        font-size: 10px;
-        color: rgba(0, 0, 0, 0.45);
+    // Every role above the bottom one centres its cards; the bottom role -
+    // usually the biggest - fills from the left like a list.
+    .gang-rank-cards {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+
+        &.is-bottom { justify-content: flex-start; }
     }
 
-    .gang-group-none {
+    .gang-rank-none {
         font-size: 10px;
         color: rgba(0, 0, 0, 0.35);
-        padding: 4px 2px 0;
+        padding: 0 2px 2px;
     }
 
-    .gang-members-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
-        padding: 6px 2px 2px;
-    }
-
-    // Member card: raised white plate (the corporations employee card) -
-    // masked portrait + name; clicking opens the player's RP profile.
-    .gang-member-card {
-        position: relative;
+    // A member: portrait square on top, name underneath. Offline members are
+    // greyed (the .is-offline rule below), which is the whole presence cue -
+    // no dot. Clicking opens the player's RP profile.
+    .gang-tile {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 8px;
-        min-width: 0;
-        padding: 5px 8px 5px 5px;
+        gap: 4px;
+        width: 72px;
+        box-sizing: border-box;
+        padding: 4px 4px 5px;
         border-radius: $border-radius;
-        @include gang-tinted-card;
+        background: $white;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), inset 0 -2px rgba(0, 0, 0, 0.1), 0 1px rgba(0, 0, 0, 0.1);
         cursor: pointer;
-        transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+        transition: border-color 0.12s ease, transform 0.12s ease;
 
         &:hover {
             border-color: rgba(0, 0, 0, 0.3);
             transform: translateY(-1px);
-            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), inset 0 -2px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.12);
         }
 
-        &:active {
-            transform: none;
-            box-shadow: inset 0 2px rgba(0, 0, 0, 0.08), 0 1px rgba(0, 0, 0, 0.06);
+        .gang-member-name {
+            max-width: 100%;
+            font-size: 11px;
+            line-height: 1.2;
         }
+    }
+
+    // The head sprite at native size in a 62px square (60 inside the
+    // border): the stock 40x50 crop's offsets moved out by 10 and 5, so the
+    // head sits in the middle. Never scaled - resampling blurs the pixel art.
+    .gang-tile-face {
+        position: relative;
+        width: 62px;
+        height: 62px;
+        box-sizing: border-box;
+        overflow: hidden;
+        border-radius: 3px;
+        background: #ececef;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+
+        .avatar-image {
+            position: absolute;
+            left: -15px;
+            top: -15px;
+            image-rendering: pixelated;
+        }
+    }
+
+    .gang-tile.is-offline .gang-tile-face .avatar-image {
+        filter: grayscale(1);
+        opacity: 0.45;
     }
 
     .is-offline {

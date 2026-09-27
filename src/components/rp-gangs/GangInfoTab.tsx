@@ -2,17 +2,19 @@ import { FC } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RpGangLeaveComposer } from '../../api/rp-gangs/RpGangMessages';
 import { GANG_PERM_LEADER, GangDetail, GangMember, GangRole, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
-import { Button } from '../../common';
+import { Button, LayoutAvatarImageView } from '../../common';
 import { useNotification } from '../../hooks';
 import { GangCrest } from './GangCrest';
-import { GangPortrait, OpenGangMemberProfile } from './GangPortrait';
+import { OpenGangMemberProfile } from './GangPortrait';
 
 // What every member sees: the identity header, the level bar (filled with the
-// gang's primary colour) and the roster, one group per role in ladder order.
-// Every role is a real one now - there is no implicit Leader or Member group -
-// and who owns the gang is not shown here (only the Manage tab tags the
-// owner, for the owner and admins). Offline members are greyed out and carry
-// no dot. Only the owner can disband; everyone else sees Leave Gang.
+// gang's primary colour) and the roster - one panel per role in ladder order,
+// each member a portrait card with their name under it (Gang Window canvas,
+// "member cards by rank"). Every role is a real one - there is no implicit
+// Leader or Member group - and who owns the gang is not shown here (only the
+// Manage tab tags the owner, for the owner and admins). Offline members are
+// greyed out; there is no dot. Only the owner can disband; everyone else sees
+// Leave Gang.
 interface GangInfoTabProps
 {
     detail: GangDetail;
@@ -62,7 +64,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
                 </div>
                 <div className="gang-head-info">
                     <div className="gang-title">{ detail.name }</div>
-                    <div className="gang-sub">{ detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' }</div>
+                    <div className="gang-sub">{ detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' } · { onlineCount } online</div>
                 </div>
                 { !readOnly &&
                     <Button variant="danger" onClick={ leave }>{ isOwner ? 'Disband Gang' : 'Leave Gang' }</Button> }
@@ -74,31 +76,24 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
                 </div>
                 <div className="gang-level-value">{ detail.xp } / { detail.xpCap }</div>
             </div>
-            <div className="gang-legend">
-                <span className="gang-legend-item"><i className="gang-dot is-online" />Online · { onlineCount }</span>
-            </div>
             <div className="gang-roster">
                 { groups.map(({ role, members }, index) => (
-                    <div key={ role.id } className="gang-group">
-                        <div className="gang-group-head">
-                            <span className={ `gang-group-name${ (index === 0) ? ' is-top' : '' }` }>{ role.name }</span>
-                        </div>
+                    <section key={ role.id } className="gang-rank" aria-label={ role.name }>
+                        <div className="gang-rank-bar">{ role.name }</div>
                         { (members.length === 0) &&
-                            <div className="gang-group-none">No members</div> }
+                            <div className="gang-rank-none">No members</div> }
                         { (members.length > 0) &&
-                            <div className="gang-members-grid">
+                            <div className={ `gang-rank-cards${ (index === (groups.length - 1)) ? ' is-bottom' : '' }` }>
                                 { members.map(member => (
-                                    <div key={ member.userId } className={ `gang-member-card${ member.online ? '' : ' is-offline' }` } title={ `${ member.username } - ${ member.online ? 'Online' : 'Offline' }` } onClick={ () => OpenGangMemberProfile(member) }>
-                                        { member.online &&
-                                            <span className="gang-dot gang-member-status is-online" /> }
-                                        <GangPortrait figure={ member.figure } online={ member.online } />
-                                        <div className="gang-member-info">
-                                            <div className="gang-member-name">{ member.username }</div>
+                                    <div key={ member.userId } className={ `gang-tile${ member.online ? '' : ' is-offline' }` } title={ `${ member.username } - ${ member.online ? 'Online' : 'Offline' }` } onClick={ () => OpenGangMemberProfile(member) }>
+                                        <div className="gang-tile-face">
+                                            <LayoutAvatarImageView figure={ member.figure } headOnly={ true } direction={ 2 } />
                                         </div>
+                                        <div className="gang-member-name">{ member.username }</div>
                                     </div>
                                 )) }
                             </div> }
-                    </div>
+                    </section>
                 )) }
             </div>
         </>
