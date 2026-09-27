@@ -63,8 +63,7 @@
         height: 50px;
         box-sizing: border-box;
         background-repeat: no-repeat;
-        // 1px up, so the icon sits centred above the tile's bottom lip
-        background-position: center calc(50% - 1px);
+        background-position: center;
         background-size: auto;
         image-rendering: pixelated;
         // Scheme tint (UiChrome.ts): the ::after overlay is masked to the
@@ -75,21 +74,22 @@
         isolation: isolate;
 
         // Each icon sits on its own raised tile (Sidebar Icons canvas, "dark
-        // tiles", lightened on Sidebar UI): a faint light fill, a dark edge, a faint light line along the
-        // top and a 3px dark lip along the bottom. All see-through black and
-        // white, so the tile follows whichever colour scheme the player picks.
+        // tiles", lightened on Sidebar UI): a faint light fill, a dark edge and
+        // a faint light line along the top - no bottom lip since the Sidebar
+        // Redesign. All see-through black and white, so the tile follows
+        // whichever colour scheme the player picks.
         // background-COLOR specifically, never the shorthand - the icon
         // itself is this element's background-image.
         border: 1px solid rgba(0, 0, 0, 0.45);
         border-radius: $border-radius;
         background-color: rgba(255, 255, 255, 0.05);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
         transition: background-color .1s ease, transform .06s ease, box-shadow .06s ease;
 
         &:hover { background-color: rgba(255, 255, 255, 0.11); }
 
         // Pressed: the tile sinks 2px (icon and tint with it), darkens, and
-        // its lip gives way to a shadow inside the top edge - pushed in.
+        // a shadow appears inside its top edge - pushed in.
         &:active {
             transform: translateY(2px);
             background-color: rgba(0, 0, 0, 0.18);
@@ -103,9 +103,9 @@
             background: var(--prp-chrome-icon-tint, transparent);
             mix-blend-mode: color;
             mask-repeat: no-repeat;
-            mask-position: center calc(50% - 1px);
+            mask-position: center;
             -webkit-mask-repeat: no-repeat;
-            -webkit-mask-position: center calc(50% - 1px);
+            -webkit-mask-position: center;
             pointer-events: none;
         }
 
