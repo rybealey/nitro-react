@@ -242,10 +242,23 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     }));
     const dragRef = useRef<{ startX: number; startY: number; x: number; y: number }>(null);
 
+    // The furni this window is editing, once its record has arrived.
+    const definitionRef = useRef(-1);
+
     useEffect(() =>
     {
+        definitionRef.current = -1;
+
         const remove = AddFurniFunctionListener(data =>
         {
+            // Records for other furni travel on the same message - the batch
+            // sent at login, rooms re-sending theirs, another staff member's
+            // edit - and taking one would swap this window onto a different
+            // furni. Only the reply to RequestFurniFunction below, and later
+            // changes to that same furni, belong here.
+            if((definitionRef.current >= 0) && (data.definitionId !== definitionRef.current)) return;
+
+            definitionRef.current = data.definitionId;
             setSaved(data);
             // A broadcast arriving while someone else's change lands would
             // otherwise silently rebase this editor's unsaved work; taking the

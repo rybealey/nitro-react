@@ -365,13 +365,13 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
 // FurnitureData exposes those three as getters with no setters, so the private
 // fields are written directly. Patching the shipped class here beats forking
 // nitro-renderer for three booleans.
-const PatchFurnitureData = (data: RpFurniFunction) =>
+const PatchFurnitureData = (data: RpFurniFunction): boolean =>
 {
     const furniData = ((data.productType === 'i')
         ? GetSessionDataManager().getWallItemData(data.spriteId)
         : GetSessionDataManager().getFloorItemData(data.spriteId));
 
-    if(!furniData) return;
+    if(!furniData) return false;
 
     const writable = (furniData as any);
 
@@ -388,6 +388,52 @@ const PatchFurnitureData = (data: RpFurniFunction) =>
 
     if(data.heightMarker) heightMarkerOn.add(data.spriteId);
     else heightMarkerOn.delete(data.spriteId);
+
+    return true;
+}
+
+// Records that land before FurnitureData has loaded. The emulator sends every
+// edited furni at login (SSOTicketEvent) so a rename shows in the backpack and
+// the infostand too, not only in rooms that re-send it - and the file is big
+// enough to still be on its way then. Held per furni, so a newer record
+// replaces an older one, and applied once the data is there; given up on after
+// two minutes, for a sprite this client build does not have at all.
+const pendingPatches = new Map<string, RpFurniFunction>();
+const PENDING_PATCH_GIVE_UP_MS = 120000;
+let pendingPatchTimer: ReturnType<typeof setInterval> = null;
+let pendingPatchSince = 0;
+
+const PendingPatchKey = (data: RpFurniFunction) => `${ data.productType }:${ data.spriteId }`;
+
+const FlushPendingPatches = () =>
+{
+    let patched = false;
+
+    for(const [ key, data ] of Array.from(pendingPatches.entries()))
+    {
+        if(!PatchFurnitureData(data)) continue;
+
+        pendingPatches.delete(key);
+        patched = true;
+    }
+
+    if(patched) ApplyHeightMarkerToRoom();
+
+    if(pendingPatches.size && ((Date.now() - pendingPatchSince) < PENDING_PATCH_GIVE_UP_MS)) return;
+
+    pendingPatches.clear();
+    clearInterval(pendingPatchTimer);
+    pendingPatchTimer = null;
+}
+
+const HoldPatch = (data: RpFurniFunction) =>
+{
+    pendingPatches.set(PendingPatchKey(data), data);
+
+    if(pendingPatchTimer) return;
+
+    pendingPatchSince = Date.now();
+    pendingPatchTimer = setInterval(FlushPendingPatches, 1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -496,7 +542,12 @@ const onFurniFunction = (event: RpFurniFunctionEvent) =>
 
     if(!data) return;
 
-    PatchFurnitureData(data);
+    // Applied now, or held until FurnitureData loads. Either way a record
+    // still waiting for this furni is older than this one and must not land
+    // on top of it later.
+    if(PatchFurnitureData(data)) pendingPatches.delete(PendingPatchKey(data));
+    else HoldPatch(data);
+
     ApplyHeightMarkerToRoom();
 
     for(const listener of Array.from(functionListeners)) listener(data);
