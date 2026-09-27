@@ -4,8 +4,12 @@
     background: var(--prp-chrome-plate);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    // sits left of the purse in its row; sized to content, wrapping long titles
+    // sits left of the purse in its row, sized to content and ALWAYS one line.
+    // The row is right-anchored and grows leftward (.purse-title-row), so a
+    // long title simply reaches further left. It must never wrap: the quick
+    // tools under it are placed for a one-line title (RightSideView.scss), and
+    // a second line runs the title down into them.
     width: fit-content;
-    max-width: 260px;
+    white-space: nowrap;
     flex-shrink: 0;
 }

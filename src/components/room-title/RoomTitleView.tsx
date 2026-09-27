@@ -17,7 +17,7 @@ export const RoomTitleView: FC<{}> = props =>
 
     return (
         <Flex justifyContent="end" className="nitro-room-title rounded-bottom p-1 px-2">
-            <Text wrap variant="white" className="text-end">{ title }</Text>
+            <Text noWrap variant="white" className="text-end">{ title }</Text>
         </Flex>
     );
 }
