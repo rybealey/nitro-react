@@ -84,7 +84,8 @@ const PIXELRP_BEHAVIOURS: [ string, string ][] = [
     [ 'pressure_pad', 'Pressure pad' ],
     [ 'corp_gate', 'Corporation gate (on duty only)' ],
     [ 'paramedic_dropoff', 'Paramedic dropoff' ],
-    [ 'medical_bed', 'Medical bed' ]
+    [ 'medical_bed', 'Medical bed' ],
+    [ 'police_replenish', 'Police replenish (on duty only)' ]
 ];
 
 const HABBO_BEHAVIOURS: [ string, string ][] = [
