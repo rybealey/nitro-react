@@ -1,4 +1,4 @@
-import { GetTicker, RoomObjectCategory, RoomObjectVariable, RoomSessionEvent, RpMovementV2Event } from '@nitrots/nitro-renderer';
+import { GetTicker, RoomObjectCategory, RoomObjectVariable, RoomReadyMessageEvent, RoomSessionEvent, RpMovementV2Event } from '@nitrots/nitro-renderer';
 import { GetCommunication } from '../GetCommunication';
 import { GetRoomSessionManager } from '../session/GetRoomSessionManager';
 import { GetRoomEngine } from './GetRoomEngine';
@@ -117,6 +117,31 @@ const onRoomChange = (): void =>
     if(store && (typeof store.clearUnits === 'function')) store.clearUnits();
 }
 
+// A ROOM CHANGE THE SERVER MAKES CLEARS IT TOO. An arrow or a teleport booth to
+// another room, :summon, an escort: the server moves the player, and the client
+// follows its RoomReady by re-pointing the session it already has
+// (RoomSessionManager.sessionReinitialize), which fires neither CREATED nor
+// ENDED. So the last room's units came along. Ids restart at 0 in every room, so
+// the player's own avatar arrived under the same id as their old one and was
+// drawn at their last step in the old room - by an entrance, where arrows
+// stand, so "at the door" - and it stayed there once that went stale, because
+// nothing re-places an avatar that is standing still. The server had them on the
+// arrow all along. RoomReady comes before anything of the new room's, and a
+// RoomReady for the room already being entered (the navigator's own path) is
+// left alone.
+let readyRoomId: number = null;
+
+const onRoomReady = (event: RoomReadyMessageEvent): void =>
+{
+    const roomId = event.getParser()?.roomId;
+
+    if((roomId === undefined) || (roomId === readyRoomId)) return;
+
+    readyRoomId = roomId;
+
+    onRoomChange();
+}
+
 let installed = false;
 
 // Registered once at connection, beside the renderer's own 4110 handler.
@@ -127,6 +152,7 @@ export const InstallFinalStepStance = (): void =>
 
     installed = true;
     GetCommunication().registerMessageEvent(new RpMovementV2Event(onMovement));
+    GetCommunication().registerMessageEvent(new RoomReadyMessageEvent(onRoomReady));
 
     const sessions = GetRoomSessionManager();
 
