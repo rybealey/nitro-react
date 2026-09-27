@@ -106,9 +106,7 @@ export const PurseView: FC<{}> = props =>
                     <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('help/show') }>
                         <i className="icon icon-help"/>
                     </Flex>
-                    <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('user-settings/toggle') } >
-                        <i className="icon icon-cog"/>
-                    </Flex>
+                    { /* No settings cog: its settings live in Settings > General (Sound, Preferences). */ }
                 </Column>
             </Flex>
             { getCurrencyElements(2, -1, true) }
