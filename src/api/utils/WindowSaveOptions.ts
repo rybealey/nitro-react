@@ -7,4 +7,6 @@ export interface WindowSaveOptions
     // different against the new one, so the first open after the change drops
     // it rather than applying it to a base it was never measured from.
     drawerAnchored?: boolean;
+    // The same, for a window moved to TOP_RIGHT.
+    topRightAnchored?: boolean;
 }

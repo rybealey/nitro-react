@@ -5,7 +5,7 @@ import { IsNarratedBubble, NarratedBubbleText } from '../../api/rp-chat/Narrated
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../api/rp-chat/GangAlert';
 import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../api/rp-chat/CorpAlert';
 import { IsStaffAlert, ParseStaffAlert, STAFF_ALERT_MIN_RANK, STAFF_ALERT_PREFIX } from '../../api/rp-chat/StaffAlert';
-import { InfiniteScroll, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, InfiniteScroll, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useChatHistory } from '../../hooks';
 import { UsernameIconGlyph } from '../rp-settings/UsernameIconGlyph';
 
@@ -241,7 +241,7 @@ export const ChatHistoryView: FC<{}> = props =>
     }
 
     return (
-        <NitroCardView resizable uniqueKey="chat-history" className="nitro-chat-history" theme="primary-slim">
+        <NitroCardView resizable uniqueKey="chat-history" windowPosition={ DraggableWindowPosition.TOP_RIGHT } className="nitro-chat-history" theme="primary-slim">
             <NitroCardHeaderView headerText={ LocalizeText('room.chathistory.button.text') } onCloseClick={ event => setIsVisible(false) }/>
             <div className={ 'rp-ch-tabs' + (crowded ? ' is-crowded' : '') } role="tablist" aria-label="Chat history views">
                 { visibleTabs.map(entry =>

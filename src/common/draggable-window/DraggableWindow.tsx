@@ -11,6 +11,10 @@ const CURRENT_WINDOWS: HTMLElement[] = [];
 // where it lands if the drawer is not mounted (outside a room).
 const SIDE_DRAWER_GAP: number = 10;
 const SIDE_DRAWER_FALLBACK_LEFT: number = 60;
+// PixelRP: a TOP_RIGHT window's gap below the purse row and from the right
+// edge (the right-side column's own inset), and its top with no purse row.
+const TOP_RIGHT_GAP: number = 10;
+const TOP_RIGHT_FALLBACK_TOP: number = 80;
 const BOUNDS_THRESHOLD_TOP: number = 0;
 const BOUNDS_THRESHOLD_LEFT: number = 0;
 
@@ -181,6 +185,7 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
 
             newStorage.offset = { x: offsetX, y: offsetY };
             newStorage.drawerAnchored = true;
+            newStorage.topRightAnchored = true;
 
             SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, newStorage);
         }
@@ -239,6 +244,14 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
 
                 element.style.top = `calc(50vh - ${ (element.offsetHeight / 2) + offsetTop }px)`;
                 element.style.left = `${ drawerRight + SIDE_DRAWER_GAP + offsetLeft }px`;
+                break;
+            }
+            case DraggableWindowPosition.TOP_RIGHT: {
+                const purseRow = document.querySelector('.purse-title-row');
+                const top = purseRow ? (purseRow.getBoundingClientRect().bottom + TOP_RIGHT_GAP) : TOP_RIGHT_FALLBACK_TOP;
+
+                element.style.top = `${ top + offsetTop }px`;
+                element.style.left = `calc(100vw - ${ element.offsetWidth + TOP_RIGHT_GAP + offsetLeft }px)`;
                 break;
             }
         }
@@ -313,6 +326,13 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
         if((windowPosition === DraggableWindowPosition.SIDE_DRAWER) && !localStorage.drawerAnchored)
         {
             SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, { ...localStorage, offset: null, drawerAnchored: true });
+
+            return;
+        }
+
+        if((windowPosition === DraggableWindowPosition.TOP_RIGHT) && !localStorage.topRightAnchored)
+        {
+            SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, { ...localStorage, offset: null, topRightAnchored: true });
 
             return;
         }

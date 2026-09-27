@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
-import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { DraggableWindowPosition, HoverBubble, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
 // PixelRP RP inventory ("Backpack"), opened from the side drawer's Backpack
@@ -340,9 +340,11 @@ export const RpInventoryView: FC<{}> = props =>
                     <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3.5h10" /><path d="M5.5 3.5V2h3v1.5" /><path d="M3.5 3.5l.6 8.5h5.8l.6-8.5" /><path d="M5.8 6v3.8M8.2 6v3.8" /></svg>
                 </div> }
                 <div ref={ useModeRef } className="rp-inventory-use-mode">
-                    <button type="button" className="rp-inventory-use-mode-toggle" title="Item use mode" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2l2 2-6 6H2V8z" /><path d="M6.8 3.2l2 2" /></svg>
-                    </button>
+                    <HoverBubble text="Item use mode">
+                        <button type="button" className="rp-inventory-use-mode-toggle" aria-label="Item use mode" aria-expanded={ isUseModeOpen } onClick={ () => setIsUseModeOpen(value => !value) }>
+                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2l2 2-6 6H2V8z" /><path d="M6.8 3.2l2 2" /></svg>
+                        </button>
+                    </HoverBubble>
                     { isUseModeOpen &&
                     <div className="rp-inventory-use-mode-menu">
                         <button type="button" className={ (itemUseMode === 'single') ? 'is-active' : '' } onClick={ () => chooseItemUseMode('single') }>Single Click</button>
