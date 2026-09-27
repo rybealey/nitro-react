@@ -8,6 +8,7 @@ import { CatalogEditableNameView } from '../widgets/CatalogEditableNameView';
 import { CatalogItemGridWidgetView } from '../widgets/CatalogItemGridWidgetView';
 import { CatalogLimitedItemWidgetView } from '../widgets/CatalogLimitedItemWidgetView';
 import { CatalogPurchaseWidgetView } from '../widgets/CatalogPurchaseWidgetView';
+import { CatalogSearchPathWidgetView } from '../widgets/CatalogSearchPathWidgetView';
 import { CatalogSpinnerWidgetView } from '../widgets/CatalogSpinnerWidgetView';
 import { CatalogTotalPriceWidget } from '../widgets/CatalogTotalPriceWidget';
 import { CatalogViewProductWidgetView } from '../widgets/CatalogViewProductWidgetView';
@@ -46,6 +47,7 @@ export const CatalogLayoutDefaultView: FC<CatalogLayoutProps> = props =>
                             <Column grow gap={ 1 }>
                                 <CatalogLimitedItemWidgetView fullWidth />
                                 <CatalogEditableNameView />
+                                <CatalogSearchPathWidgetView />
                                 <Flex justifyContent="between">
                                     <Column gap={ 1 }>
                                         <CatalogSpinnerWidgetView />
