@@ -316,7 +316,11 @@ const useCatalogState = () =>
             {
                 for(const child of targetNode.children)
                 {
-                    if(!child.isVisible) continue;
+                    // pixelrp: a heading or divider is visible but cannot be
+                    // opened - disabled, so the index gives it no page id. A
+                    // tab opening on one (Builders' PixelRP) loaded nothing
+                    // and left the tab it came from on screen.
+                    if(!child.isVisible || (child.pageId < 0)) continue;
 
                     targetNode = child;
 
