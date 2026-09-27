@@ -327,9 +327,12 @@ $gang-state-off: #b23b3b;
         }
     }
 
-    // The head sprite at native size in a 62px square (60 inside the
-    // border): the stock 40x50 crop's offsets moved out by 10 and 5, so the
-    // head sits in the middle. Never scaled - resampling blurs the pixel art.
+    // Head to torso, like the reference screenshot: the FULL 90x130 sprite in
+    // a 62px square (60 inside the border), framed the way the Wanted List's
+    // mugshots are. background-position's second value is THE framing
+    // number - more negative raises the figure in the window, less lowers it
+    // (the Wanted List settled on -32 for its 50px window). Never scaled:
+    // resampling blurs the pixel art.
     .gang-tile-face {
         position: relative;
         width: 62px;
@@ -342,8 +345,13 @@ $gang-state-off: #b23b3b;
 
         .avatar-image {
             position: absolute;
-            left: -15px;
-            top: -15px;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: none;
+            background-size: auto;
+            background-position: center -30px;
+            background-repeat: no-repeat;
             image-rendering: pixelated;
         }
     }

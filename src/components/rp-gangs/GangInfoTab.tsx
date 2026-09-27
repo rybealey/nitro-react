@@ -42,7 +42,6 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
 {
     const { showConfirm = null } = useNotification();
     const isOwner = HasGangPermission(detail.permissions, GANG_PERM_LEADER);
-    const onlineCount = detail.members.filter(member => member.online).length;
     const groups = GangRoleGroups(detail.roles, detail.members);
 
     const leave = () =>
@@ -64,7 +63,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
                 </div>
                 <div className="gang-head-info">
                     <div className="gang-title">{ detail.name }</div>
-                    <div className="gang-sub">{ detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' } · { onlineCount } online</div>
+                    <div className="gang-sub">{ detail.members.length } { (detail.members.length === 1) ? 'member' : 'members' }</div>
                 </div>
                 { !readOnly &&
                     <Button variant="danger" onClick={ leave }>{ isOwner ? 'Disband Gang' : 'Leave Gang' }</Button> }
@@ -87,7 +86,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
                                 { members.map(member => (
                                     <div key={ member.userId } className={ `gang-tile${ member.online ? '' : ' is-offline' }` } title={ `${ member.username } - ${ member.online ? 'Online' : 'Offline' }` } onClick={ () => OpenGangMemberProfile(member) }>
                                         <div className="gang-tile-face">
-                                            <LayoutAvatarImageView figure={ member.figure } headOnly={ true } direction={ 2 } />
+                                            <LayoutAvatarImageView figure={ member.figure } direction={ 2 } />
                                         </div>
                                         <div className="gang-member-name">{ member.username }</div>
                                     </div>
