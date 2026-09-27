@@ -122,9 +122,9 @@
     // backdrop-filter would otherwise become the tab's backdrop root and eat
     // its blur; see SideDrawerWidgetView). The container's width is the
     // tray's width, so the tab still rides outward as the tray widens,
-    // reading as the tray sliding out from under it. Deliberately shorter
-    // than one 50px tile so it reads as a tab, not a sixth button. An even
-    // height, like the tray's, so it centres on whole pixels.
+    // reading as the tray sliding out from under it. Narrow (16px) so it
+    // reads as a tab, not a sixth button. An even height, like the tray's,
+    // so it centres on whole pixels.
     // Painted with the tray's own plate surface + blur so the two read as one
     // piece of chrome, both following the player's colour scheme. Collapsed,
     // the tray has zero width, so the notch sits flush against the screen
@@ -137,8 +137,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 14px;
-        height: 44px;
+        width: 16px;
+        height: 50px;
         background: var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
