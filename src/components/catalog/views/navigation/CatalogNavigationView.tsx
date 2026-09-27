@@ -4,6 +4,7 @@ import { AutoGrid, Column } from '../../../../common';
 import { useCatalog } from '../../../../hooks';
 import { CatalogSearchView } from '../page/common/CatalogSearchView';
 import { CatalogNavigationItemView } from './CatalogNavigationItemView';
+import { CatalogNavigationSearchPathView } from './CatalogNavigationSearchPathView';
 import { CatalogNavigationSetView } from './CatalogNavigationSetView';
 
 export interface CatalogNavigationViewProps
@@ -21,6 +22,8 @@ export const CatalogNavigationView: FC<CatalogNavigationViewProps> = props =>
             <CatalogSearchView />
             <Column fullHeight className="nitro-catalog-navigation-grid-container rounded p-1" overflow="hidden">
                 <AutoGrid id="nitro-catalog-main-navigation" gap={ 1 } columnCount={ 1 }>
+                    { searchResult &&
+                        <CatalogNavigationSearchPathView divider={ (searchResult.filteredNodes.length > 0) } /> }
                     { searchResult && (searchResult.filteredNodes.length > 0) && searchResult.filteredNodes.map((n, index) =>
                     {
                         return <CatalogNavigationItemView key={ index } node={ n } />;
