@@ -24,11 +24,13 @@ export class RpStaffDutyParser implements IMessageParser
 {
     private _onDuty: boolean = false;
     private _canFurniFunction: boolean = false;
+    private _canEditBranding: boolean = false;
 
     public flush(): boolean
     {
         this._onDuty = false;
         this._canFurniFunction = false;
+        this._canEditBranding = false;
 
         return true;
     }
@@ -39,6 +41,8 @@ export class RpStaffDutyParser implements IMessageParser
 
         this._onDuty = wrapper.readBoolean();
         this._canFurniFunction = wrapper.readBoolean();
+        // Guarded: an emulator from before this field sends only two.
+        if(wrapper.bytesAvailable) this._canEditBranding = wrapper.readBoolean();
 
         return true;
     }
@@ -51,6 +55,11 @@ export class RpStaffDutyParser implements IMessageParser
     public get canFurniFunction(): boolean
     {
         return this._canFurniFunction;
+    }
+
+    public get canEditBranding(): boolean
+    {
+        return this._canEditBranding;
     }
 }
 
@@ -72,6 +81,7 @@ export class RpStaffDutyEvent extends MessageEvent implements IMessageEvent
 // the gates below read it at the moment they are asked.
 let onDuty = false;
 let canFurniFunction = false;
+let canEditBranding = false;
 
 /**
  * True when this player may act on a room they do not own.
@@ -102,6 +112,14 @@ export const IsRpStaffOnDuty = (): boolean => onDuty;
 export const CanUseFurniFunction = (): boolean => canFurniFunction;
 
 /**
+ * Whether this player may edit room ads in a room they do NOT own, right now:
+ * they hold `room_item_save_branding_items` and are clocked in at City
+ * Government (Room.CanEditBranding). An owner does not need this - owning the
+ * room already raises their controller level to the one that shows the editor.
+ */
+export const CanEditBrandingOnDuty = (): boolean => (onDuty && canEditBranding);
+
+/**
  * Whether this player owns the room RIGHT NOW.
  *
  * The renderer's own isRoomOwner is sticky: setRoomOwner() has no clearing
@@ -125,6 +143,7 @@ const onStaffDuty = (event: RpStaffDutyEvent) =>
 
     onDuty = parser.onDuty;
     canFurniFunction = parser.canFurniFunction;
+    canEditBranding = parser.canEditBranding;
 }
 
 let registered = false;

@@ -7,7 +7,7 @@ import { GetRoomSession } from '../../../../../api';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
-import { CanUseFurniFunction, IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CanEditBrandingOnDuty, CanUseFurniFunction, IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
 import { CatalogLocateStatus, CatalogLocation, LocateCatalogFurniture } from '../../../../../api/rp-catalog/RpCatalogLocateMessages';
 
 interface InfoStandWidgetFurniViewProps
@@ -154,6 +154,11 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
 
             if(avatarInfo.roomControllerLevel >= RoomControllerLevel.MODERATOR) godMode = true;
         }
+
+        // pixelrp: on-duty staff with the branding right edit room ads in any
+        // room, without the owner controller level (and the move / pickup
+        // buttons that come with it) - see CanEditBrandingOnDuty.
+        if(CanEditBrandingOnDuty()) godMode = true;
 
         if(avatarInfo.isAnyRoomController)
         {
