@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..9670f16
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,179 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -302,6 +302,13 @@ index 0000000..9670f16
 +     * Reads false against an emulator that does not set it.
 +     */
 +    public get isForcedRedirect(): boolean { return (this._flags & 0x0100) !== 0; }
++
++    /**
++     * flags bit 0x0200 - an escorted shadow's edge, faced the way the CAPTOR
++     * faces: bits 12-14 carry the 0-7 facing (RpMovementV2Flags.FacingOverride).
++     * -1 when unset, which is every edge that is not a shadow's: face the step.
++     */
++    public get facingOverride(): number { return ((this._flags & 0x0200) !== 0) ? ((this._flags >> 12) & 0x7) : -1; }
 +}
 +
 +export class RpMovementV2Event extends MessageEvent implements IMessageEvent
@@ -443,7 +450,7 @@ index 2ff0e23..09de3d7 100644
 +            parser.fromX, parser.fromY, parser.fromZ,
 +            parser.toX, parser.toY, parser.toZ,
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
-+            clientNow, parser.lookahead, parser.startDelayMs);
++            clientNow, parser.lookahead, parser.startDelayMs, parser.facingOverride);
 +
 +        // TEMPORARY DIAGNOSTIC, and the browser half of :forceredirect.
 +        //
@@ -1792,7 +1799,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1450 @@
+@@ -0,0 +1,1464 @@
 +import { GetTicker } from '../../pixi-proxy';
 +
 +/**
@@ -1841,6 +1848,8 @@ index 0000000..19b0227
 +    /** Absolute SERVER tick at which this edge starts. */
 +    cycleStart: number;
 +    interval: number;
++    /** 0-7 facing the server set on this edge (an escort shadow's), -1 or absent = face the step. */
++    facing?: number;
 +}
 +
 +export interface PixelRPV2Active
@@ -1868,6 +1877,8 @@ index 0000000..19b0227
 +    facedSession?: number;
 +    facedRevision?: number;
 +    facedEdge?: number;
++    /** ...and the facing it was turned to, so a changed facing turns it again. */
++    facedFacing?: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -2324,7 +2335,8 @@ index 0000000..19b0227
 +        serverNow: number,
 +        clientNowPerf: number,
 +        lookahead: { x: number, y: number, z: number }[] = [],
-+        startDelayMs = 0): void
++        startDelayMs = 0,
++        facing = -1): void
 +    {
 +        this.updateClock(clientNowPerf, serverNow);
 +
@@ -2366,7 +2378,7 @@ index 0000000..19b0227
 +
 +        this.upsert(unit, {
 +            session, revision, edgeIndex, provisional: false,
-+            sx, sy, sz, gx, gy, gz, cycleStart, interval: step
++            sx, sy, sz, gx, gy, gz, cycleStart, interval: step, facing
 +        });
 +        this.stats.edges++;
 +
@@ -2597,10 +2609,12 @@ index 0000000..19b0227
 +     * still turn an avatar standing mid-edge afterwards. A higher revision of
 +     * the same index is faced again: its geometry may have changed.
 +     *
-+     * THE ONE KNOWN DISAGREEMENT: an escorted suspect's edges are faced the way
-+     * the CAPTOR faces (MovementController.StageShadow), not their own step, and
-+     * nothing on the wire marks them. At an escort corner the suspect faces
-+     * their step for a moment until the status turns them to the captor's way.
++     * An escorted suspect's edges are faced the way the CAPTOR faces
++     * (MovementController.StageShadow), not by their own step - on a bend the
++     * suspect slides diagonally to the captor's side. The server marks those
++     * edges with the facing to use (RpMovementV2Flags.FacingOverride), and
++     * that wins here, so a suspect turns in the same frame as their captor
++     * rather than facing their slide until the status packet corrects it.
 +     */
 +    public facingToApply(virtualId: number, active: PixelRPV2Active): number
 +    {
@@ -2608,14 +2622,21 @@ index 0000000..19b0227
 +
 +        if(!unit || !active) return -1;
 +
++        // The facing the server set on this edge, if it set one - see above.
++        const edge = unit.edges.find(e => ((e.session === active.session) && (e.revision === active.revision) && (e.edgeIndex === active.edgeIndex)));
++        const override = (((edge?.facing ?? -1) >= 0) ? edge.facing : -1);
++        const rotation = ((override >= 0) ? override : PixelRPMovementV2.rotationOf(active.sx, active.sy, active.gx, active.gy));
++
++        // Once per edge, and again only if what it should face has changed -
++        // which is exactly a provisional guess (faced by its step) being
++        // replaced by the confirmed edge that carries the captor's facing.
 +        if((unit.facedSession === active.session) && (unit.facedRevision === active.revision)
-+            && (unit.facedEdge === active.edgeIndex)) return -1;
++            && (unit.facedEdge === active.edgeIndex) && (unit.facedFacing === rotation)) return -1;
 +
 +        unit.facedSession = active.session;
 +        unit.facedRevision = active.revision;
 +        unit.facedEdge = active.edgeIndex;
-+
-+        const rotation = PixelRPMovementV2.rotationOf(active.sx, active.sy, active.gx, active.gy);
++        unit.facedFacing = rotation;
 +
 +        return ((rotation >= 0) ? (rotation * 45) : -1);
 +    }
