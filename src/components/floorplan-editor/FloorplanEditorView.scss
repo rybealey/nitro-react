@@ -1,6 +1,11 @@
 .nitro-floorplan-editor {
     width: $nitro-floor-editor-width;
     height: $nitro-floor-editor-height;
+    // pixelrp: the resize grip grows it from here, never smaller - the options
+    // row and the buttons are laid out for this size, and the canvas (far
+    // larger than any screen) takes whatever room is added.
+    min-width: $nitro-floor-editor-width;
+    min-height: $nitro-floor-editor-height;
 }
 
 .floorplan-import-export {
