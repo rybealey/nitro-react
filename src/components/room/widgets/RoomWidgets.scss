@@ -43,7 +43,7 @@
     }
 
     &.is-expanded {
-        .nitro-side-drawer { padding: 10px; }
+        .nitro-side-drawer { padding: 14px; }
 
         .side-drawer-items {
             width: auto;
@@ -53,11 +53,14 @@
     }
 
     // Icons render at their NATIVE pixel size (background-size: auto — no
-    // scaling), centered in a uniform box sized to the largest icon (45px).
-    // Keep new icons <= 45px or bump the box, otherwise they clip.
+    // scaling), centered in a uniform tile a few px larger than the icons
+    // (37x36). 49x50 (Sidebar Redesign canvas) because the icons are an odd
+    // width and an even height: inside the 1px border that leaves whole
+    // pixels either side, where 45x45 put every icon on a half pixel.
+    // Keep new icons <= 47x48 or bump the tile, otherwise they clip.
     .side-drawer-item {
-        width: 45px;
-        height: 45px;
+        width: 49px;
+        height: 50px;
         box-sizing: border-box;
         background-repeat: no-repeat;
         // 1px up, so the icon sits centred above the tile's bottom lip
@@ -81,9 +84,17 @@
         border-radius: $border-radius;
         background-color: rgba(255, 255, 255, 0.05);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -3px 0 rgba(0, 0, 0, 0.35);
-        transition: background-color .1s ease;
+        transition: background-color .1s ease, transform .06s ease, box-shadow .06s ease;
 
         &:hover { background-color: rgba(255, 255, 255, 0.11); }
+
+        // Pressed: the tile sinks 2px (icon and tint with it), darkens, and
+        // its lip gives way to a shadow inside the top edge - pushed in.
+        &:active {
+            transform: translateY(2px);
+            background-color: rgba(0, 0, 0, 0.18);
+            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45);
+        }
 
         &::after {
             content: '';
@@ -112,7 +123,8 @@
     // its blur; see SideDrawerWidgetView). The container's width is the
     // tray's width, so the tab still rides outward as the tray widens,
     // reading as the tray sliding out from under it. Deliberately shorter
-    // than one 45px icon row so it reads as a tab, not a seventh button.
+    // than one 50px tile so it reads as a tab, not a sixth button. An even
+    // height, like the tray's, so it centres on whole pixels.
     // Painted with the tray's own plate surface + blur so the two read as one
     // piece of chrome, both following the player's colour scheme. Collapsed,
     // the tray has zero width, so the notch sits flush against the screen
@@ -126,7 +138,7 @@
         align-items: center;
         justify-content: center;
         width: 14px;
-        height: 35px;
+        height: 44px;
         background: var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
