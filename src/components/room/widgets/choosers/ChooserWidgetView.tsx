@@ -8,11 +8,12 @@ interface ChooserWidgetViewProps
     items: RoomObjectItem[];
     selectItem: (item: RoomObjectItem) => void;
     onClose: () => void;
+    resizable?: boolean;
 }
 
 export const ChooserWidgetView: FC<ChooserWidgetViewProps> = props =>
 {
-    const { title = null, items = [], selectItem = null, onClose = null } = props;
+    const { title = null, items = [], selectItem = null, onClose = null, resizable = false } = props;
     const [ selectedItem, setSelectedItem ] = useState<RoomObjectItem>(null);
     const [ searchValue, setSearchValue ] = useState('');
     const canSeeId = GetSessionDataManager().isModerator;
@@ -32,7 +33,7 @@ export const ChooserWidgetView: FC<ChooserWidgetViewProps> = props =>
     }, [ selectedItem, selectItem ]);
 
     return (
-        <NitroCardView className="nitro-chooser-widget" theme="primary-slim">
+        <NitroCardView resizable={ resizable } className="nitro-chooser-widget" theme="primary-slim">
             <NitroCardHeaderView headerText={ title } onCloseClick={ onClose } />
             <NitroCardContentView overflow="hidden" gap={ 2 }>
                 <input type="text" className="form-control form-control-sm" placeholder={ LocalizeText('generic.search') } value={ searchValue } onChange={ event => setSearchValue(event.target.value) } />

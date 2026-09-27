@@ -1,4 +1,8 @@
 .nitro-chooser-widget {
     width: $nitro-chooser-width;
     height: $nitro-chooser-height;
+    // pixelrp: the resize grip (:furni) grows it from here, never smaller -
+    // without these it takes NitroCardView's 240px floor and jumps on grab.
+    min-width: $nitro-chooser-width;
+    min-height: $nitro-chooser-height;
 }

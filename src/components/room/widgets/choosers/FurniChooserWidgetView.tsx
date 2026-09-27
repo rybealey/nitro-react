@@ -27,5 +27,7 @@ export const FurniChooserWidgetView: FC<{}> = props =>
     
     if(!items) return null;
 
-    return <ChooserWidgetView title={ LocalizeText('widget.chooser.furni.title') } items={ items } selectItem={ selectItem } onClose={ onClose } />;
+    // pixelrp: :furni lists every piece in the room, which at 200px shows a
+    // handful of names at a time; the corner grip lets it grow.
+    return <ChooserWidgetView resizable title={ LocalizeText('widget.chooser.furni.title') } items={ items } selectItem={ selectItem } onClose={ onClose } />;
 }
