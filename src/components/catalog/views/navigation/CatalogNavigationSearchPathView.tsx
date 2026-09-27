@@ -26,14 +26,17 @@ import { CatalogIconView } from '../catalog-icon/CatalogIconView';
 export const CatalogNavigationSearchPathView: FC<{ divider?: boolean }> = props =>
 {
     const { divider = false } = props;
-    const { currentPage = null, currentOffer = null, rootNode = null, getNodeById = null, activateNode = null } = useCatalog();
+    const { currentPage = null, currentOffer = null, rootNode = null, activeNodes = [], getNodeById = null, activateNode = null } = useCatalog();
 
     const path = useMemo(() =>
     {
         if(!currentPage || (currentPage.pageId !== -1) || !currentOffer?.page || !rootNode) return [];
 
         const nodes: ICatalogNode[] = [];
-        let node: ICatalogNode = getNodeById(currentOffer.page.pageId, rootNode);
+        // The search's own tab first: a mirrored page (Builders' Lines) is in
+        // two tabs, and the path should be the one beside the results.
+        const tab = ((activeNodes && activeNodes.length) ? activeNodes[0] : null);
+        let node: ICatalogNode = ((tab ? getNodeById(currentOffer.page.pageId, tab) : null) || getNodeById(currentOffer.page.pageId, rootNode));
 
         // Up to the tab, which is the node whose parent is the root.
         while(node && node.parent && (node.parent !== rootNode))
@@ -43,7 +46,7 @@ export const CatalogNavigationSearchPathView: FC<{ divider?: boolean }> = props 
         }
 
         return nodes;
-    }, [ currentPage, currentOffer, rootNode, getNodeById ]);
+    }, [ currentPage, currentOffer, rootNode, activeNodes, getNodeById ]);
 
     if(!path.length) return null;
 

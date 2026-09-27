@@ -394,7 +394,11 @@ const useCatalogState = () =>
         }
         else
         {
-            const node = getNodeById(id, rootNode);
+            // pixelrp: the open tab first. A page can be listed in two tabs
+            // (a mirror - Builders' Lines is Furni's), and taking the first
+            // match in the whole tree would throw a link from Builders across
+            // to Furni.
+            const node = (((activeNodes && activeNodes.length) ? getNodeById(id, activeNodes[0]) : null) || getNodeById(id, rootNode));
 
             if(node)
             {
@@ -414,7 +418,7 @@ const useCatalogState = () =>
 
             loadCatalogPage(id, offerId);
         }
-    }, [ isVisible, rootNode, getNodeById, activateNode, loadCatalogPage ]);
+    }, [ isVisible, rootNode, activeNodes, getNodeById, activateNode, loadCatalogPage ]);
 
     const openPageByName = useCallback((name: string) =>
     {
