@@ -722,7 +722,12 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border-radius: 9px;
         cursor: pointer;
         background: #b23b3b;
+        // General > Preferences draws it as a real <button role="switch">
+        border: 0;
+        padding: 0;
         transition: background-color .15s ease;
+
+        &:disabled { cursor: default; opacity: .5; }
 
         span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
         &.is-on { background: #2e9e4f; span { transform: translateX(16px); } }

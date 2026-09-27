@@ -1,90 +1,51 @@
-import { ILinkEventTracker, NitroSettingsEvent, UserSettingsCameraFollowComposer, UserSettingsEvent, UserSettingsOldChatComposer, UserSettingsRoomInvitesComposer, UserSettingsSoundComposer } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaVolumeDown, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
-import { AddEventLinkTracker, DispatchMainEvent, DispatchUiEvent, LocalizeText, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, LocalizeText, RemoveLinkEventTracker } from '../../api';
 import { classNames, Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
-import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useMessageEvent } from '../../hooks';
+import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useUserSettings } from '../../hooks';
 
+// The top-right cog's window. The settings themselves live in useUserSettings,
+// shared with Settings > General (Sound, Preferences), so both show the same.
 export const UserSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
-    const [ userSettings, setUserSettings ] = useState<NitroSettingsEvent>(null);
+    const { userSettings, setOldChat, setRoomInvites, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
     const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
     const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
 
     const processAction = (type: string, value?: boolean | number | string) =>
     {
-        let doUpdate = true;
-
-        const clone = userSettings.clone();
-
         switch(type)
         {
             case 'close_view':
                 setIsVisible(false);
-                doUpdate = false;
                 return;
             case 'oldchat':
-                clone.oldChat = value as boolean;
-                SendMessageComposer(new UserSettingsOldChatComposer(clone.oldChat));
-                break;
+                setOldChat(value as boolean);
+                return;
             case 'room_invites':
-                clone.roomInvites = value as boolean;
-                SendMessageComposer(new UserSettingsRoomInvitesComposer(clone.roomInvites));
-                break;
+                setRoomInvites(value as boolean);
+                return;
             case 'camera_follow':
-                clone.cameraFollow = value as boolean;
-                SendMessageComposer(new UserSettingsCameraFollowComposer(clone.cameraFollow));
-                break;
+                setCameraFollow(value as boolean);
+                return;
             case 'system_volume':
-                clone.volumeSystem = value as number;
-                clone.volumeSystem = Math.max(0, clone.volumeSystem);
-                clone.volumeSystem = Math.min(100, clone.volumeSystem);
-                break;
+                setVolume('system', Number(value));
+                return;
             case 'furni_volume':
-                clone.volumeFurni = value as number;
-                clone.volumeFurni = Math.max(0, clone.volumeFurni);
-                clone.volumeFurni = Math.min(100, clone.volumeFurni);
-                break;
+                setVolume('furni', Number(value));
+                return;
             case 'trax_volume':
-                clone.volumeTrax = value as number;
-                clone.volumeTrax = Math.max(0, clone.volumeTrax);
-                clone.volumeTrax = Math.min(100, clone.volumeTrax);
-                break;
+                setVolume('trax', Number(value));
+                return;
         }
-
-        if(doUpdate) setUserSettings(clone);
-        
-        DispatchMainEvent(clone)
     }
 
     const saveRangeSlider = (type: string) =>
     {
-        switch(type)
-        {
-            case 'volume':
-                SendMessageComposer(new UserSettingsSoundComposer(Math.round(userSettings.volumeSystem), Math.round(userSettings.volumeFurni), Math.round(userSettings.volumeTrax)));
-                break;
-        }
+        if(type === 'volume') saveVolumes();
     }
-
-    useMessageEvent<UserSettingsEvent>(UserSettingsEvent, event =>
-    {
-        const parser = event.getParser();
-        const settingsEvent = new NitroSettingsEvent();
-
-        settingsEvent.volumeSystem = parser.volumeSystem;
-        settingsEvent.volumeFurni = parser.volumeFurni;
-        settingsEvent.volumeTrax = parser.volumeTrax;
-        settingsEvent.oldChat = parser.oldChat;
-        settingsEvent.roomInvites = parser.roomInvites;
-        settingsEvent.cameraFollow = parser.cameraFollow;
-        settingsEvent.flags = parser.flags;
-        settingsEvent.chatType = parser.chatType;
-
-        setUserSettings(settingsEvent);
-        DispatchMainEvent(settingsEvent);
-    });
 
     useEffect(() =>
     {
@@ -115,13 +76,6 @@ export const UserSettingsView: FC<{}> = props =>
 
         return () => RemoveLinkEventTracker(linkTracker);
     }, []);
-
-    useEffect(() =>
-    {
-        if(!userSettings) return;
-
-        DispatchUiEvent(userSettings);
-    }, [ userSettings ]);
 
     if(!isVisible || !userSettings) return null;
 

@@ -2,9 +2,9 @@ import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, LocalizeText, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
-import { useMessageEvent, useSessionInfo } from '../../hooks';
+import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
 import { GetSelectableChatStyleIds } from './ChatStyles';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
@@ -28,8 +28,17 @@ const TABS: string[] = [ 'General', 'Macros', 'Personalization', 'UI', 'Discord'
 const MACRO_DRAG_SLACK = 4;
 const MACRO_DRAG_EDGE = 28;
 
-// General tab sub-pages (left rail).
-const GENERAL_PAGES: string[] = [ 'Performance', 'Controls' ];
+// General tab sub-pages (left rail). Sound and Preferences are the top-right
+// cog's settings, the same shared state (useUserSettings), so either place
+// changes both.
+const GENERAL_PAGES: string[] = [ 'Performance', 'Controls', 'Sound', 'Preferences' ];
+
+// General > Sound: one card per volume, labelled with the cog window's texts.
+const VOLUME_ROWS: { kind: UserSettingsVolume, text: string }[] = [
+    { kind: 'system', text: 'widget.memenu.settings.volume.ui' },
+    { kind: 'furni', text: 'widget.memenu.settings.volume.furni' },
+    { kind: 'trax', text: 'widget.memenu.settings.volume.trax' }
+];
 
 // The Macros tab is live: bindings are saved server-side (RpSaveMacrosComposer)
 // so they follow the player to any browser, and ChatInputView fires them. See
@@ -110,6 +119,9 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
     const [ generalPage, setGeneralPage ] = useState<string>(GENERAL_PAGES[0]);
+    const { userSettings, setOldChat, setRoomInvites, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
+    const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
+    const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
     const [ personalPage, setPersonalPage ] = useState<string>(PERSONALIZATION_PAGES[0]);
     // null = unknown/loading; refreshed every time the Discord page opens
     const [ discordLinked, setDiscordLinked ] = useState<boolean>(null);
@@ -1603,6 +1615,44 @@ export const RpSettingsView: FC<{}> = props =>
                                     )) }
                                 </div>
                             </div> }
+                            { (generalPage === 'Sound') && !userSettings &&
+                                <Text small className="text-muted">Your sound settings are still loading.</Text> }
+                            { (generalPage === 'Sound') && userSettings && VOLUME_ROWS.map(row =>
+                            {
+                                const volume = Math.round((row.kind === 'system') ? userSettings.volumeSystem : (row.kind === 'furni') ? userSettings.volumeFurni : userSettings.volumeTrax);
+
+                                return (
+                                    <div key={ row.kind } className="rp-settings-card">
+                                        <div className="rp-settings-card-head">
+                                            <label htmlFor={ `rp-settings-volume-${ row.kind }` } className="rp-settings-card-title">{ LocalizeText(row.text) }</label>
+                                            <div className="rp-settings-fps-value">{ volume } <span>%</span></div>
+                                        </div>
+                                        <div className="rp-settings-fps">
+                                            <span className="rp-settings-fps-end">0</span>
+                                            <input id={ `rp-settings-volume-${ row.kind }` } type="range" min={ 0 } max={ 100 } step={ 1 } value={ volume }
+                                                onChange={ event => setVolume(row.kind, parseInt(event.target.value)) }
+                                                onMouseUp={ saveVolumes } onTouchEnd={ saveVolumes } onKeyUp={ saveVolumes } />
+                                            <span className="rp-settings-fps-end">100</span>
+                                        </div>
+                                    </div>
+                                );
+                            }) }
+                            { (generalPage === 'Preferences') && [
+                                { key: 'old-chat', text: 'memenu.settings.chat.prefer.old.chat', on: !!userSettings?.oldChat, ready: !!userSettings, toggle: () => setOldChat(!userSettings.oldChat) },
+                                { key: 'room-invites', text: 'memenu.settings.other.ignore.room.invites', on: !!userSettings?.roomInvites, ready: !!userSettings, toggle: () => setRoomInvites(!userSettings.roomInvites) },
+                                { key: 'camera-follow', text: 'memenu.settings.other.disable.room.camera.follow', on: !!userSettings?.cameraFollow, ready: !!userSettings, toggle: () => setCameraFollow(!userSettings.cameraFollow) },
+                                { key: 'place-multiple', text: 'memenu.settings.other.place.multiple.objects', on: catalogPlaceMultipleObjects, ready: true, toggle: () => setCatalogPlaceMultipleObjects(!catalogPlaceMultipleObjects) },
+                                { key: 'skip-confirm', text: 'memenu.settings.other.skip.purchase.confirmation', on: catalogSkipPurchaseConfirmation, ready: true, toggle: () => setCatalogSkipPurchaseConfirmation(!catalogSkipPurchaseConfirmation) }
+                            ].map(pref => (
+                                <div key={ pref.key } className="rp-settings-section">
+                                    <div className="rp-settings-section-info">
+                                        <Text bold>{ LocalizeText(pref.text) }</Text>
+                                    </div>
+                                    <button type="button" role="switch" aria-checked={ pref.on } aria-label={ LocalizeText(pref.text) } disabled={ !pref.ready }
+                                        className={ `rp-settings-env-switch${ pref.on ? ' is-on' : '' }` }
+                                        onClick={ pref.toggle }><span /></button>
+                                </div>
+                            )) }
                         </Column>
                     </div> }
                 { !TABS.includes(currentTab) &&
