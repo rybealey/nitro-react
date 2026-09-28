@@ -43,6 +43,8 @@ const ITEMS: Record<string, { name: string, cls: string }> = {
     stun_gun: { name: 'Stun Gun', cls: 'rp-item-stun-gun' },
     // Carried by police: :cuff needs a pair in the backpack.
     handcuffs: { name: 'Handcuffs', cls: 'rp-item-handcuffs' },
+    // Police: click to throw (or :fb) - stuns everyone around you. Spent on the throw.
+    flashbang: { name: 'Flashbang', cls: 'rp-item-flashbang' },
 };
 
 interface ItemMeta { name: string; cls: string; iconUrl?: string }
