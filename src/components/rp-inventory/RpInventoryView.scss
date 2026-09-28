@@ -148,6 +148,10 @@
         border: 1px solid #ea8444;
         border-radius: 5px;
         background: rgba(240, 149, 74, 0.7);
+        // The frame reaches out over the window's side padding by exactly its
+        // own padding and border (4 + 1), so the Weapon and Armour tiles inside
+        // it are the carry slots' size and line up with them in columns.
+        margin: 0 -5px;
     }
 
     .rp-inventory-grid {
@@ -242,15 +246,12 @@
 
     // The stun gun's shots left: a thin green bar along the bottom of its slot,
     // over the item art (it comes after it), emptying shot by shot. A slot that
-    // shows it lifts the art 3px so the gun's grip sits clear of the bar - the
-    // Weapon frame's slots are ~5px smaller than the carry grid's (the orange
-    // frame's padding), and there the grip ran right down onto it.
+    // shows it lifts the art 3px so the gun's grip sits clear of the bar.
     .rp-inventory-slot.has-charge > .rp-inventory-item {
         background-position: center calc(50% - 3px);
     }
 
-    // One fixed length, centred, so the bar is the same in the Weapon frame as
-    // in the carry grid: 40px is a carry slot's 50px inside less 5px each side.
+    // One fixed length, centred: 40px is a slot's 50px inside less 5px each side.
     .rp-inventory-charge {
         position: absolute;
         left: 0;
