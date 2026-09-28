@@ -5,8 +5,8 @@ import { useLocalStorage, useMessageEvent, useNavigator, useRoom } from '../../h
 
 // PixelRP turf panel - hangs from the top-centre of any turf room (design:
 // "Turf Control Panel" canvas). Who holds the turf, since when, the claim
-// running in it, and the Claim button - which sends the same request :claim
-// does (TurfManager.TryClaim holds every rule).
+// running in it, and the Claim button - the only way to claim a turf
+// (RpTurfClaimComposer; TurfManager.TryClaim holds every rule).
 //
 // Server-driven: RpRoomTurfEvent arrives on room entry and on every change,
 // per viewer (it carries the viewer's own gang). Between pushes this counts

@@ -73,7 +73,7 @@ export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRolep
             { (activePage === 'Zoning') &&
                 <Column gap={ 1 } className="prp-subnav-page">
                     <Text bold>Zone Type</Text>
-                    <Text>Safe zones pause every visitor&apos;s passive countdown - time only ticks in unsafe rooms. A turf plays as an unsafe room that a gang can claim with :claim; its group furni shows the gang&apos;s colours.</Text>
+                    <Text>Safe zones pause every visitor&apos;s passive countdown - time only ticks in unsafe rooms. A turf plays as an unsafe room that a gang can claim from the turf panel; its group furni shows the gang&apos;s colours.</Text>
                     <select className="form-select form-select-sm" value={ turf?.isTurf ? 'turf' : (isSafeZone ? 'safe' : 'unsafe') } onChange={ event => saveZone(event.target.value) }>
                         <option value="safe">Safe</option>
                         <option value="unsafe">Unsafe</option>

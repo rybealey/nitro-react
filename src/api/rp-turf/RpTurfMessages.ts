@@ -1,7 +1,7 @@
 import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
 import { GetConnection } from '../nitro';
 
-// PixelRP turfs - an unsafe room a gang can claim with :claim (emulator
+// PixelRP turfs - an unsafe room a gang can claim from the turf panel (emulator
 // TurfManager). Defined in client source and registered at runtime, like the
 // gang packets (see RpGangMessages.ts). Wire ids match the emulator's
 // Resources/Revisions/1.6.6.json.
@@ -191,7 +191,7 @@ export class RpRoomZoneTypeSaveComposer implements IMessageComposer<[ number ]>
     }
 }
 
-/** The turf panel's Claim button - the same as typing :claim. No payload: the room you are in. */
+/** The turf panel's Claim button - the only way to claim a turf. No payload: the room you are in. */
 export class RpTurfClaimComposer implements IMessageComposer<[]>
 {
     private _data: [];
