@@ -88,11 +88,10 @@ export const TurfPanelView: FC<{}> = props =>
         setReceivedAt(performance.now());
     });
 
-    // A new room is a new turf, or none: the entry push replaces this, but
-    // nothing of the last room may show in the meantime.
-    const roomId = roomSession?.roomId ?? -1;
-
-    useEffect(() => setView(null), [ roomId ]);
+    // The state is tagged with its room and only shown in THAT room - never
+    // cleared on a room change. The server sends it DURING entry, before the
+    // client's room session has switched over, so a clear keyed on the room
+    // changing ran after it and wiped the one push the panel was going to get.
 
     // One tick a second while there is anything to count.
     const counting = !!(view && view.isTurf);
@@ -106,7 +105,7 @@ export const TurfPanelView: FC<{}> = props =>
         return () => clearInterval(interval);
     }, [ counting ]);
 
-    if(!roomSession || !view || !view.isTurf || ((view.roomId > 0) && (view.roomId !== roomSession.roomId))) return null;
+    if(!roomSession || !view || !view.isTurf || (view.roomId !== roomSession.roomId)) return null;
 
     const since = Math.max(0, (now - receivedAt) / 1000);
     const turfName = (navigatorData?.enteredGuestRoom?.roomName || 'Turf').toUpperCase();
