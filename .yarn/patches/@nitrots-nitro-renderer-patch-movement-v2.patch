@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..9670f16
 --- /dev/null
 +++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,184 @@
 +import { IMessageDataWrapper, IMessageEvent, IMessageParser } from '../../../../api';
 +import { MessageEvent } from '../../../../events';
 +
@@ -302,6 +302,18 @@ index 0000000..9670f16
 +     * Reads false against an emulator that does not set it.
 +     */
 +    public get isForcedRedirect(): boolean { return (this._flags & 0x0100) !== 0; }
++
++    /**
++     * flags bit 0x0200 - pixelrp police escort (RpMovementV2Flags.EscortShadow):
++     * this edge belongs to a suspect escorted in front of their captor, and
++     * timingGroupId (field 6, otherwise unused) carries the captor's virtualId.
++     * The store faces the suspect by the captor's step with the same index.
++     *
++     * -1 when the bit is unset - every other edge, a medical escort's included,
++     * and every edge from an emulator that does not set it. A bit and not
++     * "timingGroupId is non-zero" because virtualId 0 is a real unit.
++     */
++    public get escortCaptor(): number { return ((this._flags & 0x0200) !== 0) ? this._timingGroupId : -1; }
 +}
 +
 +export class RpMovementV2Event extends MessageEvent implements IMessageEvent
@@ -443,7 +455,7 @@ index 2ff0e23..09de3d7 100644
 +            parser.fromX, parser.fromY, parser.fromZ,
 +            parser.toX, parser.toY, parser.toZ,
 +            parser.cycleStart, parser.intervalMs, parser.serverNow,
-+            clientNow, parser.lookahead, parser.startDelayMs);
++            clientNow, parser.lookahead, parser.startDelayMs, parser.escortCaptor);
 +
 +        // TEMPORARY DIAGNOSTIC, and the browser half of :forceredirect.
 +        //
@@ -1792,7 +1804,7 @@ new file mode 100644
 index 0000000..19b0227
 --- /dev/null
 +++ b/src/room/renderer/PixelRPMovementV2.ts
-@@ -0,0 +1,1450 @@
+@@ -0,0 +1,1520 @@
 +import { GetTicker } from '../../pixi-proxy';
 +
 +/**
@@ -1841,6 +1853,12 @@ index 0000000..19b0227
 +    /** Absolute SERVER tick at which this edge starts. */
 +    cycleStart: number;
 +    interval: number;
++    /**
++     * 0-7, the way to face this edge when it is a police-escorted suspect's:
++     * its captor's step with the same index (see escortFacing). -1 for every
++     * other edge, which is faced by its own step.
++     */
++    facing: number;
 +}
 +
 +export interface PixelRPV2Active
@@ -1855,6 +1873,8 @@ index 0000000..19b0227
 +    revision: number;
 +    cycleStart: number;
 +    estServerNow: number;
++    /** The edge's own PixelRPV2Edge.facing: -1 unless it is an escorted suspect's. */
++    facing: number;
 +}
 +
 +interface PixelRPV2Unit
@@ -1868,6 +1888,8 @@ index 0000000..19b0227
 +    facedSession?: number;
 +    facedRevision?: number;
 +    facedEdge?: number;
++    /** ...and the 0-7 facing it turned it to, so a changed answer turns it again. */
++    facedFacing?: number;
 +}
 +
 +export class PixelRPMovementV2
@@ -1982,7 +2004,7 @@ index 0000000..19b0227
 +    /** The one result getActiveForRender rewrites every call - see there. */
 +    private readonly _renderActive: PixelRPV2Active = {
 +        sx: 0, sy: 0, sz: 0, gx: 0, gy: 0, gz: 0, phase: 0,
-+        edgeIndex: -1, session: -1, revision: -1, cycleStart: 0, estServerNow: 0 };
++        edgeIndex: -1, session: -1, revision: -1, cycleStart: 0, estServerNow: 0, facing: -1 };
 +
 +    /** performance.now() - serverNow, min-filtered. NaN until the first packet. */
 +    private _clockOffset = NaN;
@@ -2311,6 +2333,11 @@ index 0000000..19b0227
 +     * older tuple can never affect newer movement, and a higher revision
 +     * replaces geometry ONLY for indexes strictly greater than the elapsing one
 +     * (the server guarantees it never restages an elapsed index).
++     *
++     * escortCaptor is the captor's virtualId when this is a police-escorted
++     * suspect's edge (RpMovementV2Event.escortCaptor), else -1. Every edge
++     * this call records - the real one and its lookahead - is then given its
++     * captor's facing here, once, rather than worked out on every frame.
 +     */
 +    public recordEdge(
 +        virtualId: number,
@@ -2324,7 +2351,8 @@ index 0000000..19b0227
 +        serverNow: number,
 +        clientNowPerf: number,
 +        lookahead: { x: number, y: number, z: number }[] = [],
-+        startDelayMs = 0): void
++        startDelayMs = 0,
++        escortCaptor = -1): void
 +    {
 +        this.updateClock(clientNowPerf, serverNow);
 +
@@ -2364,15 +2392,21 @@ index 0000000..19b0227
 +
 +        const step = ((interval > 0) ? interval : 500);
 +
++        // A police-escorted suspect is faced by its captor's steps. The
++        // captor's record for the same beat is sent first in the same frame,
++        // so its edges are already here - see escortFacing.
++        const captor = ((escortCaptor >= 0) ? this._units.get(escortCaptor) : null);
++        const facing = this.escortFacing(captor, session, revision, edgeIndex);
++
 +        this.upsert(unit, {
 +            session, revision, edgeIndex, provisional: false,
-+            sx, sy, sz, gx, gy, gz, cycleStart, interval: step
++            sx, sy, sz, gx, gy, gz, cycleStart, interval: step, facing
 +        });
 +        this.stats.edges++;
 +
 +        // Lookahead: a contiguous chain. from = previous goal, start = previous
 +        // end. This is what removes boundary packet-waiting.
-+        let prev: PixelRPV2Edge = { session, revision, edgeIndex, provisional: false, sx, sy, sz, gx, gy, gz, cycleStart, interval: step };
++        let prev: PixelRPV2Edge = { session, revision, edgeIndex, provisional: false, sx, sy, sz, gx, gy, gz, cycleStart, interval: step, facing };
 +
 +        for(let i = 0; i < lookahead.length; i++)
 +        {
@@ -2384,7 +2418,8 @@ index 0000000..19b0227
 +                sx: prev.gx, sy: prev.gy, sz: prev.gz,
 +                gx: look.x, gy: look.y, gz: look.z,
 +                cycleStart: (prev.cycleStart + prev.interval),
-+                interval: step
++                interval: step,
++                facing: this.escortFacing(captor, session, revision, (edgeIndex + i + 1))
 +            };
 +
 +            this.upsert(unit, edge);
@@ -2415,6 +2450,43 @@ index 0000000..19b0227
 +                queued: unit.edges.length
 +            });
 +        }
++    }
++
++    /**
++     * The facing for one of a police-escorted suspect's edges: its captor's
++     * edge with the same session, revision and index, faced by the step rule.
++     * That is exactly where the server's own facing for the suspect comes from
++     * (MovementController.StageShadow sets s.Facing = w.Facing, and w.Facing is
++     * the captor's step), so the status that follows confirms it instead of
++     * turning the suspect a moment into the edge.
++     *
++     * The captor's edge is here when the suspect's arrives: StageEdge stages
++     * the captor's record and then StageShadow the suspect's, with the same
++     * identity and the same lookahead length, and the frame goes out in that
++     * order. -1 when it is not - a captor this client has no edges for, e.g.
++     * just after walking into the room - and the edge is then faced by its own
++     * step, as every edge was before.
++     *
++     * A plain loop over at most MAX_EDGES, run once per suspect record and
++     * never per frame.
++     */
++    private escortFacing(captor: PixelRPV2Unit, session: number, revision: number, edgeIndex: number): number
++    {
++        if(!captor) return -1;
++
++        const edges = captor.edges;
++
++        for(let i = 0; i < edges.length; i++)
++        {
++            const edge = edges[i];
++
++            if((edge.edgeIndex === edgeIndex) && (edge.session === session) && (edge.revision === revision))
++            {
++                return PixelRPMovementV2.rotationOf(edge.sx, edge.sy, edge.gx, edge.gy);
++            }
++        }
++
++        return -1;
 +    }
 +
 +    private upsert(unit: PixelRPV2Unit, edge: PixelRPV2Edge): void
@@ -2593,14 +2665,19 @@ index 0000000..19b0227
 +     * -1 when this edge has already been faced or has no direction.
 +     *
 +     * Once per edge, keyed by (session, revision, index), so the render path
-+     * pays one comparison per frame and the status packet's own direction can
-+     * still turn an avatar standing mid-edge afterwards. A higher revision of
-+     * the same index is faced again: its geometry may have changed.
++     * pays a few comparisons per frame and the status packet's own direction
++     * can still turn an avatar standing mid-edge afterwards. A higher revision
++     * of the same index is faced again: its geometry may have changed.
 +     *
-+     * THE ONE KNOWN DISAGREEMENT: an escorted suspect's edges are faced the way
-+     * the CAPTOR faces (MovementController.StageShadow), not their own step, and
-+     * nothing on the wire marks them. At an escort corner the suspect faces
-+     * their step for a moment until the status turns them to the captor's way.
++     * A POLICE-ESCORTED SUSPECT is faced the way its CAPTOR faces, as the server
++     * faces it (MovementController.StageShadow) - not by its own step. On a
++     * turn the suspect's step is a slide round the captor, so facing the step
++     * pointed it the wrong way until the status turned it: a visible snap at
++     * escort corners. recordEdge now gives each suspect edge its captor's
++     * facing (PixelRPV2Edge.facing), so the suspect turns on the same frame as
++     * the captor and the status only confirms it. The facing is part of the
++     * key, so a guessed edge confirmed with a different answer turns once more;
++     * for everyone else it cannot change within an edge.
 +     */
 +    public facingToApply(virtualId: number, active: PixelRPV2Active): number
 +    {
@@ -2608,14 +2685,17 @@ index 0000000..19b0227
 +
 +        if(!unit || !active) return -1;
 +
++        const rotation = ((active.facing >= 0)
++            ? active.facing
++            : PixelRPMovementV2.rotationOf(active.sx, active.sy, active.gx, active.gy));
++
 +        if((unit.facedSession === active.session) && (unit.facedRevision === active.revision)
-+            && (unit.facedEdge === active.edgeIndex)) return -1;
++            && (unit.facedEdge === active.edgeIndex) && (unit.facedFacing === rotation)) return -1;
 +
 +        unit.facedSession = active.session;
 +        unit.facedRevision = active.revision;
 +        unit.facedEdge = active.edgeIndex;
-+
-+        const rotation = PixelRPMovementV2.rotationOf(active.sx, active.sy, active.gx, active.gy);
++        unit.facedFacing = rotation;
 +
 +        return ((rotation >= 0) ? (rotation * 45) : -1);
 +    }
@@ -2831,7 +2911,8 @@ index 0000000..19b0227
 +                session: edge.session,
 +                revision: edge.revision,
 +                cycleStart: edge.cycleStart,
-+                estServerNow
++                estServerNow,
++                facing: edge.facing
 +            };
 +        }
 +
@@ -2849,6 +2930,7 @@ index 0000000..19b0227
 +        out.revision = edge.revision;
 +        out.cycleStart = edge.cycleStart;
 +        out.estServerNow = estServerNow;
++        out.facing = edge.facing;
 +
 +        return out;
 +    }
