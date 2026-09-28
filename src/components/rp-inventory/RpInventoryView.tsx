@@ -386,7 +386,7 @@ export const RpInventoryView: FC<{}> = props =>
                             {
                                 return (
                                     <div data-rp-slot={ WEAPON_SLOT }
-                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
+                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ (equipped.item === STUN_GUN) ? ' has-charge' : '' }${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
                                         { ...bubbleProps(`${ meta.name } (equipped)`) }
                                         onClick={ () => onItemClick(WEAPON_SLOT) }
                                         onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
@@ -423,7 +423,7 @@ export const RpInventoryView: FC<{}> = props =>
                             {
                                 return (
                                     <div key={ slot } data-rp-slot={ slot }
-                                        className={ `rp-inventory-slot has-item${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                        className={ `rp-inventory-slot has-item${ (entry.item === STUN_GUN) ? ' has-charge' : '' }${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
                                         { ...bubbleProps(meta.name) }
                                         onClick={ () => onItemClick(slot) }
                                         onDoubleClick={ () => onItemDoubleClick(slot) }
