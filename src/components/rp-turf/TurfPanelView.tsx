@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RoomTurfView, RpRoomTurfEvent, RpTurfClaimComposer } from '../../api/rp-turf/RpTurfMessages';
 import { useLocalStorage, useMessageEvent, useNavigator, useRoom } from '../../hooks';
@@ -17,6 +17,8 @@ const NEUTRAL_A = 'b8b8b8';
 const NEUTRAL_B = '444444';
 /** How long a failure stays on the panel before it goes back to normal. */
 const FAIL_VISIBLE_MS = 12000;
+/** The collapse animation's length - rp-turf-lift in TurfPanelView.scss. */
+const COLLAPSE_MS = 150;
 
 const hex = (value: string, fallback: string) => ('#' + ((value && value.length) ? value : fallback));
 
@@ -76,7 +78,28 @@ export const TurfPanelView: FC<{}> = props =>
     // from it rather than from whenever this renders.
     const [ receivedAt, setReceivedAt ] = useState(0);
     const [ now, setNow ] = useState(() => performance.now());
-    const [ open, setOpen ] = useLocalStorage<boolean>('pixelrp.turf-panel.open', true);
+    // Collapsed by default. A NEW key rather than the old one's default
+    // flipped: everyone who had opened the panel under the old key would
+    // otherwise go on seeing it expanded.
+    const [ open, setOpen ] = useLocalStorage<boolean>('pixelrp.turf-panel.expanded', false);
+    // Collapsing plays its lift-out before the tab replaces the panel; the
+    // panel's drop-in and the tab's play on mount (TurfPanelView.scss).
+    const [ closing, setClosing ] = useState(false);
+    const closeTimer = useRef<ReturnType<typeof setTimeout>>(null);
+
+    useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+    const collapse = () =>
+    {
+        if(closing) return;
+
+        setClosing(true);
+        closeTimer.current = setTimeout(() =>
+        {
+            setOpen(false);
+            setClosing(false);
+        }, COLLAPSE_MS);
+    }
 
     useMessageEvent<RpRoomTurfEvent>(RpRoomTurfEvent, event =>
     {
@@ -168,8 +191,8 @@ export const TurfPanelView: FC<{}> = props =>
     }
 
     return (
-        <div className="rp-turf-panel">
-            <button type="button" className="rp-turf-toggle" aria-label="Collapse the turf panel" onClick={ () => setOpen(false) }>
+        <div className={ `rp-turf-panel is-expanded${ closing ? ' is-closing' : '' }` }>
+            <button type="button" className="rp-turf-toggle" aria-label="Collapse the turf panel" onClick={ collapse }>
                 <Chevron up={ true } />
             </button>
             <div className="rp-turf-heading">
