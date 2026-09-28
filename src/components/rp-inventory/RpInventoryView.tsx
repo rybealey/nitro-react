@@ -1,10 +1,10 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
-import { FC, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { SendRpDiscardItem } from '../../api/rp-inventory/RpInventoryMessages';
+import { GetStunGunCharge, SendRpDiscardItem, StunGunCharge, SubscribeStunGunCharge } from '../../api/rp-inventory/RpInventoryMessages';
 import { DraggableWindowPosition, HoverBubble, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
@@ -66,6 +66,21 @@ const resolveItem = (item: string): ItemMeta =>
     return { name: `Clothing Token · ${ name }${ edition }`, cls: 'rp-item-clothing-token', iconUrl: ClothingIconUrl(listing) };
 }
 
+const STUN_GUN = 'stun_gun';
+
+// The stun gun's shots left, as a green bar along the bottom of its slot - in
+// the Weapon frame or a carry slot, wherever the gun is. Empties shot by shot
+// and fills again at a police locker (the emulator's PoliceState.StunGunShots).
+const StunGunChargeBar: FC<{ charge: StunGunCharge }> = ({ charge }) =>
+{
+    const fraction = ((charge.max > 0) ? Math.max(0, Math.min(1, (charge.left / charge.max))) : 0);
+
+    return (
+        <div className="rp-inventory-charge" role="meter" aria-label="Stun gun shots" aria-valuemin={ 0 } aria-valuemax={ charge.max } aria-valuenow={ charge.left }>
+            <div className="rp-inventory-charge-fill" style={ { width: `${ fraction * 100 }%` } } />
+        </div>);
+}
+
 export const RpInventoryView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
@@ -87,6 +102,8 @@ export const RpInventoryView: FC<{}> = props =>
     const bubbleRef = useRef<HTMLDivElement>(null);
     const pointerRef = useRef({ x: 0, y: 0 });
     const useModeRef = useRef<HTMLDivElement>(null);
+    // Kept outside the view (RpInventoryMessages) - the login send can arrive before it mounts.
+    const stunGunCharge = useSyncExternalStore(SubscribeStunGunCharge, GetStunGunCharge);
 
     // Live backpack contents — sent at login and after every change, so the
     // map is always a full snapshot.
@@ -375,6 +392,7 @@ export const RpInventoryView: FC<{}> = props =>
                                         onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
                                         onPointerDown={ event => onItemDown(event, WEAPON_SLOT) }>
                                         <div className={ `rp-inventory-item ${ meta.cls }` } />
+                                        { (equipped.item === STUN_GUN) && <StunGunChargeBar charge={ stunGunCharge } /> }
                                     </div>);
                             }
 
@@ -413,6 +431,7 @@ export const RpInventoryView: FC<{}> = props =>
                                         <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
                                         { (entry.count > 1) &&
                                         <span className="rp-inventory-count">{ entry.count }</span> }
+                                        { (entry.item === STUN_GUN) && <StunGunChargeBar charge={ stunGunCharge } /> }
                                     </div>);
                             }
 
