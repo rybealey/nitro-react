@@ -1,8 +1,8 @@
-import { RpRoomZoneSaveComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { IRoomData, SendMessageComposer } from '../../../../api';
+import { ROOM_ZONE_SAFE, ROOM_ZONE_TURF, ROOM_ZONE_UNSAFE, RpRoomZoneTypeSaveComposer } from '../../../../api/rp-turf/RpTurfMessages';
 import { Column, Text } from '../../../../common';
-import { RoomCorpState } from './NavigatorRoomSettingsView';
+import { RoomCorpState, RoomTurfState } from './NavigatorRoomSettingsView';
 import { RoleplayAuthorizationsView } from './RoleplayAuthorizationsView';
 import { RoleplayEmergenciesView } from './RoleplayEmergenciesView';
 import { RoleplayHeadquartersView } from './RoleplayHeadquartersView';
@@ -27,21 +27,27 @@ interface NavigatorRoomSettingsRoleplayTabViewProps
     roomData: IRoomData;
     isSafeZone: boolean;
     setIsSafeZone: (value: boolean) => void;
+    turf: RoomTurfState;
+    setTurf: (value: RoomTurfState) => void;
     roomCorp: RoomCorpState;
     setRoomCorp: (value: RoomCorpState) => void;
 }
 
 export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRoleplayTabViewProps> = props =>
 {
-    const { roomData = null, isSafeZone = false, setIsSafeZone = null, roomCorp = null, setRoomCorp = null } = props;
+    const { roomData = null, isSafeZone = false, setIsSafeZone = null, turf = null, setTurf = null, roomCorp = null, setRoomCorp = null } = props;
     const [ activePage, setActivePage ] = useState<string>(GENERAL_PAGES[0]);
 
+    // Safe, Unsafe or Turf. A turf is an unsafe room a gang can claim, so it
+    // saves as unsafe with the turf flag on (RpRoomZoneTypeSaveEvent); the
+    // server answers with both zone packets, which settle the owner line.
     const saveZone = (value: string) =>
     {
-        const safe = (value === 'safe');
+        const zone = ((value === 'safe') ? ROOM_ZONE_SAFE : (value === 'turf') ? ROOM_ZONE_TURF : ROOM_ZONE_UNSAFE);
 
-        setIsSafeZone(safe);
-        SendMessageComposer(new RpRoomZoneSaveComposer(safe));
+        setIsSafeZone(zone === ROOM_ZONE_SAFE);
+        setTurf({ isTurf: (zone === ROOM_ZONE_TURF), ownerName: ((zone === ROOM_ZONE_TURF) ? (turf?.ownerName ?? '') : '') });
+        SendMessageComposer(new RpRoomZoneTypeSaveComposer(zone));
     }
 
     return (
@@ -67,11 +73,14 @@ export const NavigatorRoomSettingsRoleplayTabView: FC<NavigatorRoomSettingsRolep
             { (activePage === 'Zoning') &&
                 <Column gap={ 1 } className="prp-subnav-page">
                     <Text bold>Zone Type</Text>
-                    <Text>Safe zones pause every visitor&apos;s passive countdown - time only ticks in unsafe rooms.</Text>
-                    <select className="form-select form-select-sm" value={ isSafeZone ? 'safe' : 'unsafe' } onChange={ event => saveZone(event.target.value) }>
+                    <Text>Safe zones pause every visitor&apos;s passive countdown - time only ticks in unsafe rooms. A turf plays as an unsafe room that a gang can claim with :claim; its group furni shows the gang&apos;s colours.</Text>
+                    <select className="form-select form-select-sm" value={ turf?.isTurf ? 'turf' : (isSafeZone ? 'safe' : 'unsafe') } onChange={ event => saveZone(event.target.value) }>
                         <option value="safe">Safe</option>
                         <option value="unsafe">Unsafe</option>
+                        <option value="turf">Turf</option>
                     </select>
+                    { turf?.isTurf &&
+                        <Text small>{ turf.ownerName ? `Held by ${ turf.ownerName }` : 'Unclaimed' }</Text> }
                 </Column> }
             { (activePage === 'Headquarters') &&
                 <RoleplayHeadquartersView roomId={ roomData.roomId } roomCorp={ roomCorp } className="prp-subnav-page" /> }

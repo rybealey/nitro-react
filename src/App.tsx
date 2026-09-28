@@ -36,6 +36,7 @@ import { RegisterRpJamMessages } from './api/rp-phone/RpJamMessages';
 import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
+import { RegisterRpTurfMessages } from './api/rp-turf/RpTurfMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
 import { LoadingView } from './components/loading/LoadingView';
@@ -155,6 +156,7 @@ export const App: FC<{}> = props =>
                 // not when the stop status arrives (FinalStepStance).
                 InstallFinalStepStance();
                 RegisterRpGangMessages();
+                RegisterRpTurfMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
                 RegisterRpFurniMessages();

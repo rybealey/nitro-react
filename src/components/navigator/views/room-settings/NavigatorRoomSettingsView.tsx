@@ -1,6 +1,7 @@
 import { RoomDataParser, RoomSettingsDataEvent, RpRoomCorpEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
+import { RpRoomTurfEvent } from '../../../../api/rp-turf/RpTurfMessages';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { useMessageEvent } from '../../../../hooks';
 import { NavigatorRoomSettingsAccessTabView } from './NavigatorRoomSettingsAccessTabView';
@@ -23,6 +24,13 @@ const TABS: string[] = [
 // PixelRP: the room's HQ/corp config (rank ladder + emergency flags),
 // held by the parent for the same reason as isSafeZone above - shared
 // across the three Corporations pages and must survive tab switches.
+// pixelrp turfs: is this room a turf, and the gang holding it ('' = unclaimed).
+export interface RoomTurfState
+{
+    isTurf: boolean;
+    ownerName: string;
+}
+
 export interface RoomCorpState
 {
     corpId: number;
@@ -39,6 +47,8 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
     // Roleplay tab state lives here (not in the tab view) because the zone
     // packet arrives right after the settings data, before the tab mounts.
     const [ isSafeZone, setIsSafeZone ] = useState(false);
+    // pixelrp turfs: the third zone type, and who holds it (RpRoomTurfEvent).
+    const [ turf, setTurf ] = useState<RoomTurfState>({ isTurf: false, ownerName: '' });
     const [ roomCorp, setRoomCorp ] = useState<RoomCorpState>(null);
 
     useMessageEvent<RpRoomZoneEvent>(RpRoomZoneEvent, event =>
@@ -48,6 +58,15 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
         if(!parser) return;
 
         setIsSafeZone(parser.isSafeZone);
+    });
+
+    useMessageEvent<RpRoomTurfEvent>(RpRoomTurfEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser) return;
+
+        setTurf({ isTurf: parser.isTurf, ownerName: parser.ownerName });
     });
 
     useMessageEvent<RpRoomCorpEvent>(RpRoomCorpEvent, event =>
@@ -241,7 +260,7 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
                 { (currentTab === TABS[3]) &&
                     <NavigatorRoomSettingsVipChatTabView roomData={ roomData } handleChange={ handleChange } /> }
                 { (currentTab === TABS[4]) &&
-                    <NavigatorRoomSettingsRoleplayTabView roomData={ roomData } isSafeZone={ isSafeZone } setIsSafeZone={ setIsSafeZone } roomCorp={ roomCorp } setRoomCorp={ setRoomCorp } /> }
+                    <NavigatorRoomSettingsRoleplayTabView roomData={ roomData } isSafeZone={ isSafeZone } setIsSafeZone={ setIsSafeZone } turf={ turf } setTurf={ setTurf } roomCorp={ roomCorp } setRoomCorp={ setRoomCorp } /> }
             </NitroCardContentView>
         </NitroCardView>
     );
