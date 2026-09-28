@@ -249,10 +249,14 @@
         background-position: center calc(50% - 3px);
     }
 
+    // One fixed length, centred, so the bar is the same in the Weapon frame as
+    // in the carry grid: 40px is a carry slot's 50px inside less 5px each side.
     .rp-inventory-charge {
         position: absolute;
-        left: 5px;
-        right: 5px;
+        left: 0;
+        right: 0;
+        width: 40px;
+        margin: 0 auto;
         bottom: 3px;
         height: 3px;
         border-radius: 2px;
