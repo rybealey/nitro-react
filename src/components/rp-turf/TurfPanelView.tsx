@@ -187,7 +187,7 @@ export const TurfPanelView: FC<{}> = props =>
                 </button>
                 { view.capturing &&
                     <div className="rp-turf-tab-progress">
-                        <div style={ { width: `${ progress }%`, background: hex(view.claimColourA, NEUTRAL_A) } } />
+                        <div style={ { width: `${ progress }%` } } />
                     </div> }
             </div>
         );
@@ -227,7 +227,7 @@ export const TurfPanelView: FC<{}> = props =>
                         <span className="rp-turf-clock">{ clock(left) }</span>
                     </div>
                     <div className={ `rp-turf-bar ${ view.contested ? 'is-paused' : '' }` }>
-                        <div style={ { width: `${ progress }%`, background: hex(view.claimColourA, NEUTRAL_A) } } />
+                        <div style={ { width: `${ progress }%` } } />
                     </div>
                     <div className="rp-turf-capture-note">
                         { view.contested

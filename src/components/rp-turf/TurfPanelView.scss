@@ -4,6 +4,10 @@
 $turf-muted: #a9a9b3;
 $turf-slot: rgb(45, 45, 51);
 $turf-green: #00800b;
+// The claim's progress fills in the aggression pink the player and target HUDs
+// use (PlayerHudWidgetView --hud-magenta), whichever gang is claiming: a gang
+// colour could be as dark as the track and vanish.
+$turf-bar: #d62a86;
 
 .rp-turf-panel {
     position: absolute;
@@ -181,6 +185,7 @@ $turf-green: #00800b;
     > div {
         height: 100%;
         border-radius: 4px;
+        background: $turf-bar;
         transition: width 1s linear;
     }
 
@@ -334,6 +339,7 @@ $turf-green: #00800b;
 
     > div {
         height: 100%;
+        background: $turf-bar;
         transition: width 1s linear;
     }
 }
