@@ -3337,7 +3337,7 @@ index 2276481..7cec232 100644
  import { ExtendedSprite, ObjectMouseData, SortableSprite } from './utils';
  
  export class RoomSpriteCanvas implements IRoomRenderingCanvas
-@@ -20,6 +19,52 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -20,6 +19,59 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // layer into this engine-level class.
      private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
  
@@ -3368,6 +3368,13 @@ index 2276481..7cec232 100644
 +    // absorbing floating-point noise on a true tie.
 +    private static PIXELRP_DEPTH_TIE: number = 0.01;
 +
++    // A ROW TIE: two units on the same quantized depth row. A unit's base
++    // depth is its rounded tile's plus a fixed per-object bias of at most
++    // ~4e-4 (renderObject), so units sharing a row differ by less than this
++    // while adjacent rows differ by far more. On a row tie the comparator
++    // orders each unit's above-ground stack whole, by its body.
++    private static PIXELRP_ROW_TIE: number = 0.001;
++
 +    // A LYING body is the exception to the depth tie. AvatarVisualization pulls
 +    // a lying body forward (relativeDepth -0.409, or -0.5 laying inside), and a
 +    // knocked-out player is also lowered 0.35 into the floor by the emulator -
@@ -3390,7 +3397,7 @@ index 2276481..7cec232 100644
      private _id: number;
      private _container: IRoomSpriteCanvasContainer;
  
-@@ -34,6 +79,8 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -34,6 +86,8 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      private _mask: Graphics;
  
      private _sortableSprites: SortableSprite[];
@@ -3399,7 +3406,7 @@ index 2276481..7cec232 100644
      private _spriteCount: number;
      private _activeSpriteCount: number;
      private _spritePool: ExtendedSprite[];
-@@ -64,10 +111,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -64,10 +118,7 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
      // early-return samples an offset avatar at animation FPS (~24Hz) while
      // its native location is clamped, and a released offset could latch on
      // screen until an unrelated visual update.
@@ -3410,7 +3417,37 @@ index 2276481..7cec232 100644
      private _rotationOrigin: Vector3d = null;
      private _rotationRodLength: number = 0;
      private _effectDirection: Vector3d;
-@@ -416,8 +460,22 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -407,17 +458,73 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         // while still absorbing floating-point noise on a true depth tie.
++        // PixelRP: every unit's BODY depth this frame, for the row tie in the
++        // comparator below. Kept on the unit's shared __pixelrpUnit and taken
++        // from its body sprite (AVATAR / AVATAR_OWN); NaN when no body is
++        // drawn, so an effect or a bubble on its own is never ordered as a stack.
++        for(const entry of this._sortableSprites)
++        {
++            const unit = (entry as any).__pixelrpUnit;
++
++            if(unit) unit.pixelrpBodyZ = NaN;
++        }
++
++        for(const entry of this._sortableSprites)
++        {
++            const unit = (entry as any).__pixelrpUnit;
++            const sprite = entry.sprite;
++
++            if(!unit || !sprite) continue;
++
++            if((sprite.spriteType === RoomObjectSpriteType.AVATAR) || (sprite.spriteType === RoomObjectSpriteType.AVATAR_OWN)) unit.pixelrpBodyZ = entry.z;
++        }
++
+         this._sortableSprites.sort((a, b) =>
+         {
+             const aUnit = (a as any).__pixelrpUnit;
+             const bUnit = (b as any).__pixelrpUnit;
+ 
+             if(aUnit && bUnit && (aUnit.id !== bUnit.id)
+                 && (Math.abs(aUnit.tx - bUnit.tx) < 1)
+                 && (Math.abs(aUnit.ty - bUnit.ty) < 1) && (Math.abs(aUnit.depth - bUnit.depth) < 0.01)
                  && a.sprite && (a.sprite.relativeDepth < 0.5)
                  && b.sprite && (b.sprite.relativeDepth < 0.5))
              {
@@ -3434,8 +3471,29 @@ index 2276481..7cec232 100644
 +                // would swap every time the enumeration did.
                  return (bUnit.id - aUnit.id);
              }
++
++            // PIXELRP: A ROW TIE KEEPS EACH UNIT WHOLE TOO. The arm above fires
++            // only when two units share a TILE (raw depth within
++            // PIXELRP_DEPTH_TIE). Two units on the same quantized row but not the
++            // same spot - one walking through the other, as an escorted suspect
++            // swings round their captor - fell to per-sprite depth, where an
++            // effect overlay drawn just in front of its own body (the escort
++            // cuffs' icon and chains, dz 1: -0.015 against a body's -0.01) also
++            // landed in front of the OTHER unit's body while its own body sorted
++            // behind it: the cuffs floating over the captor. On a row tie the two
++            // stacks are ordered whole, by their bodies - the order the bodies
++            // already had, so no body moves; overlays just stop leaving theirs.
++            // Within one unit it stays plain depth.
++            if(aUnit && bUnit && (aUnit.id !== bUnit.id)
++                && a.sprite && (a.sprite.relativeDepth < 0.5)
++                && b.sprite && (b.sprite.relativeDepth < 0.5)
++                && Number.isFinite(aUnit.pixelrpBodyZ) && Number.isFinite(bUnit.pixelrpBodyZ)
++                && (Math.abs((a.z - a.sprite.relativeDepth) - (b.z - b.sprite.relativeDepth)) < RoomSpriteCanvas.PIXELRP_ROW_TIE))
++            {
++                return (bUnit.pixelrpBodyZ - aUnit.pixelrpBodyZ);
++            }
  
-@@ -426,6 +484,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -426,6 +533,10 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
          if(spriteCount < this._sortableSprites.length) this._sortableSprites.splice(spriteCount);
  
@@ -3446,7 +3504,7 @@ index 2276481..7cec232 100644
          let iterator = 0;
  
          while(iterator < spriteCount)
-@@ -504,7 +566,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -504,7 +615,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
  
          if(locationCache.locationChanged) update = true;
@@ -3454,7 +3512,7 @@ index 2276481..7cec232 100644
  
          if(!sortableCache.needsUpdate(visualization.instanceId, visualization.updateSpriteCounter) && !update)
          {
-@@ -542,60 +603,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -542,60 +652,6 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
  
              unitInfo = { id: object.instanceId, own: (object.model ? (object.model.getValue<number>('own_user') > 0) : false), tx: roomLocation.x, ty: roomLocation.y, depth: (this._geometry.getScreenPosition(roomLocation)?.z ?? z) };
  
@@ -3515,7 +3573,7 @@ index 2276481..7cec232 100644
          }
          else
          {
-@@ -675,6 +682,140 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+@@ -675,6 +731,140 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
          return spriteCount;
      }
  
