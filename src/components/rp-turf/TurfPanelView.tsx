@@ -151,14 +151,17 @@ export const TurfPanelView: FC<{}> = props =>
     else if(yours) { statusLabel = 'YOUR TURF'; statusClass = 'is-yours'; }
     else if(owned) { statusLabel = 'CAPTURED'; statusClass = 'is-captured'; }
 
-    // The button always says something: a reason when it cannot be pressed.
+    // The button says why when it cannot be pressed - except on a turf the
+    // viewer's gang already holds, where it goes altogether: YOUR TURF and
+    // "Controlled by" above already say it. A rival claiming it brings the
+    // button back, as the countdown.
+    const holding = (yours && !view.capturing);
     let lockedLabel: string = null;
 
     if(view.capturing) lockedLabel = (view.contested ? 'Contested - claim paused' : `Claiming… ${ clock(left) }`);
     else if(view.viewerGangId <= 0) lockedLabel = 'Join a gang to claim';
-    else if(yours) lockedLabel = 'Your gang holds this turf';
 
-    const canClaim = (lockedLabel === null);
+    const canClaim = (!holding && (lockedLabel === null));
     const claim = () => SendMessageComposer(new RpTurfClaimComposer());
 
     let tabLine = (owned ? `Held by ${ view.ownerName }` : 'Unclaimed');
@@ -237,9 +240,9 @@ export const TurfPanelView: FC<{}> = props =>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z" /><path d="M12 10v4" /><path d="M12 17h.01" /></svg>
                     <span>{ view.failReason }</span>
                 </div> }
-            { canClaim
+            { !holding && (canClaim
                 ? <button type="button" className="rp-turf-claim" onClick={ claim }><FlagIcon size={ 16 } />Claim Territory</button>
-                : <button type="button" className="rp-turf-claim is-locked" disabled>{ lockedLabel }</button> }
+                : <button type="button" className="rp-turf-claim is-locked" disabled>{ lockedLabel }</button>) }
         </div>
     );
 }
