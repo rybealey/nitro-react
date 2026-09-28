@@ -2,7 +2,8 @@ import { RoomEngineTriggerWidgetEvent } from '@nitrots/nitro-renderer';
 import React, { FC, useEffect, useState } from 'react';
 import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { CreateLinkEvent, GetRoomEngine } from '../../api';
-import { useRoomEngineEvent } from '../../hooks';
+import { RpJukeboxOpenEvent } from '../../api/rp-jukebox/RpJukeboxOpenMessages';
+import { useMessageEvent, useRoomEngineEvent } from '../../hooks';
 import { FormatClock, JukeboxSoundBack, SetJukeboxMuted, SetJukeboxRoomPaused, SetJukeboxVolume, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { PhoneMarquee } from '../phone/PhoneMarquee';
 import { useJamState } from './JamStore';
@@ -62,6 +63,10 @@ export const MusicPlayerView: FC<{}> = props =>
         // generously costs nothing and reaches both.
         if(roomObject && ((roomObject.type === 'jukebox') || present)) setIsSiriOpen(true);
     });
+
+    // Any other furni given the jukebox behaviour: its art does not fire the
+    // trigger above, so the server answers the double-click itself.
+    useMessageEvent<RpJukeboxOpenEvent>(RpJukeboxOpenEvent, () => setIsSiriOpen(true));
 
     // Reaching for the volume is reaching to HEAR something: it lifts a mute and
     // a pause rather than sliding a control on silence. Your own song is left

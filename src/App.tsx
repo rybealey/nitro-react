@@ -37,6 +37,7 @@ import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { RegisterRpTurfMessages } from './api/rp-turf/RpTurfMessages';
+import { RegisterRpJukeboxOpenMessages } from './api/rp-jukebox/RpJukeboxOpenMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
 import { LoadingView } from './components/loading/LoadingView';
@@ -157,6 +158,7 @@ export const App: FC<{}> = props =>
                 InstallFinalStepStance();
                 RegisterRpGangMessages();
                 RegisterRpTurfMessages();
+                RegisterRpJukeboxOpenMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
                 RegisterRpFurniMessages();
