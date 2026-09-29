@@ -14,6 +14,9 @@ $mx-accent-text: #8f3c10;
 $mx-accent-tint: #fff4ec;
 $mx-focus: 0 0 0 3px rgba(196, 86, 28, 0.18);
 $mx-raise: 0 1px 0 rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
+// The macros tab is in the hotel's own Ubuntu throughout - keycaps, commands
+// and the preset box included. $mx-mono is left for the FPS readout.
+$mx-font: Ubuntu, sans-serif;
 $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
 .nitro-card.rp-settings-window {
@@ -337,7 +340,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border-radius: 6px;
         border: 1.5px dashed rgba(0, 0, 0, 0.28);
         background: transparent;
-        font-family: $mx-mono !important;
+        font-family: $mx-font !important;
         font-size: 12px;
         font-weight: 700;
         color: $mx-muted;
@@ -366,7 +369,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     .rp-mx-command-field {
         flex: 1;
         min-width: 0;
-        font-family: $mx-mono;
+        font-family: $mx-font;
     }
 
     .rp-mx-add {
@@ -482,7 +485,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border: 1px solid rgba(0, 0, 0, 0.16);
         border-bottom: 3px solid rgba(0, 0, 0, 0.22);
         background: #fbfbfc;
-        font-family: $mx-mono !important;
+        font-family: $mx-font !important;
         font-size: 12px;
         font-weight: 700;
         color: $mx-ink;
@@ -501,13 +504,14 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         }
     }
 
+    // A key's commands stack, one a line, in the order they run.
     .rp-mx-commands {
         flex: 1;
         min-width: 0;
         display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 4px 6px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
     }
 
     .rp-mx-command-slot {
@@ -521,6 +525,9 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     .rp-mx-then {
         flex-shrink: 0;
         color: #9aa0a8;
+
+        // the first command's arrow: its space only, so the stack lines up
+        &.is-first { visibility: hidden; }
     }
 
     .rp-mx-command {
@@ -544,7 +551,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         padding: 0 10px;
         border: 0;
         background: transparent;
-        font-family: $mx-mono !important;
+        font-family: $mx-font !important;
         font-size: 12px;
         color: $mx-ink;
         overflow: hidden;
@@ -585,7 +592,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border: 1.5px solid $mx-accent;
         box-shadow: $mx-focus;
         background: $white;
-        font-family: $mx-mono;
+        font-family: $mx-font;
         font-size: 12px;
         color: $mx-ink;
         outline: none;
@@ -1130,7 +1137,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     padding: 8px;
     border: 1px solid rgba(0, 0, 0, .45);
     border-radius: 6px;
-    font-family: 'Consolas', 'Courier New', monospace;
+    font-family: $mx-font;
     font-size: 11px;
     line-height: 1.45;
     white-space: pre;

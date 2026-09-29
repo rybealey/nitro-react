@@ -1332,8 +1332,12 @@ export const RpSettingsView: FC<{}> = props =>
                                     <div className="rp-mx-commands">
                                         { group.rows.map((row, position) => (
                                             <div key={ row.index } className="rp-mx-command-slot">
-                                                { (position > 0) &&
-                                                    <svg className="rp-mx-then" aria-label="then" width="12" height="10" viewBox="0 0 12 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5h9M7 2l3 3-3 3" /></svg> }
+                                                { /* One command a line, in run order. The first of
+                                                     several keeps the arrow's space, unseen, so
+                                                     every command in the stack lines up. */ }
+                                                { (group.rows.length > 1) &&
+                                                    <svg className={ `rp-mx-then ${ (position === 0) ? 'is-first' : '' }` } aria-label={ (position > 0) ? 'then' : undefined } aria-hidden={ (position === 0) || undefined }
+                                                        width="12" height="10" viewBox="0 0 12 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5h9M7 2l3 3-3 3" /></svg> }
                                                 { (editingCommand && (editingCommand.index === row.index))
                                                     ? <input type="text" autoFocus className="rp-mx-command-input"
                                                         aria-label="Edit macro command" maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ editingCommand.text }
@@ -1359,11 +1363,11 @@ export const RpSettingsView: FC<{}> = props =>
                                                             <span className="rp-mx-command-tools">
                                                                 { (position > 0) &&
                                                                     <button type="button" title="Run earlier" aria-label="Run earlier" onClick={ () => moveWithinKey(row.index, -1) }>
-                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 1L2 4l3 3" /></svg>
+                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5l3-3 3 3" /></svg>
                                                                     </button> }
                                                                 { (position < (group.rows.length - 1)) &&
                                                                     <button type="button" title="Run later" aria-label="Run later" onClick={ () => moveWithinKey(row.index, 1) }>
-                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 1l3 3-3 3" /></svg>
+                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3l3 3 3-3" /></svg>
                                                                     </button> }
                                                                 <button type="button" title="Remove this command" aria-label="Remove this command" onClick={ () => deleteMacro(row.index) }>
                                                                     <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" /></svg>
