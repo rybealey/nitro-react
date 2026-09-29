@@ -3,7 +3,7 @@ import { FC, useEffect, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../../../api';
 import { Column, Text } from '../../../../common';
 import { useMessageEvent } from '../../../../hooks';
-import { RoomCorpState } from './NavigatorRoomSettingsView';
+import { RoomCorpState } from './RoomCorpState';
 
 interface RoleplayHeadquartersViewProps
 {

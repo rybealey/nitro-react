@@ -55,31 +55,6 @@
     width: 400px;
 }
 
-.nitro-room-settings {
-    width: 400px;
-
-    // Chrome tab strip, matching the Settings window (theme selectors beat
-    // the stock theme-primary/-slim $secondary tab bar).
-    &.theme-primary .nitro-card-tabs,
-    &.theme-primary-slim .nitro-card-tabs {
-        @include prp-chrome-tab-strip;
-    }
-
-    // Roleplay tab rail (shared subnav): keep sidebar-height presence even
-    // while the tab has a single link.
-    .prp-subnav-layout {
-        min-height: 260px;
-    }
-
-    .list-container {
-        height: 100px;
-
-        .list-item {
-            background-color: $grid-active-bg-color;
-        }
-    }
-}
-
 .room-info {
     width: 275px;
 }

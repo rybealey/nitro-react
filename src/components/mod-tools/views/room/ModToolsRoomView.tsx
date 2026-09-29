@@ -1,30 +1,30 @@
-import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomChatSettings, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
+import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomChatSettings, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { ROOM_ZONE_SAFE, ROOM_ZONE_UNSAFE, RpRoomTurfEvent, RpRoomZoneTypeSaveComposer } from '../../../../api/rp-turf/RpTurfMessages';
 import { DraggableWindowPosition, LayoutRoomThumbnailView, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { RoomWidgetThumbnailEvent } from '../../../../events';
 import { useMessageEvent, useNavigator, useNotification, useRoom } from '../../../../hooks';
-import { RoomCorpState } from '../../../navigator/views/room-settings/NavigatorRoomSettingsView';
-import { RoleplayAuthorizationsView } from '../../../navigator/views/room-settings/RoleplayAuthorizationsView';
-import { RoleplayEmergenciesView } from '../../../navigator/views/room-settings/RoleplayEmergenciesView';
-import { RoleplayHeadquartersView } from '../../../navigator/views/room-settings/RoleplayHeadquartersView';
-import { RequestModToolsRoomSettings } from './ModToolsRoomSettingsRequest';
+import { RoleplayAuthorizationsView } from './RoleplayAuthorizationsView';
+import { RoleplayEmergenciesView } from './RoleplayEmergenciesView';
+import { RoleplayHeadquartersView } from './RoleplayHeadquartersView';
+import { RoomCorpState } from './RoomCorpState';
 
 // The Room tool (Mod Tools canvas): one window for a room, its moderation and
-// its settings - the owner's Room settings window built in, so staff never
-// need :roomsettings. Tabs across the top: Overview (the room and its
+// its settings. Room settings are staff-only - the old Room settings window is
+// gone, and :roomsettings opens this. Tabs across the top: Overview (the room and its
 // settings), Roleplay (zone, headquarters, emergencies, authorizations),
 // Moderation (caution the room) and Rights.
 //
-// Settings save the moment they change, exactly like Room settings. The
-// server only answers a settings request from someone allowed to change the
-// room - its owner, or staff clocked in at City Government - so a request
-// that gets no answer means no access, and the settings tabs say so.
+// Settings save the moment they change. The server only answers a settings
+// request from staff (Room.CanManageSettings - on duty or off; owning the room
+// is not enough), so a request that gets no answer means no access, and the
+// settings tabs say so.
 //
 // A few things only work on the room the moderator is standing in, because
 // the server acts on the current room: the room picture, the floor plan, the
-// room link, the zone type, muting everyone and taking one player's rights.
+// room link, the zone type, muting everyone, and taking away rights - one
+// player's or everyone's.
 // Those appear only when the tool is showing the current room.
 
 const TABS = [ 'Overview', 'Roleplay', 'Moderation', 'Rights' ];
@@ -208,7 +208,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
     {
         SendMessageComposer(new GetModeratorRoomInfoMessageComposer(roomId));
         SendMessageComposer(new RoomUsersWithRightsComposer(roomId));
-        RequestModToolsRoomSettings(roomId);
+        SendMessageComposer(new RoomSettingsComposer(roomId));
 
         // no answer means the server turned the request down
         const timeout = setTimeout(() => setRoomData(prevValue =>
@@ -361,7 +361,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
     const noAccess = (
         <div className="mt-empty">
             { settingsDenied
-                ? <>You can change this room&apos;s settings only while you are clocked in at City Government.</>
+                ? <>You don&apos;t have access to this room&apos;s settings.</>
                 : <>Loading the room&apos;s settings&hellip;</> }
         </div>
     );
@@ -567,7 +567,10 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                     <>
                         <div className="mt-rights-head">
                             <span className="mt-label">Players with rights · { usersWithRights.size }</span>
-                            <button type="button" className="mt-danger mt-small" disabled={ !usersWithRights.size } onClick={ () => SendMessageComposer(new RemoveAllRightsMessageComposer(roomId)) }>Remove everyone</button>
+                            { /* the server clears the room the moderator stands in, so
+                                 only offer it for that room */ }
+                            { isCurrentRoom &&
+                                <button type="button" className="mt-danger mt-small" disabled={ !usersWithRights.size } onClick={ () => SendMessageComposer(new RemoveAllRightsMessageComposer(roomId)) }>Remove everyone</button> }
                         </div>
                         <div className="mt-card">
                             { !usersWithRights.size &&

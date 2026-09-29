@@ -2,7 +2,7 @@ import { RpSetHqRankComposer } from '@nitrots/nitro-renderer';
 import { FC } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../../../api';
 import { Column, Flex, Text } from '../../../../common';
-import { RoomCorpState } from './NavigatorRoomSettingsView';
+import { RoomCorpState } from './RoomCorpState';
 
 interface RoleplayAuthorizationsViewProps
 {

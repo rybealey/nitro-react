@@ -1,4 +1,4 @@
-import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, InfoRetrieveMessageComposer, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils, UserInfoEvent } from '@nitrots/nitro-renderer';
+import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, InfoRetrieveMessageComposer, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomShakingEffect, RoomZoomEvent, TextureUtils, UserInfoEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
 import { ApplyMaxFps } from '../../../api/prefs/FpsStore';
@@ -275,10 +275,9 @@ const useChatInputWidgetState = () =>
                     showNitroAlert();
                     return null;
                 case ':settings':
-                    if(IsRoomOwnerNow(roomSession) || HasAnyRoomRights())
-                    {
-                        SendMessageComposer(new RoomSettingsComposer(roomSession.roomId));
-                    }
+                    // PixelRP: room settings live in the Mod Tools' Room tool and
+                    // are staff only (the server gates them the same way)
+                    if(GetSessionDataManager().isModerator) CreateLinkEvent(`mod-tools/open-room-info/${ roomSession.roomId }`);
 
                     return null;
             }

@@ -63,14 +63,16 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ avatarInfo, gangVersion ]);
 
+    // PixelRP: rights are handed out and taken away by staff only - owning the
+    // room is not enough (the server refuses owners the same way)
     const isShowGiveRights = useMemo(() =>
     {
-        return (avatarInfo.amIOwner && (avatarInfo.targetRoomControllerLevel < RoomControllerLevel.GUEST) && !avatarInfo.isGuildRoom);
+        return (GetSessionDataManager().isModerator && (avatarInfo.targetRoomControllerLevel < RoomControllerLevel.GUEST) && !avatarInfo.isGuildRoom);
     }, [ avatarInfo ]);
 
     const isShowRemoveRights = useMemo(() =>
     {
-        return (avatarInfo.amIOwner && (avatarInfo.targetRoomControllerLevel === RoomControllerLevel.GUEST) && !avatarInfo.isGuildRoom);
+        return (GetSessionDataManager().isModerator && (avatarInfo.targetRoomControllerLevel === RoomControllerLevel.GUEST) && !avatarInfo.isGuildRoom);
     }, [ avatarInfo ]);
 
     const moderateMenuHasContent = useMemo(() =>

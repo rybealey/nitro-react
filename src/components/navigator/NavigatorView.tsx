@@ -8,7 +8,6 @@ import { NavigatorDoorStateView } from './views/NavigatorDoorStateView';
 import { NavigatorRoomCreatorView } from './views/NavigatorRoomCreatorView';
 import { NavigatorRoomInfoView } from './views/NavigatorRoomInfoView';
 import { NavigatorRoomLinkView } from './views/NavigatorRoomLinkView';
-import { NavigatorRoomSettingsView } from './views/room-settings/NavigatorRoomSettingsView';
 import { NavigatorSearchResultView } from './views/search/NavigatorSearchResultView';
 import { NavigatorSearchView } from './views/search/NavigatorSearchView';
 
@@ -227,7 +226,6 @@ export const NavigatorView: FC<{}> = props =>
             <NavigatorDoorStateView />
             { isRoomInfoOpen && <NavigatorRoomInfoView onCloseClick={ () => setRoomInfoOpen(false) } /> }
             { isRoomLinkOpen && <NavigatorRoomLinkView onCloseClick={ () => setRoomLinkOpen(false) } /> }
-            <NavigatorRoomSettingsView />
         </>
     );
 }

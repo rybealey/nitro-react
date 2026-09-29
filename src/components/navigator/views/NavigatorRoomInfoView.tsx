@@ -1,4 +1,4 @@
-import { GetCustomRoomFilterMessageComposer, NavigatorSearchComposer, RoomMuteComposer, RoomSettingsComposer, SecurityLevel, ToggleStaffPickMessageComposer, UpdateHomeRoomMessageComposer } from '@nitrots/nitro-renderer';
+import { GetCustomRoomFilterMessageComposer, NavigatorSearchComposer, RoomMuteComposer, SecurityLevel, ToggleStaffPickMessageComposer, UpdateHomeRoomMessageComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaLink } from 'react-icons/fa';
 import { CreateLinkEvent, DispatchUiEvent, GetGroupInformation, GetSessionDataManager, LocalizeText, ReportType, SendMessageComposer } from '../../../api';
@@ -60,9 +60,6 @@ export const NavigatorRoomInfoView: FC<NavigatorRoomInfoViewProps> = props =>
                 return;
             case 'toggle_room_link':
                 CreateLinkEvent('navigator/toggle-room-link');
-                return;
-            case 'open_room_settings':
-                SendMessageComposer(new RoomSettingsComposer(navigatorData.enteredGuestRoom.roomId));
                 return;
             case 'toggle_pick':
                 setIsRoomPicked(value => !value);
@@ -133,8 +130,6 @@ export const NavigatorRoomInfoView: FC<NavigatorRoomInfoViewProps> = props =>
                                             </Flex> }
                                     </Column>
                                     <Column alignItems="center" gap={ 1 }>
-                                        { hasPermission('settings') &&
-                                            <i className="icon icon-cog cursor-pointer" title={ LocalizeText('navigator.room.popup.info.room.settings') } onClick={ event => processAction('open_room_settings') } /> }
                                         <FaLink title={ LocalizeText('navigator.embed.caption') } className="cursor-pointer fa-icon" onClick={ event => CreateLinkEvent('navigator/toggle-room-link') } />
                                     </Column>
                                 </Flex>
