@@ -141,6 +141,7 @@
     .hud-name {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: 13px;
         line-height: 1;
         color: $white;
@@ -166,6 +167,7 @@
     .hud-state {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: 8px;
         letter-spacing: 0.5px;
         border-radius: $border-radius;

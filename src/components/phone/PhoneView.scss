@@ -159,6 +159,7 @@ $camera-bar-height: 84px;
             position: relative;
             font-family: 'Ubuntu', sans-serif;
             font-weight: 500;
+            -webkit-text-stroke-width: 0;
             font-size: calc(13px * var(--ph-text-scale, 1));
             letter-spacing: 0.5px;
         }
@@ -172,6 +173,7 @@ $camera-bar-height: 84px;
             span {
                 font-family: 'Ubuntu', sans-serif;
                 font-weight: 500;
+                -webkit-text-stroke-width: 0;
                 font-size: calc(11px * var(--ph-text-scale, 1));
                 letter-spacing: 0.5px;
             }
@@ -492,6 +494,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         cursor: pointer;
     }
 
@@ -603,6 +606,7 @@ $camera-bar-height: 84px;
     .phone-app-label {
         --ph-text-scale: 1;
         font-family: 'Silkscreen', monospace;
+        -webkit-text-stroke-width: 0;
         font-size: calc(9px * var(--ph-text-scale, 1));
         letter-spacing: 0.3px;
         color: #ffffff;
@@ -623,6 +627,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(10px * var(--ph-text-scale, 1));
         display: flex;
         align-items: center;
@@ -651,6 +656,7 @@ $camera-bar-height: 84px;
     .phone-app-kicker {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(9px * var(--ph-text-scale, 1));
         letter-spacing: 1.5px;
         color: $phone-pink;
@@ -660,6 +666,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(27px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
         letter-spacing: -0.5px;
         line-height: 1.1;
@@ -706,6 +713,7 @@ $camera-bar-height: 84px;
         margin: 24px 20px 6px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(10px * var(--ph-text-scale, 1));
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -785,6 +793,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(9px * var(--ph-text-scale, 1));
         display: flex;
         align-items: center;
@@ -823,6 +832,7 @@ $camera-bar-height: 84px;
         justify-content: center;
         color: #ffffff;
         font-weight: 700;
+        @include prp-bold;
         font-family: 'Ubuntu', sans-serif;
 
         .avatar-image {
@@ -992,6 +1002,7 @@ $camera-bar-height: 84px;
     .phone-pinned-name {
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-text);
         max-width: 74px;
         overflow: hidden;
@@ -1030,6 +1041,7 @@ $camera-bar-height: 84px;
 
         span {
             font-family: 'Silkscreen', monospace;
+            -webkit-text-stroke-width: 0;
             font-size: calc(8px * var(--ph-text-scale, 1));
             letter-spacing: 0.5px;
         }
@@ -1082,6 +1094,7 @@ $camera-bar-height: 84px;
         .phone-thread-name {
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1117,6 +1130,7 @@ $camera-bar-height: 84px;
             &.is-unread {
                 color: var(--ph-text);
                 font-weight: 600;
+                @include prp-bold;
             }
         }
     }
@@ -1130,6 +1144,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(10px * var(--ph-text-scale, 1));
         display: flex;
         align-items: center;
@@ -1180,6 +1195,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(19px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
     }
 
@@ -1195,6 +1211,7 @@ $camera-bar-height: 84px;
         background: linear-gradient(180deg, $phone-pink-hot, $phone-magenta);
         color: #ffffff;
         font-family: 'Silkscreen', monospace;
+        -webkit-text-stroke-width: 0;
         font-size: calc(11px * var(--ph-text-scale, 1));
         letter-spacing: 0.5px;
         border: 2px solid $phone-ink;
@@ -1221,6 +1238,7 @@ $camera-bar-height: 84px;
     .phone-pin-menu-name {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(16px * var(--ph-text-scale, 1));
         color: #ffffff;
     }
@@ -1244,6 +1262,7 @@ $camera-bar-height: 84px;
         padding: 12px 14px;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-text);
 
         & + .phone-pin-menu-item {
@@ -1261,6 +1280,7 @@ $camera-bar-height: 84px;
 
     .phone-pin-menu-hint {
         font-family: 'Silkscreen', monospace;
+        -webkit-text-stroke-width: 0;
         font-size: calc(8px * var(--ph-text-scale, 1));
         letter-spacing: 0.5px;
         color: rgba(255, 255, 255, 0.6);
@@ -1299,6 +1319,7 @@ $camera-bar-height: 84px;
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1350,6 +1371,7 @@ $camera-bar-height: 84px;
     .phone-thread-daystamp {
         align-self: center;
         font-family: 'Silkscreen', monospace;
+        -webkit-text-stroke-width: 0;
         font-size: calc(8px * var(--ph-text-scale, 1));
         letter-spacing: 0.5px;
         color: var(--ph-faint);
@@ -1406,7 +1428,7 @@ $camera-bar-height: 84px;
 
     .phone-thread-jam-text { flex: 1; min-width: 0; line-height: 1.35; }
 
-    .phone-thread-jam-title { font-size: calc(12.5px * var(--ph-text-scale, 1)); font-weight: 700; }
+    .phone-thread-jam-title { font-size: calc(12.5px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; }
 
     .phone-thread-jam-sub { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-soft); }
 
@@ -1421,6 +1443,7 @@ $camera-bar-height: 84px;
         color: #0b1a10;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         transition: transform .12s ease, filter .12s ease;
 
         &:active { transform: scale(.94); filter: brightness(.92); opacity: 1; }
@@ -1439,6 +1462,7 @@ $camera-bar-height: 84px;
         color: $phone-pink;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
     }
 
     .phone-thread-bubble-row {
@@ -1462,6 +1486,7 @@ $camera-bar-height: 84px;
         .phone-thread-sender {
             font-size: calc(11px * var(--ph-text-scale, 1));
             font-weight: 600;
+            @include prp-bold;
             color: $phone-muted-text;
             padding: 4px 6px 2px;
         }
@@ -1495,6 +1520,7 @@ $camera-bar-height: 84px;
         &.is-error {
             color: $phone-red;
             font-weight: 600;
+            @include prp-bold;
         }
     }
 
@@ -1710,6 +1736,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         box-shadow: 0 3px 8px rgba(184, 30, 116, 0.4);
     }
 
@@ -1767,6 +1794,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(11px * var(--ph-text-scale, 1));
         transition: background .18s ease, border-color .18s ease;
 
@@ -1835,12 +1863,14 @@ $camera-bar-height: 84px;
             font-size: calc(14px * var(--ph-text-scale, 1));
             color: $phone-pink;
             font-weight: 600;
+            @include prp-bold;
         }
 
         .phone-compose-title {
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
         }
 
@@ -1897,6 +1927,7 @@ $camera-bar-height: 84px;
         .phone-compose-row-name {
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
         }
 
@@ -1923,6 +1954,7 @@ $camera-bar-height: 84px;
         .phone-contact-name {
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -2010,6 +2042,7 @@ $camera-bar-height: 84px;
         border-radius: 9px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 600;
+        @include prp-bold;
         font-size: calc(14px * var(--ph-text-scale, 1));
         color: var(--ph-muted);
         transition: background .18s ease, color .18s ease, box-shadow .18s ease;
@@ -2032,6 +2065,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(11px * var(--ph-text-scale, 1));
         display: flex;
         align-items: center;
@@ -2046,6 +2080,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(13px * var(--ph-text-scale, 1));
         display: flex;
         align-items: center;
@@ -2064,6 +2099,7 @@ $camera-bar-height: 84px;
         .phone-requests-empty-title {
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             margin-bottom: 4px;
         }
@@ -2154,6 +2190,7 @@ $camera-bar-height: 84px;
     .phone-settings-preview-label {
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-text);
     }
 
@@ -2206,6 +2243,7 @@ $camera-bar-height: 84px;
         .phone-settings-row-title {
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
         }
 
@@ -2297,7 +2335,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-music-topbtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: $mu-text; margin: 0 -8px; transition: transform .12s ease; &.phone-tap:active { transform: scale(.9); opacity: 1; } }
-    .phone-music-toptitle { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.6px; color: $mu-sub; }
+    .phone-music-toptitle { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: 1.6px; color: $mu-sub; }
 
     .phone-music-now { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
@@ -2337,7 +2375,7 @@ $camera-bar-height: 84px;
     // room's jukebox panel uses it too.
 
 
-    .phone-music-title { font-size: calc(22px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: -.4px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: $mu-text; }
+    .phone-music-title { font-size: calc(22px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: -.4px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: $mu-text; }
     .phone-music-sub { font-size: calc(15px * var(--ph-text-scale, 1)); color: $mu-sub; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; &.is-wrap { white-space: normal; font-size: calc(14px * var(--ph-text-scale, 1)); line-height: 1.5; margin-top: 6px; } }
     .phone-music-addbtn { color: $mu-sub; display: flex; transition: color .15s ease, transform .12s ease; &:active { transform: scale(.9); color: $mu-text; opacity: 1; } }
 
@@ -2388,6 +2426,7 @@ $camera-bar-height: 84px;
         background: $mu-lift;
         font-size: calc(11px * var(--ph-text-scale, 1));
         font-weight: 500;
+        -webkit-text-stroke-width: 0;
         letter-spacing: .1px;
         color: $mu-sub;
         animation: phone-cal-fade .4s ease .2s both;
@@ -2396,7 +2435,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-music-queuebtn { position: relative; }
-    .phone-music-badge { position: absolute; right: -2px; top: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: $mu-green; color: $mu-ink; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px $mu-bg; }
+    .phone-music-badge { position: absolute; right: -2px; top: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: $mu-green; color: $mu-ink; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px $mu-bg; }
 
     // this player's on/off switch; the stream never pauses
     .phone-music-play {
@@ -2454,7 +2493,7 @@ $camera-bar-height: 84px;
 
     // Small-caps label over a title. It was matched to the UP NEXT card's
     // kicker, which has gone - the pairing is why it looks the way it does.
-    .phone-music-nowkicker { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; color: $mu-faint; margin-bottom: 2px; }
+    .phone-music-nowkicker { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: 1.2px; color: $mu-faint; margin-bottom: 2px; }
 
     .phone-music-source {
         flex: none;
@@ -2466,6 +2505,7 @@ $camera-bar-height: 84px;
         gap: 7px;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: $mu-faint;
         transition: color .25s ease;
         animation: phone-cal-fade .4s ease .2s both;
@@ -2520,6 +2560,7 @@ $camera-bar-height: 84px;
         gap: 8px;
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         animation: phone-cal-rise .34s cubic-bezier(.2, .8, .2, 1) .16s both;
         transition: transform .12s ease, filter .12s ease;
 
@@ -2537,7 +2578,7 @@ $camera-bar-height: 84px;
 
     // queue: flat rows on black
     .phone-music-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
-    .phone-music-section { padding: 14px 18px 6px; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; color: $mu-text; animation: phone-cal-fade .3s ease both; }
+    .phone-music-section { padding: 14px 18px 6px; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: $mu-text; animation: phone-cal-fade .3s ease both; }
 
     .phone-music-row {
         display: flex;
@@ -2552,7 +2593,7 @@ $camera-bar-height: 84px;
 
     .phone-music-row-art { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; flex: none; background: $mu-lift; opacity: 0; transition: opacity .4s ease; &.is-loaded { opacity: 1; } }
     .phone-music-row-text { flex: 1; min-width: 0; }
-    .phone-music-row-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; color: $mu-text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .phone-music-row-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: $mu-text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .phone-music-row-by { font-size: calc(12px * var(--ph-text-scale, 1)); color: $mu-sub; margin-top: 2px; }
     // trailing row control: skip on the playing row, x on removable requests
     .phone-music-rowbtn {
@@ -2603,10 +2644,10 @@ $camera-bar-height: 84px;
 
     .phone-music-darksheet-track { display: flex; align-items: center; gap: 12px; img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; flex: none; background: $mu-lift; } }
     .phone-music-darksheet-tracktext { flex: 1; min-width: 0; }
-    .phone-music-darksheet-tracktitle { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .phone-music-darksheet-tracktitle { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .phone-music-darksheet-tracksub { font-size: calc(12px * var(--ph-text-scale, 1)); color: $mu-sub; margin-top: 2px; }
-    .phone-music-darksheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; margin-top: 16px; }
-    .phone-music-darksheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: $mu-sub; margin-top: 4px; line-height: 1.45; b { color: $mu-text; font-weight: 700; } }
+    .phone-music-darksheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; margin-top: 16px; }
+    .phone-music-darksheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: $mu-sub; margin-top: 4px; line-height: 1.45; b { color: $mu-text; font-weight: 700; @include prp-bold; } }
     .phone-music-darksheet-actions { display: flex; gap: 10px; margin-top: 16px; }
 
     .phone-music-darkbtn {
@@ -2621,6 +2662,7 @@ $camera-bar-height: 84px;
         gap: 6px;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         transition: transform .12s ease, filter .12s ease;
 
         &.is-primary { background: $mu-green; color: $mu-ink; .phone-pi { color: $mu-ink; } }
@@ -2651,7 +2693,7 @@ $camera-bar-height: 84px;
 
     // request sheet: the Siri bar, halo and all
     .phone-music-sheet { padding: 14px 16px 22px; }
-    .phone-music-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-music-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-music-sheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 2px; }
     .phone-music-sheet-note { margin-top: 12px; font-size: calc(11px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-faint); text-align: center; }
 
@@ -2695,6 +2737,7 @@ $camera-bar-height: 84px;
         color: $mu-sub;
         font-size: calc(11px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2817,6 +2860,7 @@ $camera-bar-height: 84px;
         min-width: 0;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2836,6 +2880,7 @@ $camera-bar-height: 84px;
         color: $mu-red;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         transition: transform .12s ease, background .12s ease;
 
         .phone-pi { color: inherit; }
@@ -2993,7 +3038,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-notes-row-icon { color: var(--notes-accent); flex: none; width: 18px; text-align: center; }
-    .phone-notes-row-label { flex: 1; min-width: 0; font-size: calc(15px * var(--ph-text-scale, 1)); color: var(--ph-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; &.is-accent { color: var(--notes-accent); font-weight: 700; } }
+    .phone-notes-row-label { flex: 1; min-width: 0; font-size: calc(15px * var(--ph-text-scale, 1)); color: var(--ph-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; &.is-accent { color: var(--notes-accent); font-weight: 700; @include prp-bold; } }
     .phone-notes-row-count { font-size: calc(13px * var(--ph-text-scale, 1)); color: var(--ph-faint); flex: none; }
     .phone-notes-row-chev { color: var(--ph-text); opacity: .35; flex: none; }
     .phone-notes-row-check { color: var(--notes-accent); flex: none; }
@@ -3010,6 +3055,7 @@ $camera-bar-height: 84px;
         justify-content: center;
         color: #ffffff;
         font-weight: 700;
+        @include prp-bold;
         flex: none;
         font-family: 'Ubuntu', sans-serif;
         animation: phone-notes-pop-in .3s cubic-bezier(.2, .8, .2, 1) both;
@@ -3075,6 +3121,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
 
         transition: filter .12s ease;
 
@@ -3103,7 +3150,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-notes-item-text { flex: 1; min-width: 0; }
-    .phone-notes-item-title { display: flex; align-items: center; gap: 6px; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; span { overflow: hidden; text-overflow: ellipsis; } }
+    .phone-notes-item-title { display: flex; align-items: center; gap: 6px; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; span { overflow: hidden; text-overflow: ellipsis; } }
     .phone-notes-item-pin { color: var(--notes-accent); flex: none; animation: phone-notes-pop-in .3s cubic-bezier(.2, .8, .2, 1) both; }
     .phone-notes-item-meta { display: flex; gap: 8px; font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; }
     .phone-notes-item-date { color: var(--ph-faint); flex: none; }
@@ -3124,7 +3171,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-notes-meta { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); margin-bottom: 8px; }
-    .phone-notes-meta-live { color: $notes-teal; font-weight: 700; animation: phone-cal-fade .35s ease both; }
+    .phone-notes-meta-live { color: $notes-teal; font-weight: 700; @include prp-bold; animation: phone-cal-fade .35s ease both; }
 
     .phone-notes-title, .phone-notes-line-input {
         display: block;
@@ -3145,6 +3192,7 @@ $camera-bar-height: 84px;
     .phone-notes-title {
         font-size: calc(24px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         line-height: 1.15;
         letter-spacing: -.3px;
         margin-bottom: 10px;
@@ -3165,7 +3213,7 @@ $camera-bar-height: 84px;
         animation: phone-cal-rise .22s cubic-bezier(.2, .8, .2, 1) both;
 
         &.is-head { margin-top: 6px; }
-        &.is-head .phone-notes-line-input { font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--ph-faint); line-height: 1.7; }
+        &.is-head .phone-notes-line-input { font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: .5px; text-transform: uppercase; color: var(--ph-faint); line-height: 1.7; }
         &.is-done .phone-notes-line-input { color: var(--ph-faint); text-decoration: line-through; }
 
         .phone-notes-line-input { transition: color .2s ease; }
@@ -3199,6 +3247,7 @@ $camera-bar-height: 84px;
         top: -8px;
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: #ffffff;
         padding: 1px 6px;
         border-radius: 6px;
@@ -3242,7 +3291,7 @@ $camera-bar-height: 84px;
 
     // sheets
     .phone-notes-sheet { padding: 14px 18px 22px; }
-    .phone-notes-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-notes-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-notes-sheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 2px; line-height: 1.45; }
     .phone-notes-sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
 
@@ -3255,6 +3304,7 @@ $camera-bar-height: 84px;
         justify-content: center;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         background: var(--ph-inset);
         color: var(--ph-text);
         transition: transform .12s ease, opacity .2s ease;
@@ -3306,9 +3356,9 @@ $camera-bar-height: 84px;
     }
 
     .phone-notes-person-text { flex: 1; min-width: 0; }
-    .phone-notes-person-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); display: flex; align-items: center; gap: 6px; }
-    .phone-notes-person-owner { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--notes-accent); }
-    .phone-notes-person-status { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); &.is-live { color: $notes-teal; font-weight: 700; } }
+    .phone-notes-person-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); display: flex; align-items: center; gap: 6px; }
+    .phone-notes-person-owner { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: .5px; text-transform: uppercase; color: var(--notes-accent); }
+    .phone-notes-person-status { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); &.is-live { color: $notes-teal; font-weight: 700; @include prp-bold; } }
 
     .phone-notes-person-btn {
         width: 26px;
@@ -3437,7 +3487,7 @@ $camera-bar-height: 84px;
         .is-compact & { opacity: 1; transform: none; }
     }
 
-    .phone-weather-compact-city { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 600; line-height: 1.2; }
+    .phone-weather-compact-city { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; line-height: 1.2; }
     .phone-weather-compact-cond { font-size: calc(11px * var(--ph-text-scale, 1)); color: $wx-s2; line-height: 1.2; }
 
     .phone-weather-pill {
@@ -3451,6 +3501,7 @@ $camera-bar-height: 84px;
         border: 1px solid $wx-glass-brd;
         font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .4px;
         color: $wx-s2;
         white-space: nowrap;
@@ -3501,6 +3552,7 @@ $camera-bar-height: 84px;
     .phone-stocks-tick {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(16px * var(--ph-text-scale, 1));
         letter-spacing: .2px;
         line-height: 1.2;
@@ -3531,6 +3583,7 @@ $camera-bar-height: 84px;
 
     .phone-stocks-val {
         font-weight: 500;
+        -webkit-text-stroke-width: 0;
         font-size: calc(16px * var(--ph-text-scale, 1));
         font-variant-numeric: tabular-nums;
         letter-spacing: -.2px;
@@ -3543,6 +3596,7 @@ $camera-bar-height: 84px;
         border-radius: 6px;
         text-align: center;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(11px * var(--ph-text-scale, 1));
         font-variant-numeric: tabular-nums;
         color: #ffffff;
@@ -3572,6 +3626,7 @@ $camera-bar-height: 84px;
     .phone-stocks-dval {
         margin-top: 12px;
         font-weight: 500;
+        -webkit-text-stroke-width: 0;
         font-size: calc(38px * var(--ph-text-scale, 1));
         line-height: 1;
         letter-spacing: -1px;
@@ -3586,7 +3641,7 @@ $camera-bar-height: 84px;
         align-items: baseline;
         justify-content: space-between;
 
-        b { font-weight: 700; font-size: calc(12.5px * var(--ph-text-scale, 1)); color: $phone-pink; letter-spacing: .2px; }
+        b { font-weight: 700; @include prp-bold; font-size: calc(12.5px * var(--ph-text-scale, 1)); color: $phone-pink; letter-spacing: .2px; }
         span { font-family: 'Barlow', sans-serif; font-size: calc(11.5px * var(--ph-text-scale, 1)); color: #7d7590; }
     }
 
@@ -3596,10 +3651,11 @@ $camera-bar-height: 84px;
         align-items: center;
         gap: 8px;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(13.5px * var(--ph-text-scale, 1));
         font-variant-numeric: tabular-nums;
 
-        span { font-family: 'Barlow', sans-serif; font-weight: 400; font-size: calc(11.5px * var(--ph-text-scale, 1)); color: #7d7590; }
+        span { font-family: 'Barlow', sans-serif; font-weight: 400; -webkit-text-stroke-width: 0; font-size: calc(11.5px * var(--ph-text-scale, 1)); color: #7d7590; }
     }
 
     .phone-stocks-banner {
@@ -3609,7 +3665,7 @@ $camera-bar-height: 84px;
         background: rgba(233, 58, 125, .12);
         border: 1px solid rgba(233, 58, 125, .3);
 
-        b { font-weight: 700; font-size: calc(12px * var(--ph-text-scale, 1)); color: $phone-pink; letter-spacing: .2px; }
+        b { font-weight: 700; @include prp-bold; font-size: calc(12px * var(--ph-text-scale, 1)); color: $phone-pink; letter-spacing: .2px; }
     }
 
     .phone-stocks-seg {
@@ -3626,6 +3682,7 @@ $camera-bar-height: 84px;
         border-radius: 9px;
         text-align: center;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(11.5px * var(--ph-text-scale, 1));
         font-variant-numeric: tabular-nums;
         color: #9a90a5;
@@ -3665,6 +3722,7 @@ $camera-bar-height: 84px;
         span {
             display: block;
             font-weight: 700;
+            @include prp-bold;
             font-size: calc(8.5px * var(--ph-text-scale, 1));
             letter-spacing: 1.1px;
             text-transform: uppercase;
@@ -3675,6 +3733,7 @@ $camera-bar-height: 84px;
             display: block;
             margin-top: 3px;
             font-weight: 500;
+            -webkit-text-stroke-width: 0;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-variant-numeric: tabular-nums;
         }
@@ -3723,7 +3782,7 @@ $camera-bar-height: 84px;
         animation: phone-cal-rise .3s cubic-bezier(.2, .8, .2, 1) both;
 
         .phone-pi { color: #f7d77a; margin-top: 1px; }
-        b { font-weight: 700; }
+        b { font-weight: 700; @include prp-bold; }
         div div { color: $wx-s2; margin-top: 1px; }
     }
 
@@ -3738,6 +3797,7 @@ $camera-bar-height: 84px;
         gap: 6px;
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.2px;
         text-transform: uppercase;
         color: $wx-s3;
@@ -3746,10 +3806,10 @@ $camera-bar-height: 84px;
         &.is-center { justify-content: center; color: $wx-s2; letter-spacing: 1.5px; .phone-pi { color: $wx-s2; } }
     }
 
-    .phone-weather-city { font-size: calc(24px * var(--ph-text-scale, 1)); font-weight: 500; letter-spacing: -.3px; margin-top: 2px; }
-    .phone-weather-temp { font-size: calc(76px * var(--ph-text-scale, 1)); font-family: 'Barlow', 'Ubuntu', sans-serif; font-weight: 400; line-height: 1; letter-spacing: -3px; margin: 2px 0 0 10px; font-variant-numeric: tabular-nums; &.is-empty { color: $wx-s3; } }
-    .phone-weather-cond { font-size: calc(16px * var(--ph-text-scale, 1)); font-weight: 500; margin-top: 2px; &.is-soft { color: $wx-s2; font-size: calc(14px * var(--ph-text-scale, 1)); } }
-    .phone-weather-hilo { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 500; color: $wx-s2; margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .phone-weather-city { font-size: calc(24px * var(--ph-text-scale, 1)); font-weight: 500; -webkit-text-stroke-width: 0; letter-spacing: -.3px; margin-top: 2px; }
+    .phone-weather-temp { font-size: calc(76px * var(--ph-text-scale, 1)); font-family: 'Barlow', 'Ubuntu', sans-serif; font-weight: 400; -webkit-text-stroke-width: 0; line-height: 1; letter-spacing: -3px; margin: 2px 0 0 10px; font-variant-numeric: tabular-nums; &.is-empty { color: $wx-s3; } }
+    .phone-weather-cond { font-size: calc(16px * var(--ph-text-scale, 1)); font-weight: 500; -webkit-text-stroke-width: 0; margin-top: 2px; &.is-soft { color: $wx-s2; font-size: calc(14px * var(--ph-text-scale, 1)); } }
+    .phone-weather-hilo { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 500; -webkit-text-stroke-width: 0; color: $wx-s2; margin-top: 3px; font-variant-numeric: tabular-nums; }
 
     // glass cards
     .phone-weather-card {
@@ -3786,9 +3846,9 @@ $camera-bar-height: 84px;
         animation: phone-cal-rise .3s cubic-bezier(.2, .8, .2, 1) both;
     }
 
-    .phone-weather-hour-label { font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 600; color: $wx-s2; .is-now & { color: #ffffff; } }
-    .phone-weather-hour-precip { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; color: $wx-precip; margin: -5px 0 -3px; }
-    .phone-weather-hour-temp { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .phone-weather-hour-label { font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; color: $wx-s2; .is-now & { color: #ffffff; } }
+    .phone-weather-hour-precip { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: $wx-precip; margin: -5px 0 -3px; }
+    .phone-weather-hour-temp { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; font-variant-numeric: tabular-nums; }
 
     .phone-weather-days { margin-top: 4px; }
 
@@ -3803,9 +3863,9 @@ $camera-bar-height: 84px;
         &.is-shimmer { animation: none; }
     }
 
-    .phone-weather-day-label { width: 44px; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 600; flex: none; }
-    .phone-weather-day-lo { width: 28px; text-align: right; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 600; color: $wx-s2; font-variant-numeric: tabular-nums; flex: none; }
-    .phone-weather-day-hi { width: 28px; text-align: right; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; font-variant-numeric: tabular-nums; flex: none; }
+    .phone-weather-day-label { width: 44px; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; flex: none; }
+    .phone-weather-day-lo { width: 28px; text-align: right; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; color: $wx-s2; font-variant-numeric: tabular-nums; flex: none; }
+    .phone-weather-day-hi { width: 28px; text-align: right; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; font-variant-numeric: tabular-nums; flex: none; }
 
     .phone-weather-bar {
         position: relative;
@@ -3860,7 +3920,7 @@ $camera-bar-height: 84px;
         animation: phone-cal-rise .36s cubic-bezier(.2, .8, .2, 1) both;
     }
 
-    .phone-weather-tile-value { font-size: calc(26px * var(--ph-text-scale, 1)); font-weight: 500; letter-spacing: -.5px; margin-top: 6px; font-variant-numeric: tabular-nums; small { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 600; color: $wx-s2; letter-spacing: 0; } }
+    .phone-weather-tile-value { font-size: calc(26px * var(--ph-text-scale, 1)); font-weight: 500; -webkit-text-stroke-width: 0; letter-spacing: -.5px; margin-top: 6px; font-variant-numeric: tabular-nums; small { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; color: $wx-s2; letter-spacing: 0; } }
     // A tile carrying the compass keeps its value clear of it.
     .phone-weather-tile:has(.phone-weather-compass) .phone-weather-tile-value { padding-right: 52px; }
 
@@ -3894,7 +3954,7 @@ $camera-bar-height: 84px;
         align-items: center;
         justify-content: center;
 
-        span { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: calc(7px * var(--ph-text-scale, 1)); font-weight: 700; }
+        span { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: calc(7px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; }
         .phone-pi { color: #ffffff; transition: transform .6s ease; }
     }
 
@@ -3984,11 +4044,12 @@ $camera-bar-height: 84px;
         justify-content: center;
         color: #ffffff;
         font-weight: 700;
+        @include prp-bold;
         flex: none;
     }
 
     .phone-news-byline { display: flex; align-items: center; gap: 7px; font-size: calc(11.5px * var(--ph-text-scale, 1)); color: var(--ph-soft); }
-    .phone-news-byline-name { font-weight: 700; color: var(--ph-text); }
+    .phone-news-byline-name { font-weight: 700; @include prp-bold; color: var(--ph-text); }
 
     .phone-news-chip {
         display: inline-block;
@@ -3997,6 +4058,7 @@ $camera-bar-height: 84px;
         border-radius: 8px;
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1px;
         text-transform: uppercase;
         background: var(--news-accent);
@@ -4025,6 +4087,7 @@ $camera-bar-height: 84px;
         bottom: 12px;
         font-size: calc(19px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         line-height: 1.2;
         letter-spacing: -.3px;
         color: #ffffff;
@@ -4059,8 +4122,8 @@ $camera-bar-height: 84px;
     }
 
     .phone-news-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-    .phone-news-row-cat { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--news-accent); }
-    .phone-news-row-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; line-height: 1.25; color: var(--ph-text); }
+    .phone-news-row-cat { font-size: calc(9px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: 1px; text-transform: uppercase; color: var(--news-accent); }
+    .phone-news-row-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; line-height: 1.25; color: var(--ph-text); }
     .phone-news-row-meta { font-size: calc(11.5px * var(--ph-text-scale, 1)); color: var(--ph-soft); }
     .phone-news-thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex: none; background: var(--ph-inset); }
 
@@ -4080,7 +4143,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-news-empty-icon { width: 56px; height: 56px; border-radius: 18px; background: var(--ph-inset); color: var(--news-accent); display: flex; align-items: center; justify-content: center; }
-    .phone-news-empty-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-news-empty-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-news-empty-sub { font-size: calc(13px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-soft); }
 
     // article
@@ -4096,9 +4159,9 @@ $camera-bar-height: 84px;
     }
 
     .phone-news-article { padding: 14px 22px 0; display: flex; flex-direction: column; gap: 10px; }
-    .phone-news-article-title { font-size: calc(23px * var(--ph-text-scale, 1)); font-weight: 700; line-height: 1.18; letter-spacing: -.4px; color: var(--ph-text); animation: phone-cal-rise .34s cubic-bezier(.2, .8, .2, 1) 40ms both; }
+    .phone-news-article-title { font-size: calc(23px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; line-height: 1.18; letter-spacing: -.4px; color: var(--ph-text); animation: phone-cal-rise .34s cubic-bezier(.2, .8, .2, 1) 40ms both; }
     .phone-news-article-meta { display: flex; align-items: center; justify-content: space-between; animation: phone-cal-fade .35s ease 80ms both; }
-    .phone-news-staff { display: inline-flex; align-items: center; gap: 4px; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: .5px; color: var(--ph-faint); .phone-pi { color: var(--ph-faint); } }
+    .phone-news-staff { display: inline-flex; align-items: center; gap: 4px; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: .5px; color: var(--ph-faint); .phone-pi { color: var(--ph-faint); } }
     .phone-news-rule { height: 1px; background: var(--ph-hairline); }
     .phone-news-p { margin: 0; font-size: calc(15px * var(--ph-text-scale, 1)); line-height: 1.55; color: var(--ph-text); white-space: pre-line; animation: phone-cal-rise .32s cubic-bezier(.2, .8, .2, 1) both; }
     .phone-news-edited { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); margin-top: 4px; }
@@ -4113,7 +4176,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-news-compose-cancel { font-size: calc(15px * var(--ph-text-scale, 1)); color: var(--news-accent); width: 70px; }
-    .phone-news-compose-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-news-compose-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-news-compose-post { width: 70px; display: flex; justify-content: flex-end; }
 
     .phone-news-postbtn {
@@ -4123,6 +4186,7 @@ $camera-bar-height: 84px;
         color: var(--news-ink);
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         transition: opacity .2s ease, transform .12s ease;
 
         &.is-off { opacity: .4; pointer-events: none; }
@@ -4147,7 +4211,7 @@ $camera-bar-height: 84px;
 
     .phone-news-imagerow-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--ph-inset); color: var(--news-accent); display: flex; align-items: center; justify-content: center; flex: none; }
     .phone-news-imagerow-text { flex: 1; min-width: 0; }
-    .phone-news-imagerow-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-news-imagerow-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-news-imagerow-sub { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); }
     .phone-news-chev { color: var(--ph-text); opacity: .35; flex: none; }
 
@@ -4163,9 +4227,9 @@ $camera-bar-height: 84px;
         img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease; &.is-loaded { opacity: 1; } }
     }
 
-    .phone-news-preview-name { position: absolute; right: 10px; top: 10px; max-width: 60%; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, .55); color: #ffffff; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .phone-news-preview-name { position: absolute; right: 10px; top: 10px; max-width: 60%; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, .55); color: #ffffff; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .phone-news-preview-actions { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; }
-    .phone-news-preview-btn { padding: 5px 10px; border-radius: 9px; background: rgba(0, 0, 0, .55); color: #ffffff; font-size: calc(11px * var(--ph-text-scale, 1)); font-weight: 700; }
+    .phone-news-preview-btn { padding: 5px 10px; border-radius: 9px; background: rgba(0, 0, 0, .55); color: #ffffff; font-size: calc(11px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; }
 
     .phone-news-cats {
         display: flex;
@@ -4183,6 +4247,7 @@ $camera-bar-height: 84px;
         border-radius: 12px;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         background: var(--ph-inset);
         color: var(--ph-text);
         transition: background .15s ease, color .15s ease, transform .12s ease;
@@ -4209,7 +4274,7 @@ $camera-bar-height: 84px;
         &::placeholder { color: var(--ph-faint); }
     }
 
-    .phone-news-field-title { font-family: 'Ubuntu', sans-serif; font-size: calc(22px * var(--ph-text-scale, 1)); font-weight: 700; line-height: 1.2; letter-spacing: -.3px; }
+    .phone-news-field-title { font-family: 'Ubuntu', sans-serif; font-size: calc(22px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; line-height: 1.2; letter-spacing: -.3px; }
     .phone-news-field-body { font-size: calc(15px * var(--ph-text-scale, 1)); line-height: 1.55; min-height: 120px; }
 
     .phone-news-pinrow {
@@ -4225,9 +4290,9 @@ $camera-bar-height: 84px;
 
     .phone-news-pinrow.phone-news-authorrow { gap: 10px; margin-top: 12px; margin-bottom: -4px; }
     .phone-news-authorrow-text { flex: 1; min-width: 0; }
-    .phone-news-sheet-sub b { color: var(--ph-text); font-weight: 700; }
+    .phone-news-sheet-sub b { color: var(--ph-text); font-weight: 700; @include prp-bold; }
 
-    .phone-news-pinrow-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-news-pinrow-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-news-pinrow-sub { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); }
 
     .phone-news-switch {
@@ -4248,8 +4313,8 @@ $camera-bar-height: 84px;
     // sheets
     .phone-news-sheet { padding: 14px 18px 22px; }
     .phone-news-sheet-head { display: flex; align-items: center; justify-content: space-between; }
-    .phone-news-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
-    .phone-news-sheet-done { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--news-accent); }
+    .phone-news-sheet-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
+    .phone-news-sheet-done { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--news-accent); }
     .phone-news-sheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 2px; line-height: 1.45; }
     .phone-news-sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
     .phone-news-search { margin: 10px 0 0; }
@@ -4263,6 +4328,7 @@ $camera-bar-height: 84px;
         justify-content: center;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         background: var(--ph-inset);
         color: var(--ph-text);
         transition: transform .12s ease;
@@ -4389,12 +4455,13 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         cursor: pointer;
 
         &:hover { filter: brightness(1.08); }
     }
 
-    .phone-music-siri-done { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 10px; color: #00800b; font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; }
+    .phone-music-siri-done { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 10px; color: #00800b; font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; }
 
     @media (prefers-reduced-motion: reduce) {
         .phone-music-siri-halo::before { animation: none; }
@@ -4430,6 +4497,7 @@ $camera-bar-height: 84px;
         border: 1px solid var(--ph-input-border);
         font-size: calc(12.5px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         letter-spacing: -.1px;
         color: var(--ph-soft);
         cursor: pointer;
@@ -4480,11 +4548,12 @@ $camera-bar-height: 84px;
         padding-bottom: 6px;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-faint);
     }
 
     .phone-sitch-post-head { display: flex; align-items: baseline; gap: 6px; }
-    .phone-sitch-post-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); letter-spacing: -.1px; }
+    .phone-sitch-post-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); letter-spacing: -.1px; }
     .phone-sitch-post-ago { margin-left: auto; flex: none; font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-faint); }
 
     // The same mark staff carry on the HUD and the infostand, not a label of
@@ -4599,6 +4668,7 @@ $camera-bar-height: 84px;
     .phone-sitch-trend-tag {
         font-size: calc(14.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
     }
     .phone-sitch-trend-count {
@@ -4621,7 +4691,7 @@ $camera-bar-height: 84px;
         &:active { background: var(--ph-hover); color: #d8536b; }
     }
 
-    .phone-sitch-person-flag { flex: none; font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--sitch-accent); font-weight: 600; }
+    .phone-sitch-person-flag { flex: none; font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--sitch-accent); font-weight: 600; @include prp-bold; }
 
     // A hashtag or a mention inside a post. Accent-coloured rather than
     // underlined: a feed full of underlines reads as a page of links.
@@ -4651,13 +4721,14 @@ $camera-bar-height: 84px;
         color: var(--ph-soft);
     }
 
-    .phone-sitch-sheet-title { font-family: 'Ubuntu', sans-serif; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-sitch-sheet-title { font-family: 'Ubuntu', sans-serif; font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
 
     .phone-sitch-send {
         padding: 6px 14px;
         border-radius: 999px;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         background: var(--sitch-accent);
         color: var(--sitch-ink);
 
@@ -4697,6 +4768,7 @@ $camera-bar-height: 84px;
     .phone-sitch-count {
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         font-variant-numeric: tabular-nums;
         color: var(--ph-faint);
 
@@ -4786,9 +4858,10 @@ $camera-bar-height: 84px;
         color: var(--sitch-ink);
         font-size: calc(13.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
 
         // Already following reads as a state, not an invitation.
-        &.is-on { background: transparent; border: 1px solid var(--ph-input-border); color: var(--ph-text); font-weight: 600; }
+        &.is-on { background: transparent; border: 1px solid var(--ph-input-border); color: var(--ph-text); font-weight: 600; @include prp-bold; }
     }
 
     // ---- activity ---------------------------------------------------------
@@ -4802,7 +4875,7 @@ $camera-bar-height: 84px;
     .phone-sitch-profile { padding: 4px 18px 14px; border-bottom: 1px solid $phone-hairline; display: flex; flex-direction: column; gap: 12px; }
     .phone-sitch-profile-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .phone-sitch-profile-names { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-    .phone-sitch-profile-name { font-family: 'Ubuntu', sans-serif; font-size: calc(24px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: -.5px; line-height: 1.1; color: var(--ph-text); }
+    .phone-sitch-profile-name { font-family: 'Ubuntu', sans-serif; font-size: calc(24px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: -.5px; line-height: 1.1; color: var(--ph-text); }
     .phone-sitch-profile-motto { font-size: calc(13px * var(--ph-text-scale, 1)); color: var(--ph-faint); }
     .phone-sitch-profile-bio { font-size: calc(14px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-text); text-wrap: pretty; }
 
@@ -4812,7 +4885,7 @@ $camera-bar-height: 84px;
         font-size: calc(13px * var(--ph-text-scale, 1));
         color: var(--ph-soft);
 
-        strong { color: var(--ph-text); font-weight: 700; }
+        strong { color: var(--ph-text); font-weight: 700; @include prp-bold; }
     }
 
     .phone-sitch-song-label { padding-top: 2px; }
@@ -4864,7 +4937,7 @@ $camera-bar-height: 84px;
 
     .phone-sitch-song-art { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex: none; background: var(--ph-bubble); }
     .phone-sitch-song-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-    .phone-sitch-song-title { font-size: calc(15.5px * var(--ph-text-scale, 1)); font-weight: 700; line-height: 1.25; color: var(--ph-text); }
+    .phone-sitch-song-title { font-size: calc(15.5px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; line-height: 1.25; color: var(--ph-text); }
     .phone-sitch-song-author { font-size: calc(12.5px * var(--ph-text-scale, 1)); color: var(--ph-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     // The only control on the card, so it carries the accent rather than
@@ -4912,7 +4985,7 @@ $camera-bar-height: 84px;
         justify-content: center;
     }
 
-    .phone-sitch-empty-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-sitch-empty-title { font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-sitch-empty-sub { font-size: calc(13px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-soft); }
 
     // The app's own tab bar, on the glass the rest of the phone's bars use.
@@ -4980,6 +5053,7 @@ $camera-bar-height: 84px;
         background: var(--ph-inset);
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: $cal-red;
     }
 
@@ -5022,6 +5096,7 @@ $camera-bar-height: 84px;
     .phone-calendar-month-label {
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
     }
 
@@ -5035,6 +5110,7 @@ $camera-bar-height: 84px;
             text-align: center;
             font-size: calc(10px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             letter-spacing: .5px;
             color: var(--ph-faint);
         }
@@ -5064,6 +5140,7 @@ $camera-bar-height: 84px;
             justify-content: center;
             font-size: calc(14px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             transition: background .18s ease, color .18s ease;
 
@@ -5104,7 +5181,7 @@ $camera-bar-height: 84px;
         gap: 3px;
         min-height: 44px;
 
-        .phone-calendar-dayletter { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: .5px; color: var(--ph-faint); }
+        .phone-calendar-dayletter { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: .5px; color: var(--ph-faint); }
 
         .phone-calendar-daynum {
             width: 30px;
@@ -5115,6 +5192,7 @@ $camera-bar-height: 84px;
             justify-content: center;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             transition: background .18s ease, color .18s ease;
 
@@ -5144,6 +5222,7 @@ $camera-bar-height: 84px;
         padding-top: 7px;
         font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-faint);
     }
 
@@ -5151,7 +5230,7 @@ $camera-bar-height: 84px;
 
     // an all-day event in that row: the birthday chip's shape in the event's colour
     .phone-calendar-allday-event { justify-content: space-between; border-left-width: 3px; border-left-style: solid; }
-    .phone-calendar-allday-room { display: flex; align-items: center; gap: 4px; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 600; color: var(--ph-soft); .phone-pi { color: var(--ph-soft); } }
+    .phone-calendar-allday-room { display: flex; align-items: center; gap: 4px; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 600; @include prp-bold; color: var(--ph-soft); .phone-pi { color: var(--ph-soft); } }
 
     // the editor's all-day switch sits at the field's value edge
     .phone-calendar-field .phone-calendar-switch { margin-left: auto; }
@@ -5166,6 +5245,7 @@ $camera-bar-height: 84px;
         border-left: 3px solid $phone-pink;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
 
         .phone-pi { color: $phone-pink; }
@@ -5175,7 +5255,7 @@ $camera-bar-height: 84px;
         padding: 22px 30px 0;
         text-align: center;
 
-        .phone-calendar-empty-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+        .phone-calendar-empty-title { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     }
 
     .phone-calendar-timeline { position: relative; margin-top: 8px; }
@@ -5185,7 +5265,7 @@ $camera-bar-height: 84px;
         left: 0;
         right: 0;
 
-        .phone-calendar-hour-label { position: absolute; left: 18px; top: -7px; width: 34px; text-align: right; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-faint); }
+        .phone-calendar-hour-label { position: absolute; left: 18px; top: -7px; width: 34px; text-align: right; font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-faint); }
         .phone-calendar-hour-line { position: absolute; left: 56px; right: 18px; top: 0; border-top: 1px solid var(--ph-hairline); }
     }
 
@@ -5198,7 +5278,7 @@ $camera-bar-height: 84px;
         padding: 6px 8px;
         overflow: hidden;
 
-        .phone-calendar-event-title { font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); line-height: 1.2; }
+        .phone-calendar-event-title { font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); line-height: 1.2; }
         .phone-calendar-event-room { display: flex; align-items: center; gap: 4px; font-size: calc(10px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 2px; }
     }
 
@@ -5226,6 +5306,7 @@ $camera-bar-height: 84px;
             color: #ffffff;
             font-size: calc(9px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             white-space: nowrap;
             line-height: 1.4;
         }
@@ -5256,7 +5337,7 @@ $camera-bar-height: 84px;
     .phone-calendar-sheet-head { display: flex; gap: 10px; align-items: flex-start; }
     .phone-calendar-sheet-bar { width: 4px; align-self: stretch; border-radius: 2px; flex: none; }
     .phone-calendar-sheet-headtext { flex: 1; min-width: 0; }
-    .phone-calendar-sheet-title { font-size: calc(19px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); line-height: 1.15; }
+    .phone-calendar-sheet-title { font-size: calc(19px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); line-height: 1.15; }
     .phone-calendar-sheet-when { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); margin-top: 4px; }
 
     .phone-calendar-chip {
@@ -5265,6 +5346,7 @@ $camera-bar-height: 84px;
         background: var(--ph-inset);
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: $cal-red;
         flex: none;
         white-space: nowrap;
@@ -5272,7 +5354,7 @@ $camera-bar-height: 84px;
 
     .phone-calendar-sheet-body { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ph-hairline); }
     .phone-calendar-sheet-row { display: flex; gap: 8px; align-items: center; font-size: calc(13px * var(--ph-text-scale, 1)); color: var(--ph-text); .phone-pi { color: var(--ph-soft); } }
-    .phone-calendar-at { width: 14px; flex: none; color: var(--ph-soft); font-weight: 700; text-align: center; }
+    .phone-calendar-at { width: 14px; flex: none; color: var(--ph-soft); font-weight: 700; @include prp-bold; text-align: center; }
     .phone-calendar-faint { color: var(--ph-faint); }
     .phone-calendar-sheet-desc { font-size: calc(12.5px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-soft); margin-top: 2px; white-space: pre-line; }
 
@@ -5284,18 +5366,19 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .phone-calendar-delete { margin-top: 12px; padding: 6px; text-align: center; font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; color: #e03131; }
+    .phone-calendar-delete { margin-top: 12px; padding: 6px; text-align: center; font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: #e03131; }
 
     // editor
     .phone-calendar-editor-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 10px; }
-    .phone-calendar-editor-cancel { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-soft); }
-    .phone-calendar-editor-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
-    .phone-calendar-editor-post { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-faint); &.is-ready { color: $cal-red; } }
+    .phone-calendar-editor-cancel { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-soft); }
+    .phone-calendar-editor-title { font-size: calc(15px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
+    .phone-calendar-editor-post { font-size: calc(13px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-faint); &.is-ready { color: $cal-red; } }
 
     .phone-calendar-form { margin: 0 14px; border: 1.5px solid var(--ph-hairline); border-radius: 16px; overflow: hidden; }
 
@@ -5312,7 +5395,7 @@ $camera-bar-height: 84px;
 
         &::placeholder { color: var(--ph-faint); }
 
-        &--title { width: 100%; padding: 12px 14px; font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; box-sizing: border-box; }
+        &--title { width: 100%; padding: 12px 14px; font-size: calc(17px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; box-sizing: border-box; }
         &--notes { width: 100%; min-height: 64px; padding: 11px 14px; border-top: 1px solid var(--ph-hairline); resize: none; font-size: calc(13px * var(--ph-text-scale, 1)); line-height: 1.45; box-sizing: border-box; }
     }
 
@@ -5324,7 +5407,7 @@ $camera-bar-height: 84px;
         padding: 0 14px;
         border-top: 1px solid var(--ph-hairline);
 
-        .phone-calendar-field-label { width: 64px; flex: none; font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-soft); }
+        .phone-calendar-field-label { width: 64px; flex: none; font-size: calc(12px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-soft); }
         .phone-calendar-field-value { flex: 1; min-width: 0; font-size: calc(14px * var(--ph-text-scale, 1)); color: var(--ph-text); }
         .phone-calendar-chip { padding: 4px 10px; font-size: calc(11px * var(--ph-text-scale, 1)); }
     }
@@ -5369,7 +5452,7 @@ $camera-bar-height: 84px;
     // ---- Account: inline birthday picker ---------------------------------
     // The Birthday row expands in place (no sheet): month chips 4x3, a
     // 7-across day grid, Cancel / Save. Days the month doesn't have grey out.
-    .phone-settings-item-value.is-draft { color: $phone-pink; font-weight: 700; }
+    .phone-settings-item-value.is-draft { color: $phone-pink; font-weight: 700; @include prp-bold; }
 
     .phone-settings-item--danger .phone-settings-item-label { color: #e03131; }
 
@@ -5384,6 +5467,7 @@ $camera-bar-height: 84px;
     .phone-birthday-label {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(10px * var(--ph-text-scale, 1));
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -5405,6 +5489,7 @@ $camera-bar-height: 84px;
         background: var(--ph-inset);
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
         user-select: none;
 
@@ -5427,7 +5512,7 @@ $camera-bar-height: 84px;
         color: var(--ph-text);
         user-select: none;
 
-        &.is-picked { background: $phone-pink; color: #ffffff; font-weight: 700; }
+        &.is-picked { background: $phone-pink; color: #ffffff; font-weight: 700; @include prp-bold; }
 
         &.is-out { color: var(--ph-faint); opacity: 0.35; cursor: default; }
     }
@@ -5444,6 +5529,7 @@ $camera-bar-height: 84px;
         border-radius: 14px;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-soft);
         background: var(--ph-inset);
         user-select: none;
@@ -5578,6 +5664,7 @@ $camera-bar-height: 84px;
         .phone-settings-account-name {
             font-size: calc(19px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: var(--ph-text);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -5660,6 +5747,7 @@ $camera-bar-height: 84px;
         text-align: center;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         font-variant-numeric: tabular-nums;
         color: var(--ph-soft);
         transition: color .15s ease;
@@ -5695,6 +5783,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(13px * var(--ph-text-scale, 1));
         display: flex;
         align-items: center;
@@ -5748,6 +5837,7 @@ $camera-bar-height: 84px;
         left: 13px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(9px * var(--ph-text-scale, 1));
         letter-spacing: 1.4px;
         text-transform: uppercase;
@@ -5761,6 +5851,7 @@ $camera-bar-height: 84px;
         bottom: 12px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(19px * var(--ph-text-scale, 1));
         letter-spacing: -0.3px;
         line-height: 1.15;
@@ -5782,6 +5873,7 @@ $camera-bar-height: 84px;
         .phone-store-empty-title {
             font-family: 'Ubuntu', sans-serif;
             font-weight: 700;
+            @include prp-bold;
             font-size: calc(15px * var(--ph-text-scale, 1));
             color: var(--ph-text);
         }
@@ -5809,6 +5901,7 @@ $camera-bar-height: 84px;
         color: #1a86f5;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(12.5px * var(--ph-text-scale, 1));
         letter-spacing: .4px;
         text-transform: uppercase;
@@ -5838,6 +5931,7 @@ $camera-bar-height: 84px;
         .phone-store-hero-name {
             font-family: 'Ubuntu', sans-serif;
             font-weight: 700;
+            @include prp-bold;
             font-size: calc(22px * var(--ph-text-scale, 1));
             letter-spacing: -.4px;
             line-height: 1.15;
@@ -5883,6 +5977,7 @@ $camera-bar-height: 84px;
         span {
             display: block;
             font-weight: 700;
+            @include prp-bold;
             font-size: calc(8.5px * var(--ph-text-scale, 1));
             letter-spacing: 1.1px;
             text-transform: uppercase;
@@ -5896,6 +5991,7 @@ $camera-bar-height: 84px;
             justify-content: flex-start;
             gap: 4px;
             font-weight: 700;
+            @include prp-bold;
             font-size: calc(11px * var(--ph-text-scale, 1));
             color: var(--ph-text);
 
@@ -5922,6 +6018,7 @@ $camera-bar-height: 84px;
         .phone-store-locked-title {
             font-family: 'Ubuntu', sans-serif;
             font-weight: 700;
+            @include prp-bold;
             font-size: calc(17px * var(--ph-text-scale, 1));
             color: var(--ph-text);
         }
@@ -6017,10 +6114,11 @@ $camera-bar-height: 84px;
     .phone-wallpaper-name {
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-soft);
         transition: color .18s ease;
 
-        &.is-chosen { font-weight: 700; color: var(--ph-text); }
+        &.is-chosen { font-weight: 700; @include prp-bold; color: var(--ph-text); }
 
         @media (prefers-reduced-motion: reduce) { transition: none; }
     }
@@ -6061,14 +6159,14 @@ $camera-bar-height: 84px;
         gap: 2px;
         flex: none;
 
-        span { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; white-space: nowrap; }
+        span { font-size: calc(10px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; white-space: nowrap; }
     }
 
     .phone-wallpaper-empty { padding: 16px 18px; font-size: calc(12.5px * var(--ph-text-scale, 1)); line-height: 1.5; color: var(--ph-soft); }
 
     .phone-wallpaper-sheet { padding: 10px 14px 22px; }
     .phone-wallpaper-sheet-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 10px; }
-    .phone-wallpaper-sheet-title { font-size: calc(19px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-wallpaper-sheet-title { font-size: calc(19px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-wallpaper-sheet-sub { font-size: calc(12px * var(--ph-text-scale, 1)); color: var(--ph-soft); }
     .phone-wallpaper-sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 
@@ -6083,7 +6181,7 @@ $camera-bar-height: 84px;
 
     // Bold Text: regular text thickens; icons (the FA <i>) keep their weight,
     // which selects their glyph style.
-    .phone-display.is-a11y-bold :not(i):not(.phone-pi) { font-weight: 700; }
+    .phone-display.is-a11y-bold :not(i):not(.phone-pi) { font-weight: 700; @include prp-bold; }
 
     // Increase Contrast: the faintest text brightens and hairlines firm up.
     .phone-display.is-a11y-contrast {
@@ -6128,6 +6226,7 @@ $camera-bar-height: 84px;
             align-items: center;
             font-family: 'Ubuntu', sans-serif;
             font-weight: 700;
+            @include prp-bold;
             font-size: 10px;
             color: rgba(255, 255, 255, .95);
             pointer-events: none;
@@ -6150,7 +6249,7 @@ $camera-bar-height: 84px;
     .phone-access-preview-head { width: calc(36px * var(--ph-text-scale, 1)); height: calc(36px * var(--ph-text-scale, 1)); border-radius: 50%; background: linear-gradient(180deg, #f2b6c6, #b58fd0); flex: none; }
     .phone-access-preview-body { flex: 1; min-width: 0; }
     .phone-access-preview-line { display: flex; justify-content: space-between; align-items: baseline; }
-    .phone-access-preview-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: var(--ph-text); }
+    .phone-access-preview-name { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: var(--ph-text); }
     .phone-access-preview-time { font-size: calc(11px * var(--ph-text-scale, 1)); color: var(--ph-faint); }
     .phone-access-preview-text { font-size: calc(12.5px * var(--ph-text-scale, 1)); color: var(--ph-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .phone-access-preview-switchrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px solid var(--ph-hairline); font-size: calc(13px * var(--ph-text-scale, 1)); color: var(--ph-text); }
@@ -6161,7 +6260,7 @@ $camera-bar-height: 84px;
         gap: 12px;
         padding: 4px 16px 14px;
 
-        .phone-access-slider-small, .phone-access-slider-large { font-family: 'Ubuntu', sans-serif; font-weight: 700; flex: none; }
+        .phone-access-slider-small, .phone-access-slider-large { font-family: 'Ubuntu', sans-serif; font-weight: 700; @include prp-bold; flex: none; }
         .phone-access-slider-small { font-size: 12px; color: var(--ph-soft); }
         .phone-access-slider-large { font-size: 20px; color: var(--ph-text); }
 
@@ -6242,6 +6341,7 @@ $camera-bar-height: 84px;
         span { overflow: hidden; text-overflow: ellipsis; }
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.6px;
         text-transform: uppercase;
         white-space: nowrap;
@@ -6279,6 +6379,7 @@ $camera-bar-height: 84px;
         gap: 5px;
         font-size: calc(18px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: -.2px;
 
         span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -6302,8 +6403,8 @@ $camera-bar-height: 84px;
         color: #f0954a;
 
         > div { display: flex; flex-direction: column; line-height: 1.1; }
-        .phone-wallet-level-label { font-size: calc(8.5px * var(--ph-text-scale, 1)); font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(244, 240, 247, .6); }
-        .phone-wallet-level-value { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; color: #f4f0f7; font-variant-numeric: tabular-nums; }
+        .phone-wallet-level-label { font-size: calc(8.5px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(244, 240, 247, .6); }
+        .phone-wallet-level-value { font-size: calc(14px * var(--ph-text-scale, 1)); font-weight: 700; @include prp-bold; color: #f4f0f7; font-variant-numeric: tabular-nums; }
     }
 
     .phone-wallet-rows { display: flex; flex-direction: column; }
@@ -6346,7 +6447,7 @@ $camera-bar-height: 84px;
     // Wraps rather than truncating: a corporation name and a rank title is
     // more than 250px of card, and half a job title tells you less than two
     // lines do. The row grows to fit.
-    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); line-height: 1.35; color: #f4f0f7; text-wrap: pretty; b { font-weight: 700; } }
+    .phone-wallet-row-text { flex: 1; min-width: 0; font-size: calc(12px * var(--ph-text-scale, 1)); line-height: 1.35; color: #f4f0f7; text-wrap: pretty; b { font-weight: 700; @include prp-bold; } }
 
     // The line under an employer: the rank, and its tier when there is one.
     .phone-wallet-row-sub { color: rgba(244, 240, 247, .66); }
@@ -6410,6 +6511,7 @@ $camera-bar-height: 84px;
         border: 1px solid rgba(255, 255, 255, .18);
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1px;
         text-transform: uppercase;
         color: #f4f0f7;
@@ -6430,6 +6532,7 @@ $camera-bar-height: 84px;
         border: 1px solid rgba(26, 10, 20, .22);
         font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: #1a0a14;
         white-space: nowrap;
         transition: background .15s ease, transform .12s ease;
@@ -6488,6 +6591,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.4px;
         color: rgba(244, 240, 247, .55);
     }
@@ -6499,6 +6603,7 @@ $camera-bar-height: 84px;
         margin-top: 5px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(30px * var(--ph-text-scale, 1));
         letter-spacing: -.6px;
         line-height: 1;
@@ -6508,6 +6613,7 @@ $camera-bar-height: 84px;
             font-style: normal;
             font-size: calc(13px * var(--ph-text-scale, 1));
             font-weight: 600;
+            @include prp-bold;
             letter-spacing: 0;
             color: rgba(244, 240, 247, .5);
         }
@@ -6547,6 +6653,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(8.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.2px;
         color: rgba(244, 240, 247, .45);
     }
@@ -6555,6 +6662,7 @@ $camera-bar-height: 84px;
         margin-top: 3px;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
         color: #f4f0f7;
@@ -6589,6 +6697,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(10.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .2px;
         white-space: nowrap;
         transition: background .14s ease, color .14s ease;
@@ -6634,6 +6743,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         line-height: 1.25;
         color: var(--ph-text);
     }
@@ -6664,6 +6774,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
         color: var(--ph-text);
@@ -6740,6 +6851,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(26px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: -.5px;
         font-variant-numeric: tabular-nums;
         color: var(--ph-text);
@@ -6755,6 +6867,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.2px;
         text-transform: uppercase;
         color: var(--ph-faint);
@@ -6777,6 +6890,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(9.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.1px;
         text-transform: uppercase;
         color: var(--ph-faint);
@@ -6786,6 +6900,7 @@ $camera-bar-height: 84px;
         text-align: right;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-text);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -6810,6 +6925,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .4px;
         display: flex;
         align-items: center;
@@ -6838,6 +6954,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(10.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .3px;
 
         &:active { opacity: .8; }
@@ -6847,6 +6964,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(17px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: -.2px;
         color: var(--ph-text);
     }
@@ -6876,6 +6994,7 @@ $camera-bar-height: 84px;
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(22px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             font-variant-numeric: tabular-nums;
             color: var(--ph-text);
 
@@ -6894,6 +7013,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(10.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .4px;
     }
 
@@ -6952,6 +7072,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .3px;
         display: flex;
         align-items: center;
@@ -6969,6 +7090,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -7002,6 +7124,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(27px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: -.5px;
         line-height: 1.1;
         color: var(--ph-text);
@@ -7038,10 +7161,11 @@ $camera-bar-height: 84px;
             font-family: 'Barlow', sans-serif;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 600;
+            @include prp-bold;
             letter-spacing: .3px;
             color: var(--ph-text);
 
-            &::placeholder { color: var(--ph-faint); font-weight: 500; }
+            &::placeholder { color: var(--ph-faint); font-weight: 500; -webkit-text-stroke-width: 0; }
         }
     }
 
@@ -7054,6 +7178,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .3px;
         display: flex;
         align-items: center;
@@ -7107,6 +7232,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-text);
     }
 
@@ -7154,6 +7280,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(17px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: -.2px;
         color: var(--ph-text);
     }
@@ -7250,6 +7377,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .3px;
     }
 
@@ -7257,6 +7385,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(7.5px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.6px;
         color: rgba(244, 240, 247, .5);
         text-align: right;
@@ -7288,6 +7417,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 2.2px;
         font-variant-numeric: tabular-nums;
         text-shadow: 0 1px 0 rgba(0, 0, 0, .4);
@@ -7305,6 +7435,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(7px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.3px;
         color: rgba(244, 240, 247, .45);
     }
@@ -7314,12 +7445,14 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(11px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: .5px;
         text-transform: uppercase;
     }
 
     .phone-wallet-debit-issuer {
         font-family: 'Silkscreen', monospace;
+        -webkit-text-stroke-width: 0;
         font-size: calc(7px * var(--ph-text-scale, 1));
         letter-spacing: .3px;
         color: rgba(244, 240, 247, .5);
@@ -7339,6 +7472,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(9px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: 1.3px;
         color: var(--ph-faint);
     }
@@ -7350,6 +7484,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         font-variant-numeric: tabular-nums;
         color: var(--ph-text);
 
@@ -7587,6 +7722,7 @@ $camera-bar-height: 84px;
         text-align: center;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(11px * var(--ph-text-scale, 1));
         letter-spacing: 1.5px;
         color: #f5c542;
@@ -7694,10 +7830,12 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(15px * var(--ph-text-scale, 1));
         font-weight: 500;
+        -webkit-text-stroke-width: 0;
         color: #ffffff;
 
         &.is-primary {
             font-weight: 700;
+            @include prp-bold;
             color: $phone-pink-hot;
         }
 
@@ -7724,6 +7862,7 @@ $camera-bar-height: 84px;
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(17px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: #ffffff;
         }
 
@@ -7757,6 +7896,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         z-index: 56;
         animation: phone-fade 0.2s ease both;
     }
@@ -7871,6 +8011,7 @@ $camera-bar-height: 84px;
     .phone-notify-app {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(9px * var(--ph-text-scale, 1));
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -7889,6 +8030,7 @@ $camera-bar-height: 84px;
         margin-top: 2px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(13.5px * var(--ph-text-scale, 1));
         line-height: 1.2;
         color: var(--ph-text);
@@ -7979,6 +8121,7 @@ $camera-bar-height: 84px;
         border: 1px solid var(--ph-glass-brd);
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(10.5px * var(--ph-text-scale, 1));
         letter-spacing: 0.4px;
         color: var(--ph-soft);
@@ -8053,6 +8196,7 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(24px * var(--ph-text-scale, 1));
         font-weight: 700;
+        @include prp-bold;
         letter-spacing: -0.5px;
         line-height: 1.1;
         color: var(--ph-text);
@@ -8065,6 +8209,7 @@ $camera-bar-height: 84px;
         background: var(--ph-inset);
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(11px * var(--ph-text-scale, 1));
         color: var(--ph-soft);
     }
@@ -8156,6 +8301,7 @@ $camera-bar-height: 84px;
         text-align: center;
         font-size: calc(13px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: $phone-faint-text;
     }
 
@@ -8217,6 +8363,7 @@ $camera-bar-height: 84px;
         span {
             font-family: 'Ubuntu', sans-serif;
             font-weight: 600;
+            @include prp-bold;
             font-size: calc(10px * var(--ph-text-scale, 1));
         }
 
@@ -8244,6 +8391,7 @@ $camera-bar-height: 84px;
         padding: 14px 18px 8px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(16px * var(--ph-text-scale, 1));
         color: var(--ph-text);
 
@@ -8263,6 +8411,7 @@ $camera-bar-height: 84px;
         color: #ffffff;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 600;
+        @include prp-bold;
         font-size: calc(11px * var(--ph-text-scale, 1));
     }
 
@@ -8380,6 +8529,7 @@ $camera-bar-height: 84px;
         margin-top: 6px;
         font-size: calc(12.5px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-text);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -8415,6 +8565,7 @@ $camera-bar-height: 84px;
         justify-content: center;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(22px * var(--ph-text-scale, 1));
         color: rgba(26, 10, 20, 0.75);
 
@@ -8430,6 +8581,7 @@ $camera-bar-height: 84px;
         max-width: 64px;
         font-size: calc(12px * var(--ph-text-scale, 1));
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-text);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -8472,6 +8624,7 @@ $camera-bar-height: 84px;
         .phone-place-name {
             font-size: calc(12.5px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -8508,6 +8661,7 @@ $camera-bar-height: 84px;
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(24px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             letter-spacing: -0.4px;
             line-height: 1.15;
             color: var(--ph-text);
@@ -8579,6 +8733,7 @@ $camera-bar-height: 84px;
         padding: 12px 18px 4px;
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(10px * var(--ph-text-scale, 1));
         letter-spacing: 1px;
         color: $phone-muted-text;
@@ -8668,6 +8823,7 @@ $camera-bar-height: 84px;
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(13px * var(--ph-text-scale, 1));
             font-weight: 700;
+            @include prp-bold;
             color: #ffffff;
         }
 
@@ -8760,10 +8916,12 @@ $camera-bar-height: 84px;
             font-family: 'Ubuntu', sans-serif;
             font-size: calc(15px * var(--ph-text-scale, 1));
             font-weight: 500;
+            -webkit-text-stroke-width: 0;
             color: #ffffff;
 
             &.is-danger {
                 font-weight: 700;
+                @include prp-bold;
                 color: #ff5b4d;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             }
@@ -8814,12 +8972,14 @@ $camera-bar-height: 84px;
         font-family: 'Ubuntu', sans-serif;
         font-size: calc(14px * var(--ph-text-scale, 1));
         font-weight: 500;
+        -webkit-text-stroke-width: 0;
         color: #ffffff;
         flex: none;
         min-width: 46px;
 
         &.is-save {
             font-weight: 700;
+            @include prp-bold;
             color: $phone-pink-hot;
             text-align: right;
         }
@@ -8878,6 +9038,7 @@ $camera-bar-height: 84px;
 
     .phone-call-kicker {
         font-family: 'Silkscreen', monospace;
+        -webkit-text-stroke-width: 0;
         font-size: calc(9px * var(--ph-text-scale, 1));
         letter-spacing: 1.5px;
         color: rgba(255, 255, 255, 0.7);
@@ -8886,6 +9047,7 @@ $camera-bar-height: 84px;
     .phone-call-name {
         font-family: 'Ubuntu', sans-serif;
         font-weight: 700;
+        @include prp-bold;
         font-size: calc(24px * var(--ph-text-scale, 1));
         color: #ffffff;
     }
@@ -9071,6 +9233,7 @@ $camera-bar-height: 84px;
         margin-top: 2px;
         font-size: calc(10px * var(--ph-text-scale, 1));
         font-weight: 500;
+        -webkit-text-stroke-width: 0;
         font-style: normal;
         color: $phone-muted-text;
     }
@@ -9089,6 +9252,7 @@ $camera-bar-height: 84px;
 
 .phone-pay-kicker {
     font-family: 'Silkscreen', monospace;
+    -webkit-text-stroke-width: 0;
     font-size: 8.5px;
     letter-spacing: 0.8px;
     color: $phone-faint-text;
@@ -9118,8 +9282,8 @@ $camera-bar-height: 84px;
     }
 
     .phone-pay-amount { display: flex; align-items: baseline; gap: 4px; }
-    .phone-pay-unit { font-size: 18px; font-weight: 300; opacity: 0.75; }
-    .phone-pay-figure { font-size: 36px; font-weight: 300; letter-spacing: -1.1px; line-height: 1; color: #ffffff; }
+    .phone-pay-unit { font-size: 18px; font-weight: 300; -webkit-text-stroke-width: 0; opacity: 0.75; }
+    .phone-pay-figure { font-size: 36px; font-weight: 300; -webkit-text-stroke-width: 0; letter-spacing: -1.1px; line-height: 1; color: #ffffff; }
     .phone-pay-note { margin-top: 8px; font-size: 12.5px; line-height: 1.4; opacity: 0.86; overflow-wrap: break-word; }
 
     .phone-pay-foot {
@@ -9131,7 +9295,7 @@ $camera-bar-height: 84px;
         border-top: 1px solid rgba(255, 255, 255, 0.10);
     }
 
-    .phone-pay-status { flex-grow: 1; font-family: 'Silkscreen', monospace; font-size: 8.5px; letter-spacing: 0.8px; opacity: 0.85; }
+    .phone-pay-status { flex-grow: 1; font-family: 'Silkscreen', monospace; -webkit-text-stroke-width: 0; font-size: 8.5px; letter-spacing: 0.8px; opacity: 0.85; }
     .phone-pay-time { font-size: 10.5px; opacity: 0.7; }
 }
 
@@ -9176,7 +9340,7 @@ $camera-bar-height: 84px;
 }
 
 .phone-pay-head-text { flex-grow: 1; min-width: 0; }
-.phone-pay-head-title { margin-top: 2px; font-size: 14.5px; font-weight: 600; }
+.phone-pay-head-title { margin-top: 2px; font-size: 14.5px; font-weight: 600; @include prp-bold; }
 
 .phone-pay-close {
     flex: none;
@@ -9196,6 +9360,7 @@ $camera-bar-height: 84px;
     display: block;
     margin: 18px 0 0;
     font-family: 'Silkscreen', monospace;
+    -webkit-text-stroke-width: 0;
     font-size: 9px;
     letter-spacing: 0.9px;
     color: $phone-muted-text;
@@ -9215,6 +9380,7 @@ $camera-bar-height: 84px;
         font: inherit;
         font-size: 54px;
         font-weight: 300;
+        -webkit-text-stroke-width: 0;
         letter-spacing: -1.4px;
         color: var(--ph-text);
         text-align: center;
@@ -9223,8 +9389,8 @@ $camera-bar-height: 84px;
     }
 }
 
-.phone-pay-entry-unit { font-size: 28px; font-weight: 300; color: $phone-muted-text; }
-.phone-pay-entry-figure { font-size: 54px; font-weight: 300; letter-spacing: -1.4px; }
+.phone-pay-entry-unit { font-size: 28px; font-weight: 300; -webkit-text-stroke-width: 0; color: $phone-muted-text; }
+.phone-pay-entry-figure { font-size: 54px; font-weight: 300; -webkit-text-stroke-width: 0; letter-spacing: -1.4px; }
 
 .phone-pay-chips { display: flex; gap: 7px; padding: 4px 0 2px; }
 
@@ -9237,6 +9403,7 @@ $camera-bar-height: 84px;
     font: inherit;
     font-size: 12.5px;
     font-weight: 600;
+    @include prp-bold;
     color: var(--ph-text);
     cursor: pointer;
 
@@ -9294,6 +9461,7 @@ $camera-bar-height: 84px;
     font: inherit;
     font-size: 15px;
     font-weight: 700;
+    @include prp-bold;
     color: #ffffff;
     cursor: pointer;
 
@@ -9310,6 +9478,7 @@ $camera-bar-height: 84px;
     font: inherit;
     font-size: 13.5px;
     font-weight: 600;
+    @include prp-bold;
     color: $phone-muted-text;
     cursor: pointer;
 
@@ -9361,7 +9530,7 @@ $camera-bar-height: 84px;
         background: var(--ph-inset);
     }
 
-    .phone-support-start-title { font-size: 14.5px; font-weight: 600; }
+    .phone-support-start-title { font-size: 14.5px; font-weight: 600; @include prp-bold; }
     .phone-support-start-sub { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
 
     .phone-support-row {
@@ -9389,7 +9558,7 @@ $camera-bar-height: 84px;
 
     .phone-support-row-main { flex-grow: 1; min-width: 0; }
     .phone-support-row-top { display: flex; align-items: center; gap: 7px; }
-    .phone-support-row-name { font-size: 14.5px; font-weight: 600; }
+    .phone-support-row-name { font-size: 14.5px; font-weight: 600; @include prp-bold; }
     .phone-support-row-meta { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
     .phone-support-row-last {
         margin-top: 3px;
@@ -9406,6 +9575,7 @@ $camera-bar-height: 84px;
         background: var(--ph-inset);
         font-size: 10px;
         font-weight: 700;
+        @include prp-bold;
         color: var(--ph-soft);
 
         &.is-offer { background: #fdf1dd; color: #7a4f00; }
@@ -9426,7 +9596,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-support-duty-text { flex-grow: 1; }
-    .phone-support-duty-title { font-size: 14px; font-weight: 600; }
+    .phone-support-duty-title { font-size: 14px; font-weight: 600; @include prp-bold; }
     .phone-support-duty-sub { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
 
     .phone-support-switch {
@@ -9484,7 +9654,7 @@ $camera-bar-height: 84px;
 
     .phone-support-back { color: var(--sup-accent); display: flex; }
     .phone-support-bar-main { flex-grow: 1; min-width: 0; }
-    .phone-support-bar-title { font-size: 15px; font-weight: 600; }
+    .phone-support-bar-title { font-size: 15px; font-weight: 600; @include prp-bold; }
     .phone-support-bar-sub { font-size: 11.5px; color: $phone-muted-text; }
     .phone-support-resolve {
         flex: none;
@@ -9493,6 +9663,7 @@ $camera-bar-height: 84px;
         background: #eaf5ee;
         font-size: 11.5px;
         font-weight: 600;
+        @include prp-bold;
         color: #0e5733;
     }
 
@@ -9511,7 +9682,7 @@ $camera-bar-height: 84px;
     }
 
     .phone-support-cat-text { flex-grow: 1; }
-    .phone-support-cat-title { font-size: 13.5px; font-weight: 600; }
+    .phone-support-cat-title { font-size: 13.5px; font-weight: 600; @include prp-bold; }
     .phone-support-cat-hint { margin-top: 1px; font-size: 11.5px; color: $phone-muted-text; }
 
     .phone-support-text {
@@ -9543,6 +9714,7 @@ $camera-bar-height: 84px;
         font: inherit;
         font-size: 14.5px;
         font-weight: 600;
+        @include prp-bold;
         cursor: pointer;
 
         &:disabled { background: var(--ph-send-idle); color: $phone-faint-text; cursor: default; }
@@ -9765,6 +9937,7 @@ $camera-bar-height: 84px;
     .phone-newchar-gender-label {
         font-size: 12.5px;
         font-weight: 600;
+        @include prp-bold;
         color: var(--ph-muted);
     }
 
@@ -9776,6 +9949,7 @@ $camera-bar-height: 84px;
         color: #fff;
         font-size: 15px;
         font-weight: 600;
+        @include prp-bold;
         text-align: center;
         transition: opacity 140ms ease;
 

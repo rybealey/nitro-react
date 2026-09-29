@@ -15,9 +15,16 @@
     font-style: normal;
 }
 
+// pixelrp: BOLD IS THE MEDIUM FILE. Ubuntu-b.ttf (like every file here) has
+// no hinting, and at the UI's 9-14px on Windows its heavy strokes land between
+// pixels and draw jagged and soft; a Retina Mac hides it. Every 600/700/bold
+// in the UI therefore draws Medium, which holds up. The places that must still
+// read as bold (window titles, tab strips, the HUD, the phone, chat) add
+// prp-bold below to thicken Medium back up. Declared as 700, so the browser
+// never fakes a bold on top of it. Ubuntu-b.ttf stays in webfonts/ unused.
 @font-face {
     font-family: Ubuntu;
-    src: url('@/assets/webfonts/Ubuntu-b.ttf');
+    src: url('@/assets/webfonts/Ubuntu-m.ttf');
     font-weight: 700;
     font-style: normal;
 }
@@ -60,4 +67,26 @@
     font-weight: 400;
     font-style: normal;
     font-display: swap;
+}
+
+// Only Regular Barlow ships, so a bold Barlow line (the phone's base font)
+// was a bold the browser faked by smearing Regular. Declaring Regular as the
+// 700 face stops the fake; prp-bold does the thickening instead, the same way
+// it does for Ubuntu.
+@font-face {
+    font-family: 'Barlow';
+    src: url('@/assets/webfonts/Barlow-Regular.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+// pixelrp: bold that still reads as bold, drawn smooth. A stroke in the text's
+// own colour around the Medium the 700 face now loads (see above). In em so it
+// scales with the text: 0.028em is 0.4px at 14px, the weight picked by eye
+// for chat shouts. Off again with `-webkit-text-stroke-width: 0` - the stroke
+// is inherited, so a regular-weight child of a bold parent needs that, and so
+// does a pixel font (Silkscreen), which a stroke would blur.
+@mixin prp-bold {
+    -webkit-text-stroke-width: 0.028em;
 }
