@@ -10,8 +10,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
 {
     const { isInRoom } = props;
     const [ isMeExpanded, setMeExpanded ] = useState(false);
-    // the menu starts open; the PixelRP emblem folds it away and back
-    const [ isMenuExpanded, setMenuExpanded ] = useState(true);
+    const [ isMenuExpanded, setMenuExpanded ] = useState(false);
     const [ useGuideTool, setUseGuideTool ] = useState(false);
     const { getFullCount = 0 } = useInventoryUnseenTracker();
     const { getTotalUnseen = 0 } = useAchievements();
@@ -19,10 +18,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
     // itself would show, so a closed phone still says how much is waiting.
     const { total: phoneBadge } = usePhoneAppBadges();
     const isMod = GetSessionDataManager().isModerator;
-    const showCamera = (isInRoom && (isMod || HasHabboVip()));
-    // an open menu with nothing in it would leave a gap beside the emblem
-    const hasMenuItems = (isMod || showCamera);
-
+    
     useMessageEvent<PerkAllowancesMessageEvent>(PerkAllowancesMessageEvent, event =>
     {
         const parser = event.getParser();
@@ -80,7 +76,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                         <HoverBubble text="Menu">
                             <div className="cursor-pointer navigation-item icon icon-pixelrp" onClick={ event => setMenuExpanded(!isMenuExpanded) } />
                         </HoverBubble>
-                        <Flex alignItems="center" gap={ 2 } className={ 'toolbar-menu-items' + ((isMenuExpanded && hasMenuItems) ? ' expanded' : '') }>
+                        <Flex alignItems="center" gap={ 2 } className={ 'toolbar-menu-items' + (isMenuExpanded ? ' expanded' : '') }>
                             { isMod &&
                                 <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } /> }
                             { isMod &&
@@ -90,7 +86,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                                     { (getFullCount > 0) &&
                                         <LayoutItemCountView count={ getFullCount } /> }
                                 </Base> }
-                            { showCamera &&
+                            { (isInRoom && (isMod || HasHabboVip())) &&
                                 <Base pointer className="navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } /> }
                             { isMod &&
                                 <Base pointer className="navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } /> }
