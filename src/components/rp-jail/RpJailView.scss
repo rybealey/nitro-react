@@ -1,0 +1,84 @@
+// PixelRP jail countdown (RpJailView): a slim strip hanging from the top-centre
+// on the shared chrome plate, the turf panel's folded tab in miniature. The
+// bar under it fills as the sentence is served.
+$jail-muted: #a9a9b3;
+$jail-slot: rgb(45, 45, 51);
+$jail-bar: #e87332;
+
+.rp-jail-panel {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: $rightside-zindex;
+    pointer-events: none;
+    height: 40px;
+    box-sizing: border-box;
+    padding: 0 16px 3px 12px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    overflow: hidden;
+    background: var(--prp-chrome-plate);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    color: #ffffff;
+    font-family: 'Ubuntu', sans-serif;
+    animation: rp-jail-settle 160ms ease-out;
+}
+
+.rp-jail-icon {
+    display: flex;
+    color: $jail-muted;
+}
+
+.rp-jail-text {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.rp-jail-label {
+    font-size: 11px;
+    font-weight: 700;
+    @include prp-bold;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: $jail-muted;
+}
+
+.rp-jail-clock {
+    min-width: 36px;
+    font-size: 15px;
+    font-weight: 700;
+    @include prp-bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.rp-jail-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: $jail-slot;
+
+    > div {
+        height: 100%;
+        background: $jail-bar;
+        transition: width 1s linear;
+    }
+}
+
+@keyframes rp-jail-settle {
+    from { opacity: 0; transform: translate(-50%, -6px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rp-jail-panel {
+        animation: none;
+    }
+}

@@ -22,6 +22,7 @@ import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
 import { PhoneView } from '../phone/PhoneView';
 import { RightSideView } from '../right-side/RightSideView';
+import { RpJailView } from '../rp-jail/RpJailView';
 import { TurfPanelView } from '../rp-turf/TurfPanelView';
 import { EnvironmentSky } from '../environment/EnvironmentSky';
 import { JukeboxAudioEngine } from '../music-player/JukeboxAudioEngine';
@@ -110,6 +111,7 @@ export const MainView: FC<{}> = props =>
             <DiamondsStoreView />
             <RightSideView />
             <TurfPanelView />
+            <RpJailView />
             <JukeboxAudioEngine />
             <SitchSongPlayer />
             <JamSync />

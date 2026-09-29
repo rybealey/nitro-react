@@ -1,6 +1,7 @@
-import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomChatSettings, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
+import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomChatSettings, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, RpSetEmergencyComposer, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
+import { ROOM_POLICE_ARREST, ROOM_POLICE_JAIL, RpRoomPoliceEvent } from '../../../../api/rp-police/RpJailMessages';
 import { ROOM_ZONE_SAFE, ROOM_ZONE_UNSAFE, RpRoomTurfEvent, RpRoomZoneTypeSaveComposer } from '../../../../api/rp-turf/RpTurfMessages';
 import { DraggableWindowPosition, LayoutRoomThumbnailView, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { RoomWidgetThumbnailEvent } from '../../../../events';
@@ -66,6 +67,8 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
     const [ isSafeZone, setIsSafeZone ] = useState(false);
     const [ isTurf, setIsTurf ] = useState(false);
     const [ roomCorp, setRoomCorp ] = useState<RoomCorpState>(null);
+    // The room's police tags (RpRoomPoliceEvent): officers :arrest here / it is the jail.
+    const [ roomPolice, setRoomPolice ] = useState({ isArrestRoom: false, isJailRoom: false });
     const [ usersWithRights, setUsersWithRights ] = useState<Map<number, string>>(new Map());
     const [ kickUsers, setKickUsers ] = useState(false);
     const [ message, setMessage ] = useState('');
@@ -162,6 +165,15 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
             allowPolice: parser.allowPolice,
             allowStaff: parser.allowStaff
         });
+    });
+
+    useMessageEvent<RpRoomPoliceEvent>(RpRoomPoliceEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser || (parser.roomId !== roomId)) return;
+
+        setRoomPolice({ isArrestRoom: parser.isArrestRoom, isJailRoom: parser.isJailRoom });
     });
 
     useMessageEvent<FlatControllersEvent>(FlatControllersEvent, event =>
@@ -539,6 +551,14 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                         <RoleplayHeadquartersView roomId={ roomId } roomCorp={ roomCorp } className="mt-section" />
                         <RoleplayEmergenciesView roomId={ roomId } roomCorp={ roomCorp } className="mt-section" />
                         <RoleplayAuthorizationsView roomId={ roomId } roomCorp={ roomCorp } className="mt-section" />
+                        <div className="mt-section">
+                            <div className="mt-section-title">Police</div>
+                            <div className="mt-card">
+                                <div className="mt-line"><span>Arrest room</span><ModSwitch on={ roomPolice.isArrestRoom } label="Arrest room" onToggle={ () => SendMessageComposer(new RpSetEmergencyComposer(roomId, ROOM_POLICE_ARREST, !roomPolice.isArrestRoom)) } /></div>
+                                <div className="mt-line"><span>Jail room</span><ModSwitch on={ roomPolice.isJailRoom } label="Jail room" onToggle={ () => SendMessageComposer(new RpSetEmergencyComposer(roomId, ROOM_POLICE_JAIL, !roomPolice.isJailRoom)) } /></div>
+                            </div>
+                            <div className="mt-hint">Officers can :arrest in an arrest room, with the suspect on its Action Point. Arrested players serve their time in the jail room.</div>
+                        </div>
                     </> }
                 { (currentTab === 'Moderation') &&
                     <>
