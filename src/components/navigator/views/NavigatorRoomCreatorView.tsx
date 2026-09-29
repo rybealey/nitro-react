@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string */
 import { CreateFlatMessageComposer, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { GetClubMemberLevel, GetConfiguration, IRoomModel, LocalizeText, SendMessageComposer } from '../../../api';
+import { GetClubMemberLevel, GetConfiguration, GetMaxVisitorsList, IRoomModel, LocalizeText, MAX_ROOM_VISITORS, SendMessageComposer } from '../../../api';
 import { Button, Column, Flex, Grid, LayoutCurrencyIcon, LayoutGridItem, Text } from '../../../common';
 import { useNavigator } from '../../../hooks';
 
@@ -38,12 +38,9 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
     {
         if(!maxVisitorsList)
         {
-            const list = [];
-
-            for(let i = 10; i <= 100; i = i + 10) list.push(i);
-
-            setMaxVisitorsList(list);
-            setVisitorsCount(list[0]);
+            // the Room tool's list; a new room starts at the most (200)
+            setMaxVisitorsList(GetMaxVisitorsList);
+            setVisitorsCount(MAX_ROOM_VISITORS);
         }
     }, [ maxVisitorsList ]);
 
@@ -86,7 +83,7 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
                     </Column>
                     <Column gap={ 1 }>
                         <Text>{ LocalizeText('navigator.maxvisitors') }</Text>
-                        <select className="form-select form-select-sm" onChange={ event => setVisitorsCount(Number(event.target.value)) }>
+                        <select className="form-select form-select-sm" value={ visitorsCount ?? MAX_ROOM_VISITORS } onChange={ event => setVisitorsCount(Number(event.target.value)) }>
                             { maxVisitorsList && maxVisitorsList.map(value =>
                             {
                                 return <option key={ value } value={ value }>{ value }</option>

@@ -516,14 +516,6 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                             <option value={ RoomChatSettings.CHAT_SCROLL_SPEED_SLOW }>{ LocalizeText('navigator.roomsettings.chat.speed.slow') }</option>
                                         </select>
                                     </div>
-                                    <div className="mt-field">
-                                        <label className="mt-label">Flood protection</label>
-                                        <select className="form-select form-select-sm" value={ roomData.chatSettings.protection } onChange={ event => update(next => (next.chatSettings.protection = Number(event.target.value))) }>
-                                            <option value={ RoomChatSettings.FLOOD_FILTER_LOOSE }>{ LocalizeText('navigator.roomsettings.chat.flood.loose') }</option>
-                                            <option value={ RoomChatSettings.FLOOD_FILTER_NORMAL }>{ LocalizeText('navigator.roomsettings.chat.flood.normal') }</option>
-                                            <option value={ RoomChatSettings.FLOOD_FILTER_STRICT }>{ LocalizeText('navigator.roomsettings.chat.flood.strict') }</option>
-                                        </select>
-                                    </div>
                                 </div>
                                 <div className="mt-label mt-section-label">Pets</div>
                                 <div className="mt-card">
