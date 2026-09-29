@@ -27,7 +27,7 @@ import { RoomCorpState } from './RoomCorpState';
 // player's or everyone's.
 // Those appear only when the tool is showing the current room.
 
-const TABS = [ 'Overview', 'Roleplay', 'Moderation', 'Rights' ];
+const TABS = [ 'Overview', 'Gameplay', 'Moderation', 'Rights' ];
 const SETTINGS_TIMEOUT_MS = 3000;
 const ROOM_NAME_MIN_LENGTH = 3;
 const ROOM_NAME_MAX_LENGTH = 60;
@@ -525,7 +525,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                 </div>
                             </> }
                     </> }
-                { (currentTab === 'Roleplay') &&
+                { (currentTab === 'Gameplay') &&
                     <>
                         <div className="mt-section">
                             <div className="mt-section-title">Zone Type</div>
