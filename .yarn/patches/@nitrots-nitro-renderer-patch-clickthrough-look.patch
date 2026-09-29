@@ -1,0 +1,21 @@
+diff --git a/src/nitro/room/RoomObjectEventHandler.ts b/src/nitro/room/RoomObjectEventHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomObjectEventHandler.ts
++++ b/src/nitro/room/RoomObjectEventHandler.ts
+@@ -2099,7 +2099,15 @@
+ 
+                 const location = _local_5.getLocation();
+ 
+-                if(location) this._roomEngine.connection.send(new RoomUnitLookComposer(~~(location.x), ~~(location.y)));
++                // PixelRP: with clickthrough (:ct) on, a click on a player is a
++                // walk onto their tile, not a look at them. The look went out
++                // first, and the server takes it whenever it counts the walker
++                // as standing - which it does a moment before the walk has
++                // finished drawing here - so the avatar snapped round to face
++                // the player, stood a beat, then walked off.
++                const clickthrough = (globalThis as any).__pixelrpClickthrough;
++
++                if(location && !(clickthrough && clickthrough.enabled)) this._roomEngine.connection.send(new RoomUnitLookComposer(~~(location.x), ~~(location.y)));
+             }
+         }
+ 
