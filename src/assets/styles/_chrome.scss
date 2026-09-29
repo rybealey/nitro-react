@@ -10,10 +10,13 @@
 // Shop, Navigator); everything else keeps the stock bootstrap tabs. The
 // !importants beat the bootstrap utility classes baked into
 // NitroCardTabsItemView (rounded-top, border, pt-1).
+//
+// NO backdrop-filter, unlike the HUD plates. A frosted strip is drawn on a
+// layer of its own, and Chrome on Windows cannot give text on a see-through
+// layer ClearType: every tab label went soft, next to sharp text in the rest
+// of the window. The plate is 95% opaque, so the frost barely showed anyway.
 @mixin prp-chrome-tab-strip {
     background: var(--prp-chrome-plate);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     border-bottom: 0;
     padding: 6px 8px !important;
     min-height: 38px;

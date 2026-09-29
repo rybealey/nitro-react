@@ -53,9 +53,9 @@ $ch-clear: #c9453a;
         // four counts up, those fixed parts come to under 200px, so there is
         // always room left for the labels. Nothing scrolls, nothing is cut.
         overflow: hidden;
+        // No backdrop-filter: see prp-chrome-tab-strip - a frosted strip
+        // costs its labels ClearType on Windows.
         background: var(--prp-chrome-plate);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
 
         // The Staff tab's fifth slot (see crowded in ChatHistoryView.tsx).
         &.is-crowded {
@@ -205,6 +205,13 @@ $ch-clear: #c9453a;
         display: flex;
         flex-direction: column;
         padding: 2px 0 4px;
+        background: $ch-bg;
+
+        // The scroller itself (InfiniteScroll's root) is painted solid too.
+        // Chrome draws a scroll box on a layer of its own, and on Windows only
+        // gives its text ClearType when that layer is opaque - with the colour
+        // left to the box around it, every message in the history went soft.
+        > * { background: $ch-bg; }
     }
 
     .rp-ch-empty {
