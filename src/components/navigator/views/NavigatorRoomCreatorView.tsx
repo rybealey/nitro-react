@@ -1,8 +1,8 @@
 /* eslint-disable no-template-curly-in-string */
-import { CreateFlatMessageComposer, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
+import { CreateFlatMessageComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { GetClubMemberLevel, GetConfiguration, GetMaxVisitorsList, IRoomModel, LocalizeText, MAX_ROOM_VISITORS, SendMessageComposer } from '../../../api';
-import { Button, Column, Flex, Grid, LayoutCurrencyIcon, LayoutGridItem, Text } from '../../../common';
+import { GetConfiguration, GetMaxVisitorsList, IRoomModel, LocalizeText, MAX_ROOM_VISITORS, SendMessageComposer } from '../../../api';
+import { Button, Column, Flex, Grid, LayoutGridItem, Text } from '../../../common';
 import { useNavigator } from '../../../hooks';
 
 export const NavigatorRoomCreatorView: FC<{}> = props =>
@@ -18,13 +18,14 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
     const [ selectedModelName, setSelectedModelName ] = useState<string>('');
     const { categories = null } = useNavigator();
 
-    const hcDisabled = GetConfiguration<boolean>('hc.disabled', false);
-
     const getRoomModelImage = (name: string) => GetConfiguration<string>('images.url') + `/navigator/models/model_${ name }.png`;
 
+    // PixelRP: every room size is open to anyone who can create rooms. The
+    // config still tags some models with an HC clubLevel; it is ignored here
+    // (no lock, no HC badge), and the server never checked it.
     const selectModel = (model: IRoomModel, index: number) =>
     {
-        if(!model || (model.clubLevel > GetClubMemberLevel())) return;
+        if(!model) return;
 
         setSelectedModelName(roomModels[index].name);
     };
@@ -103,12 +104,11 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
                     {
                         roomModels.map((model, index )=>
                         {
-                            return (<LayoutGridItem fullHeight key={ model.name } onClick={ () => selectModel(model, index) } itemActive={ (selectedModelName === model.name) } overflow="unset" gap={ 0 } className="p-1" disabled={ (GetClubMemberLevel() < model.clubLevel) }>
+                            return (<LayoutGridItem fullHeight key={ model.name } onClick={ () => selectModel(model, index) } itemActive={ (selectedModelName === model.name) } overflow="unset" gap={ 0 } className="p-1">
                                 <Flex fullHeight center overflow="hidden">
                                     <img alt="" src={ getRoomModelImage(model.name) } />
                                 </Flex>
                                 <Text bold>{ model.tileSize } { LocalizeText('navigator.createroom.tilesize') }</Text>
-                                { !hcDisabled && model.clubLevel > HabboClubLevelEnum.NO_CLUB && <LayoutCurrencyIcon position="absolute" className="top-1 end-1" type="hc" /> }
                             </LayoutGridItem>);
                         })
                     }
