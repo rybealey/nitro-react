@@ -275,20 +275,18 @@ $gang-state-off: #b23b3b;
         letter-spacing: 0.5px;
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.7);
+        text-align: center;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    // Every role above the bottom one centres its cards; the bottom role -
-    // usually the biggest - fills from the left like a list.
+    // Every role centres its cards under its centred name, the bottom role too.
     .gang-rank-cards {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         gap: 6px;
-
-        &.is-bottom { justify-content: flex-start; }
     }
 
     .gang-rank-none {

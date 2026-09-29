@@ -76,13 +76,13 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
                 <div className="gang-level-value">{ detail.xp } / { detail.xpCap }</div>
             </div>
             <div className="gang-roster">
-                { groups.map(({ role, members }, index) => (
+                { groups.map(({ role, members }) => (
                     <section key={ role.id } className="gang-rank" aria-label={ role.name }>
                         <div className="gang-rank-bar">{ role.name }</div>
                         { (members.length === 0) &&
                             <div className="gang-rank-none">No members</div> }
                         { (members.length > 0) &&
-                            <div className={ `gang-rank-cards${ (index === (groups.length - 1)) ? ' is-bottom' : '' }` }>
+                            <div className="gang-rank-cards">
                                 { members.map(member => (
                                     <div key={ member.userId } className={ `gang-tile${ member.online ? '' : ' is-offline' }` } title={ `${ member.username } - ${ member.online ? 'Online' : 'Offline' }` } onClick={ () => OpenGangMemberProfile(member) }>
                                         <div className="gang-tile-face">
