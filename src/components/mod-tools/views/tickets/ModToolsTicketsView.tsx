@@ -13,11 +13,7 @@ interface ModToolsTicketsViewProps
     onCloseClick: () => void;
 }
 
-const TABS: string[] = [
-    'Open Issues',
-    'My Issues',
-    'Picked Issues'
-];
+const TABS: string[] = [ 'Open', 'My issues', 'Picked' ];
 
 export const ModToolsTicketsView: FC<ModToolsTicketsViewProps> = props =>
 {
@@ -71,17 +67,17 @@ export const ModToolsTicketsView: FC<ModToolsTicketsViewProps> = props =>
 
     return (
         <>
-            <NitroCardView className="nitro-mod-tools-tickets">
+            <NitroCardView className="nitro-mod-tools-tickets" theme="primary-slim">
                 <NitroCardHeaderView headerText={ 'Tickets' } onCloseClick={ onCloseClick } />
                 <NitroCardTabsView>
                     { TABS.map((tab, index) =>
                     {
                         return (<NitroCardTabsItemView key={ index } isActive={ (currentTab === index) } onClick={ event => setCurrentTab(index) }>
-                            { tab }
+                            { tab }<span className={ `mt-tab-count${ (currentTab === index) ? ' is-active' : '' }` }>{ [ openIssues.length, myIssues.length, pickedIssues.length ][index] }</span>
                         </NitroCardTabsItemView>);
                     }) }
                 </NitroCardTabsView>
-                <NitroCardContentView gap={ 1 }>
+                <NitroCardContentView className="mt-page" overflow="hidden">
                     <CurrentTabComponent />
                 </NitroCardContentView>
             </NitroCardView>

@@ -34,8 +34,8 @@ export const ModToolsChatlogView: FC<ModToolsChatlogViewProps> = props =>
 
     return (
         <NitroCardView className="nitro-mod-tools-chatlog" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
-            <NitroCardHeaderView headerText={ `Room Chatlog ${ roomChatlog.roomName }` } onCloseClick={ onCloseClick } />
-            <NitroCardContentView className="text-black" overflow="hidden">
+            <NitroCardHeaderView headerText={ `Chatlog: ${ roomChatlog.roomName }` } onCloseClick={ onCloseClick } />
+            <NitroCardContentView className="mt-page" overflow="hidden">
                 { roomChatlog &&
                     <ChatlogView records={ [ roomChatlog ] } /> }
             </NitroCardContentView>

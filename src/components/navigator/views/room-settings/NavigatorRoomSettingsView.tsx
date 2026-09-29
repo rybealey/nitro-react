@@ -4,6 +4,7 @@ import { IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { RpRoomTurfEvent } from '../../../../api/rp-turf/RpTurfMessages';
 import { NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { useMessageEvent } from '../../../../hooks';
+import { IsModToolsRoomSettingsRequest } from '../../../mod-tools/views/room/ModToolsRoomSettingsRequest';
 import { NavigatorRoomSettingsAccessTabView } from './NavigatorRoomSettingsAccessTabView';
 import { NavigatorRoomSettingsBasicTabView } from './NavigatorRoomSettingsBasicTabView';
 import { NavigatorRoomSettingsRightsTabView } from './NavigatorRoomSettingsRightsTabView';
@@ -91,6 +92,9 @@ export const NavigatorRoomSettingsView: FC<{}> = props =>
         if(!parser) return;
 
         const data = parser.data;
+
+        // the Room tool asked for these (mod tools) - it shows them itself
+        if(IsModToolsRoomSettingsRequest(data.roomId)) return;
 
         setRoomData({
             roomId: data.roomId,

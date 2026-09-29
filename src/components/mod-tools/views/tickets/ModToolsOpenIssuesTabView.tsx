@@ -1,42 +1,35 @@
 import { IssueMessageData, PickIssuesMessageComposer } from '@nitrots/nitro-renderer';
 import { FC } from 'react';
-import { SendMessageComposer } from '../../../../api';
-import { Base, Button, Column, Grid } from '../../../../common';
+import { GetIssueCategoryName, SendMessageComposer } from '../../../../api';
 
 interface ModToolsOpenIssuesTabViewProps
 {
     openIssues: IssueMessageData[];
 }
 
+// One ticket per row card: its category, who it is about, when it came in
+// and what can be done with it from this list (Mod Tools canvas).
 export const ModToolsOpenIssuesTabView: FC<ModToolsOpenIssuesTabViewProps> = props =>
 {
     const { openIssues = null } = props;
 
     return (
-        <Column gap={ 0 } overflow="hidden">
-            <Column gap={ 2 }>
-                <Grid gap={ 1 } className="text-black fw-bold border-bottom pb-1">
-                    <Base className="g-col-2">Type</Base>
-                    <Base className="g-col-3">Room/Player</Base>
-                    <Base className="g-col-4">Opened</Base>
-                    <Base className="g-col-3"></Base>
-                </Grid>
-            </Column>
-            <Column overflow="auto" className="striped-children" gap={ 0 }>
-                { openIssues && (openIssues.length > 0) && openIssues.map(issue =>
-                {
-                    return (
-                        <Grid key={ issue.issueId } gap={ 1 } alignItems="center" className="text-black py-1 border-bottom">
-                            <Base className="g-col-2">{ issue.categoryId }</Base>
-                            <Base className="g-col-3">{ issue.reportedUserName }</Base>
-                            <Base className="g-col-4">{ new Date(Date.now() - issue.issueAgeInMilliseconds).toLocaleTimeString() }</Base>
-                            <Base className="g-col-3">
-                                <Button variant="success" onClick={ event => SendMessageComposer(new PickIssuesMessageComposer([ issue.issueId ], false, 0, 'pick issue button')) }>Pick Issue</Button>
-                            </Base>
-                        </Grid>
-                    );
-                }) }
-            </Column>
-        </Column>
+        <>
+            <div className="mt-label mt-ticket-head"><span>Type</span><span>Room / player</span><span>Opened</span><span /></div>
+            <div className="mt-ticket-list">
+                { !(openIssues && openIssues.length) &&
+                    <div className="mt-empty">No open tickets.</div> }
+                { openIssues && openIssues.map(issue => (
+                    <div key={ issue.issueId } className="mt-ticket">
+                        <span className="mt-category">{ GetIssueCategoryName(issue.categoryId) }</span>
+                        <span className="mt-ticket-who">{ issue.reportedUserName }</span>
+                        <span className="mt-muted mt-time">{ new Date(Date.now() - issue.issueAgeInMilliseconds).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }</span>
+                        <span className="mt-ticket-actions">
+                            <button type="button" className="mt-success mt-small" onClick={ event => SendMessageComposer(new PickIssuesMessageComposer([ issue.issueId ], false, 0, 'pick issue button')) }>Pick issue</button>
+                        </span>
+                    </div>
+                )) }
+            </div>
+        </>
     );
 }

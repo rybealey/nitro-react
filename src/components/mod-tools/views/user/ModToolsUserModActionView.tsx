@@ -1,13 +1,13 @@
 import { CallForHelpTopicData, DefaultSanctionMessageComposer, ModAlertMessageComposer, ModBanMessageComposer, ModKickMessageComposer, ModMessageMessageComposer, ModMuteMessageComposer, ModTradingLockMessageComposer } from '@nitrots/nitro-renderer';
 import { FC, useMemo, useState } from 'react';
 import { ISelectedUser, LocalizeText, ModActionDefinition, NotificationAlertType, SendMessageComposer } from '../../../../api';
-import { Button, Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../../../common';
 import { useModTools, useNotification } from '../../../../hooks';
 
 interface ModToolsUserModActionViewProps
 {
     user: ISelectedUser;
-    onCloseClick: () => void;
+    // called once the action has gone out (the User window keeps the tab open)
+    onCloseClick?: () => void;
 }
 
 const MOD_ACTION_DEFINITIONS = [
@@ -49,6 +49,15 @@ export const ModToolsUserModActionView: FC<ModToolsUserModActionViewProps> = pro
         return values;
     }, [ cfhCategories ]);
 
+    const reset = () =>
+    {
+        setSelectedTopic(-1);
+        setSelectedAction(-1);
+        setMessage('');
+
+        if(onCloseClick) onCloseClick();
+    }
+
     const sendAlert = (message: string) => simpleAlert(message, NotificationAlertType.DEFAULT, null, null, 'Error');
 
     const sendDefaultSanction = () =>
@@ -65,7 +74,7 @@ export const ModToolsUserModActionView: FC<ModToolsUserModActionViewProps> = pro
 
         SendMessageComposer(new DefaultSanctionMessageComposer(user.userId, selectedTopic, messageOrDefault));
         
-        onCloseClick();
+        reset();
     }
 
     const sendSanction = () =>
@@ -145,32 +154,35 @@ export const ModToolsUserModActionView: FC<ModToolsUserModActionViewProps> = pro
             }
         }
 
-        onCloseClick();
+        reset();
     }
 
     if(!user) return null;
 
     return (
-        <NitroCardView className="nitro-mod-tools-user-action" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
-            <NitroCardHeaderView headerText={ 'Mod Action: ' + (user ? user.username : '') } onCloseClick={ () => onCloseClick() } />
-            <NitroCardContentView className="text-black">
-                <select className="form-select form-select-sm" value={ selectedTopic } onChange={ event => setSelectedTopic(parseInt(event.target.value)) }>
-                    <option value={ -1 } disabled>CFH Topic</option>
-                    { topics.map((topic, index) => <option key={ index } value={ index }>{ LocalizeText('help.cfh.topic.' + topic.id) }</option>) }
-                </select>
-                <select className="form-select form-select-sm" value={ selectedAction } onChange={ event => setSelectedAction(parseInt(event.target.value)) }>
-                    <option value={ -1 } disabled>Sanction Type</option>
-                    { MOD_ACTION_DEFINITIONS.map((action, index) => <option key={ index } value={ index }>{ action.name }</option>) }
-                </select>
-                <Column gap={ 1 }>
-                    <Text small>Optional message type, overrides default</Text>
-                    <textarea className="form-control" value={ message } onChange={ event => setMessage(event.target.value) }/>
-                </Column>
-                <Flex justifyContent="between" gap={ 1 }>
-                    <Button variant="primary" onClick={ sendDefaultSanction }>Default Sanction</Button>
-                    <Button variant="success" onClick={ sendSanction }>Sanction</Button>
-                </Flex>
-            </NitroCardContentView>
-        </NitroCardView>
+        <div className="mt-card mt-panel">
+            <div className="mt-grid2">
+                <div className="mt-field">
+                    <label className="mt-label">Reason</label>
+                    <select className="form-select form-select-sm" value={ selectedTopic } onChange={ event => setSelectedTopic(parseInt(event.target.value)) }>
+                        <option value={ -1 } disabled>Pick a reason</option>
+                        { topics.map((topic, index) => <option key={ index } value={ index }>{ LocalizeText('help.cfh.topic.' + topic.id) }</option>) }
+                    </select>
+                </div>
+                <div className="mt-field">
+                    <label className="mt-label">Sanction</label>
+                    <select className="form-select form-select-sm" value={ selectedAction } onChange={ event => setSelectedAction(parseInt(event.target.value)) }>
+                        <option value={ -1 } disabled>Pick a sanction</option>
+                        { MOD_ACTION_DEFINITIONS.map((action, index) => <option key={ index } value={ index }>{ action.name }</option>) }
+                    </select>
+                </div>
+            </div>
+            <label className="mt-label" htmlFor={ `mt-sanction-${ user.userId }` }>Message <span className="mt-label-note">(optional, replaces the default)</span></label>
+            <textarea id={ `mt-sanction-${ user.userId }` } className="form-control form-control-sm mt-message" value={ message } onChange={ event => setMessage(event.target.value) } />
+            <div className="d-flex justify-content-between gap-1">
+                <button type="button" className="mt-chrome" onClick={ sendDefaultSanction }>Default sanction</button>
+                <button type="button" className="mt-danger" onClick={ sendSanction }>Sanction</button>
+            </div>
+        </div>
     );
 }

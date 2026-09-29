@@ -32,8 +32,8 @@ export const CfhChatlogView: FC<CfhChatlogViewProps> = props =>
 
     return (
         <NitroCardView className="nitro-mod-tools-chatlog" theme="primary-slim">
-            <NitroCardHeaderView headerText={ 'Issue Chatlog' } onCloseClick={ onCloseClick } />
-            <NitroCardContentView className="text-black">
+            <NitroCardHeaderView headerText={ 'Chatlog at the time' } onCloseClick={ onCloseClick } />
+            <NitroCardContentView className="mt-page" overflow="hidden">
                 { chatlogData && <ChatlogView records={ [ chatlogData.chatRecord ] } /> }
             </NitroCardContentView>
         </NitroCardView>
