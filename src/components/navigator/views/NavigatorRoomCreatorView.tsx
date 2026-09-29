@@ -12,7 +12,8 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
     const [ description, setDescription ] = useState<string>(null);
     const [ category, setCategory ] = useState<number>(null);
     const [ visitorsCount, setVisitorsCount ] = useState<number>(null);
-    const [ tradesSetting, setTradesSetting ] = useState<number>(0);
+    // PixelRP: rooms allow trading unless the owner turns it off
+    const [ tradesSetting, setTradesSetting ] = useState<number>(2);
     const [ roomModels, setRoomModels ] = useState<IRoomModel[]>([]);
     const [ selectedModelName, setSelectedModelName ] = useState<string>('');
     const { categories = null } = useNavigator();
@@ -94,7 +95,7 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
                     </Column>
                     <Column gap={ 1 }>
                         <Text>{ LocalizeText('navigator.tradesettings') }</Text>
-                        <select className="form-select form-select-sm" onChange={ event => setTradesSetting(Number(event.target.value)) }>
+                        <select className="form-select form-select-sm" value={ tradesSetting } onChange={ event => setTradesSetting(Number(event.target.value)) }>
                             <option value="0">{ LocalizeText('navigator.roomsettings.trade_not_allowed') }</option>
                             <option value="1">{ LocalizeText('navigator.roomsettings.trade_not_with_Controller') }</option>
                             <option value="2">{ LocalizeText('navigator.roomsettings.trade_allowed') }</option>

@@ -1,5 +1,5 @@
 import { RoomChatSettings } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
+import { FC } from 'react';
 import { IRoomData, LocalizeText } from '../../../../api';
 import { Column, Flex, Grid, Text } from '../../../../common';
 
@@ -12,12 +12,8 @@ interface NavigatorRoomSettingsTabViewProps
 export const NavigatorRoomSettingsVipChatTabView: FC<NavigatorRoomSettingsTabViewProps> = props =>
 {
     const { roomData = null, handleChange = null } = props;
-    const [ chatDistance, setChatDistance ] = useState<number>(0);
-
-    useEffect(() =>
-    {
-        setChatDistance(roomData.chatSettings.distance);
-    }, [ roomData.chatSettings ]);
+    // PixelRP: no hearing distance setting - everyone in a room hears every
+    // chat bubble (RoomUser.cs), so there is nothing here to change.
 
     return (
         <>
@@ -48,8 +44,6 @@ export const NavigatorRoomSettingsVipChatTabView: FC<NavigatorRoomSettingsTabVie
                         <option value={ RoomChatSettings.FLOOD_FILTER_NORMAL }>{ LocalizeText('navigator.roomsettings.chat.flood.normal') }</option>
                         <option value={ RoomChatSettings.FLOOD_FILTER_STRICT }>{ LocalizeText('navigator.roomsettings.chat.flood.strict') }</option>
                     </select>
-                    <Text>{ LocalizeText('navigator.roomsettings.chat_settings.hearing.distance') }</Text>
-                    <input type="number" min="0" className="form-control form-control-sm" value={ chatDistance } onChange={ event => setChatDistance(event.target.valueAsNumber) } onBlur={ event => handleChange('chat_distance', chatDistance) } />
                 </Column>
                 <Column size={ 6 } gap={ 1 }>
                     <Text bold>{ LocalizeText('navigator.roomsettings.vip_settings') }</Text>
