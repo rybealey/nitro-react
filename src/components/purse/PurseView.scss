@@ -9,6 +9,11 @@
         // baseline width matches the right-side column, but grows leftward to
         // fit longer / more currency values instead of truncating them
         min-width: 200px;
+        // The help and cog buttons that used to set the row's height are gone.
+        // Hold the purse at their old 60px row (+ p-1): the VIP tile below
+        // stays square and the quick tools (RightSideView.scss) still fit
+        // under the room title.
+        min-height: 68px;
 
         // Square Diamonds button in the purse's left slot. Pixel icon renders
         // at NATIVE size (43x40, no scaling) centered in the square.
@@ -28,10 +33,8 @@
             // height is never a definite cross size, so the ratio has no
             // axis to resolve from - verified both stretch and centered
             // variants render non-square). The row's height IS deterministic
-            // chrome though: the help/cog button column is its tallest at
-            // (23 + 2*4) + (21 + 2*4) = 60px, so a fixed 60px width makes
-            // the stretched tile exactly square. Revisit if those icons or
-            // their p-1 padding change.
+            // chrome though: the purse's min-height holds it at 60px, so a
+            // fixed 60px width makes the stretched tile exactly square.
             width: 60px;
         }
 

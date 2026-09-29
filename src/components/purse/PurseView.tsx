@@ -1,6 +1,6 @@
 import { FriendlyTime, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef } from 'react';
-import { CreateLinkEvent, GetConfiguration, LocalizeText } from '../../api';
+import { GetConfiguration, LocalizeText } from '../../api';
 import { Column, Flex, Text } from '../../common';
 import { usePurse } from '../../hooks';
 import { CurrencyView } from './views/CurrencyView';
@@ -102,12 +102,6 @@ export const PurseView: FC<{}> = props =>
                         <img alt="" className="nitro-purse-vip" src={ vipIconUrl } />
                         <Text variant="white">{ getClubText }</Text>
                     </Column> }
-                <Column justifyContent="center" gap={ 0 }>
-                    <Flex center pointer fullHeight className="nitro-purse-button p-1 rounded" onClick={ event => CreateLinkEvent('help/show') }>
-                        <i className="icon icon-help"/>
-                    </Flex>
-                    { /* No settings cog: its settings live in Settings > General (Sound, Preferences). */ }
-                </Column>
             </Flex>
             { getCurrencyElements(2, -1, true) }
         </Column>
