@@ -104,7 +104,8 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
             roomName: data.name,
             roomDescription: data.description,
             categoryId: data.categoryId,
-            userCount: data.maximumVisitorsLimit,
+            // the room's own limit - maximumVisitorsLimit is the most it may be set to
+            userCount: data.maximumVisitors,
             tags: data.tags,
             tradeState: data.tradeMode,
             allowWalkthrough: data.allowWalkThrough,
