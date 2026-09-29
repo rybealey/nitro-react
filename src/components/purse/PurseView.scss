@@ -6,9 +6,10 @@
         background: var(--prp-chrome-plate);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        // baseline width matches the right-side column, but grows leftward to
-        // fit longer / more currency values instead of truncating them
-        min-width: 200px;
+        // No minimum width: the purse hugs its currency values and the VIP
+        // tile, growing leftward as values lengthen. It used to be held at the
+        // right-side column's 200px, which left the money column mostly empty.
+        // The quick tools follow its edge (--purse-width, set by PurseView).
         // The help and cog buttons that used to set the row's height are gone.
         // Hold the purse at their old 60px row (+ p-1): the VIP tile below
         // stays square and the quick tools (RightSideView.scss) still fit
