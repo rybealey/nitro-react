@@ -116,6 +116,21 @@
             font-weight: 700;
         }
 
+        // pixelrp: the name in a talk or whisper line is Ubuntu Medium with a
+        // hairline stroke in its own colour, rather than the bold every <b>
+        // gets. The Habbo Ubuntu Bold hints roughly on Windows and read as
+        // jagged at 14px; the font has no weight between Medium and Bold, so
+        // the stroke is what lifts Medium to sit between the two. Shouts and
+        // action lines are bold throughout, so their names stay bold to match.
+        // Chat history and the settings preview reuse these classes.
+        &.type-0:not(.is-action),
+        &.type-1:not(.is-action) {
+            .username {
+                font-weight: 500;
+                -webkit-text-stroke-width: 0.25px;
+            }
+        }
+
         .user-container {
             z-index: 3;
             display: flex;

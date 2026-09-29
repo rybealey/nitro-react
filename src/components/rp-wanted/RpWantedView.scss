@@ -12,11 +12,13 @@ $wanted-ink-dim: #6b6b6b;    // 5.3:1 on the tile
 $wanted-urgent: #a35a00;     // 5.2:1 - the warning amber darkened to carry on white
 
 .nitro-card.rp-wanted-window {
-    // starting size; the corner grip writes inline width/height over these
-    width: 260px;
-    height: 330px;
+    // starting size; the corner grip writes inline width/height over these.
+    // About 15% under the first 260 x 330, which Twist found too big. 220 was
+    // already the minimum width, so it now opens as narrow as it drags.
+    width: 220px;
+    height: 280px;
     min-width: 220px;
-    min-height: 200px;
+    min-height: 170px;
     max-width: 96vw;
     max-height: 92vh;
 

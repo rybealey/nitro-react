@@ -21,13 +21,15 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
 .nitro-card.rp-settings-window {
     // starting size; the corner grip writes inline width/height over these.
-    // 660px wide is the narrowest that fits Chat Bubble's five 96px cells a row
-    // beside the rail (2 border + 16 padding + 124 rail + 12 gap + 488 grid +
-    // the scrollbar), so it is the minimum too - narrower would clip bubbles.
-    width: 660px;
-    height: 420px;
-    min-width: 660px;
-    min-height: 330px;
+    // 552px wide is the narrowest that fits Chat Bubble's four 96px cells a row
+    // beside the rail (2 border + 16 padding + 124 rail + 12 gap + 390 grid +
+    // 8 scrollbar), so it is the minimum too - narrower drops a row to three.
+    // Was 660 x 420 (five a row); Twist found that too big, and asked for about
+    // a fifth smaller.
+    width: 552px;
+    height: 336px;
+    min-width: 552px;
+    min-height: 264px;
     max-width: 96vw;
     max-height: 92vh;
 
@@ -793,7 +795,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     // FIXED 96px (the widest style plus its 9px side overhangs): a wider window
     // fits more a row instead of widening the gaps, and the leftover (always
     // under one cell) is split either side rather than left as a strip on the
-    // right. The window's min-width guarantees at least five fit. 48px leaves
+    // right. The window's min-width guarantees at least four fit. 48px leaves
     // room for the tallest styles' pointers.
     .rp-settings-bubbles {
         display: grid;
