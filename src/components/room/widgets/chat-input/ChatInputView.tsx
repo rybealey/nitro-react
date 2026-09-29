@@ -230,7 +230,12 @@ export const ChatInputView: FC<{}> = props =>
         // Macros are checked first, and before setInputFocus(): this handler
         // pulls focus into the chat box on ANY key, so a bound key that was not
         // consumed here would type itself into the message as well as firing.
-        if(MacroState.enabled)
+        //
+        // NOT WHILE THE CHAT BOX IS SELECTED: then the player is typing, and a
+        // bound key types itself like any other - a macro on 1 must not stop
+        // "100" going into a message. They fire again once focus is elsewhere
+        // (a click on the room).
+        if(MacroState.enabled && (document.activeElement !== inputRef.current))
         {
             const binding = NormalizeKeyBinding(event);
 
@@ -307,6 +312,8 @@ export const ChatInputView: FC<{}> = props =>
         if(modifierUsedAsPrefix.current) return;
         if(floodBlocked || !MacroState.enabled) return;
         if(anotherInputHasFocus()) return;
+        // Typing in the chat box: no macros (see onKeyDownEvent).
+        if(document.activeElement === inputRef.current) return;
 
         const commands = MacroState.bindings.get(held);
 
@@ -314,7 +321,7 @@ export const ChatInputView: FC<{}> = props =>
 
         event.preventDefault();
         fireMacro(commands);
-    }, [ floodBlocked, anotherInputHasFocus, fireMacro ]);
+    }, [ floodBlocked, inputRef, anotherInputHasFocus, fireMacro ]);
 
     useUiEvent<RoomWidgetUpdateChatInputContentEvent>(RoomWidgetUpdateChatInputContentEvent.CHAT_INPUT_CONTENT, event =>
     {
