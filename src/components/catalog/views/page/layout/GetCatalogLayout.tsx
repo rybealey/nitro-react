@@ -9,7 +9,6 @@ import { CatalogLayouGuildFrontpageView } from './CatalogLayoutGuildFrontpageVie
 import { CatalogLayoutInfoLoyaltyView } from './CatalogLayoutInfoLoyaltyView';
 import { CatalogLayoutPets2View } from './CatalogLayoutPets2View';
 import { CatalogLayoutPets3View } from './CatalogLayoutPets3View';
-import { CatalogLayoutRoomAdsView } from './CatalogLayoutRoomAdsView';
 import { CatalogLayoutRoomBundleView } from './CatalogLayoutRoomBundleView';
 import { CatalogLayoutSingleBundleView } from './CatalogLayoutSingleBundleView';
 import { CatalogLayoutSoundMachineView } from './CatalogLayoutSoundMachineView';
@@ -66,8 +65,6 @@ export const GetCatalogLayout = (page: ICatalogPage, hideNavigation: () => void)
             return <CatalogLayoutInfoLoyaltyView { ...layoutProps } />;
         case 'badge_display':
             return <CatalogLayoutBadgeDisplayView { ...layoutProps } />;
-        case 'roomads':
-            return <CatalogLayoutRoomAdsView { ...layoutProps } />;
         case 'default_3x3_color_grouping':
             return <CatalogLayoutColorGroupingView { ...layoutProps } />;
         case 'soundmachine':

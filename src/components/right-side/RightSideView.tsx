@@ -8,7 +8,6 @@ import { OnlineCountView } from '../online-count/OnlineCountView';
 import { PurseView } from '../purse/PurseView';
 import { RoomTitleView } from '../room-title/RoomTitleView';
 import { MysteryBoxExtensionView } from '../room/widgets/mysterybox/MysteryBoxExtensionView';
-import { RoomPromotesWidgetView } from '../room/widgets/room-promotes/RoomPromotesWidgetView';
 import { RoomQuickToolsView } from '../room/widgets/room-tools/RoomQuickToolsView';
 
 export const RightSideView: FC<{}> = props =>
@@ -26,7 +25,6 @@ export const RightSideView: FC<{}> = props =>
                 <GroupRoomInformationView />
                 <MysteryBoxExtensionView />
                 <OfferView/>
-                <RoomPromotesWidgetView />
                 <NotificationCenterView />
             </Column>
         </div>
