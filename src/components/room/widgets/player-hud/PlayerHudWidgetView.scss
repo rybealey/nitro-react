@@ -301,7 +301,9 @@
 
         &.hp { background: var(--hud-danger); }
         &.en { background: var(--hud-info); }
-        &.agg { background: var(--hud-magenta); border-radius: 2px; }
+        // Aggression in the pixel design system's orange-500, the window
+        // headers' own orange.
+        &.agg { background: var(--hud-orange); border-radius: 2px; }
     }
 
     // Floating action chips that deliberately overlap whatever sits behind
