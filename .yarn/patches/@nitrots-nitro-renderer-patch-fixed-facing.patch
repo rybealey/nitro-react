@@ -1,0 +1,69 @@
+diff --git a/src/nitro/communication/messages/incoming/RpMovementV2Event.ts b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
+index 1111111..2222222 100644
+--- a/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
++++ b/src/nitro/communication/messages/incoming/RpMovementV2Event.ts
+@@ -168,6 +168,17 @@
+      * "timingGroupId is non-zero" because virtualId 0 is a real unit.
+      */
+     public get escortCaptor(): number { return ((this._flags & 0x0200) !== 0) ? this._timingGroupId : -1; }
++
++    /**
++     * flags bit 0x0400 - pixelrp pepper spray (RpMovementV2Flags.FixedFacing):
++     * the server faces this edge itself, and timingGroupId (field 6, which the
++     * escort bit borrows too - never on the same edge) carries the facing,
++     * 0-7. A sprayed player stumbles back still facing the officer, so their
++     * steps must not be faced by the way they move.
++     *
++     * -1 when the bit is unset, and from an emulator that does not set it.
++     */
++    public get fixedFacing(): number { return ((this._flags & 0x0400) !== 0) ? this._timingGroupId : -1; }
+ }
+ 
+ export class RpMovementV2Event extends MessageEvent implements IMessageEvent
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -704,7 +704,7 @@
+             parser.fromX, parser.fromY, parser.fromZ,
+             parser.toX, parser.toY, parser.toZ,
+             parser.cycleStart, parser.intervalMs, parser.serverNow,
+-            clientNow, parser.lookahead, parser.startDelayMs, parser.escortCaptor);
++            clientNow, parser.lookahead, parser.startDelayMs, parser.escortCaptor, parser.fixedFacing);
+ 
+         // TEMPORARY DIAGNOSTIC, and the browser half of :forceredirect.
+         //
+diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/PixelRPMovementV2.ts
++++ b/src/room/renderer/PixelRPMovementV2.ts
+@@ -545,7 +545,8 @@
+         clientNowPerf: number,
+         lookahead: { x: number, y: number, z: number }[] = [],
+         startDelayMs = 0,
+-        escortCaptor = -1): void
++        escortCaptor = -1,
++        fixedFacing = -1): void
+     {
+         this.updateClock(clientNowPerf, serverNow);
+ 
+@@ -589,7 +590,9 @@
+         // captor's record for the same beat is sent first in the same frame,
+         // so its edges are already here - see escortFacing.
+         const captor = ((escortCaptor >= 0) ? this._units.get(escortCaptor) : null);
+-        const facing = this.escortFacing(captor, session, revision, edgeIndex);
++        // A pepper-sprayed stumble is faced by the server (fixedFacing): the
++        // same way on this edge and on every one its lookahead implies.
++        const facing = ((fixedFacing >= 0) ? fixedFacing : this.escortFacing(captor, session, revision, edgeIndex));
+ 
+         this.upsert(unit, {
+             session, revision, edgeIndex, provisional: false,
+@@ -612,7 +615,7 @@
+                 gx: look.x, gy: look.y, gz: look.z,
+                 cycleStart: (prev.cycleStart + prev.interval),
+                 interval: step,
+-                facing: this.escortFacing(captor, session, revision, (edgeIndex + i + 1))
++                facing: ((fixedFacing >= 0) ? fixedFacing : this.escortFacing(captor, session, revision, (edgeIndex + i + 1)))
+             };
+ 
+             this.upsert(unit, edge);

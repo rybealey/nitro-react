@@ -3,7 +3,8 @@ import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatal
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
-import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, GetRoomSession, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { TargetState } from '../../hooks/rooms/targetState';
 import { GetStunGunCharge, SendRpDiscardItem, StunGunCharge, SubscribeStunGunCharge } from '../../api/rp-inventory/RpInventoryMessages';
 import { DraggableWindowPosition, HoverBubble, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
@@ -45,6 +46,8 @@ const ITEMS: Record<string, { name: string, cls: string }> = {
     handcuffs: { name: 'Handcuffs', cls: 'rp-item-handcuffs' },
     // Police: click to throw (or :fb) - stuns everyone around you. Spent on the throw.
     flashbang: { name: 'Flashbang', cls: 'rp-item-flashbang' },
+    // Police: click to spray your target (or :ps) - sends them stumbling back. Spent on the spray.
+    pepper_spray: { name: 'Pepper Spray', cls: 'rp-item-pepper-spray' },
 };
 
 interface ItemMeta { name: string; cls: string; iconUrl?: string }
@@ -67,6 +70,7 @@ const resolveItem = (item: string): ItemMeta =>
 }
 
 const STUN_GUN = 'stun_gun';
+const PEPPER_SPRAY = 'pepper_spray';
 
 // The stun gun's shots left, as a green bar along the bottom of its slot - in
 // the Weapon frame or a carry slot, wherever the gun is. Empties shot by shot
@@ -314,6 +318,23 @@ export const RpInventoryView: FC<{}> = props =>
         window.addEventListener('pointercancel', onUp);
     }
 
+    // Pepper spray is aimed at someone: with a HUD target selected, a click is
+    // the same :ps a player could type at them. With none, it goes to the
+    // server as an ordinary use, which says how to aim it.
+    const activateItem = (slot: number) =>
+    {
+        const target = TargetState.name;
+
+        if((items.get(slot)?.item === PEPPER_SPRAY) && target)
+        {
+            GetRoomSession()?.sendChatMessage(`:ps ${ target }`, 0);
+
+            return;
+        }
+
+        SendMessageComposer(new RpUseItemComposer(slot));
+    }
+
     const onItemClick = (slot: number) =>
     {
         // A completed drag must not also consume the item.
@@ -324,7 +345,7 @@ export const RpInventoryView: FC<{}> = props =>
             return;
         }
 
-        if(itemUseMode === 'single') SendMessageComposer(new RpUseItemComposer(slot));
+        if(itemUseMode === 'single') activateItem(slot);
     }
 
     const onItemDoubleClick = (slot: number) =>
@@ -336,7 +357,7 @@ export const RpInventoryView: FC<{}> = props =>
             return;
         }
 
-        if(itemUseMode === 'double') SendMessageComposer(new RpUseItemComposer(slot));
+        if(itemUseMode === 'double') activateItem(slot);
     }
 
     const chooseItemUseMode = (mode: ItemUseMode) =>
