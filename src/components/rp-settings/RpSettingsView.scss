@@ -419,19 +419,20 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 4px;
         padding: 1px 1px 3px;
     }
 
-    // one key per row: grip, keycap, its commands in run order, delete
+    // one macro per row: grip, keycap, command, delete. Rows that share a key
+    // run top to bottom, in list order.
     .rp-mx-row {
         flex-shrink: 0;
-        min-height: 38px;
+        min-height: 32px;
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 4px 6px 4px 4px;
-        border-radius: 7px;
+        gap: 6px;
+        padding: 3px 5px 3px 3px;
+        border-radius: 6px;
         background: $white;
         box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
         // Rows reorder by dragging. touch-action must be none or a touch drag
@@ -469,26 +470,26 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     // key name is; a long combo ellipsises and the keycap carries it in full
     // as its title.
     .rp-mx-key-cell {
-        width: 100px;
+        width: 88px;
         flex-shrink: 0;
         display: flex;
         min-width: 0;
     }
 
     .rp-mx-keycap {
-        height: 26px;
-        min-width: 40px;
+        height: 22px;
+        min-width: 34px;
         max-width: 100%;
-        padding: 0 9px;
+        padding: 0 7px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 5px;
+        border-radius: 4px;
         border: 1px solid rgba(0, 0, 0, 0.16);
-        border-bottom: 3px solid rgba(0, 0, 0, 0.22);
+        border-bottom: 2px solid rgba(0, 0, 0, 0.22);
         background: #fbfbfc;
         font-family: $mx-font !important;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         color: $mx-ink;
         overflow: hidden;
@@ -506,30 +507,12 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         }
     }
 
-    // A key's commands stack, one a line, in the order they run.
+    // the row's command, taking the space between the keycap and delete
     .rp-mx-commands {
         flex: 1;
         min-width: 0;
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .rp-mx-command-slot {
-        display: flex;
         align-items: center;
-        gap: 6px;
-        min-width: 0;
-        max-width: 100%;
-    }
-
-    .rp-mx-then {
-        flex-shrink: 0;
-        color: #9aa0a8;
-
-        // the first command's arrow: its space only, so the stack lines up
-        &.is-first { visibility: hidden; }
     }
 
     .rp-mx-command {
@@ -538,71 +521,45 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         align-items: center;
         min-width: 0;
         max-width: 100%;
-        border-radius: 13px;
+        border-radius: 11px;
         border: 1px solid rgba(0, 0, 0, 0.1);
         background: $mx-body;
 
         &:hover { border-color: rgba(0, 0, 0, 0.22); }
-
-        &:hover .rp-mx-command-tools { display: inline-flex; }
     }
 
     .rp-mx-command-text {
-        height: 24px;
+        height: 20px;
         min-width: 0;
-        padding: 0 10px;
+        padding: 0 8px;
         border: 0;
         background: transparent;
         font-family: $mx-font !important;
-        font-size: 12px;
+        font-size: 11px;
         color: $mx-ink;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    // earlier / later / remove for a key with several commands; hidden until
-    // the chip is hovered so a resting row reads as just the commands
-    .rp-mx-command-tools {
-        display: none;
-        align-items: center;
-        gap: 1px;
-        padding-right: 4px;
-
-        button {
-            width: 16px;
-            height: 16px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 0;
-            border-radius: 8px;
-            background: transparent;
-            color: $mx-muted;
-
-            &:hover { background: rgba(0, 0, 0, 0.08); color: $mx-ink; }
-        }
-    }
-
     .rp-mx-command-input {
         width: 180px;
         max-width: 100%;
-        height: 26px;
-        padding: 0 10px;
-        border-radius: 13px;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 11px;
         border: 1.5px solid $mx-accent;
         box-shadow: $mx-focus;
         background: $white;
         font-family: $mx-font;
-        font-size: 12px;
+        font-size: 11px;
         color: $mx-ink;
         outline: none;
     }
 
     .rp-mx-delete {
-        width: 26px;
-        height: 26px;
+        width: 22px;
+        height: 22px;
         flex-shrink: 0;
         padding: 0;
         display: flex;

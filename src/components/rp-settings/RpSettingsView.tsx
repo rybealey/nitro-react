@@ -69,9 +69,9 @@ export const RpSettingsView: FC<{}> = props =>
     // Non-null while "Click to bind" is armed and swallowing the next input.
     const [ capturedBinding, setCapturedBinding ] = useState<string>(null);
     const [ isCapturing, setIsCapturing ] = useState<boolean>(false);
-    // Which key group in the list a capture is rebinding (its index in
-    // macroGroups), or null when it is for the new-macro bar. Set together
-    // with isCapturing.
+    // Which row in the list a capture is rebinding (its index in the active
+    // preset's macros), or null when it is for the new-macro bar. Set
+    // together with isCapturing.
     const [ captureRow, setCaptureRow ] = useState<number>(null);
     // The row whose command is open for editing, and its text so far.
     const [ editingCommand, setEditingCommand ] = useState<{ index: number, text: string }>(null);
@@ -88,7 +88,7 @@ export const RpSettingsView: FC<{}> = props =>
     // Inline rename/create for presets - the design has no dialog for either.
     const [ presetDraft, setPresetDraft ] = useState<string>(null);
     const [ macroNotice, setMacroNotice ] = useState<string>('');
-    // Key group being dragged, or null: only marks the held row. Set once when
+    // Row being dragged, or null: only marks the held row. Set once when
     // a drag starts and once when it ends - never per pointer move.
     const [ macroDragIndex, setMacroDragIndex ] = useState<number>(null);
     const macroListRef = useRef<HTMLDivElement>(null);
@@ -97,7 +97,7 @@ export const RpSettingsView: FC<{}> = props =>
     const macroDrag = useRef<{
         from: number, target: number, pointerId: number, startY: number, lastY: number, started: boolean,
         rows: HTMLElement[], centres: number[], slot: number, scrollStart: number,
-        order: MacroBinding[][], frame: number, detach: () => void
+        order: MacroBinding[], frame: number, detach: () => void
     }>(null);
     // Set once a press has become a drag, so the click that follows the
     // release does not also open the key or command under the pointer.
@@ -373,6 +373,10 @@ export const RpSettingsView: FC<{}> = props =>
         }
 
         replaceActivePreset(activePreset.macros.map((macro, position) => ((position === index) ? { b: binding, c: text } : macro)));
+
+        // Moved onto a key that already runs something: the rows sit apart in
+        // the list, so say that they now fire together, as Add does.
+        if((binding !== row.b) && sameKey.length) notify(`${ binding } now runs ${ sameKey.length + 1 } commands, top to bottom.`);
     };
 
     const saveCommandEdit = () =>
@@ -402,88 +406,25 @@ export const RpSettingsView: FC<{}> = props =>
         replaceActivePreset(activePreset.macros.filter((macro, position) => (position !== index)));
     };
 
-    // Moves a command one place earlier or later among its OWN key's commands,
-    // which is the only order that changes what a key does. The two rows swap
-    // places in the list; rows of other keys between them stay put.
-    const moveWithinKey = (index: number, offset: number) =>
-    {
-        if(!activePreset) return;
-
-        const row = activePreset.macros[index];
-
-        if(!row) return;
-
-        let target = (index + offset);
-
-        while((target >= 0) && (target < activePreset.macros.length) && (activePreset.macros[target].b !== row.b)) target += offset;
-
-        if((target < 0) || (target >= activePreset.macros.length)) return;
-
-        const macros = activePreset.macros.slice();
-
-        macros[index] = macros[target];
-        macros[target] = row;
-        replaceActivePreset(macros);
-    };
-
-    const deleteKey = (binding: string) =>
-    {
-        if(!activePreset) return;
-
-        replaceActivePreset(activePreset.macros.filter(macro => (macro.b !== binding)));
-    };
-
-    // Rebinds every command of one key at once. The same rules as adding
-    // apply to the key it moves onto: no command twice, at most
-    // MACRO_MAX_PER_KEY. Each row keeps its place, so both keys' run orders
-    // survive a merge.
-    const rebindKey = (from: string, to: string) =>
-    {
-        if(!activePreset || (from === to)) return;
-
-        const moving = activePreset.macros.filter(macro => (macro.b === from));
-        const existing = activePreset.macros.filter(macro => (macro.b === to));
-
-        if(!moving.length) return;
-
-        if(moving.some(macro => existing.some(other => (other.c === macro.c))))
-        {
-            notify(`${ to } already runs that command.`);
-
-            return;
-        }
-
-        if((moving.length + existing.length) > MACRO_MAX_PER_KEY)
-        {
-            notify(`A key runs at most ${ MACRO_MAX_PER_KEY } commands.`);
-
-            return;
-        }
-
-        replaceActivePreset(activePreset.macros.map(macro => ((macro.b === from) ? { ...macro, b: to } : macro)));
-
-        if(existing.length) notify(`${ to } now runs ${ moving.length + existing.length } commands, top to bottom.`);
-    };
-
-    // The list shows one row per key, in the order each key first appears,
-    // holding that key's commands in the order they run. Only the order WITHIN
-    // a key matters to what fires, so grouping never changes behaviour.
-    const macroGroups: { key: string, rows: { index: number, text: string }[] }[] = [];
+    // One row per macro, in list order - which is also the run order of the
+    // rows that share a key, so dragging one F1 row above another changes
+    // which runs first. Rows are keyed by key and command (the same command
+    // twice on one key is refused), so a drop moves these same elements; the
+    // count only tells apart an identical pair an old save might still hold.
+    const macroRowKeys: string[] = [];
 
     if(activePreset)
     {
-        activePreset.macros.forEach((macro, index) =>
+        const seen = new Map<string, number>();
+
+        for(const macro of activePreset.macros)
         {
-            let group = macroGroups.find(existing => (existing.key === macro.b));
+            const id = `${ macro.b }\u0000${ macro.c }`;
+            const count = (seen.get(id) ?? 0);
 
-            if(!group)
-            {
-                group = { key: macro.b, rows: [] };
-                macroGroups.push(group);
-            }
-
-            group.rows.push({ index, text: macro.c });
-        });
+            seen.set(id, (count + 1));
+            macroRowKeys.push(`${ id }\u0000${ count }`);
+        }
     }
 
     const selectPreset = (name: string) =>
@@ -600,7 +541,7 @@ export const RpSettingsView: FC<{}> = props =>
 
         // Drop the transforms and write the new order in the same frame, so
         // the rows land where the transforms already showed them. Rows are
-        // keyed by their key name, so React moves these same elements.
+        // keyed by their key and command, so React moves these same elements.
         drag.rows.forEach(row =>
         {
             row.style.transition = 'none';
@@ -610,7 +551,7 @@ export const RpSettingsView: FC<{}> = props =>
         flushSync(() =>
         {
             setMacroDragIndex(null);
-            commitMacros(withActiveMacros(order.flat()));
+            commitMacros(withActiveMacros(order));
         });
 
         const offset = (before - held.getBoundingClientRect().top);
@@ -677,17 +618,17 @@ export const RpSettingsView: FC<{}> = props =>
 
     const onMacroPointerDown = (event: ReactPointerEvent<HTMLDivElement>, index: number) =>
     {
-        // A press anywhere on a row can become a drag - keycap and commands
+        // A press anywhere on a row can become a drag - keycap and command
         // included, since a press only turns into a drag once it moves. Only
-        // the text box and the small delete / order buttons stay plain clicks.
+        // the text box and the delete button stay plain clicks.
         if((event.button !== 0) || !activePreset || macroDrag.current) return;
-        if((event.target as HTMLElement).closest('input, .rp-mx-delete, .rp-mx-command-tools')) return;
+        if((event.target as HTMLElement).closest('input, .rp-mx-delete')) return;
 
         const list = macroListRef.current;
 
         if(!list) return;
 
-        const rows = Array.from(list.querySelectorAll('[data-macro-group]')) as HTMLElement[];
+        const rows = Array.from(list.querySelectorAll('[data-macro-row]')) as HTMLElement[];
         const held = rows[index];
 
         if(!held) return;
@@ -753,7 +694,7 @@ export const RpSettingsView: FC<{}> = props =>
             }),
             slot: (held.getBoundingClientRect().height + gap),
             scrollStart: list.scrollTop,
-            order: macroGroups.map(group => group.rows.map(row => activePreset.macros[row.index])),
+            order: activePreset.macros.slice(),
             frame: 0,
             detach: () =>
             {
@@ -929,13 +870,14 @@ export const RpSettingsView: FC<{}> = props =>
                 return;
             }
 
-            // Rebinding a key in the list moves all of its commands at once;
-            // the new-macro bar only holds the key until Add.
+            // Rebinding a row in the list moves that one command to the new
+            // key, by the same rules as Add; the new-macro bar only holds the
+            // key until Add.
             if(captureRow !== null)
             {
-                const group = macroGroups[captureRow];
+                const row = activePreset?.macros[captureRow];
 
-                if(group) rebindKey(group.key, binding);
+                if(row) editMacro(captureRow, binding, row.c);
             }
             else
             {
@@ -1310,74 +1252,46 @@ export const RpSettingsView: FC<{}> = props =>
                                 event.preventDefault();
                                 event.stopPropagation();
                             } }>
-                            { /* keyed by the key name - groups are unique by key - so
-                                 a drop moves these same elements rather than
-                                 re-filling rows in place */ }
-                            { macroGroups.map((group, groupIndex) => (
-                                <div key={ group.key } data-macro-group={ groupIndex }
-                                    className={ `rp-mx-row ${ (macroDragIndex === groupIndex) ? 'is-dragging' : '' }` }
-                                    onPointerDown={ event => onMacroPointerDown(event, groupIndex) }>
+                            { /* keyed by key and command (macroRowKeys), so a drop moves
+                                 these same elements rather than re-filling rows in place */ }
+                            { activePreset && activePreset.macros.map((macro, index) => (
+                                <div key={ macroRowKeys[index] } data-macro-row={ index }
+                                    className={ `rp-mx-row ${ (macroDragIndex === index) ? 'is-dragging' : '' }` }
+                                    onPointerDown={ event => onMacroPointerDown(event, index) }>
                                     <span className="rp-mx-grip" aria-hidden="true">
                                         <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="2" cy="2.5" r="1.2" /><circle cx="6" cy="2.5" r="1.2" /><circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" /><circle cx="2" cy="11.5" r="1.2" /><circle cx="6" cy="11.5" r="1.2" /></svg>
                                     </span>
                                     <div className="rp-mx-key-cell">
-                                        <button type="button" className={ `rp-mx-keycap ${ (isCapturing && (captureRow === groupIndex)) ? 'is-capturing' : '' }` }
-                                            title={ `${ group.key } - click to change the key` }
-                                            onClick={ () => { setEditingCommand(null); setCaptureRow(groupIndex); setIsCapturing(true); } }>
-                                            { (isCapturing && (captureRow === groupIndex))
+                                        <button type="button" className={ `rp-mx-keycap ${ (isCapturing && (captureRow === index)) ? 'is-capturing' : '' }` }
+                                            title={ `${ macro.b } - click to change the key` }
+                                            onClick={ () => { setEditingCommand(null); setCaptureRow(index); setIsCapturing(true); } }>
+                                            { (isCapturing && (captureRow === index))
                                                 ? (capturePrefix.length ? `${ capturePrefix }...` : 'Press a key')
-                                                : group.key }
+                                                : macro.b }
                                         </button>
                                     </div>
                                     <div className="rp-mx-commands">
-                                        { group.rows.map((row, position) => (
-                                            <div key={ row.index } className="rp-mx-command-slot">
-                                                { /* One command a line, in run order. The first of
-                                                     several keeps the arrow's space, unseen, so
-                                                     every command in the stack lines up. */ }
-                                                { (group.rows.length > 1) &&
-                                                    <svg className={ `rp-mx-then ${ (position === 0) ? 'is-first' : '' }` } aria-label={ (position > 0) ? 'then' : undefined } aria-hidden={ (position === 0) || undefined }
-                                                        width="12" height="10" viewBox="0 0 12 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5h9M7 2l3 3-3 3" /></svg> }
-                                                { (editingCommand && (editingCommand.index === row.index))
-                                                    ? <input type="text" autoFocus className="rp-mx-command-input"
-                                                        aria-label="Edit macro command" maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ editingCommand.text }
-                                                        onChange={ event => setEditingCommand({ index: row.index, text: event.target.value }) }
-                                                        onKeyDown={ event =>
-                                                        {
-                                                            if(event.key === 'Enter') event.currentTarget.blur();
-
-                                                            if(event.key === 'Escape')
-                                                            {
-                                                                discardCommandEdit.current = true;
-                                                                event.currentTarget.blur();
-                                                            }
-                                                        } }
-                                                        onBlur={ saveCommandEdit } />
-                                                    : <span className="rp-mx-command">
-                                                        <button type="button" className="rp-mx-command-text" title="Click to change the command"
-                                                            onClick={ () => setEditingCommand({ index: row.index, text: row.text }) }>{ row.text }</button>
-                                                        { /* Only a key with several commands needs its own
-                                                             order and per-command delete; a single command
-                                                             goes with the row's x. Shown on hover. */ }
-                                                        { (group.rows.length > 1) &&
-                                                            <span className="rp-mx-command-tools">
-                                                                { (position > 0) &&
-                                                                    <button type="button" title="Run earlier" aria-label="Run earlier" onClick={ () => moveWithinKey(row.index, -1) }>
-                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5l3-3 3 3" /></svg>
-                                                                    </button> }
-                                                                { (position < (group.rows.length - 1)) &&
-                                                                    <button type="button" title="Run later" aria-label="Run later" onClick={ () => moveWithinKey(row.index, 1) }>
-                                                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3l3 3 3-3" /></svg>
-                                                                    </button> }
-                                                                <button type="button" title="Remove this command" aria-label="Remove this command" onClick={ () => deleteMacro(row.index) }>
-                                                                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" /></svg>
-                                                                </button>
-                                                            </span> }
-                                                    </span> }
-                                            </div>
-                                        )) }
+                                        { (editingCommand && (editingCommand.index === index))
+                                            ? <input type="text" autoFocus className="rp-mx-command-input"
+                                                aria-label="Edit macro command" maxLength={ MACRO_MAX_COMMAND_LENGTH } value={ editingCommand.text }
+                                                onChange={ event => setEditingCommand({ index, text: event.target.value }) }
+                                                onKeyDown={ event =>
+                                                {
+                                                    if(event.key === 'Enter') event.currentTarget.blur();
+                            
+                                                    if(event.key === 'Escape')
+                                                    {
+                                                        discardCommandEdit.current = true;
+                                                        event.currentTarget.blur();
+                                                    }
+                                                } }
+                                                onBlur={ saveCommandEdit } />
+                                            : <span className="rp-mx-command">
+                                                <button type="button" className="rp-mx-command-text" title="Click to change the command"
+                                                    onClick={ () => setEditingCommand({ index, text: macro.c }) }>{ macro.c }</button>
+                                            </span> }
                                     </div>
-                                    <button type="button" className="rp-mx-delete" title={ `Delete ${ group.key }` } aria-label={ `Delete ${ group.key }` } onClick={ () => deleteKey(group.key) }>
+                                    <button type="button" className="rp-mx-delete" title="Delete this macro" aria-label={ `Delete ${ macro.b } ${ macro.c }` } onClick={ () => deleteMacro(index) }>
                                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 2L8 8M8 2L2 8" /></svg>
                                     </button>
                                 </div>
