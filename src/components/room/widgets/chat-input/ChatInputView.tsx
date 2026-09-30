@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { ChatMessageTypeEnum, GetConfiguration, LocalizeText, ReplaceEmojiShortcodes, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 import { Text } from '../../../../common';
 import { useChatInputWidget, useRoom, useSessionInfo, useUiEvent, useMessageEvent } from '../../../../hooks';
-import { IsModifierOnlyBinding, IsMouseBinding, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
+import { IsModifierOnlyBinding, IsMouseBinding, MACRO_MODIFIER_KEYS, MacroState, NormalizeKeyBinding, NormalizeMouseBinding } from '../../../../components/rp-settings/MacroState';
 import { TargetState } from '../../../../hooks/rooms/targetState';
 import { ROOM_DRAG_STILL_PX, RoomDragUsesRight } from '../../../../api/prefs/RoomDragStore';
 import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
@@ -300,6 +300,14 @@ export const ChatInputView: FC<{}> = props =>
                 }
             }
         }
+
+        // A modifier on its own does not select the chat box. It is only the
+        // start of a combo, or a modifier binding that fires on release, and
+        // selecting the box here meant the combo's second key arrived with the
+        // box selected - where macros are skipped - so CTRL+A selected the
+        // box's text instead of firing, and a bare SHIFT binding never fired.
+        // The key after it still selects the box, so Shift+H types an H.
+        if(event.key && MACRO_MODIFIER_KEYS.includes(event.key.toUpperCase())) return;
 
         if(document.activeElement !== inputRef.current) setInputFocus();
 
