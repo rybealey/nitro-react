@@ -22,6 +22,7 @@ $city-line: rgba(0, 0, 0, 0.06);
     .mt-zone-dot.is-turf { background: $city-turf; }
 
     .city-seg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .city-seg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
     .city-mono { font-family: 'Ubuntu Mono', monospace; }
 
@@ -399,5 +400,229 @@ $city-line: rgba(0, 0, 0, 0.06);
         display: flex;
         justify-content: flex-end;
         gap: 4px;
+    }
+
+    // ---- Uniforms ----------------------------------------------------------
+    // The Choose Your Look parts (AvatarEditorModelView) inside the panel. Its
+    // own styles are nested under .nitro-avatar-editor, so the few it needs
+    // are repeated here.
+
+    .city-uniforms {
+        display: flex;
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .city-uniform-wearers {
+        width: 190px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+    }
+
+    .city-uniform-list {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+
+        &:first-of-type { flex-grow: 1; min-height: 0; }
+    }
+
+    .city-uniform-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 30px;
+        padding: 4px 10px;
+        border: 0;
+        border-bottom: 1px solid $city-line;
+        background: #ffffff;
+        color: #000000;
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover { background: rgba(0, 0, 0, 0.03); }
+
+        &.is-active {
+            background: var(--prp-chrome-95);
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        &.is-prisoner:not(.is-active) { color: #8a3d0c; font-weight: 700; }
+    }
+
+    .city-uniform-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: #c4c4ca;
+        vertical-align: middle;
+
+        &.is-set { background: #2e9e4f; }
+    }
+
+    .city-uniform-editor {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+    }
+
+    .city-uniform-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .city-uniform-title {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+
+        b { font-size: 14px; }
+        span { font-size: 11px; }
+    }
+
+    .city-uniform-gender {
+        display: flex;
+        gap: 2px;
+
+        button {
+            width: 34px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 0;
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+
+            &[aria-pressed='true'] { background: #e6e6ea; }
+        }
+    }
+
+    .city-uniform-body {
+        flex-grow: 1;
+        min-height: 0;
+        display: flex;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 6px;
+        background: #dfdfdf;
+    }
+
+    .city-uniform-model {
+        flex-grow: 1;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+
+        .category-item { height: 40px; }
+    }
+
+    .city-uniform-side {
+        width: 150px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .city-uniform-preview {
+        position: relative;
+        flex-grow: 1;
+        min-height: 200px;
+        overflow: hidden;
+        border-radius: 4px;
+        background-color: #677181;
+        z-index: 1;
+
+        &:after {
+            position: absolute;
+            content: '';
+            top: 75%;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 50%;
+            background-color: #677181;
+            box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.6);
+            transform: scale(2);
+        }
+    }
+
+    .city-uniform-avatar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 50px;
+        margin: 0 auto;
+        z-index: 4;
+    }
+
+    .city-uniform-spotlight {
+        position: absolute;
+        top: -10px;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 3;
+    }
+
+    .city-uniform-shadow {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 15px;
+        width: 70px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 100%;
+        background-color: rgba(0, 0, 0, 0.2);
+        z-index: 2;
+    }
+
+    .city-uniform-arrows {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 10px;
+        z-index: 5;
+    }
+
+    .city-uniform-tools {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2px;
+
+        button { padding: 0 2px; }
+    }
+
+    .city-uniform-foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .mt-label { margin: 0; flex-shrink: 0; }
+        input { flex-grow: 1; min-width: 0; }
+        span { flex-shrink: 0; font-size: 11px; }
     }
 }

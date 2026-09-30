@@ -13,6 +13,10 @@ export class AvatarEditorUtilities
     public static CURRENT_FIGURE: FigureData = null;
     public static FIGURE_SET_IDS: number[] = [];
     public static BOUND_FURNITURE_NAMES: string[] = [];
+    // pixelrp City Panel uniforms: staff dress a corporation, not themselves,
+    // so the sellable sets they happen to own are not the limit. Only ever
+    // true while a uniform model builds its categories (UniformModels).
+    public static SHOW_ALL_SETS: boolean = false;
 
     public static getGender(gender: string): string
     {
@@ -160,7 +164,7 @@ export class AvatarEditorUtilities
             {
                 let isValid = true;
 
-                if(partSet.isSellable && !allFaces) isValid = this.hasFigureSetId(partSet.id);
+                if(partSet.isSellable && !allFaces && !this.SHOW_ALL_SETS) isValid = this.hasFigureSetId(partSet.id);
 
                 if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, false));
             }

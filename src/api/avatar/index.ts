@@ -12,3 +12,4 @@ export * from './HeadModel';
 export * from './IAvatarEditorCategoryModel';
 export * from './LegModel';
 export * from './TorsoModel';
+export * from './UniformModels';

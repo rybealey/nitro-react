@@ -15,6 +15,11 @@ const RP_CITY_PLAYER_ACTION = 4163; // client -> server
 const RP_CITY_BACKPACK = 4164; // client -> server
 const RP_CITY_ROOMS = 4165; // client -> server
 const RP_CITY_ROOM_LIST = 4166; // server -> client
+const RP_CITY_UNIFORMS = 4167; // client -> server: the wearer list
+const RP_CITY_UNIFORM_LIST = 4168; // server -> client
+const RP_CITY_UNIFORM = 4169; // client -> server: open one uniform
+const RP_CITY_UNIFORM_FIGURE = 4170; // server -> client
+const RP_CITY_UNIFORM_SAVE = 4171; // client -> server
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -24,7 +29,8 @@ export const CityCapability = {
     GoTo: 8,
     Justice: 16,
     Balance: 32,
-    Backpack: 64
+    Backpack: 64,
+    Uniforms: 128
 };
 
 /** CityPlayers.Filter* */
@@ -95,6 +101,130 @@ export interface CityRoomRow
     arrestPoints: number;
     usersNow: number;
     usersMax: number;
+}
+
+export interface CityUniformRank
+{
+    id: number;
+    name: string;
+    hasMale: boolean;
+    hasFemale: boolean;
+}
+
+export interface CityUniformCorp
+{
+    id: number;
+    name: string;
+    ranks: CityUniformRank[];
+}
+
+/** UniformManager's kinds. */
+export const UniformKind = { Rank: 'rank', Prisoner: 'prisoner' };
+
+export class RpCityUniformListParser implements IMessageParser
+{
+    private _corps: CityUniformCorp[] = [];
+    private _prisonerMale = false;
+    private _prisonerFemale = false;
+
+    public flush(): boolean
+    {
+        this._corps = [];
+        this._prisonerMale = false;
+        this._prisonerFemale = false;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        let corps = wrapper.readInt();
+
+        while(corps-- > 0)
+        {
+            const corp: CityUniformCorp = { id: wrapper.readInt(), name: wrapper.readString(), ranks: [] };
+
+            let ranks = wrapper.readInt();
+
+            while(ranks-- > 0) corp.ranks.push({ id: wrapper.readInt(), name: wrapper.readString(), hasMale: wrapper.readBoolean(), hasFemale: wrapper.readBoolean() });
+
+            this._corps.push(corp);
+        }
+
+        this._prisonerMale = wrapper.readBoolean();
+        this._prisonerFemale = wrapper.readBoolean();
+
+        return true;
+    }
+
+    public get corps(): CityUniformCorp[] 
+    {
+        return this._corps; 
+    }
+    public get prisonerMale(): boolean 
+    {
+        return this._prisonerMale; 
+    }
+    public get prisonerFemale(): boolean 
+    {
+        return this._prisonerFemale; 
+    }
+}
+
+export class RpCityUniformFigureParser implements IMessageParser
+{
+    private _kind = '';
+    private _rankId = 0;
+    private _gender = 'M';
+    private _figure = '';
+    private _notice = '';
+
+    public flush(): boolean
+    {
+        this._kind = '';
+        this._rankId = 0;
+        this._gender = 'M';
+        this._figure = '';
+        this._notice = '';
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._kind = wrapper.readString();
+        this._rankId = wrapper.readInt();
+        this._gender = wrapper.readString();
+        this._figure = wrapper.readString();
+        this._notice = wrapper.readString();
+
+        return true;
+    }
+
+    public get kind(): string 
+    {
+        return this._kind; 
+    }
+    public get rankId(): number 
+    {
+        return this._rankId; 
+    }
+    public get gender(): string 
+    {
+        return this._gender; 
+    }
+    public get figure(): string 
+    {
+        return this._figure; 
+    }
+    public get notice(): string 
+    {
+        return this._notice; 
+    }
 }
 
 export class RpCityPanelParser implements IMessageParser
@@ -322,6 +452,30 @@ export class RpCityRoomListEvent extends MessageEvent implements IMessageEvent
     }
 }
 
+export class RpCityUniformListEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityUniformListParser); 
+    }
+    public getParser(): RpCityUniformListParser 
+    {
+        return this.parser as RpCityUniformListParser; 
+    }
+}
+
+export class RpCityUniformFigureEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityUniformFigureParser); 
+    }
+    public getParser(): RpCityUniformFigureParser 
+    {
+        return this.parser as RpCityUniformFigureParser; 
+    }
+}
+
 class RpCityComposer<T extends unknown[]> implements IMessageComposer<T>
 {
     private _data: T;
@@ -388,6 +542,30 @@ export class RpCityRoomsComposer extends RpCityComposer<[ string, number ]>
     }
 }
 
+export class RpCityUniformsComposer extends RpCityComposer<[]>
+{
+    constructor() 
+    {
+        super(); 
+    }
+}
+
+export class RpCityUniformComposer extends RpCityComposer<[ string, number, string ]>
+{
+    constructor(kind: string, rankId: number, gender: string) 
+    {
+        super(kind, rankId, gender); 
+    }
+}
+
+export class RpCityUniformSaveComposer extends RpCityComposer<[ string, number, string, string ]>
+{
+    constructor(kind: string, rankId: number, gender: string, figure: string) 
+    {
+        super(kind, rankId, gender, figure); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -403,7 +581,9 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_PANEL, RpCityPanelEvent ],
             [ RP_CITY_SEARCH_RESULT, RpCitySearchResultEvent ],
             [ RP_CITY_PLAYER_CARD, RpCityPlayerCardEvent ],
-            [ RP_CITY_ROOM_LIST, RpCityRoomListEvent ]
+            [ RP_CITY_ROOM_LIST, RpCityRoomListEvent ],
+            [ RP_CITY_UNIFORM_LIST, RpCityUniformListEvent ],
+            [ RP_CITY_UNIFORM_FIGURE, RpCityUniformFigureEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CITY_PANEL_OPEN, RpCityPanelOpenComposer ],
@@ -411,7 +591,10 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_PLAYER, RpCityPlayerComposer ],
             [ RP_CITY_PLAYER_ACTION, RpCityPlayerActionComposer ],
             [ RP_CITY_BACKPACK, RpCityBackpackComposer ],
-            [ RP_CITY_ROOMS, RpCityRoomsComposer ]
+            [ RP_CITY_ROOMS, RpCityRoomsComposer ],
+            [ RP_CITY_UNIFORMS, RpCityUniformsComposer ],
+            [ RP_CITY_UNIFORM, RpCityUniformComposer ],
+            [ RP_CITY_UNIFORM_SAVE, RpCityUniformSaveComposer ]
         ])
     });
 

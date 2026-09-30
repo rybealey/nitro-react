@@ -1,11 +1,12 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { RpCityPanelEvent, RpCityPanelOpenComposer } from '../../api/rp-city/RpCityMessages';
+import { CityCapability, RpCityPanelEvent, RpCityPanelOpenComposer } from '../../api/rp-city/RpCityMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { CityPlayersView } from './views/CityPlayersView';
 import { CityRoomsView } from './views/CityRoomsView';
+import { CityUniformsView } from './views/CityUniformsView';
 
 // PixelRP City Panel - the staff window for managing the city (design: the
 // "City Panel" canvas), opened from Mod Tools. Emulator: HabboHotel/CityPanel.
@@ -15,7 +16,7 @@ import { CityRoomsView } from './views/CityRoomsView';
 // do comes from the server on open (capabilities); every packet is checked
 // again there, so this only decides what to offer.
 
-const TABS = [ 'Players', 'Rooms & Zones' ] as const;
+const TABS = [ 'Players', 'Rooms & Zones', 'Uniforms' ] as const;
 type Tab = typeof TABS[number];
 
 export interface CityPanelContext
@@ -86,7 +87,7 @@ export const CityPanelView: FC<{}> = props =>
         <NitroCardView uniqueKey="city-panel" className="nitro-city-panel" theme="primary-slim" windowPosition={ DraggableWindowPosition.CENTER } resizable>
             <NitroCardHeaderView headerText="City Panel" onCloseClick={ () => setIsVisible(false) } />
             <NitroCardTabsView justifyContent="start">
-                { TABS.map(name =>
+                { TABS.filter(name => ((name !== 'Uniforms') || ((context.capabilities & CityCapability.Uniforms) !== 0))).map(name =>
                     <NitroCardTabsItemView key={ name } isActive={ (tab === name) } onClick={ () => setTab(name) }>
                         { name }
                     </NitroCardTabsItemView>) }
@@ -94,6 +95,7 @@ export const CityPanelView: FC<{}> = props =>
             <NitroCardContentView className="mt-page" overflow="hidden">
                 { (tab === 'Players') && <CityPlayersView context={ context } openPlayerId={ openPlayerId } onOpened={ () => setOpenPlayerId(0) } /> }
                 { (tab === 'Rooms & Zones') && <CityRoomsView /> }
+                { (tab === 'Uniforms') && <CityUniformsView /> }
             </NitroCardContentView>
         </NitroCardView>
     );
