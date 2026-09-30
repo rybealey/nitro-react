@@ -102,7 +102,8 @@ export const SanFranciscoClock = (now: number, hour24: boolean = true): string =
 
 export const ComputeSky = (snapshot: WeatherSnapshot, now: number): SkyLook =>
 {
-    const minutes = SanFranciscoMinutes(now);
+    // A time of day staff have pinned (City Panel) holds the sky there.
+    const minutes = (((snapshot?.pinnedMinutes ?? -1) >= 0) ? snapshot.pinnedMinutes : SanFranciscoMinutes(now));
     const hour = (minutes / 60);
 
     let a = KEYFRAMES[0];

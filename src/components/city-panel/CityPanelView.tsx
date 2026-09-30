@@ -7,6 +7,7 @@ import { useMessageEvent } from '../../hooks';
 import { CityPlayersView } from './views/CityPlayersView';
 import { CityRoomsView } from './views/CityRoomsView';
 import { CityUniformsView } from './views/CityUniformsView';
+import { CityWorldView } from './views/CityWorldView';
 
 // PixelRP City Panel - the staff window for managing the city (design: the
 // "City Panel" canvas), opened from Mod Tools. Emulator: HabboHotel/CityPanel.
@@ -16,7 +17,7 @@ import { CityUniformsView } from './views/CityUniformsView';
 // do comes from the server on open (capabilities); every packet is checked
 // again there, so this only decides what to offer.
 
-const TABS = [ 'Players', 'Rooms & Zones', 'Uniforms' ] as const;
+const TABS = [ 'City', 'Players', 'Rooms & Zones', 'Uniforms' ] as const;
 type Tab = typeof TABS[number];
 
 export interface CityPanelContext
@@ -93,6 +94,7 @@ export const CityPanelView: FC<{}> = props =>
                     </NitroCardTabsItemView>) }
             </NitroCardTabsView>
             <NitroCardContentView className="mt-page" overflow="hidden">
+                { (tab === 'City') && <CityWorldView context={ context } /> }
                 { (tab === 'Players') && <CityPlayersView context={ context } openPlayerId={ openPlayerId } onOpened={ () => setOpenPlayerId(0) } /> }
                 { (tab === 'Rooms & Zones') && <CityRoomsView /> }
                 { (tab === 'Uniforms') && <CityUniformsView /> }

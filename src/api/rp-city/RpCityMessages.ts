@@ -20,6 +20,10 @@ const RP_CITY_UNIFORM_LIST = 4168; // server -> client
 const RP_CITY_UNIFORM = 4169; // client -> server: open one uniform
 const RP_CITY_UNIFORM_FIGURE = 4170; // server -> client
 const RP_CITY_UNIFORM_SAVE = 4171; // client -> server
+const RP_CITY_WORLD = 4172; // client -> server: the City tab's state
+const RP_CITY_WORLD_STATE = 4173; // server -> client
+const RP_CITY_WORLD_SET = 4174; // client -> server: one switch
+const RP_CITY_ALERT = 4175; // client -> server
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -30,8 +34,34 @@ export const CityCapability = {
     Justice: 16,
     Balance: 32,
     Backpack: 64,
-    Uniforms: 128
+    Uniforms: 128,
+    AlertHotel: 256,
+    AlertStaff: 512,
+    AlertRoom: 1024,
+    World: 2048,
+    Hotel: 4096
 };
+
+/** RpCityWorldSetEvent's switches. */
+export const CityWorldSwitch = { Weather: 1, Time: 2, Maintenance: 3, Combat: 4 };
+
+/** RpCityAlertEvent's targets. */
+export const CityAlertTarget = { Everyone: 0, Staff: 1, ThisRoom: 2 };
+
+export interface CityWorldState
+{
+    /** The held weather code, -1 when it follows San Francisco. */
+    overrideCode: number;
+    liveCode: number;
+    /** Minutes after midnight, -1 when the sky follows the clock. */
+    pinnedMinutes: number;
+    maintenance: boolean;
+    combatPaused: boolean;
+    online: number;
+    onDuty: number;
+    wanted: number;
+    jailed: number;
+}
 
 /** CityPlayers.Filter* */
 export const CityPlayerFilter = { All: 0, Online: 1, Wanted: 2, Jailed: 3 };
@@ -220,6 +250,49 @@ export class RpCityUniformFigureParser implements IMessageParser
     public get figure(): string 
     {
         return this._figure; 
+    }
+    public get notice(): string 
+    {
+        return this._notice; 
+    }
+}
+
+export class RpCityWorldStateParser implements IMessageParser
+{
+    private _state: CityWorldState = null;
+    private _notice = '';
+
+    public flush(): boolean
+    {
+        this._state = null;
+        this._notice = '';
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._state = {
+            overrideCode: wrapper.readInt(),
+            liveCode: wrapper.readInt(),
+            pinnedMinutes: wrapper.readInt(),
+            maintenance: wrapper.readBoolean(),
+            combatPaused: wrapper.readBoolean(),
+            online: wrapper.readInt(),
+            onDuty: wrapper.readInt(),
+            wanted: wrapper.readInt(),
+            jailed: wrapper.readInt()
+        };
+        this._notice = wrapper.readString();
+
+        return true;
+    }
+
+    public get state(): CityWorldState 
+    {
+        return this._state; 
     }
     public get notice(): string 
     {
@@ -476,6 +549,18 @@ export class RpCityUniformFigureEvent extends MessageEvent implements IMessageEv
     }
 }
 
+export class RpCityWorldStateEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityWorldStateParser); 
+    }
+    public getParser(): RpCityWorldStateParser 
+    {
+        return this.parser as RpCityWorldStateParser; 
+    }
+}
+
 class RpCityComposer<T extends unknown[]> implements IMessageComposer<T>
 {
     private _data: T;
@@ -566,6 +651,30 @@ export class RpCityUniformSaveComposer extends RpCityComposer<[ string, number, 
     }
 }
 
+export class RpCityWorldComposer extends RpCityComposer<[]>
+{
+    constructor() 
+    {
+        super(); 
+    }
+}
+
+export class RpCityWorldSetComposer extends RpCityComposer<[ number, number ]>
+{
+    constructor(what: number, value: number) 
+    {
+        super(what, value); 
+    }
+}
+
+export class RpCityAlertComposer extends RpCityComposer<[ number, string ]>
+{
+    constructor(target: number, message: string) 
+    {
+        super(target, message); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -583,7 +692,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_PLAYER_CARD, RpCityPlayerCardEvent ],
             [ RP_CITY_ROOM_LIST, RpCityRoomListEvent ],
             [ RP_CITY_UNIFORM_LIST, RpCityUniformListEvent ],
-            [ RP_CITY_UNIFORM_FIGURE, RpCityUniformFigureEvent ]
+            [ RP_CITY_UNIFORM_FIGURE, RpCityUniformFigureEvent ],
+            [ RP_CITY_WORLD_STATE, RpCityWorldStateEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CITY_PANEL_OPEN, RpCityPanelOpenComposer ],
@@ -594,7 +704,10 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_ROOMS, RpCityRoomsComposer ],
             [ RP_CITY_UNIFORMS, RpCityUniformsComposer ],
             [ RP_CITY_UNIFORM, RpCityUniformComposer ],
-            [ RP_CITY_UNIFORM_SAVE, RpCityUniformSaveComposer ]
+            [ RP_CITY_UNIFORM_SAVE, RpCityUniformSaveComposer ],
+            [ RP_CITY_WORLD, RpCityWorldComposer ],
+            [ RP_CITY_WORLD_SET, RpCityWorldSetComposer ],
+            [ RP_CITY_ALERT, RpCityAlertComposer ]
         ])
     });
 

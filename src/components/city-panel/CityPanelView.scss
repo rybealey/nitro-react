@@ -23,6 +23,7 @@ $city-line: rgba(0, 0, 0, 0.06);
 
     .city-seg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .city-seg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .city-seg-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
     .city-mono { font-family: 'Ubuntu Mono', monospace; }
 
@@ -624,5 +625,84 @@ $city-line: rgba(0, 0, 0, 0.06);
         .mt-label { margin: 0; flex-shrink: 0; }
         input { flex-grow: 1; min-width: 0; }
         span { flex-shrink: 0; font-size: 11px; }
+    }
+
+    // ---- City --------------------------------------------------------------
+
+    .city-world {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .city-world-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: min-content;
+        gap: 8px;
+    }
+
+    .city-alert-text {
+        resize: none;
+    }
+
+    .city-world-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+
+        .mt-label { margin: 0; }
+    }
+
+    .city-world-text {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+        font-size: 12px;
+
+        span { font-size: 11px; }
+    }
+
+    .city-world-time {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .city-world-slider {
+        width: 100%;
+        accent-color: #e87332;
+    }
+
+    .mt-chips {
+        display: flex;
+        gap: 6px;
+    }
+
+    .mt-chip {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 4px 5px;
+        border-radius: 6px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+
+        b {
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        span {
+            font-size: 10px;
+            color: rgba(0, 0, 0, 0.6);
+        }
     }
 }

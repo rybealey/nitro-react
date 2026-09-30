@@ -46,6 +46,11 @@ export interface WeatherSnapshot
     sunset: string;
     hourly: WeatherHour[];
     daily: WeatherDay[];
+    // pixelrp City Panel: staff are holding the weather (`code` is theirs,
+    // not San Francisco's), and a pinned time of day in minutes after
+    // midnight, -1 when the sky follows the clock.
+    held: boolean;
+    pinnedMinutes: number;
 }
 
 export class RpWeatherParser implements IMessageParser
@@ -93,7 +98,9 @@ export class RpWeatherParser implements IMessageParser
             sunrise: wrapper.readString(),
             sunset: wrapper.readString(),
             hourly: [],
-            daily: []
+            daily: [],
+            held: false,
+            pinnedMinutes: -1
         };
 
         const hourCount = wrapper.readInt();
@@ -108,6 +115,13 @@ export class RpWeatherParser implements IMessageParser
         for(let i = 0; i < dayCount; i++)
         {
             snapshot.daily.push({ label: wrapper.readString(), code: wrapper.readInt(), lo: wrapper.readInt(), hi: wrapper.readInt() });
+        }
+
+        // Appended by the City Panel - absent from an older emulator.
+        if(wrapper.bytesAvailable)
+        {
+            snapshot.held = wrapper.readBoolean();
+            snapshot.pinnedMinutes = wrapper.readInt();
         }
 
         this._snapshot = snapshot;
