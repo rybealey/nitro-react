@@ -22,8 +22,7 @@ $mt-unsafe: #c9453a;
 .nitro-mod-tools-room,
 .nitro-mod-tools-user,
 .nitro-mod-tools-chatlog,
-.nitro-mod-tools-tickets,
-.nitro-mod-tools-handle-issue {
+.nitro-city-panel {
     // Four classes deep so the pale page beats the slim theme's own
     // content-area rule whatever order the sheets load in.
     &.nitro-card.theme-primary-slim .content-area {
@@ -742,101 +741,5 @@ $mt-unsafe: #c9453a;
     .mt-log-message {
         color: rgba(0, 0, 0, 0.85);
         overflow-wrap: anywhere;
-    }
-}
-
-// ---- Report tool --------------------------------------------------------
-
-.nitro-mod-tools-tickets {
-    width: 480px;
-    height: 380px;
-
-    .mt-ticket-head,
-    .mt-ticket {
-        display: grid;
-        grid-template-columns: 96px minmax(0, 1fr) 64px 124px;
-        gap: 8px;
-        align-items: center;
-    }
-
-    .mt-ticket-head {
-        padding: 0 9px;
-    }
-
-    .mt-ticket-list {
-        flex-grow: 1;
-        min-height: 0;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .mt-ticket {
-        padding: 6px 8px;
-        border-radius: 6px;
-        background: $white;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        font-size: 12px;
-    }
-
-    .mt-ticket-who {
-        font-weight: 700;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .mt-ticket-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 4px;
-    }
-
-    .mt-picker {
-        font-size: 11px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-
-        b { color: $mt-ink; }
-    }
-}
-
-// ---- Resolving an issue -------------------------------------------------
-
-.nitro-mod-tools-handle-issue {
-    width: 400px;
-
-    .mt-issue-meta {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 6px;
-        font-size: 11px;
-
-        b { color: $mt-ink; }
-    }
-
-    .mt-issue-text {
-        font-size: 12px;
-        line-height: 1.4;
-        color: rgba(0, 0, 0, 0.85);
-        overflow-wrap: anywhere;
-    }
-
-    .mt-person {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        padding: 6px 10px;
-        font-size: 12px;
-
-        .mt-link {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
     }
 }

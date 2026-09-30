@@ -18,6 +18,7 @@ import { HelpView } from '../help/HelpView';
 import { HotelView } from '../hotel-view/HotelView';
 import { InventoryView } from '../inventory/InventoryView';
 import { ModToolsView } from '../mod-tools/ModToolsView';
+import { CityPanelView } from '../city-panel/CityPanelView';
 import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
 import { PhoneView } from '../phone/PhoneView';
@@ -100,6 +101,7 @@ export const MainView: FC<{}> = props =>
             </TransitionAnimation>
             <ToolbarView isInRoom={ !landingViewVisible } />
             <ModToolsView />
+            <CityPanelView />
             <RoomView />
             <ChatHistoryView />
             <WiredView />

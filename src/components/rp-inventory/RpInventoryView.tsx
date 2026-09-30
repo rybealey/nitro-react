@@ -1,5 +1,6 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
-import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
+import { IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
+import { ResolveRpItem, RP_ITEMS } from '../../api/rp-inventory/RpItems';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
@@ -28,46 +29,8 @@ const WEAPON_ITEMS: string[] = [ 'knife', 'baseball_bat', 'axe', 'stun_gun' ];
 const isWeapon = (item: string): boolean => WEAPON_ITEMS.includes(item);
 type ItemUseMode = 'single' | 'double';
 
-// item key -> display name + icon class (icons live in assets/images/rp-items)
-const ITEMS: Record<string, { name: string, cls: string }> = {
-    smoothie: { name: 'Passive Smoothie', cls: 'rp-item-smoothie' },
-    snack: { name: 'Snack', cls: 'rp-item-snack' },
-    medkit: { name: 'Medkit', cls: 'rp-item-medkit' },
-    vip_token_31: { name: 'VIP Token (31 days)', cls: 'rp-item-vip-token-gold' },
-    vip_token_14: { name: 'VIP Token (14 days)', cls: 'rp-item-vip-token-silver' },
-    // Unlocks :spit for good; the art is the Blue Paint Splat furni's own icon.
-    spit_token: { name: 'Spit Token', cls: 'rp-item-spit-token' },
-    // Weapons: use one to equip it, and it is held while equipped.
-    knife: { name: 'Knife', cls: 'rp-item-knife' },
-    baseball_bat: { name: 'Baseball Bat', cls: 'rp-item-baseball-bat' },
-    axe: { name: 'Axe', cls: 'rp-item-axe' },
-    stun_gun: { name: 'Stun Gun', cls: 'rp-item-stun-gun' },
-    // Carried by police: :cuff needs a pair in the backpack.
-    handcuffs: { name: 'Handcuffs', cls: 'rp-item-handcuffs' },
-    // Police: click to throw (or :fb) - stuns everyone around you. Spent on the throw.
-    flashbang: { name: 'Flashbang', cls: 'rp-item-flashbang' },
-    // Police: click to spray your target (or :ps) - sends them stumbling back. Spent on the spray.
-    pepper_spray: { name: 'Pepper Spray', cls: 'rp-item-pepper-spray' },
-};
-
-interface ItemMeta { name: string; cls: string; iconUrl?: string }
-
-// Clothing Store tokens (clothing:<id>:<edition>) are named from the last
-// shelf received and wear the piece's own catalog icon.
-const resolveItem = (item: string): ItemMeta =>
-{
-    if(ITEMS[item]) return ITEMS[item];
-
-    const token = ParseClothingToken(item);
-
-    if(!token) return null;
-
-    const listing = GetClothingCatalog().get(token.clothingId);
-    const name = (listing ? ClothingShelfName(listing) : `#${ token.clothingId }`);
-    const edition = ((listing && listing.ltdTotal > 0 && token.edition > 0) ? ` (LTD ${ token.edition } of ${ listing.ltdTotal })` : '');
-
-    return { name: `Clothing Token · ${ name }${ edition }`, cls: 'rp-item-clothing-token', iconUrl: ClothingIconUrl(listing) };
-}
+// Item names and icons: RpItems (shared with the City Panel's backpack).
+const resolveItem = ResolveRpItem;
 
 const STUN_GUN = 'stun_gun';
 const PEPPER_SPRAY = 'pepper_spray';
@@ -468,7 +431,7 @@ export const RpInventoryView: FC<{}> = props =>
                         <div ref={ bubbleRef } className="tooltip show rp-inventory-bubble" role="tooltip">
                             <div className="tooltip-inner">{ bubbleText }</div>
                         </div>, document.body) }
-                    { (dragFrom >= 0) && ghost && items.get(dragFrom) && ITEMS[items.get(dragFrom).item] &&
+                    { (dragFrom >= 0) && ghost && items.get(dragFrom) && RP_ITEMS[items.get(dragFrom).item] &&
                     createPortal(
                         <div className="rp-inventory-drag-ghost" style={ { left: ghost.x, top: ghost.y } }>
                             <div className={ `rp-inventory-item ${ resolveItem(items.get(dragFrom).item)?.cls || '' }` } style={ resolveItem(items.get(dragFrom).item)?.iconUrl ? { backgroundImage: `url(${ resolveItem(items.get(dragFrom).item).iconUrl })` } : undefined } />

@@ -1,11 +1,10 @@
-import { ILinkEventTracker, IssueMessageData, RoomEngineEvent, RoomId, RoomObjectCategory, RoomObjectType } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RoomEngineEvent, RoomId, RoomObjectCategory, RoomObjectType } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, CreateLinkEvent, GetRoomSession, ISelectedUser, RemoveLinkEventTracker } from '../../api';
 import { Base, DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useModTools, useObjectSelectedEvent, useRoomEngineEvent } from '../../hooks';
 import { ModToolsChatlogView } from './views/room/ModToolsChatlogView';
 import { ModToolsRoomView } from './views/room/ModToolsRoomView';
-import { ModToolsTicketsView } from './views/tickets/ModToolsTicketsView';
 import { ModToolsUserChatlogView } from './views/user/ModToolsUserChatlogView';
 import { ModToolsUserView } from './views/user/ModToolsUserView';
 
@@ -14,9 +13,7 @@ export const ModToolsView: FC<{}> = props =>
     const [ isVisible, setIsVisible ] = useState(false);
     const [ currentRoomId, setCurrentRoomId ] = useState<number>(-1);
     const [ selectedUser, setSelectedUser ] = useState<ISelectedUser>(null);
-    const [ isTicketsVisible, setIsTicketsVisible ] = useState(false);
-    const { tickets = [], openRooms = [], openRoomChatlogs = [], openUserChatlogs = [], openUserInfos = [], openRoomInfo = null, closeRoomInfo = null, toggleRoomInfo = null, openRoomChatlog = null, closeRoomChatlog = null, toggleRoomChatlog = null, openUserInfo = null, closeUserInfo = null, toggleUserInfo = null, openUserChatlog = null, closeUserChatlog = null, toggleUserChatlog = null } = useModTools();
-    const openTicketCount = tickets.filter(issue => (issue.state === IssueMessageData.STATE_OPEN)).length;
+    const { openRooms = [], openRoomChatlogs = [], openUserChatlogs = [], openUserInfos = [], openRoomInfo = null, closeRoomInfo = null, toggleRoomInfo = null, openRoomChatlog = null, closeRoomChatlog = null, toggleRoomChatlog = null, openUserInfo = null, closeUserInfo = null, toggleUserInfo = null, openUserChatlog = null, closeUserChatlog = null, toggleUserChatlog = null } = useModTools();
 
     useRoomEngineEvent<RoomEngineEvent>([
         RoomEngineEvent.INITIALIZED,
@@ -134,10 +131,10 @@ export const ModToolsView: FC<{}> = props =>
                         <button type="button" className="mt-tool" onClick={ () => CreateLinkEvent(`mod-tools/toggle-user-info/${ selectedUser.userId }`) } disabled={ !selectedUser }>
                             <Base className="mt-tool-icon icon icon-user" /><span className="mt-tool-label">{ selectedUser ? selectedUser.username : 'User' }</span>
                         </button>
-                        <button type="button" className="mt-tool" onClick={ () => setIsTicketsVisible(prevValue => !prevValue) }>
-                            <Base className="mt-tool-icon icon icon-tickets" /><span className="mt-tool-label">Report Tool</span>
-                            { (openTicketCount > 0) &&
-                                <span className="mt-tool-badge">{ openTicketCount }</span> }
+                        { /* Report Tool's old place: reports go through the phone's
+                             support app now, and this opens the City Panel. */ }
+                        <button type="button" className="mt-tool" onClick={ () => CreateLinkEvent('city-panel/toggle') }>
+                            <svg className="mt-tool-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M9 21v-6h6v6" /></svg><span className="mt-tool-label">City Panel</span>
                         </button>
                     </NitroCardContentView>
                 </NitroCardView> }
@@ -145,7 +142,6 @@ export const ModToolsView: FC<{}> = props =>
             { (openRoomChatlogs.length > 0) && openRoomChatlogs.map(roomId => <ModToolsChatlogView key={ roomId } roomId={ roomId } onCloseClick={ () => CreateLinkEvent(`mod-tools/close-room-chatlog/${ roomId }`) } />) }
             { (openUserInfos.length > 0) && openUserInfos.map(userId => <ModToolsUserView key={ userId } userId={ userId } onCloseClick={ () => CreateLinkEvent(`mod-tools/close-user-info/${ userId }`) }/>) }
             { (openUserChatlogs.length > 0) && openUserChatlogs.map(userId => <ModToolsUserChatlogView key={ userId } userId={ userId } onCloseClick={ () => CreateLinkEvent(`mod-tools/close-user-chatlog/${ userId }`) }/>) }
-            { isTicketsVisible && <ModToolsTicketsView onCloseClick={ () => setIsTicketsVisible(false) } /> }
         </>
     );
 }

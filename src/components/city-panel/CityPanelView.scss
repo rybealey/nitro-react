@@ -1,0 +1,403 @@
+// PixelRP City Panel (CityPanelView). The shared mt-* parts - pale page,
+// hairline cards, labels, chrome buttons, segmented controls, switches - come
+// from ModToolsView.scss, which lists .nitro-city-panel beside the Mod Tools
+// windows; this file is only what the panel adds.
+
+$city-hp: #e03131;
+$city-en: #3f8fbf;
+$city-agg: #e87332;
+$city-turf: #e87332;
+$city-line: rgba(0, 0, 0, 0.06);
+
+.nitro-city-panel {
+    width: 780px;
+    height: 540px;
+    min-width: 640px;
+    min-height: 420px;
+
+    .content-area {
+        padding: 8px;
+    }
+
+    .mt-zone-dot.is-turf { background: $city-turf; }
+
+    .city-seg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .city-mono { font-family: 'Ubuntu Mono', monospace; }
+
+    .city-notice {
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: #fff4e5;
+        border: 1px solid #f0c9a8;
+        color: #6e2f07;
+        font-size: 12px;
+    }
+
+    // ---- Players -----------------------------------------------------------
+
+    .city-players {
+        display: flex;
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .city-players-list {
+        width: 228px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+    }
+
+    .city-results {
+        flex-grow: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .city-result {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 4px 8px;
+        border: 0;
+        border-bottom: 1px solid $city-line;
+        background: transparent;
+        color: #000000;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover { background: rgba(0, 0, 0, 0.03); }
+        &.is-active { background: #e6e6ea; }
+
+        .mt-dot { margin: 0 0 0 auto; flex-shrink: 0; }
+    }
+
+    .city-result-head {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        overflow: hidden;
+        border-radius: 4px;
+        background: #e6e6ea;
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+    }
+
+    .city-result-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        font-size: 12px;
+
+        span {
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .city-flag {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 16px;
+        text-align: center;
+        color: #ffffff;
+
+        &.is-wanted { background: #a81a12; }
+        &.is-jailed { background: #8a3d0c; }
+    }
+
+    .city-players-card {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-y: auto;
+    }
+
+    .city-card {
+        display: flex;
+        gap: 12px;
+        padding: 10px;
+    }
+
+    .city-card-figure {
+        position: relative;
+        width: 64px;
+        height: 110px;
+        flex-shrink: 0;
+        overflow: hidden;
+        border-radius: 6px;
+        background: #e6e6ea;
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+        }
+    }
+
+    .city-card-body {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .city-card-title {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+
+        b { font-size: 15px; }
+        .mt-dot { margin: 0; }
+    }
+
+    .city-chip {
+        padding: 2px 6px;
+        border-radius: 9px;
+        font-size: 10px;
+        font-weight: 700;
+
+        &.is-wanted { background: #fbe6e4; color: #a81a12; }
+        &.is-jailed { background: #fdf1e8; color: #8a3d0c; }
+        &.is-cuffed { background: #e6e6ea; color: #333338; }
+        &.is-duty { background: #e3f3e8; color: #1f6b36; }
+        &.is-gang { background: #ece6f7; color: #4b2a8a; }
+    }
+
+    .city-bars {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 2px;
+    }
+
+    .city-bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.58);
+
+        b { color: #000000; }
+    }
+
+    .city-bar-track {
+        height: 6px;
+        margin-top: 3px;
+        border-radius: 3px;
+        background: #e6e6ea;
+        overflow: hidden;
+    }
+
+    .city-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+
+        &.is-hp { background: $city-hp; }
+        &.is-en { background: $city-en; }
+        &.is-agg { background: $city-agg; }
+    }
+
+    .city-actions {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .city-balance {
+        display: flex;
+        gap: 4px;
+
+        input { min-width: 0; }
+    }
+
+    .city-backpack-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .city-give {
+        display: flex;
+        gap: 4px;
+
+        select { width: 180px; }
+    }
+
+    .city-backpack-body {
+        display: flex;
+        gap: 8px;
+    }
+
+    .city-weapon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 6px;
+        border-radius: 6px;
+        background: #fdf1e8;
+        border: 1px solid #f0c9a8;
+
+        .mt-label { color: #8a3d0c; }
+    }
+
+    .city-slots {
+        flex-grow: 1;
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .city-slot {
+        position: relative;
+        height: 44px;
+        min-width: 44px;
+        padding: 4px;
+        border-radius: 4px;
+        border: 1px dashed rgba(0, 0, 0, 0.14);
+        background: #f3f3f5;
+
+        &.has-item {
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.12);
+            background: #ffffff;
+            cursor: pointer;
+
+            &:hover { border-color: rgba(0, 0, 0, 0.3); }
+        }
+
+        &.is-locked { opacity: 0.45; }
+
+        &.is-selected {
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 0 1px #1c1c20;
+        }
+
+        &:disabled { cursor: default; }
+    }
+
+    .city-slot-count {
+        position: absolute;
+        right: 3px;
+        bottom: 1px;
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(0, 0, 0, 0.75);
+    }
+
+    .city-slot-edit {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: #f3f3f5;
+        font-size: 12px;
+
+        .city-stepper {
+            display: flex;
+            gap: 2px;
+            margin-left: auto;
+        }
+    }
+
+    // ---- Rooms & Zones -----------------------------------------------------
+
+    .city-rooms {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .city-rooms-bar {
+        display: flex;
+        gap: 8px;
+
+        input { width: 240px; }
+        .mt-seg { width: 320px; }
+    }
+
+    .city-table {
+        flex-grow: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .city-row {
+        display: grid;
+        grid-template-columns: 2.2fr 0.9fr 1.3fr 1.3fr 0.8fr 124px;
+        gap: 8px;
+        align-items: center;
+        padding: 5px 10px;
+        border-bottom: 1px solid $city-line;
+        font-size: 12px;
+
+        &.is-head {
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: rgba(0, 0, 0, 0.58);
+        }
+    }
+
+    .city-room-name {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+
+        b {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        span { font-size: 11px; }
+    }
+
+    .city-zone {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .city-row-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 4px;
+    }
+}
