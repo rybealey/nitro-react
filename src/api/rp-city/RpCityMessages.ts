@@ -24,6 +24,11 @@ const RP_CITY_WORLD = 4172; // client -> server: the City tab's state
 const RP_CITY_WORLD_STATE = 4173; // server -> client
 const RP_CITY_WORLD_SET = 4174; // client -> server: one switch
 const RP_CITY_ALERT = 4175; // client -> server
+const RP_CITY_ECONOMY = 4176; // client -> server: the Economy tab's state
+const RP_CITY_ECONOMY_STATE = 4177; // server -> client
+const RP_CITY_PAY_SAVE = 4178; // client -> server
+const RP_CITY_PRICE_SAVE = 4179; // client -> server
+const RP_CITY_CLOCK_OUT = 4180; // client -> server
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -39,8 +44,26 @@ export const CityCapability = {
     AlertStaff: 512,
     AlertRoom: 1024,
     World: 2048,
-    Hotel: 4096
+    Hotel: 4096,
+    Economy: 8192,
+    Shifts: 16384
 };
+
+export interface CityEconomyCorp
+{
+    id: number;
+    name: string;
+    ranks: { id: number, name: string, pay: number }[];
+    onShift: { userId: number, username: string, rankName: string }[];
+}
+
+export interface CityServicePrice
+{
+    key: string;
+    name: string;
+    corporationId: number;
+    price: number;
+}
 
 /** RpCityWorldSetEvent's switches. */
 export const CityWorldSwitch = { Weather: 1, Time: 2, Maintenance: 3, Combat: 4 };
@@ -293,6 +316,65 @@ export class RpCityWorldStateParser implements IMessageParser
     public get state(): CityWorldState 
     {
         return this._state; 
+    }
+    public get notice(): string 
+    {
+        return this._notice; 
+    }
+}
+
+export class RpCityEconomyStateParser implements IMessageParser
+{
+    private _corps: CityEconomyCorp[] = [];
+    private _prices: CityServicePrice[] = [];
+    private _notice = '';
+
+    public flush(): boolean
+    {
+        this._corps = [];
+        this._prices = [];
+        this._notice = '';
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        let corps = wrapper.readInt();
+
+        while(corps-- > 0)
+        {
+            const corp: CityEconomyCorp = { id: wrapper.readInt(), name: wrapper.readString(), ranks: [], onShift: [] };
+
+            let ranks = wrapper.readInt();
+
+            while(ranks-- > 0) corp.ranks.push({ id: wrapper.readInt(), name: wrapper.readString(), pay: wrapper.readInt() });
+
+            let shifts = wrapper.readInt();
+
+            while(shifts-- > 0) corp.onShift.push({ userId: wrapper.readInt(), username: wrapper.readString(), rankName: wrapper.readString() });
+
+            this._corps.push(corp);
+        }
+
+        let prices = wrapper.readInt();
+
+        while(prices-- > 0) this._prices.push({ key: wrapper.readString(), name: wrapper.readString(), corporationId: wrapper.readInt(), price: wrapper.readInt() });
+
+        this._notice = wrapper.readString();
+
+        return true;
+    }
+
+    public get corps(): CityEconomyCorp[] 
+    {
+        return this._corps; 
+    }
+    public get prices(): CityServicePrice[] 
+    {
+        return this._prices; 
     }
     public get notice(): string 
     {
@@ -561,6 +643,18 @@ export class RpCityWorldStateEvent extends MessageEvent implements IMessageEvent
     }
 }
 
+export class RpCityEconomyStateEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityEconomyStateParser); 
+    }
+    public getParser(): RpCityEconomyStateParser 
+    {
+        return this.parser as RpCityEconomyStateParser; 
+    }
+}
+
 class RpCityComposer<T extends unknown[]> implements IMessageComposer<T>
 {
     private _data: T;
@@ -675,6 +769,38 @@ export class RpCityAlertComposer extends RpCityComposer<[ number, string ]>
     }
 }
 
+export class RpCityEconomyComposer extends RpCityComposer<[]>
+{
+    constructor() 
+    {
+        super(); 
+    }
+}
+
+export class RpCityPaySaveComposer extends RpCityComposer<[ number, number ]>
+{
+    constructor(rankId: number, pay: number) 
+    {
+        super(rankId, pay); 
+    }
+}
+
+export class RpCityPriceSaveComposer extends RpCityComposer<[ string, number ]>
+{
+    constructor(key: string, price: number) 
+    {
+        super(key, price); 
+    }
+}
+
+export class RpCityClockOutComposer extends RpCityComposer<[ number ]>
+{
+    constructor(userId: number) 
+    {
+        super(userId); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -693,7 +819,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_ROOM_LIST, RpCityRoomListEvent ],
             [ RP_CITY_UNIFORM_LIST, RpCityUniformListEvent ],
             [ RP_CITY_UNIFORM_FIGURE, RpCityUniformFigureEvent ],
-            [ RP_CITY_WORLD_STATE, RpCityWorldStateEvent ]
+            [ RP_CITY_WORLD_STATE, RpCityWorldStateEvent ],
+            [ RP_CITY_ECONOMY_STATE, RpCityEconomyStateEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CITY_PANEL_OPEN, RpCityPanelOpenComposer ],
@@ -707,7 +834,11 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_UNIFORM_SAVE, RpCityUniformSaveComposer ],
             [ RP_CITY_WORLD, RpCityWorldComposer ],
             [ RP_CITY_WORLD_SET, RpCityWorldSetComposer ],
-            [ RP_CITY_ALERT, RpCityAlertComposer ]
+            [ RP_CITY_ALERT, RpCityAlertComposer ],
+            [ RP_CITY_ECONOMY, RpCityEconomyComposer ],
+            [ RP_CITY_PAY_SAVE, RpCityPaySaveComposer ],
+            [ RP_CITY_PRICE_SAVE, RpCityPriceSaveComposer ],
+            [ RP_CITY_CLOCK_OUT, RpCityClockOutComposer ]
         ])
     });
 
