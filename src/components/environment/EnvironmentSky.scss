@@ -71,16 +71,22 @@
     }
 }
 
+// The starfield SVG (EnvironmentSky StarField). Its own opacity is the
+// dusk-to-night fade, set inline; the twinkle runs on the groups inside, so
+// the two never fight over the same property.
 .env-sky-stars {
     position: absolute;
     inset: 0 0 35% 0;
-    background-image:
-        radial-gradient(circle, rgba(255, 255, 255, .7) 0 1px, transparent 1.6px),
-        radial-gradient(circle, rgba(255, 255, 255, .45) 0 .8px, transparent 1.4px),
-        radial-gradient(circle, rgba(255, 255, 255, .55) 0 1.2px, transparent 1.9px);
-    background-size: 220px 160px, 130px 190px, 300px 240px;
-    background-position: 30px 60px, 10px 40px, 80px 100px;
+    width: 100%;
+    height: 65%;
+    pointer-events: none;
+}
+
+.env-sky-star-group {
     animation: env-twinkle 6s ease-in-out infinite alternate;
+
+    &.is-1 { animation-duration: 7.5s; animation-delay: -2.5s; }
+    &.is-2 { animation-duration: 9s; animation-delay: -5s; }
 }
 
 .env-sky-vignette {
@@ -148,5 +154,5 @@
 @keyframes env-twinkle { from { opacity: .6; } to { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-    .env-sky-layer, .env-sky-fog, .env-sky-stars { animation: none; }
+    .env-sky-layer, .env-sky-fog, .env-sky-star-group { animation: none; }
 }

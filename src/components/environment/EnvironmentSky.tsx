@@ -32,6 +32,56 @@ const setCanvasAlpha = (alpha: number) =>
     }
 }
 
+// The night sky's stars, scattered at random - once per page load, so every
+// sky drawn in the session (the room's, the Settings preview, a crossfade's
+// outgoing layer) shows the same sky rather than a new one per render.
+//
+// They used to be three small radial-gradient tiles repeated across the
+// screen, which reads as a grid within seconds. One SVG over the whole layer
+// has nothing to repeat. `slice` scales it uniformly to cover, so stars stay
+// round at any window shape; a wide window just crops the top and bottom.
+//
+// Most stars are faint pinpricks and a few are bright, as a real sky is, and
+// they thin out towards the horizon. Three groups twinkle on their own clocks
+// so the sky never pulses as one.
+const STAR_FIELD_W = 1600;
+const STAR_FIELD_H = 700;
+const STAR_COUNT = 260;
+const STAR_GROUPS = 3;
+
+type Star = { x: number, y: number, r: number, o: number };
+
+const STARS: Star[][] = (() =>
+{
+    const groups: Star[][] = Array.from({ length: STAR_GROUPS }, () => []);
+
+    for(let i = 0; i < STAR_COUNT; i++)
+    {
+        const size = Math.random();
+        // Squared, so few are big; the odd bright one is picked separately.
+        const bright = (Math.random() < .06);
+
+        groups[i % STAR_GROUPS].push({
+            x: Math.round(Math.random() * STAR_FIELD_W * 10) / 10,
+            // Denser up high, thinning towards the horizon.
+            y: Math.round(Math.pow(Math.random(), 1.35) * STAR_FIELD_H * 10) / 10,
+            r: Math.round((bright ? (1.3 + (size * .6)) : (.45 + (size * size * .75))) * 100) / 100,
+            o: Math.round((bright ? (.8 + (Math.random() * .2)) : (.3 + (Math.random() * .45))) * 100) / 100
+        });
+    }
+
+    return groups;
+})();
+
+const StarField: FC<{ opacity: number }> = ({ opacity }) => (
+    <svg className="env-sky-stars" style={ { opacity } } viewBox={ `0 0 ${ STAR_FIELD_W } ${ STAR_FIELD_H }` } preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        { STARS.map((group, index) =>
+            <g key={ index } className={ `env-sky-star-group is-${ index }` }>
+                { group.map((star, starIndex) => <circle key={ starIndex } cx={ star.x } cy={ star.y } r={ star.r } fill="#fff" fillOpacity={ star.o } />) }
+            </g>) }
+    </svg>
+);
+
 const SkyLayers: FC<{ look: SkyLook, className?: string }> = ({ look, className = '' }) => (
     <div className={ `env-sky-layer${ className ? (' ' + className) : '' }` } style={ { background: look.gradient } }>
         <div className="env-sky-horizon" style={ { background: look.horizon } } />
@@ -40,7 +90,7 @@ const SkyLayers: FC<{ look: SkyLook, className?: string }> = ({ look, className 
                 <div className="env-sky-fog is-a" />
                 <div className="env-sky-fog is-b" />
             </> }
-        { look.stars && <div className="env-sky-stars" style={ { opacity: (1 - (look.daylight / .3)) } } /> }
+        { look.stars && <StarField opacity={ (1 - (look.daylight / .3)) } /> }
         <div className="env-sky-vignette" />
     </div>
 );
