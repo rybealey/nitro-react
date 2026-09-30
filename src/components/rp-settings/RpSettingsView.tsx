@@ -1364,9 +1364,12 @@ export const RpSettingsView: FC<{}> = props =>
                                 </div>
                             )) }
                         </div>
-                        <Column gap={ 2 } className="prp-subnav-page">
-                            <div className="rp-settings-preview">
-                                <Text small className="text-muted">Preview</Text>
+                        <Column gap={ 2 } className={ `prp-subnav-page ${ (personalPage === 'Chat Bubble') ? 'rp-settings-bubble-page' : '' }` }>
+                            { /* On Chat Bubble the preview is a plain centred box
+                                 over the tiles (canvas board I), no label. */ }
+                            <div className={ `rp-settings-preview ${ (personalPage === 'Chat Bubble') ? 'rp-settings-preview--centered' : '' }` }>
+                                { (personalPage !== 'Chat Bubble') &&
+                                    <Text small className="text-muted">Preview</Text> }
                                 <div className="bubble-container" style={ { position: 'relative' } }>
                                     <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
                                     <div className={ `chat-bubble bubble-${ chatStyleId } type-0` } style={ { maxWidth: '100%' } }>
@@ -1417,13 +1420,10 @@ export const RpSettingsView: FC<{}> = props =>
                                     )) }
                                 </div>
                             </div> }
+                            { /* Every style, one tile each, in a panel that scrolls
+                                 on its own under the preview. No pointer in the
+                                 tiles; the preview keeps its own. */ }
                             { (personalPage === 'Chat Bubble') &&
-                            <div className="rp-settings-stack-section">
-                                <div className="rp-settings-stack-head">
-                                    <div className="rp-settings-stack-head-text">
-                                        <Text bold>Chat Bubble</Text>
-                                    </div>
-                                </div>
                                 <div className="rp-settings-bubbles" role="radiogroup" aria-label="Chat bubble">
                                     { chatStyleIds.map(styleId => (
                                         <button key={ styleId } type="button" role="radio" aria-checked={ (chatStyleId === styleId) }
@@ -1437,13 +1437,11 @@ export const RpSettingsView: FC<{}> = props =>
                                                     <div className="chat-content">
                                                         <span className="message">Hey!</span>
                                                     </div>
-                                                    <div className="pointer" />
                                                 </div>
                                             </div>
                                         </button>
                                     )) }
-                                </div>
-                            </div> }
+                                </div> }
                         </Column>
                     </div> }
                 { (currentTab === 'Discord') &&

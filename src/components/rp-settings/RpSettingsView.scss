@@ -21,11 +21,10 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
 .nitro-card.rp-settings-window {
     // starting size; the corner grip writes inline width/height over these.
-    // 552px wide is the narrowest that fits Chat Bubble's four 96px cells a row
-    // beside the rail (2 border + 16 padding + 124 rail + 12 gap + 390 grid +
-    // 8 scrollbar), so it is the minimum too - narrower drops a row to three.
-    // Was 660 x 420 (five a row); Twist found that too big, and asked for about
-    // a fifth smaller.
+    // 552px wide leaves 390px beside the rail (2 border + 16 padding + 124
+    // rail + 12 gap), which fits Chat Bubble's 96px tiles three a row in their
+    // bordered panel; it is the minimum too. Was 660 x 420; Twist found that
+    // too big, and asked for about a fifth smaller.
     width: 552px;
     height: 336px;
     min-width: 552px;
@@ -746,41 +745,86 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         }
     }
 
-    // Personalization > Chat Bubble (Settings Sidebar canvas, E): every style
-    // the player may pick, drawn as a real bubble with no tile behind it, in
-    // equal cells so the rows line up whatever each art's shape. Cells are a
-    // FIXED 96px (the widest style plus its 9px side overhangs): a wider window
-    // fits more a row instead of widening the gaps, and the leftover (always
-    // under one cell) is split either side rather than left as a strip on the
-    // right. The window's min-width guarantees at least four fit. 48px leaves
-    // room for the tallest styles' pointers.
+    // Personalization > Chat Bubble (Settings Sidebar canvas, I - after a
+    // screenshot Twist sent of another hotel's picker): the preview stays put
+    // and the tiles scroll in their own panel under it, so this page does not
+    // scroll as a whole.
+    .rp-settings-bubble-page {
+        overflow-y: hidden;
+    }
+
+    // Every style the player may pick, each drawn as a real bubble in its own
+    // tile. Tiles are a FIXED 96px - the widest style plus its 9px side
+    // overhangs - in rows from the left, so a wider window fits more a row
+    // rather than stretching them. 44px rows fit the tallest art now that the
+    // tiles carry no pointer.
     .rp-settings-bubbles {
+        flex: 1;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
         display: grid;
         grid-template-columns: repeat(auto-fill, 96px);
-        justify-content: center;
-        gap: 2px;
+        grid-auto-rows: 44px;
+        justify-content: start;
+        align-content: start;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: $border-radius;
+        background: #fafafb;
     }
 
     .rp-settings-bubble {
-        height: 48px;
         min-width: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 0;
-        border: 0;
-        border-radius: 6px;
-        background: transparent;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 4px;
+        background: $white;
+        box-shadow: inset 0 -2px rgba(0, 0, 0, 0.06);
         cursor: pointer;
         image-rendering: pixelated;
         transition: transform .1s ease;
 
-        &:hover { transform: translateY(-1px); }
+        &:hover {
+            transform: translateY(-1px);
+            border-color: rgba(0, 0, 0, 0.28);
+        }
 
-        &.is-selected { outline: 2px solid var(--prp-chrome-solid); outline-offset: 1px; }
+        // the accent the Macros tab uses for a key being captured
+        &.is-selected {
+            background: $mx-accent-tint;
+            border-color: $mx-accent;
+            box-shadow: $mx-focus;
+        }
 
         .bubble-container { max-width: 100%; }
     }
+
+    // Art taller than the one-line 26px box is drawn at its own height here
+    // instead of squashed - in the tiles and in the preview. Room chat still
+    // squashes these; changing bubble heights there would move how chat
+    // lines stack, so it is left alone.
+    .chat-bubble.bubble-45,
+    .chat-bubble.bubble-46,
+    .chat-bubble.bubble-51 { min-height: 28px; }
+
+    .chat-bubble.bubble-48,
+    .chat-bubble.bubble-59 { min-height: 30px; }
+
+    .chat-bubble.bubble-60 { min-height: 32px; }
+
+    .chat-bubble.bubble-73,
+    .chat-bubble.bubble-74,
+    .chat-bubble.bubble-75,
+    .chat-bubble.bubble-76,
+    .chat-bubble.bubble-77,
+    .chat-bubble.bubble-78,
+    .chat-bubble.bubble-79,
+    .chat-bubble.bubble-80 { min-height: 35px; }
 
     .rp-settings-swatches--wide {
         grid-template-columns: repeat(auto-fill, 34px);
@@ -812,6 +856,15 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     .rp-settings-preview .bubble-container {
         max-width: 100%;
         min-width: 0;
+    }
+
+    // Chat Bubble's preview: a plain box with the bubble centred, no label,
+    // sitting above the tiles rather than stuck over a scrolling page.
+    .rp-settings-preview--centered {
+        flex-shrink: 0;
+        justify-content: center;
+        min-height: 56px;
+        padding: 0 6px;
     }
 
     // Color swatches + opacity slider stacked as one control column: the
