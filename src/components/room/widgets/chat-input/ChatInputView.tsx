@@ -12,6 +12,9 @@ import { ChatInputEmojiSelectorView } from './ChatInputEmojiSelectorView';
 import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
 import { GetSelectableChatStyleIds } from '../../../rp-settings/ChatStyles';
 
+/** The alerts whose prefix the box keeps, with a message after it. Emulator: RpRetainChatPrefixComposer.Retains. */
+const RETAINED_PREFIX = /^:(ga|ca|sa)\s+\S/i;
+
 export const ChatInputView: FC<{}> = props =>
 {
     const [ chatValue, setChatValue ] = useState<string>('');
@@ -61,15 +64,35 @@ export const ChatInputView: FC<{}> = props =>
         });
     }, [ selectedUsername, chatModeIdWhisper ]);
 
-    // Gang / corporation alerts (:ga, :ca) keep their prefix in the box for
-    // the next message, like a whisper keeps its recipient - but only when
-    // the server says the alert went out (an off-duty :ca is refused and
-    // leaves the box clear). Never overwrites something already being typed.
+    // Gang, corporation and staff alerts (:ga, :ca, :sa) keep their prefix in
+    // the box for the next message, like a whisper keeps its recipient.
+    //
+    // Put back the moment the alert is sent (sendChatValue), not when the
+    // server answers: waiting was a round trip long, and whatever was typed
+    // in that gap went out as room chat. The server's answer is then either
+    // the prefix - it went out; fills an empty box, e.g. after a macro - or
+    // an empty one: refused (no gang, off duty, not staff), and a box still
+    // holding just the prefix it kept is cleared. Neither ever overwrites
+    // something being typed.
+    const keptPrefix = useRef<string>('');
+
     useMessageEvent<RpRetainChatPrefixEvent>(RpRetainChatPrefixEvent, event =>
     {
         const prefix = event.getParser().prefix;
 
-        if(!prefix) return;
+        if(!prefix)
+        {
+            const kept = keptPrefix.current;
+
+            keptPrefix.current = '';
+
+            if(kept) setChatValue(prevValue => ((prevValue === kept) ? '' : prevValue));
+
+            return;
+        }
+
+        // Confirmed, so a later refusal (a macro's alert) has nothing of this one to take back.
+        keptPrefix.current = '';
 
         setChatValue(prevValue => (prevValue.trim().length ? prevValue : `${ prefix } `));
     });
@@ -147,6 +170,16 @@ export const ChatInputView: FC<{}> = props =>
             {
                 setChatValue('');
                 sendChat(text, chatType, recipientName, chatStyleId);
+
+                // An alert with something in it keeps its prefix, now - see
+                // keptPrefix. A bare ":ga" is only the usage whisper.
+                const alert = RETAINED_PREFIX.exec(text);
+
+                if(alert)
+                {
+                    append = `:${ alert[1].toLowerCase() } `;
+                    keptPrefix.current = append;
+                }
             }
         }
 
