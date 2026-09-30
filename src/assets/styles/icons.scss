@@ -321,12 +321,12 @@
         height: 16px;
     }
 
-    // pixelrp: the City Panel's Mod Tools button - the desk globe furni's
-    // catalogue icon (hp_globe).
+    // pixelrp: the City Panel's Mod Tools button - Habbo catalogue page icon
+    // 300, copied in so it does not depend on the asset host.
     &.icon-city-panel {
-        background: url('@/assets/images/icons/city-globe.png');
-        width: 18px;
-        height: 25px;
+        background: url('@/assets/images/icons/city-panel.png');
+        width: 17px;
+        height: 17px;
     }
 
     &.icon-cog {
