@@ -134,7 +134,7 @@ export const ModToolsView: FC<{}> = props =>
                         { /* Report Tool's old place: reports go through the phone's
                              support app now, and this opens the City Panel. */ }
                         <button type="button" className="mt-tool" onClick={ () => CreateLinkEvent('city-panel/toggle') }>
-                            <svg className="mt-tool-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M9 21v-6h6v6" /></svg><span className="mt-tool-label">City Panel</span>
+                            <Base className="mt-tool-icon icon icon-city-panel" /><span className="mt-tool-label">City Panel</span>
                         </button>
                     </NitroCardContentView>
                 </NitroCardView> }

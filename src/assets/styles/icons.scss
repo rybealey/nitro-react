@@ -321,6 +321,14 @@
         height: 16px;
     }
 
+    // pixelrp: the City Panel's Mod Tools button - the desk globe furni's
+    // catalogue icon (hp_globe).
+    &.icon-city-panel {
+        background: url('@/assets/images/icons/city-globe.png');
+        width: 18px;
+        height: 25px;
+    }
+
     &.icon-cog {
         background: url('@/assets/images/icons/cog.png');
         width: 21px;
