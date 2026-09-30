@@ -5,26 +5,24 @@ import { GetCommunication, GetConnection } from '../nitro';
 // and registered at runtime, like the turf and gang packets. Wire ids match
 // the emulator's Resources/Revisions/1.6.6.json.
 //
-// The Room tool's two police switches (Arrest room, Jail room) are SET with
-// the renderer's RpSetEmergencyComposer, categories 3 and 4 - the same staff
-// switch packet as the emergency services. Only their state comes back here.
-const RP_ROOM_POLICE = 4155; // server -> client: a room's arrest / jail tags
+// The Room tool's Jail room switch is SET with the renderer's
+// RpSetEmergencyComposer, category 4 - the same staff switch packet as the
+// emergency services. Only its state comes back here. (3 was the Arrest room
+// switch; where an arrest is made is an Arrest point furni behaviour now.)
+const RP_ROOM_POLICE = 4155; // server -> client: a room's jail tag
 const RP_JAIL = 4156; // server -> client: your own sentence's countdown
 
-/** RpSetEmergencyComposer categories for the Gameplay tab's police switches. */
-export const ROOM_POLICE_ARREST = 3;
+/** RpSetEmergencyComposer category for the Gameplay tab's Jail room switch. */
 export const ROOM_POLICE_JAIL = 4;
 
 export class RpRoomPoliceParser implements IMessageParser
 {
     private _roomId = 0;
-    private _isArrestRoom = false;
     private _isJailRoom = false;
 
     public flush(): boolean
     {
         this._roomId = 0;
-        this._isArrestRoom = false;
         this._isJailRoom = false;
 
         return true;
@@ -35,7 +33,6 @@ export class RpRoomPoliceParser implements IMessageParser
         if(!wrapper) return false;
 
         this._roomId = wrapper.readInt();
-        this._isArrestRoom = wrapper.readBoolean();
         this._isJailRoom = wrapper.readBoolean();
 
         return true;
@@ -44,11 +41,6 @@ export class RpRoomPoliceParser implements IMessageParser
     public get roomId(): number
     {
         return this._roomId;
-    }
-
-    public get isArrestRoom(): boolean
-    {
-        return this._isArrestRoom;
     }
 
     public get isJailRoom(): boolean
