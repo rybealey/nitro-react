@@ -11,29 +11,29 @@ index 0c983e3..d9eeed8 100644
      isReady: boolean;
      structure: AvatarStructure;
 diff --git a/src/api/nitro/room/object/RoomObjectVariable.ts b/src/api/nitro/room/object/RoomObjectVariable.ts
-index 9ecb4f8..7f9ed8d 100644
+index 9ecb4f8..fb31f61 100644
 --- a/src/api/nitro/room/object/RoomObjectVariable.ts
 +++ b/src/api/nitro/room/object/RoomObjectVariable.ts
 @@ -33,6 +33,8 @@ export class RoomObjectVariable
      public static FIGURE_IS_PLAYING_GAME: string = 'figure_is_playing_game';
      public static FIGURE_GUIDE_STATUS: string = 'figure_guide_status';
      public static FIGURE_EXPRESSION: string = 'figure_expression';
-+    // pixelrp: 1 while a :kiss's hearts float over this avatar (AvatarLogic sets and clears it)
-+    public static FIGURE_RP_KISS_HEARTS: string = 'figure_rp_kiss_hearts';
++    // pixelrp: the effect a :kiss or :hug floats over this avatar, 0 for none (AvatarLogic sets and clears it)
++    public static FIGURE_RP_SOCIAL_EFFECT: string = 'figure_rp_social_effect';
      public static HEAD_DIRECTION: string = 'head_direction';
      public static FURNITURE_CUSTOM_VARIABLES: string = 'furniture_custom_variables';
      public static FURNITURE_AUTOMATIC_STATE_INDEX: string = 'furniture_automatic_state_index';
 diff --git a/src/nitro/avatar/AvatarRenderManager.ts b/src/nitro/avatar/AvatarRenderManager.ts
-index b12e992..1a735f6 100644
+index b12e992..8ecc8d3 100644
 --- a/src/nitro/avatar/AvatarRenderManager.ts
 +++ b/src/nitro/avatar/AvatarRenderManager.ts
 @@ -302,6 +302,16 @@ export class AvatarRenderManager extends NitroManager implements IAvatarRenderMa
          this._avatarAssetDownloadManager.downloadAvatarFigure(container, listener);
      }
  
-+    // pixelrp: fetch an effect's art without anyone wearing it - the kiss
-+    // hearts (LoveHeartAddition) draw fx 9's sprites over whatever effect
-+    // the player has on, so nothing else would ever ask for the library.
++    // pixelrp: fetch an effect's art without anyone wearing it - a :kiss or
++    // :hug (SocialEffectAddition) draws an effect's sprites over whatever
++    // effect the player has on, so nothing else would ever ask for the library.
 +    public downloadAvatarEffect(id: number): void
 +    {
 +        if(!this._effectAssetDownloadManager) return;
@@ -45,64 +45,68 @@ index b12e992..1a735f6 100644
      {
          let isValid = false;
 diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-index 281346f..c404ebc 100644
+index 281346f..b7d61b3 100644
 --- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
 +++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-@@ -27,6 +27,14 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -27,6 +27,16 @@ export class AvatarLogic extends MovingObjectLogic
      // 400-403 are the weapons - bat, knife, axe, pistol - held while one is
      // equipped. Carry frames only, and nobody drinks from an axe.
      private static CARRY_ONLY_HAND_IDS: number[] = [ 244, 299, 400, 401, 402, 403 ];
-+    // pixelrp: the expression the emulator sends both people in a :kiss
-+    // (SocialCommand). It is NOT an expression - it never reaches
-+    // FIGURE_EXPRESSION, so a wave or a blow-kiss can't cut the hearts short
-+    // and the avatar plays no action for it. It switches on
-+    // FIGURE_RP_KISS_HEARTS for RP_KISS_HEARTS_LENGTH instead, and the
-+    // visualization floats fx 9's hearts over whatever effect is worn.
-+    private static RP_KISS_HEARTS_EXPRESSION: number = 101;
-+    private static RP_KISS_HEARTS_LENGTH: number = 2000;
++    // pixelrp: the expressions the emulator sends both people in a :kiss or
++    // a :hug (SocialCommand.OverlayExpression), and the effect each floats
++    // over them. They are NOT expressions - they never reach
++    // FIGURE_EXPRESSION, so a wave or a blow-kiss can't cut them short and
++    // the avatar plays no action for them. They set FIGURE_RP_SOCIAL_EFFECT
++    // for RP_SOCIAL_EFFECT_LENGTH instead, and the visualization draws the
++    // effect over whatever effect is worn (SocialEffectAddition). One at a
++    // time: a hug during a kiss's hearts swaps them.
++    private static RP_SOCIAL_EFFECTS: Map<number, number> = new Map([ [ 101, 9 ], [ 102, 168 ] ]);
++    private static RP_SOCIAL_EFFECT_LENGTH: number = 2000;
      private static EFFECT_TYPE_SPLASH: number = 28;
      private static EFFECT_SPLASH_LENGTH: number = 500;
      private static EFFECT_TYPE_SWIM: number = 29;
-@@ -49,6 +57,7 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -49,6 +59,7 @@ export class AvatarLogic extends MovingObjectLogic
      private _signEndTimestamp: number;
      private _gestureEndTimestamp: number;
      private _numberValueEndTimestamp: number;
-+    private _rpKissHeartsEndTimestamp: number;
++    private _rpSocialEffectEndTimestamp: number;
  
      constructor()
      {
-@@ -71,6 +80,7 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -71,6 +82,7 @@ export class AvatarLogic extends MovingObjectLogic
          this._signEndTimestamp = 0;
          this._gestureEndTimestamp = 0;
          this._numberValueEndTimestamp = 0;
-+        this._rpKissHeartsEndTimestamp = 0;
++        this._rpSocialEffectEndTimestamp = 0;
      }
  
      public getEventTypes(): string[]
-@@ -165,6 +175,13 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -165,6 +177,13 @@ export class AvatarLogic extends MovingObjectLogic
              this._animationEndTimestamp = 0;
          }
  
-+        if((this._rpKissHeartsEndTimestamp > 0) && (time > this._rpKissHeartsEndTimestamp))
++        if((this._rpSocialEffectEndTimestamp > 0) && (time > this._rpSocialEffectEndTimestamp))
 +        {
-+            model.setValue(RoomObjectVariable.FIGURE_RP_KISS_HEARTS, 0);
++            model.setValue(RoomObjectVariable.FIGURE_RP_SOCIAL_EFFECT, 0);
 +
-+            this._rpKissHeartsEndTimestamp = 0;
++            this._rpSocialEffectEndTimestamp = 0;
 +        }
 +
          if((this._gestureEndTimestamp > 0) && (time > this._gestureEndTimestamp))
          {
              model.setValue(RoomObjectVariable.FIGURE_GESTURE, 0);
-@@ -305,6 +322,16 @@ export class AvatarLogic extends MovingObjectLogic
+@@ -305,6 +324,18 @@ export class AvatarLogic extends MovingObjectLogic
  
          if(message instanceof ObjectAvatarExpressionUpdateMessage)
          {
-+            if(message.expressionType === AvatarLogic.RP_KISS_HEARTS_EXPRESSION)
-+            {
-+                // A second kiss while they float restarts the clock rather than the hearts.
-+                model.setValue(RoomObjectVariable.FIGURE_RP_KISS_HEARTS, 1);
++            const socialEffect = AvatarLogic.RP_SOCIAL_EFFECTS.get(message.expressionType);
 +
-+                this._rpKissHeartsEndTimestamp = (this.time + AvatarLogic.RP_KISS_HEARTS_LENGTH);
++            if(socialEffect)
++            {
++                // The same one again while it floats restarts the clock rather than the animation.
++                model.setValue(RoomObjectVariable.FIGURE_RP_SOCIAL_EFFECT, socialEffect);
++
++                this._rpSocialEffectEndTimestamp = (this.time + AvatarLogic.RP_SOCIAL_EFFECT_LENGTH);
 +
 +                return;
 +            }
@@ -111,7 +115,7 @@ index 281346f..c404ebc 100644
  
              this._animationEndTimestamp = AvatarAction.getExpressionTimeout(model.getValue<number>(RoomObjectVariable.FIGURE_EXPRESSION));
 diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
-index 67a79e8..8348b1a 100644
+index 67a79e8..9ad6178 100644
 --- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 +++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 @@ -2,7 +2,7 @@ import { BLEND_MODES } from '@pixi/constants';
@@ -119,7 +123,7 @@ index 67a79e8..8348b1a 100644
  import { AdvancedMap, AlphaTolerance, AvatarAction, AvatarGuideStatus, AvatarSetType, IAdvancedMap, IAvatarEffectListener, IAvatarImage, IAvatarImageListener, IGraphicAsset, IObjectVisualizationData, IRoomGeometry, IRoomObject, IRoomObjectModel, RoomObjectSpriteType, RoomObjectVariable } from '../../../../../api';
  import { RoomObjectSpriteVisualization } from '../../../../../room';
 -import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, MutedBubbleAddition, NumberBubbleAddition, TypingBubbleAddition } from './additions';
-+import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, LoveHeartAddition, MutedBubbleAddition, NumberBubbleAddition, TypingBubbleAddition } from './additions';
++import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, MutedBubbleAddition, NumberBubbleAddition, SocialEffectAddition, TypingBubbleAddition } from './additions';
  import { AvatarVisualizationData } from './AvatarVisualizationData';
  
  export class AvatarVisualization extends RoomObjectSpriteVisualization implements IAvatarImageListener, IAvatarEffectListener
@@ -127,8 +131,8 @@ index 67a79e8..8348b1a 100644
      private static GAME_CLICK_TARGET_ID: number = 5;
      private static MUTED_BUBBLE_ID: number = 6;
      private static GUIDE_BUBBLE_ID: number = 7;
-+    // pixelrp: one addition per heart of a :kiss (LoveHeartAddition), one per Love track.
-+    private static RP_KISS_HEART_IDS: number[] = [ 8, 9, 10 ];
++    // pixelrp: one addition per sprite of a :kiss or :hug's effect (SocialEffectAddition) - Love has three.
++    private static RP_SOCIAL_EFFECT_IDS: number[] = [ 8, 9, 10 ];
      private static OWN_USER_ID: number = 4;
      private static UPDATE_TIME_INCREASER: number = 41;
      private static AVATAR_LAYER_ID: number = 0;
@@ -136,7 +140,7 @@ index 67a79e8..8348b1a 100644
      private _headAngle: number;
      private _talk: boolean;
      private _expression: number;
-+    private _rpKissHearts: boolean;
++    private _rpSocialEffect: number;
      private _sleep: boolean;
      private _blink: boolean;
      private _gesture: number;
@@ -144,7 +148,7 @@ index 67a79e8..8348b1a 100644
          this._headAngle = -1;
          this._talk = false;
          this._expression = 0;
-+        this._rpKissHearts = false;
++        this._rpSocialEffect = 0;
          this._sleep = false;
          this._blink = false;
          this._gesture = 0;
@@ -157,7 +161,7 @@ index 67a79e8..8348b1a 100644
 +
 +                    // pixelrp: sprites are handed round again whenever the
 +                    // avatar's sprite count changes, and only effects and the
-+                    // kiss hearts set a blend - start every addition plain so
++                    // social effects set a blend - start every addition plain so
 +                    // an ADD can't follow into a typing bubble or a Zzz.
 +                    if(sprite) sprite.blendMode = BLEND_MODES.NORMAL;
 +
@@ -169,17 +173,17 @@ index 67a79e8..8348b1a 100644
              if(expressionAddition) this.removeAddition(AvatarVisualization.EXPRESSION_ID);
          }
  
-+        const rpKissHearts = (model.getValue<number>(RoomObjectVariable.FIGURE_RP_KISS_HEARTS) > 0);
++        const rpSocialEffect = (model.getValue<number>(RoomObjectVariable.FIGURE_RP_SOCIAL_EFFECT) || 0);
 +
-+        if(rpKissHearts !== this._rpKissHearts)
++        if(rpSocialEffect !== this._rpSocialEffect)
 +        {
-+            this._rpKissHearts = rpKissHearts;
++            this._rpSocialEffect = rpSocialEffect;
 +
-+            AvatarVisualization.RP_KISS_HEART_IDS.forEach((id, track) =>
-+            {
-+                if(rpKissHearts) this.addAddition(new LoveHeartAddition(id, track, this));
-+                else this.removeAddition(id);
-+            });
++            for(const id of AvatarVisualization.RP_SOCIAL_EFFECT_IDS) this.removeAddition(id);
++
++            const effect = SocialEffectAddition.EFFECTS.get(rpSocialEffect);
++
++            if(effect) effect.tracks.forEach((_, track) => this.addAddition(new SocialEffectAddition(AvatarVisualization.RP_SOCIAL_EFFECT_IDS[track], rpSocialEffect, track, this)));
 +
 +            needsUpdate = true;
 +        }
@@ -191,7 +195,7 @@ index 67a79e8..8348b1a 100644
          return this._data ? this._data.getAvatarRendererAsset(name) : null;
      }
  
-+    // pixelrp: what LoveHeartAddition needs to draw an effect's sprites itself.
++    // pixelrp: what SocialEffectAddition needs to draw an effect's sprites itself.
 +    public getAvatarRenderGraphicAsset(name: string): IGraphicAsset
 +    {
 +        return ((this._data && this._data.avatarManager) ? this._data.avatarManager.getAssetByName(name) : null);
@@ -210,12 +214,12 @@ index 67a79e8..8348b1a 100644
      public get direction(): number
      {
          return this._direction;
-diff --git a/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts b/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts
+diff --git a/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts b/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts
 new file mode 100644
-index 0000000..742f2de
+index 0000000..e109efb
 --- /dev/null
-+++ b/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts
-@@ -0,0 +1,131 @@
++++ b/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts
+@@ -0,0 +1,150 @@
 +import { BLEND_MODES } from '@pixi/constants';
 +import { Resource, Texture } from '@pixi/core';
 +import { Matrix } from '@pixi/math';
@@ -224,48 +228,70 @@ index 0000000..742f2de
 +import { AvatarVisualization } from '../AvatarVisualization';
 +import { IAvatarAddition } from './IAvatarAddition';
 +
-+/**
-+ * pixelrp: one of the three hearts that float over both people in a :kiss.
-+ *
-+ * Habbo's fx 9 ("Love") drawn as an addition instead of worn as an effect. An
-+ * avatar wears one effect at a time, and the handcuffs, the stun's birds, the
-+ * ambulance and the staff and passive markers are all effects - wearing Love
-+ * would take them off for the length of the kiss. An addition sits beside the
-+ * effect the way the typing bubble and the sleeping Zzz do.
-+ *
-+ * Each heart replays one of Love's three sprite tracks. The art and its
-+ * offsets come from the effect's own library, and the sprite is placed with
-+ * the formula AvatarVisualization uses for an effect's sprites, so the hearts
-+ * land where Habbo draws them. Love only ships the large size; zoomed out,
-+ * each frame is drawn at half size from it.
-+ */
-+export class LoveHeartAddition implements IAvatarAddition
++/** One of an effect's sprites: where it starts in the loop, and how far it sits from the first. */
++interface ISocialEffectTrack
 +{
-+    public static EFFECT_ID: number = 9;
++    start: number;
++    dx: number;
++    dy: number;
++}
 +
-+    private static FRAME_COUNT: number = 21;
++interface ISocialEffect
++{
++    // The asset member, as in h_<member>_0_<frame>.
++    member: string;
++    frames: number;
++    blendMode: number;
++    tracks: ISocialEffectTrack[];
++}
++
++/**
++ * pixelrp: one sprite of the effect floated over both people in a social
++ * command - :kiss and :hug (SocialCommand.OverlayExpression on the emulator).
++ *
++ * The effect is drawn as additions instead of worn. An avatar wears one
++ * effect at a time, and the handcuffs, the stun's birds, the ambulance and the
++ * staff and passive markers are all effects - wearing these would take them
++ * off for two seconds. Additions sit beside the effect the way the typing
++ * bubble and the sleeping Zzz do; one addition per sprite of the effect.
++ *
++ * The art and its offsets come from the effect's own library, and each sprite
++ * is placed with the formula AvatarVisualization uses for an effect's
++ * sprites, so it lands where Habbo draws it. Both effects only ship the large
++ * size; zoomed out, each frame is drawn at half size from it.
++ */
++export class SocialEffectAddition implements IAvatarAddition
++{
++    // Effect id -> what to draw. The sprite tables are copied from each
++    // effect's animation in its library (nitro/assets/bundled/effect).
++    public static EFFECTS: Map<number, ISocialEffect> = new Map([
++        // Love: three small hearts floating up. Ink 33, which an effect draws
++        // additively - what lightens them against dark hair and walls.
++        [ 9, { member: 'std_fx9_1_1', frames: 21, blendMode: BLEND_MODES.ADD, tracks: [ { start: 0, dx: 0, dy: 0 }, { start: 10, dx: 10, dy: -3 }, { start: 14, dx: 18, dy: 2 } ] } ],
++        // Spinning Hearts: one picture of the whole ring of hearts per frame.
++        [ 168, { member: 'std_fx168_1_1', frames: 12, blendMode: BLEND_MODES.NORMAL, tracks: [ { start: 0, dx: 0, dy: 0 } ] } ]
++    ]);
++
 +    // One avatar animation frame. AvatarVisualization updates every 41ms but moves
 +    // an effect on only every second update (ANIMATION_FRAME_UPDATE_INTERVAL).
 +    private static FRAME_LENGTH: number = 82;
-+    // Love's sprites fx9_1-3: where each starts in the loop, and how far it sits from the first.
-+    private static TRACKS: { start: number, dx: number, dy: number }[] = [
-+        { start: 0, dx: 0, dy: 0 },
-+        { start: 10, dx: 10, dy: -3 },
-+        { start: 14, dx: 18, dy: 2 }
-+    ];
 +    private static SMALL_TEXTURES: Map<string, Texture<Resource>> = new Map();
 +
 +    private _id: number;
-+    private _track: number;
++    private _effectId: number;
++    private _effect: ISocialEffect;
++    private _track: ISocialEffectTrack;
 +    private _visualization: AvatarVisualization;
 +    private _startTime: number;
 +    private _scale: number;
 +    private _requested: boolean;
 +
-+    constructor(id: number, track: number, visualization: AvatarVisualization)
++    constructor(id: number, effectId: number, track: number, visualization: AvatarVisualization)
 +    {
 +        this._id = id;
-+        this._track = track;
++        this._effectId = effectId;
++        this._effect = SocialEffectAddition.EFFECTS.get(effectId);
++        this._track = this._effect.tracks[track];
 +        this._visualization = visualization;
 +        this._startTime = GetTickerTime();
 +        this._scale = 64;
@@ -290,19 +316,18 @@ index 0000000..742f2de
 +    {
 +        if(!sprite || !this._visualization) return false;
 +
-+        const track = LoveHeartAddition.TRACKS[this._track];
-+        const frame = ((track.start + Math.floor((GetTickerTime() - this._startTime) / LoveHeartAddition.FRAME_LENGTH)) % LoveHeartAddition.FRAME_COUNT);
-+        const asset = this._visualization.getAvatarRenderGraphicAsset('h_std_fx9_1_1_0_' + frame);
++        const frame = ((this._track.start + Math.floor((GetTickerTime() - this._startTime) / SocialEffectAddition.FRAME_LENGTH)) % this._effect.frames);
++        const asset = this._visualization.getAvatarRenderGraphicAsset('h_' + this._effect.member + '_0_' + frame);
 +
 +        if(!asset || !asset.texture)
 +        {
-+            // Nobody has worn Love yet this session, so its library was never
-+            // fetched. Ask once; the hearts appear as soon as it lands.
++            // Nobody has worn the effect yet this session, so its library was
++            // never fetched. Ask once; it appears as soon as it lands.
 +            if(!this._requested)
 +            {
 +                this._requested = true;
 +
-+                this._visualization.downloadAvatarEffect(LoveHeartAddition.EFFECT_ID);
++                this._visualization.downloadAvatarEffect(this._effectId);
 +            }
 +
 +            sprite.visible = false;
@@ -312,14 +337,12 @@ index 0000000..742f2de
 +
 +        const half = ((this._scale < 48) ? 0.5 : 1);
 +
-+        sprite.texture = ((half < 1) ? LoveHeartAddition.getSmallTexture(asset) : asset.texture);
-+        sprite.offsetX = (((asset.offsetX + track.dx) * half) - (this._scale / 2));
-+        sprite.offsetY = (((asset.offsetY + track.dy) * half) + this._visualization.postureOffset);
++        sprite.texture = ((half < 1) ? SocialEffectAddition.getSmallTexture(asset) : asset.texture);
++        sprite.offsetX = (((asset.offsetX + this._track.dx) * half) - (this._scale / 2));
++        sprite.offsetY = (((asset.offsetY + this._track.dy) * half) + this._visualization.postureOffset);
 +        sprite.flipH = asset.flipH;
-+        // Love is ink 33, which an effect draws additively - what lightens the
-+        // hearts against dark hair and walls. AvatarVisualization puts every
-+        // addition back to NORMAL before it is handed a sprite.
-+        sprite.blendMode = BLEND_MODES.ADD;
++        // AvatarVisualization puts every addition back to NORMAL before it is handed a sprite.
++        sprite.blendMode = this._effect.blendMode;
 +        sprite.alpha = 255;
 +        sprite.relativeDepth = -0.02;
 +        sprite.visible = true;
@@ -329,7 +352,7 @@ index 0000000..742f2de
 +
 +    private static getSmallTexture(asset: IGraphicAsset): Texture<Resource>
 +    {
-+        let texture = LoveHeartAddition.SMALL_TEXTURES.get(asset.name);
++        let texture = SocialEffectAddition.SMALL_TEXTURES.get(asset.name);
 +
 +        if(texture) return texture;
 +
@@ -337,7 +360,7 @@ index 0000000..742f2de
 +
 +        texture = TextureUtils.createAndWriteRenderTexture(Math.max(1, Math.ceil(source.width / 2)), Math.max(1, Math.ceil(source.height / 2)), new NitroSprite(source), new Matrix().scale(0.5, 0.5));
 +
-+        if(texture) LoveHeartAddition.SMALL_TEXTURES.set(asset.name, texture);
++        if(texture) SocialEffectAddition.SMALL_TEXTURES.set(asset.name, texture);
 +
 +        return (texture || source);
 +    }
@@ -348,14 +371,12 @@ index 0000000..742f2de
 +    }
 +}
 diff --git a/src/nitro/room/object/visualization/avatar/additions/index.ts b/src/nitro/room/object/visualization/avatar/additions/index.ts
-index b2e5dda..ad8d33f 100644
+index b2e5dda..0a3fe7e 100644
 --- a/src/nitro/room/object/visualization/avatar/additions/index.ts
 +++ b/src/nitro/room/object/visualization/avatar/additions/index.ts
-@@ -6,6 +6,7 @@ export * from './GameClickTargetAddition';
- export * from './GuideStatusBubbleAddition';
- export * from './IAvatarAddition';
+@@ -8,4 +8,5 @@ export * from './IAvatarAddition';
  export * from './IExpressionAddition';
-+export * from './LoveHeartAddition';
  export * from './MutedBubbleAddition';
  export * from './NumberBubbleAddition';
++export * from './SocialEffectAddition';
  export * from './TypingBubbleAddition';
