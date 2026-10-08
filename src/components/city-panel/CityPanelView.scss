@@ -90,11 +90,16 @@ $city-line: rgba(0, 0, 0, 0.06);
         border-radius: 4px;
         background: #e6e6ea;
 
+        // The head render sits at the top of the stock 90x130 avatar box
+        // (common/index.scss), so the box is placed by offset rather than
+        // centred - as the gang portraits do (RpGangsView.scss) - with the face
+        // in the middle of the 32px well: 29 = (90 - 32) / 2 across, and the
+        // face's centre sits 45px down the box.
         .avatar-image {
             position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
+            left: -29px;
+            top: -29px;
+            image-rendering: pixelated;
         }
     }
 
