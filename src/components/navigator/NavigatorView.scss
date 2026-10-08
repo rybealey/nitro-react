@@ -1,6 +1,10 @@
 .nitro-navigator {
     width: $navigator-width;
     height: $navigator-height;
+    // Resizable from its corner grip (NitroCardView resizable), never so small
+    // that the tabs or the filter + search row would crush.
+    min-width: 340px;
+    min-height: 280px;
 
     // Chrome tab strip, matching the Settings window (theme selectors beat
     // the stock theme-primary/-slim $secondary tab bar).
