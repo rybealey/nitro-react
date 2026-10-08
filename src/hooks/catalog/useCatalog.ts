@@ -959,8 +959,16 @@ const useCatalogState = () =>
     useEffect(() =>
     {
         // Not while a chosen page is on its way: it replaces the results itself.
-        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1) && (chosenPageId.current === -1)) openPageById(previousPageId);
-    }, [ searchResult, isBusy, currentPage, previousPageId, openPageById ]);
+        //
+        // pixelrp: the page browsed before searching is LOADED again, not
+        // opened by id. openPageById empties the current page before it starts
+        // the load, and use-between runs effects inside that setter - no page
+        // and not busy is when the default-page effect opens the first tab, so
+        // backspacing the search to nothing landed on the Front Page. The tree
+        // never changed during the search, so there is nothing to re-activate
+        // either (activating the open category again would fold it away).
+        if(!searchResult && !isBusy && currentPage && (currentPage.pageId === -1) && (chosenPageId.current === -1)) loadCatalogPage(previousPageId, -1);
+    }, [ searchResult, isBusy, currentPage, previousPageId, loadCatalogPage ]);
 
     useEffect(() =>
     {
