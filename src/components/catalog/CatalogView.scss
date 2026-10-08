@@ -14,6 +14,14 @@
         @include prp-chrome-tab-strip;
     }
 
+    // The page is the pale grey the Settings, Backpack and Gang windows use,
+    // not the stock $light. Four classes deep so it beats the theme's own
+    // content-area rule whatever order the sheets load in.
+    &.nitro-card.theme-primary .content-area,
+    &.nitro-card.theme-primary-slim .content-area {
+        background: #f3f3f5;
+    }
+
     font[size='16'] {
         font-size: 20px;
     }
