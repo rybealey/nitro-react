@@ -145,7 +145,9 @@ export const TurfPanelView: FC<{}> = props =>
     let statusLabel = 'Unclaimed';
     let statusClass = 'is-neutral';
 
-    if(view.capturing && view.contested) { statusLabel = (view.contestedByGang ? `Contested by ${ view.contestedByGang }` : 'Contested'); statusClass = 'is-contested'; }
+    // "Contested by" names the gang trying to take the turf - the claimer -
+    // not the owner or whoever is holding the claim off.
+    if(view.capturing && view.contested) { statusLabel = `Contested by ${ view.claimGangName }`; statusClass = 'is-contested'; }
     else if(view.capturing) { statusLabel = `${ view.claimGangName } is claiming`; statusClass = 'is-claiming'; }
     else if(yours) { statusLabel = 'Your turf'; statusClass = 'is-yours'; }
     else if(owned) { statusLabel = 'Captured'; statusClass = 'is-captured'; }
@@ -167,7 +169,7 @@ export const TurfPanelView: FC<{}> = props =>
         let stripLine: ReactNode = (yours ? `Your turf${ after }` : <>Held by <strong>{ view.ownerName }</strong>{ after }</>);
         let stripClass = (yours ? 'is-yours' : '');
 
-        if(view.capturing && view.contested) { stripLine = `Contested · ${ clock(left) } left`; stripClass = 'is-contested'; }
+        if(view.capturing && view.contested) { stripLine = <>Contested by <strong>{ view.claimGangName }</strong> · { clock(left) } left</>; stripClass = 'is-contested'; }
         else if(view.capturing) { stripLine = <><strong>{ view.claimGangName }</strong> is claiming · { clock(left) }</>; stripClass = 'is-claiming'; }
 
         return (

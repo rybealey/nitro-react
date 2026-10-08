@@ -215,8 +215,9 @@ span.rp-turf-toggle {
     color: $turf-muted;
     white-space: nowrap;
 
-    // the claiming gang stays in the line's orange, only bolder
-    &.is-claiming strong {
+    // a gang named in a coloured line stays that line's colour, only bolder
+    &.is-claiming strong,
+    &.is-contested strong {
         color: inherit;
     }
 }
