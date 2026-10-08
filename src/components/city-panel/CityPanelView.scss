@@ -25,6 +25,14 @@ $city-line: rgba(0, 0, 0, 0.06);
     .city-seg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .city-seg-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
+    // Four options in a narrow column: each as wide as its label, not an
+    // equal quarter - "Imprisoned" does not fit a quarter of 228px.
+    .city-seg-fit {
+        grid-template-columns: auto auto auto auto;
+
+        .mt-seg-button { padding: 1px 4px; }
+    }
+
     .city-mono { font-family: 'Ubuntu Mono', monospace; }
 
     .city-notice {

@@ -15,7 +15,7 @@ const FILTERS: [ string, number ][] = [
     [ 'All', CityPlayerFilter.All ],
     [ 'Online', CityPlayerFilter.Online ],
     [ 'Wanted', CityPlayerFilter.Wanted ],
-    [ 'In jail', CityPlayerFilter.Jailed ]
+    [ 'Imprisoned', CityPlayerFilter.Jailed ]
 ];
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -146,7 +146,7 @@ export const CityPlayersView: FC<{ context: CityPanelContext, openPlayerId: numb
         <div className="city-players">
             <div className="city-players-list">
                 <input className="form-control form-control-sm" type="search" placeholder="Search by name" aria-label="Search players" value={ query } maxLength={ 32 } onChange={ event => setQuery(event.target.value) } />
-                <div className="mt-seg city-seg-4" role="group" aria-label="Filter players">
+                <div className="mt-seg city-seg-fit" role="group" aria-label="Filter players">
                     { FILTERS.map(([ label, value ]) =>
                         <button key={ value } type="button" className={ `mt-seg-button${ (filter === value) ? ' is-on' : '' }` } aria-pressed={ (filter === value) } onClick={ () => setFilter(value) }>{ label }</button>) }
                 </div>
