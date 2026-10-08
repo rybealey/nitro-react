@@ -49,7 +49,14 @@ export const CatalogNavigationItemView: FC<CatalogNavigationItemViewProps> = pro
     // and a sub-category row sits indented under its parent.
     const rowClasses = [ 'nav-row' ];
 
+    // how deep the row sits under its tab: 1 a category, 2 a sub-category,
+    // 3+ a page inside one - the third level is drawn a touch smaller
+    let depth = 0;
+
+    for(let at = node; at?.parent && (at.parent.pageName !== 'root'); at = at.parent) depth++;
+
     if(child) rowClasses.push('is-child');
+    if(child && (depth >= 3)) rowClasses.push('is-grand');
     if(isOpenPage) rowClasses.push('is-page');
     else if(node.isBranch && node.isOpen && node.isActive) rowClasses.push('is-open-branch');
 
