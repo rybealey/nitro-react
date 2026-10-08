@@ -17,15 +17,46 @@ let decoding = false;
 let primed: HTMLAudioElement = null;
 let primedUnlocked = false;
 
+// A twentieth of a second of silence, built as a WAV (8 kHz, 8-bit mono, every
+// sample at the 0x80 midpoint) - what the fallback element plays to unlock.
+const SilentClipUrl = (): string =>
+{
+    const samples = 400;
+    const bytes = new Uint8Array(44 + samples);
+    const view = new DataView(bytes.buffer);
+    const text = (offset: number, value: string) => [ ...value ].forEach((char, i) => (bytes[offset + i] = char.charCodeAt(0)));
+
+    text(0, 'RIFF');
+    view.setUint32(4, (36 + samples), true);
+    text(8, 'WAVE');
+    text(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 8000, true);
+    view.setUint32(28, 8000, true);
+    view.setUint16(32, 1, true);
+    view.setUint16(34, 8, true);
+    text(36, 'data');
+    view.setUint32(40, samples, true);
+    bytes.fill(0x80, 44);
+
+    return URL.createObjectURL(new Blob([ bytes ], { type: 'audio/wav' }));
+}
+
 const unlockElement = () =>
 {
+    if(primedUnlocked) return;
+
+    // Safari unlocks an element only by PLAYING it inside a gesture. It plays a
+    // silent clip, never the ping: Safari can let a muted play be heard, and a
+    // first click while the client loads would sound the alert for nothing.
+    // Once that has worked the same element is handed the ping, for good.
     if(!primed)
     {
         try
         {
-            primed = new Audio(MentionSoundFile);
-            primed.preload = 'auto';
-            primed.load();
+            primed = new Audio(SilentClipUrl());
         }
         catch(e)
         {
@@ -35,10 +66,8 @@ const unlockElement = () =>
         }
     }
 
-    // Safari unlocks an element only by PLAYING it inside a gesture, so it is
-    // played muted and stopped at once - until that has worked, and never over
-    // a real alert that is sounding right now
-    if(primedUnlocked || !primed.paused) return;
+    // an unlock play already under way
+    if(!primed.paused) return;
 
     primed.muted = true;
 
@@ -46,8 +75,10 @@ const unlockElement = () =>
         .then(() =>
         {
             primed.pause();
-            primed.currentTime = 0;
             primedUnlocked = true;
+            primed.src = MentionSoundFile;
+            primed.preload = 'auto';
+            primed.load();
         })
         .catch(() => {})
         .finally(() => (primed.muted = false));
@@ -102,7 +133,8 @@ window.addEventListener('keydown', unlock, { capture: true });
 
 const playFallback = () =>
 {
-    const element = (primed ?? new Audio(MentionSoundFile));
+    // the primed element only once it carries the ping - before that it holds the silent clip
+    const element = ((primedUnlocked && primed) ? primed : new Audio(MentionSoundFile));
 
     try { element.currentTime = 0; }
     catch(e) { }
