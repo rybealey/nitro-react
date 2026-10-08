@@ -6,6 +6,43 @@ import IntervalWebWorker from '../../../../workers/IntervalWebWorker';
 import { WorkerBuilder } from '../../../../workers/WorkerBuilder';
 import { ChatWidgetMessageView } from './ChatWidgetMessageView';
 
+// How long after a bubble lands the scroll step waits, so it is not nudged up as it appears.
+const SETTLE_HOLD_MS = 1000;
+
+// pixelrp: no two bubbles left on top of each other. Newest to oldest, every
+// older bubble a newer one overlaps goes up above it - older chat always sits
+// higher - and again until nothing moves, so a bubble pushed into a third
+// moves that one too. Stock only checked the chain the newest bubble pushed
+// directly, so an overlap already on screen stayed until it scrolled away.
+// Bubbles not measured yet (no size) are left alone.
+export const SettleChats = (chats: ChatBubbleMessage[]) =>
+{
+    for(let pass = 0; pass < 10; pass++)
+    {
+        let moved = false;
+
+        for(let i = (chats.length - 1); i > 0; i--)
+        {
+            const newer = chats[i];
+
+            if(!newer.width || !newer.height) continue;
+
+            for(let j = (i - 1); j >= 0; j--)
+            {
+                const older = chats[j];
+
+                if(!older.width || !older.height || !DoChatsOverlap(newer, older, 0)) continue;
+
+                // one pixel clear, so the pair no longer counts as touching
+                older.top = (newer.top - older.height - 1);
+                moved = true;
+            }
+        }
+
+        if(!moved) return;
+    }
+}
+
 export const ChatWidgetView: FC<{}> = props =>
 {
     const { chatMessages = [], setChatMessages = null, chatSettings = null, getScrollSpeed = 6000 } = useChatWidget();
@@ -26,35 +63,22 @@ export const ChatWidgetView: FC<{}> = props =>
         })
     }, [ setChatMessages ]);
 
-    const checkOverlappingChats = useCallback((chat: ChatBubbleMessage, moved: number, tempChats: ChatBubbleMessage[]) => 
-    {
-        for(let i = (chatMessages.indexOf(chat) - 1); i >= 0; i--)
-        {
-            const collides = chatMessages[i];
-
-            if(!collides || (chat === collides) || (tempChats.indexOf(collides) >= 0) || (((collides.top + collides.height) - moved) > (chat.top + chat.height))) continue;
-
-            if(DoChatsOverlap(chat, collides, -moved, 0))
-            {
-                const amount = Math.abs((collides.top + collides.height) - chat.top);
-
-                tempChats.push(collides);
-
-                collides.top -= amount;
-                collides.skipMovement = true;
-
-                checkOverlappingChats(collides, amount, tempChats);
-            }
-        }
-    }, [ chatMessages ]);
+    // When a bubble was last placed - the scroll step holds back for a moment
+    // after one lands, so a new bubble is not nudged up as it appears.
+    const lastPlacedRef = useRef<number>(0);
 
     const makeRoom = useCallback((chat: ChatBubbleMessage) =>
     {
         if(chatSettings.mode === RoomChatSettings.CHAT_MODE_FREE_FLOW)
         {
-            chat.skipMovement = true;
+            lastPlacedRef.current = Date.now();
 
-            checkOverlappingChats(chat, 0, [ chat ]);
+            setChatMessages(prevValue =>
+            {
+                if(prevValue) SettleChats(prevValue);
+
+                return prevValue;
+            });
 
             removeHiddenChats();
         }
@@ -82,7 +106,7 @@ export const ChatWidgetView: FC<{}> = props =>
                 removeHiddenChats();
             }
         }
-    }, [ chatSettings, checkOverlappingChats, removeHiddenChats, setChatMessages ]);
+    }, [ chatSettings, removeHiddenChats, setChatMessages ]);
 
     useEffect(() =>
     {
@@ -120,19 +144,16 @@ export const ChatWidgetView: FC<{}> = props =>
     {
         const moveAllChatsUp = (amount: number) =>
         {
+            // pixelrp: every bubble moves, or none does. Stock let a bubble
+            // that had just been placed or pushed sit one step out while the
+            // rest went up 15px, which slid bubbles beside it half a bubble
+            // into each other. Now a bubble placed in the last moment holds
+            // the whole chat back one step instead.
+            if((Date.now() - lastPlacedRef.current) < SETTLE_HOLD_MS) return;
+
             setChatMessages(prevValue =>
             {
-                prevValue.forEach(chat =>
-                {
-                    if(chat.skipMovement)
-                    {
-                        chat.skipMovement = false;
-            
-                        return;
-                    }
-            
-                    chat.top -= amount;
-                });
+                prevValue.forEach(chat => (chat.top -= amount));
 
                 return prevValue;
             });

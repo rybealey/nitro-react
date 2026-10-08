@@ -81,6 +81,36 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
         setIsVisible(true);
     }, [ chat, isReady, isVisible, makeRoom ]);
 
+    // pixelrp: a bubble measured before its font had loaded (the italic of a
+    // system whisper, the first time one shows) grows afterwards, past the room
+    // made for it. Keep its size true - still centred on its avatar, its bottom
+    // where it was - and settle the bubbles around it again.
+    useEffect(() =>
+    {
+        const element = elementRef.current;
+
+        if(!isReady || !element || (typeof ResizeObserver === 'undefined')) return;
+
+        const observer = new ResizeObserver(() =>
+        {
+            const width = element.offsetWidth;
+            const height = element.offsetHeight;
+
+            if((width === chat.width) && (height === chat.height)) return;
+
+            chat.left -= ((width - chat.width) / 2);
+            chat.top -= (height - chat.height);
+            chat.width = width;
+            chat.height = height;
+
+            if(makeRoom) makeRoom(chat);
+        });
+
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [ chat, isReady, makeRoom ]);
+
     // Narrated bubbles arrive as *action text*. Move that opening marker
     // ahead of the username so the whole line reads *Username action text*,
     // and mark the bubble so ChatWidgetView.scss can bold it. The rule itself
