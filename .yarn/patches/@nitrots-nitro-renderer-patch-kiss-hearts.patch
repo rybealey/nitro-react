@@ -111,7 +111,7 @@ index 281346f..c404ebc 100644
  
              this._animationEndTimestamp = AvatarAction.getExpressionTimeout(model.getValue<number>(RoomObjectVariable.FIGURE_EXPRESSION));
 diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
-index 67a79e8..5ad5b4d 100644
+index 67a79e8..8348b1a 100644
 --- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 +++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 @@ -2,7 +2,7 @@ import { BLEND_MODES } from '@pixi/constants';
@@ -148,7 +148,24 @@ index 67a79e8..5ad5b4d 100644
          this._sleep = false;
          this._blink = false;
          this._gesture = 0;
-@@ -815,6 +819,21 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -223,7 +227,15 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+ 
+                 for(const addition of this._additions.values())
+                 {
+-                    addition.update(this.getSprite(index++), scale);
++                    const sprite = this.getSprite(index++);
++
++                    // pixelrp: sprites are handed round again whenever the
++                    // avatar's sprite count changes, and only effects and the
++                    // kiss hearts set a blend - start every addition plain so
++                    // an ADD can't follow into a typing bubble or a Zzz.
++                    if(sprite) sprite.blendMode = BLEND_MODES.NORMAL;
++
++                    addition.update(sprite, scale);
+                 }
+             }
+ 
+@@ -815,6 +827,21 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
              if(expressionAddition) this.removeAddition(AvatarVisualization.EXPRESSION_ID);
          }
  
@@ -170,7 +187,7 @@ index 67a79e8..5ad5b4d 100644
          this.updateScale(scale);
  
          const gender = model.getValue<string>(RoomObjectVariable.GENDER);
-@@ -1116,6 +1135,22 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -1116,6 +1143,22 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
          return this._data ? this._data.getAvatarRendererAsset(name) : null;
      }
  
@@ -195,10 +212,10 @@ index 67a79e8..5ad5b4d 100644
          return this._direction;
 diff --git a/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts b/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts
 new file mode 100644
-index 0000000..faf1803
+index 0000000..742f2de
 --- /dev/null
 +++ b/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts
-@@ -0,0 +1,132 @@
+@@ -0,0 +1,131 @@
 +import { BLEND_MODES } from '@pixi/constants';
 +import { Resource, Texture } from '@pixi/core';
 +import { Matrix } from '@pixi/math';
@@ -299,11 +316,10 @@ index 0000000..faf1803
 +        sprite.offsetX = (((asset.offsetX + track.dx) * half) - (this._scale / 2));
 +        sprite.offsetY = (((asset.offsetY + track.dy) * half) + this._visualization.postureOffset);
 +        sprite.flipH = asset.flipH;
-+        // Love is ink 33, which an effect draws additively. The hearts are
-+        // opaque pink, so normal blending looks the same over dark walls and
-+        // keeps them pink over light ones - and sprites are recycled between
-+        // additions, so ADD would follow this one into whatever is drawn next.
-+        sprite.blendMode = BLEND_MODES.NORMAL;
++        // Love is ink 33, which an effect draws additively - what lightens the
++        // hearts against dark hair and walls. AvatarVisualization puts every
++        // addition back to NORMAL before it is handed a sprite.
++        sprite.blendMode = BLEND_MODES.ADD;
 +        sprite.alpha = 255;
 +        sprite.relativeDepth = -0.02;
 +        sprite.visible = true;
