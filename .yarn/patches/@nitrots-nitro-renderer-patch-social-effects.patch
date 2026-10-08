@@ -45,15 +45,15 @@ index b12e992..8ecc8d3 100644
      {
          let isValid = false;
 diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-index 281346f..b7d61b3 100644
+index 281346f..73f6342 100644
 --- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
 +++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
 @@ -27,6 +27,16 @@ export class AvatarLogic extends MovingObjectLogic
      // 400-403 are the weapons - bat, knife, axe, pistol - held while one is
      // equipped. Carry frames only, and nobody drinks from an axe.
      private static CARRY_ONLY_HAND_IDS: number[] = [ 244, 299, 400, 401, 402, 403 ];
-+    // pixelrp: the expressions the emulator sends both people in a :kiss or
-+    // a :hug (SocialCommand.OverlayExpression), and the effect each floats
++    // pixelrp: the expressions the emulator sends both people in a :kiss, a
++    // :bite or a :hug (SocialCommand.OverlayExpression), and the effect each floats
 +    // over them. They are NOT expressions - they never reach
 +    // FIGURE_EXPRESSION, so a wave or a blow-kiss can't cut them short and
 +    // the avatar plays no action for them. They set FIGURE_RP_SOCIAL_EFFECT
@@ -115,7 +115,7 @@ index 281346f..b7d61b3 100644
  
              this._animationEndTimestamp = AvatarAction.getExpressionTimeout(model.getValue<number>(RoomObjectVariable.FIGURE_EXPRESSION));
 diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
-index 67a79e8..9ad6178 100644
+index 67a79e8..be256f1 100644
 --- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 +++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 @@ -2,7 +2,7 @@ import { BLEND_MODES } from '@pixi/constants';
@@ -152,7 +152,7 @@ index 67a79e8..9ad6178 100644
          this._sleep = false;
          this._blink = false;
          this._gesture = 0;
-@@ -223,7 +227,15 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -223,7 +227,19 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
  
                  for(const addition of this._additions.values())
                  {
@@ -160,16 +160,20 @@ index 67a79e8..9ad6178 100644
 +                    const sprite = this.getSprite(index++);
 +
 +                    // pixelrp: sprites are handed round again whenever the
-+                    // avatar's sprite count changes, and only effects and the
-+                    // social effects set a blend - start every addition plain so
-+                    // an ADD can't follow into a typing bubble or a Zzz.
-+                    if(sprite) sprite.blendMode = BLEND_MODES.NORMAL;
++                    // avatar's sprite count changes, and effects and the social
++                    // effects set a blend and a fade - start every addition
++                    // plain so neither can follow into a typing bubble or a Zzz.
++                    if(sprite)
++                    {
++                        sprite.blendMode = BLEND_MODES.NORMAL;
++                        sprite.alpha = 255;
++                    }
 +
 +                    addition.update(sprite, scale);
                  }
              }
  
-@@ -815,6 +827,21 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -815,6 +831,21 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
              if(expressionAddition) this.removeAddition(AvatarVisualization.EXPRESSION_ID);
          }
  
@@ -191,7 +195,7 @@ index 67a79e8..9ad6178 100644
          this.updateScale(scale);
  
          const gender = model.getValue<string>(RoomObjectVariable.GENDER);
-@@ -1116,6 +1143,22 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -1116,6 +1147,22 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
          return this._data ? this._data.getAvatarRendererAsset(name) : null;
      }
  
@@ -216,10 +220,10 @@ index 67a79e8..9ad6178 100644
          return this._direction;
 diff --git a/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts b/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts
 new file mode 100644
-index 0000000..e109efb
+index 0000000..a4a5286
 --- /dev/null
 +++ b/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,157 @@
 +import { BLEND_MODES } from '@pixi/constants';
 +import { Resource, Texture } from '@pixi/core';
 +import { Matrix } from '@pixi/math';
@@ -241,13 +245,17 @@ index 0000000..e109efb
 +    // The asset member, as in h_<member>_0_<frame>.
 +    member: string;
 +    frames: number;
++    // Milliseconds per frame.
++    frameLength: number;
 +    blendMode: number;
++    // 0-255, as IRoomObjectSprite.alpha.
++    alpha: number;
 +    tracks: ISocialEffectTrack[];
 +}
 +
 +/**
 + * pixelrp: one sprite of the effect floated over both people in a social
-+ * command - :kiss and :hug (SocialCommand.OverlayExpression on the emulator).
++ * command - :kiss, :bite and :hug (SocialCommand.OverlayExpression on the emulator).
 + *
 + * The effect is drawn as additions instead of worn. An avatar wears one
 + * effect at a time, and the handcuffs, the stun's birds, the ambulance and the
@@ -262,19 +270,22 @@ index 0000000..e109efb
 + */
 +export class SocialEffectAddition implements IAvatarAddition
 +{
++    // One avatar animation frame - Habbo's speed. AvatarVisualization updates every
++    // 41ms but moves an effect on only every second update (ANIMATION_FRAME_UPDATE_INTERVAL).
++    private static FRAME_LENGTH: number = 82;
++
 +    // Effect id -> what to draw. The sprite tables are copied from each
 +    // effect's animation in its library (nitro/assets/bundled/effect).
 +    public static EFFECTS: Map<number, ISocialEffect> = new Map([
-+        // Love: three small hearts floating up. Ink 33, which an effect draws
-+        // additively - what lightens them against dark hair and walls.
-+        [ 9, { member: 'std_fx9_1_1', frames: 21, blendMode: BLEND_MODES.ADD, tracks: [ { start: 0, dx: 0, dy: 0 }, { start: 10, dx: 10, dy: -3 }, { start: 14, dx: 18, dy: 2 } ] } ],
++        // Love: three small hearts floating up, at Habbo's speed. Ink 33,
++        // which an effect draws additively - what lightens them against dark
++        // hair and walls.
++        [ 9, { member: 'std_fx9_1_1', frames: 21, frameLength: SocialEffectAddition.FRAME_LENGTH, blendMode: BLEND_MODES.ADD, alpha: 255, tracks: [ { start: 0, dx: 0, dy: 0 }, { start: 10, dx: 10, dy: -3 }, { start: 14, dx: 18, dy: 2 } ] } ],
 +        // Spinning Hearts: one picture of the whole ring of hearts per frame.
-+        [ 168, { member: 'std_fx168_1_1', frames: 12, blendMode: BLEND_MODES.NORMAL, tracks: [ { start: 0, dx: 0, dy: 0 } ] } ]
++        // At half Habbo's speed (one turn in the two seconds) and 60% seen,
++        // so the big hearts sit over the hug instead of covering it.
++        [ 168, { member: 'std_fx168_1_1', frames: 12, frameLength: (SocialEffectAddition.FRAME_LENGTH * 2), blendMode: BLEND_MODES.NORMAL, alpha: 153, tracks: [ { start: 0, dx: 0, dy: 0 } ] } ]
 +    ]);
-+
-+    // One avatar animation frame. AvatarVisualization updates every 41ms but moves
-+    // an effect on only every second update (ANIMATION_FRAME_UPDATE_INTERVAL).
-+    private static FRAME_LENGTH: number = 82;
 +    private static SMALL_TEXTURES: Map<string, Texture<Resource>> = new Map();
 +
 +    private _id: number;
@@ -316,7 +327,7 @@ index 0000000..e109efb
 +    {
 +        if(!sprite || !this._visualization) return false;
 +
-+        const frame = ((this._track.start + Math.floor((GetTickerTime() - this._startTime) / SocialEffectAddition.FRAME_LENGTH)) % this._effect.frames);
++        const frame = ((this._track.start + Math.floor((GetTickerTime() - this._startTime) / this._effect.frameLength)) % this._effect.frames);
 +        const asset = this._visualization.getAvatarRenderGraphicAsset('h_' + this._effect.member + '_0_' + frame);
 +
 +        if(!asset || !asset.texture)
@@ -343,7 +354,7 @@ index 0000000..e109efb
 +        sprite.flipH = asset.flipH;
 +        // AvatarVisualization puts every addition back to NORMAL before it is handed a sprite.
 +        sprite.blendMode = this._effect.blendMode;
-+        sprite.alpha = 255;
++        sprite.alpha = this._effect.alpha;
 +        sprite.relativeDepth = -0.02;
 +        sprite.visible = true;
 +
