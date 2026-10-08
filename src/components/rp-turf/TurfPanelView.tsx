@@ -4,8 +4,8 @@ import { RoomTurfView, RpRoomTurfEvent, RpTurfClaimComposer } from '../../api/rp
 import { useLocalStorage, useMessageEvent, useNavigator, useRoom } from '../../hooks';
 
 // PixelRP turf panel - hangs from the top-centre of any turf room (design:
-// "Turf Control Panel" canvas). Who holds the turf, since when, the claim
-// running in it, and the Claim button - the only way to claim a turf
+// "Turf Panel" canvas, B open / C folded). Who holds the turf, since when, the
+// claim running in it, and the Claim button - the only way to claim a turf
 // (RpTurfClaimComposer; TurfManager.TryClaim holds every rule).
 //
 // Server-driven: RpRoomTurfEvent arrives on room entry and on every change,
@@ -27,18 +27,19 @@ const clock = (seconds: number) =>
     return `${ Math.floor(safe / 60) }:${ String(safe % 60).padStart(2, '0') }`;
 }
 
+/** How long a gang has held the turf - "14m", "3h 05m", "2d 4h". */
 const heldFor = (seconds: number) =>
 {
     const minutes = Math.floor(seconds / 60);
 
-    if(minutes < 1) return 'Held for under a minute';
-    if(minutes < 60) return `Held for ${ minutes }m`;
+    if(minutes < 1) return 'under a minute';
+    if(minutes < 60) return `${ minutes }m`;
 
     const hours = Math.floor(minutes / 60);
 
-    if(hours < 24) return `Held for ${ hours }h ${ minutes % 60 }m`;
+    if(hours < 24) return `${ hours }h ${ String(minutes % 60).padStart(2, '0') }m`;
 
-    return `Held for ${ Math.floor(hours / 24) }d ${ hours % 24 }h`;
+    return `${ Math.floor(hours / 24) }d ${ hours % 24 }h`;
 }
 
 const Shield: FC<{ a: string; b: string; size: number }> = props =>
@@ -62,7 +63,7 @@ const FlagIcon: FC<{ size: number }> = ({ size }) => (
 );
 
 const Chevron: FC<{ up: boolean }> = ({ up }) => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d={ up ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6' } />
     </svg>
 );
@@ -139,51 +140,51 @@ export const TurfPanelView: FC<{}> = props =>
     const held = view.elapsedSeconds + ((view.capturing && !view.contested) ? since : 0);
     const left = Math.max(0, view.totalSeconds - held);
     const progress = ((view.totalSeconds > 0) ? Math.min(100, (held / view.totalSeconds) * 100) : 0);
+    const heldTime = ((owned && (view.heldForSeconds > 0)) ? heldFor(view.heldForSeconds + since) : null);
 
-    let statusLabel = 'UNCLAIMED';
+    let statusLabel = 'Unclaimed';
     let statusClass = 'is-neutral';
 
-    if(view.capturing && view.contested) { statusLabel = 'CONTESTED'; statusClass = 'is-contested'; }
-    else if(view.capturing) { statusLabel = 'CLAIM IN PROGRESS'; statusClass = 'is-claiming'; }
-    else if(yours) { statusLabel = 'YOUR TURF'; statusClass = 'is-yours'; }
-    else if(owned) { statusLabel = 'CAPTURED'; statusClass = 'is-captured'; }
+    if(view.capturing && view.contested) { statusLabel = (view.contestedByGang ? `Contested by ${ view.contestedByGang }` : 'Contested'); statusClass = 'is-contested'; }
+    else if(view.capturing) { statusLabel = `${ view.claimGangName } is claiming`; statusClass = 'is-claiming'; }
+    else if(yours) { statusLabel = 'Your turf'; statusClass = 'is-yours'; }
+    else if(owned) { statusLabel = 'Captured'; statusClass = 'is-captured'; }
 
-    // The button says why when it cannot be pressed - except on a turf the
-    // viewer's gang already holds, where it goes altogether: YOUR TURF and
-    // "Controlled by" above already say it. A rival claiming it brings the
-    // button back, as the countdown.
+    // No Claim button on a turf the viewer's gang holds, nor while a claim
+    // runs - the time over the bar says it. Without a gang it says why.
     const holding = (yours && !view.capturing);
-    let lockedLabel: string = null;
-
-    if(view.capturing) lockedLabel = (view.contested ? 'Contested - claim paused' : `Claiming… ${ clock(left) }`);
-    else if(view.viewerGangId <= 0) lockedLabel = 'Join a gang to claim';
-
-    const canClaim = (!holding && (lockedLabel === null));
+    const canClaim = (!holding && !view.capturing && (view.viewerGangId > 0));
     const claim = () => SendMessageComposer(new RpTurfClaimComposer());
 
-    let tabLine = (owned ? `Held by ${ view.ownerName }` : 'Unclaimed');
+    // An unclaimed turf with no claim running is always shown open, with its
+    // Claim button: there is nothing to fold it to.
+    const foldable = (owned || view.capturing);
 
-    if(view.capturing) tabLine = (view.contested ? `Contested · ${ clock(left) } left` : `${ view.claimGangName } is claiming · ${ clock(left) }`);
-
-    if(!open)
+    if(foldable && !open)
     {
+        let stripLine = (yours ? 'Your turf' : `Held by ${ view.ownerName }`);
+        let stripClass = (yours ? 'is-yours' : '');
+
+        if(heldTime) stripLine += ` · ${ heldTime }`;
+
+        if(view.capturing && view.contested) { stripLine = `Contested · ${ clock(left) } left`; stripClass = 'is-contested'; }
+        else if(view.capturing) { stripLine = `${ view.claimGangName } is claiming · ${ clock(left) }`; stripClass = 'is-claiming'; }
+
         return (
-            <div className="rp-turf-panel rp-turf-tab">
-                <Shield a={ shieldA } b={ shieldB } size={ 20 } />
-                <div className="rp-turf-tab-text">
-                    <span className="rp-turf-name rp-turf-name--small">{ turfName }</span>
-                    <span className={ `rp-turf-tab-line ${ view.capturing ? statusClass : (yours ? 'is-yours' : '') }` }>{ tabLine }</span>
-                </div>
+            <div className="rp-turf-panel rp-turf-strip">
+                <Shield a={ shieldA } b={ shieldB } size={ 15 } />
+                <span className="rp-turf-name">{ turfName }</span>
+                <span className={ `rp-turf-strip-line ${ stripClass }` }>{ stripLine }</span>
                 { canClaim &&
-                    <button type="button" className="rp-turf-claim rp-turf-claim--compact" onClick={ claim }>
-                        <FlagIcon size={ 13 } />
+                    <button type="button" className="rp-turf-claim rp-turf-claim--strip" onClick={ claim }>
+                        <FlagIcon size={ 10 } />
                         Claim
                     </button> }
-                <button type="button" className="rp-turf-toggle rp-turf-toggle--tab" aria-label="Expand the turf panel" onClick={ () => setOpen(true) }>
+                <button type="button" className="rp-turf-toggle" aria-label="Open the turf panel" onClick={ () => setOpen(true) }>
                     <Chevron up={ false } />
                 </button>
                 { view.capturing &&
-                    <div className="rp-turf-tab-progress">
+                    <div className={ `rp-turf-strip-progress ${ view.contested ? 'is-paused' : '' }` }>
                         <div style={ { width: `${ progress }%` } } />
                     </div> }
             </div>
@@ -192,40 +193,30 @@ export const TurfPanelView: FC<{}> = props =>
 
     return (
         <div className={ `rp-turf-panel is-expanded${ closing ? ' is-closing' : '' }` }>
-            <button type="button" className="rp-turf-toggle" aria-label="Collapse the turf panel" onClick={ collapse }>
-                <Chevron up={ true } />
-            </button>
-            <div className="rp-turf-heading">
-                <div className="rp-turf-name">{ turfName }</div>
-                <div className={ `rp-turf-status ${ statusClass }` }>{ statusLabel }</div>
-            </div>
-            <div className="rp-turf-shield">
-                <Shield a={ shieldA } b={ shieldB } size={ 52 } />
+            <div className="rp-turf-head">
+                <Shield a={ shieldA } b={ shieldB } size={ 22 } />
+                <div className="rp-turf-heading">
+                    <span className="rp-turf-name">{ turfName }</span>
+                    <span className={ `rp-turf-status ${ statusClass }` }>{ statusLabel }</span>
+                </div>
+                { foldable
+                    ? <button type="button" className="rp-turf-toggle" aria-label="Fold the turf panel" onClick={ collapse }><Chevron up={ true } /></button>
+                    : <span className="rp-turf-toggle" aria-hidden="true" /> }
             </div>
             { owned &&
-                <div className="rp-turf-owner">
-                    <div className="rp-turf-owner-line">
-                        <span className="rp-turf-muted">Controlled by</span>
-                        <span className="rp-turf-owner-name">{ view.ownerName }</span>
-                    </div>
-                    { (view.heldForSeconds > 0) &&
-                        <div className="rp-turf-held">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                            <span>{ heldFor(view.heldForSeconds + since) }</span>
-                        </div> }
+                <div className="rp-turf-line">
+                    Held by <strong>{ view.ownerName }</strong>{ heldTime && ` · ${ heldTime }` }
                 </div> }
             { view.capturing &&
                 <div className="rp-turf-capture">
-                    <div className="rp-turf-capture-line">
-                        <span><strong>{ view.claimGangName }</strong></span>
-                    </div>
+                    <div className="rp-turf-line">{ view.contested ? `${ clock(left) } left` : clock(left) }</div>
                     <div className={ `rp-turf-bar ${ view.contested ? 'is-paused' : '' }` }>
                         <div style={ { width: `${ progress }%` } } />
                     </div>
                 </div> }
-            { !holding && (canClaim
-                ? <button type="button" className="rp-turf-claim" onClick={ claim }><FlagIcon size={ 16 } />Claim Territory</button>
-                : <button type="button" className="rp-turf-claim is-locked" disabled>{ lockedLabel }</button>) }
+            { !holding && !view.capturing && (canClaim
+                ? <button type="button" className="rp-turf-claim" onClick={ claim }><FlagIcon size={ 12 } />Claim Territory</button>
+                : <button type="button" className="rp-turf-claim is-locked" disabled>Join a gang to claim</button>) }
         </div>
     );
 }

@@ -1,6 +1,8 @@
 // PixelRP turf panel (TurfPanelView): hangs from the top-centre of a turf
-// room on the shared chrome plate, like the room title and purse. Status
-// colours each hold 4.5:1 on the plate.
+// room on the shared chrome plate, like the room title and purse. Open it is
+// a small card (B on the "Turf Panel" canvas); folded, one slim strip (C).
+// Status colours each hold 4.5:1 on the plate. No backdrop blur: a frosted
+// layer costs the text its ClearType on Windows, and the plate is 95% opaque.
 $turf-muted: #a9a9b3;
 $turf-slot: rgb(45, 45, 51);
 $turf-green: #00800b;
@@ -17,31 +19,32 @@ $turf-bar: #e87332;
     transform: translateX(-50%);
     z-index: $rightside-zindex;
     pointer-events: all;
-    width: 264px;
+    width: 208px;
     box-sizing: border-box;
-    padding: 4px 16px 16px;
+    padding: 9px 10px 10px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 10px;
+    gap: 7px;
     background: var(--prp-chrome-plate);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-top: 0;
-    border-radius: 0 0 10px 10px;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     color: #ffffff;
     font-family: 'Ubuntu', sans-serif;
 
     strong {
         font-weight: 700;
+        color: #ffffff;
     }
 }
 
+// The fold arrow. Where there is nothing to fold, an empty one of the same
+// width keeps the name centred against the shield.
 .rp-turf-toggle {
-    width: 64px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -54,35 +57,37 @@ $turf-bar: #e87332;
     &:hover {
         color: #ffffff;
     }
+}
 
-    &--tab {
-        width: 44px;
-        height: 44px;
-    }
+span.rp-turf-toggle {
+    cursor: default;
+}
+
+.rp-turf-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .rp-turf-heading {
+    flex-grow: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 1px;
+    text-align: center;
 }
 
 .rp-turf-name {
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.08em;
-    text-align: center;
-
-    &--small {
-        font-size: 12.5px;
-        letter-spacing: 0.06em;
-        text-align: left;
-    }
+    letter-spacing: 0.06em;
+    white-space: nowrap;
 }
 
 .rp-turf-status,
-.rp-turf-tab-line {
+.rp-turf-strip-line {
     &.is-neutral { color: #c4c4cc; }
     &.is-captured { color: #ff8f8f; }
     &.is-yours { color: #7fd98b; }
@@ -90,76 +95,35 @@ $turf-bar: #e87332;
     &.is-contested { color: #ff9e57; }
 }
 
+// A long gang name wraps to a second line rather than widening the card.
 .rp-turf-status {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+}
+
+.rp-turf-line {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-}
-
-.rp-turf-shield {
-    width: 76px;
-    height: 84px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    background: $turf-slot;
-}
-
-.rp-turf-muted {
     color: $turf-muted;
-}
-
-.rp-turf-owner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.rp-turf-owner-line {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12.5px;
-}
-
-// White whatever palette the gang chose - a gang in black-and-navy would vanish as text.
-.rp-turf-owner-name {
-    font-weight: 700;
-}
-
-.rp-turf-held {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11.5px;
-    color: $turf-muted;
+    text-align: center;
 }
 
 .rp-turf-capture {
-    width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
-.rp-turf-capture-line {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-}
-
-.rp-turf-bar {
-    height: 8px;
-    border-radius: 4px;
+.rp-turf-bar,
+.rp-turf-strip-progress {
     background: $turf-slot;
     overflow: hidden;
 
     > div {
         height: 100%;
-        border-radius: 4px;
         background: $turf-bar;
         transition: width 1s linear;
     }
@@ -167,25 +131,33 @@ $turf-bar: #e87332;
     // Contested: the bar holds still, striped, until the rivals leave.
     &.is-paused > div {
         opacity: 0.55;
-        background-image: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.35) 0, rgba(0, 0, 0, 0.35) 4px, transparent 4px, transparent 8px) !important;
+        background-image: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.35) 0, rgba(0, 0, 0, 0.35) 3px, transparent 3px, transparent 6px);
         transition: none;
     }
 }
 
+.rp-turf-bar {
+    height: 5px;
+    border-radius: 3px;
+
+    > div {
+        border-radius: 3px;
+    }
+}
+
 .rp-turf-claim {
-    width: 100%;
-    height: 44px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     background: $turf-green;
     color: #ffffff;
     border: 0;
-    border-radius: 6px;
-    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18);
     font-family: 'Ubuntu', sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
 
@@ -197,23 +169,51 @@ $turf-bar: #e87332;
         background: rgba(255, 255, 255, 0.08);
         color: #c9c9d1;
         box-shadow: none;
-        font-size: 13px;
+        font-size: 11px;
         cursor: default;
     }
 
-    &--compact {
-        width: auto;
-        height: 36px;
-        padding: 0 12px;
-        gap: 6px;
-        font-size: 12.5px;
+    &--strip {
+        height: 22px;
+        padding: 0 8px;
+        gap: 4px;
+        font-size: 11px;
         box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
     }
 }
 
-// Subtle motion. The expanded panel drops a few px and unfolds from its top
-// edge as it opens, and lifts back up as it closes (TurfPanelView holds the
-// swap to the tab until this has played); the tab settles in the same way.
+// Folded: one 32px strip, still with a Claim button when there is one to press.
+.rp-turf-strip {
+    width: auto;
+    height: 32px;
+    padding: 4px 4px 3px 10px;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    overflow: hidden;
+
+    .rp-turf-name {
+        font-size: 11.5px;
+    }
+}
+
+.rp-turf-strip-line {
+    font-size: 10.5px;
+    color: $turf-muted;
+    white-space: nowrap;
+}
+
+.rp-turf-strip-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+}
+
+// Subtle motion. The open card drops a few px and unfolds from its top edge
+// as it opens, and lifts back up as it folds (TurfPanelView holds the swap to
+// the strip until this has played); the strip settles in the same way.
 // The transforms repeat translateX(-50%) because that is what centres it.
 @keyframes rp-turf-drop {
     from { opacity: 0; transform: translate(-50%, -10px) scaleY(0.96); }
@@ -242,7 +242,7 @@ $turf-bar: #e87332;
         pointer-events: none;
     }
 
-    &.rp-turf-tab {
+    &.rp-turf-strip {
         animation: rp-turf-settle 160ms ease-out;
     }
 }
@@ -251,45 +251,7 @@ $turf-bar: #e87332;
     .rp-turf-panel,
     .rp-turf-panel.is-expanded,
     .rp-turf-panel.is-closing,
-    .rp-turf-panel.rp-turf-tab {
+    .rp-turf-panel.rp-turf-strip {
         animation: none;
-    }
-}
-
-// Folded: one slim strip, still with a Claim button when there is one to press.
-.rp-turf-tab {
-    width: auto;
-    height: 48px;
-    padding: 0 4px 4px 12px;
-    flex-direction: row;
-    gap: 10px;
-    overflow: hidden;
-}
-
-.rp-turf-tab-text {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 104px;
-}
-
-.rp-turf-tab-line {
-    font-size: 11px;
-    color: $turf-muted;
-    white-space: nowrap;
-}
-
-.rp-turf-tab-progress {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 3px;
-    background: $turf-slot;
-
-    > div {
-        height: 100%;
-        background: $turf-bar;
-        transition: width 1s linear;
     }
 }

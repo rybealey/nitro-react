@@ -40,6 +40,7 @@ export class RpRoomTurfParser implements IMessageParser
     private _contestedBy: string;
     private _failReason: string;
     private _viewerGangId: number;
+    private _contestedByGang: string;
 
     public flush(): boolean
     {
@@ -61,6 +62,7 @@ export class RpRoomTurfParser implements IMessageParser
         this._contestedBy = '';
         this._failReason = '';
         this._viewerGangId = 0;
+        this._contestedByGang = '';
 
         return true;
     }
@@ -91,6 +93,9 @@ export class RpRoomTurfParser implements IMessageParser
         this._contestedBy = wrapper.readString();
         this._failReason = wrapper.readString();
         this._viewerGangId = wrapper.readInt();
+
+        // Appended last; an emulator from before it stops at the viewer's gang.
+        if(wrapper.bytesAvailable) this._contestedByGang = wrapper.readString();
 
         return true;
     }
@@ -127,7 +132,8 @@ export class RpRoomTurfParser implements IMessageParser
             claimGangId: this._claimGangId, claimGangName: this._claimGangName, claimColourA: this._claimColourA,
             elapsedSeconds: this._elapsedSeconds, totalSeconds: this._totalSeconds,
             contested: this._contested, contestedBy: this._contestedBy,
-            failReason: this._failReason, viewerGangId: this._viewerGangId
+            failReason: this._failReason, viewerGangId: this._viewerGangId,
+            contestedByGang: this._contestedByGang
         };
     }
 }
@@ -155,6 +161,8 @@ export interface RoomTurfView
     failReason: string;
     /** The viewer's own gang, 0 for none - it words the Claim button. */
     viewerGangId: number;
+    /** The gang of the rival holding the claim off; '' when not contested. */
+    contestedByGang: string;
 }
 
 export class RpRoomTurfEvent extends MessageEvent implements IMessageEvent
