@@ -70,7 +70,7 @@ $city-line: rgba(0, 0, 0, 0.06);
         display: flex;
         align-items: center;
         gap: 8px;
-        min-height: 40px;
+        min-height: 52px;
         padding: 4px 8px;
         border: 0;
         border-bottom: 1px solid $city-line;
@@ -87,8 +87,8 @@ $city-line: rgba(0, 0, 0, 0.06);
 
     .city-result-head {
         position: relative;
-        width: 32px;
-        height: 32px;
+        width: 44px;
+        height: 44px;
         flex-shrink: 0;
         overflow: hidden;
         border-radius: 4px;
@@ -97,12 +97,13 @@ $city-line: rgba(0, 0, 0, 0.06);
         // The head render sits at the top of the stock 90x130 avatar box
         // (common/index.scss), so the box is placed by offset rather than
         // centred - as the gang portraits do (RpGangsView.scss) - with the face
-        // in the middle of the 32px well: 29 = (90 - 32) / 2 across, and the
-        // face's centre sits 45px down the box.
+        // in the middle of the 44px well: 23 = (90 - 44) / 2 across, and the
+        // face's centre sits 45px down the box (45 - 44 / 2 = 23). 44 rather
+        // than 32 so big hair is not clipped.
         .avatar-image {
             position: absolute;
-            left: -29px;
-            top: -29px;
+            left: -23px;
+            top: -23px;
             image-rendering: pixelated;
         }
     }
