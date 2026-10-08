@@ -88,15 +88,6 @@ const useChatInputWidgetState = () =>
                     roomSession.sendExpressionMessage(AvatarExpressionEnum.WAVE.ordinal);
 
                     return null;
-                case ':kiss':
-                    if(GetClubMemberLevel() === HabboClubLevelEnum.VIP)
-                    {
-                        roomSession.sendExpressionMessage(AvatarExpressionEnum.BLOW.ordinal);
-
-                        return null;
-                    }
-
-                    break;
                 case ':jump':
                     if(GetClubMemberLevel() === HabboClubLevelEnum.VIP)
                     {
