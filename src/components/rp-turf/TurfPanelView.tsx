@@ -209,7 +209,6 @@ export const TurfPanelView: FC<{}> = props =>
                 <div className="rp-turf-owner">
                     <div className="rp-turf-owner-line">
                         <span className="rp-turf-muted">Controlled by</span>
-                        <span className="rp-turf-chip"><span style={ { background: shieldA } } /><span style={ { background: shieldB } } /></span>
                         <span className="rp-turf-owner-name">{ view.ownerName }</span>
                     </div>
                     { (view.heldForSeconds > 0) &&

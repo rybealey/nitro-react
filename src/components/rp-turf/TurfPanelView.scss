@@ -124,21 +124,7 @@ $turf-bar: #e87332;
     font-size: 12.5px;
 }
 
-// The holder's two colours as a chip, so the NAME can stay white whatever
-// palette a gang chose - a gang in black-and-navy would vanish as text.
-.rp-turf-chip {
-    display: flex;
-    width: 16px;
-    height: 10px;
-    border-radius: 2px;
-    overflow: hidden;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
-
-    > span {
-        flex-grow: 1;
-    }
-}
-
+// White whatever palette the gang chose - a gang in black-and-navy would vanish as text.
 .rp-turf-owner-name {
     font-weight: 700;
 }
