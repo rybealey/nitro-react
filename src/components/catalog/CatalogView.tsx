@@ -97,7 +97,7 @@ export const CatalogView: FC<{}> = props =>
                         }) }
                     </NitroCardTabsView>
                     <NitroCardContentView>
-                        <Grid>
+                        <Grid classNames={ navigationHidden ? [] : [ 'nitro-catalog-body' ] }>
                             { !navigationHidden &&
                                 <Column size={ 3 } overflow="hidden">
                                     { activeNodes && (activeNodes.length > 0) &&

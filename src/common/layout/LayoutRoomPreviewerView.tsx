@@ -74,6 +74,23 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
 
             roomPreviewer.modifyRoomCanvas(width, height);
 
+            // pixelrp: the plain background behind the room is the canvas's
+            // first child, sized once when the canvas was made. modifyRoomCanvas
+            // means to resize it, but the previewer never kept hold of it
+            // (its _backgroundSprite is never assigned), so it stayed at the
+            // first width. The picture is cut from the canvas's whole bounds,
+            // so after the window narrowed it came out at the OLD width, was
+            // cropped from the middle, and the furni sat off to the left.
+            // Only a tinted sprite is that background: a container there would
+            // be the room itself, which must never be stretched.
+            const background = (roomPreviewer.getRenderingCanvas()?.master as unknown as { children?: { width: number, height: number, tint?: number }[] })?.children?.[0];
+
+            if(background && (background.tint !== undefined))
+            {
+                background.width = width;
+                background.height = height;
+            }
+
             // pixelrp: the previewer centres on the item's bounds, measured
             // against the canvas width they were taken at, and keeps them
             // until the item changes - so a window made narrower went on

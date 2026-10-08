@@ -82,6 +82,17 @@
         &:active { background-color: #e87332; }
     }
 
+    // pixelrp: the category list takes about 30% of the window rather than
+    // the grid's 3 columns in 12, so the deeper sub-category names fit.
+    .nitro-catalog-body {
+        grid-template-columns: minmax(0, 3.6fr) minmax(0, 8.4fr) !important;
+
+        > .g-col-3,
+        > .g-col-9 {
+            grid-column: auto !important;
+        }
+    }
+
     // Quantity control. The box is wide enough for three digits and the
     // steppers borrow the grid-tile treatment - the stock bare carets were
     // fine as decoration beside a bundle, but this is the control a builder
