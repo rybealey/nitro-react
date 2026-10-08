@@ -20,9 +20,8 @@ const SKIES: [ string, number ][] = [
 ];
 
 const ALERT_TARGETS: [ string, number, number ][] = [
-    [ 'Everyone', CityAlertTarget.Everyone, CityCapability.AlertHotel ],
-    [ 'Staff', CityAlertTarget.Staff, CityCapability.AlertStaff ],
-    [ 'This room', CityAlertTarget.ThisRoom, CityCapability.AlertRoom ]
+    [ 'City Alert', CityAlertTarget.Everyone, CityCapability.AlertHotel ],
+    [ 'Room Alert', CityAlertTarget.ThisRoom, CityCapability.AlertRoom ]
 ];
 
 const REFRESH_MS = 15000;
@@ -128,11 +127,11 @@ export const CityWorldView: FC<{ context: CityPanelContext }> = props =>
                 <section className="mt-card mt-panel">
                     <span className="mt-label">Hotel alert</span>
                     <textarea className="form-control form-control-sm city-alert-text" aria-label="Alert message" rows={ 3 } maxLength={ MAX_ALERT } placeholder="What should everyone hear?" value={ message } onChange={ event => setMessage(event.target.value) } />
-                    <div className="mt-seg city-seg-3" role="group" aria-label="Send to">
+                    <div className="mt-seg" role="group" aria-label="Send to">
                         { ALERT_TARGETS.map(([ label, value, capability ]) =>
                             <button key={ value } type="button" className={ `mt-seg-button${ (target === value) ? ' is-on' : '' }` } aria-pressed={ (target === value) } disabled={ !has(context.capabilities, capability) } onClick={ () => setTarget(value) }>{ label }</button>) }
                     </div>
-                    <button type="button" className="mt-success" disabled={ !message.trim() || (target < 0) } onClick={ sendAlert }>Send alert</button>
+                    <button type="button" className="mt-success" disabled={ !message.trim() || (target < 0) } onClick={ sendAlert }>Send</button>
                 </section>
                 <section className="mt-card mt-panel">
                     <span className="mt-label">Sky over the city</span>
