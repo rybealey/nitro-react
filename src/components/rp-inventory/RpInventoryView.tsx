@@ -67,6 +67,10 @@ export const RpInventoryView: FC<{}> = props =>
     // re-renders the backpack.
     const [ bubbleText, setBubbleText ] = useState<string>(null);
     const bubbleRef = useRef<HTMLDivElement>(null);
+    // The slot (and the item in it) the bubble was opened for, so a backpack
+    // update can close it when that item is used up or moved: a slot that
+    // empties is redrawn without a pointer-leave, and the name stayed stuck.
+    const bubbleForRef = useRef<{ slot: number, item: string }>(null);
     const pointerRef = useRef({ x: 0, y: 0 });
     const useModeRef = useRef<HTMLDivElement>(null);
     // Kept outside the view (RpInventoryMessages) - the login send can arrive before it mounts.
@@ -79,6 +83,15 @@ export const RpInventoryView: FC<{}> = props =>
         const next = new Map<number, { item: string, count: number }>();
 
         for(const entry of event.getParser().items) next.set(entry.slot, { item: entry.item, count: entry.count });
+
+        // the item under the pointer was used up, moved or swapped: its name goes with it
+        const bubbleFor = bubbleForRef.current;
+
+        if(bubbleFor && ((next.get(bubbleFor.slot)?.item ?? null) !== bubbleFor.item))
+        {
+            bubbleForRef.current = null;
+            setBubbleText(null);
+        }
 
         setItems(next);
 
@@ -143,6 +156,12 @@ export const RpInventoryView: FC<{}> = props =>
 
     // 14px right of the pointer, level with it, so it clears the arrow cursor;
     // flipped to the left when it would run off the right of the screen.
+    const closeBubble = () =>
+    {
+        bubbleForRef.current = null;
+        setBubbleText(null);
+    }
+
     const placeBubble = () =>
     {
         const bubble = bubbleRef.current;
@@ -157,13 +176,14 @@ export const RpInventoryView: FC<{}> = props =>
         bubble.style.transform = `translate(${ left }px, ${ Math.round(y - (bubble.offsetHeight / 2)) }px)`;
     }
 
-    const bubbleProps = (text: string) => ({
+    const bubbleProps = (text: string, slot: number = null, item: string = null) => ({
         onPointerEnter: (event: ReactPointerEvent<HTMLDivElement>) =>
         {
             // No hover on touch screens.
             if(event.pointerType !== 'mouse') return;
 
             pointerRef.current = { x: event.clientX, y: event.clientY };
+            bubbleForRef.current = ((slot !== null) ? { slot, item } : null);
             setBubbleText(text);
         },
         onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) =>
@@ -171,7 +191,7 @@ export const RpInventoryView: FC<{}> = props =>
             pointerRef.current = { x: event.clientX, y: event.clientY };
             placeBubble();
         },
-        onPointerLeave: () => setBubbleText(null)
+        onPointerLeave: closeBubble
     });
 
     // Placed before paint, so a new bubble never flashes at the corner.
@@ -371,7 +391,7 @@ export const RpInventoryView: FC<{}> = props =>
                                 return (
                                     <div data-rp-slot={ WEAPON_SLOT }
                                         className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ (equipped.item === STUN_GUN) ? ' has-charge' : '' }${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
-                                        { ...bubbleProps(`${ meta.name } (equipped)`) }
+                                        { ...bubbleProps(`${ meta.name } (equipped)`, WEAPON_SLOT, equipped.item) }
                                         onClick={ () => onItemClick(WEAPON_SLOT) }
                                         onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
                                         onPointerDown={ event => onItemDown(event, WEAPON_SLOT) }>
@@ -381,7 +401,7 @@ export const RpInventoryView: FC<{}> = props =>
                             }
 
                             return (
-                                <div data-rp-slot={ WEAPON_SLOT } className={ `rp-inventory-slot rp-inventory-slot--gear${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` } { ...bubbleProps('Weapon') }>
+                                <div data-rp-slot={ WEAPON_SLOT } className={ `rp-inventory-slot rp-inventory-slot--gear${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` } { ...bubbleProps('Weapon', WEAPON_SLOT) }>
                                     <LuSwords className="rp-inventory-gear-icon" />
                                 </div>);
                         })() }
@@ -395,7 +415,7 @@ export const RpInventoryView: FC<{}> = props =>
                             if((slot > unlockedSlots) && !items.get(slot))
                             {
                                 return (
-                                    <div key={ slot } className="rp-inventory-slot is-locked" { ...bubbleProps('Locked') }>
+                                    <div key={ slot } className="rp-inventory-slot is-locked" { ...bubbleProps('Locked', slot) }>
                                         <LuLock className="rp-inventory-slot-icon rp-inventory-slot-icon--locked" />
                                     </div>);
                             }
@@ -408,7 +428,7 @@ export const RpInventoryView: FC<{}> = props =>
                                 return (
                                     <div key={ slot } data-rp-slot={ slot }
                                         className={ `rp-inventory-slot has-item${ (entry.item === STUN_GUN) ? ' has-charge' : '' }${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
-                                        { ...bubbleProps(meta.name) }
+                                        { ...bubbleProps(meta.name, slot, entry.item) }
                                         onClick={ () => onItemClick(slot) }
                                         onDoubleClick={ () => onItemDoubleClick(slot) }
                                         onPointerDown={ event => onItemDown(event, slot) }>
@@ -421,7 +441,8 @@ export const RpInventoryView: FC<{}> = props =>
 
                             return (
                                 <div key={ slot } data-rp-slot={ slot }
-                                    className={ `rp-inventory-slot${ (dropTarget === slot) ? ' is-drop-target' : '' }` }>
+                                    className={ `rp-inventory-slot${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                    onPointerLeave={ closeBubble }>
                                     <span className="rp-inventory-slot-label">{ slot }</span>
                                 </div>);
                         }) }
