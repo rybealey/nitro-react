@@ -45,7 +45,7 @@ index b12e992..1a735f6 100644
      {
          let isValid = false;
 diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
-index 281346f..d39a116 100644
+index 281346f..c404ebc 100644
 --- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
 +++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
 @@ -27,6 +27,14 @@ export class AvatarLogic extends MovingObjectLogic
@@ -59,7 +59,7 @@ index 281346f..d39a116 100644
 +    // FIGURE_RP_KISS_HEARTS for RP_KISS_HEARTS_LENGTH instead, and the
 +    // visualization floats fx 9's hearts over whatever effect is worn.
 +    private static RP_KISS_HEARTS_EXPRESSION: number = 101;
-+    private static RP_KISS_HEARTS_LENGTH: number = 3000;
++    private static RP_KISS_HEARTS_LENGTH: number = 2000;
      private static EFFECT_TYPE_SPLASH: number = 28;
      private static EFFECT_SPLASH_LENGTH: number = 500;
      private static EFFECT_TYPE_SWIM: number = 29;
@@ -195,10 +195,10 @@ index 67a79e8..5ad5b4d 100644
          return this._direction;
 diff --git a/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts b/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts
 new file mode 100644
-index 0000000..1dd632c
+index 0000000..faf1803
 --- /dev/null
 +++ b/src/nitro/room/object/visualization/avatar/additions/LoveHeartAddition.ts
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,132 @@
 +import { BLEND_MODES } from '@pixi/constants';
 +import { Resource, Texture } from '@pixi/core';
 +import { Matrix } from '@pixi/math';
@@ -227,8 +227,9 @@ index 0000000..1dd632c
 +    public static EFFECT_ID: number = 9;
 +
 +    private static FRAME_COUNT: number = 21;
-+    // One avatar animation frame: AvatarVisualization moves an effect on once per update.
-+    private static FRAME_LENGTH: number = 41;
++    // One avatar animation frame. AvatarVisualization updates every 41ms but moves
++    // an effect on only every second update (ANIMATION_FRAME_UPDATE_INTERVAL).
++    private static FRAME_LENGTH: number = 82;
 +    // Love's sprites fx9_1-3: where each starts in the loop, and how far it sits from the first.
 +    private static TRACKS: { start: number, dx: number, dy: number }[] = [
 +        { start: 0, dx: 0, dy: 0 },
