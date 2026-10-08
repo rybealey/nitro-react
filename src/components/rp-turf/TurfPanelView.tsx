@@ -15,8 +15,6 @@ import { useLocalStorage, useMessageEvent, useNavigator, useRoom } from '../../h
 
 const NEUTRAL_A = 'b8b8b8';
 const NEUTRAL_B = '444444';
-/** How long a failure stays on the panel before it goes back to normal. */
-const FAIL_VISIBLE_MS = 12000;
 /** The collapse animation's length - rp-turf-lift in TurfPanelView.scss. */
 const COLLAPSE_MS = 150;
 
@@ -141,7 +139,6 @@ export const TurfPanelView: FC<{}> = props =>
     const held = view.elapsedSeconds + ((view.capturing && !view.contested) ? since : 0);
     const left = Math.max(0, view.totalSeconds - held);
     const progress = ((view.totalSeconds > 0) ? Math.min(100, (held / view.totalSeconds) * 100) : 0);
-    const failed = (!view.capturing && !!view.failReason && ((since * 1000) < FAIL_VISIBLE_MS));
 
     let statusLabel = 'UNCLAIMED';
     let statusClass = 'is-neutral';
@@ -226,11 +223,6 @@ export const TurfPanelView: FC<{}> = props =>
                     <div className={ `rp-turf-bar ${ view.contested ? 'is-paused' : '' }` }>
                         <div style={ { width: `${ progress }%` } } />
                     </div>
-                </div> }
-            { failed &&
-                <div className="rp-turf-failed" role="status">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z" /><path d="M12 10v4" /><path d="M12 17h.01" /></svg>
-                    <span>{ view.failReason }</span>
                 </div> }
             { !holding && (canClaim
                 ? <button type="button" className="rp-turf-claim" onClick={ claim }><FlagIcon size={ 16 } />Claim Territory</button>
