@@ -8,6 +8,7 @@ import { Flex, HoverBubble, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../../../api/rp-gangs/RpGangMessages';
+import { RpSetHudTargetComposer } from '../../../../api/rp-chat/RpChatMessages';
 import { GetRpGang, SetRpGang } from '../../../../api/rp-gangs/RpGangRegistry';
 import { GangCrest } from '../../../rp-gangs/GangCrest';
 import { RpProfileState } from '../../../rp-profile/RpProfileState';
@@ -390,6 +391,15 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
         return { status: 'selected', name: info.name };
     }, [ findRoomUserByName, locked, target ]);
+
+    // Tell the server who is selected, on every change: a target command typed
+    // without a name (":kiss", ":charge theft") is aimed at them.
+    const targetUserId = (target ? target.webID : 0);
+
+    useEffect(() =>
+    {
+        SendMessageComposer(new RpSetHudTargetComposer(targetUserId));
+    }, [ targetUserId ]);
 
     // Mirror the selected target for non-React consumers — the chat input reads
     // this when expanding the "@x" target-mention shorthand into a shout.
