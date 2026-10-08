@@ -7,13 +7,14 @@ import { useCatalog, useLocalStorage, usePurse, useUiEvent } from '../../../../.
 
 interface CatalogPurchaseWidgetViewProps
 {
+    /** pixelrp: no longer read - the shop has no Buy as gift button at all (Furni Shop canvas). */
     noGiftOption?: boolean;
     purchaseCallback?: () => void;
 }
 
 export const CatalogPurchaseWidgetView: FC<CatalogPurchaseWidgetViewProps> = props =>
 {
-    const { noGiftOption = false, purchaseCallback = null } = props;
+    const { purchaseCallback = null } = props;
     const [ purchaseWillBeGift, setPurchaseWillBeGift ] = useState(false);
     const [ purchaseState, setPurchaseState ] = useState(CatalogPurchaseState.NONE);
     const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useLocalStorage(LocalStorageKeys.CATALOG_SKIP_PURCHASE_CONFIRMATION, false);
@@ -156,17 +157,10 @@ export const CatalogPurchaseWidgetView: FC<CatalogPurchaseWidgetViewProps> = pro
                 return <Button variant="danger">{ LocalizeText('generic.failed') + ' - ' + LocalizeText('catalog.alert.limited_edition_sold_out.title') }</Button>;
             case CatalogPurchaseState.NONE:
             default:
-                return <Button disabled={ (purchaseOptions.extraParamRequired && (!purchaseOptions.extraData || !purchaseOptions.extraData.length)) } onClick={ event => setPurchaseState(CatalogPurchaseState.CONFIRM) }>{ LocalizeText('catalog.purchase_confirmation.' + (currentOffer.isRentOffer ? 'rent' : 'buy')) }</Button>;
+                return <Button classNames={ [ 'catalog-buy-button' ] } disabled={ (purchaseOptions.extraParamRequired && (!purchaseOptions.extraData || !purchaseOptions.extraData.length)) } onClick={ event => setPurchaseState(CatalogPurchaseState.CONFIRM) }>{ LocalizeText('catalog.purchase_confirmation.' + (currentOffer.isRentOffer ? 'rent' : 'buy')) }</Button>;
         }
     }
 
-    return (
-        <>
-            <PurchaseButton />
-            { (!noGiftOption && !currentOffer.isRentOffer) &&
-                <Button disabled={ ((purchaseOptions.quantity > 1) || !currentOffer.giftable || isLimitedSoldOut || (purchaseOptions.extraParamRequired && (!purchaseOptions.extraData || !purchaseOptions.extraData.length))) } onClick={ event => purchase(true) }>
-                    { LocalizeText('catalog.purchase_confirmation.gift') }
-                </Button> }
-        </>
-    );
+    // pixelrp: Buy only - the Buy as gift button is gone (Furni Shop canvas).
+    return <PurchaseButton />;
 }

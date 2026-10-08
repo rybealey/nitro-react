@@ -31,6 +31,57 @@
         width: 30px;
     }
 
+    // pixelrp (Furni Shop canvas): the search button and Buy wear the
+    // header's orange, with a darker bottom edge.
+    .catalog-search-button,
+    .catalog-buy-button {
+        border: 1px solid #c9601f !important;
+        background: #e87332 !important;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+        color: $white !important;
+
+        &:hover:not(:disabled) {
+            background: #d9672a !important;
+        }
+
+        &:active:not(:disabled) {
+            box-shadow: none;
+        }
+    }
+
+    .catalog-buy-button {
+        min-height: 28px;
+        border-radius: 5px;
+        font-weight: 700;
+    }
+
+    // Every scrollbar in the shop - the category list and the furni grid -
+    // in the rows' grey, darker on hover, orange while dragged. Overrides the
+    // global thin chrome line (assets/styles/scrollbars.scss) for this window.
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: #b6bec5 transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px !important;
+    }
+
+    ::-webkit-scrollbar-track {
+        border: 0 !important;
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        border: 2px solid transparent !important;
+        border-radius: 4px;
+        background: #b6bec5;
+        background-clip: padding-box;
+
+        &:hover { background-color: #9aa5ae; }
+        &:active { background-color: #e87332; }
+    }
+
     // Quantity control. The box is wide enough for three digits and the
     // steppers borrow the grid-tile treatment - the stock bare carets were
     // fine as decoration beside a bundle, but this is the control a builder
@@ -84,40 +135,25 @@
 }
 
 .nitro-catalog-navigation-grid-container {
-    // pixelrp (Furni Shop canvas, "Modern categories"): no box behind the
-    // list - the rows sit on the window's pale page, each its own rounded row.
+    // pixelrp (Furni Shop canvas, "Softer categories"): no box behind the
+    // list - the rows sit on the window's pale page, each its own soft row.
     border: 0 !important;
     background-color: transparent;
-    padding: 0 2px 0 0 !important;
+    padding: 2px 4px 2px 2px !important;
+
+    #nitro-catalog-main-navigation {
+        gap: 5px !important;
+    }
 
     .nitro-catalog-navigation-section {
         display: grid;
 
         // spaced by padding, not a gap, so the indent line runs unbroken
         .nitro-catalog-navigation-section {
-            margin-left: 6px;
-            padding-top: 3px;
-            padding-left: 6px;
-            border-left: 2px solid #9aa5ae;
-        }
-    }
-
-    // the list's own scrollbar, in the rows' grey, orange while dragged
-    #nitro-catalog-main-navigation {
-        scrollbar-width: thin;
-        scrollbar-color: #b6bec5 transparent;
-
-        &::-webkit-scrollbar { width: 8px; }
-        &::-webkit-scrollbar-track { background: transparent; border: 0; }
-
-        &::-webkit-scrollbar-thumb {
-            border: 2px solid transparent !important;
-            border-radius: 4px;
-            background: #b6bec5;
-            background-clip: padding-box;
-
-            &:hover { background-color: #9aa5ae; }
-            &:active { background-color: #e87332; }
+            margin-left: 13px;
+            padding-top: 1px;
+            padding-left: 5px;
+            border-left: 2px solid #e2e4e8;
         }
     }
 
@@ -130,10 +166,10 @@
 
     // pixelrp: group label row (page_link='heading'), e.g. Builders' Construction.
     .nitro-catalog-navigation-heading {
-        padding: 10px 4px 2px;
-        font-size: 11px;
+        padding: 9px 3px 3px;
+        font-size: 10.5px;
         font-weight: 700;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         color: #3f4850;
         cursor: default;
@@ -160,22 +196,29 @@
         }
     }
 
-    // A category row (CatalogNavigationItemView). The !importants beat the
-    // grid item's own .active colours.
+    // A category row (CatalogNavigationItemView): white, no outline, a faint
+    // shadow to lift it off the page. The !importants beat the grid item's own
+    // .active colours.
     .layout-grid-item.nav-row {
-        height: 28px !important;
-        gap: 7px !important;
-        padding: 0 7px 0 4px;
-        border: 1px solid #b6bec5 !important;
+        height: 30px !important;
+        gap: 8px !important;
+        padding: 0 9px 0 5px;
+        border: 0 !important;
         border-radius: 5px !important;
         background-color: $white !important;
-        font-size: 11px;
+        box-shadow: 0 1px 2px rgba(28, 28, 32, 0.07), 0 1px 1px rgba(28, 28, 32, 0.04);
+        font-size: 12px;
         font-weight: 500;
-        color: #1c1c20;
+        color: #2a2d33;
         cursor: pointer;
+        transition: background-color 0.12s ease, box-shadow 0.12s ease;
 
-        &:hover { background-color: #f4f6f8 !important; }
+        &:hover {
+            background-color: #fbfbfc !important;
+            box-shadow: 0 2px 6px rgba(28, 28, 32, 0.1);
+        }
 
+        // the icon keeps a fixed slot so the names line up; no box behind it
         .nav-ico {
             width: 22px;
             height: 22px;
@@ -183,42 +226,38 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 4px;
-            background: #e6e9ec;
         }
 
+        // sub-categories sit flat under their parent until hovered
         &.is-child {
-            height: 26px !important;
-            background-color: #f8f9fa !important;
+            height: 27px !important;
+            border-radius: 4px !important;
+            background-color: transparent !important;
+            box-shadow: none;
 
-            &:hover { background-color: #eef0f2 !important; }
+            &:hover {
+                background-color: $white !important;
+                box-shadow: 0 1px 2px rgba(28, 28, 32, 0.07);
+            }
         }
 
-        &.is-page {
-            background-color: #ececec !important;
-            border-color: #9aa5ae !important;
+        // the open page, and a sub-category open inside another: pale orange
+        &.is-page,
+        &.is-open-branch.is-child {
+            background-color: #fff4ec !important;
+            box-shadow: inset 0 0 0 1.5px #f2b58e;
+            color: #8f3c10;
             font-weight: 700;
         }
 
-        // the open category: the header's orange (a sub-category open inside
-        // another gets a pale orange, so one row in the list is the loud one)
-        &.is-open-branch {
-            background-color: #e87332 !important;
-            border-color: #d9672a !important;
+        // the open category: the header's orange, with a soft glow
+        &.is-open-branch:not(.is-child) {
+            background: linear-gradient(#f0954a, #e87332) !important;
+            box-shadow: 0 2px 6px rgba(232, 115, 50, 0.35);
             color: $white;
             font-weight: 700;
 
-            .nav-ico { background: rgba($white, 0.25); }
             .svg-inline--fa { color: $white; }
-
-            &.is-child {
-                background-color: #fde8da !important;
-                border-color: #f0b48a !important;
-                color: #1c1c20;
-
-                .nav-ico { background: #e6e9ec; }
-                .svg-inline--fa { color: $black; }
-            }
         }
     }
 }

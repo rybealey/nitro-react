@@ -74,6 +74,14 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
 
             roomPreviewer.modifyRoomCanvas(width, height);
 
+            // pixelrp: the previewer centres on the item's bounds, measured
+            // against the canvas width they were taken at, and keeps them
+            // until the item changes - so a window made narrower went on
+            // centring for the old width and the item slid to the left edge.
+            // Forgetting them makes the next frame measure and centre afresh
+            // (the renderer does the same itself when its scale changes).
+            (roomPreviewer as unknown as { _currentPreviewRectangle: unknown })._currentPreviewRectangle = null;
+
             update(-1);
         });
         
