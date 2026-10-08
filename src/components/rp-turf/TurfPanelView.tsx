@@ -163,7 +163,7 @@ export const TurfPanelView: FC<{}> = props =>
 
     let tabLine = (owned ? `Held by ${ view.ownerName }` : 'Unclaimed');
 
-    if(view.capturing) tabLine = (view.contested ? `Contested · ${ clock(left) } left` : `${ view.claimerName } is claiming · ${ clock(left) }`);
+    if(view.capturing) tabLine = (view.contested ? `Contested · ${ clock(left) } left` : `${ view.claimGangName } is claiming · ${ clock(left) }`);
 
     if(!open)
     {
@@ -217,7 +217,7 @@ export const TurfPanelView: FC<{}> = props =>
             { view.capturing &&
                 <div className="rp-turf-capture">
                     <div className="rp-turf-capture-line">
-                        <span><strong>{ view.claimerName }</strong> of { view.claimGangName }</span>
+                        <span><strong>{ view.claimGangName }</strong></span>
                     </div>
                     <div className={ `rp-turf-bar ${ view.contested ? 'is-paused' : '' }` }>
                         <div style={ { width: `${ progress }%` } } />
