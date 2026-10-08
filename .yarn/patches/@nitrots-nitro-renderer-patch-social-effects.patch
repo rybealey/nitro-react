@@ -220,7 +220,7 @@ index 67a79e8..be256f1 100644
          return this._direction;
 diff --git a/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts b/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts
 new file mode 100644
-index 0000000..a4a5286
+index 0000000..b48ea5f
 --- /dev/null
 +++ b/src/nitro/room/object/visualization/avatar/additions/SocialEffectAddition.ts
 @@ -0,0 +1,157 @@
@@ -282,9 +282,9 @@ index 0000000..a4a5286
 +        // hair and walls.
 +        [ 9, { member: 'std_fx9_1_1', frames: 21, frameLength: SocialEffectAddition.FRAME_LENGTH, blendMode: BLEND_MODES.ADD, alpha: 255, tracks: [ { start: 0, dx: 0, dy: 0 }, { start: 10, dx: 10, dy: -3 }, { start: 14, dx: 18, dy: 2 } ] } ],
 +        // Spinning Hearts: one picture of the whole ring of hearts per frame.
-+        // At half Habbo's speed (one turn in the two seconds) and 60% seen,
-+        // so the big hearts sit over the hug instead of covering it.
-+        [ 168, { member: 'std_fx168_1_1', frames: 12, frameLength: (SocialEffectAddition.FRAME_LENGTH * 2), blendMode: BLEND_MODES.NORMAL, alpha: 153, tracks: [ { start: 0, dx: 0, dy: 0 } ] } ]
++        // A turn every 1.5 seconds against Habbo's 1, and 90% seen, so the
++        // big hearts sit over the hug instead of covering it.
++        [ 168, { member: 'std_fx168_1_1', frames: 12, frameLength: 125, blendMode: BLEND_MODES.NORMAL, alpha: 230, tracks: [ { start: 0, dx: 0, dy: 0 } ] } ]
 +    ]);
 +    private static SMALL_TEXTURES: Map<string, Texture<Resource>> = new Map();
 +
