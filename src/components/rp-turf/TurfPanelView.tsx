@@ -218,7 +218,6 @@ export const TurfPanelView: FC<{}> = props =>
                 <div className="rp-turf-capture">
                     <div className="rp-turf-capture-line">
                         <span><strong>{ view.claimerName }</strong> of { view.claimGangName }</span>
-                        <span className="rp-turf-clock">{ clock(left) }</span>
                     </div>
                     <div className={ `rp-turf-bar ${ view.contested ? 'is-paused' : '' }` }>
                         <div style={ { width: `${ progress }%` } } />
