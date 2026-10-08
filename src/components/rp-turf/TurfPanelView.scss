@@ -137,13 +137,6 @@ $turf-bar: #e87332;
     color: $turf-muted;
 }
 
-.rp-turf-unclaimed {
-    font-size: 12.5px;
-    color: #c4c4cc;
-    text-align: center;
-    line-height: 1.4;
-}
-
 .rp-turf-capture {
     width: 100%;
     display: flex;
@@ -182,12 +175,6 @@ $turf-bar: #e87332;
         background-image: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.35) 0, rgba(0, 0, 0, 0.35) 4px, transparent 4px, transparent 8px) !important;
         transition: none;
     }
-}
-
-.rp-turf-capture-note {
-    font-size: 11px;
-    color: $turf-muted;
-    line-height: 1.4;
 }
 
 .rp-turf-failed {

@@ -217,8 +217,6 @@ export const TurfPanelView: FC<{}> = props =>
                             <span>{ heldFor(view.heldForSeconds + since) }</span>
                         </div> }
                 </div> }
-            { (!owned && !view.capturing && !failed) &&
-                <div className="rp-turf-unclaimed">No gang holds this turf.<br />It&apos;s anyone&apos;s for the taking.</div> }
             { view.capturing &&
                 <div className="rp-turf-capture">
                     <div className="rp-turf-capture-line">
@@ -227,11 +225,6 @@ export const TurfPanelView: FC<{}> = props =>
                     </div>
                     <div className={ `rp-turf-bar ${ view.contested ? 'is-paused' : '' }` }>
                         <div style={ { width: `${ progress }%` } } />
-                    </div>
-                    <div className="rp-turf-capture-note">
-                        { view.contested
-                            ? `Contested: ${ view.contestedBy || 'a rival' } is here. The claim is paused until every rival leaves.`
-                            : 'Hold the room. A rival gang member walking in pauses the claim.' }
                     </div>
                 </div> }
             { failed &&
