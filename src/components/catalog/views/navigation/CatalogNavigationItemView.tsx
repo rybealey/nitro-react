@@ -44,10 +44,19 @@ export const CatalogNavigationItemView: FC<CatalogNavigationItemViewProps> = pro
         return <Base className="nitro-catalog-navigation-heading">{ node.localization }</Base>;
     }
 
+    // pixelrp: the row's look (Furni Shop canvas, "Modern categories"): an
+    // open category is filled orange, the open page is the grey highlight,
+    // and a sub-category row sits indented under its parent.
+    const rowClasses = [ 'nav-row' ];
+
+    if(child) rowClasses.push('is-child');
+    if(isOpenPage) rowClasses.push('is-page');
+    else if(node.isBranch && node.isOpen && node.isActive) rowClasses.push('is-open-branch');
+
     return (
         <Base className="nitro-catalog-navigation-section">
-            <LayoutGridItem innerRef={ rowRef } gap={ 1 } column={ false } itemActive={ node.isActive } onClick={ event => activateNode(node) } className={ child ? 'inset' : '' }>
-                <CatalogIconView icon={ node.iconId } />
+            <LayoutGridItem innerRef={ rowRef } gap={ 1 } column={ false } itemActive={ node.isActive } onClick={ event => activateNode(node) } className={ child ? 'inset' : '' } classNames={ rowClasses }>
+                <span className="nav-ico"><CatalogIconView icon={ node.iconId } /></span>
                 <Text grow truncate>{ node.localization }</Text>
                 { node.isBranch &&
                     <>

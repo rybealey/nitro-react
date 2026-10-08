@@ -84,16 +84,40 @@
 }
 
 .nitro-catalog-navigation-grid-container {
-    border-color: #b6bec5 !important;
-    background-color: #cdd3d9;
-    border: 2px solid;
+    // pixelrp (Furni Shop canvas, "Modern categories"): no box behind the
+    // list - the rows sit on the window's pale page, each its own rounded row.
+    border: 0 !important;
+    background-color: transparent;
+    padding: 0 2px 0 0 !important;
 
     .nitro-catalog-navigation-section {
         display: grid;
 
+        // spaced by padding, not a gap, so the indent line runs unbroken
         .nitro-catalog-navigation-section {
-            padding-left: 5px;
-            border-left: 2px solid #b6bec5;
+            margin-left: 6px;
+            padding-top: 3px;
+            padding-left: 6px;
+            border-left: 2px solid #9aa5ae;
+        }
+    }
+
+    // the list's own scrollbar, in the rows' grey, orange while dragged
+    #nitro-catalog-main-navigation {
+        scrollbar-width: thin;
+        scrollbar-color: #b6bec5 transparent;
+
+        &::-webkit-scrollbar { width: 8px; }
+        &::-webkit-scrollbar-track { background: transparent; border: 0; }
+
+        &::-webkit-scrollbar-thumb {
+            border: 2px solid transparent !important;
+            border-radius: 4px;
+            background: #b6bec5;
+            background-clip: padding-box;
+
+            &:hover { background-color: #9aa5ae; }
+            &:active { background-color: #e87332; }
         }
     }
 
@@ -133,6 +157,68 @@
             color: $black;
             font-size: 10px;
             padding: 1px;
+        }
+    }
+
+    // A category row (CatalogNavigationItemView). The !importants beat the
+    // grid item's own .active colours.
+    .layout-grid-item.nav-row {
+        height: 28px !important;
+        gap: 7px !important;
+        padding: 0 7px 0 4px;
+        border: 1px solid #b6bec5 !important;
+        border-radius: 5px !important;
+        background-color: $white !important;
+        font-size: 11px;
+        font-weight: 500;
+        color: #1c1c20;
+        cursor: pointer;
+
+        &:hover { background-color: #f4f6f8 !important; }
+
+        .nav-ico {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            background: #e6e9ec;
+        }
+
+        &.is-child {
+            height: 26px !important;
+            background-color: #f8f9fa !important;
+
+            &:hover { background-color: #eef0f2 !important; }
+        }
+
+        &.is-page {
+            background-color: #ececec !important;
+            border-color: #9aa5ae !important;
+            font-weight: 700;
+        }
+
+        // the open category: the header's orange (a sub-category open inside
+        // another gets a pale orange, so one row in the list is the loud one)
+        &.is-open-branch {
+            background-color: #e87332 !important;
+            border-color: #d9672a !important;
+            color: $white;
+            font-weight: 700;
+
+            .nav-ico { background: rgba($white, 0.25); }
+            .svg-inline--fa { color: $white; }
+
+            &.is-child {
+                background-color: #fde8da !important;
+                border-color: #f0b48a !important;
+                color: #1c1c20;
+
+                .nav-ico { background: #e6e9ec; }
+                .svg-inline--fa { color: $black; }
+            }
         }
     }
 }
