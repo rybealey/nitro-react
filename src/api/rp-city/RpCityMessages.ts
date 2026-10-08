@@ -27,6 +27,7 @@ const RP_CITY_ECONOMY_STATE = 4177; // server -> client
 const RP_CITY_PAY_SAVE = 4178; // client -> server
 const RP_CITY_PRICE_SAVE = 4179; // client -> server
 const RP_CITY_CLOCK_OUT = 4180; // client -> server
+const RP_CITY_CORP_SETTING = 4183; // client -> server: one corporation setting
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -53,7 +54,12 @@ export interface CityEconomyCorp
     name: string;
     ranks: { id: number, name: string, pay: number }[];
     onShift: { userId: number, username: string, rankName: string }[];
+    /** Left out of the Corporations window. */
+    hidden: boolean;
 }
+
+/** CityEconomy.Setting* */
+export const CityCorpSetting = { Hidden: 1 };
 
 export interface CityServicePrice
 {
@@ -328,7 +334,7 @@ export class RpCityEconomyStateParser implements IMessageParser
 
         while(corps-- > 0)
         {
-            const corp: CityEconomyCorp = { id: wrapper.readInt(), name: wrapper.readString(), ranks: [], onShift: [] };
+            const corp: CityEconomyCorp = { id: wrapper.readInt(), name: wrapper.readString(), ranks: [], onShift: [], hidden: false };
 
             let ranks = wrapper.readInt();
 
@@ -337,6 +343,8 @@ export class RpCityEconomyStateParser implements IMessageParser
             let shifts = wrapper.readInt();
 
             while(shifts-- > 0) corp.onShift.push({ userId: wrapper.readInt(), username: wrapper.readString(), rankName: wrapper.readString() });
+
+            corp.hidden = wrapper.readBoolean();
 
             this._corps.push(corp);
         }
@@ -723,6 +731,14 @@ export class RpCityClockOutComposer extends RpCityComposer<[ number ]>
     }
 }
 
+export class RpCityCorpSettingComposer extends RpCityComposer<[ number, number, number ]>
+{
+    constructor(corpId: number, setting: number, value: number) 
+    {
+        super(corpId, setting, value); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -758,7 +774,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_ECONOMY, RpCityEconomyComposer ],
             [ RP_CITY_PAY_SAVE, RpCityPaySaveComposer ],
             [ RP_CITY_PRICE_SAVE, RpCityPriceSaveComposer ],
-            [ RP_CITY_CLOCK_OUT, RpCityClockOutComposer ]
+            [ RP_CITY_CLOCK_OUT, RpCityClockOutComposer ],
+            [ RP_CITY_CORP_SETTING, RpCityCorpSettingComposer ]
         ])
     });
 

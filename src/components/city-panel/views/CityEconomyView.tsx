@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../../api';
-import { CityCapability, CityEconomyCorp, CityServicePrice, RpCityClockOutComposer, RpCityEconomyComposer, RpCityEconomyStateEvent, RpCityPaySaveComposer, RpCityPriceSaveComposer } from '../../../api/rp-city/RpCityMessages';
+import { CityCapability, CityCorpSetting, CityEconomyCorp, CityServicePrice, RpCityClockOutComposer, RpCityCorpSettingComposer, RpCityEconomyComposer, RpCityEconomyStateEvent, RpCityPaySaveComposer, RpCityPriceSaveComposer } from '../../../api/rp-city/RpCityMessages';
 import { useMessageEvent } from '../../../hooks';
 import { CityPanelContext } from '../CityPanelView';
 
@@ -98,21 +98,34 @@ export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
                 { !corp && <div className="mt-empty">Pick a corporation.</div> }
                 { corp &&
                     <div className="city-economy-grid">
-                        <section className="mt-card mt-panel">
-                            <div className="city-world-line">
-                                <span className="mt-label">Pay by rank</span>
-                                <span className="mt-muted city-small">coins per 10 minutes on shift</span>
-                            </div>
-                            <div className="city-list">
-                                { corp.ranks.map(rank =>
-                                    <div key={ rank.id } className="city-list-row">
-                                        <span>{ rank.name }</span>
-                                        <Amount value={ rank.pay } label={ `${ rank.name } pay` } disabled={ !canEconomy } max={ 10000 } onSave={ pay => SendMessageComposer(new RpCityPaySaveComposer(rank.id, pay)) } />
-                                    </div>) }
-                                { !corp.ranks.length && <div className="mt-empty">No ranks.</div> }
-                            </div>
-                            <span className="mt-hint">Everyone on duty at a rank is paid the new figure from their next payday.</span>
-                        </section>
+                        <div className="city-economy-column">
+                            <section className="mt-card mt-panel">
+                                <div className="city-world-line">
+                                    <span className="mt-label">Pay by rank</span>
+                                    <span className="mt-muted city-small">coins per 10 minutes on shift</span>
+                                </div>
+                                <div className="city-list">
+                                    { corp.ranks.map(rank =>
+                                        <div key={ rank.id } className="city-list-row">
+                                            <span>{ rank.name }</span>
+                                            <Amount value={ rank.pay } label={ `${ rank.name } pay` } disabled={ !canEconomy } max={ 10000 } onSave={ pay => SendMessageComposer(new RpCityPaySaveComposer(rank.id, pay)) } />
+                                        </div>) }
+                                    { !corp.ranks.length && <div className="mt-empty">No ranks.</div> }
+                                </div>
+                                <span className="mt-hint">Everyone on duty at a rank is paid the new figure from their next payday.</span>
+                            </section>
+                            <section className="mt-card mt-panel">
+                                <span className="mt-label">Settings</span>
+                                <div className="city-world-line">
+                                    <div className="city-world-text">
+                                        <b>Hide corporation</b>
+                                        <span className="mt-muted">Leaves it out of the Corporations window for everybody. Its staff, shifts and pay carry on.</span>
+                                    </div>
+                                    <button type="button" className={ `mt-switch${ corp.hidden ? ' is-on' : '' }` } role="switch" aria-checked={ corp.hidden } aria-label="Hide corporation" disabled={ !canEconomy }
+                                        onClick={ () => SendMessageComposer(new RpCityCorpSettingComposer(corp.id, CityCorpSetting.Hidden, corp.hidden ? 0 : 1)) }><span /></button>
+                                </div>
+                            </section>
+                        </div>
                         <div className="city-economy-column">
                             <section className="mt-card mt-panel">
                                 <span className="mt-label">On shift now</span>
