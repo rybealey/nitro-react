@@ -70,7 +70,8 @@ export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
     const canShifts = has(context.capabilities, CityCapability.Shifts);
     const corp = corps.find(entry => (entry.id === corpId)) ?? null;
     const onShift = corps.filter(entry => entry.onShift.length);
-    const corpName = (id: number) => (corps.find(entry => (entry.id === id))?.name ?? 'No corporation yet');
+    // Prices follow the corporation picked above: each lists only its own.
+    const corpPrices = prices.filter(price => (price.corporationId === corpId));
 
     return (
         <div className="city-economy">
@@ -109,14 +110,14 @@ export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
                             </div>) }
                     </section>
                     <section className="mt-card mt-panel">
-                        <span className="mt-label">Service prices</span>
+                        <span className="mt-label">Service prices{ corp && <span className="mt-label-note"> · { corp.name }</span> }</span>
                         <div className="city-list">
-                            { prices.map(price =>
+                            { corpPrices.map(price =>
                                 <div key={ price.key } className="city-list-row">
-                                    <span className="city-price-name">{ price.name } <span className="mt-muted">· { corpName(price.corporationId) }</span></span>
+                                    <span className="city-price-name">{ price.name }</span>
                                     <Amount value={ price.price } label={ `${ price.name } price` } disabled={ !canEconomy } max={ 100000 } onSave={ value => SendMessageComposer(new RpCityPriceSaveComposer(price.key, value)) } />
                                 </div>) }
-                            { !prices.length && <div className="mt-empty">No services yet.</div> }
+                            { !corpPrices.length && <div className="mt-empty">{ corp ? `${ corp.name } has no services priced yet.` : 'No services yet.' }</div> }
                         </div>
                         <span className="mt-hint">In coins. Each corporation starts charging its price when its billing ships.</span>
                     </section>
