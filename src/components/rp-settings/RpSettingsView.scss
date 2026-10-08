@@ -944,6 +944,28 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         color: $mx-ink;
     }
 
+    // General > Sound > Ping sound: a Play button beside the value box.
+    .rp-settings-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .rp-settings-card-test {
+        height: 20px;
+        padding: 0 8px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        background: $mx-body;
+        font-size: 11px;
+        font-weight: 700;
+        color: $mx-ink;
+        cursor: pointer;
+
+        &:hover:not(:disabled) { background: darken($mx-body, 5%); }
+        &:disabled { opacity: 0.5; cursor: default; }
+    }
+
     .rp-settings-fps-value {
         min-width: 48px;
         box-sizing: border-box;

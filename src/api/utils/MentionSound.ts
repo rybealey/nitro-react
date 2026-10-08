@@ -1,4 +1,6 @@
 import MentionSoundFile from '../../assets/sounds/mention.mp3';
+import { GetLocalStorage } from './GetLocalStorage';
+import { SetLocalStorage } from './SetLocalStorage';
 
 // The @mention alert, built to fire from a BACKGROUND tab. A fresh
 // `new Audio().play()` at mention time is refused by browsers when the tab is
@@ -16,6 +18,26 @@ let buffer: AudioBuffer = null;
 let decoding = false;
 let primed: HTMLAudioElement = null;
 let primedUnlocked = false;
+
+// How loud the ping plays, 0-100 (Settings > General > Sound > Ping sound);
+// 0 is off. Kept on this computer, like the rest of that page's local choices.
+const PING_VOLUME_KEY = 'pixelrp.ping-volume';
+
+let pingVolume: number = (() =>
+{
+    const saved = GetLocalStorage<number>(PING_VOLUME_KEY);
+
+    return ((typeof saved === 'number') && (saved >= 0) && (saved <= 100)) ? saved : 100;
+})();
+
+export const GetPingVolume = (): number => pingVolume;
+
+export const SetPingVolume = (volume: number) =>
+{
+    pingVolume = Math.max(0, Math.min(100, Math.round(volume)));
+
+    SetLocalStorage<number>(PING_VOLUME_KEY, pingVolume);
+}
 
 // A twentieth of a second of silence, built as a WAV (8 kHz, 8-bit mono, every
 // sample at the 0x80 midpoint) - what the fallback element plays to unlock.
@@ -136,7 +158,11 @@ const playFallback = () =>
     // the primed element only once it carries the ping - before that it holds the silent clip
     const element = ((primedUnlocked && primed) ? primed : new Audio(MentionSoundFile));
 
-    try { element.currentTime = 0; }
+    try
+    {
+        element.currentTime = 0;
+        element.volume = (pingVolume / 100);
+    }
     catch(e) { }
 
     element.play().catch(() => {});
@@ -144,14 +170,19 @@ const playFallback = () =>
 
 export const PlayMentionSound = () =>
 {
+    if(pingVolume <= 0) return;
+
     if(context && buffer && (context.state === 'running'))
     {
         try
         {
             const source = context.createBufferSource();
+            const gain = context.createGain();
 
+            gain.gain.value = (pingVolume / 100);
             source.buffer = buffer;
-            source.connect(context.destination);
+            source.connect(gain);
+            gain.connect(context.destination);
             source.start(0);
 
             return;

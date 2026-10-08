@@ -2,7 +2,7 @@ import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { AddEventLinkTracker, GetAvatarRenderManager, GetSessionDataManager, LocalizeText, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, GetAvatarRenderManager, GetPingVolume, GetSessionDataManager, LocalizeText, PlayMentionSound, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
 import { GetSelectableChatStyleIds } from './ChatStyles';
@@ -120,6 +120,8 @@ export const RpSettingsView: FC<{}> = props =>
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
     const [ generalPage, setGeneralPage ] = useState<string>(GENERAL_PAGES[0]);
     const { userSettings, setOldChat, setRoomInvites, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
+    // General > Sound > Ping sound: the @mention alert's own volume, on this computer (MentionSound).
+    const [ pingVolume, setPingVolumeState ] = useState<number>(GetPingVolume);
     const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
     const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
     const [ personalPage, setPersonalPage ] = useState<string>(PERSONALIZATION_PAGES[0]);
@@ -1553,6 +1555,29 @@ export const RpSettingsView: FC<{}> = props =>
                                     </div>
                                 );
                             }) }
+                            { (generalPage === 'Sound') &&
+                                <div className="rp-settings-card">
+                                    <div className="rp-settings-card-head">
+                                        <label htmlFor="rp-settings-volume-ping" className="rp-settings-card-title">Ping sound</label>
+                                        <div className="rp-settings-card-actions">
+                                            <button type="button" className="rp-settings-card-test" disabled={ (pingVolume <= 0) } onClick={ () => PlayMentionSound() }>Play</button>
+                                            <div className="rp-settings-fps-value">{ (pingVolume > 0) ? <>{ pingVolume } <span>%</span></> : 'Off' }</div>
+                                        </div>
+                                    </div>
+                                    <Text small className="text-muted">The sound when someone @mentions you. 0 turns it off.</Text>
+                                    <div className="rp-settings-fps">
+                                        <span className="rp-settings-fps-end">0</span>
+                                        <input id="rp-settings-volume-ping" type="range" min={ 0 } max={ 100 } step={ 1 } value={ pingVolume }
+                                            onChange={ event =>
+                                            {
+                                                const volume = parseInt(event.target.value);
+
+                                                setPingVolumeState(volume);
+                                                SetPingVolume(volume);
+                                            } } />
+                                        <span className="rp-settings-fps-end">100</span>
+                                    </div>
+                                </div> }
                             { (generalPage === 'Preferences') && [
                                 { key: 'old-chat', text: 'memenu.settings.chat.prefer.old.chat', on: !!userSettings?.oldChat, ready: !!userSettings, toggle: () => setOldChat(!userSettings.oldChat) },
                                 { key: 'room-invites', text: 'memenu.settings.other.ignore.room.invites', on: !!userSettings?.roomInvites, ready: !!userSettings, toggle: () => setRoomInvites(!userSettings.roomInvites) },
