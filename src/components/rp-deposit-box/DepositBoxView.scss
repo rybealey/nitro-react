@@ -1,0 +1,220 @@
+// PixelRP bank deposit box (DepositBoxView; design: the "Bank Deposit Box"
+// canvas). The backpack's light restyle - pale page, white raised slots, black
+// count badges - beside a dark steel lockbox.
+
+.nitro-card.nitro-deposit-box {
+    width: 452px;
+
+    .content-area.deposit-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+        background: #f3f3f5;
+        color: #1c1c20;
+        font-family: 'Ubuntu', sans-serif;
+    }
+
+    .deposit-sides {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .deposit-pack {
+        width: 120px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: -4px;
+        padding: 4px;
+        border-radius: 6px;
+        outline: 2px dashed transparent;
+        outline-offset: -1px;
+
+        &.is-drop-zone {
+            outline-color: #e87332;
+            background: rgba(232, 115, 50, 0.08);
+        }
+    }
+
+    .deposit-box {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 6px;
+        background: linear-gradient(#3b4148, #2b3036);
+        border: 1px solid #1d2125;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+        outline: 2px dashed transparent;
+        outline-offset: 2px;
+
+        &.is-drop-zone { outline-color: #e9d9a6; }
+    }
+
+    .deposit-side-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .deposit-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.58);
+
+        &--box { color: #e9d9a6; }
+    }
+
+    .deposit-count-label {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.58);
+
+        &--box { color: #c8ccd2; }
+    }
+
+    .deposit-grid {
+        display: grid;
+        gap: 4px;
+
+        &--pack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        &--box { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    .deposit-slot {
+        position: relative;
+        aspect-ratio: 1;
+        min-width: 0;
+        padding: 0;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        border-radius: 5px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05);
+        cursor: default;
+
+        &.has-item {
+            cursor: grab;
+
+            &:hover { border-color: rgba(0, 0, 0, 0.28); }
+        }
+
+        &.is-locked {
+            background: #e8e8ec;
+            cursor: not-allowed;
+        }
+
+        &.is-lifted { opacity: 0.35; }
+
+        .deposit-lock { color: rgba(0, 0, 0, 0.3); }
+    }
+
+    // The box's own slots: dashed and dark when empty, white when they hold something.
+    .deposit-box .deposit-slot {
+        border-color: rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06);
+
+        &:not(.has-item) {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            box-shadow: none;
+        }
+
+        &.is-locked {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(0, 0, 0, 0.35);
+        }
+
+        .deposit-lock { color: rgba(255, 255, 255, 0.35); }
+    }
+
+    // The backpack's item art, filling the slot.
+    .deposit-item {
+        position: absolute;
+        inset: 0;
+        width: auto;
+        height: auto;
+        margin: 0;
+        opacity: 1;
+        background-position: center;
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+        pointer-events: none;
+    }
+
+    .deposit-count {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        min-width: 15px;
+        height: 14px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px;
+        border-radius: 4px;
+        background: #000000;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        pointer-events: none;
+    }
+
+    .deposit-arrows {
+        width: 22px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: rgba(0, 0, 0, 0.35);
+    }
+
+    .deposit-box-hint {
+        font-size: 10px;
+        color: #c8ccd2;
+    }
+
+    .deposit-notice {
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: #fff4e5;
+        border: 1px solid #f0c9a8;
+        color: #6e2f07;
+        font-size: 12px;
+    }
+
+    .deposit-help {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        font-size: 11px;
+        line-height: 1.4;
+        color: #3d3d44;
+
+        svg {
+            flex-shrink: 0;
+            margin-top: 1px;
+            color: #8a3d0c;
+        }
+    }
+}

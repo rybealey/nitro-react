@@ -81,6 +81,7 @@ const PIXELRP_BEHAVIOURS: [ string, string ][] = [
     [ 'dressing_booth', 'Dressing booth' ],
     [ 'zara_shop', 'Zara shop (walk on)' ],
     [ 'atm', 'ATM' ],
+    [ 'deposit_box', 'Deposit box (walk on)' ],
     [ 'pressure_pad', 'Pressure pad' ],
     [ 'corp_gate', 'Corporation gate (on duty only)' ],
     [ 'paramedic_dropoff', 'Paramedic dropoff' ],
