@@ -390,10 +390,10 @@ $corps-card-border: rgba(0, 0, 0, 0.09);
             box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), inset 0 -2px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.12);
         }
 
-        // offline: the head and name grey out, as on the Gang window
+        // offline: only the head greys out - the name, shifts and last
+        // online stay readable
         &.is-offline {
-            .rp-corps-employee-portrait,
-            .rp-corps-employee-name {
+            .rp-corps-employee-portrait {
                 filter: grayscale(1);
                 opacity: 0.45;
             }
@@ -463,7 +463,7 @@ $corps-card-border: rgba(0, 0, 0, 0.09);
 
     .rp-corps-employee-shifts {
         font-size: 11px;
-        color: rgba(0, 0, 0, 0.45);
+        color: #4a4e57;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -474,7 +474,7 @@ $corps-card-border: rgba(0, 0, 0, 0.09);
     // separator whenever only one is on.
     .rp-corps-employee-seen {
         font-size: 11px;
-        color: rgba(0, 0, 0, 0.45);
+        color: #4a4e57;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

@@ -311,7 +311,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                         <span className={ `rp-corps-dot rp-corps-employee-status ${ employee.onDuty ? 'is-onduty' : 'is-online' }` } /> }
                                                                     { /* the Gang window's card: head-only sprite at
                                                                          native size, no mask or tint - presence is the
-                                                                         dot, and an offline employee is greyed out */ }
+                                                                         dot, and an offline employee's head is greyed out */ }
                                                                     <div className="rp-corps-employee-portrait">
                                                                         <LayoutAvatarImageView figure={ employee.figure } headOnly={ true } direction={ 2 } />
                                                                     </div>
