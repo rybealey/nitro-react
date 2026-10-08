@@ -5,7 +5,6 @@ import { CityCapability, RpCityPanelEvent, RpCityPanelOpenComposer } from '../..
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { CityPlayersView } from './views/CityPlayersView';
-import { CityRoomsView } from './views/CityRoomsView';
 import { CityUniformsView } from './views/CityUniformsView';
 import { CityEconomyView } from './views/CityEconomyView';
 import { CityWorldView } from './views/CityWorldView';
@@ -18,7 +17,7 @@ import { CityWorldView } from './views/CityWorldView';
 // do comes from the server on open (capabilities); every packet is checked
 // again there, so this only decides what to offer.
 
-const TABS = [ 'City', 'Players', 'Rooms & Zones', 'Uniforms', 'Economy' ] as const;
+const TABS = [ 'City', 'Players', 'Uniforms', 'Economy' ] as const;
 type Tab = typeof TABS[number];
 
 export interface CityPanelContext
@@ -97,7 +96,6 @@ export const CityPanelView: FC<{}> = props =>
             <NitroCardContentView className="mt-page" overflow="hidden">
                 { (tab === 'City') && <CityWorldView context={ context } /> }
                 { (tab === 'Players') && <CityPlayersView context={ context } openPlayerId={ openPlayerId } onOpened={ () => setOpenPlayerId(0) } /> }
-                { (tab === 'Rooms & Zones') && <CityRoomsView /> }
                 { (tab === 'Uniforms') && <CityUniformsView /> }
                 { (tab === 'Economy') && <CityEconomyView context={ context } /> }
             </NitroCardContentView>
