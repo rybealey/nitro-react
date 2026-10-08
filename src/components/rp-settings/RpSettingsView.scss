@@ -14,10 +14,11 @@ $mx-accent-text: #8f3c10;
 $mx-accent-tint: #fff4ec;
 $mx-focus: 0 0 0 3px rgba(196, 86, 28, 0.18);
 $mx-raise: 0 1px 0 rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
-// The macros tab is in the hotel's own Ubuntu throughout - keycaps, commands
-// and the preset box included. $mx-mono is left for the FPS readout.
+// The settings window is in the hotel's own Ubuntu throughout - keycaps,
+// commands, the preset box and the FPS and volume numbers included. (They
+// once asked for Ubuntu Mono, which the client never loads, so Windows drew
+// them in Consolas.)
 $mx-font: Ubuntu, sans-serif;
-$mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
 
 .nitro-card.rp-settings-window {
     // starting size; the corner grip writes inline width/height over these.
@@ -520,7 +521,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         align-items: center;
         min-width: 0;
         max-width: 100%;
-        border-radius: 11px;
+        border-radius: 3px;
         border: 1px solid rgba(0, 0, 0, 0.1);
         background: $mx-body;
 
@@ -546,7 +547,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         max-width: 100%;
         height: 22px;
         padding: 0 8px;
-        border-radius: 11px;
+        border-radius: 3px;
         border: 1.5px solid $mx-accent;
         box-shadow: $mx-focus;
         background: $white;
@@ -910,7 +911,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
     }
 
     .rp-settings-fps-end {
-        font-family: $mx-mono;
+        font-family: $mx-font;
         font-size: 11px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
@@ -973,7 +974,7 @@ $mx-mono: 'Ubuntu Mono', Consolas, 'Courier New', monospace;
         border-radius: 4px;
         background: $mx-body;
         text-align: right;
-        font-family: $mx-mono;
+        font-family: $mx-font;
         font-size: 12px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
