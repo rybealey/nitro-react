@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useEffect, useRef, useState } from 'react';
 import { SendMessageComposer } from '../../api';
 import { RoomTurfView, RpRoomTurfEvent, RpTurfClaimComposer } from '../../api/rp-turf/RpTurfMessages';
 import { useLocalStorage, useMessageEvent, useNavigator, useRoom } from '../../hooks';
@@ -162,13 +162,13 @@ export const TurfPanelView: FC<{}> = props =>
 
     if(foldable && !open)
     {
-        let stripLine = (yours ? 'Your turf' : `Held by ${ view.ownerName }`);
+        // A gang's name is bold here, as it is on the card.
+        const after = (heldTime ? ` · ${ heldTime }` : '');
+        let stripLine: ReactNode = (yours ? `Your turf${ after }` : <>Held by <strong>{ view.ownerName }</strong>{ after }</>);
         let stripClass = (yours ? 'is-yours' : '');
 
-        if(heldTime) stripLine += ` · ${ heldTime }`;
-
         if(view.capturing && view.contested) { stripLine = `Contested · ${ clock(left) } left`; stripClass = 'is-contested'; }
-        else if(view.capturing) { stripLine = `${ view.claimGangName } is claiming · ${ clock(left) }`; stripClass = 'is-claiming'; }
+        else if(view.capturing) { stripLine = <><strong>{ view.claimGangName }</strong> is claiming · { clock(left) }</>; stripClass = 'is-claiming'; }
 
         return (
             <div className="rp-turf-panel rp-turf-strip">
