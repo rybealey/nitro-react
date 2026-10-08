@@ -2,6 +2,7 @@ import { CanCreateRoomEventEvent, CantConnectMessageParser, DoorbellMessageEvent
 import { useState } from 'react';
 import { useBetween } from 'use-between';
 import { CreateLinkEvent, CreateRoomSession, DoorStateType, GetConfiguration, GetSessionDataManager, INavigatorData, LocalizeText, NotificationAlertType, SendMessageComposer, TryVisitRoom, VisitDesktop } from '../../api';
+import { RpNavigatorZonesEvent } from '../../api/rp-navigator/RpNavigatorMessages';
 import { useMessageEvent } from '../events';
 import { useNotification } from '../notification';
 
@@ -13,6 +14,8 @@ const useNavigatorState = () =>
     const [ topLevelContexts, setTopLevelContexts ] = useState<NavigatorTopLevelContext[]>(null);
     const [ doorData, setDoorData ] = useState<{ roomInfo: RoomDataParser, state: number }>({ roomInfo: null, state: DoorStateType.NONE });
     const [ searchResult, setSearchResult ] = useState<NavigatorSearchResultSet>(null);
+    // pixelrp: room id -> zone (NAVIGATOR_ZONE_*) for the rooms the last search listed
+    const [ roomZones, setRoomZones ] = useState<Map<number, number>>(new Map());
     const [ navigatorData, setNavigatorData ] = useState<INavigatorData>({
         settingsReceived: false,
         homeRoomId: 0,
@@ -436,7 +439,10 @@ const useNavigatorState = () =>
 
     useMessageEvent<NavigatorOpenRoomCreatorEvent>(NavigatorOpenRoomCreatorEvent, event => CreateLinkEvent('navigator/show'));
 
-    return { categories, doorData, setDoorData, topLevelContext, topLevelContexts, searchResult, navigatorData };
+    // Follows every search's results; the rows tag themselves SAFE, UNSAFE or TURF from it.
+    useMessageEvent<RpNavigatorZonesEvent>(RpNavigatorZonesEvent, event => setRoomZones(event.getParser().zones));
+
+    return { categories, doorData, setDoorData, topLevelContext, topLevelContexts, searchResult, navigatorData, roomZones };
 }
 
 export const useNavigator = () => useBetween(useNavigatorState);

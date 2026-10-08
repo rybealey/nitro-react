@@ -20,5 +20,11 @@ export const SearchFilterOptions: INavigatorSearchFilter[] = [
     {
         name: 'group',
         query: 'group'
+    },
+    // pixelrp: one room by its number - NavigatorHandler's id: branch
+    {
+        name: 'room.id',
+        query: 'id',
+        fallback: 'Room ID'
     }
 ];

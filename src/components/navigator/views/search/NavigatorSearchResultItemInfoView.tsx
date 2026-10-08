@@ -1,8 +1,8 @@
 import { RoomDataParser } from '@nitrots/nitro-renderer';
-import { FC, useRef, useState } from 'react';
+import { FC, MouseEvent, useRef, useState } from 'react';
 import { Overlay, Popover } from 'react-bootstrap';
 import { FaUser } from 'react-icons/fa';
-import { LocalizeText } from '../../../../api';
+import { CreateLinkEvent, GetSessionDataManager, LocalizeText } from '../../../../api';
 import { Base, Column, Flex, LayoutBadgeImageView, LayoutRoomThumbnailView, NitroCardContentView, Text, UserProfileIconView } from '../../../../common';
 
 interface NavigatorSearchResultItemInfoViewProps
@@ -15,6 +15,19 @@ export const NavigatorSearchResultItemInfoView: FC<NavigatorSearchResultItemInfo
     const { roomData = null } = props;
     const [ isVisible, setIsVisible ] = useState(false);
     const elementRef = useRef<HTMLDivElement>();
+    // Staff open the room's Room Tool - its settings - straight from the row,
+    // without walking in. Room settings are staff only (Room.CanManageSettings),
+    // so for players the icon stays the hover card and a click visits the room.
+    const isStaff = GetSessionDataManager().isModerator;
+
+    const openRoomTool = (event: MouseEvent) =>
+    {
+        if(!isStaff) return;
+
+        event.stopPropagation();
+        setIsVisible(false);
+        CreateLinkEvent(`mod-tools/open-room-info/${ roomData.roomId }`);
+    }
 
     const getUserCounterColor = () =>
     {
@@ -40,7 +53,7 @@ export const NavigatorSearchResultItemInfoView: FC<NavigatorSearchResultItemInfo
 
     return (
         <>
-            <Base pointer innerRef={ elementRef } className="icon icon-navigator-info" onMouseOver={ event => setIsVisible(true) } onMouseLeave={ event => setIsVisible(false) } />
+            <Base pointer innerRef={ elementRef } className="icon icon-navigator-info" title={ isStaff ? 'Room settings' : undefined } onClick={ openRoomTool } onMouseOver={ event => setIsVisible(true) } onMouseLeave={ event => setIsVisible(false) } />
             <Overlay show={ isVisible } target={ elementRef.current } placement="right">
                 <Popover>
                     <NitroCardContentView overflow="hidden" className="room-info image-rendering-pixelated bg-transparent">

@@ -5,6 +5,7 @@ import { CreateRoomSession, DoorStateType, GetSessionDataManager, TryVisitRoom }
 import { Column, Flex, LayoutBadgeImageView, LayoutGridItemProps, LayoutRoomThumbnailView, Text } from '../../../../common';
 import { useNavigator } from '../../../../hooks';
 import { NavigatorSearchResultItemInfoView } from './NavigatorSearchResultItemInfoView';
+import { NavigatorZoneTagView } from './NavigatorZoneTagView';
 
 export interface NavigatorSearchResultItemViewProps extends LayoutGridItemProps
 {
@@ -95,6 +96,7 @@ export const NavigatorSearchResultItemView: FC<NavigatorSearchResultItemViewProp
                 <Text truncate className="flex-grow-1">{ roomData.roomName }</Text>
                 <Flex reverse alignItems="center" gap={ 1 }>
                     <NavigatorSearchResultItemInfoView roomData={ roomData } />
+                    <NavigatorZoneTagView roomId={ roomData.roomId } />
                 </Flex>
                 { children } 
             </Flex>
@@ -114,6 +116,7 @@ export const NavigatorSearchResultItemView: FC<NavigatorSearchResultItemViewProp
                 { roomData.habboGroupId > 0 && <i className="icon icon-navigator-room-group" /> }
                 { (roomData.doorMode !== RoomDataParser.OPEN_STATE) && 
                     <i className={ ('icon icon-navigator-room-' + ((roomData.doorMode === RoomDataParser.DOORBELL_STATE) ? 'locked' : (roomData.doorMode === RoomDataParser.PASSWORD_STATE) ? 'password' : (roomData.doorMode === RoomDataParser.INVISIBLE_STATE) ? 'invisible' : '')) } /> }
+                <NavigatorZoneTagView roomId={ roomData.roomId } />
             </Flex>
             { children }
         </Flex>

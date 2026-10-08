@@ -69,7 +69,10 @@ export const NavigatorSearchView: FC<NavigatorSearchViewProps> = props =>
                 <select className="form-select form-select-sm" value={ searchFilterIndex } onChange={ event => setSearchFilterIndex(parseInt(event.target.value)) }>
                     { SearchFilterOptions.map((filter, index) =>
                     {
-                        return <option key={ index } value={ index }>{ LocalizeText('navigator.filter.' + filter.name) }</option>
+                        const key = ('navigator.filter.' + filter.name);
+                        const label = LocalizeText(key);
+
+                        return <option key={ index } value={ index }>{ ((label === key) && filter.fallback) ? filter.fallback : label }</option>
                     }) }
                 </select>
             </Flex>

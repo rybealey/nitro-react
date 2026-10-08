@@ -38,6 +38,7 @@ import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpCityMessages } from './api/rp-city/RpCityMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
+import { RegisterRpNavigatorMessages } from './api/rp-navigator/RpNavigatorMessages';
 import { RegisterRpTurfMessages } from './api/rp-turf/RpTurfMessages';
 import { RegisterRpJukeboxOpenMessages } from './api/rp-jukebox/RpJukeboxOpenMessages';
 import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
@@ -160,6 +161,7 @@ export const App: FC<{}> = props =>
                 InstallFinalStepStance();
                 RegisterRpGangMessages();
                 RegisterRpTurfMessages();
+                RegisterRpNavigatorMessages();
                 RegisterRpJukeboxOpenMessages();
                 RegisterRpCorpMessages();
                 RegisterRpChatMessages();
