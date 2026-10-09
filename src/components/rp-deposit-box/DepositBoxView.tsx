@@ -1,6 +1,6 @@
 import { RpInventoryEvent } from '@nitrots/nitro-renderer';
 import { DragEvent, FC, useState } from 'react';
-import { SendMessageComposer } from '../../api';
+import { HasHabboVip, SendMessageComposer } from '../../api';
 import { DepositBoxEntry, DepositDirection, RpDepositBoxEvent, RpDepositMoveComposer } from '../../api/rp-bank/RpDepositBoxMessages';
 import { ResolveRpItem } from '../../api/rp-inventory/RpItems';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -15,6 +15,8 @@ import { useMessageEvent } from '../../hooks';
 // server answers every move with both sides, so this only ever shows them.
 
 const CARRY_SLOTS = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
+// Ten carry slots open to everybody, all twelve while VIP - the backpack's own
+// rule (RpInventoryView), read the same way.
 const CARRY_OPEN = 10;
 const BOX_SLOTS = Array.from({ length: 20 }, (_, index) => (index + 1));
 
@@ -153,6 +155,7 @@ export const DepositBoxView: FC<{}> = props =>
 
     if(!isOpen) return null;
 
+    const packOpen = (HasHabboVip() ? CARRY_SLOTS.length : CARRY_OPEN);
     const packUsed = CARRY_SLOTS.filter(slot => pack.has(slot)).length;
     const boxUsed = box.size;
     const packZone = (!!dragging && (dragging.side === 'box'));
@@ -166,10 +169,10 @@ export const DepositBoxView: FC<{}> = props =>
                     <section aria-label="Backpack" className={ `deposit-pack${ packZone ? ' is-drop-zone' : '' }` } { ...zone('pack') }>
                         <div className="deposit-side-head">
                             <span className="deposit-label">Backpack</span>
-                            <span className="deposit-count-label">{ packUsed }/{ CARRY_OPEN }</span>
+                            <span className="deposit-count-label">{ packUsed }/{ packOpen }</span>
                         </div>
                         <div className="deposit-grid deposit-grid--pack">
-                            { CARRY_SLOTS.map(slot => slotView('pack', slot, pack.get(slot) ?? null, ((slot > CARRY_OPEN) && !pack.has(slot)))) }
+                            { CARRY_SLOTS.map(slot => slotView('pack', slot, pack.get(slot) ?? null, ((slot > packOpen) && !pack.has(slot)))) }
                         </div>
                     </section>
                     <div className="deposit-arrows" aria-hidden="true">
