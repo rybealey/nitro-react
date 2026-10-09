@@ -37,6 +37,8 @@ export const DepositBoxView: FC<{}> = props =>
     const [ boxOpenSlots, setBoxOpenSlots ] = useState(16);
     const [ notice, setNotice ] = useState('');
     const [ dragging, setDragging ] = useState<Dragging>(null);
+    // The box slot an item from the box is held over - where a rearrange lands.
+    const [ dropSlot, setDropSlot ] = useState(0);
 
     // The backpack, as everywhere else - login and every change.
     useMessageEvent<RpInventoryEvent>(RpInventoryEvent, event =>
@@ -94,6 +96,32 @@ export const DepositBoxView: FC<{}> = props =>
             if(dragging && (dragging.side !== side)) move(dragging.side, dragging.slot, true);
 
             setDragging(null);
+            setDropSlot(0);
+        }
+    });
+
+    // Inside the box: an item held over another open slot moves there - into
+    // an empty one, or swapping with what it holds.
+    const canRearrangeTo = (slot: number) => (!!dragging && (dragging.side === 'box') && (dragging.slot !== slot) && (slot <= boxOpenSlots));
+
+    const rearrange = (slot: number) => ({
+        onDragOver: (event: DragEvent<HTMLButtonElement>) =>
+        {
+            if(!canRearrangeTo(slot)) return;
+
+            event.preventDefault();
+            if(dropSlot !== slot) setDropSlot(slot);
+        },
+        onDragLeave: () => (dropSlot === slot) && setDropSlot(0),
+        onDrop: (event: DragEvent<HTMLButtonElement>) =>
+        {
+            if(!canRearrangeTo(slot)) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            SendMessageComposer(new RpDepositMoveComposer(DepositDirection.Rearrange, dragging.slot, true, slot));
+            setDragging(null);
+            setDropSlot(0);
         }
     });
 
@@ -105,11 +133,16 @@ export const DepositBoxView: FC<{}> = props =>
             ? `${ name }${ (entry.count > 1) ? ` ×${ entry.count }` : '' } - click to ${ (side === 'pack') ? 'store' : 'take out' } one, drag to ${ (side === 'pack') ? 'store' : 'take out' } all`
             : (locked ? 'Locked - VIP' : 'Empty slot'));
         const lifted = (!!dragging && (dragging.side === side) && (dragging.slot === slot));
+        const target = ((side === 'box') && (dropSlot === slot));
 
         return (
             <button key={ slot } type="button" title={ label } aria-label={ label } aria-disabled={ !entry }
-                className={ `deposit-slot${ entry ? ' has-item' : '' }${ locked ? ' is-locked' : '' }${ lifted ? ' is-lifted' : '' }` }
-                draggable={ !!entry } onDragStart={ entry ? onDragStart(side, slot) : undefined } onDragEnd={ () => setDragging(null) }
+                className={ `deposit-slot${ entry ? ' has-item' : '' }${ locked ? ' is-locked' : '' }${ lifted ? ' is-lifted' : '' }${ target ? ' is-drop-target' : '' }` }
+                draggable={ !!entry } onDragStart={ entry ? onDragStart(side, slot) : undefined } onDragEnd={ () => 
+                {
+                    setDragging(null); setDropSlot(0); 
+                } }
+                { ...((side === 'box') ? rearrange(slot) : {}) }
                 onClick={ () => entry && move(side, slot, false) }>
                 { entry && <div className={ `deposit-item rp-inventory-item ${ meta?.cls ?? '' }` } style={ meta?.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } /> }
                 { (entry && (entry.count > 1)) && <span className="deposit-count">{ entry.count }</span> }
@@ -160,7 +193,7 @@ export const DepositBoxView: FC<{}> = props =>
                 { notice && <div className="deposit-notice" role="status">{ notice }</div> }
                 <div className="deposit-help">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 21h18" /><path d="M4 21V10l8-6 8 6v11" /><path d="M9 21v-6h6v6" /></svg>
-                    <span><b>Click</b> to move one. <b>Drag</b> to move the whole stack. What you store stays here until you come back to the bank for it.</span>
+                    <span><b>Click</b> to move one. <b>Drag</b> across to move the whole stack, or within the box to rearrange it. What you store stays here until you come back to the bank for it.</span>
                 </div>
             </NitroCardContentView>
         </NitroCardView>

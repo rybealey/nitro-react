@@ -7,8 +7,8 @@ import { GetConnection } from '../nitro';
 const RP_DEPOSIT_BOX = 4184; // server -> client: open with contents, or closed
 const RP_DEPOSIT_MOVE = 4185; // client -> server: one move
 
-/** DepositBox.Store / Withdraw */
-export const DepositDirection = { Store: 0, Withdraw: 1 };
+/** DepositBox.Store / Withdraw / Rearrange */
+export const DepositDirection = { Store: 0, Withdraw: 1, Rearrange: 2 };
 
 export interface DepositBoxEntry
 {
@@ -86,14 +86,14 @@ export class RpDepositBoxEvent extends MessageEvent implements IMessageEvent
     }
 }
 
-export class RpDepositMoveComposer implements IMessageComposer<[ number, number, boolean ]>
+export class RpDepositMoveComposer implements IMessageComposer<[ number, number, boolean, number ]>
 {
-    private _data: [ number, number, boolean ];
+    private _data: [ number, number, boolean, number ];
 
-    /** One item (a click) or the whole stack (`all`, a drag). */
-    constructor(direction: number, slot: number, all: boolean)
+    /** One item (a click) or the whole stack (`all`, a drag); a rearrange names `toSlot`. */
+    constructor(direction: number, slot: number, all: boolean, toSlot: number = 0)
     {
-        this._data = [ direction, slot, all ];
+        this._data = [ direction, slot, all, toSlot ];
     }
 
     public getMessageArray()

@@ -47,13 +47,15 @@
         gap: 6px;
         padding: 8px;
         border-radius: 6px;
-        background: linear-gradient(#3b4148, #2b3036);
-        border: 1px solid #1d2125;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+        // A lighter steel than the first cut - the system grey of the chrome's
+        // secondary buttons, not a near-black vault.
+        background: linear-gradient(#7a838f, #6b7480);
+        border: 1px solid #5d6570;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.15);
         outline: 2px dashed transparent;
         outline-offset: 2px;
 
-        &.is-drop-zone { outline-color: #e9d9a6; }
+        &.is-drop-zone { outline-color: #e87332; }
     }
 
     .deposit-side-head {
@@ -72,14 +74,14 @@
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.58);
 
-        &--box { color: #e9d9a6; }
+        &--box { color: #ffffff; }
     }
 
     .deposit-count-label {
         font-size: 10px;
         color: rgba(0, 0, 0, 0.58);
 
-        &--box { color: #c8ccd2; }
+        &--box { color: rgba(255, 255, 255, 0.85); }
     }
 
     .deposit-grid {
@@ -122,23 +124,32 @@
         .deposit-lock { color: rgba(0, 0, 0, 0.3); }
     }
 
-    // The box's own slots: dashed and dark when empty, white when they hold something.
+    // The box's own slots: no tile behind the art - an item sits on the steel
+    // in a solid outline, an empty slot is a dashed one.
     .deposit-box .deposit-slot {
-        border-color: rgba(0, 0, 0, 0.35);
-        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px dashed rgba(255, 255, 255, 0.35);
+        box-shadow: none;
 
-        &:not(.has-item) {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px dashed rgba(255, 255, 255, 0.18);
-            box-shadow: none;
+        &.has-item {
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.5);
+
+            &:hover { border-color: #ffffff; }
         }
 
         &.is-locked {
-            background: rgba(0, 0, 0, 0.25);
-            border: 1px solid rgba(0, 0, 0, 0.35);
+            background: rgba(0, 0, 0, 0.12);
+            border: 1px solid rgba(0, 0, 0, 0.18);
         }
 
-        .deposit-lock { color: rgba(255, 255, 255, 0.35); }
+        // Where a rearrange will land.
+        &.is-drop-target {
+            border: 2px solid #ffffff;
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        .deposit-lock { color: rgba(255, 255, 255, 0.55); }
     }
 
     // The backpack's item art, filling the slot.
@@ -187,7 +198,7 @@
 
     .deposit-box-hint {
         font-size: 10px;
-        color: #c8ccd2;
+        color: rgba(255, 255, 255, 0.85);
     }
 
     .deposit-notice {
