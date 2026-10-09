@@ -13,7 +13,9 @@ import { CityPanelContext } from '../CityPanelView';
 
 const has = (capabilities: number, capability: number) => ((capabilities & capability) === capability);
 
-const REFRESH_MS = 15000;
+// A safety net only: the server pushes this tab's state on every clock-in and
+// clock-out (CityEconomy.ShiftsChanged), so On shift now is live without it.
+const REFRESH_MS = 60000;
 
 // A number field that saves when it loses focus or Enter is pressed, and only
 // when the value actually changed.
@@ -56,7 +58,6 @@ export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
     {
         SendMessageComposer(new RpCityEconomyComposer());
 
-        // Who is on shift changes by the minute; the rest only when staff edit it.
         const interval = setInterval(() => SendMessageComposer(new RpCityEconomyComposer()), REFRESH_MS);
 
         return () => clearInterval(interval);
