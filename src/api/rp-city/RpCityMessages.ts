@@ -28,6 +28,8 @@ const RP_CITY_PAY_SAVE = 4178; // client -> server
 const RP_CITY_PRICE_SAVE = 4179; // client -> server
 const RP_CITY_CLOCK_OUT = 4180; // client -> server
 const RP_CITY_CORP_SETTING = 4183; // client -> server: one corporation setting
+const RP_CITY_LEDGER = 4186; // client -> server: a page of the Global Ledger
+const RP_CITY_LEDGER_PAGE = 4187; // server -> client
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -56,6 +58,36 @@ export interface CityEconomyCorp
     onShift: { userId: number, username: string, rankName: string }[];
     /** Left out of the Corporations window. */
     hidden: boolean;
+}
+
+/** CityLedger.Filter* - which side of the money the Global Ledger shows. */
+export const CityLedgerFilter = {
+    All: 0,
+    Hand: 1,
+    Bank: 2
+};
+
+export interface CityLedgerRow
+{
+    /** Unix seconds. */
+    createdAt: number;
+    userId: number;
+    username: string;
+    /** hand | current | savings */
+    account: string;
+    /** The bank's movement kind (BankTransactionKind); empty for coins on hand. */
+    kind: string;
+    amount: number;
+    balanceAfter: number;
+    source: string;
+}
+
+export interface CityLedgerTotals
+{
+    hand: number;
+    checking: number;
+    savings: number;
+    accounts: number;
 }
 
 /** CityEconomy.Setting* */
@@ -308,6 +340,65 @@ export class RpCityWorldStateParser implements IMessageParser
     public get notice(): string 
     {
         return this._notice; 
+    }
+}
+
+export class RpCityLedgerPageParser implements IMessageParser
+{
+    private _offset = 0;
+    private _more = false;
+    private _totals: CityLedgerTotals = null;
+    private _rows: CityLedgerRow[] = [];
+
+    public flush(): boolean
+    {
+        this._offset = 0;
+        this._more = false;
+        this._totals = null;
+        this._rows = [];
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._offset = wrapper.readInt();
+        this._more = wrapper.readBoolean();
+        this._totals = { hand: wrapper.readInt(), checking: wrapper.readInt(), savings: wrapper.readInt(), accounts: wrapper.readInt() };
+
+        let rows = wrapper.readInt();
+
+        while(rows-- > 0) this._rows.push({
+            createdAt: wrapper.readInt(),
+            userId: wrapper.readInt(),
+            username: wrapper.readString(),
+            account: wrapper.readString(),
+            kind: wrapper.readString(),
+            amount: wrapper.readInt(),
+            balanceAfter: wrapper.readInt(),
+            source: wrapper.readString()
+        });
+
+        return true;
+    }
+
+    public get offset(): number 
+    {
+        return this._offset; 
+    }
+    public get more(): boolean 
+    {
+        return this._more; 
+    }
+    public get totals(): CityLedgerTotals 
+    {
+        return this._totals; 
+    }
+    public get rows(): CityLedgerRow[] 
+    {
+        return this._rows; 
     }
 }
 
@@ -593,6 +684,18 @@ export class RpCityEconomyStateEvent extends MessageEvent implements IMessageEve
     }
 }
 
+export class RpCityLedgerPageEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityLedgerPageParser); 
+    }
+    public getParser(): RpCityLedgerPageParser 
+    {
+        return this.parser as RpCityLedgerPageParser; 
+    }
+}
+
 class RpCityComposer<T extends unknown[]> implements IMessageComposer<T>
 {
     private _data: T;
@@ -739,6 +842,14 @@ export class RpCityCorpSettingComposer extends RpCityComposer<[ number, number, 
     }
 }
 
+export class RpCityLedgerComposer extends RpCityComposer<[ string, number, number ]>
+{
+    constructor(query: string, filter: number, offset: number) 
+    {
+        super(query, filter, offset); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -757,7 +868,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_UNIFORM_LIST, RpCityUniformListEvent ],
             [ RP_CITY_UNIFORM_FIGURE, RpCityUniformFigureEvent ],
             [ RP_CITY_WORLD_STATE, RpCityWorldStateEvent ],
-            [ RP_CITY_ECONOMY_STATE, RpCityEconomyStateEvent ]
+            [ RP_CITY_ECONOMY_STATE, RpCityEconomyStateEvent ],
+            [ RP_CITY_LEDGER_PAGE, RpCityLedgerPageEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CITY_PANEL_OPEN, RpCityPanelOpenComposer ],
@@ -775,7 +887,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_PAY_SAVE, RpCityPaySaveComposer ],
             [ RP_CITY_PRICE_SAVE, RpCityPriceSaveComposer ],
             [ RP_CITY_CLOCK_OUT, RpCityClockOutComposer ],
-            [ RP_CITY_CORP_SETTING, RpCityCorpSettingComposer ]
+            [ RP_CITY_CORP_SETTING, RpCityCorpSettingComposer ],
+            [ RP_CITY_LEDGER, RpCityLedgerComposer ]
         ])
     });
 
