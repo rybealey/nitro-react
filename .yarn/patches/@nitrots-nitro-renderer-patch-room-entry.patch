@@ -1,0 +1,24 @@
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -146,14 +146,11 @@
+             this._roomCreator.setRoomInstanceModelName(parser.roomId, parser.name);
+         }
+ 
+-        if(this._initialConnection)
+-        {
+-            event.connection.send(new FurnitureAliasesComposer());
+-
+-            this._initialConnection = false;
+-
+-            return;
+-        }
++        // PixelRP: no FurnitureAliases round trip before the first room after
++        // login. The emulator's answer is always empty, and all this client did
++        // with it was send GetRoomEntryData once it came back - a whole extra
++        // round trip of blank screen before the room could even be asked for.
++        this._initialConnection = false;
+ 
+         event.connection.send(new GetRoomEntryDataMessageComposer());
+     }
