@@ -258,22 +258,36 @@ const useRoomState = () =>
 
         if(geometry)
         {
-            const minX = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MIN_X) || 0);
-            const maxX = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MAX_X) || 0);
-            const minY = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MIN_Y) || 0);
-            const maxY = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MAX_Y) || 0);
+            // pixelrp: the camera's own first aim (the renderer's
+            // pixelrpRoomPlacement - the floor centred, a little nearer the
+            // chat box). The room can be drawn a frame before the own avatar
+            // arrives; from the stock position below, the camera then snapped
+            // it into place - a jerk that came and went with timing.
+            const placement = roomEngine.pixelrpRoomPlacement(roomId, width, height);
 
-            let x = ((minX + maxX) / 2);
-            let y = ((minY + maxY) / 2);
+            if(placement)
+            {
+                geometry.location = placement;
+            }
+            else
+            {
+                const minX = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MIN_X) || 0);
+                const maxX = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MAX_X) || 0);
+                const minY = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MIN_Y) || 0);
+                const maxY = (roomEngine.getRoomInstanceVariable<number>(roomId, RoomVariableEnum.ROOM_MAX_Y) || 0);
 
-            const offset = 20;
+                let x = ((minX + maxX) / 2);
+                let y = ((minY + maxY) / 2);
 
-            x = (x + (offset - 1));
-            y = (y + (offset - 1));
+                const offset = 20;
 
-            const z = (Math.sqrt(((offset * offset) + (offset * offset))) * Math.tan(((30 / 180) * Math.PI)));
+                x = (x + (offset - 1));
+                y = (y + (offset - 1));
 
-            geometry.location = new Vector3d(x, y, z);
+                const z = (Math.sqrt(((offset * offset) + (offset * offset))) * Math.tan(((30 / 180) * Math.PI)));
+
+                geometry.location = new Vector3d(x, y, z);
+            }
         }
 
         const stage = nitroInstance.application.stage;

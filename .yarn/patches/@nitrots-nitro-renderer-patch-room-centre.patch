@@ -1,3 +1,16 @@
+diff --git a/src/api/nitro/room/IRoomEngine.ts b/src/api/nitro/room/IRoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/room/IRoomEngine.ts
++++ b/src/api/nitro/room/IRoomEngine.ts
+@@ -32,6 +32,8 @@
+     updateRoomInstancePlaneType(roomId: number, floorType?: string, wallType?: string, landscapeType?: string, _arg_5?: boolean): boolean;
+     updateObjectRoomColor(k: number, _arg_2: number, _arg_3: number, _arg_4: boolean): boolean;
+     getRoomInstanceGeometry(roomId: number, canvasId?: number): IRoomGeometry;
++    // PixelRP: where a room is first put - the camera's own aim before there is an avatar (RoomEngine).
++    pixelrpRoomPlacement(roomId: number, width: number, height: number): IVector3D;
+     getRoomInstanceVariable<T>(roomId: number, key: string): T;
+     getTotalObjectsForManager(roomId: number, category: number): number;
+     getRoomObject(roomId: number, objectId: number, category: number): IRoomObjectController;
 diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
 index 1111111..2222222 100644
 --- a/src/nitro/room/RoomEngine.ts
@@ -15,7 +28,22 @@ index 1111111..2222222 100644
                  if(!roomCamera.location)
                  {
                      roomGeometry.location = _local_15;
-@@ -3611,6 +3617,165 @@
+@@ -1331,7 +1337,13 @@
+                     _local_46.x = _local_45.x;
+                     _local_46.y = _local_45.y;
+                 }
+-                if(((((((((_local_33.x < canvasRectangle.left) || (_local_33.x > canvasRectangle.right)) && (!(roomCamera.centeredLocX))) || (((_local_33.y < canvasRectangle.top) || (_local_33.y > canvasRectangle.bottom)) && (!(roomCamera.centeredLocY)))) || (((_local_36) && (!(roomCamera.centeredLocX))) && (!(roomCamera.screenWd == width)))) || (((_local_37) && (!(roomCamera.centeredLocY))) && (!(roomCamera.screenHt == height)))) || ((!(roomCamera.roomWd == bounds.width)) || (!(roomCamera.roomHt == bounds.height)))) || ((!(roomCamera.screenWd == width)) || (!(roomCamera.screenHt == height)))))
++                // PixelRP: the `false` is where stock also re-aimed whenever the
++                // room's drawn outline (getCanvasBoundingRectangle) changed size
++                // since the last pass - which it can a moment after a room loads,
++                // as its planes finish drawing, so the first step in a big room
++                // re-aimed with the avatar nowhere near the edge. The camera now
++                // moves only for the avatar or the screen.
++                if(((((((((_local_33.x < canvasRectangle.left) || (_local_33.x > canvasRectangle.right)) && (!(roomCamera.centeredLocX))) || (((_local_33.y < canvasRectangle.top) || (_local_33.y > canvasRectangle.bottom)) && (!(roomCamera.centeredLocY)))) || (((_local_36) && (!(roomCamera.centeredLocX))) && (!(roomCamera.screenWd == width)))) || (((_local_37) && (!(roomCamera.centeredLocY))) && (!(roomCamera.screenHt == height)))) || false) || ((!(roomCamera.screenWd == width)) || (!(roomCamera.screenHt == height)))))
+                 {
+                     roomCamera.limitedLocationX = _local_34;
+                     roomCamera.limitedLocationY = _local_35;
+@@ -3611,6 +3623,203 @@
          return true;
      }
  
@@ -54,47 +82,17 @@ index 1111111..2222222 100644
 +     */
 +    private pixelrpRoomAreaTarget(roomId: number, geometry: RoomGeometry, roomInstance: IRoomInstance, width: number, height: number, avatar: IVector3D, arriving: boolean): Vector3d
 +    {
-+        const model = roomInstance && roomInstance.model;
++        if(!avatar) return null;
 +
-+        if(!geometry || !model || !avatar) return null;
++        const floor = this.pixelrpFloor(geometry, roomInstance, width, height);
 +
-+        const minX = (model.getValue<number>(RoomVariableEnum.ROOM_MIN_X) - 0.5);
-+        const maxX = (model.getValue<number>(RoomVariableEnum.ROOM_MAX_X) + 0.5);
-+        const minY = (model.getValue<number>(RoomVariableEnum.ROOM_MIN_Y) - 0.5);
-+        const maxY = (model.getValue<number>(RoomVariableEnum.ROOM_MAX_Y) + 0.5);
-+        const floorX = ((minX + maxX) / 2);
-+        const floorY = ((minY + maxY) / 2);
-+        const floor = geometry.getScreenPoint(new Vector3d(floorX, floorY, 0));
++        if(!floor) return null;
 +
-+        if(!floor || isNaN(floorX) || isNaN(floorY)) return null;
-+
-+        const halfHeight = (height / 2);
-+
-+        // The floor's own size on screen, from its four corners.
-+        const corners = [ new Vector3d(minX, minY, 0), new Vector3d(maxX, minY, 0), new Vector3d(maxX, maxY, 0), new Vector3d(minX, maxY, 0) ].map(corner => geometry.getScreenPoint(corner));
-+
-+        if(corners.some(corner => !corner)) return null;
-+
-+        const floorWidth = (Math.max(...corners.map(corner => corner.x)) - Math.min(...corners.map(corner => corner.x)));
-+        const floorHeight = (Math.max(...corners.map(corner => corner.y)) - Math.min(...corners.map(corner => corner.y)));
-+
-+        // The drop toward the chat box, made by aiming that many pixels above
-+        // the floor: whatever is aimed at sits in the middle, so raising the
-+        // aim point lowers the room. In whole pixels.
-+        const above = geometry.getScreenPoint(new Vector3d(floorX, floorY, 1));
-+        const perUnit = (above ? (floor.y - above.y) : 0);
-+        const drop = Math.round((height * RoomEngine.PIXELRP_FLOOR_DROP));
-+        const lift = (pixels: number) => ((perUnit > 0) ? (Math.max(0, Math.round(pixels)) / perUnit) : 0);
-+        const lowest = (halfHeight - RoomEngine.PIXELRP_CHAT_CLEARANCE);
-+
-+        if((floorWidth <= width) && (floorHeight <= height))
++        if(floor.fits)
 +        {
 +            this._pixelrpArrivals.delete(roomId);
 +
-+            // The floor's lowest corner, below its centre.
-+            const floorBottom = (Math.max(...corners.map(corner => corner.y)) - floor.y);
-+
-+            return new Vector3d(floorX, floorY, lift(Math.min(drop, (lowest - floorBottom))));
++            return floor.placement;
 +        }
 +
 +        const tileX = Math.round(avatar.x);
@@ -123,8 +121,8 @@ index 1111111..2222222 100644
 +        if(!own) return null;
 +
 +        const zone = this.pixelrpFollowZone(width, height);
-+        const dx = (own.x - floor.x);
-+        const dy = (own.y - floor.y);
++        const dx = (own.x - floor.centre.x);
++        const dy = (own.y - floor.centre.y);
 +        let s = 1;
 +
 +        if((dx > 0) && (zone.right > 0)) s = Math.min(s, (zone.right / dx));
@@ -139,13 +137,81 @@ index 1111111..2222222 100644
 +        // Dropped toward the chat box too, short of pushing the arrival below
 +        // that area: s * dy is how far below the middle they stand once placed.
 +        const target = new Vector3d(
-+            (Math.round(((floorX + (t * (avatar.x - floorX))) * 2)) / 2),
-+            (Math.round(((floorY + (t * (avatar.y - floorY))) * 2)) / 2),
-+            ((t * avatar.z) + lift(Math.min(drop, (zone.bottom - (s * dy))))));
++            (Math.round(((floor.x + (t * (avatar.x - floor.x))) * 2)) / 2),
++            (Math.round(((floor.y + (t * (avatar.y - floor.y))) * 2)) / 2),
++            ((t * avatar.z) + this.pixelrpLift(floor, Math.min(floor.drop, (zone.bottom - (s * dy))))));
 +
 +        this._pixelrpArrivals.set(roomId, { x: tileX, y: tileY, target });
 +
 +        return target;
++    }
++
++    /**
++     * PixelRP: the room's floor as the camera places it - its centre in tiles
++     * and on the screen, whether it fits on the screen, and the aim point that
++     * puts it in the middle, dropped toward the chat box (PIXELRP_FLOOR_DROP):
++     * a floor that fits only as far as keeps its lowest corner clear of the
++     * chat box, a bigger one the whole way. Null when there is no floor yet.
++     *
++     * The drop is made by aiming above the floor: whatever is aimed at sits in
++     * the middle of the screen, so raising the aim point lowers the room.
++     */
++    private pixelrpFloor(geometry: RoomGeometry, roomInstance: IRoomInstance, width: number, height: number): { x: number, y: number, centre: Point, fits: boolean, perUnit: number, drop: number, placement: Vector3d }
++    {
++        const model = roomInstance && roomInstance.model;
++
++        if(!geometry || !model) return null;
++
++        const minX = (model.getValue<number>(RoomVariableEnum.ROOM_MIN_X) - 0.5);
++        const maxX = (model.getValue<number>(RoomVariableEnum.ROOM_MAX_X) + 0.5);
++        const minY = (model.getValue<number>(RoomVariableEnum.ROOM_MIN_Y) - 0.5);
++        const maxY = (model.getValue<number>(RoomVariableEnum.ROOM_MAX_Y) + 0.5);
++        const x = ((minX + maxX) / 2);
++        const y = ((minY + maxY) / 2);
++
++        if(isNaN(x) || isNaN(y)) return null;
++
++        const centre = geometry.getScreenPoint(new Vector3d(x, y, 0));
++        // The floor's own size on screen, from its four corners.
++        const corners = [ new Vector3d(minX, minY, 0), new Vector3d(maxX, minY, 0), new Vector3d(maxX, maxY, 0), new Vector3d(minX, maxY, 0) ].map(corner => geometry.getScreenPoint(corner));
++
++        if(!centre || corners.some(corner => !corner)) return null;
++
++        const xs = corners.map(corner => corner.x);
++        const ys = corners.map(corner => corner.y);
++        const fits = (((Math.max(...xs) - Math.min(...xs)) <= width) && ((Math.max(...ys) - Math.min(...ys)) <= height));
++        const above = geometry.getScreenPoint(new Vector3d(x, y, 1));
++        const perUnit = (above ? (centre.y - above.y) : 0);
++        const drop = Math.round((height * RoomEngine.PIXELRP_FLOOR_DROP));
++        // How far a floor that fits can go down: its lowest corner, below its
++        // centre, stays clear of the chat box.
++        const room = (((height / 2) - RoomEngine.PIXELRP_CHAT_CLEARANCE) - (Math.max(...ys) - centre.y));
++        const floor = { x, y, centre, fits, perUnit, drop, placement: null as Vector3d };
++
++        floor.placement = new Vector3d(x, y, this.pixelrpLift(floor, (fits ? Math.min(drop, room) : drop)));
++
++        return floor;
++    }
++
++    /** PixelRP: the aim-point height that drops the room that many whole pixels. */
++    private pixelrpLift(floor: { perUnit: number }, pixels: number): number
++    {
++        return ((floor.perUnit > 0) ? (Math.max(0, Math.round(pixels)) / floor.perUnit) : 0);
++    }
++
++    /**
++     * PixelRP: where a room is first put - the camera's own aim before there
++     * is an avatar to aim for (pixelrpFloor's placement). The client's useRoom
++     * gives it to the room as its first position: the room can be drawn a
++     * frame before the own avatar arrives, and with the stock first position
++     * (no drop) the camera then snapped the room down - the jerk that came and
++     * went with timing. Null when there is no floor yet: the stock position.
++     */
++    public pixelrpRoomPlacement(roomId: number, width: number, height: number): IVector3D
++    {
++        const floor = this.pixelrpFloor((this.getRoomInstanceGeometry(roomId, 1) as RoomGeometry), this.getRoomInstance(roomId), width, height);
++
++        return (floor ? floor.placement : null);
 +    }
 +
 +    /**
