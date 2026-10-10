@@ -1,4 +1,4 @@
-import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomChatSettings, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, RpSetEmergencyComposer, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
+import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, RpSetEmergencyComposer, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { ROOM_POLICE_JAIL, RpRoomPoliceEvent } from '../../../../api/rp-police/RpJailMessages';
@@ -501,25 +501,6 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                             <option value="1">{ LocalizeText('navigator.roomsettings.floor_thickness.thick') }</option>
                                             <option value="-1">{ LocalizeText('navigator.roomsettings.floor_thickness.thin') }</option>
                                             <option value="-2">{ LocalizeText('navigator.roomsettings.floor_thickness.thinnest') }</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="mt-label mt-section-label">Chat</div>
-                                <div className="mt-grid2">
-                                    <div className="mt-field">
-                                        <label className="mt-label">Bubble width</label>
-                                        <select className="form-select form-select-sm" value={ roomData.chatSettings.weight } onChange={ event => update(next => (next.chatSettings.weight = Number(event.target.value))) }>
-                                            <option value={ RoomChatSettings.CHAT_BUBBLE_WIDTH_NORMAL }>{ LocalizeText('navigator.roomsettings.chat.bubbles.width.normal') }</option>
-                                            <option value={ RoomChatSettings.CHAT_BUBBLE_WIDTH_THIN }>{ LocalizeText('navigator.roomsettings.chat.bubbles.width.thin') }</option>
-                                            <option value={ RoomChatSettings.CHAT_BUBBLE_WIDTH_WIDE }>{ LocalizeText('navigator.roomsettings.chat.bubbles.width.wide') }</option>
-                                        </select>
-                                    </div>
-                                    <div className="mt-field">
-                                        <label className="mt-label">Scroll speed</label>
-                                        <select className="form-select form-select-sm" value={ roomData.chatSettings.speed } onChange={ event => update(next => (next.chatSettings.speed = Number(event.target.value))) }>
-                                            <option value={ RoomChatSettings.CHAT_SCROLL_SPEED_FAST }>{ LocalizeText('navigator.roomsettings.chat.speed.fast') }</option>
-                                            <option value={ RoomChatSettings.CHAT_SCROLL_SPEED_NORMAL }>{ LocalizeText('navigator.roomsettings.chat.speed.normal') }</option>
-                                            <option value={ RoomChatSettings.CHAT_SCROLL_SPEED_SLOW }>{ LocalizeText('navigator.roomsettings.chat.speed.slow') }</option>
                                         </select>
                                     </div>
                                 </div>
