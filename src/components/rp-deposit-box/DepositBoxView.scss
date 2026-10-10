@@ -73,15 +73,18 @@
         letter-spacing: 0.5px;
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.58);
-
-        &--box { color: #ffffff; }
     }
 
     .deposit-count-label {
         font-size: 10px;
         color: rgba(0, 0, 0, 0.58);
 
-        &--box { color: rgba(255, 255, 255, 0.85); }
+        // The box side has no label, only its count - kept at the right edge,
+        // where the backpack's count sits.
+        &--box {
+            margin-left: auto;
+            color: rgba(255, 255, 255, 0.85);
+        }
     }
 
     .deposit-grid {
@@ -222,24 +225,5 @@
         border: 1px solid #f0c9a8;
         color: #6e2f07;
         font-size: 12px;
-    }
-
-    .deposit-help {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 8px 10px;
-        border-radius: 6px;
-        background: #ffffff;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        font-size: 11px;
-        line-height: 1.4;
-        color: #3d3d44;
-
-        svg {
-            flex-shrink: 0;
-            margin-top: 1px;
-            color: #8a3d0c;
-        }
     }
 }

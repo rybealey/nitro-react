@@ -188,10 +188,6 @@ export const DepositBoxView: FC<{}> = props =>
                     </div>
                     <section aria-label="Deposit box" className={ `deposit-box${ boxZone ? ' is-drop-zone' : '' }` } { ...zone('box') }>
                         <div className="deposit-side-head">
-                            <span className="deposit-label deposit-label--box">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /><path d="M12 14v3" /></svg>
-                                Deposit box
-                            </span>
                             <span className="deposit-count-label deposit-count-label--box">{ boxUsed }/{ boxOpenSlots }</span>
                         </div>
                         <div className="deposit-grid deposit-grid--box">
@@ -201,10 +197,6 @@ export const DepositBoxView: FC<{}> = props =>
                     </section>
                 </div>
                 { notice && <div className="deposit-notice" role="status">{ notice }</div> }
-                <div className="deposit-help">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 21h18" /><path d="M4 21V10l8-6 8 6v11" /><path d="M9 21v-6h6v6" /></svg>
-                    <span><b>Click</b> to move one. <b>Drag</b> across to move the whole stack, or within the box to rearrange it. What you store stays here until you come back to the bank for it.</span>
-                </div>
             </NitroCardContentView>
         </NitroCardView>
     );
