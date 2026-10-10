@@ -176,6 +176,16 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
 
         this._dirty = true;
 
+        // A thumbnail drawn elsewhere (BodyModel's faces) is read at once, as
+        // it always was: its owner frees the image right after handing it
+        // over, so a later turn in the queue would read an empty texture.
+        if(this._thumbContainer)
+        {
+            this.updateThumbVisualization();
+
+            return;
+        }
+
         this.schedule();
     }
 
