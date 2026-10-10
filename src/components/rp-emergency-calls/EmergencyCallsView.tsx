@@ -32,7 +32,7 @@ const agoText = (seconds: number) =>
     return `${ Math.floor(hours / 24) } d ago`;
 }
 
-const PhoneIcon: FC<{ size?: number }> = ({ size = 13 }) =>
+const PhoneIcon: FC<{ size?: number }> = ({ size = 10 }) =>
     <svg width={ size } height={ size } viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2" /></svg>;
 
 export const EmergencyCallsView: FC<{}> = props =>
@@ -133,7 +133,7 @@ export const EmergencyCallsView: FC<{}> = props =>
                 </div>
                 { !call &&
                     <div className="emergency-empty">
-                        <PhoneIcon size={ 28 } />
+                        <PhoneIcon size={ 20 } />
                         <b>No emergency calls</b>
                         <span>New 911 calls show up here while you are on duty.</span>
                     </div> }
@@ -149,7 +149,7 @@ export const EmergencyCallsView: FC<{}> = props =>
                                     <span className="emergency-ago">{ agoText(age) }</span>
                                 </div>
                                 <div className="emergency-room">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
                                     <span>{ call.roomName || 'Unknown room' }</span>
                                 </div>
                                 <p className="emergency-message">{ call.message }</p>
@@ -157,16 +157,16 @@ export const EmergencyCallsView: FC<{}> = props =>
                         </div>
                         <div className={ `emergency-status ${ statusClass }` } role="status">
                             { (statusClass === 'is-waiting') && <span className="emergency-ring" /> }
-                            { (statusClass === 'is-responded') && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }
+                            { (statusClass === 'is-responded') && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }
                             <span>{ statusText }</span>
                         </div>
                         { !call.responderId &&
                             <button type="button" className="emergency-button is-respond" onClick={ () => act(EmergencyCallAction.Respond) }>
-                                <PhoneIcon size={ 12 } /> Respond
+                                <PhoneIcon size={ 10 } /> Respond
                             </button> }
                         { !!call.responderId &&
                             <button type="button" className="emergency-button is-go" onClick={ () => act(EmergencyCallAction.GoToRoom) }>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12h12" /><path d="M11 6l6 6-6 6" /><path d="M20 4v16" /></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12h12" /><path d="M11 6l6 6-6 6" /><path d="M20 4v16" /></svg>
                                 Go to room
                             </button> }
                     </article> }
@@ -174,11 +174,11 @@ export const EmergencyCallsView: FC<{}> = props =>
                 { call &&
                     <div className="emergency-foot">
                         <button type="button" className="emergency-pager" aria-label="Newer call" disabled={ (index === 0) } onClick={ () => setIndex(index - 1) }>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
                         </button>
                         <span className="emergency-position">{ index + 1 } / { calls.length }</span>
                         <button type="button" className="emergency-pager" aria-label="Older call" disabled={ (index >= (calls.length - 1)) } onClick={ () => setIndex(index + 1) }>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
                         </button>
                         <span className="emergency-mark-label">Mark as</span>
                         <button type="button" className={ `emergency-mark is-helpful${ (call.mark === EmergencyCallMark.Helpful) ? ' is-on' : '' }` } aria-pressed={ (call.mark === EmergencyCallMark.Helpful) } disabled={ !canMark } title={ markTitle } onClick={ () => act(EmergencyCallAction.Helpful) }>Helpful</button>

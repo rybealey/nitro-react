@@ -13,13 +13,15 @@ $emergency-blue: #1e7295;
 }
 
 .nitro-card.nitro-emergency-calls {
-    width: 380px;
+    // ~70% of the canvas design's 380px, sized down as a whole so it sits
+    // beside the HUD without crowding the room.
+    width: 266px;
 
     .content-area.emergency-body {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 8px;
+        gap: 6px;
+        padding: 6px;
         background: #f3f3f5;
         color: #1c1c20;
         font-family: 'Ubuntu', sans-serif;
@@ -34,10 +36,10 @@ $emergency-blue: #1e7295;
     .emergency-label {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 10px;
+        gap: 4px;
+        font-size: 9px;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.58);
 
@@ -45,16 +47,16 @@ $emergency-blue: #1e7295;
     }
 
     .emergency-count {
-        font-size: 10px;
+        font-size: 9px;
         color: rgba(0, 0, 0, 0.58);
     }
 
     .emergency-card {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 8px;
-        border-radius: 6px;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 5px;
         background: #ffffff;
         border: 1px solid rgba(0, 0, 0, 0.1);
         box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
@@ -65,25 +67,25 @@ $emergency-blue: #1e7295;
 
     .emergency-caller {
         display: flex;
-        gap: 10px;
+        gap: 7px;
         align-items: flex-start;
     }
 
     // Head and shoulders: the full figure, cropped from the top.
     .emergency-figure {
         position: relative;
-        width: 64px;
-        height: 76px;
+        width: 46px;
+        height: 54px;
         flex-shrink: 0;
         overflow: hidden;
-        border-radius: 5px;
+        border-radius: 4px;
         background: linear-gradient(#5d6a78, #3f4954);
         border: 1px solid #2f3740;
 
         .avatar-image {
             position: absolute;
             left: 50%;
-            top: -10px;
+            top: -12px;
             transform: translateX(-50%);
         }
     }
@@ -93,7 +95,7 @@ $emergency-blue: #1e7295;
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
 
     .emergency-name-row {
@@ -108,21 +110,21 @@ $emergency-blue: #1e7295;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 13px;
+        font-size: 11px;
     }
 
     .emergency-ago {
         flex-shrink: 0;
-        font-size: 10px;
+        font-size: 9px;
         color: rgba(0, 0, 0, 0.55);
     }
 
     .emergency-room {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
         min-width: 0;
-        font-size: 11px;
+        font-size: 9px;
         font-weight: 700;
         color: $emergency-red;
 
@@ -136,9 +138,9 @@ $emergency-blue: #1e7295;
     }
 
     .emergency-message {
-        margin: 2px 0 0;
-        font-size: 12px;
-        line-height: 1.4;
+        margin: 1px 0 0;
+        font-size: 10px;
+        line-height: 1.35;
         color: #2b2b31;
         overflow-wrap: anywhere;
     }
@@ -146,12 +148,12 @@ $emergency-blue: #1e7295;
     .emergency-status {
         display: flex;
         align-items: center;
-        gap: 6px;
-        min-height: 26px;
-        padding: 0 10px;
+        gap: 5px;
+        min-height: 20px;
+        padding: 0 7px;
         box-sizing: border-box;
-        border-radius: 5px;
-        font-size: 12px;
+        border-radius: 4px;
+        font-size: 10px;
         font-weight: 700;
 
         &.is-waiting { background: #fff4e5; border: 1px solid #f0c9a8; color: #7a3a06; }
@@ -160,8 +162,8 @@ $emergency-blue: #1e7295;
     }
 
     .emergency-ring {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         flex-shrink: 0;
         border-radius: 50%;
         background: #d97706;
@@ -172,11 +174,11 @@ $emergency-blue: #1e7295;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 5px;
         width: 100%;
-        height: 30px;
-        border-radius: 5px;
-        font: 700 12px 'Ubuntu', sans-serif;
+        height: 22px;
+        border-radius: 4px;
+        font: 700 10px 'Ubuntu', sans-serif;
         cursor: pointer;
 
         &.is-respond {
@@ -199,30 +201,30 @@ $emergency-blue: #1e7295;
     }
 
     .emergency-notice {
-        padding: 6px 10px;
-        border-radius: 6px;
+        padding: 4px 7px;
+        border-radius: 5px;
         background: #fff4e5;
         border: 1px solid #f0c9a8;
         color: #6e2f07;
-        font-size: 12px;
+        font-size: 10px;
     }
 
     .emergency-empty {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 28px 12px;
-        border-radius: 6px;
+        gap: 6px;
+        padding: 18px 8px;
+        border-radius: 5px;
         background: #ffffff;
         border: 1px solid rgba(0, 0, 0, 0.1);
         text-align: center;
-        font-size: 12px;
+        font-size: 10px;
 
         svg { color: #7a8290; }
 
         span {
-            font-size: 11px;
+            font-size: 9px;
             line-height: 1.35;
             color: rgba(0, 0, 0, 0.58);
         }
@@ -231,19 +233,19 @@ $emergency-blue: #1e7295;
     .emergency-foot {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding-top: 2px;
+        gap: 4px;
+        padding-top: 1px;
     }
 
     .emergency-pager {
-        width: 26px;
-        height: 26px;
+        width: 20px;
+        height: 20px;
         box-sizing: border-box;
         padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 5px;
+        border-radius: 4px;
         border: 1px solid #b9bec6;
         background: #ffffff;
         color: #1c1c20;
@@ -257,28 +259,28 @@ $emergency-blue: #1e7295;
     }
 
     .emergency-position {
-        min-width: 40px;
+        min-width: 30px;
         text-align: center;
-        font-size: 12px;
+        font-size: 10px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
     }
 
     .emergency-mark-label {
         margin-left: auto;
-        font-size: 10px;
+        font-size: 8px;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
         color: rgba(0, 0, 0, 0.55);
     }
 
     .emergency-mark {
-        height: 26px;
-        padding: 0 12px;
-        border-radius: 5px;
+        height: 20px;
+        padding: 0 7px;
+        border-radius: 4px;
         background: #ffffff;
-        font: 700 12px 'Ubuntu', sans-serif;
+        font: 700 10px 'Ubuntu', sans-serif;
         box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
         cursor: pointer;
 
