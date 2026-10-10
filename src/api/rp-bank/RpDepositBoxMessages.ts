@@ -23,6 +23,7 @@ export class RpDepositBoxParser implements IMessageParser
     private _openSlots = 0;
     private _items: DepositBoxEntry[] = [];
     private _notice = '';
+    private _unstorable: string[] = [];
 
     public flush(): boolean
     {
@@ -30,6 +31,7 @@ export class RpDepositBoxParser implements IMessageParser
         this._openSlots = 0;
         this._items = [];
         this._notice = '';
+        this._unstorable = [];
 
         return true;
     }
@@ -46,6 +48,15 @@ export class RpDepositBoxParser implements IMessageParser
         while(count-- > 0) this._items.push({ slot: wrapper.readInt(), item: wrapper.readString(), count: wrapper.readInt() });
 
         if(wrapper.bytesAvailable) this._notice = wrapper.readString();
+
+        // Appended last: the items that cannot be stored (the emulator's
+        // PoliceUtility.PoliceGear). Absent from an older emulator.
+        if(wrapper.bytesAvailable)
+        {
+            let unstorable = wrapper.readInt();
+
+            while(unstorable-- > 0) this._unstorable.push(wrapper.readString());
+        }
 
         return true;
     }
@@ -70,6 +81,12 @@ export class RpDepositBoxParser implements IMessageParser
     public get notice(): string
     {
         return this._notice;
+    }
+
+    /** Item keys that cannot be stored - police equipment. Greyed out in the backpack. */
+    public get unstorable(): string[]
+    {
+        return this._unstorable;
     }
 }
 

@@ -38,6 +38,9 @@ export const DepositBoxView: FC<{}> = props =>
     const [ box, setBox ] = useState<Map<number, DepositBoxEntry>>(new Map());
     const [ boxOpenSlots, setBoxOpenSlots ] = useState(16);
     const [ notice, setNotice ] = useState('');
+    // Items that cannot be stored (police equipment), from the server with
+    // the box: greyed out on the backpack side, neither clicked nor dragged.
+    const [ unstorable, setUnstorable ] = useState<Set<string>>(new Set());
     const [ dragging, setDragging ] = useState<Dragging>(null);
     // The box slot an item from the box is held over - where a rearrange lands.
     const [ dropSlot, setDropSlot ] = useState(0);
@@ -72,6 +75,7 @@ export const DepositBoxView: FC<{}> = props =>
         setBox(next);
         setBoxOpenSlots(parser.openSlots);
         setNotice(parser.notice);
+        setUnstorable(new Set(parser.unstorable));
         setIsOpen(true);
     });
 
@@ -131,21 +135,24 @@ export const DepositBoxView: FC<{}> = props =>
     {
         const meta = (entry ? ResolveRpItem(entry.item) : null);
         const name = (entry ? (meta?.name ?? entry.item) : '');
+        // Police equipment in the backpack: shown, greyed out, and going nowhere.
+        const blocked = ((side === 'pack') && !!entry && unstorable.has(entry.item));
+        const movable = (!!entry && !blocked);
         const label = (entry
-            ? `${ name }${ (entry.count > 1) ? ` ×${ entry.count }` : '' } - click to ${ (side === 'pack') ? 'store' : 'take out' } one, drag to ${ (side === 'pack') ? 'store' : 'take out' } all`
+            ? `${ name }${ (entry.count > 1) ? ` ×${ entry.count }` : '' }${ blocked ? '' : ` - click to ${ (side === 'pack') ? 'store' : 'take out' } one, drag to ${ (side === 'pack') ? 'store' : 'take out' } all` }`
             : (locked ? 'Locked - VIP' : 'Empty slot'));
         const lifted = (!!dragging && (dragging.side === side) && (dragging.slot === slot));
         const target = ((side === 'box') && (dropSlot === slot));
 
         return (
-            <button key={ slot } type="button" title={ label } aria-label={ label } aria-disabled={ !entry }
-                className={ `deposit-slot${ entry ? ' has-item' : '' }${ locked ? ' is-locked' : '' }${ lifted ? ' is-lifted' : '' }${ target ? ' is-drop-target' : '' }` }
-                draggable={ !!entry } onDragStart={ entry ? onDragStart(side, slot) : undefined } onDragEnd={ () => 
+            <button key={ slot } type="button" title={ label } aria-label={ label } aria-disabled={ !movable }
+                className={ `deposit-slot${ entry ? ' has-item' : '' }${ blocked ? ' is-blocked' : '' }${ locked ? ' is-locked' : '' }${ lifted ? ' is-lifted' : '' }${ target ? ' is-drop-target' : '' }` }
+                draggable={ movable } onDragStart={ movable ? onDragStart(side, slot) : undefined } onDragEnd={ () =>
                 {
-                    setDragging(null); setDropSlot(0); 
+                    setDragging(null); setDropSlot(0);
                 } }
                 { ...((side === 'box') ? rearrange(slot) : {}) }
-                onClick={ () => entry && move(side, slot, false) }>
+                onClick={ () => movable && move(side, slot, false) }>
                 { entry && <div className={ `deposit-item rp-inventory-item ${ meta?.cls ?? '' }` } style={ meta?.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } /> }
                 { (entry && (entry.count > 1)) && <span className="deposit-count">{ entry.count }</span> }
                 { locked && <Lock /> }

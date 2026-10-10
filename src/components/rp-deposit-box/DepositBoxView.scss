@@ -119,6 +119,20 @@
             cursor: not-allowed;
         }
 
+        // Police equipment in the backpack: it cannot be stored, so it sits
+        // greyed out and takes no clicks or drags.
+        &.is-blocked {
+            background: #e8e8ec;
+            cursor: not-allowed;
+
+            &:hover { border-color: rgba(0, 0, 0, 0.1); }
+
+            .deposit-item {
+                filter: grayscale(1);
+                opacity: 0.4;
+            }
+        }
+
         &.is-lifted { opacity: 0.35; }
 
         .deposit-lock { color: rgba(0, 0, 0, 0.3); }
