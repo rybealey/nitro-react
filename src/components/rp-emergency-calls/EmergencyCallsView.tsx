@@ -7,9 +7,9 @@ import { useMessageEvent } from '../../hooks';
 // PixelRP 911 calls (design: the "911 Emergency Calls" canvas). Emulator:
 // EmergencyCalls.
 //
-// Open for exactly as long as you are an on-duty officer - the server opens
-// it on clock-in and closes it on clock-out, so it has no close button. One
-// call at a time, the newest first; the right arrow goes back through older
+// Open while you are an on-duty officer - the server opens it on clock-in and
+// closes it on clock-out. The X only puts it away: the next new call brings it
+// back up, and it opens again on the next clock-in. One call at a time, the newest first; the right arrow goes back through older
 // ones. Respond claims a waiting call, after which the button is Go to room.
 // Once responded, any officer marks it Helpful or Abuse - once, for good.
 
@@ -38,6 +38,8 @@ const PhoneIcon: FC<{ size?: number }> = ({ size = 10 }) =>
 export const EmergencyCallsView: FC<{}> = props =>
 {
     const [ isOpen, setIsOpen ] = useState(false);
+    // Closed with the X - until a new call comes in.
+    const [ isDismissed, setIsDismissed ] = useState(false);
     const [ calls, setCalls ] = useState<EmergencyCall[]>([]);
     const [ receivedAt, setReceivedAt ] = useState(0);
     const [ index, setIndex ] = useState(0);
@@ -65,7 +67,11 @@ export const EmergencyCallsView: FC<{}> = props =>
 
         // A new call always comes to the top, and the window shows it.
         // Otherwise stay on the call being looked at, wherever it moved.
-        if(newest > newestId.current) setIndex(0);
+        if(newest > newestId.current)
+        {
+            setIndex(0);
+            setIsDismissed(false);
+        }
         else
         {
             const at = (viewing ? next.findIndex(entry => (entry.id === viewing)) : -1);
@@ -76,6 +82,10 @@ export const EmergencyCallsView: FC<{}> = props =>
         setCalls(next);
         newestId.current = Math.max(newestId.current, newest);
         setReceivedAt(Date.now());
+
+        // A fresh clock-in opens it whether or not it was put away last shift.
+        if(!isOpen) setIsDismissed(false);
+
         setIsOpen(true);
 
         if(parser.notice) setNotice(parser.notice);
@@ -99,7 +109,7 @@ export const EmergencyCallsView: FC<{}> = props =>
         return () => clearInterval(interval);
     }, [ isOpen ]);
 
-    if(!isOpen) return null;
+    if(!isOpen || isDismissed) return null;
 
     const call = (calls[index] ?? null);
     const waiting = calls.filter(entry => !entry.responderId).length;
@@ -125,7 +135,7 @@ export const EmergencyCallsView: FC<{}> = props =>
 
     return (
         <NitroCardView uniqueKey="emergency-calls" className="nitro-emergency-calls" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
-            <NitroCardHeaderView headerText="Emergency Calls" noCloseButton onCloseClick={ () => null } />
+            <NitroCardHeaderView headerText="Emergency Calls" onCloseClick={ () => setIsDismissed(true) } />
             <NitroCardContentView className="emergency-body" overflow="hidden">
                 <div className="emergency-head">
                     <span className="emergency-label"><PhoneIcon /> 911 queue</span>
