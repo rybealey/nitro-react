@@ -71,11 +71,11 @@ $emergency-blue: #1e7295;
         align-items: flex-start;
     }
 
-    // Head and shoulders: the full figure, cropped from the top.
+    // Head and shoulders in a square: the full figure, cropped from the top.
     .emergency-figure {
         position: relative;
-        width: 46px;
-        height: 54px;
+        width: 50px;
+        height: 50px;
         flex-shrink: 0;
         overflow: hidden;
         border-radius: 4px;
@@ -85,7 +85,7 @@ $emergency-blue: #1e7295;
         .avatar-image {
             position: absolute;
             left: 50%;
-            top: -12px;
+            top: -17px;
             transform: translateX(-50%);
         }
     }
