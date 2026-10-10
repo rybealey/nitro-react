@@ -25,7 +25,7 @@ index 1111111..2222222 100644
 +
 +    // PixelRP: how far below the middle of the screen the floor's centre goes,
 +    // as a share of the window's height - a little nearer the chat box.
-+    private static readonly PIXELRP_FLOOR_DROP: number = 0.06;
++    private static readonly PIXELRP_FLOOR_DROP: number = 0.08;
 +
 +    // PixelRP: the floor's lowest point stays this far up from the bottom of
 +    // the window, clear of the bottom bar and the chat box in it (55px).
