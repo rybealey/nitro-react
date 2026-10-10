@@ -8,6 +8,8 @@ export const RP_ITEMS: Record<string, { name: string, cls: string }> = {
     smoothie: { name: 'Passive Smoothie', cls: 'rp-item-smoothie' },
     snack: { name: 'Snack', cls: 'rp-item-snack' },
     medkit: { name: 'Medkit', cls: 'rp-item-medkit' },
+    // Police: a medkit from the locker, one at a time. Heals the same as a medkit.
+    cop_medkit: { name: 'Cop Medkit', cls: 'rp-item-cop-medkit' },
     vip_token_31: { name: 'VIP Token (31 days)', cls: 'rp-item-vip-token-gold' },
     vip_token_14: { name: 'VIP Token (14 days)', cls: 'rp-item-vip-token-silver' },
     // Unlocks :spit for good; the art is the Blue Paint Splat furni's own icon.
