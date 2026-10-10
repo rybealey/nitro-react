@@ -15,7 +15,7 @@ index 1111111..2222222 100644
                  if(!roomCamera.location)
                  {
                      roomGeometry.location = _local_15;
-@@ -3611,6 +3617,129 @@
+@@ -3611,6 +3617,165 @@
          return true;
      }
  
@@ -44,9 +44,10 @@ index 1111111..2222222 100644
 +     * the floor sat low and had to be dragged up.
 +     *
 +     * A floor bigger than the screen is centred and dropped the same way as it
-+     * is entered, as far as keeps the arrival in view, and stays put until
-+     * they step off the tile they arrived on; from then on the camera follows
-+     * them as stock.
++     * is entered, as far as keeps the arrival inside the follow camera's
++     * comfortable area (pixelrpFollowZone), and stays put until they step off
++     * the tile they arrived on; from then on the camera follows them as stock,
++     * finding nothing to correct until they near the edge.
 +     *
 +     * Screen maths in getScreenPoint's space, where the point the geometry is
 +     * centred on projects to (0, 0) and the canvas middle is (w/2, h/2).
@@ -67,7 +68,6 @@ index 1111111..2222222 100644
 +
 +        if(!floor || isNaN(floorX) || isNaN(floorY)) return null;
 +
-+        const halfWidth = (width / 2);
 +        const halfHeight = (height / 2);
 +
 +        // The floor's own size on screen, from its four corners.
@@ -112,34 +112,70 @@ index 1111111..2222222 100644
 +        }
 +
 +        // Centred on the floor, pulled back toward the avatar by as little as
-+        // keeps them on screen: s is how much of the floor-to-avatar distance
-+        // is left between them and the middle.
-+        const own = geometry.getScreenPoint(new Vector3d(avatar.x, avatar.y, avatar.z));
++        // puts them inside the follow camera's comfortable area: s is how much
++        // of the floor-to-avatar distance is left between them and the middle.
++        // Inside that area the follow camera finds nothing to correct when it
++        // takes over at their first step - outside it, it panned at once, the
++        // jerk on clicking straight after an arrow.
++        // The avatar as the follow camera measures it: tile rounded, height not.
++        const own = geometry.getScreenPoint(new Vector3d(Math.round(avatar.x), Math.round(avatar.y), avatar.z));
 +
 +        if(!own) return null;
 +
++        const zone = this.pixelrpFollowZone(width, height);
 +        const dx = (own.x - floor.x);
 +        const dy = (own.y - floor.y);
 +        let s = 1;
 +
-+        if(dx > 0) s = Math.min(s, ((halfWidth - 100) / dx));
-+        else if(dx < 0) s = Math.min(s, ((100 - halfWidth) / dx));
++        if((dx > 0) && (zone.right > 0)) s = Math.min(s, (zone.right / dx));
++        else if((dx < 0) && (zone.left < 0)) s = Math.min(s, (zone.left / dx));
 +
-+        if(dy > 0) s = Math.min(s, ((halfHeight - 90) / dy));
-+        else if(dy < 0) s = Math.min(s, ((160 - halfHeight) / dy));
++        if((dy > 0) && (zone.bottom > 0)) s = Math.min(s, (zone.bottom / dy));
++        else if((dy < 0) && (zone.top < 0)) s = Math.min(s, (zone.top / dy));
 +
-+        const t = (1 - Math.max(0, s));
++        s = Math.max(0, s);
++
++        const t = (1 - s);
 +        // Dropped toward the chat box too, short of pushing the arrival below
-+        // the edge it was kept inside: s * dy is how far below the middle they
-+        // stand once placed.
++        // that area: s * dy is how far below the middle they stand once placed.
 +        const target = new Vector3d(
 +            (Math.round(((floorX + (t * (avatar.x - floorX))) * 2)) / 2),
 +            (Math.round(((floorY + (t * (avatar.y - floorY))) * 2)) / 2),
-+            ((t * avatar.z) + lift(Math.min(drop, ((halfHeight - 90) - (Math.max(0, s) * dy))))));
++            ((t * avatar.z) + lift(Math.min(drop, (zone.bottom - (s * dy))))));
 +
 +        this._pixelrpArrivals.set(roomId, { x: tileX, y: tileY, target });
 +
 +        return target;
++    }
++
++    /**
++     * PixelRP: the follow camera's comfortable area - where the own avatar can
++     * be without updateRoomCamera moving to follow them - relative to the
++     * middle of the screen, worked out with updateRoomCamera's own sums (its
++     * edge shares and their caps, before any room-edge relaxing) and brought
++     * in by a small safety gap.
++     */
++    private pixelrpFollowZone(width: number, height: number): { left: number, right: number, top: number, bottom: number }
++    {
++        let top = 0.35;
++        let bottom = 0.2;
++        let side = 0.2;
++
++        if((side * width) > 100) side = (100 / width);
++        if((top * height) > 150) top = (150 / height);
++        if((bottom * height) > 150) bottom = (150 / height);
++
++        const zoneWidth = Math.max(10, (width * (1 - (side * 2))));
++        const zoneHeight = Math.max(10, (height * (1 - (top + bottom))));
++        const zoneTop = (((top + bottom) > 0) ? (-(zoneHeight) * (bottom / (top + bottom))) : (-(zoneHeight) / 2));
++        const gap = Math.min(16, (zoneWidth / 4), (zoneHeight / 4));
++
++        return {
++            left: ((-(zoneWidth) / 2) + gap),
++            right: ((zoneWidth / 2) - gap),
++            top: (zoneTop + gap),
++            bottom: ((zoneTop + zoneHeight) - gap)
++        };
 +    }
 +
      public get selectedAvatarId(): number
