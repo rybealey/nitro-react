@@ -15,7 +15,7 @@ index 1111111..2222222 100644
                  if(!roomCamera.location)
                  {
                      roomGeometry.location = _local_15;
-@@ -3611,6 +3617,103 @@
+@@ -3611,6 +3617,129 @@
          return true;
      }
  
@@ -23,19 +23,30 @@ index 1111111..2222222 100644
 +    // bigger than the screen was centred for it (pixelrpRoomAreaTarget).
 +    private _pixelrpArrivals: Map<number, { x: number, y: number, target: Vector3d }> = new Map();
 +
++    // PixelRP: how far below the middle of the screen the floor's centre goes,
++    // as a share of the window's height - a little nearer the chat box.
++    private static readonly PIXELRP_FLOOR_DROP: number = 0.06;
++
++    // PixelRP: the floor's lowest point stays this far up from the bottom of
++    // the window, clear of the bottom bar and the chat box in it (55px).
++    private static readonly PIXELRP_CHAT_CLEARANCE: number = 60;
++
 +    /**
 +     * PixelRP: where the camera aims so the room's FLOOR - the part people
 +     * walk on - sits in the middle of the screen. Walls play no part, not even
 +     * when their tops go off the screen. Null: no opinion, the stock target
 +     * stands.
 +     *
-+     * A floor that fits on screen is centred, always. Stock centred the room
-+     * object's bounds - floor and walls together - and the walls stand above
-+     * the back edges, so the floor sat low and had to be dragged up.
++     * A floor that fits on screen is centred, always - then dropped a little
++     * (PIXELRP_FLOOR_DROP) toward the chat box, though never so far that its
++     * lowest point goes behind it. Stock centred the room object's bounds -
++     * floor and walls together - and the walls stand above the back edges, so
++     * the floor sat low and had to be dragged up.
 +     *
-+     * A floor bigger than the screen is centred as it is entered, as far as
-+     * keeps the arrival in view, and stays put until they step off the tile
-+     * they arrived on; from then on the camera follows them as stock.
++     * A floor bigger than the screen is centred and dropped the same way as it
++     * is entered, as far as keeps the arrival in view, and stays put until
++     * they step off the tile they arrived on; from then on the camera follows
++     * them as stock.
 +     *
 +     * Screen maths in getScreenPoint's space, where the point the geometry is
 +     * centred on projects to (0, 0) and the canvas middle is (w/2, h/2).
@@ -67,11 +78,23 @@ index 1111111..2222222 100644
 +        const floorWidth = (Math.max(...corners.map(corner => corner.x)) - Math.min(...corners.map(corner => corner.x)));
 +        const floorHeight = (Math.max(...corners.map(corner => corner.y)) - Math.min(...corners.map(corner => corner.y)));
 +
++        // The drop toward the chat box, made by aiming that many pixels above
++        // the floor: whatever is aimed at sits in the middle, so raising the
++        // aim point lowers the room. In whole pixels.
++        const above = geometry.getScreenPoint(new Vector3d(floorX, floorY, 1));
++        const perUnit = (above ? (floor.y - above.y) : 0);
++        const drop = Math.round((height * RoomEngine.PIXELRP_FLOOR_DROP));
++        const lift = (pixels: number) => ((perUnit > 0) ? (Math.max(0, Math.round(pixels)) / perUnit) : 0);
++        const lowest = (halfHeight - RoomEngine.PIXELRP_CHAT_CLEARANCE);
++
 +        if((floorWidth <= width) && (floorHeight <= height))
 +        {
 +            this._pixelrpArrivals.delete(roomId);
 +
-+            return new Vector3d(floorX, floorY, 0);
++            // The floor's lowest corner, below its centre.
++            const floorBottom = (Math.max(...corners.map(corner => corner.y)) - floor.y);
++
++            return new Vector3d(floorX, floorY, lift(Math.min(drop, (lowest - floorBottom))));
 +        }
 +
 +        const tileX = Math.round(avatar.x);
@@ -106,10 +129,13 @@ index 1111111..2222222 100644
 +        else if(dy < 0) s = Math.min(s, ((160 - halfHeight) / dy));
 +
 +        const t = (1 - Math.max(0, s));
++        // Dropped toward the chat box too, short of pushing the arrival below
++        // the edge it was kept inside: s * dy is how far below the middle they
++        // stand once placed.
 +        const target = new Vector3d(
 +            (Math.round(((floorX + (t * (avatar.x - floorX))) * 2)) / 2),
 +            (Math.round(((floorY + (t * (avatar.y - floorY))) * 2)) / 2),
-+            (t * avatar.z));
++            ((t * avatar.z) + lift(Math.min(drop, ((halfHeight - 90) - (Math.max(0, s) * dy))))));
 +
 +        this._pixelrpArrivals.set(roomId, { x: tileX, y: tileY, target });
 +
