@@ -38,6 +38,7 @@ import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpCityMessages } from './api/rp-city/RpCityMessages';
 import { RegisterRpDepositBoxMessages } from './api/rp-bank/RpDepositBoxMessages';
+import { RegisterRpEmergencyCallsMessages } from './api/rp-police/RpEmergencyCallsMessages';
 import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { RegisterRpNavigatorMessages } from './api/rp-navigator/RpNavigatorMessages';
 import { RegisterRpTurfMessages } from './api/rp-turf/RpTurfMessages';
@@ -195,6 +196,7 @@ export const App: FC<{}> = props =>
                 RegisterRpClothingMessages();
                 RegisterRpCityMessages();
                 RegisterRpDepositBoxMessages();
+                RegisterRpEmergencyCallsMessages();
 
                 GetNitroInstance().init();
 

@@ -1,0 +1,305 @@
+// PixelRP 911 calls (EmergencyCallsView; design: the "911 Emergency Calls"
+// canvas). The deposit box's pale page and white card, with the call's status
+// as a coloured bar and one full-width button.
+
+$emergency-red: #a8281e;
+$emergency-green: #1d6b34;
+$emergency-blue: #1e7295;
+
+@keyframes emergency-ring {
+    0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.55); }
+    70% { box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+}
+
+.nitro-card.nitro-emergency-calls {
+    width: 380px;
+
+    .content-area.emergency-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+        background: #f3f3f5;
+        color: #1c1c20;
+        font-family: 'Ubuntu', sans-serif;
+    }
+
+    .emergency-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .emergency-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.58);
+
+        svg { color: $emergency-red; }
+    }
+
+    .emergency-count {
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.58);
+    }
+
+    .emergency-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 6px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+
+        // A prank: dimmed, so the real calls stand out.
+        &.is-abuse { opacity: 0.6; }
+    }
+
+    .emergency-caller {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    // Head and shoulders: the full figure, cropped from the top.
+    .emergency-figure {
+        position: relative;
+        width: 64px;
+        height: 76px;
+        flex-shrink: 0;
+        overflow: hidden;
+        border-radius: 5px;
+        background: linear-gradient(#5d6a78, #3f4954);
+        border: 1px solid #2f3740;
+
+        .avatar-image {
+            position: absolute;
+            left: 50%;
+            top: -10px;
+            transform: translateX(-50%);
+        }
+    }
+
+    .emergency-text {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .emergency-name-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .emergency-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+    }
+
+    .emergency-ago {
+        flex-shrink: 0;
+        font-size: 10px;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .emergency-room {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+        font-size: 11px;
+        font-weight: 700;
+        color: $emergency-red;
+
+        svg { flex-shrink: 0; }
+
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .emergency-message {
+        margin: 2px 0 0;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #2b2b31;
+        overflow-wrap: anywhere;
+    }
+
+    .emergency-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 26px;
+        padding: 0 10px;
+        box-sizing: border-box;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: 700;
+
+        &.is-waiting { background: #fff4e5; border: 1px solid #f0c9a8; color: #7a3a06; }
+        &.is-responded { background: #e6f4ea; border: 1px solid #b9dcc3; color: #1d5e31; }
+        &.is-abuse { background: #fbe9e7; border: 1px solid #efc0ba; color: #7f1d16; }
+    }
+
+    .emergency-ring {
+        width: 8px;
+        height: 8px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: #d97706;
+        animation: emergency-ring 1.6s ease-out infinite;
+    }
+
+    .emergency-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        height: 30px;
+        border-radius: 5px;
+        font: 700 12px 'Ubuntu', sans-serif;
+        cursor: pointer;
+
+        &.is-respond {
+            border: 1px solid #14506b;
+            background: $emergency-blue;
+            color: #ffffff;
+            box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+
+            &:hover { background: #22809f; }
+        }
+
+        &.is-go {
+            border: 1px solid #b9bec6;
+            background: #ffffff;
+            color: #1c1c20;
+            box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+
+            &:hover { border-color: #8f96a0; }
+        }
+    }
+
+    .emergency-notice {
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: #fff4e5;
+        border: 1px solid #f0c9a8;
+        color: #6e2f07;
+        font-size: 12px;
+    }
+
+    .emergency-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 28px 12px;
+        border-radius: 6px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        text-align: center;
+        font-size: 12px;
+
+        svg { color: #7a8290; }
+
+        span {
+            font-size: 11px;
+            line-height: 1.35;
+            color: rgba(0, 0, 0, 0.58);
+        }
+    }
+
+    .emergency-foot {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding-top: 2px;
+    }
+
+    .emergency-pager {
+        width: 26px;
+        height: 26px;
+        box-sizing: border-box;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 5px;
+        border: 1px solid #b9bec6;
+        background: #ffffff;
+        color: #1c1c20;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+    }
+
+    .emergency-position {
+        min-width: 40px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .emergency-mark-label {
+        margin-left: auto;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .emergency-mark {
+        height: 26px;
+        padding: 0 12px;
+        border-radius: 5px;
+        background: #ffffff;
+        font: 700 12px 'Ubuntu', sans-serif;
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+
+        &.is-helpful { border: 1px solid $emergency-green; color: $emergency-green; }
+        &.is-abuse { border: 1px solid $emergency-red; color: $emergency-red; }
+
+        &.is-on {
+            color: #ffffff;
+            box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.25);
+
+            &.is-helpful { background: $emergency-green; }
+            &.is-abuse { background: $emergency-red; }
+        }
+
+        &:disabled:not(.is-on) {
+            background: #e6e6ea;
+            border-color: #d3d3d9;
+            color: rgba(0, 0, 0, 0.35);
+            cursor: default;
+        }
+
+        &:disabled { cursor: default; }
+    }
+}
