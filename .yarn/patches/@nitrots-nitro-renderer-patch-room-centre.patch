@@ -1,0 +1,121 @@
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -1312,6 +1312,12 @@
+                 _local_15.z = _local_10;
+                 _local_15.x = (Math.round((_local_23.x * 2)) / 2);
+                 _local_15.y = (Math.round((_local_23.y * 2)) / 2);
++
++                // PixelRP: the room area in the middle of the screen, not the
++                // walls-and-floor outline or the arriving avatar (pixelrpRoomAreaTarget).
++                const pixelrpTarget = this.pixelrpRoomAreaTarget(roomId, roomGeometry, roomInstance, width, height, objectLocation, !roomCamera.location);
++
++                if(pixelrpTarget) _local_15.assign(pixelrpTarget);
+                 if(!roomCamera.location)
+                 {
+                     roomGeometry.location = _local_15;
+@@ -3611,6 +3617,103 @@
+         return true;
+     }
+ 
++    // PixelRP: per room, the tile the own avatar arrived on and where a room
++    // bigger than the screen was centred for it (pixelrpRoomAreaTarget).
++    private _pixelrpArrivals: Map<number, { x: number, y: number, target: Vector3d }> = new Map();
++
++    /**
++     * PixelRP: where the camera aims so the room's FLOOR - the part people
++     * walk on - sits in the middle of the screen. Walls play no part, not even
++     * when their tops go off the screen. Null: no opinion, the stock target
++     * stands.
++     *
++     * A floor that fits on screen is centred, always. Stock centred the room
++     * object's bounds - floor and walls together - and the walls stand above
++     * the back edges, so the floor sat low and had to be dragged up.
++     *
++     * A floor bigger than the screen is centred as it is entered, as far as
++     * keeps the arrival in view, and stays put until they step off the tile
++     * they arrived on; from then on the camera follows them as stock.
++     *
++     * Screen maths in getScreenPoint's space, where the point the geometry is
++     * centred on projects to (0, 0) and the canvas middle is (w/2, h/2).
++     */
++    private pixelrpRoomAreaTarget(roomId: number, geometry: RoomGeometry, roomInstance: IRoomInstance, width: number, height: number, avatar: IVector3D, arriving: boolean): Vector3d
++    {
++        const model = roomInstance && roomInstance.model;
++
++        if(!geometry || !model || !avatar) return null;
++
++        const minX = (model.getValue<number>(RoomVariableEnum.ROOM_MIN_X) - 0.5);
++        const maxX = (model.getValue<number>(RoomVariableEnum.ROOM_MAX_X) + 0.5);
++        const minY = (model.getValue<number>(RoomVariableEnum.ROOM_MIN_Y) - 0.5);
++        const maxY = (model.getValue<number>(RoomVariableEnum.ROOM_MAX_Y) + 0.5);
++        const floorX = ((minX + maxX) / 2);
++        const floorY = ((minY + maxY) / 2);
++        const floor = geometry.getScreenPoint(new Vector3d(floorX, floorY, 0));
++
++        if(!floor || isNaN(floorX) || isNaN(floorY)) return null;
++
++        const halfWidth = (width / 2);
++        const halfHeight = (height / 2);
++
++        // The floor's own size on screen, from its four corners.
++        const corners = [ new Vector3d(minX, minY, 0), new Vector3d(maxX, minY, 0), new Vector3d(maxX, maxY, 0), new Vector3d(minX, maxY, 0) ].map(corner => geometry.getScreenPoint(corner));
++
++        if(corners.some(corner => !corner)) return null;
++
++        const floorWidth = (Math.max(...corners.map(corner => corner.x)) - Math.min(...corners.map(corner => corner.x)));
++        const floorHeight = (Math.max(...corners.map(corner => corner.y)) - Math.min(...corners.map(corner => corner.y)));
++
++        if((floorWidth <= width) && (floorHeight <= height))
++        {
++            this._pixelrpArrivals.delete(roomId);
++
++            return new Vector3d(floorX, floorY, 0);
++        }
++
++        const tileX = Math.round(avatar.x);
++        const tileY = Math.round(avatar.y);
++
++        if(!arriving)
++        {
++            const arrival = this._pixelrpArrivals.get(roomId);
++
++            if(arrival && (arrival.x === tileX) && (arrival.y === tileY)) return arrival.target;
++
++            this._pixelrpArrivals.delete(roomId);
++
++            return null;
++        }
++
++        // Centred on the floor, pulled back toward the avatar by as little as
++        // keeps them on screen: s is how much of the floor-to-avatar distance
++        // is left between them and the middle.
++        const own = geometry.getScreenPoint(new Vector3d(avatar.x, avatar.y, avatar.z));
++
++        if(!own) return null;
++
++        const dx = (own.x - floor.x);
++        const dy = (own.y - floor.y);
++        let s = 1;
++
++        if(dx > 0) s = Math.min(s, ((halfWidth - 100) / dx));
++        else if(dx < 0) s = Math.min(s, ((100 - halfWidth) / dx));
++
++        if(dy > 0) s = Math.min(s, ((halfHeight - 90) / dy));
++        else if(dy < 0) s = Math.min(s, ((160 - halfHeight) / dy));
++
++        const t = (1 - Math.max(0, s));
++        const target = new Vector3d(
++            (Math.round(((floorX + (t * (avatar.x - floorX))) * 2)) / 2),
++            (Math.round(((floorY + (t * (avatar.y - floorY))) * 2)) / 2),
++            (t * avatar.z));
++
++        this._pixelrpArrivals.set(roomId, { x: tileX, y: tileY, target });
++
++        return target;
++    }
++
+     public get selectedAvatarId(): number
+     {
+         if(!this._roomObjectEventHandler) return -1;
