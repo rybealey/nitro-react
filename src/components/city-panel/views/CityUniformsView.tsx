@@ -1,6 +1,6 @@
 import { HabboClubLevelEnum } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { CreateUniformModels, FigureData, generateRandomFigure, GetSessionDataManager, SendMessageComposer, UniformModel, UniformPartsOf } from '../../../api';
+import { CreateUniformModels, DisposeUniformModels, FigureData, generateRandomFigure, GetSessionDataManager, SendMessageComposer, UniformModel, UniformPartsOf } from '../../../api';
 import { CityUniformCorp, RpCityUniformComposer, RpCityUniformFigureEvent, RpCityUniformListEvent, RpCityUniformSaveComposer, RpCityUniformsComposer, UniformKind } from '../../../api/rp-city/RpCityMessages';
 import { LayoutAvatarImageView } from '../../../common';
 import { useMessageEvent } from '../../../hooks';
@@ -42,6 +42,9 @@ export const CityUniformsView: FC<{}> = props =>
     const [ saved, setSaved ] = useState<string>(null);
     const [ figure, setFigure ] = useState<FigureData>(null);
     const [ models, setModels ] = useState<UniformModel[]>([]);
+    // Bumped with every fresh set of models, so the editor remounts on them
+    // and never draws one that has been freed.
+    const [ modelsId, setModelsId ] = useState(0);
     const [ category, setCategory ] = useState(1);
     const [ direction, setDirection ] = useState(2);
     const [ figureText, setFigureText ] = useState('');
@@ -78,6 +81,7 @@ export const CityUniformsView: FC<{}> = props =>
 
         setFigure(next);
         setModels(CreateUniformModels(next));
+        setModelsId(prev => (prev + 1));
         setFigureText(UniformPartsOf(parts));
     }, [ direction ]);
 
@@ -105,6 +109,10 @@ export const CityUniformsView: FC<{}> = props =>
     {
         if(figure) figure.notify = null;
     }, [ figure ]);
+
+    // Each load builds fresh models; the ones it replaces (and the last, on
+    // leaving the tab) are freed rather than left holding their thumbnails.
+    useEffect(() => () => DisposeUniformModels(models), [ models ]);
 
     const corp = corps.find(entry => (entry.id === corpId)) ?? null;
     const isMale = (gender === FigureData.MALE);
@@ -184,7 +192,7 @@ export const CityUniformsView: FC<{}> = props =>
                         </div>
                         <div className="city-uniform-body">
                             <div className="city-uniform-model">
-                                { model && <AvatarEditorModelView key={ `${ wearer.kind }-${ wearer.rankId }-${ gender }-${ category }-${ models.length }-${ saved }` } model={ model } gender={ gender } setGender={ () => null } /> }
+                                { model && <AvatarEditorModelView key={ `${ modelsId }-${ category }` } model={ model } gender={ gender } setGender={ () => null } /> }
                             </div>
                             <div className="city-uniform-side">
                                 <div className="city-uniform-preview">

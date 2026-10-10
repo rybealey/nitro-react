@@ -86,6 +86,21 @@ export const CreateUniformModels = (figure: FigureData): UniformModel[] =>
     return models;
 }
 
+/**
+ * Done with a set of uniform models (another uniform loaded, or the tab
+ * closed): their categories and every part item's thumbnail go with them.
+ */
+export const DisposeUniformModels = (models: UniformModel[]): void =>
+{
+    for(const model of models)
+    {
+        if(!model || model.disposed) continue;
+
+        model.reset();
+        model.dispose();
+    }
+}
+
 /** The set types a uniform holds - emulator UniformManager.ClothingTypes. */
 export const UNIFORM_TYPES = [ 'ha', 'he', 'ea', 'fa', 'ch', 'cc', 'cp', 'ca', 'lg', 'sh', 'wa' ];
 

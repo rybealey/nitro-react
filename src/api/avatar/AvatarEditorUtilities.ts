@@ -166,7 +166,7 @@ export class AvatarEditorUtilities
 
                 if(partSet.isSellable && !allFaces && !this.SHOW_ALL_SETS) isValid = this.hasFigureSetId(partSet.id);
 
-                if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, false));
+                if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, false, true));
             }
 
             i--;

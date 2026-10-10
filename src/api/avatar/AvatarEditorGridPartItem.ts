@@ -2,6 +2,61 @@ import { AvatarFigurePartType, IAvatarImageListener, IAvatarRenderManager, IFigu
 import { GetAvatarRenderManager } from '../nitro';
 import { FigureData } from './FigureData';
 
+// pixelrp: drawing a thumbnail is a WebGL render read back to the CPU and
+// encoded as a PNG, synchronously. Cheap on a Mac; on Windows (Chrome and
+// Firefox draw WebGL through Direct3D) every read-back stalls for the GPU,
+// and the City Panel's uniform editor lists every set - 520 hats where Choose
+// Your Look lists ~60 - so drawing a whole category at once froze the window
+// for seconds, and again on every colour click.
+//
+// So thumbnails are now drawn lazily and a few at a time:
+// - a `lazy` item (every editor category) draws only while its tile is on
+//   screen (the figure set view tells it, `visible`);
+// - drawing goes through a queue with a per-frame time budget, never in one
+//   blocking burst;
+// - a drawn thumbnail is cached by set and colours, so a colour change, Undo,
+//   Clear or a gender switch that comes back to it costs nothing.
+const THUMB_FRAME_BUDGET_MS = 6;
+const THUMB_CACHE_LIMIT = 3000;
+
+class ThumbnailQueue
+{
+    private static _items: Set<AvatarEditorGridPartItem> = new Set();
+    private static _frame: number = 0;
+
+    public static add(item: AvatarEditorGridPartItem): void
+    {
+        this._items.add(item);
+
+        if(!this._frame) this._frame = requestAnimationFrame(() => this.run());
+    }
+
+    public static remove(item: AvatarEditorGridPartItem): void
+    {
+        this._items.delete(item);
+    }
+
+    private static run(): void
+    {
+        this._frame = 0;
+
+        const start = performance.now();
+
+        for(const item of this._items)
+        {
+            this._items.delete(item);
+
+            item.drawQueued();
+
+            if((performance.now() - start) >= THUMB_FRAME_BUDGET_MS) break;
+        }
+
+        if(this._items.size) this._frame = requestAnimationFrame(() => this.run());
+    }
+}
+
+const THUMB_CACHE: Map<string, string> = new Map();
+
 export class AvatarEditorGridPartItem implements IAvatarImageListener
 {
     private static ALPHA_FILTER: NitroAlphaFilter = new NitroAlphaFilter(0.2);
@@ -50,8 +105,11 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
     private _disposed: boolean;
     private _isInitalized: boolean;
     private _notifier: () => void;
+    private _lazy: boolean = false;
+    private _visible: boolean = false;
+    private _dirty: boolean = false;
 
-    constructor(partSet: IFigurePartSet, partColors: IPartColor[], useColors: boolean = true, isDisabled: boolean = false)
+    constructor(partSet: IFigurePartSet, partColors: IPartColor[], useColors: boolean = true, isDisabled: boolean = false, lazy: boolean = false)
     {
         this._renderManager = GetAvatarRenderManager();
         this._partSet = partSet;
@@ -68,12 +126,17 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
         this._isSelected = false;
         this._disposed = false;
         this._isInitalized = false;
+        this._lazy = lazy;
 
         if(partSet)
         {
             const colors = partSet.parts;
 
             for(const color of colors) this._maxColorIndex = Math.max(this._maxColorIndex, color.colorLayerIndex);
+
+            // Known without drawing, so a tile not yet drawn still shows them.
+            this._isHC = (partSet.clubLevel > 0);
+            this._isSellable = partSet.isSellable;
         }
     }
 
@@ -97,6 +160,8 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
         this._disposed = true;
         this._isInitalized = false;
 
+        ThumbnailQueue.remove(this);
+
         if(this._thumbContainer)
         {
             this._thumbContainer.destroy();
@@ -107,7 +172,50 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
 
     public update(): void
     {
+        if(!this._isInitalized || this._disposed) return;
+
+        this._dirty = true;
+
+        this.schedule();
+    }
+
+    // Draw when it can be seen: from the cache at once, else in the queue.
+    private schedule(): void
+    {
+        if(!this._dirty || this._disposed || (this._lazy && !this._visible)) return;
+
+        const cached = this.cacheKey && THUMB_CACHE.get(this.cacheKey);
+
+        if(cached)
+        {
+            this._dirty = false;
+            this._imageUrl = cached;
+
+            if(this.notify) this.notify();
+
+            return;
+        }
+
+        ThumbnailQueue.add(this);
+    }
+
+    /** ThumbnailQueue's turn for this item. */
+    public drawQueued(): void
+    {
+        if(!this._dirty || this._disposed || !this._isInitalized || (this._lazy && !this._visible)) return;
+
         this.updateThumbVisualization();
+    }
+
+    // The thumbnail's look: set, colours and dimming. None for a thumbnail
+    // drawn elsewhere (BodyModel's faces) - that is the figure's own.
+    private get cacheKey(): string
+    {
+        if(this._thumbContainer || !this._partSet) return null;
+
+        const colors = (this._useColors && this._partColors) ? this._partColors.map(color => (color ? color.id : '')).join(',') : '';
+
+        return `${ this._partSet.type }-${ this._partSet.id }:${ colors }:${ this._isDisabled ? 1 : 0 }`;
     }
 
     private analyzeFigure(): boolean
@@ -193,27 +301,30 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
     {
         if(!this._isInitalized) return;
 
-        let container = this._thumbContainer;
+        const isOwnContainer = !this._thumbContainer;
+        const container = (this._thumbContainer || this.renderThumb());
 
-        if(!container) container = this.renderThumb();
-
+        // Not ready (its assets are downloading): resetFigure calls update()
+        // again when they land.
         if(!container) return;
-
-        if(this._partSet)
-        {
-            this._isHC = (this._partSet.clubLevel > 0);
-            this._isSellable = this._partSet.isSellable;
-        }
-        else
-        {
-            this._isHC = false;
-            this._isSellable = false;
-        }
 
         if(this._isDisabled) this.setAlpha(container, 0.2);
 
+        const key = this.cacheKey;
+
         this._imageUrl = TextureUtils.generateImageUrl(container);
-        
+        this._dirty = false;
+
+        // Drawn for this one image: its sprites go, their shared textures stay.
+        if(isOwnContainer) container.destroy({ children: true });
+
+        if(key && this._imageUrl)
+        {
+            if(THUMB_CACHE.size >= THUMB_CACHE_LIMIT) THUMB_CACHE.delete(THUMB_CACHE.keys().next().value);
+
+            THUMB_CACHE.set(key, this._imageUrl);
+        }
+
         if(this.notify) this.notify();
     }
 
@@ -257,6 +368,15 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
         if(!this._partSet) return -1;
 
         return this._partSet.id;
+    }
+
+    /** Whether its tile is on screen - a lazy item draws only while it is. */
+    public set visible(flag: boolean)
+    {
+        this._visible = flag;
+
+        if(flag) this.schedule();
+        else ThumbnailQueue.remove(this);
     }
 
     public get partSet(): IFigurePartSet
