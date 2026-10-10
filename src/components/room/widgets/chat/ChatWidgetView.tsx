@@ -1,4 +1,3 @@
-import { RoomChatSettings } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useRef } from 'react';
 import { ChatBubbleMessage, DoChatsOverlap, GetConfiguration } from '../../../../api';
 import { useChatWidget } from '../../../../hooks';
@@ -67,46 +66,23 @@ export const ChatWidgetView: FC<{}> = props =>
     // after one lands, so a new bubble is not nudged up as it appears.
     const lastPlacedRef = useRef<number>(0);
 
+    // pixelrp: chat is always free flow - a new bubble pushes up only the
+    // bubbles it overlaps (SettleChats). Line by line (every bubble up a line
+    // for each new one) is gone: its setting was taken out of the Room tool,
+    // and a room still set to it in the database is simply not read.
     const makeRoom = useCallback((chat: ChatBubbleMessage) =>
     {
-        if(chatSettings.mode === RoomChatSettings.CHAT_MODE_FREE_FLOW)
+        lastPlacedRef.current = Date.now();
+
+        setChatMessages(prevValue =>
         {
-            lastPlacedRef.current = Date.now();
+            if(prevValue) SettleChats(prevValue);
 
-            setChatMessages(prevValue =>
-            {
-                if(prevValue) SettleChats(prevValue);
+            return prevValue;
+        });
 
-                return prevValue;
-            });
-
-            removeHiddenChats();
-        }
-        else
-        {
-            const lowestPoint = (chat.top + chat.height);
-            const requiredSpace = chat.height;
-            const spaceAvailable = (elementRef.current.offsetHeight - lowestPoint);
-            const amount = (requiredSpace - spaceAvailable);
-
-            if(spaceAvailable < requiredSpace)
-            {
-                setChatMessages(prevValue =>
-                {
-                    prevValue.forEach(prevChat =>
-                    {
-                        if(prevChat === chat) return;
-
-                        prevChat.top -= amount;
-                    });
-
-                    return prevValue;
-                });
-
-                removeHiddenChats();
-            }
-        }
-    }, [ chatSettings, removeHiddenChats, setChatMessages ]);
+        removeHiddenChats();
+    }, [ removeHiddenChats, setChatMessages ]);
 
     useEffect(() =>
     {

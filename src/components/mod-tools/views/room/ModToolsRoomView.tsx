@@ -507,13 +507,6 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                 <div className="mt-label mt-section-label">Chat</div>
                                 <div className="mt-grid2">
                                     <div className="mt-field">
-                                        <label className="mt-label">Chat mode</label>
-                                        <select className="form-select form-select-sm" value={ roomData.chatSettings.mode } onChange={ event => update(next => (next.chatSettings.mode = Number(event.target.value))) }>
-                                            <option value={ RoomChatSettings.CHAT_MODE_FREE_FLOW }>{ LocalizeText('navigator.roomsettings.chat.mode.free.flow') }</option>
-                                            <option value={ RoomChatSettings.CHAT_MODE_LINE_BY_LINE }>{ LocalizeText('navigator.roomsettings.chat.mode.line.by.line') }</option>
-                                        </select>
-                                    </div>
-                                    <div className="mt-field">
                                         <label className="mt-label">Bubble width</label>
                                         <select className="form-select form-select-sm" value={ roomData.chatSettings.weight } onChange={ event => update(next => (next.chatSettings.weight = Number(event.target.value))) }>
                                             <option value={ RoomChatSettings.CHAT_BUBBLE_WIDTH_NORMAL }>{ LocalizeText('navigator.roomsettings.chat.bubbles.width.normal') }</option>
