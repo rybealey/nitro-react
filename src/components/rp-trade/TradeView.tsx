@@ -1,8 +1,8 @@
 import { RpInventoryEvent } from '@nitrots/nitro-renderer';
-import { DragEvent, FC, useRef, useState } from 'react';
+import { DragEvent, FC, useState } from 'react';
 import { HasHabboVip, SendMessageComposer } from '../../api';
 import { ResolveRpItem } from '../../api/rp-inventory/RpItems';
-import { RpTradeActionComposer, RpTradeEvent, TradeAction, TradeOfferEntry, TradeResult, TradeState } from '../../api/rp-trade/RpTradeMessages';
+import { RpTradeActionComposer, RpTradeEvent, TradeAction, TradeOfferEntry, TradeState } from '../../api/rp-trade/RpTradeMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 
@@ -13,7 +13,9 @@ import { useMessageEvent } from '../../hooks';
 // one, drag it across to offer the stack, click an offered item to take one
 // back. Any change un-readies both sides; both Ready, then both Confirm, and
 // the server swaps the items in one go. The server answers every press with
-// the whole trade, so this only ever shows it.
+// the whole trade, so this only ever shows it. The window goes the moment the
+// trade ends, either way - the room bubble says a trade went through, and a
+// cancel is whispered to whoever did not cancel it.
 
 const CARRY_SLOTS = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
 // The backpack's own rule (RpInventoryView): ten open, twelve with VIP.
@@ -30,12 +32,6 @@ interface PackEntry
     slot: number;
     item: string;
     count: number;
-}
-
-interface Ended
-{
-    result: number;
-    message: string;
 }
 
 // An offer shown as slots: stacks of ten, weapons one each.
@@ -59,7 +55,7 @@ const toCells = (offer: TradeOfferEntry[]) =>
 }
 
 const Lock: FC<{}> = () =>
-    <svg className="trade-lock" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
+    <svg className="trade-lock" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
 
 const ItemArt: FC<{ item: string }> = ({ item }) =>
 {
@@ -74,12 +70,8 @@ export const TradeView: FC<{}> = props =>
 {
     const [ pack, setPack ] = useState<PackEntry[]>([]);
     const [ trade, setTrade ] = useState<TradeState>(null);
-    const [ ended, setEnded ] = useState<Ended>(null);
     const [ notice, setNotice ] = useState('');
     const [ dragging, setDragging ] = useState(0);
-    // Closed with the X: the trade is cancelled and the window just goes,
-    // with no card saying so.
-    const dismissed = useRef(false);
 
     useMessageEvent<RpInventoryEvent>(RpInventoryEvent, event =>
     {
@@ -92,11 +84,6 @@ export const TradeView: FC<{}> = props =>
 
         if(!parser.open)
         {
-            // Ended: the window stays to say how, until it is closed.
-            if(trade && !dismissed.current) setEnded({ result: parser.result, message: parser.notice });
-
-            dismissed.current = false;
-
             setTrade(null);
             setDragging(0);
             setNotice('');
@@ -104,51 +91,20 @@ export const TradeView: FC<{}> = props =>
             return;
         }
 
-        setEnded(null);
         setTrade(parser.state);
         setNotice(parser.notice);
     });
 
-    if(!trade && !ended) return null;
+    if(!trade) return null;
 
     const send = (action: number, slot: number = 0, all: boolean = false, item: string = '') =>
         SendMessageComposer(new RpTradeActionComposer(action, slot, all, item));
 
-    const close = () =>
+    const header = <NitroCardHeaderView headerText="Trade" onCloseClick={ () =>
     {
-        if(trade)
-        {
-            dismissed.current = true;
-            send(TradeAction.Cancel);
-        }
-
-        setEnded(null);
-    }
-
-    const header = <NitroCardHeaderView headerText="Trade" onCloseClick={ close } />;
-
-    if(!trade)
-    {
-        const complete = (ended.result === TradeResult.Complete);
-
-        return (
-            <NitroCardView uniqueKey="rp-trade" className="nitro-trade" theme="primary-slim" windowPosition={ DraggableWindowPosition.CENTER }>
-                { header }
-                <NitroCardContentView className="trade-body" overflow="hidden">
-                    <div className="trade-result">
-                        <span className={ `trade-result-badge${ complete ? ' is-complete' : '' }` }>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d={ complete ? 'M5 12.5l4.5 4.5L19 7.5' : 'M6 6l12 12M18 6L6 18' } />
-                            </svg>
-                        </span>
-                        <b>{ complete ? 'Trade complete' : 'Trade cancelled' }</b>
-                        <span className="trade-result-text">{ ended.message }</span>
-                        <button type="button" className="trade-button is-plain" onClick={ () => setEnded(null) }>Close</button>
-                    </div>
-                </NitroCardContentView>
-            </NitroCardView>
-        );
-    }
+        send(TradeAction.Cancel);
+        setTrade(null);
+    } } />;
 
     const partner = trade.partnerName;
     const packOpen = (HasHabboVip() ? CARRY_SLOTS.length : CARRY_OPEN);
@@ -251,9 +207,9 @@ export const TradeView: FC<{}> = props =>
                     <span>Trading with <b>{ partner }</b></span>
                     <div className="trade-steps">
                         <span className={ step(!bothReady, bothReady) }>1 Offer</span>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
                         <span className={ step((trade.mine.ready || trade.theirs.ready) && !bothReady, bothReady) }>2 Ready</span>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
                         <span className={ step(bothReady, complete) }>3 Confirm</span>
                     </div>
                 </div>
