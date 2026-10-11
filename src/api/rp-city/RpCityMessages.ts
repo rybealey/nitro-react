@@ -30,6 +30,8 @@ const RP_CITY_CLOCK_OUT = 4180; // client -> server
 const RP_CITY_CORP_SETTING = 4183; // client -> server: one corporation setting
 const RP_CITY_LEDGER = 4186; // client -> server: a page of the Global Ledger
 const RP_CITY_LEDGER_PAGE = 4187; // server -> client
+const RP_CITY_TRADES = 4192; // client -> server: a page of Trade History
+const RP_CITY_TRADES_PAGE = 4193; // server -> client
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -89,6 +91,29 @@ export interface CityLedgerTotals
     savings: number;
     accounts: number;
 }
+
+export interface CityTradeRow
+{
+    id: number;
+    /** Unix seconds. */
+    createdAt: number;
+    userA: number;
+    nameA: string;
+    userB: number;
+    nameB: string;
+    roomName: string;
+    /** What each side gave: backpack item keys and counts. */
+    gaveA: { item: string, count: number }[];
+    gaveB: { item: string, count: number }[];
+}
+
+// rp_trades stores what a side gave as "item:count,item:count".
+const parseGave = (text: string) => (text || '').split(',').filter(Boolean).map(part =>
+{
+    const at = part.lastIndexOf(':');
+
+    return { item: part.slice(0, at), count: (Number(part.slice(at + 1)) || 0) };
+});
 
 /** CityEconomy.Setting* */
 export const CityCorpSetting = { Hidden: 1 };
@@ -402,6 +427,59 @@ export class RpCityLedgerPageParser implements IMessageParser
     }
 }
 
+export class RpCityTradesPageParser implements IMessageParser
+{
+    private _offset = 0;
+    private _more = false;
+    private _rows: CityTradeRow[] = [];
+
+    public flush(): boolean
+    {
+        this._offset = 0;
+        this._more = false;
+        this._rows = [];
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._offset = wrapper.readInt();
+        this._more = wrapper.readBoolean();
+
+        let rows = wrapper.readInt();
+
+        while(rows-- > 0) this._rows.push({
+            id: wrapper.readInt(),
+            createdAt: wrapper.readInt(),
+            userA: wrapper.readInt(),
+            nameA: wrapper.readString(),
+            userB: wrapper.readInt(),
+            nameB: wrapper.readString(),
+            roomName: wrapper.readString(),
+            gaveA: parseGave(wrapper.readString()),
+            gaveB: parseGave(wrapper.readString())
+        });
+
+        return true;
+    }
+
+    public get offset(): number 
+    {
+        return this._offset; 
+    }
+    public get more(): boolean 
+    {
+        return this._more; 
+    }
+    public get rows(): CityTradeRow[] 
+    {
+        return this._rows; 
+    }
+}
+
 export class RpCityEconomyStateParser implements IMessageParser
 {
     private _corps: CityEconomyCorp[] = [];
@@ -696,6 +774,18 @@ export class RpCityLedgerPageEvent extends MessageEvent implements IMessageEvent
     }
 }
 
+export class RpCityTradesPageEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityTradesPageParser); 
+    }
+    public getParser(): RpCityTradesPageParser 
+    {
+        return this.parser as RpCityTradesPageParser; 
+    }
+}
+
 class RpCityComposer<T extends unknown[]> implements IMessageComposer<T>
 {
     private _data: T;
@@ -850,6 +940,14 @@ export class RpCityLedgerComposer extends RpCityComposer<[ string, number, numbe
     }
 }
 
+export class RpCityTradesComposer extends RpCityComposer<[ string, number ]>
+{
+    constructor(query: string, offset: number) 
+    {
+        super(query, offset); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -869,7 +967,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_UNIFORM_FIGURE, RpCityUniformFigureEvent ],
             [ RP_CITY_WORLD_STATE, RpCityWorldStateEvent ],
             [ RP_CITY_ECONOMY_STATE, RpCityEconomyStateEvent ],
-            [ RP_CITY_LEDGER_PAGE, RpCityLedgerPageEvent ]
+            [ RP_CITY_LEDGER_PAGE, RpCityLedgerPageEvent ],
+            [ RP_CITY_TRADES_PAGE, RpCityTradesPageEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CITY_PANEL_OPEN, RpCityPanelOpenComposer ],
@@ -888,7 +987,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_PRICE_SAVE, RpCityPriceSaveComposer ],
             [ RP_CITY_CLOCK_OUT, RpCityClockOutComposer ],
             [ RP_CITY_CORP_SETTING, RpCityCorpSettingComposer ],
-            [ RP_CITY_LEDGER, RpCityLedgerComposer ]
+            [ RP_CITY_LEDGER, RpCityLedgerComposer ],
+            [ RP_CITY_TRADES, RpCityTradesComposer ]
         ])
     });
 

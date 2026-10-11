@@ -6,7 +6,9 @@ import { GetRpOffer, RpOffer, SendRpOfferReply, SubscribeRpOffer } from '../../.
 //
 // :propose borrows it too: a proposal arrives as kind 'proposal' and draws a
 // heart, its own kicker and its own sentence, with no price - the queue, the
-// rail and the two buttons are the same card.
+// rail and the two buttons are the same card. So does a trade request (kind
+// 'trade', the avatar menu's Trade): the side drawer's backpack, tinted the
+// card's orange, and a yes opens the trade window for both.
 //
 // It portals into #toolbar-chat-input-container, the SAME element the chat bar
 // portals into, which is what lets it sit directly above the bar and share its
@@ -83,12 +85,13 @@ export const RpOfferWidgetView: FC<{}> = () =>
     const urgent = (!isLeaving && (left <= 5));
     const goods = ((shown.quantity > 1) ? `${ shown.quantity } ${ shown.label }` : shown.label);
     const isProposal = (shown.kind === 'proposal');
+    const isTrade = (shown.kind === 'trade');
 
     return createPortal(
-        <div className={ `rp-offer${ isLeaving ? ' is-leaving' : '' }${ isProposal ? ' is-proposal' : '' }` }>
+        <div className={ `rp-offer${ isLeaving ? ' is-leaving' : '' }${ isProposal ? ' is-proposal' : '' }${ isTrade ? ' is-trade' : '' }` }>
             <div className="rp-offer-body">
                 <div className="rp-offer-mark" aria-hidden="true">
-                    { isProposal
+                    { isTrade ? null : isProposal
                         ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
                         </svg>
@@ -102,32 +105,39 @@ export const RpOfferWidgetView: FC<{}> = () =>
 
                 <div className="rp-offer-text">
                     <div className={ `rp-offer-kicker${ urgent ? ' is-urgent' : '' }` }>
-                        { urgent ? 'EXPIRING' : (isProposal ? 'PROPOSAL' : 'OFFER RECEIVED') }
+                        { urgent ? 'EXPIRING' : (isProposal ? 'PROPOSAL' : (isTrade ? 'TRADE REQUEST' : 'OFFER RECEIVED')) }
                         { (shown.queued > 1) && <span className="rp-offer-queued">&middot; 1 OF { shown.queued }</span> }
                     </div>
-                    { isProposal
+                    { isTrade &&
+                        <>
+                            <div className="rp-offer-line">
+                                <strong>{ shown.sellerName }</strong> wants to trade with you
+                            </div>
+                            <div className="rp-offer-price">backpack items</div>
+                        </> }
+                    { !isTrade && (isProposal
                         ? <div className="rp-offer-line">
                             <strong>{ shown.sellerName }</strong> is proposing to you
                         </div>
                         : <div className="rp-offer-line">
                             <strong>{ shown.sellerName }</strong> is offering you <strong>{ goods }</strong>
-                        </div> }
+                        </div>) }
                     { !!blocked.length &&
                         <div className="rp-offer-blocked">{ blocked }</div> }
-                    { !isProposal && !blocked.length && (shown.total > 0) &&
+                    { !isProposal && !isTrade && !blocked.length && (shown.total > 0) &&
                         <div className="rp-offer-price">for <strong>${ Money(shown.total) }</strong></div> }
-                    { !isProposal && !blocked.length && (shown.total === 0) &&
+                    { !isProposal && !isTrade && !blocked.length && (shown.total === 0) &&
                         <div className="rp-offer-price">free of charge</div> }
                 </div>
 
                 <div className="rp-offer-actions">
-                    <button type="button" className="rp-offer-accept" aria-label={ isProposal ? `Accept ${ shown.sellerName }'s proposal` : `Accept ${ goods } from ${ shown.sellerName }` }
+                    <button type="button" className="rp-offer-accept" aria-label={ isTrade ? `Accept ${ shown.sellerName }'s trade request` : isProposal ? `Accept ${ shown.sellerName }'s proposal` : `Accept ${ goods } from ${ shown.sellerName }` }
                         disabled={ !!blocked.length || isLeaving } onClick={ event => SendRpOfferReply(shown.id, true) }>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                         </svg>
                     </button>
-                    <button type="button" className="rp-offer-decline" aria-label={ isProposal ? `Decline ${ shown.sellerName }'s proposal` : `Decline the offer from ${ shown.sellerName }` }
+                    <button type="button" className="rp-offer-decline" aria-label={ isTrade ? `Decline ${ shown.sellerName }'s trade request` : isProposal ? `Decline ${ shown.sellerName }'s proposal` : `Decline the offer from ${ shown.sellerName }` }
                         disabled={ isLeaving } onClick={ event => SendRpOfferReply(shown.id, false) }>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                             <path d="M6 6l12 12M18 6L6 18" />

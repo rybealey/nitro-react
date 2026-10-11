@@ -714,6 +714,20 @@ $city-line: rgba(0, 0, 0, 0.06);
         > span { min-width: 0; }
     }
 
+    // Economy > Trade History: when, then each side and what it gave, then the room.
+    .city-trades-row {
+        display: grid;
+        grid-template-columns: 96px 92px minmax(0, 1fr) 92px minmax(0, 1fr) 96px;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+        padding: 2px 10px;
+        border-bottom: 1px solid $city-line;
+        font-size: 12px;
+
+        > span { min-width: 0; }
+    }
+
     .city-ledger-head {
         min-height: 26px;
         flex-shrink: 0;

@@ -23,11 +23,14 @@ export interface RpOffer
     // differently from the server that decides.
     blocked: string;
     // What the card is asking: 'sale' for goods, 'proposal' when :propose has
-    // borrowed the card. Last on the wire, so the fields above read unchanged.
+    // borrowed the card, 'trade' for a trade request (the avatar menu's Trade).
+    // Last on the wire, so the fields above read unchanged.
     kind: RpOfferKind;
 }
 
-export type RpOfferKind = 'sale' | 'proposal';
+export type RpOfferKind = 'sale' | 'proposal' | 'trade';
+
+const KINDS: RpOfferKind[] = [ 'sale', 'proposal', 'trade' ];
 
 export class RpOfferParser implements IMessageParser
 {
@@ -62,7 +65,7 @@ export class RpOfferParser implements IMessageParser
             lifetime: wrapper.readInt(),
             queued: wrapper.readInt(),
             blocked: wrapper.readString(),
-            kind: ((wrapper.readString() === 'proposal') ? 'proposal' : 'sale')
+            kind: ((kind: string) => (KINDS.includes(kind as RpOfferKind) ? (kind as RpOfferKind) : 'sale'))(wrapper.readString())
         };
 
         return true;
