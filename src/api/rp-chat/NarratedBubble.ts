@@ -34,3 +34,9 @@ export const IsNarratedBubble = (styleId: number, text: string): boolean =>
 /** The opening "*" moves ahead of the username, so the message loses it. */
 export const NarratedBubbleText = (formattedText: string): string =>
     (formattedText ? formattedText.substring(1) : formattedText);
+
+// The renderer asks too (its narrated-no-talk patch): a narrated line is not
+// speech, so the avatar's mouth does not move for it. The renderer cannot
+// import client modules, so the rule is handed over on globalThis - the same
+// way as the clickthrough flag - and stays defined only here.
+(globalThis as any).__pixelrpIsNarratedBubble = IsNarratedBubble;

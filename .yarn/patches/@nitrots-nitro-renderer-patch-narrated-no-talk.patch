@@ -1,0 +1,22 @@
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -1026,6 +1026,17 @@ export class RoomMessageHandler extends Disposable
+         if(!parser) return;
+ 
+         this._roomCreator.updateRoomObjectUserGesture(this._currentRoomId, parser.roomIndex, parser.gesture);
++
++        // PixelRP: a narrated bubble ("*slaps twist*", "*starts a stamina
++        // workout*") is not speech, so the mouth does not move. Talking also
++        // flips the avatar's model every 75-300ms, and every flip pushes an
++        // animation frame, so a workout effect ran fast for as long as the
++        // line was "spoken". The rule is the client's (NarratedBubble.ts),
++        // handed over on globalThis like the clickthrough flag.
++        const isNarrated = (globalThis as any).__pixelrpIsNarratedBubble;
++
++        if(isNarrated && isNarrated(parser.bubble, parser.message)) return;
++
+         this._roomCreator.updateRoomObjectUserAction(this._currentRoomId, parser.roomIndex, RoomObjectVariable.FIGURE_TALK, (parser.message.length / 10));
+     }
+ 
