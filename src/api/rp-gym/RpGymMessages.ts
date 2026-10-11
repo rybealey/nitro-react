@@ -10,7 +10,8 @@ import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 //     counted down locally in between, the workout's only while unpaused
 //     (the same receivedAt pattern as the jail countdown);
 //   - which bots in this room are Gym bots (the teller push's twin);
-//   - anybody's two levels, for their profile.
+//   - anybody's two levels and the XP toward each next one, for their
+//     profile (the XP shows when the level is hovered).
 
 // server -> client
 const RP_GYM = 4194;
@@ -122,12 +123,20 @@ class RpGymLevelsParser implements IMessageParser
     public userId = 0;
     public strength = 0;
     public stamina = 0;
+    public strengthXp = 0;
+    public strengthXpNeeded = 0;
+    public staminaXp = 0;
+    public staminaXpNeeded = 0;
 
     public flush(): boolean
     {
         this.userId = 0;
         this.strength = 0;
         this.stamina = 0;
+        this.strengthXp = 0;
+        this.strengthXpNeeded = 0;
+        this.staminaXp = 0;
+        this.staminaXpNeeded = 0;
 
         return true;
     }
@@ -139,6 +148,11 @@ class RpGymLevelsParser implements IMessageParser
         this.userId = wrapper.readInt();
         this.strength = wrapper.readInt();
         this.stamina = wrapper.readInt();
+        // XP toward each next level, and what it takes - 0 / 0 at level 10.
+        this.strengthXp = wrapper.readInt();
+        this.strengthXpNeeded = wrapper.readInt();
+        this.staminaXp = wrapper.readInt();
+        this.staminaXpNeeded = wrapper.readInt();
 
         return true;
     }
@@ -212,7 +226,18 @@ export interface GymWorkout
 
 let workout: GymWorkout = { showing: false, stat: '', machine: '', level: 0, secondsLeft: 0, secondsForLevel: 0, membershipSeconds: 0, pause: '', receivedAt: 0 };
 let gymBots: number[] = [];
-const levelsByUserId: Map<number, { strength: number, stamina: number }> = new Map();
+/** One player's levels, and the XP toward each next level (needed 0 at level 10). */
+export interface GymLevels
+{
+    strength: number;
+    strengthXp: number;
+    strengthXpNeeded: number;
+    stamina: number;
+    staminaXp: number;
+    staminaXpNeeded: number;
+}
+
+const levelsByUserId: Map<number, GymLevels> = new Map();
 const listeners = new Set<() => void>();
 
 const notify = () => listeners.forEach(listener => listener());
@@ -232,7 +257,11 @@ export const GymSecondsLeft = (now: number = performance.now()): number =>
 
 export const IsGymBot = (virtualId: number): boolean => (gymBots.indexOf(virtualId) >= 0);
 
-export const GetGymLevels = (userId: number) => levelsByUserId.get(userId) ?? null;
+export const GetGymLevels = (userId: number): GymLevels => levelsByUserId.get(userId) ?? null;
+
+/** The profile hover's line: "650 / 1,000 XP", or "Max level" at 10. */
+export const GymXpText = (xp: number, needed: number): string =>
+    (needed > 0) ? `${ xp.toLocaleString() } / ${ needed.toLocaleString() } XP` : 'Max level';
 
 export const SubscribeGym = (listener: () => void): (() => void) =>
 {
@@ -309,7 +338,14 @@ export const RegisterRpGymMessages = () =>
 
         if(!parser.userId) return;
 
-        levelsByUserId.set(parser.userId, { strength: parser.strength, stamina: parser.stamina });
+        levelsByUserId.set(parser.userId, {
+            strength: parser.strength,
+            strengthXp: parser.strengthXp,
+            strengthXpNeeded: parser.strengthXpNeeded,
+            stamina: parser.stamina,
+            staminaXp: parser.staminaXp,
+            staminaXpNeeded: parser.staminaXpNeeded
+        });
         notify();
     }));
 

@@ -5,12 +5,12 @@ import { AddEventLinkTracker, CreateLinkEvent, GetSessionDataManager, RemoveLink
 import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
-import { GetGymLevels, RequestGymLevels, SubscribeGym } from '../../api/rp-gym/RpGymMessages';
+import { GetGymLevels, GymXpText, RequestGymLevels, SubscribeGym } from '../../api/rp-gym/RpGymMessages';
 import { GetRpRegion, RequestRpRegion, RpRegionLabel, SubscribeRpRegion } from '../../api/rp-region/RpRegionMessages';
 import { GangCrest } from '../rp-gangs/RpGangsView';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
 import { FormatBirthday, GetRpBirthday, SetRpBirthday } from '../../api/rp-phone/RpBirthdayRegistry';
-import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
+import { HoverBubble, LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { RpProfileState } from './RpProfileState';
 
@@ -191,14 +191,19 @@ export const RpProfileView: FC<{}> = props =>
                             </div>
                         </div>
                         <div className="rp-profile-levels">
-                            <div className="rp-profile-card rp-profile-level">
-                                <span>Strength:</span>
-                                <span className="rp-profile-level-value">{ gymLevels?.strength ?? 0 }</span>
-                            </div>
-                            <div className="rp-profile-card rp-profile-level">
-                                <span>Stamina:</span>
-                                <span className="rp-profile-level-value">{ gymLevels?.stamina ?? 0 }</span>
-                            </div>
+                            { /* The XP toward the next level shows on hover. */ }
+                            <HoverBubble text={ GymXpText(gymLevels?.strengthXp ?? 0, gymLevels ? gymLevels.strengthXpNeeded : 100) }>
+                                <div className="rp-profile-card rp-profile-level">
+                                    <span>Strength:</span>
+                                    <span className="rp-profile-level-value">{ gymLevels?.strength ?? 0 }</span>
+                                </div>
+                            </HoverBubble>
+                            <HoverBubble text={ GymXpText(gymLevels?.staminaXp ?? 0, gymLevels ? gymLevels.staminaXpNeeded : 100) }>
+                                <div className="rp-profile-card rp-profile-level">
+                                    <span>Stamina:</span>
+                                    <span className="rp-profile-level-value">{ gymLevels?.stamina ?? 0 }</span>
+                                </div>
+                            </HoverBubble>
                         </div>
                         <div className="rp-profile-card rp-profile-org">
                             <div className="rp-profile-org-row">
