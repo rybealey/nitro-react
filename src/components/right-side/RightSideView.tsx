@@ -9,6 +9,7 @@ import { PurseView } from '../purse/PurseView';
 import { RoomTitleView } from '../room-title/RoomTitleView';
 import { MysteryBoxExtensionView } from '../room/widgets/mysterybox/MysteryBoxExtensionView';
 import { RoomQuickToolsView } from '../room/widgets/room-tools/RoomQuickToolsView';
+import { GymPanelView } from '../rp-gym/GymPanelView';
 
 export const RightSideView: FC<{}> = props =>
 {
@@ -21,6 +22,7 @@ export const RightSideView: FC<{}> = props =>
                     <RoomQuickToolsView />
                     <PurseView />
                 </Flex>
+                <GymPanelView />
                 <MusicPlayerView />
                 <GroupRoomInformationView />
                 <MysteryBoxExtensionView />

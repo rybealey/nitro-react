@@ -87,7 +87,9 @@ const PIXELRP_BEHAVIOURS: [ string, string ][] = [
     [ 'paramedic_dropoff', 'Paramedic dropoff' ],
     [ 'medical_bed', 'Medical bed' ],
     [ 'police_replenish', 'Police replenish (on duty only)' ],
-    [ 'arrest_point', 'Arrest point (on duty only)' ]
+    [ 'arrest_point', 'Arrest point (on duty only)' ],
+    [ 'gym_stamina', 'Gym: Stamina (stand on)' ],
+    [ 'gym_strength', 'Gym: Strength (stand on)' ]
 ];
 
 const HABBO_BEHAVIOURS: [ string, string ][] = [

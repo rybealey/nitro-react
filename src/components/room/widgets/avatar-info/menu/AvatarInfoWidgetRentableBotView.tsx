@@ -1,6 +1,7 @@
 import { BotCommandConfigurationEvent, BotRemoveComposer, BotSkillSaveComposer, RequestBotCommandConfigurationComposer, RoomObjectCategory, RoomObjectType } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { AvatarInfoRentableBot, BotSkillsEnum, DispatchUiEvent, GetConfiguration, GetNitroInstance, LocalizeText, RoomWidgetUpdateRentableBotChatEvent, SendMessageComposer } from '../../../../../api';
+import { GYM_MEMBERSHIP_COST, GymMembershipLeft, IsGymBot, SendGymBuyMembership, SubscribeGym } from '../../../../../api/rp-gym/RpGymMessages';
 import { GetRpBankAccounts, SubscribeRpBankAccounts } from '../../../../../api/rp-phone/RpBankMessages';
 import { IsTellerBot, SendRpTellerAction, SubscribeRpTellerBots, TELLER_DEPOSIT, TELLER_OPEN_ACCOUNT, TELLER_WITHDRAW } from '../../../../../api/rp-teller/RpTellerMessages';
 import { Button, Column, Flex, Text } from '../../../../../common';
@@ -161,6 +162,14 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
         return SubscribeRpBankAccounts(bump);
     }, []);
 
+    // The Gym bot list and your membership, the same way.
+    useEffect(() =>
+    {
+        const bump = () => setTellerTick(value => value + 1);
+
+        return SubscribeGym(bump);
+    }, []);
+
     useEffect(() =>
     {
         setMode(MODE_NORMAL);
@@ -191,6 +200,18 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
         onClose();
     }
 
+    // pixelrp: the Gym bot's entry, outside canControl for the same reason as
+    // the teller's. An affordance only - RpGymBotActionEvent re-checks the
+    // bot, and the bot the range and the purse.
+    const isGymBot = useMemo(() => IsGymBot(avatarInfo.roomIndex), [ avatarInfo.roomIndex, tellerTick ]);
+    const membershipMinutes = Math.ceil(GymMembershipLeft() / 60);
+
+    const buyMembership = () =>
+    {
+        SendGymBuyMembership(avatarInfo.roomIndex);
+        onClose();
+    }
+
     return (
         <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ RoomObjectType.RENTABLE_BOT } onClose={ onClose } collapsable={ true }>
             <ContextMenuHeaderView>
@@ -211,6 +232,16 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
                                 Withdraw
                             </ContextMenuListItemView>
                         </> }
+                </> }
+            { (mode === MODE_NORMAL) && isGymBot &&
+                <>
+                    { (membershipMinutes > 0) &&
+                        <ContextMenuListItemView disabled={ true }>
+                            { `Membership: ${ membershipMinutes } min` }
+                        </ContextMenuListItemView> }
+                    <ContextMenuListItemView onClick={ event => buyMembership() }>
+                        { `Buy membership (${ GYM_MEMBERSHIP_COST }c)` }
+                    </ContextMenuListItemView>
                 </> }
             { (mode === MODE_NORMAL) && canControl &&
                 <>

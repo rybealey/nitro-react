@@ -5,6 +5,7 @@ import { AddEventLinkTracker, CreateLinkEvent, GetSessionDataManager, RemoveLink
 import { DEFAULT_CORP_BADGE, FormatShifts, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
+import { GetGymLevels, RequestGymLevels, SubscribeGym } from '../../api/rp-gym/RpGymMessages';
 import { GetRpRegion, RequestRpRegion, RpRegionLabel, SubscribeRpRegion } from '../../api/rp-region/RpRegionMessages';
 import { GangCrest } from '../rp-gangs/RpGangsView';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
@@ -84,6 +85,8 @@ export const RpProfileView: FC<{}> = props =>
                             // Asked at most once per player per session; a
                             // change broadcasts to the room after that.
                             RequestRpRegion(RpProfileState.userId);
+                            // Gym levels move, so they are asked every time.
+                            RequestGymLevels(RpProfileState.userId);
                         }
                         return;
                     case 'hide':
@@ -133,9 +136,13 @@ export const RpProfileView: FC<{}> = props =>
 
     useEffect(() => SubscribeRpRegion(() => setVersion(value => (value + 1))), []);
 
+    useEffect(() => SubscribeGym(() => setVersion(value => (value + 1))), []);
+
     if(!isVisible) return null;
 
     const birthday = GetRpBirthday(RpProfileState.userId);
+    // Everyone's are visible; 0 until the answer lands.
+    const gymLevels = GetGymLevels(RpProfileState.userId);
     const regionLabel = RpRegionLabel(GetRpRegion(RpProfileState.userId));
 
     // The opener's own data wins; otherwise look the viewed player up.
@@ -185,12 +192,12 @@ export const RpProfileView: FC<{}> = props =>
                         </div>
                         <div className="rp-profile-levels">
                             <div className="rp-profile-card rp-profile-level">
-                                <span>Combat Level:</span>
-                                <span className="rp-profile-level-value">1</span>
+                                <span>Strength:</span>
+                                <span className="rp-profile-level-value">{ gymLevels?.strength ?? 0 }</span>
                             </div>
                             <div className="rp-profile-card rp-profile-level">
-                                <span>Farming Level:</span>
-                                <span className="rp-profile-level-value">1</span>
+                                <span>Stamina:</span>
+                                <span className="rp-profile-level-value">{ gymLevels?.stamina ?? 0 }</span>
                             </div>
                         </div>
                         <div className="rp-profile-card rp-profile-org">

@@ -1,0 +1,93 @@
+// PixelRP gym workout panel (GymPanelView): a small card in the right-hand
+// column, on the jail strip's plate - no backdrop blur, which is what made
+// text soft on Windows. The bar fills as the level is trained.
+$gym-muted: #a9a9b3;
+$gym-slot: rgb(45, 45, 51);
+$gym-bar: #e87332;
+$gym-pause: #f0b44c;
+
+.rp-gym-panel {
+    pointer-events: none;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 7px 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--prp-chrome-plate);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+    font-family: 'Ubuntu', sans-serif;
+    animation: rp-gym-settle 160ms ease-out;
+}
+
+.rp-gym-label {
+    font-size: 10px;
+    font-weight: 700;
+    @include prp-bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $gym-muted;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rp-gym-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.rp-gym-level {
+    font-size: 13px;
+    font-weight: 700;
+    @include prp-bold;
+}
+
+.rp-gym-clock {
+    font-size: 13px;
+    font-weight: 700;
+    @include prp-bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.rp-gym-progress {
+    height: 3px;
+    background: $gym-slot;
+
+    > div {
+        height: 100%;
+        background: $gym-bar;
+        transition: width 1s linear;
+    }
+}
+
+.rp-gym-membership {
+    font-size: 11px;
+    color: $gym-muted;
+
+    > span:last-child {
+        color: #ffffff;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.rp-gym-pause {
+    font-size: 11px;
+    color: $gym-pause;
+}
+
+@keyframes rp-gym-settle {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rp-gym-panel {
+        animation: none;
+    }
+}
