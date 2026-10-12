@@ -345,10 +345,10 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
     // of the city's own rooms. One way: there is no button back.
     const makePixelRpRoom = () =>
     {
-        showConfirm('This room, its furni and its bots will belong to PixelRP. There is no way to undo this.', () =>
+        showConfirm('This room and everything in it will belong to PixelRP. This cannot be undone.', () =>
         {
             SendMessageComposer(new RpMakePixelRpRoomComposer(roomId));
-        }, null, 'Make PixelRP room', null, 'Make PixelRP room');
+        }, null, 'Set as public room', null, 'Set as public room');
     }
 
     // Safe or Unsafe. A turf plays as unsafe; choosing Unsafe on one leaves it
@@ -428,7 +428,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                         </button> }
                                 </div>
                                 { roomData && (ownerName !== PIXELRP_ROOM_OWNER) &&
-                                    <button type="button" className="mt-chrome w-100" onClick={ makePixelRpRoom }>Make PixelRP room</button> }
+                                    <button type="button" className="mt-chrome w-100" onClick={ makePixelRpRoom }>Set as public room</button> }
                                 { roomData &&
                                     <>
                                         <div className="mt-field">
