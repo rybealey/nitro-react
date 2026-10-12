@@ -90,7 +90,8 @@ const PIXELRP_BEHAVIOURS: [ string, string ][] = [
     [ 'arrest_point', 'Arrest point (on duty only)' ],
     [ 'jail_exit_gate', 'Jail exit door (no prisoners)' ],
     [ 'gym_stamina', 'Gym: Stamina (stand on)' ],
-    [ 'gym_strength', 'Gym: Strength (stand on)' ]
+    [ 'gym_strength', 'Gym: Strength (stand on)' ],
+    [ 'snack_dispenser', 'Snack machine (plays the dispense)' ]
 ];
 
 const HABBO_BEHAVIOURS: [ string, string ][] = [
