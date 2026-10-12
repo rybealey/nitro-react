@@ -1,10 +1,16 @@
 // PixelRP gym workout panel (GymPanelView): a small card in the right-hand
 // column, on the jail strip's plate - no backdrop blur, which is what made
-// text soft on Windows. The bar fills as the level is trained.
+// text soft on Windows. The machine's furni icon sits beside the stat and
+// the level; the bar fills as the level is trained; the membership is a
+// chip at the bottom.
 $gym-muted: #a9a9b3;
 $gym-slot: rgb(45, 45, 51);
 $gym-bar: #e87332;
 $gym-pause: #f0b44c;
+// The icon's column: wide enough for the treadmill (23px) and the
+// crosstrainer (25px) icons, so the text beside them lines up.
+$gym-icon-slot: 25px;
+$gym-head-gap: 8px;
 
 .rp-gym-panel {
     pointer-events: none;
@@ -21,6 +27,33 @@ $gym-pause: #f0b44c;
     color: #ffffff;
     font-family: 'Ubuntu', sans-serif;
     animation: rp-gym-settle 160ms ease-out;
+}
+
+.rp-gym-head {
+    display: flex;
+    align-items: center;
+    gap: $gym-head-gap;
+}
+
+// Native size, never scaled - a furni icon is a pixel sprite.
+.rp-gym-icon {
+    width: $gym-icon-slot;
+    flex: none;
+    display: flex;
+    justify-content: center;
+
+    > img {
+        display: block;
+        image-rendering: pixelated;
+    }
+}
+
+.rp-gym-head-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .rp-gym-label {
@@ -55,6 +88,17 @@ $gym-pause: #f0b44c;
     font-variant-numeric: tabular-nums;
 }
 
+// "Paused" / "No membership", in the level's place: centred on the whole
+// panel - pulled back over the icon's column - not just beside the icon, so
+// it lines up with the amber line under it.
+.rp-gym-state {
+    margin-left: -($gym-icon-slot + $gym-head-gap);
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    @include prp-bold;
+}
+
 .rp-gym-progress {
     height: 3px;
     background: $gym-slot;
@@ -66,7 +110,21 @@ $gym-pause: #f0b44c;
     }
 }
 
+.rp-gym-pause {
+    font-size: 11px;
+    text-align: center;
+    color: $gym-pause;
+}
+
 .rp-gym-membership {
+    align-self: flex-start;
+    margin-top: 3px;
+    padding: 1px 7px;
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    border-radius: 4px;
+    background: $gym-slot;
     font-size: 11px;
     color: $gym-muted;
 
@@ -74,11 +132,6 @@ $gym-pause: #f0b44c;
         color: #ffffff;
         font-variant-numeric: tabular-nums;
     }
-}
-
-.rp-gym-pause {
-    font-size: 11px;
-    color: $gym-pause;
 }
 
 @keyframes rp-gym-settle {

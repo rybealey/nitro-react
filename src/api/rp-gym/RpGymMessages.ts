@@ -34,6 +34,7 @@ class RpGymParser implements IMessageParser
     public secondsForLevel = 0;
     public membershipSeconds = 0;
     public pause = '';
+    public spriteId = 0;
 
     public flush(): boolean
     {
@@ -45,6 +46,7 @@ class RpGymParser implements IMessageParser
         this.secondsForLevel = 0;
         this.membershipSeconds = 0;
         this.pause = '';
+        this.spriteId = 0;
 
         return true;
     }
@@ -61,6 +63,8 @@ class RpGymParser implements IMessageParser
         this.secondsForLevel = wrapper.readInt();
         this.membershipSeconds = wrapper.readInt();
         this.pause = wrapper.readString();
+        // The machine's furni sprite id, for its icon - appended last.
+        this.spriteId = wrapper.bytesAvailable ? wrapper.readInt() : 0;
 
         return true;
     }
@@ -221,10 +225,11 @@ export interface GymWorkout
     secondsForLevel: number;
     membershipSeconds: number;
     pause: string;
+    spriteId: number;
     receivedAt: number;
 }
 
-let workout: GymWorkout = { showing: false, stat: '', machine: '', level: 0, secondsLeft: 0, secondsForLevel: 0, membershipSeconds: 0, pause: '', receivedAt: 0 };
+let workout: GymWorkout = { showing: false, stat: '', machine: '', level: 0, secondsLeft: 0, secondsForLevel: 0, membershipSeconds: 0, pause: '', spriteId: 0, receivedAt: 0 };
 let gymBots: number[] = [];
 /** One player's levels, and the XP toward each next level (needed 0 at level 10). */
 export interface GymLevels
@@ -321,6 +326,7 @@ export const RegisterRpGymMessages = () =>
             secondsForLevel: parser.secondsForLevel,
             membershipSeconds: parser.membershipSeconds,
             pause: parser.pause,
+            spriteId: parser.spriteId,
             receivedAt: performance.now()
         };
         notify();
