@@ -1,0 +1,87 @@
+diff --git a/src/nitro/room/RoomObjectEventHandler.ts b/src/nitro/room/RoomObjectEventHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomObjectEventHandler.ts
++++ b/src/nitro/room/RoomObjectEventHandler.ts
+@@ -1517,7 +1517,9 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+         const y = location.y;
+         const z = location.z;
+ 
+-        return new ObjectTileCursorUpdateMessage(new Vector3d(x, y, roomObject.getLocation().z), z, true, event.eventId);
++        // PixelRP: on the floor of the tile under the mouse (z is that floor's
++        // height), never raised - getActiveSurfaceLocation.
++        return new ObjectTileCursorUpdateMessage(new Vector3d(x, y, z), 0, true, event.eventId);
+     }
+ 
+     private handleMoveTargetFurni(k: number, _arg_2: RoomObjectMouseEvent): boolean
+@@ -1537,6 +1539,14 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+         return false;
+     }
+ 
++    // PixelRP: the FLOOR tile under the mouse. Habbo projected the mouse onto
++    // the furni's top (its height, half a tile less for a seat), so over a
++    // tall furni the chosen tile - and the cursor drawn on its floor - sat
++    // below the mouse. Now the mouse is projected onto the floor (lift: how
++    // far the furni stands above the floor of its own tile), so the cursor is
++    // under the mouse, and a click on the furni walks to that same tile - on
++    // the furni, or beside or behind it. Still only for furni you can stand,
++    // sit or lie on, and only onto a room tile; z is that tile's floor height.
+     private getActiveSurfaceLocation(k: IRoomObject, _arg_2: RoomObjectMouseEvent): Vector3d
+     {
+         if(!k || !_arg_2) return null;
+@@ -1547,45 +1557,27 @@ export class RoomObjectEventHandler extends Disposable implements IRoomCanvasMou
+ 
+         if(!furniData.canStandOn && !furniData.canSitOn && !furniData.canLayOn) return null;
+ 
+-        const model = k.model;
+-
+-        if(!model) return null;
+-
+-        const location = k.getLocation();
+-        const direction = k.getDirection();
+-
+-        let sizeX = model.getValue<number>(RoomObjectVariable.FURNITURE_SIZE_X);
+-        let sizeY = model.getValue<number>(RoomObjectVariable.FURNITURE_SIZE_Y);
+-        const sizeZ = model.getValue<number>(RoomObjectVariable.FURNITURE_SIZE_Z);
+-
+-        if((direction.x === 90) || (direction.x === 270)) [sizeX, sizeY] = [sizeY, sizeX];
+-
+-        if(sizeX < 1) sizeX = 1;
+-        if(sizeY < 1) sizeY = 1;
+-
+         const renderingCanvas = this._roomEngine.getActiveRoomInstanceRenderingCanvas();
+ 
+         if(!renderingCanvas) return null;
+ 
++        const floor = this._roomEngine.getLegacyWallGeometry(this._roomEngine.activeRoomId);
++
++        if(!floor) return null;
++
++        const location = k.getLocation();
+         const scale = renderingCanvas.geometry.scale;
+-        const _local_13 = furniData.canSitOn ? 0.5 : 0;
++        const lift = Math.max(0, (location.z - floor.getHeight(Math.floor(location.x), Math.floor(location.y))));
+         const _local_14 = ((((scale / 2) + _arg_2.spriteOffsetX) + _arg_2.localX) / (scale / 4));
+-        const _local_15 = (((_arg_2.spriteOffsetY + _arg_2.localY) + (((sizeZ - _local_13) * scale) / 2)) / (scale / 4));
++        const _local_15 = (((_arg_2.spriteOffsetY + _arg_2.localY) - ((lift * scale) / 2)) / (scale / 4));
+         const _local_16 = ((_local_14 + (2 * _local_15)) / 4);
+         const _local_17 = ((_local_14 - (2 * _local_15)) / 4);
+-        const _local_18 = Math.floor((location.x + _local_16));
+-        const _local_19 = Math.floor(((location.y - _local_17) + 1));
++        const x = Math.floor((location.x + _local_16));
++        const y = Math.floor(((location.y - _local_17) + 1));
+ 
+-        let _local_20 = false;
++        if(!floor.isRoomTile(x, y)) return null;
+ 
+-        if((_local_18 < location.x) || (_local_18 >= (location.x + sizeX))) _local_20 = true;
+-        else if((_local_19 < location.y) || (_local_19 >= (location.y + sizeY))) _local_20 = true;
+-
+-        const _local_21 = furniData.canSitOn ? (sizeZ - 0.5) : sizeZ;
+-
+-        if(!_local_20) return new Vector3d(_local_18, _local_19, _local_21);
+-
+-        return null;
++        return new Vector3d(x, y, floor.getHeight(x, y));
+     }
+ 
+     private handleMouseOverTile(k: RoomObjectTileMouseEvent, roomId: number): ObjectTileCursorUpdateMessage
