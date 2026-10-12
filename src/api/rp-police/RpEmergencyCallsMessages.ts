@@ -36,12 +36,14 @@ export class RpEmergencyCallsParser implements IMessageParser
     private _open = false;
     private _calls: EmergencyCall[] = [];
     private _notice = '';
+    private _reopen = false;
 
     public flush(): boolean
     {
         this._open = false;
         this._calls = [];
         this._notice = '';
+        this._reopen = false;
 
         return true;
     }
@@ -71,6 +73,8 @@ export class RpEmergencyCallsParser implements IMessageParser
         });
 
         this._notice = wrapper.readString();
+        // :calls - back up even after the X (appended last).
+        this._reopen = wrapper.bytesAvailable ? wrapper.readBoolean() : false;
 
         return true;
     }
@@ -90,6 +94,12 @@ export class RpEmergencyCallsParser implements IMessageParser
     public get notice(): string
     {
         return this._notice;
+    }
+
+    /** :calls - show the window even if its X put it away. */
+    public get reopen(): boolean
+    {
+        return this._reopen;
     }
 }
 

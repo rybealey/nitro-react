@@ -9,7 +9,7 @@ import { useMessageEvent } from '../../hooks';
 //
 // Open while you are an on-duty officer - the server opens it on clock-in and
 // closes it on clock-out. The X only puts it away: the next new call brings it
-// back up, and it opens again on the next clock-in. One call at a time, the newest first; the right arrow goes back through older
+// back up, :calls does too, and it opens again on the next clock-in. One call at a time, the newest first; the right arrow goes back through older
 // ones. Respond claims a waiting call, after which the button is Go to room.
 // Once responded, any officer marks it Helpful or Abuse - once, for good.
 
@@ -83,8 +83,9 @@ export const EmergencyCallsView: FC<{}> = props =>
         newestId.current = Math.max(newestId.current, newest);
         setReceivedAt(Date.now());
 
-        // A fresh clock-in opens it whether or not it was put away last shift.
-        if(!isOpen) setIsDismissed(false);
+        // A fresh clock-in opens it whether or not it was put away last shift,
+        // and :calls brings it back whenever it was.
+        if(!isOpen || parser.reopen) setIsDismissed(false);
 
         setIsOpen(true);
 
