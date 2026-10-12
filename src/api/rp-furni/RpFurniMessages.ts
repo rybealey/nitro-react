@@ -432,14 +432,16 @@ const HoldPatch = (data: RpFurniFunction) =>
 // The tile cursor's height ring
 // ---------------------------------------------------------------------------
 //
-// Gone for every furni - in the renderer, not here: TileCursorLogic never
-// takes its raised "height" state (renderer patch no-height-ring). The ring
-// is drawn by RoomObjectEventHandler.handleMouseOverObject for any furni you
-// can stand, sit or lie on whose top is above 0.8. The variable-height flag
-// the Height marker field was meant for is only read on a path that never
-// runs here (where-you-click-is-where-you-go is always on), so the field
-// changes nothing you can see; it is still carried and saved for the
-// Function tool.
+// Gone for every furni - in the renderer, not here: over a furni you can
+// stand, sit or lie on whose top is above 0.8 (RoomObjectEventHandler.
+// handleMouseOverObject), the tile cursor's raised state now draws the normal
+// white diamond on the furni's top instead of a blue ring, and no copy on the
+// floor below (TileCursorVisualization, renderer patch no-height-ring).
+//
+// The variable-height flag the Height marker field was meant for is only read
+// on a path that never runs here (where-you-click-is-where-you-go is always
+// on), so the field changes nothing you can see; it is still carried and
+// saved for the Function tool.
 
 type FurniFunctionListener = (data: RpFurniFunction) => void;
 
