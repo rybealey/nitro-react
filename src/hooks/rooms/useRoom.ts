@@ -1,7 +1,6 @@
 import { AdjustmentFilter, ColorConverter, IRoomSession, NitroContainer, NitroSprite, NitroTexture, RoomBackgroundColorEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomGeometry, RoomId, RoomObjectCategory, RoomObjectHSLColorEnabledEvent, RoomObjectOperationType, RoomSessionEvent, RoomVariableEnum, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
-import { HideHeightMarkerOnObject } from '../../api/rp-furni/RpFurniMessages';
 import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SetActiveRoomId, StartRoomSession } from '../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../events';
 
@@ -124,7 +123,6 @@ const useRoomState = () =>
         RoomEngineObjectEvent.SELECTED,
         RoomEngineObjectEvent.DESELECTED,
         RoomEngineObjectEvent.ADDED,
-        RoomEngineObjectEvent.CONTENT_UPDATED,
         RoomEngineObjectEvent.REMOVED,
         RoomEngineObjectEvent.PLACED,
         RoomEngineObjectEvent.REQUEST_MOVE,
@@ -158,11 +156,6 @@ const useRoomState = () =>
                 switch(event.category)
                 {
                     case RoomObjectCategory.FLOOR:
-                        // pixelrp: no furni hands the tile cursor its raised
-                        // blue height ring. The flag is set by the object's own
-                        // logic on initialize, so the earliest we can overrule
-                        // it is here, the moment the room has the object.
-                        HideHeightMarkerOnObject(event.roomId, event.objectId);
                         addedEventType = RoomWidgetUpdateRoomObjectEvent.FURNI_ADDED;
                         break;
                     case RoomObjectCategory.WALL:
@@ -176,12 +169,6 @@ const useRoomState = () =>
                 if(addedEventType) updateEvent = new RoomWidgetUpdateRoomObjectEvent(addedEventType, event.objectId, event.category, event.roomId);
                 break;
             }
-            case RoomEngineObjectEvent.CONTENT_UPDATED:
-                // pixelrp: a furni whose artwork had not loaded yet when the
-                // room added it gets its real logic only now - and that logic
-                // switches the height marker back on. Overrule it again.
-                if(event.category === RoomObjectCategory.FLOOR) HideHeightMarkerOnObject(event.roomId, event.objectId);
-                break;
             case RoomEngineObjectEvent.REMOVED: {
                 let removedEventType: string = null;
 

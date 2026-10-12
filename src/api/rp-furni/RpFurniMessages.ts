@@ -1,4 +1,4 @@
-import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, IRoomObject, MessageEvent, RoomObjectCategory, RoomObjectVariable } from '@nitrots/nitro-renderer';
+import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent, RoomObjectCategory, RoomObjectVariable } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, GetRoomEngine, GetRoomSession, GetSessionDataManager, SendMessageComposer } from '../nitro';
 
 // PixelRP furni packets - client-source, registered at runtime like the gang,
@@ -432,43 +432,14 @@ const HoldPatch = (data: RpFurniFunction) =>
 // The tile cursor's height ring
 // ---------------------------------------------------------------------------
 //
-// Hovering a tile normally draws the white diamond on the floor. But
-// RoomObjectEventHandler.handleMouseOverTile looks at the TOP object on that
-// tile for `furniture_is_variable_height`, and when it finds it, sends the
-// tile's stack height along with the cursor instead of zero. TileCursorLogic
-// then flips the cursor to state 6 for any height over 0.8, and
-// TileCursorVisualization raises the cursor's second layer by height * 32 -
-// which is the blue ring, hanging at the height a dropped item would land on.
-//
-// Nothing in the database decides that. FurnitureMultiHeightLogic sets the
-// flag on initialize, and a furni only gets that logic because its own .nitro
-// bundle asks for `furniture_multiheight`. So the marker belongs to the ASSET,
-// and switching it off would otherwise mean rebuilding the bundle.
-//
-// The ring is OFF everywhere, for every furni (Twist, 2026-10-12: "I want the
-// rings gone everywhere"). It was off by default with a Height marker switch
-// per furni in the Function tool; that switch is gone, and the emulator's
-// `furniture.height_marker` is no longer read here (migration 247 clears it).
-//
-// The flag is cleared at both moments a furni's logic can set it: when the
-// room adds the furni, and - for one whose artwork had not loaded by then,
-// the first time it is seen in a session - when that artwork arrives and the
-// real logic initializes (CONTENT_UPDATED). Clearing only the first was why
-// the ring still showed on some furni.
-const HideHeightMarker = (object: IRoomObject) =>
-{
-    if(!object || !object.model) return;
-
-    if(!object.model.getValue<number>(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT)) return;
-
-    object.model.setValue(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT, 0);
-}
-
-/** One floor object: as the room adds it, and again once its artwork has loaded. */
-export const HideHeightMarkerOnObject = (roomId: number, objectId: number) =>
-{
-    HideHeightMarker(GetRoomEngine().getRoomObject(roomId, objectId, RoomObjectCategory.FLOOR));
-}
+// Gone for every furni - in the renderer, not here: TileCursorLogic never
+// takes its raised "height" state (renderer patch no-height-ring). The ring
+// is drawn by RoomObjectEventHandler.handleMouseOverObject for any furni you
+// can stand, sit or lie on whose top is above 0.8. The variable-height flag
+// the Height marker field was meant for is only read on a path that never
+// runs here (where-you-click-is-where-you-go is always on), so the field
+// changes nothing you can see; it is still carried and saved for the
+// Function tool.
 
 type FurniFunctionListener = (data: RpFurniFunction) => void;
 

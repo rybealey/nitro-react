@@ -1,0 +1,19 @@
+diff --git a/src/nitro/room/object/logic/room/TileCursorLogic.ts b/src/nitro/room/object/logic/room/TileCursorLogic.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/logic/room/TileCursorLogic.ts
++++ b/src/nitro/room/object/logic/room/TileCursorLogic.ts
+@@ -54,7 +54,13 @@ export class TileCursorLogic extends RoomObjectLogicBase
+                 {
+                     this.object.model.setValue(RoomObjectVariable.TILE_CURSOR_HEIGHT, message.height);
+ 
+-                    this.object.setState((message.height > 0.8) ? TileCursorLogic.CURSOR_HEIGHT_STATE : TileCursorLogic.CURSOR_VISIBLE_STATE);
++                    // PixelRP: never the raised look. CURSOR_HEIGHT_STATE draws a
++                    // second cursor floating at the surface height - the blue
++                    // ring over any furni you can stand, sit or lie on whose top
++                    // is above 0.8 (handleMouseOverObject, which always runs:
++                    // where-you-click-is-where-you-go is on). The plain cursor
++                    // on the tile stays.
++                    this.object.setState(TileCursorLogic.CURSOR_VISIBLE_STATE);
+                 }
+             }
+         }
