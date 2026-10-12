@@ -13,25 +13,18 @@ index 1111111..2222222 100644
      private _tileHeight: number;
  
      constructor()
-@@ -23,4 +27,22 @@ export class TileCursorVisualization extends FurnitureAnimatedVisualization
+@@ -23,4 +27,15 @@ export class TileCursorVisualization extends FurnitureAnimatedVisualization
  
          return super.getLayerYOffset(scale, direction, layerId);
      }
 +
-+    // PixelRP: no blue ring. In the height state layer 1 floats at the
-+    // surface height (getLayerYOffset above) and draws a small blue ring,
-+    // while layer 0 - the white diamond - stays on the floor of the tile,
-+    // below the mouse. Here layer 1 draws the white diamond instead (layer 0's
-+    // own frame) and the floor copy is hidden, so the one normal cursor sits
-+    // on the furni's top, under the mouse.
++    // PixelRP: the cursor stays on the floor. In the height state layer 1, a
++    // small blue ring, floats at the furni's surface height (getLayerYOffset
++    // above); it is never drawn, so only layer 0 shows - the white diamond on
++    // the floor of the tile, as everywhere else.
 +    protected getSpriteAssetName(scale: number, layerId: number): string
 +    {
-+        if(this.object && (this.object.getState(0) === TileCursorVisualization.HEIGHT_STATE))
-+        {
-+            if(layerId === 0) return '';
-+
-+            if(layerId === 1) return super.getSpriteAssetName(scale, 0);
-+        }
++        if((layerId === 1) && this.object && (this.object.getState(0) === TileCursorVisualization.HEIGHT_STATE)) return '';
 +
 +        return super.getSpriteAssetName(scale, layerId);
 +    }
