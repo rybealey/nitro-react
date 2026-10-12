@@ -386,9 +386,6 @@ const PatchFurnitureData = (data: RpFurniFunction): boolean =>
     // behaviour, so the client has to derive it the same way.
     writable._canLayOn = ((data.interactionType === 'bed') || (data.interactionType === 'tent_small') || (data.interactionType === 'medical_bed'));
 
-    if(data.heightMarker) heightMarkerOn.add(data.spriteId);
-    else heightMarkerOn.delete(data.spriteId);
-
     return true;
 }
 
@@ -407,17 +404,12 @@ const PendingPatchKey = (data: RpFurniFunction) => `${ data.productType }:${ dat
 
 const FlushPendingPatches = () =>
 {
-    let patched = false;
-
     for(const [ key, data ] of Array.from(pendingPatches.entries()))
     {
         if(!PatchFurnitureData(data)) continue;
 
         pendingPatches.delete(key);
-        patched = true;
     }
-
-    if(patched) ApplyHeightMarkerToRoom();
 
     if(pendingPatches.size && ((Date.now() - pendingPatchSince) < PENDING_PATCH_GIVE_UP_MS)) return;
 
@@ -453,73 +445,29 @@ const HoldPatch = (data: RpFurniFunction) =>
 // bundle asks for `furniture_multiheight`. So the marker belongs to the ASSET,
 // and switching it off would otherwise mean rebuilding the bundle.
 //
-// The ring is OFF for everything by default, and a furni has to be opted in.
-// It is a builder's readout that shows for anyone walking past any furni whose
-// artwork happens to name `furniture_multiheight`, which is almost never a
-// furni somebody stacks on deliberately.
+// The ring is OFF everywhere, for every furni (Twist, 2026-10-12: "I want the
+// rings gone everywhere"). It was off by default with a Height marker switch
+// per furni in the Function tool; that switch is gone, and the emulator's
+// `furniture.height_marker` is no longer read here (migration 247 clears it).
 //
-// Suppressing by default rather than listing what to suppress also keeps the
-// wire quiet: a furni nobody has opted in is never mentioned at all, and the
-// opted-in set arrives by the same two routes as the rest of the Function
-// record.
-//
-// The original value is stashed on the object before it is overwritten, so
-// opting a furni in restores exactly what its asset asked for rather than
-// handing the ring to furni that never had it.
-const HEIGHT_MARKER_ORIGINAL = 'pixelrp_height_marker_original';
-
-const heightMarkerOn = new Set<number>();
-
-const ApplyHeightMarker = (object: IRoomObject) =>
+// The flag is cleared at both moments a furni's logic can set it: when the
+// room adds the furni, and - for one whose artwork had not loaded by then,
+// the first time it is seen in a session - when that artwork arrives and the
+// real logic initializes (CONTENT_UPDATED). Clearing only the first was why
+// the ring still showed on some furni.
+const HideHeightMarker = (object: IRoomObject) =>
 {
     if(!object || !object.model) return;
 
-    const spriteId = object.model.getValue<number>(RoomObjectVariable.FURNITURE_TYPE_ID);
+    if(!object.model.getValue<number>(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT)) return;
 
-    if(!spriteId) return;
-
-    let original = object.model.getValue<number>(HEIGHT_MARKER_ORIGINAL);
-
-    if((original === undefined) || (original === null))
-    {
-        original = (object.model.getValue<number>(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT) || 0);
-
-        object.model.setValue(HEIGHT_MARKER_ORIGINAL, original);
-    }
-
-    // Never had the flag, so there is nothing to suppress and nothing to give
-    // back. That is the overwhelming majority of furni, and it is why this can
-    // run over every floor object in a room without costing anything.
-    if(!original) return;
-
-    object.model.setValue(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT, heightMarkerOn.has(spriteId) ? original : 0);
+    object.model.setValue(RoomObjectVariable.FURNITURE_IS_VARIABLE_HEIGHT, 0);
 }
 
-/** One object, as the room adds it. */
-export const ApplyHeightMarkerToObject = (roomId: number, objectId: number) =>
+/** One floor object: as the room adds it, and again once its artwork has loaded. */
+export const HideHeightMarkerOnObject = (roomId: number, objectId: number) =>
 {
-    ApplyHeightMarker(GetRoomEngine().getRoomObject(roomId, objectId, RoomObjectCategory.FLOOR));
-}
-
-// Every floor object in the room the player is standing in. Needed twice: a
-// staff member applying a change should see it without walking out, and the
-// room-entry re-send of edited definitions arrives AFTER the objects it
-// describes.
-const ApplyHeightMarkerToRoom = () =>
-{
-    // activeRoomId first: on room ENTRY the definitions arrive right after the
-    // objects they describe, and the room session is not always set by then -
-    // which would leave exactly the furni this exists for unsuppressed until
-    // something else happened to sweep.
-    const roomId = (GetRoomEngine()?.activeRoomId || GetRoomSession()?.roomId);
-
-    if(!roomId) return;
-
-    const objects = GetRoomEngine().getRoomObjects(roomId, RoomObjectCategory.FLOOR);
-
-    if(!objects) return;
-
-    for(const object of objects) ApplyHeightMarker(object);
+    HideHeightMarker(GetRoomEngine().getRoomObject(roomId, objectId, RoomObjectCategory.FLOOR));
 }
 
 type FurniFunctionListener = (data: RpFurniFunction) => void;
@@ -547,8 +495,6 @@ const onFurniFunction = (event: RpFurniFunctionEvent) =>
     // on top of it later.
     if(PatchFurnitureData(data)) pendingPatches.delete(PendingPatchKey(data));
     else HoldPatch(data);
-
-    ApplyHeightMarkerToRoom();
 
     for(const listener of Array.from(functionListeners)) listener(data);
 }
