@@ -117,7 +117,7 @@ export const NavigatorRoomInfoView: FC<NavigatorRoomInfoViewProps> = props =>
                                             <Flex alignItems="center" gap={ 1 }>
                                                 <Text variant="muted">{ LocalizeText('navigator.roomownercaption') }</Text>
                                                 <Flex alignItems="center" gap={ 1 }>
-                                                    <UserProfileIconView userId={ navigatorData.enteredGuestRoom.ownerId } />
+                                                    <UserProfileIconView userId={ navigatorData.enteredGuestRoom.ownerId } userName={ navigatorData.enteredGuestRoom.ownerName } />
                                                     <Text>{ navigatorData.enteredGuestRoom.ownerName }</Text>
                                                 </Flex>
                                             </Flex> }

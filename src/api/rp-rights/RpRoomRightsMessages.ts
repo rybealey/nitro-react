@@ -1,4 +1,4 @@
-import { IMessageDataWrapper, IMessageEvent, IMessageParser, IRoomSession, MessageEvent, RoomControllerLevel } from '@nitrots/nitro-renderer';
+import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, IRoomSession, MessageEvent, RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, GetSessionDataManager } from '../nitro';
 
 // PixelRP: whether a staff member's global room rights are live right now.
@@ -19,6 +19,9 @@ import { GetCommunication, GetConnection, GetSessionDataManager } from '../nitro
 
 // server -> client
 const RP_STAFF_DUTY = 4116;
+
+// client -> server
+const RP_MAKE_PIXELRP_ROOM = 4199;
 
 export class RpStaffDutyParser implements IMessageParser
 {
@@ -146,6 +149,31 @@ const onStaffDuty = (event: RpStaffDutyEvent) =>
     canEditBranding = parser.canEditBranding;
 }
 
+// PixelRP: the Room Tool's "Make PixelRP room" (emulator RpMakePixelRpRoomEvent,
+// PixelRpRooms) - the room, its furni and its bots go to the PixelRP account,
+// the owner of the city's own rooms. Staff only; one way.
+export const PIXELRP_ROOM_OWNER = 'PixelRP';
+
+export class RpMakePixelRpRoomComposer implements IMessageComposer<[ number ]>
+{
+    private _data: [ number ];
+
+    constructor(roomId: number)
+    {
+        this._data = [ roomId ];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    {
+        return;
+    }
+}
+
 let registered = false;
 
 export const RegisterRpRoomRightsMessages = () =>
@@ -160,7 +188,9 @@ export const RegisterRpRoomRightsMessages = () =>
         events: new Map<number, Function>([
             [ RP_STAFF_DUTY, RpStaffDutyEvent ]
         ]),
-        composers: new Map<number, Function>()
+        composers: new Map<number, Function>([
+            [ RP_MAKE_PIXELRP_ROOM, RpMakePixelRpRoomComposer ]
+        ])
     });
 
     GetCommunication().registerMessageEvent(new RpStaffDutyEvent(onStaffDuty));

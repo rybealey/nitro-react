@@ -73,7 +73,7 @@ export const NavigatorSearchResultItemInfoView: FC<NavigatorSearchResultItemInfo
                                         { LocalizeText('navigator.roomownercaption') }
                                     </Text>
                                     <Flex alignItems="center" gap={ 1 }>
-                                        <UserProfileIconView userId={ roomData.ownerId } />
+                                        <UserProfileIconView userId={ roomData.ownerId } userName={ roomData.ownerName } />
                                         <Text italics>{ roomData.ownerName }</Text>
                                     </Flex>
                                 </Flex>

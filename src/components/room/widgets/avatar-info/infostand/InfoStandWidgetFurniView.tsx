@@ -542,7 +542,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                         </Column> }
                     <Column gap={ 1 }>
                         <Flex alignItems="center" gap={ 1 }>
-                            <UserProfileIconView userId={ avatarInfo.ownerId } />
+                            <UserProfileIconView userId={ avatarInfo.ownerId } userName={ avatarInfo.ownerName } />
                             <Text variant="white" small wrap>
                                 { LocalizeText('furni.owner', [ 'name' ], [ avatarInfo.ownerName ]) }
                             </Text>

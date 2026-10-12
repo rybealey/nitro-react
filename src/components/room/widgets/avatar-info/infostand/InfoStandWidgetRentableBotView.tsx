@@ -59,7 +59,7 @@ export const InfoStandWidgetRentableBotView: FC<InfoStandWidgetRentableBotViewPr
                     </Column>
                     <Column gap={ 1 }>
                         <Flex alignItems="center" gap={ 1 }>
-                            <UserProfileIconView userId={ avatarInfo.ownerId } />
+                            <UserProfileIconView userId={ avatarInfo.ownerId } userName={ avatarInfo.ownerName } />
                             <Text variant="white" small wrap>
                                 { LocalizeText('infostand.text.botowner', [ 'name' ], [ avatarInfo.ownerName ]) }
                             </Text>

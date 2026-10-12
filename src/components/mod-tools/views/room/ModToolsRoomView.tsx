@@ -2,6 +2,7 @@ import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEv
 import { FC, useEffect, useState } from 'react';
 import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
 import { ROOM_POLICE_JAIL, RpRoomPoliceEvent } from '../../../../api/rp-police/RpJailMessages';
+import { PIXELRP_ROOM_OWNER, RpMakePixelRpRoomComposer } from '../../../../api/rp-rights/RpRoomRightsMessages';
 import { ROOM_ZONE_SAFE, ROOM_ZONE_UNSAFE, RpRoomTurfEvent, RpRoomZoneTypeSaveComposer } from '../../../../api/rp-turf/RpTurfMessages';
 import { DraggableWindowPosition, LayoutRoomThumbnailView, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { RoomWidgetThumbnailEvent } from '../../../../events';
@@ -340,6 +341,16 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         }, null, null, null, LocalizeText('navigator.roomsettings.deleteroom.confirm.title'));
     }
 
+    // The room, its furni and its bots go to the PixelRP account - the owner
+    // of the city's own rooms. One way: there is no button back.
+    const makePixelRpRoom = () =>
+    {
+        showConfirm('This room, its furni and its bots will belong to PixelRP. There is no way to undo this.', () =>
+        {
+            SendMessageComposer(new RpMakePixelRpRoomComposer(roomId));
+        }, null, 'Make PixelRP room', null, 'Make PixelRP room');
+    }
+
     // Safe or Unsafe. A turf plays as unsafe; choosing Unsafe on one leaves it
     // a turf, so only a real change is sent (it would clear the turf).
     const saveZone = (safe: boolean) =>
@@ -416,6 +427,8 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3.5h10" /><path d="M5.5 3.5V2h3v1.5" /><path d="M3.5 3.5l.6 8.5h5.8l.6-8.5" /><path d="M5.8 6v3.8M8.2 6v3.8" /></svg>
                                         </button> }
                                 </div>
+                                { roomData && (ownerName !== PIXELRP_ROOM_OWNER) &&
+                                    <button type="button" className="mt-chrome w-100" onClick={ makePixelRpRoom }>Make PixelRP room</button> }
                                 { roomData &&
                                     <>
                                         <div className="mt-field">
