@@ -152,6 +152,13 @@ export const CatalogEditableNameView: FC<{}> = props =>
             onBlur={ commit }
             onKeyDown={ event =>
             {
+                // The name's keys are the name's alone. Enter closes this box
+                // before the key reaches the chat box's listener on body, which
+                // then saw no other box selected and spoke the name as chat;
+                // macros and the shop's own shortcuts have no business here
+                // either.
+                event.stopPropagation();
+
                 if(event.key === 'Enter') commit();
                 // Escape leaves the name alone; blur would otherwise commit it.
                 if(event.key === 'Escape') setEditing(false);

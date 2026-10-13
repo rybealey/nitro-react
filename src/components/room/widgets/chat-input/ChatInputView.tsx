@@ -260,6 +260,15 @@ export const ChatInputView: FC<{}> = props =>
         // into the invisible input - typing would send unseen chat.
         if(floodBlocked || !inputRef.current || anotherInputHasFocus() || document.body.classList.contains('siri-active')) return;
 
+        // A key typed into another box is that box's, even when the box is gone
+        // by the time it gets here: a box that closes itself on Enter (the
+        // shop's rename) is unmounted before this listener on body runs, so
+        // anotherInputHasFocus() saw nothing selected - and the value read off
+        // event.target below was the other box's text, sent as chat.
+        const target = event.target;
+
+        if(((target instanceof HTMLInputElement) || (target instanceof HTMLTextAreaElement)) && (target !== inputRef.current)) return;
+
         // Macros are checked first, and before setInputFocus(): this handler
         // pulls focus into the chat box on ANY key, so a bound key that was not
         // consumed here would type itself into the message as well as firing.
