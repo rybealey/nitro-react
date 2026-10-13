@@ -13,6 +13,15 @@ export const EmergencyCallAction = { Respond: 1, GoToRoom: 2, Helpful: 3, Abuse:
 /** EmergencyCalls.Mark* */
 export const EmergencyCallMark = { None: 0, Helpful: 1, Abuse: 2 };
 
+/** EmergencyCalls.Kind* - a 911 call, or an officer's :backup request. */
+export const EmergencyCallKind = { Call: 0, Backup: 1 };
+
+export interface EmergencyCallResponder
+{
+    id: number;
+    name: string;
+}
+
 export interface EmergencyCall
 {
     id: number;
@@ -29,6 +38,10 @@ export interface EmergencyCall
     responderName: string;
     mark: number;
     markedByName: string;
+    /** EmergencyCallKind; Call for a server from before :backup. */
+    kind: number;
+    /** A backup request's responders, first to answer first; empty for a 911 call. */
+    responders: EmergencyCallResponder[];
 }
 
 export class RpEmergencyCallsParser implements IMessageParser
@@ -69,12 +82,38 @@ export class RpEmergencyCallsParser implements IMessageParser
             responderId: wrapper.readInt(),
             responderName: wrapper.readString(),
             mark: wrapper.readInt(),
-            markedByName: wrapper.readString()
+            markedByName: wrapper.readString(),
+            kind: EmergencyCallKind.Call,
+            responders: []
         });
 
         this._notice = wrapper.readString();
         // :calls - back up even after the X (appended last).
         this._reopen = wrapper.bytesAvailable ? wrapper.readBoolean() : false;
+
+        // :backup's part, appended whole: each call's kind and responders, in
+        // the same order as the calls above.
+        if(wrapper.bytesAvailable)
+        {
+            const extras = wrapper.readInt();
+
+            for(let i = 0; i < extras; i++)
+            {
+                const kind = wrapper.readInt();
+                const responders: EmergencyCallResponder[] = [];
+
+                let responderCount = wrapper.readInt();
+
+                while(responderCount-- > 0) responders.push({ id: wrapper.readInt(), name: wrapper.readString() });
+
+                const call = this._calls[i];
+
+                if(!call) continue;
+
+                call.kind = kind;
+                call.responders = responders;
+            }
+        }
 
         return true;
     }

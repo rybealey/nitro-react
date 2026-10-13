@@ -46,11 +46,6 @@ $emergency-blue: #1e7295;
         svg { color: $emergency-red; }
     }
 
-    .emergency-count {
-        font-size: 9px;
-        color: rgba(0, 0, 0, 0.58);
-    }
-
     .emergency-card {
         display: flex;
         flex-direction: column;
@@ -63,6 +58,29 @@ $emergency-blue: #1e7295;
 
         // A prank: dimmed, so the real calls stand out.
         &.is-abuse { opacity: 0.6; }
+
+        // An officer's :backup request, told from a 911 call at a glance.
+        &.is-backup { border-left: 3px solid $emergency-blue; }
+    }
+
+    .emergency-who {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .emergency-tag {
+        flex-shrink: 0;
+        padding: 0 4px;
+        border-radius: 3px;
+        background: $emergency-blue;
+        color: #ffffff;
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        line-height: 13px;
+        text-transform: uppercase;
     }
 
     .emergency-caller {
