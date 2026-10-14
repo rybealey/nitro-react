@@ -1,7 +1,7 @@
 import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { GetAvatarRenderManager, GetClubMemberLevel, GetRoomSession, GetSessionDataManager, LocalizeText, MannequinUtilities } from '../../../../api';
-import { Base, Button, Column, Flex, LayoutAvatarImageView, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../../../common';
+import { Base, Button, Column, Flex, LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../../../common';
 import { useFurnitureMannequinWidget } from '../../../../hooks';
 import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../../api/rp-rights/RpRoomRightsMessages';
 
@@ -89,8 +89,6 @@ export const FurnitureMannequinView: FC<{}> = props =>
                     <Column>
                         <Base position="relative" className="mannequin-preview">
                             <LayoutAvatarImageView position="absolute" figure={ renderedFigure } direction={ 2 } />
-                            { (clubLevel > 0) &&
-                                <LayoutCurrencyIcon className="position-absolute end-2 bottom-2" type="hc" /> }
                         </Base>
                     </Column>
                     <Column grow justifyContent="between" overflow="auto">
