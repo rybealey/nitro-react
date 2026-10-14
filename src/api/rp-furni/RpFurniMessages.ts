@@ -177,6 +177,8 @@ export interface RpFurniFunction
     roomCount: number;
     /** Avatars lie across this furni instead of along it (laying furni only). */
     layAcross: boolean;
+    /** Turn added to the furni's rotation for a sitter: 0, 2, 4 or 6, a quarter-turn right per 2. */
+    sitRotation: number;
 }
 
 export class RpFurniFunctionParser implements IMessageParser
@@ -218,7 +220,8 @@ export class RpFurniFunctionParser implements IMessageParser
             placedCopies: wrapper.readInt(),
             roomCount: wrapper.readInt(),
             // last on the wire - see RpFurniFunctionComposer
-            layAcross: wrapper.readBoolean()
+            layAcross: wrapper.readBoolean(),
+            sitRotation: wrapper.readInt()
         };
 
         return true;
@@ -336,14 +339,15 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
         seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
         heightMarker: boolean, interactionType: string, modes: number, effectId: number,
         behaviourData: number, vendingIds: string, scopeItemId: number = 0, layAcross: boolean = false,
-        width: number = 0, length: number = 0)
+        width: number = 0, length: number = 0, sitRotation: number = 0)
     {
         // layAcross rides LAST, after scopeItemId, so the emulator can tell a
-        // client that never sent it from one that sent false. The size follows
-        // it for the same reason; 0 keeps the size the furni has.
+        // client that never sent it from one that sent false. The size and
+        // Sit facing follow it for the same reason; a size of 0 keeps the size
+        // the furni has.
         this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
             Math.round(stackHeight * 100), adjustableHeights, heightMarker, interactionType, modes,
-            effectId, behaviourData, vendingIds, scopeItemId, layAcross, width, length ];
+            effectId, behaviourData, vendingIds, scopeItemId, layAcross, width, length, sitRotation ];
     }
 
     public getMessageArray() 
