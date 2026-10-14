@@ -174,7 +174,7 @@ export const TurfPanelView: FC<{}> = props =>
 
         return (
             <div className="rp-turf-panel rp-turf-strip">
-                <Shield a={ shieldA } b={ shieldB } size={ 15 } />
+                { owned && <Shield a={ shieldA } b={ shieldB } size={ 15 } /> }
                 <span className="rp-turf-name">{ turfName }</span>
                 <span className={ `rp-turf-strip-line ${ stripClass }` }>{ stripLine }</span>
                 { canClaim &&
@@ -196,7 +196,10 @@ export const TurfPanelView: FC<{}> = props =>
     return (
         <div className={ `rp-turf-panel is-expanded${ closing ? ' is-closing' : '' }` }>
             <div className="rp-turf-head">
-                <Shield a={ shieldA } b={ shieldB } size={ 22 } />
+                { /* The shield is the holder's colours - an unclaimed turf,
+                     claim running or not, has no holder to show (Twist,
+                     2026-10-15). */ }
+                { owned && <Shield a={ shieldA } b={ shieldB } size={ 22 } /> }
                 <div className="rp-turf-heading">
                     <span className="rp-turf-name">{ turfName }</span>
                     <span className={ `rp-turf-status ${ statusClass }` }>{ statusLabel }</span>
