@@ -100,7 +100,7 @@ export const CatalogSpinnerWidgetView: FC<{}> = props =>
 
     return (
         <Column gap={ 1 }>
-            <Text>{ LocalizeText('catalog.quantity') }</Text>
+            <Text className="catalog-field-label">{ LocalizeText('catalog.quantity') }</Text>
             <Flex alignItems="center" gap={ 1 }>
                 <Flex center pointer className="quantity-step" onClick={ event => updateQuantity(quantity - 1) }>
                     <StepIcon minus />

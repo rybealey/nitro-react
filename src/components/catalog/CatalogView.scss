@@ -364,15 +364,43 @@
     }
 }
 
-// pixelrp: staff move a furni to another category (CatalogMoveFurniView).
-// The name keeps the row and truncates; Move sits at its right end.
+// pixelrp: the furni's name is the title of the product side - bold, a size
+// up, and ruled off from the purchase controls under it. In the body face it
+// ran straight on into the Quantity label as if that were a second line of
+// the name. It keeps the row and truncates; Move sits at its right end
+// (CatalogMoveFurniView).
 .rp-catalog-name-row {
     min-width: 0;
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid #dcdfe4;
+    font-size: 13px;
+    font-weight: 700;
+    @include prp-bold;
+
+    // The title's weight is the name's alone: the rename box and Move keep
+    // their own.
+    input,
+    .rp-catalog-move-chip {
+        -webkit-text-stroke-width: 0;
+    }
+
+    input { font-weight: 400; }
 
     > :first-child {
         flex: 1 1 auto;
         min-width: 0;
     }
+}
+
+// A field's name over its control (Quantity) - small and grey, so it reads
+// as a label and not as more of the title above it.
+.catalog-field-label {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #7d828b !important;
 }
 
 .rp-catalog-move-chip {
