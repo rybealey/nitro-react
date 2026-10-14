@@ -364,4 +364,171 @@
     }
 }
 
+// pixelrp: staff move a furni to another category (CatalogMoveFurniView).
+// The name keeps the row and truncates; Move sits at its right end.
+.rp-catalog-name-row {
+    min-width: 0;
+
+    > :first-child {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+}
+
+.rp-catalog-move-chip {
+    flex-shrink: 0;
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: #4a4f57;
+    background: #e4e6ea;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover { background: #d8dbe0; }
+
+    &.is-open {
+        color: #fff;
+        background: #e87332;
+    }
+}
+
+// The category list, on body so the shop's own scrolling cannot clip it.
+.rp-catalog-move {
+    position: fixed;
+    z-index: $draggable-window-zindex + 100;
+    display: flex;
+    flex-direction: column;
+    max-height: 380px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #222;
+    background: #fff;
+    border: 1px solid #c9ccd2;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+}
+
+.rp-catalog-move-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    font-weight: 700;
+    border-bottom: 1px solid #e2e4e8;
+}
+
+.rp-catalog-move-close {
+    color: #8a8f98;
+    cursor: pointer;
+
+    &:hover { color: #222; }
+}
+
+.rp-catalog-move-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e2e4e8;
+}
+
+.rp-catalog-move-tab {
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    color: #4a4f57;
+    background: #eef0f3;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover { background: #e2e5ea; }
+
+    &.is-active {
+        color: #fff;
+        background: #e87332;
+    }
+}
+
+.rp-catalog-move-list {
+    flex: 1 1 auto;
+    min-height: 60px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.rp-catalog-move-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding-right: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover { background: #fff4ec; }
+
+    &.is-here {
+        color: #9a9ea6;
+        cursor: default;
+
+        &:hover { background: none; }
+    }
+
+    &.is-busy { cursor: wait; }
+}
+
+.rp-catalog-move-caret {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 14px;
+    height: 100%;
+    color: #8a8f98;
+}
+
+.rp-catalog-move-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.rp-catalog-move-caption {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.rp-catalog-move-here {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: #9a9ea6;
+}
+
+.rp-catalog-move-heading {
+    padding-top: 6px;
+    padding-bottom: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #8a8f98;
+}
+
+.rp-catalog-move-status {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #4a4f57;
+    border-top: 1px solid #e2e4e8;
+
+    &.is-error { color: #c0392b; }
+}
+
 @import './views/targeted-offer/Offer.scss';

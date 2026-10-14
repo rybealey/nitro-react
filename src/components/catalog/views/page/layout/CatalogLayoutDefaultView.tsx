@@ -7,6 +7,7 @@ import { CatalogAddOnBadgeWidgetView } from '../widgets/CatalogAddOnBadgeWidgetV
 import { CatalogEditableNameView } from '../widgets/CatalogEditableNameView';
 import { CatalogItemGridWidgetView } from '../widgets/CatalogItemGridWidgetView';
 import { CatalogLimitedItemWidgetView } from '../widgets/CatalogLimitedItemWidgetView';
+import { CatalogMoveFurniView } from '../widgets/CatalogMoveFurniView';
 import { CatalogPurchaseWidgetView } from '../widgets/CatalogPurchaseWidgetView';
 import { CatalogSpinnerWidgetView } from '../widgets/CatalogSpinnerWidgetView';
 import { CatalogTotalPriceWidget } from '../widgets/CatalogTotalPriceWidget';
@@ -45,7 +46,10 @@ export const CatalogLayoutDefaultView: FC<CatalogLayoutProps> = props =>
                             </Flex>
                             <Column grow gap={ 1 }>
                                 <CatalogLimitedItemWidgetView fullWidth />
-                                <CatalogEditableNameView />
+                                <Flex alignItems="center" gap={ 1 } className="rp-catalog-name-row">
+                                    <CatalogEditableNameView />
+                                    <CatalogMoveFurniView />
+                                </Flex>
                                 <Flex justifyContent="between">
                                     <Column gap={ 1 }>
                                         <CatalogSpinnerWidgetView />
