@@ -1,6 +1,6 @@
-import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer';
+import { RoomControllerLevel } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { GetAvatarRenderManager, GetClubMemberLevel, GetRoomSession, GetSessionDataManager, LocalizeText, MannequinUtilities } from '../../../../api';
+import { GetAvatarRenderManager, GetRoomSession, GetSessionDataManager, LocalizeText, MannequinUtilities } from '../../../../api';
 import { Base, Button, Column, Flex, LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../../../common';
 import { useFurnitureMannequinWidget } from '../../../../hooks';
 import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../../api/rp-rights/RpRoomRightsMessages';
@@ -9,14 +9,13 @@ const MODE_NONE: number = -1;
 const MODE_CONTROLLER: number = 0;
 const MODE_UPDATE: number = 1;
 const MODE_PEER: number = 2;
-const MODE_NO_CLUB: number = 3;
 const MODE_WRONG_GENDER: number = 4;
 
 export const FurnitureMannequinView: FC<{}> = props =>
 {
     const [ renderedFigure, setRenderedFigure ] = useState<string>(null);
     const [ mode, setMode ] = useState(MODE_NONE);
-    const { objectId = -1, figure = null, gender = null, clubLevel = HabboClubLevelEnum.NO_CLUB, name = null, setName = null, saveFigure = null, wearFigure = null, saveName = null, onClose = null } = useFurnitureMannequinWidget();
+    const { objectId = -1, figure = null, gender = null, name = null, setName = null, saveFigure = null, wearFigure = null, saveName = null, onClose = null } = useFurnitureMannequinWidget();
 
     useEffect(() =>
     {
@@ -31,22 +30,19 @@ export const FurnitureMannequinView: FC<{}> = props =>
             return;
         }
         
-        if(GetSessionDataManager().gender.toLowerCase() !== gender.toLowerCase())
+        // An empty mannequin has no gender yet - compared as blank rather than
+        // throwing, which kept the window from opening for anyone without rights.
+        if((GetSessionDataManager().gender || '').toLowerCase() !== (gender || '').toLowerCase())
         {
             setMode(MODE_WRONG_GENDER);
 
             return;
         }
 
-        if(GetClubMemberLevel() < clubLevel)
-        {
-            setMode(MODE_NO_CLUB);
-
-            return;
-        }
-        
+        // pixelrp: no Habbo Club gate (Twist, 2026-10-15) - HC means nothing
+        // here, so anyone may wear any mannequin's outfit.
         setMode(MODE_PEER);
-    }, [ objectId, gender, clubLevel ]);
+    }, [ objectId, gender ]);
 
     useEffect(() =>
     {
@@ -69,15 +65,14 @@ export const FurnitureMannequinView: FC<{}> = props =>
                 setRenderedFigure(figureContainer.getFigureString());
                 break;
             }
-            case MODE_PEER:
-            case MODE_NO_CLUB: {
+            case MODE_PEER: {
                 const figureContainer = MannequinUtilities.getMergedMannequinFigureContainer(GetSessionDataManager().figure, figure);
 
                 setRenderedFigure(figureContainer.getFigureString());
                 break;
             }
         }
-    }, [ mode, figure, clubLevel ]);
+    }, [ mode, figure ]);
 
     if(objectId === -1) return null;
 
@@ -129,10 +124,6 @@ export const FurnitureMannequinView: FC<{}> = props =>
                                     { LocalizeText('mannequin.widget.wear') }
                                 </Button>
                             </> }
-                        { (mode === MODE_NO_CLUB) &&
-                            <Flex center grow>
-                                <Text>{ LocalizeText('mannequin.widget.clubnotification') }</Text>
-                            </Flex> }
                         { (mode === MODE_WRONG_GENDER) &&
                             <Text>{ LocalizeText('mannequin.widget.wronggender') }</Text> }
                     </Column>
