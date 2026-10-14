@@ -198,8 +198,9 @@ export const TurfPanelView: FC<{}> = props =>
             <div className="rp-turf-head">
                 { /* The shield is the holder's colours - an unclaimed turf,
                      claim running or not, has no holder to show (Twist,
-                     2026-10-15). */ }
-                { owned && <Shield a={ shieldA } b={ shieldB } size={ 22 } /> }
+                     2026-10-15). An empty slot the shield's width stands in,
+                     so the name stays centred against the arrow's. */ }
+                { owned ? <Shield a={ shieldA } b={ shieldB } size={ 22 } /> : <span className="rp-turf-toggle" aria-hidden="true" /> }
                 <div className="rp-turf-heading">
                     <span className="rp-turf-name">{ turfName }</span>
                     <span className={ `rp-turf-status ${ statusClass }` }>{ statusLabel }</span>
