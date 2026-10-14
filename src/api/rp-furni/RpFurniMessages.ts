@@ -1,4 +1,4 @@
-import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent, RoomObjectCategory, RoomObjectVariable } from '@nitrots/nitro-renderer';
+import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, IRoomObject, MessageEvent, RoomEngineObjectEvent, RoomObjectCategory, RoomObjectVariable } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, GetRoomEngine, GetRoomSession, GetSessionDataManager, SendMessageComposer } from '../nitro';
 
 // PixelRP furni packets - client-source, registered at runtime like the gang,
@@ -335,13 +335,15 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
     constructor(definitionId: number, publicName: string, walkable: boolean, walkMask: string,
         seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
         heightMarker: boolean, interactionType: string, modes: number, effectId: number,
-        behaviourData: number, vendingIds: string, scopeItemId: number = 0, layAcross: boolean = false)
+        behaviourData: number, vendingIds: string, scopeItemId: number = 0, layAcross: boolean = false,
+        width: number = 0, length: number = 0)
     {
         // layAcross rides LAST, after scopeItemId, so the emulator can tell a
-        // client that never sent it from one that sent false.
+        // client that never sent it from one that sent false. The size follows
+        // it for the same reason; 0 keeps the size the furni has.
         this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
             Math.round(stackHeight * 100), adjustableHeights, heightMarker, interactionType, modes,
-            effectId, behaviourData, vendingIds, scopeItemId, layAcross ];
+            effectId, behaviourData, vendingIds, scopeItemId, layAcross, width, length ];
     }
 
     public getMessageArray() 
@@ -429,6 +431,60 @@ const HoldPatch = (data: RpFurniFunction) =>
 }
 
 // ---------------------------------------------------------------------------
+// Furni size - the squares a floor furni covers
+// ---------------------------------------------------------------------------
+//
+// nitro reads a furni's size from its ARTWORK (FurnitureLogic.initialize, the
+// bundle's logic dimensions), never from the server, and checks against it
+// whether a furni can be moved or turned to a spot. Once the Function tool
+// gives a furni a size the artwork does not have, the server blocks the new
+// squares while the move preview still shows the old ones - so every copy in
+// the room takes the server's size instead. Keyed by sprite id, as
+// FurnitureData is. Wall furni cover no squares and are left alone.
+
+const floorSizes = new Map<number, { width: number; length: number }>();
+
+const ApplyFurniSize = (roomObject: IRoomObject) =>
+{
+    if(!roomObject || !roomObject.model) return;
+
+    const size = floorSizes.get(roomObject.model.getValue<number>(RoomObjectVariable.FURNITURE_TYPE_ID));
+
+    if(!size) return;
+
+    roomObject.model.setValue(RoomObjectVariable.FURNITURE_SIZE_X, size.width);
+    roomObject.model.setValue(RoomObjectVariable.FURNITURE_SIZE_Y, size.length);
+    roomObject.model.setValue(RoomObjectVariable.FURNITURE_CENTER_X, (size.width / 2));
+    roomObject.model.setValue(RoomObjectVariable.FURNITURE_CENTER_Y, (size.length / 2));
+}
+
+const RememberFurniSize = (data: RpFurniFunction) =>
+{
+    if((data.productType === 'i') || (data.width < 1) || (data.length < 1)) return;
+
+    floorSizes.set(data.spriteId, { width: data.width, length: data.length });
+
+    const roomSession = GetRoomSession();
+
+    if(!roomSession) return;
+
+    for(const roomObject of GetRoomEngine().getRoomObjects(roomSession.roomId, RoomObjectCategory.FLOOR))
+    {
+        if(roomObject?.model?.getValue<number>(RoomObjectVariable.FURNITURE_TYPE_ID) === data.spriteId) ApplyFurniSize(roomObject);
+    }
+}
+
+// ADDED for a furni whose artwork was already loaded; CONTENT_UPDATED for one
+// that was still loading, whose logic has only just read the artwork's size
+// over whatever it had. Both fire after the logic has set its size.
+const onFloorObjectReady = (event: RoomEngineObjectEvent) =>
+{
+    if(!floorSizes.size || (event.category !== RoomObjectCategory.FLOOR)) return;
+
+    ApplyFurniSize(GetRoomEngine().getRoomObject(event.roomId, event.objectId, RoomObjectCategory.FLOOR));
+}
+
+// ---------------------------------------------------------------------------
 // The tile cursor's height ring
 // ---------------------------------------------------------------------------
 //
@@ -468,6 +524,8 @@ const onFurniFunction = (event: RpFurniFunctionEvent) =>
     // on top of it later.
     if(PatchFurnitureData(data)) pendingPatches.delete(PendingPatchKey(data));
     else HoldPatch(data);
+
+    RememberFurniSize(data);
 
     for(const listener of Array.from(functionListeners)) listener(data);
 }
@@ -528,6 +586,9 @@ export const RegisterRpFurniMessages = () =>
     // every client has to patch its furnidata whether or not it ever opens the
     // Function window.
     GetCommunication().registerMessageEvent(new RpFurniFunctionEvent(onFurniFunction));
+
+    GetRoomEngine().events.addEventListener(RoomEngineObjectEvent.ADDED, onFloorObjectReady);
+    GetRoomEngine().events.addEventListener(RoomEngineObjectEvent.CONTENT_UPDATED, onFloorObjectReady);
 
     registered = true;
 }

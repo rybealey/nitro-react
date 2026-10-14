@@ -18,9 +18,10 @@ interface InfoStandWidgetFurniFunctionViewProps
  * the window, and also why it leads with the blast radius and asks before
  * applying rather than saving as you type.
  *
- * Size, sprite and floor/wall are shown but not editable: those come from the
- * furni's artwork, and changing them here would make the server block tiles the
- * sprite never covers.
+ * Size - the squares a floor furni covers - is editable, for furni whose
+ * database size disagrees with the artwork. The picture does not change with
+ * it, so a wrong size blocks squares the sprite never covers. Sprite and
+ * floor/wall are shown but not editable: those come from the artwork alone.
  */
 
 // Matches the width in AvatarInfoWidgetView.scss; the height is the opening
@@ -28,6 +29,17 @@ interface InfoStandWidgetFurniFunctionViewProps
 // lands near this whatever the furni turns out to be.
 const DIALOG_WIDTH = 360;
 const DIALOG_HEIGHT = 460;
+
+// Squares per side. Matches MaximumSize in RpFurniFunctionEvent; the biggest
+// furni in the hotel is 15 x 8.
+const MAX_SIZE = 20;
+
+const parseSize = (raw: string): number =>
+{
+    const value = parseInt(raw);
+
+    return ((value >= 1) && (value <= MAX_SIZE)) ? value : NaN;
+}
 
 // Laying has no column of its own - the emulator reads it off the behaviour
 // (GameMap.cs), so the toggle drives that field and the row says so.
@@ -123,16 +135,17 @@ const PRESETS: [ string, string, { walkable: boolean; seat: boolean; stackable: 
 ];
 
 const LABELS: { [key: string]: string } = {
-    publicName: 'Name', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
+    publicName: 'Name', width: 'Width', length: 'Length', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', stackable: 'Stackable', stackHeight: 'Stack height',
     heightMarker: 'Height marker', layAcross: 'Lie across',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
 
-type Draft = Pick<RpFurniFunction, 'publicName' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'layAcross' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
+type Draft = Pick<RpFurniFunction, 'publicName' | 'width' | 'length' | 'walkable' | 'walkMask' | 'seat' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'layAcross' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
 
 const toDraft = (data: RpFurniFunction): Draft => ({
-    publicName: data.publicName, walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
+    publicName: data.publicName, width: data.width, length: data.length,
+    walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, stackable: data.stackable,
     stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights, heightMarker: data.heightMarker, layAcross: data.layAcross,
     interactionType: data.interactionType, modes: data.modes, effectId: data.effectId,
     behaviourData: data.behaviourData, vendingIds: data.vendingIds
@@ -284,10 +297,12 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     const layable = useMemo(() => (draft ? (LAY_TYPES.indexOf(draft.interactionType) >= 0) : false), [ draft ]);
 
-    const multiTile = useMemo(() => (!!saved && ((saved.width * saved.length) > 1)), [ saved ]);
+    // The grid follows the size being typed, not the saved one, so open squares
+    // can be drawn for a new size in the same edit.
+    const multiTile = useMemo(() => (!!draft && ((draft.width * draft.length) > 1)), [ draft ]);
 
-    const cells = useMemo(() => (saved ? maskCells(draft?.walkMask, saved.width, saved.length) : []),
-        [ draft, saved ]);
+    const cells = useMemo(() => (draft ? maskCells(draft.walkMask, draft.width, draft.length) : []),
+        [ draft ]);
 
     const openCount = useMemo(() => cells.filter(Boolean).length, [ cells ]);
 
@@ -301,11 +316,11 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     // opens.
     const roomTiles = useMemo(() =>
     {
-        if(!saved) return [];
+        if(!draft) return [];
 
         const turned = ((rotation === 2) || (rotation === 6));
-        const sizeX = (turned ? saved.length : saved.width);
-        const sizeY = (turned ? saved.width : saved.length);
+        const sizeX = (turned ? draft.length : draft.width);
+        const sizeY = (turned ? draft.width : draft.length);
         const tileWidth = Math.min(32, Math.floor(288 / Math.max(1, (sizeX + sizeY))) * 2);
         const tiles: { index: number; left: number; top: number }[] = [];
 
@@ -314,7 +329,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
             for(let dx = 0; dx < sizeX; dx++)
             {
                 tiles.push({
-                    index: maskIndexAt(dx, dy, rotation, saved.width, saved.length),
+                    index: maskIndexAt(dx, dy, rotation, draft.width, draft.length),
                     left: ((dx - dy + (sizeY - 1)) * (tileWidth / 2)),
                     top: ((dx + dy) * (tileWidth / 4))
                 });
@@ -322,18 +337,22 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         }
 
         return tiles.map(tile => ({ ...tile, width: tileWidth, gridWidth: ((sizeX + sizeY) * (tileWidth / 2)), gridHeight: ((sizeX + sizeY) * (tileWidth / 4)) }));
-    }, [ saved, rotation ]);
+    }, [ draft, rotation ]);
 
-    // What the server blocks versus what the artwork covers. They come from
+    const isWall = (saved?.productType === 'i');
+
+    // The size being set versus what the artwork covers. They come from
     // different places (`furniture` against FurnitureData), and when they
-    // disagree the grid has the wrong number of squares because the furni
-    // itself blocks the wrong ones - which no toggle here can fix.
+    // disagree the furni blocks squares the picture does not cover, or leaves
+    // some of it walk-through.
     const sizeMismatch = useMemo(() =>
     {
-        if(!saved || (saved.productType === 'i')) return false;
+        if(!draft || isWall) return false;
 
-        return ((saved.width !== avatarInfo.tileSizeX) || (saved.length !== avatarInfo.tileSizeY));
-    }, [ saved, avatarInfo.tileSizeX, avatarInfo.tileSizeY ]);
+        return ((draft.width !== avatarInfo.tileSizeX) || (draft.length !== avatarInfo.tileSizeY));
+    }, [ draft, isWall, avatarInfo.tileSizeX, avatarInfo.tileSizeY ]);
+
+    const sizeChanged = (!!saved && !!draft && ((draft.width !== saved.width) || (draft.length !== saved.length)));
 
     const companion = useMemo(() => (draft ? (COMPANIONS[draft.interactionType] || null) : null), [ draft ]);
 
@@ -375,7 +394,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
      * so none of them reach the draft. Blur puts the last committed number back
      * on screen, which is also the answer to clearing a field and walking away.
      */
-    const numberField = useCallback((field: keyof Draft, parse: (raw: string) => number) => ({
+    const numberField = useCallback((field: keyof Draft, parse: (raw: string) => number,
+        patch: (parsed: number) => Partial<Draft> = parsed => ({ [field]: parsed } as Partial<Draft>)) => ({
         value: (rawNumbers[field as string] ?? String(draft?.[field] ?? '')),
         onChange: (event: ChangeEvent<HTMLInputElement>) =>
         {
@@ -385,7 +405,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
             const parsed = parse(raw);
 
-            if(Number.isFinite(parsed)) update({ [field]: parsed } as Partial<Draft>);
+            if(Number.isFinite(parsed)) update(patch(parsed));
         },
         onBlur: () => setRawNumbers(prev =>
         {
@@ -396,6 +416,25 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
             return next;
         })
     }), [ draft, rawNumbers, update ]);
+
+    // The mask is one character per square, laid over the old footprint, so a
+    // new size starts it again rather than shuffling squares into new places.
+    const sizePatch = useCallback((field: 'width' | 'length') => (parsed: number): Partial<Draft> =>
+        ((parsed === draft?.[field]) ? { [field]: parsed } : { [field]: parsed, walkMask: '' }), [ draft ]);
+
+    const matchArtwork = useCallback(() =>
+    {
+        update({ width: avatarInfo.tileSizeX, length: avatarInfo.tileSizeY, walkMask: '' });
+        setRawNumbers(prev =>
+        {
+            const next = { ...prev };
+
+            delete next.width;
+            delete next.length;
+
+            return next;
+        });
+    }, [ avatarInfo.tileSizeX, avatarInfo.tileSizeY, update ]);
 
     const resetDraft = useCallback(() =>
     {
@@ -458,7 +497,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.publicName, draft.walkable,
             draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.heightMarker, draft.interactionType, draft.modes, draft.effectId, draft.behaviourData,
-            draft.vendingIds, (scoped ? avatarInfo.id : 0), draft.layAcross));
+            draft.vendingIds, (scoped ? avatarInfo.id : 0), draft.layAcross, draft.width, draft.length));
 
         // Closing is the confirmation: the change is hotel-wide and the
         // window has nothing left to say about it. Staying open would invite a
@@ -507,6 +546,20 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                     <div className="rp-skeleton" style={ { width: 148, height: 10, marginTop: 3 } } />
                                 </div>
                             </div>) }
+                        { !avatarInfo.isWallItem &&
+                            <>
+                                <div className="rp-furni-function-pair">
+                                    <label>
+                                        <span>Width</span>
+                                        <div className="rp-skeleton is-input" />
+                                    </label>
+                                    <label>
+                                        <span>Length</span>
+                                        <div className="rp-skeleton is-input" />
+                                    </label>
+                                </div>
+                                <div className="rp-skeleton" style={ { width: '86%', height: 10, marginTop: 7 } } />
+                            </> }
                         { ((avatarInfo.tileSizeX * avatarInfo.tileSizeY) > 1) &&
                             <div className="rp-furni-function-mask">
                                 <div className="rp-furni-function-mask-head"><span>Open tiles</span></div>
@@ -549,7 +602,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     <div className="rp-furni-function-section">
                         <div className="rp-furni-function-legend">Fixed by the artwork</div>
                         <div className="rp-furni-function-fixed">
-                            { [ 'Class', 'Sprite', 'Size', 'Placement' ].map(label =>
+                            { (avatarInfo.isWallItem ? [ 'Class', 'Sprite', 'Size', 'Placement' ] : [ 'Class', 'Sprite', 'Placement' ]).map(label =>
                                 <div key={ label }>
                                     <span>{ label }</span>
                                     <div className="rp-skeleton" style={ { width: 54, height: 10 } } />
@@ -617,11 +670,32 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                 <div className="rp-furni-function-row-hint">{ hint }</div>
                             </div>
                         </div>) }
+                    { !isWall &&
+                        <>
+                            <div className="rp-furni-function-pair">
+                                <label>
+                                    <span>Width</span>
+                                    <input type="number" min="1" max={ MAX_SIZE }
+                                        { ...numberField('width', parseSize, sizePatch('width')) } />
+                                </label>
+                                <label>
+                                    <span>Length</span>
+                                    <input type="number" min="1" max={ MAX_SIZE }
+                                        { ...numberField('length', parseSize, sizePatch('length')) } />
+                                </label>
+                            </div>
+                            <div className="rp-furni-function-note">
+                                Squares it covers before it is turned. Every placed copy grows or
+                                shrinks from its back corner.
+                            </div>
+                        </> }
                     { sizeMismatch &&
-                        <div className="rp-furni-function-warning">
-                            The server has this furni as <b>{ saved.width } x { saved.length }</b>, but its artwork is
-                            <b> { avatarInfo.tileSizeX } x { avatarInfo.tileSizeY }</b>, so it blocks the wrong squares and the
-                            grid below is the wrong size. The size has to be fixed in the database.
+                        <div className="rp-furni-function-warning has-action">
+                            <span>
+                                Its artwork is <b>{ avatarInfo.tileSizeX } x { avatarInfo.tileSizeY }</b> but this
+                                is <b>{ draft.width } x { draft.length }</b>, so it blocks the wrong squares.
+                            </span>
+                            <div className="rp-furni-function-btn rp-furni-function-btn--sm" onClick={ matchArtwork }>Match artwork</div>
                         </div> }
                     { multiTile &&
                         <div className="rp-furni-function-mask">
@@ -745,10 +819,10 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                     <div className="rp-furni-function-fixed">
                         <div><span>Class</span><b>{ saved.itemName }</b></div>
                         <div><span>Sprite</span><b>{ saved.spriteId }</b></div>
-                        <div><span>Size</span><b>{ saved.width } x { saved.length }{ sizeMismatch ? ` (art ${ avatarInfo.tileSizeX } x ${ avatarInfo.tileSizeY })` : '' }</b></div>
-                        <div><span>Placement</span><b>{ (saved.productType === 'i') ? 'Wall' : 'Floor' }</b></div>
+                        { isWall && <div><span>Size</span><b>{ saved.width } x { saved.length }</b></div> }
+                        <div><span>Placement</span><b>{ isWall ? 'Wall' : 'Floor' }</b></div>
                     </div>
-                    <div className="rp-furni-function-note">Size and placement come from the furni&apos;s artwork, not the database. Changing them here would make the server block tiles the sprite never covers.</div>
+                    <div className="rp-furni-function-note">These come from the furni&apos;s artwork, not the database.</div>
                 </div>
             </div>
             <div className="rp-furni-function-footer">
@@ -767,6 +841,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                         <div className="rp-furni-function-header"><span>Apply to every copy?</span></div>
                         <div className="rp-furni-function-body">
                             <div className="rp-furni-function-hint">These take effect immediately on <b>{ scope }</b>, and on everything bought later.</div>
+                            { sizeChanged &&
+                                <div className="rp-furni-function-hint">A copy against a wall or the edge of a room can end up covering squares past it.</div> }
                             <div className="rp-furni-function-diff">
                                 { changes.map(change =>
                                     <div key={ change.key }>

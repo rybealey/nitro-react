@@ -590,6 +590,17 @@ $furni-function-on: #2e9e4f;
         color: #ffd8a8;
         background: rgba(214, 120, 30, .18);
         border: 1px solid rgba(214, 120, 30, .45);
+
+        // The fix sits beside the problem it fixes.
+        &.has-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            span { flex: 1; }
+
+            .rp-furni-function-btn { flex-shrink: 0; }
+        }
     }
 
     .rp-furni-function-mask-note {
