@@ -10,10 +10,11 @@
 // if the rule lives in one place.
 
 // Chat styles whose asterisk-wrapped messages render as an action: 4 is the
-// blue combat/police bubble, 5 the yellow one used when a backpack item is
+// blue combat bubble, 5 the yellow one used when a backpack item is
 // consumed (and when a pet levels up), 23 the staff action bubble
-// (:superhire and friends).
-const ACTION_BUBBLE_STYLES: number[] = [ 4, 5, 23 ];
+// (:superhire and friends), 37 the police badge bubble every action of an
+// on-duty officer speaks in (PoliceUtility.ActionBubbleFor).
+const ACTION_BUBBLE_STYLES: number[] = [ 4, 5, 23, 37 ];
 
 // Relationship bubbles are their own family, not combat: 16 carries the social
 // commands (:hug, :kiss, :bite). They narrate the same way, so they get the
