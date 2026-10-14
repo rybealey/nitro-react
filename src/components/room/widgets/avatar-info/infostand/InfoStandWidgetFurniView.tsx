@@ -1,4 +1,4 @@
-import { CrackableDataType, GroupInformationComposer, GroupInformationEvent, NowPlayingEvent, RoomControllerLevel, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable, RoomWidgetEnumItemExtradataParameter, RoomWidgetFurniInfoUsagePolicyEnum, SetObjectDataMessageComposer, SongInfoReceivedEvent, StringDataType } from '@nitrots/nitro-renderer';
+import { CrackableDataType, GroupInformationComposer, GroupInformationEvent, IRoomObjectController, NowPlayingEvent, RoomControllerLevel, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable, RoomObjectWidgetRequestEvent, RoomWidgetEnumItemExtradataParameter, RoomWidgetFurniInfoUsagePolicyEnum, SetObjectDataMessageComposer, SongInfoReceivedEvent, StringDataType } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Base, Button, Column, Flex, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
@@ -166,6 +166,17 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         }
         
         if((((avatarInfo.usagePolicy === RoomWidgetFurniInfoUsagePolicyEnum.EVERYBODY) || ((avatarInfo.usagePolicy === RoomWidgetFurniInfoUsagePolicyEnum.CONTROLLER) && isValidController)) || ((avatarInfo.extraParam === RoomWidgetEnumItemExtradataParameter.JUKEBOX) && isValidController)) || ((avatarInfo.extraParam === RoomWidgetEnumItemExtradataParameter.USABLE_PRODUCT) && isValidController)) canUse = true;
+
+        // pixelrp: a real mannequin - one whose own logic opens the mannequin
+        // window - is always usable, by everybody. Its usage rule was its click-
+        // state count (1 = nobody, more = controllers only), so on a one-state
+        // mannequin, and for anyone without rights, there was no Use button at
+        // all. The window itself decides who may restyle it and who may only
+        // wear it. Look-alike furni with ordinary logic keep the old rule.
+        const roomSession = GetRoomSession();
+        const roomObject = (roomSession ? GetRoomEngine().getRoomObject(roomSession.roomId, avatarInfo.id, avatarInfo.category) as IRoomObjectController : null);
+
+        if(roomObject?.logic?.getEventTypes()?.includes(RoomObjectWidgetRequestEvent.MANNEQUIN)) canUse = true;
 
         if(avatarInfo.extraParam)
         {
