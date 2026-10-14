@@ -4,6 +4,16 @@ import { FurniCategory, GetAvatarRenderManager, GetSessionDataManager, Offer, Pr
 import { AutoGrid, Column, LayoutGridItem, LayoutRoomPreviewerView } from '../../../../../common';
 import { useCatalog } from '../../../../../hooks';
 
+// pixelrp: the shop preview's own room. The wall is room.nitro's test wall
+// 99999, recoloured dark grey in nitro/overrides/bundled/generic/room.nitro;
+// it is sold nowhere, so only previews wear it. Every preview starts from
+// these rather than from whatever the last one left - a wallpaper used to stay
+// up behind every furni after it - and only a floor, wallpaper or landscape
+// being previewed replaces its own part.
+const PREVIEW_FLOOR = '110';
+const PREVIEW_WALL = '99999';
+const PREVIEW_LANDSCAPE = 'default';
+
 export const CatalogViewProductWidgetView: FC<{}> = props =>
 {
     const { currentOffer = null, roomPreviewer = null, purchaseOptions = null } = useCatalog();
@@ -41,6 +51,7 @@ export const CatalogViewProductWidgetView: FC<{}> = props =>
                 }
                 else
                 {
+                    roomPreviewer.updateObjectRoom(PREVIEW_FLOOR, PREVIEW_WALL, PREVIEW_LANDSCAPE);
                     roomPreviewer.addFurnitureIntoRoom(product.productClassId, new Vector3d(90), previewStuffData, product.extraParam);
                 }
                 return;
@@ -51,13 +62,13 @@ export const CatalogViewProductWidgetView: FC<{}> = props =>
                 switch(product.furnitureData.specialType)
                 {
                     case FurniCategory.FLOOR:
-                        roomPreviewer.updateObjectRoom(product.extraParam);
+                        roomPreviewer.updateObjectRoom(product.extraParam, PREVIEW_WALL, PREVIEW_LANDSCAPE);
                         return;
                     case FurniCategory.WALL_PAPER:
-                        roomPreviewer.updateObjectRoom(null, product.extraParam);
+                        roomPreviewer.updateObjectRoom(PREVIEW_FLOOR, product.extraParam, PREVIEW_LANDSCAPE);
                         return;
                     case FurniCategory.LANDSCAPE: {
-                        roomPreviewer.updateObjectRoom(null, null, product.extraParam);
+                        roomPreviewer.updateObjectRoom(PREVIEW_FLOOR, PREVIEW_WALL, product.extraParam);
 
                         const furniData = GetSessionDataManager().getWallItemDataByName('window_double_default');
 
@@ -65,7 +76,7 @@ export const CatalogViewProductWidgetView: FC<{}> = props =>
                         return;
                     }
                     default:
-                        roomPreviewer.updateObjectRoom('default', 'default', 'default');
+                        roomPreviewer.updateObjectRoom(PREVIEW_FLOOR, PREVIEW_WALL, PREVIEW_LANDSCAPE);
                         roomPreviewer.addWallItemIntoRoom(product.productClassId, new Vector3d(90), product.extraParam);
                         return;
                 }
