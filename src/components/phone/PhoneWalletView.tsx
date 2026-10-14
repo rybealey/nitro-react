@@ -4,6 +4,7 @@ import { GetRoomSession, GetSessionDataManager, OwnMotto, SendMessageComposer } 
 import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle, SetRpEmployment } from '../../api/rp-employment/RpEmploymentRegistry';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../api/rp-gangs/RpGangMessages';
 import { GetRpGang, SetRpGang } from '../../api/rp-gangs/RpGangRegistry';
+import { GymMembershipLeft, SubscribeGym } from '../../api/rp-gym/RpGymMessages';
 import { RpBirthdayEvent, RpGetBirthdayComposer } from '../../api/rp-phone/RpBirthdayMessages';
 import { GetRpBankAccounts, RpBankAccounts, SendRpGetBankAccounts, SubscribeRpBankAccounts } from '../../api/rp-phone/RpBankMessages';
 import { GetRpCharacters, GetRpCurrentCharacterId, GetRpMaxCharacters, RpCharacter, SendRpSwitchCharacter, SubscribeRpCharacters } from '../../api/rp-phone/RpCharacterMessages';
@@ -44,6 +45,10 @@ import { PhoneIcon } from './PhoneIcon';
 // character being played: accounts are per character and the server tells a
 // session about its own and nothing else, so a card per sibling would be a
 // card the client cannot fill in.
+//
+// The Equinox gym membership card is the same: one, for the character being
+// played, and only while they have a membership - it goes when that runs out.
+// Its time left, in minutes, sits under it.
 
 interface PhoneWalletViewProps
 {
@@ -77,6 +82,26 @@ const CardNumber = (userId: number): string =>
     return `4923 ${ digits.slice(0, 4) } ${ digits.slice(4, 8) } ${ digits.slice(8, 12) }`;
 }
 
+// The gym card's barcode, from the character id like the card number above -
+// stable for a character, and decoration only.
+const GymBarcode = (userId: number): number[] =>
+{
+    let seed = ((userId * 2654435761) >>> 0) || 1;
+    const bars: number[] = [];
+
+    for(let i = 0; i < 38; i++)
+    {
+        seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+        bars.push(1 + ((seed >>> 16) % 3));
+    }
+
+    return bars;
+}
+
+// Membership time left in whole minutes, rounded up - shown as "47 min", the
+// way the workout panel's membership chip writes it. 0 only once it has run out.
+const GymMinutesLeft = (): number => Math.ceil(GymMembershipLeft() / 60);
+
 const NextInterest = (seconds: number): string =>
 {
     if(seconds <= 0) return 'due now';
@@ -93,6 +118,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     const [ characters, setCharacters ] = useState<RpCharacter[]>(() => GetRpCharacters());
     const [ openId, setOpenId ] = useState(() => GetRpCurrentCharacterId());
     const [ bank, setBank ] = useState<RpBankAccounts>(() => GetRpBankAccounts());
+    const [ gymMinutes, setGymMinutes ] = useState(() => GymMinutesLeft());
 
     const ownId = GetSessionDataManager().userId;
     const ownName = (GetSessionDataManager().userName || 'You');
@@ -135,6 +161,23 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
         const timer = setInterval(() => SendRpGetBankAccounts(), ACCOUNTS_POLL_MS);
 
         return () => clearInterval(timer);
+    }, []);
+
+    // The membership's time left lands on every room entry (and with the
+    // workout panel); in between it is counted down here. Checked every second
+    // so the card goes the moment the membership runs out.
+    useEffect(() =>
+    {
+        const update = () => setGymMinutes(GymMinutesLeft());
+
+        const timer = setInterval(update, 1000);
+        const unsubscribe = SubscribeGym(update);
+
+        return () =>
+        {
+            clearInterval(timer);
+            unsubscribe();
+        };
     }, []);
 
     // Each card's job, gang and birthday come from the composers that already
@@ -345,6 +388,45 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
                         <div className="phone-wallet-debit-foot">
                             <PhoneIcon icon="right-left" size={ 13 } />
                             <span>Savings and transfers live in Mercury</span>
+                        </div>
+                    </> }
+                { /* Plastic again - Equinox Gym, member, number - with the time left
+                     under it rather than printed on it, like the balance. */ }
+                { (gymMinutes > 0) &&
+                    <>
+                        <div className="phone-section-label">GYM</div>
+                        <div className="phone-wallet-card phone-wallet-debit phone-wallet-gym">
+                            <div className="phone-wallet-field" />
+                            <div className="phone-wallet-debit-rule" />
+                            <div className="phone-wallet-debit-sheen" />
+                            <div className="phone-wallet-debit-face">
+                                <div className="phone-wallet-debit-top">
+                                    <div className="phone-wallet-debit-brand">
+                                        <div className="phone-wallet-debit-mark"><PhoneIcon icon="dumbbell" size={ 11 } /></div>
+                                        <div className="phone-wallet-debit-wordmark">EQUINOX GYM</div>
+                                    </div>
+                                    <div className="phone-wallet-debit-kind">MEMBERSHIP</div>
+                                </div>
+                                <div className="phone-wallet-gym-barcode">
+                                    { GymBarcode(GetRpCurrentCharacterId() || ownId).map((width, index) => <i key={ index } style={ { width } } />) }
+                                </div>
+                                <div className="phone-wallet-gym-number">MEMBER NO. { String(GetRpCurrentCharacterId() || ownId).padStart(8, '0') }</div>
+                                <div className="phone-wallet-debit-bottom">
+                                    <div>
+                                        <div className="phone-wallet-debit-label">MEMBER</div>
+                                        <div className="phone-wallet-debit-value">{ ownName }</div>
+                                    </div>
+                                    <div className="phone-wallet-debit-issuer">SAN FRANCISCO<br />PIXELRP</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="phone-wallet-debit-caption">
+                            <span className="phone-wallet-debit-caption-label">TIME LEFT</span>
+                            <span className="phone-wallet-debit-caption-value">{ `${ gymMinutes } min` }</span>
+                        </div>
+                        <div className="phone-wallet-debit-foot">
+                            <PhoneIcon icon="clock" size={ 13 } />
+                            <span>Only counts down while you&apos;re online</span>
                         </div>
                     </> }
                 <div className="phone-scroll-spacer" />

@@ -7500,6 +7500,48 @@ $camera-bar-height: 84px;
         color: var(--ph-soft);
     }
 
+    // ---- Wallet > the gym membership card --------------------------------
+    // The debit card's plastic in the gym's colours: charcoal, with the
+    // workout panel's orange for the rule and the mark. A barcode in place of
+    // the chip and the long number, because that is what a gym card carries.
+    .phone-wallet-card.phone-wallet-gym {
+        background: linear-gradient(160deg, #2c2c33, #1e1e23 60%, #151518);
+
+        .phone-wallet-debit-rule { background: linear-gradient(90deg, #b9521d, #e87332 62%, #f5a05e); }
+        .phone-wallet-debit-mark { color: #f5a05e; }
+        // "EQUINOX GYM" and "MEMBERSHIP" read as one line across the top.
+        .phone-wallet-debit-top { align-items: center; }
+        .phone-wallet-debit-wordmark { letter-spacing: 1px; }
+    }
+
+    // Dark bars on a white strip, as a printed barcode is - light bars on the
+    // dark card read as stripes rather than as something a scanner reads.
+    .phone-wallet-gym-barcode {
+        margin-top: 16px;
+        height: 34px;
+        box-sizing: border-box;
+        padding: 5px 9px;
+        border-radius: 5px;
+        background: #f4f0f7;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        overflow: hidden;
+
+        i { display: block; flex: none; background: #1e1e23; }
+    }
+
+    .phone-wallet-gym-number {
+        margin-top: 6px;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: calc(8px * var(--ph-text-scale, 1));
+        font-weight: 700;
+        @include prp-bold;
+        letter-spacing: 1.6px;
+        font-variant-numeric: tabular-nums;
+        color: rgba(244, 240, 247, .55);
+    }
+
     @media (prefers-reduced-motion: reduce) {
         .phone-wallet-card, .phone-wallet-detail, .phone-wallet-switch,
         .phone-newchar-gender, .phone-newchar-create { transition: none; }
