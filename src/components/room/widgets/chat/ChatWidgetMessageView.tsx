@@ -120,9 +120,9 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
 
     // A gang alert is whispered to the recipient's OWN avatar, so the name the
     // bubble would show is theirs, with the real sender buried in the text.
-    // Credit the sender and tag the line: "[Gang] Ryan: hello".
+    // Credit the sender and tag the line: "[GA] Ryan: hello".
     const gangAlert = IsGangAlert(chat.styleId) ? ParseGangAlert(formattedText) : null;
-    // A corporation alert (:ca) arrives the same way; "[Corporation] Sana: hello".
+    // A corporation alert (:ca) arrives the same way; "[CA] Sana: hello".
     const corpAlert = (!gangAlert && IsCorpAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseCorpAlert(formattedText) : null;
     // A staff alert (:sa) too; "[Staff] Ryan: hello".
     const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseStaffAlert(formattedText) : null;

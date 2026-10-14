@@ -16,7 +16,8 @@ import { ParseGangAlert } from './GangAlert';
 // counts as corporation chat.
 export const CORP_ALERT_BUBBLE_STYLE: number = 11;
 
-export const CORP_ALERT_PREFIX = '[Corporation]';
+// The command's own name (Twist, 2026-10-15): "[CA] Sana: hello".
+export const CORP_ALERT_PREFIX = '[CA]';
 
 export const IsCorpAlert = (styleId: number, chatType: number, senderName: string, text: string): boolean =>
 {
