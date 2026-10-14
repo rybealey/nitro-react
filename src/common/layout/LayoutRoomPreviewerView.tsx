@@ -1,5 +1,64 @@
-import { ColorConverter, GetTicker, IRoomRenderingCanvas, RoomPreviewer, TextureUtils } from '@nitrots/nitro-renderer';
+import { ColorConverter, GetTicker, IRoomEngine, IRoomRenderingCanvas, RoomPreviewer, TextureUtils } from '@nitrots/nitro-renderer';
 import { FC, MouseEvent, ReactNode, useEffect, useRef, useState } from 'react';
+
+// The RoomPreviewer state the centring reads. Private in the renderer, so it is
+// reached through a cast - as the resize fix below already does.
+interface PreviewerInternals
+{
+    _roomEngine: IRoomEngine;
+    _previewRoomId: number;
+    _currentPreviewObjectCategory: number;
+    _currentPreviewCanvasWidth: number;
+    _currentPreviewCanvasHeight: number;
+    _currentPreviewRectangle: ReturnType<IRoomEngine['getRoomObjectBoundingRectangle']>;
+    updatePreviewObjectBoundingRectangle(point: { x: number; y: number }): void;
+}
+
+const centredPreviewers = new WeakSet<RoomPreviewer>();
+
+/**
+ * pixelrp: centre the preview on everything the item has drawn since it
+ * appeared.
+ *
+ * The renderer measures the item once, the frame it appears, and afterwards
+ * takes a bigger measurement only when it outgrows the first by more than half
+ * the space left in the canvas. A first measurement taken before every layer
+ * was drawn - one half of a two-tile sink - stayed, and in the shop's narrow
+ * canvas the rest never counted as enough, so the item sat off to one side
+ * with an edge cut away. It happened only sometimes because it depended on
+ * what had been drawn by the frame of that first look.
+ *
+ * Here every frame's bounds are added to the rectangle instead. It only ever
+ * grows, so it settles at once and an animated item does not make the view
+ * wander. The renderer still clears it for a new item, a content load, a
+ * scale change, and the resize below.
+ */
+const CentreOnWholeItem = (roomPreviewer: RoomPreviewer) =>
+{
+    if(!roomPreviewer || centredPreviewers.has(roomPreviewer)) return;
+
+    centredPreviewers.add(roomPreviewer);
+
+    const previewer = (roomPreviewer as unknown as PreviewerInternals);
+
+    previewer.updatePreviewObjectBoundingRectangle = point =>
+    {
+        const bounds = previewer._roomEngine?.getRoomObjectBoundingRectangle(previewer._previewRoomId,
+            RoomPreviewer.PREVIEW_OBJECT_ID, previewer._currentPreviewObjectCategory, RoomPreviewer.PREVIEW_CANVAS_ID);
+
+        // Nothing drawn yet says nothing about where the item is.
+        if(!bounds || !point || (bounds.width < 1) || (bounds.height < 1)) return;
+
+        bounds.x -= ((previewer._currentPreviewCanvasWidth >> 1) + point.x);
+        bounds.y -= ((previewer._currentPreviewCanvasHeight >> 1) + point.y);
+
+        const current = previewer._currentPreviewRectangle;
+
+        previewer._currentPreviewRectangle = (current && (current.width >= 1) && (current.height >= 1))
+            ? current.clone().enlarge(bounds)
+            : bounds;
+    };
+}
 
 export interface LayoutRoomPreviewerViewProps
 {
@@ -25,6 +84,8 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
     useEffect(() =>
     {
         if(!roomPreviewer) return;
+
+        CentreOnWholeItem(roomPreviewer);
 
         const update = (time: number) =>
         {
