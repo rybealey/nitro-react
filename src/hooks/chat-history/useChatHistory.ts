@@ -32,13 +32,12 @@ const useChatHistoryState = () =>
     const [ roomHistory, setRoomHistory ] = useState<IRoomHistoryEntry[]>([]);
     const [ messengerHistory, setMessengerHistory ] = useState<IChatEntry[]>([]);
     const [ mentions, setMentions ] = useState<IChatEntry[]>([]);
+    // Only mentions are counted unread (Twist, 2026-10-15): gang, corporation
+    // and staff chat fill their tabs without a number on them.
     const [ mentionsUnread, setMentionsUnread ] = useState(0);
     const [ gangChat, setGangChat ] = useState<IChatEntry[]>([]);
-    const [ gangUnread, setGangUnread ] = useState(0);
     const [ corpChat, setCorpChat ] = useState<IChatEntry[]>([]);
-    const [ corpUnread, setCorpUnread ] = useState(0);
     const [ staffChat, setStaffChat ] = useState<IChatEntry[]>([]);
-    const [ staffUnread, setStaffUnread ] = useState(0);
     const [ needsRoomInsert, setNeedsRoomInsert ] = useState(false);
 
     const addChatEntry = (entry: IChatEntry) =>
@@ -90,11 +89,7 @@ const useChatHistoryState = () =>
 
             return newValue;
         });
-
-        setGangUnread(prevValue => (prevValue + 1));
     }
-
-    const clearGangUnread = () => setGangUnread(0);
 
     // Its own copy and its own counter, exactly as addGangEntry does.
     const addCorpEntry = (entry: IChatEntry) =>
@@ -109,11 +104,7 @@ const useChatHistoryState = () =>
 
             return newValue;
         });
-
-        setCorpUnread(prevValue => (prevValue + 1));
     }
-
-    const clearCorpUnread = () => setCorpUnread(0);
 
     // Its own copy and its own counter, exactly as addGangEntry does.
     const addStaffEntry = (entry: IChatEntry) =>
@@ -128,11 +119,7 @@ const useChatHistoryState = () =>
 
             return newValue;
         });
-
-        setStaffUnread(prevValue => (prevValue + 1));
     }
-
-    const clearStaffUnread = () => setStaffUnread(0);
 
     // The Chat History bin. Each tab empties on its own; 'all' empties every
     // list, since All is where the others' lines appear too. Only what this
@@ -145,23 +132,11 @@ const useChatHistoryState = () =>
             setMentionsUnread(0);
         }
 
-        if((tab === 'all') || (tab === 'gang'))
-        {
-            setGangChat([]);
-            setGangUnread(0);
-        }
+        if((tab === 'all') || (tab === 'gang')) setGangChat([]);
 
-        if((tab === 'all') || (tab === 'corp'))
-        {
-            setCorpChat([]);
-            setCorpUnread(0);
-        }
+        if((tab === 'all') || (tab === 'corp')) setCorpChat([]);
 
-        if((tab === 'all') || (tab === 'staff'))
-        {
-            setStaffChat([]);
-            setStaffUnread(0);
-        }
+        if((tab === 'all') || (tab === 'staff')) setStaffChat([]);
 
         if(tab === 'all') setChatHistory([]);
     }
@@ -230,7 +205,7 @@ const useChatHistoryState = () =>
         addMessengerEntry({ id: -1, webId: parser.senderId, entityId: -1, name: '', message: parser.messageText, roomId: -1, timestamp: MessengerHistoryCurrentDate(), type: ChatEntryType.TYPE_IM });
     });
     
-    return { addChatEntry, addMention, clearMentionsUnread, addGangEntry, clearGangUnread, addCorpEntry, clearCorpUnread, addStaffEntry, clearStaffUnread, clearHistory, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread, gangChat, gangUnread, corpChat, corpUnread, staffChat, staffUnread };
+    return { addChatEntry, addMention, clearMentionsUnread, addGangEntry, addCorpEntry, addStaffEntry, clearHistory, chatHistory, roomHistory, messengerHistory, mentions, mentionsUnread, gangChat, corpChat, staffChat };
 }
 
 export const useChatHistory = () => useBetween(useChatHistoryState);

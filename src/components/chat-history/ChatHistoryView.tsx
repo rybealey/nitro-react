@@ -73,9 +73,7 @@ export const ChatHistoryView: FC<{}> = props =>
     const [ scrollKey, setScrollKey ] = useState(0);
     const {
         chatHistory = [], mentions = [], mentionsUnread = 0, clearMentionsUnread = null,
-        gangChat = [], gangUnread = 0, clearGangUnread = null,
-        corpChat = [], corpUnread = 0, clearCorpUnread = null,
-        staffChat = [], staffUnread = 0, clearStaffUnread = null, clearHistory = null
+        gangChat = [], corpChat = [], staffChat = [], clearHistory = null
     } = useChatHistory();
 
     const query = searchText.trim().toLowerCase();
@@ -108,21 +106,6 @@ export const ChatHistoryView: FC<{}> = props =>
     {
         if(isVisible && (tab === 'mentions') && clearMentionsUnread) clearMentionsUnread();
     }, [ isVisible, tab, mentions.length ]);
-
-    useEffect(() =>
-    {
-        if(isVisible && (tab === 'gang') && clearGangUnread) clearGangUnread();
-    }, [ isVisible, tab, gangChat.length ]);
-
-    useEffect(() =>
-    {
-        if(isVisible && (tab === 'corp') && clearCorpUnread) clearCorpUnread();
-    }, [ isVisible, tab, corpChat.length ]);
-
-    useEffect(() =>
-    {
-        if(isVisible && (tab === 'staff') && clearStaffUnread) clearStaffUnread();
-    }, [ isVisible, tab, staffChat.length ]);
 
     useEffect(() =>
     {
@@ -166,16 +149,8 @@ export const ChatHistoryView: FC<{}> = props =>
     // carries its full name as a tooltip for exactly that case.
     const crowded = (visibleTabs.length > 4);
 
-    const unreadOf = (id: HistoryTab) =>
-    {
-        if(id === tab) return 0;
-        if(id === 'mentions') return mentionsUnread;
-        if(id === 'gang') return gangUnread;
-        if(id === 'corp') return corpUnread;
-        if(id === 'staff') return staffUnread;
-
-        return 0;
-    }
+    // Mentions are the only tab that counts what you have not seen.
+    const unreadOf = (id: HistoryTab) => (((id === 'mentions') && (id !== tab)) ? mentionsUnread : 0);
 
     const clearTab = () =>
     {
