@@ -275,6 +275,42 @@
 
             .svg-inline--fa { color: $white; }
         }
+
+        // pixelrp: a category's Favourites star, there only while the row is
+        // hovered: grey to add, gold while it is a favourite.
+        .rp-fav-star {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            font-size: 11px;
+            color: #b4b9c2;
+            visibility: hidden;
+            cursor: pointer;
+
+            &:hover { color: #f2b51c; }
+
+            &.is-fav {
+                color: #f2b51c;
+
+                &:hover { color: #d99a00; }
+            }
+        }
+
+        &:hover .rp-fav-star { visibility: visible; }
+
+        // on the open category's orange, a white star reads where grey would not
+        &.is-open-branch:not(.is-child) .rp-fav-star:not(.is-fav) { color: rgba(255, 255, 255, 0.8); }
+    }
+
+    // pixelrp: an empty Favourites category says how to fill it.
+    .rp-fav-empty {
+        padding: 2px 4px 4px;
+        font-size: 11px;
+        line-height: 1.4;
+        color: #7d828b;
     }
 }
 
