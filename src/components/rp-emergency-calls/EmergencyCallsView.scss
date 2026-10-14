@@ -27,25 +27,6 @@ $emergency-blue: #1e7295;
         font-family: 'Ubuntu', sans-serif;
     }
 
-    .emergency-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .emergency-label {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.58);
-
-        svg { color: $emergency-red; }
-    }
-
     .emergency-card {
         display: flex;
         flex-direction: column;
@@ -63,10 +44,13 @@ $emergency-blue: #1e7295;
         &.is-backup { border-left: 3px solid $emergency-blue; }
     }
 
+    // Names never cut off (Twist, 2026-10-15): a long one wraps, and the
+    // BACKUP tag goes under it when the two do not fit on one line.
     .emergency-who {
         display: flex;
+        flex-wrap: wrap;
         align-items: baseline;
-        gap: 4px;
+        gap: 2px 4px;
         min-width: 0;
     }
 
@@ -76,10 +60,10 @@ $emergency-blue: #1e7295;
         border-radius: 3px;
         background: $emergency-blue;
         color: #ffffff;
-        font-size: 8px;
+        font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.4px;
-        line-height: 13px;
+        line-height: 14px;
         text-transform: uppercase;
     }
 
@@ -125,39 +109,40 @@ $emergency-blue: #1e7295;
 
     .emergency-name {
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: 11px;
+        overflow-wrap: anywhere;
+        font-size: 12px;
     }
 
     .emergency-ago {
         flex-shrink: 0;
-        font-size: 9px;
+        font-size: 10px;
         color: rgba(0, 0, 0, 0.55);
     }
 
+    // A long room name wraps too, the pin staying beside its first line.
     .emergency-room {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 3px;
         min-width: 0;
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 700;
         color: $emergency-red;
 
-        svg { flex-shrink: 0; }
+        svg {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
 
         span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
     }
 
     .emergency-message {
         margin: 1px 0 0;
-        font-size: 10px;
+        font-size: 11px;
         line-height: 1.35;
         color: #2b2b31;
         overflow-wrap: anywhere;
@@ -168,11 +153,12 @@ $emergency-blue: #1e7295;
         align-items: center;
         gap: 5px;
         min-height: 20px;
-        padding: 0 7px;
+        padding: 3px 7px;
         box-sizing: border-box;
         border-radius: 4px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
+        overflow-wrap: anywhere;
 
         &.is-waiting { background: #fff4e5; border: 1px solid #f0c9a8; color: #7a3a06; }
         &.is-responded { background: #e6f4ea; border: 1px solid #b9dcc3; color: #1d5e31; }
@@ -196,7 +182,7 @@ $emergency-blue: #1e7295;
         width: 100%;
         height: 22px;
         border-radius: 4px;
-        font: 700 10px 'Ubuntu', sans-serif;
+        font: 700 11px 'Ubuntu', sans-serif;
         cursor: pointer;
 
         &.is-respond {
@@ -224,7 +210,7 @@ $emergency-blue: #1e7295;
         background: #fff4e5;
         border: 1px solid #f0c9a8;
         color: #6e2f07;
-        font-size: 10px;
+        font-size: 11px;
     }
 
     .emergency-empty {
@@ -237,12 +223,12 @@ $emergency-blue: #1e7295;
         background: #ffffff;
         border: 1px solid rgba(0, 0, 0, 0.1);
         text-align: center;
-        font-size: 10px;
+        font-size: 11px;
 
         svg { color: #7a8290; }
 
         span {
-            font-size: 9px;
+            font-size: 10px;
             line-height: 1.35;
             color: rgba(0, 0, 0, 0.58);
         }
@@ -279,14 +265,14 @@ $emergency-blue: #1e7295;
     .emergency-position {
         min-width: 30px;
         text-align: center;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
     }
 
     .emergency-mark-label {
         margin-left: auto;
-        font-size: 8px;
+        font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.4px;
         text-transform: uppercase;
@@ -298,7 +284,7 @@ $emergency-blue: #1e7295;
         padding: 0 7px;
         border-radius: 4px;
         background: #ffffff;
-        font: 700 10px 'Ubuntu', sans-serif;
+        font: 700 11px 'Ubuntu', sans-serif;
         box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
         cursor: pointer;
 

@@ -153,9 +153,6 @@ export const EmergencyCallsView: FC<{}> = props =>
         <NitroCardView uniqueKey="emergency-calls" className="nitro-emergency-calls" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
             <NitroCardHeaderView headerText="911 Dispatch" onCloseClick={ () => setIsDismissed(true) } />
             <NitroCardContentView className="emergency-body" overflow="hidden">
-                <div className="emergency-head">
-                    <span className="emergency-label"><PhoneIcon /> 911 queue</span>
-                </div>
                 { !call &&
                     <div className="emergency-empty">
                         <PhoneIcon size={ 20 } />
