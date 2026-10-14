@@ -30,16 +30,9 @@ interface InfoStandWidgetFurniFunctionViewProps
 const DIALOG_WIDTH = 360;
 const DIALOG_HEIGHT = 460;
 
-// Squares per side. Matches MaximumSize in RpFurniFunctionEvent; the biggest
+// Tiles per side. Matches MaximumSize in RpFurniFunctionEvent; the biggest
 // furni in the hotel is 15 x 8.
 const MAX_SIZE = 20;
-
-const parseSize = (raw: string): number =>
-{
-    const value = parseInt(raw);
-
-    return ((value >= 1) && (value <= MAX_SIZE)) ? value : NaN;
-}
 
 // Laying has no column of its own - the emulator reads it off the behaviour
 // (GameMap.cs), so the toggle drives that field and the row says so.
@@ -227,6 +220,28 @@ const maskIndexAt = (dx: number, dy: number, rotation: number, width: number, le
     return ((b * width) + a);
 }
 
+// A new size keeps the open tiles where they are on screen. The footprint
+// always runs from the anchor tile towards +x/+y, so a tile's offset from the
+// anchor survives the resize; only the mask character it maps to moves.
+const resizeMask = (mask: string, rotation: number, width: number, length: number, nextWidth: number, nextLength: number): string =>
+{
+    const cells = maskCells(mask, width, length);
+    const next: boolean[] = new Array(nextWidth * nextLength).fill(false);
+    const turned = ((rotation === 2) || (rotation === 6));
+    const sizeX = Math.min((turned ? length : width), (turned ? nextLength : nextWidth));
+    const sizeY = Math.min((turned ? width : length), (turned ? nextWidth : nextLength));
+
+    for(let dy = 0; dy < sizeY; dy++)
+    {
+        for(let dx = 0; dx < sizeX; dx++)
+        {
+            next[maskIndexAt(dx, dy, rotation, nextWidth, nextLength)] = cells[maskIndexAt(dx, dy, rotation, width, length)];
+        }
+    }
+
+    return next.some(Boolean) ? next.map(open => (open ? '1' : '0')).join('') : '';
+}
+
 const behaviourLabel = (id: string): string =>
 {
     const found = BEHAVIOURS.find(entry => (entry[0] === id));
@@ -303,10 +318,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     const layable = useMemo(() => (draft ? (LAY_TYPES.indexOf(draft.interactionType) >= 0) : false), [ draft ]);
 
-    // The grid follows the size being typed, not the saved one, so open squares
+    // The grid follows the size being set, not the saved one, so open tiles
     // can be drawn for a new size in the same edit.
-    const multiTile = useMemo(() => (!!draft && ((draft.width * draft.length) > 1)), [ draft ]);
-
     const cells = useMemo(() => (draft ? maskCells(draft.walkMask, draft.width, draft.length) : []),
         [ draft ]);
 
@@ -316,17 +329,18 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     // window is open redraws the grid the new way round on the next click.
     const rotation = currentRotation(avatarInfo.id);
 
-    // The squares as they lie in the room: the footprint runs `width` along x
-    // and `length` along y, swapped at 2/6. Drawn as the room draws them, +x
-    // down-right and +y down-left, so the square you click is the square that
-    // opens.
+    // The footprint as it lies in the room: `width` runs along x and `length`
+    // along y, swapped at 2/6. The Left and Right controls are these two sides.
+    const turned = ((rotation === 2) || (rotation === 6));
+    const sizeX = (draft ? (turned ? draft.length : draft.width) : 1);
+    const sizeY = (draft ? (turned ? draft.width : draft.length) : 1);
+
+    // Drawn as the room draws them, +x down-right and +y down-left, so the
+    // tile you click is the tile that opens.
     const roomTiles = useMemo(() =>
     {
         if(!draft) return [];
 
-        const turned = ((rotation === 2) || (rotation === 6));
-        const sizeX = (turned ? draft.length : draft.width);
-        const sizeY = (turned ? draft.width : draft.length);
         const tileWidth = Math.min(32, Math.floor(288 / Math.max(1, (sizeX + sizeY))) * 2);
         const tiles: { index: number; left: number; top: number }[] = [];
 
@@ -343,7 +357,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         }
 
         return tiles.map(tile => ({ ...tile, width: tileWidth, gridWidth: ((sizeX + sizeY) * (tileWidth / 2)), gridHeight: ((sizeX + sizeY) * (tileWidth / 4)) }));
-    }, [ draft, rotation ]);
+    }, [ draft, rotation, sizeX, sizeY ]);
 
     const isWall = (saved?.productType === 'i');
 
@@ -400,8 +414,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
      * so none of them reach the draft. Blur puts the last committed number back
      * on screen, which is also the answer to clearing a field and walking away.
      */
-    const numberField = useCallback((field: keyof Draft, parse: (raw: string) => number,
-        patch: (parsed: number) => Partial<Draft> = parsed => ({ [field]: parsed } as Partial<Draft>)) => ({
+    const numberField = useCallback((field: keyof Draft, parse: (raw: string) => number) => ({
         value: (rawNumbers[field as string] ?? String(draft?.[field] ?? '')),
         onChange: (event: ChangeEvent<HTMLInputElement>) =>
         {
@@ -411,7 +424,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
             const parsed = parse(raw);
 
-            if(Number.isFinite(parsed)) update(patch(parsed));
+            if(Number.isFinite(parsed)) update({ [field]: parsed } as Partial<Draft>);
         },
         onBlur: () => setRawNumbers(prev =>
         {
@@ -423,24 +436,28 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         })
     }), [ draft, rawNumbers, update ]);
 
-    // The mask is one character per square, laid over the old footprint, so a
-    // new size starts it again rather than shuffling squares into new places.
-    const sizePatch = useCallback((field: 'width' | 'length') => (parsed: number): Partial<Draft> =>
-        ((parsed === draft?.[field]) ? { [field]: parsed } : { [field]: parsed, walkMask: '' }), [ draft ]);
-
-    const matchArtwork = useCallback(() =>
+    const resize = useCallback((nextWidth: number, nextLength: number) =>
     {
-        update({ width: avatarInfo.tileSizeX, length: avatarInfo.tileSizeY, walkMask: '' });
-        setRawNumbers(prev =>
-        {
-            const next = { ...prev };
+        if(!draft) return;
 
-            delete next.width;
-            delete next.length;
+        update({ width: nextWidth, length: nextLength,
+            walkMask: resizeMask(draft.walkMask, rotation, draft.width, draft.length, nextWidth, nextLength) });
+    }, [ draft, rotation, update ]);
 
-            return next;
-        });
-    }, [ avatarInfo.tileSizeX, avatarInfo.tileSizeY, update ]);
+    // One side of the footprint as it lies in the room now: x is the width
+    // unless the furni is turned a quarter, when it is the length.
+    const resizeSide = useCallback((axis: 'x' | 'y', value: number) =>
+    {
+        if(!draft) return;
+
+        const size = Math.max(1, Math.min(MAX_SIZE, value));
+        const isWidth = ((axis === 'x') !== turned);
+
+        resize((isWidth ? size : draft.width), (isWidth ? draft.length : size));
+    }, [ draft, turned, resize ]);
+
+    const matchArtwork = useCallback(() => resize(avatarInfo.tileSizeX, avatarInfo.tileSizeY),
+        [ avatarInfo.tileSizeX, avatarInfo.tileSizeY, resize ]);
 
     const resetDraft = useCallback(() =>
     {
@@ -553,26 +570,16 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                 </div>
                             </div>) }
                         { !avatarInfo.isWallItem &&
-                            <>
-                                <div className="rp-furni-function-pair">
-                                    <label>
-                                        <span>Width</span>
-                                        <div className="rp-skeleton is-input" />
-                                    </label>
-                                    <label>
-                                        <span>Length</span>
-                                        <div className="rp-skeleton is-input" />
-                                    </label>
-                                </div>
-                                <div className="rp-skeleton" style={ { width: '86%', height: 10, marginTop: 7 } } />
-                            </> }
-                        { ((avatarInfo.tileSizeX * avatarInfo.tileSizeY) > 1) &&
                             <div className="rp-furni-function-mask">
-                                <div className="rp-furni-function-mask-head"><span>Open tiles</span></div>
+                                <div className="rp-furni-function-mask-head"><span>Tiles</span></div>
                                 <div className="rp-furni-function-mask-grid"
                                     style={ { gridTemplateColumns: `repeat(${ avatarInfo.tileSizeX }, 18px)` } }>
                                     { Array.from({ length: (avatarInfo.tileSizeX * avatarInfo.tileSizeY) }).map((ignored, index) =>
                                         <div key={ index } className="rp-skeleton" style={ { width: 18, height: 18 } } />) }
+                                </div>
+                                <div className="rp-furni-function-mask-sides">
+                                    <div className="rp-skeleton is-pill" style={ { width: 92, height: 20 } } />
+                                    <div className="rp-skeleton is-pill" style={ { width: 92, height: 20 } } />
                                 </div>
                                 <div className="rp-skeleton" style={ { width: '92%', height: 10, marginTop: 7 } } />
                                 <div className="rp-skeleton" style={ { width: '68%', height: 10, marginTop: 3 } } />
@@ -640,6 +647,19 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
     // two ways, so this is a switch between them rather than a direction.
     if(layable) toggles.push([ 'Lie across', 'Avatars lie across it instead of along it', draft.layAcross, () => update({ layAcross: !draft.layAcross }) ]);
 
+    // One side of the tile grid: how many tiles run along it, and a - / + to
+    // take a row away or add one. Each label sits at its own outer edge.
+    const sideControl = (axis: 'x' | 'y', value: number, label: string) =>
+        <div className="rp-furni-function-side">
+            { (axis === 'y') && <span>{ label }</span> }
+            <div className={ 'rp-furni-function-btn rp-furni-function-btn--sm' + ((value <= 1) ? ' is-disabled' : '') }
+                onClick={ () => ((value > 1) && resizeSide(axis, (value - 1))) }>-</div>
+            <b>{ value }</b>
+            <div className={ 'rp-furni-function-btn rp-furni-function-btn--sm' + ((value >= MAX_SIZE) ? ' is-disabled' : '') }
+                onClick={ () => ((value < MAX_SIZE) && resizeSide(axis, (value + 1))) }>+</div>
+            { (axis === 'x') && <span>{ label }</span> }
+        </div>;
+
     return createPortal(
         <div className="rp-furni-function" style={ { left: pos.x, top: pos.y } }>
             <div className="rp-furni-function-header" onPointerDown={ onHeaderPointerDown }
@@ -685,37 +705,18 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                         onClick={ () => update({ sitRotation: turn }) }>{ label }</div>) }
                             </div>
                         </div> }
-                    { !isWall &&
-                        <>
-                            <div className="rp-furni-function-pair">
-                                <label>
-                                    <span>Width</span>
-                                    <input type="number" min="1" max={ MAX_SIZE }
-                                        { ...numberField('width', parseSize, sizePatch('width')) } />
-                                </label>
-                                <label>
-                                    <span>Length</span>
-                                    <input type="number" min="1" max={ MAX_SIZE }
-                                        { ...numberField('length', parseSize, sizePatch('length')) } />
-                                </label>
-                            </div>
-                            <div className="rp-furni-function-note">
-                                Squares it covers before it is turned. Every placed copy grows or
-                                shrinks from its back corner.
-                            </div>
-                        </> }
                     { sizeMismatch &&
                         <div className="rp-furni-function-warning has-action">
                             <span>
                                 Its artwork is <b>{ avatarInfo.tileSizeX } x { avatarInfo.tileSizeY }</b> but this
-                                is <b>{ draft.width } x { draft.length }</b>, so it blocks the wrong squares.
+                                is <b>{ draft.width } x { draft.length }</b>, so it blocks the wrong tiles.
                             </span>
                             <div className="rp-furni-function-btn rp-furni-function-btn--sm" onClick={ matchArtwork }>Match artwork</div>
                         </div> }
-                    { multiTile &&
+                    { !isWall &&
                         <div className="rp-furni-function-mask">
                             <div className="rp-furni-function-mask-head">
-                                <span>Open tiles</span>
+                                <span>Tiles</span>
                                 { openCount > 0 &&
                                     <div className="rp-furni-function-btn rp-furni-function-btn--sm"
                                         onClick={ () => update({ walkMask: '' }) }>Clear</div> }
@@ -728,11 +729,17 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                         style={ { left: tile.left, top: tile.top, width: tile.width, height: (tile.width / 2) } }
                                         onClick={ () => toggleCell(tile.index) }><span /></div>) }
                             </div>
+                            { /* Left is the grid's lower-left edge (+y), Right its
+                                 lower-right edge (+x) - the two sides a furni can
+                                 grow along, since its back tile never moves. */ }
+                            <div className="rp-furni-function-mask-sides">
+                                { sideControl('y', sizeY, 'Left') }
+                                { sideControl('x', sizeX, 'Right') }
+                            </div>
                             <div className="rp-furni-function-mask-note">
-                                Squares the furni leaves as floor - the inside of an L-shaped sofa, the
-                                gap in a fence. Drawn the way the furni sits in the room right now, so
-                                click the square you want open. Turn the furni and the open squares
-                                turn with it.
+                                Click a tile to let avatars walk there - the inside of an L-shaped sofa,
+                                the gap in a fence. + and - add or take away a row of tiles on that side.
+                                Drawn the way the furni sits in the room right now.
                             </div>
                         </div> }
                     <div className="rp-furni-function-pair">

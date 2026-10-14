@@ -553,6 +553,31 @@ $furni-function-on: #2e9e4f;
         margin: 2px auto;
     }
 
+    // The two sides a footprint grows along, under the grid's two lower edges.
+    .rp-furni-function-mask-sides {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .rp-furni-function-side {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+
+        span {
+            font-size: 10px;
+            color: rgba($white, .65);
+        }
+
+        b {
+            min-width: 14px;
+            font-size: 11px;
+            text-align: center;
+        }
+    }
+
     // The outer diamond is the tile's dark edge; the inner span is its face,
     // inset so neighbouring tiles read as separate squares. clip-path also
     // clips hit-testing, so a click lands on the diamond it looks like it hits.
