@@ -166,7 +166,7 @@ export interface RpFurniFunction
     stackable: boolean;
     stackHeight: number;
     adjustableHeights: string;
-    /** Whether the tile cursor may show its raised height ring over this furni. */
+    /** Inert - see the height ring note below. Carried so a save writes back what is stored. */
     heightMarker: boolean;
     interactionType: string;
     modes: number;
@@ -500,8 +500,9 @@ const onFloorObjectReady = (event: RoomEngineObjectEvent) =>
 //
 // The variable-height flag the Height marker field was meant for is only read
 // on a path that never runs here (where-you-click-is-where-you-go is always
-// on), so the field changes nothing you can see; it is still carried and
-// saved for the Function tool.
+// on), so the field changes nothing you can see. Its switch is gone from the
+// Function tool; the value still rides the wire in its old place, and every
+// save sends back whatever is stored.
 
 type FurniFunctionListener = (data: RpFurniFunction) => void;
 

@@ -140,7 +140,7 @@ const SIT_FACINGS: [ number, string ][] = [ [ 0, 'Normal' ], [ 2, 'Right' ], [ 4
 
 const LABELS: { [key: string]: string } = {
     publicName: 'Name', width: 'Width', length: 'Length', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', sitRotation: 'Sit facing',
-    stackable: 'Stackable', stackHeight: 'Stack height', heightMarker: 'Height marker', layAcross: 'Lie across',
+    stackable: 'Stackable', stackHeight: 'Stack height', layAcross: 'Lie across',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
@@ -746,20 +746,6 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                             <input type="text" placeholder="e.g. 0.5,1.0,1.5" value={ draft.adjustableHeights }
                                 onChange={ event => update({ adjustableHeights: event.target.value }) } />
                         </label>
-                    </div>
-                    <div className="rp-furni-function-row">
-                        <div className={ 'rp-furni-function-switch' + (draft.heightMarker ? ' is-on' : '') }
-                            onClick={ () => update({ heightMarker: !draft.heightMarker }) }><span /></div>
-                        <div className="rp-furni-function-row-text">
-                            <div className="rp-furni-function-row-label">Height marker</div>
-                            <div className="rp-furni-function-row-hint">Show the floating blue ring over this furni</div>
-                        </div>
-                    </div>
-                    <div className="rp-furni-function-note">
-                        The ring is the tile cursor showing where a dropped item would land. It is off
-                        across the hotel and this turns it back on for one furni - and only for furni
-                        whose artwork offers it at all. Either way it is a readout: stacking still works
-                        and still lands in the same place.
                     </div>
                 </div>
                 <div className="rp-furni-function-section is-interaction">
