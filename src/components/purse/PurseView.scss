@@ -28,9 +28,10 @@
             image-rendering: pixelated;
         }
 
+        // No tile of its own (Twist, 2026-10-15): the VIP badge and its days
+        // sit straight on the purse's plate, seamless with the currencies.
         .nitro-purse-subscription {
-            background-color: rgba($light, 0.1);
-            // 1:1 tile. aspect-ratio can't do this here (the row's auto
+            // 1:1 slot. aspect-ratio can't do this here (the row's auto
             // height is never a definite cross size, so the ratio has no
             // axis to resolve from - verified both stretch and centered
             // variants render non-square). The row's height IS deterministic
