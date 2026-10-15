@@ -5,8 +5,6 @@ import { BuilderFurniPlaceableStatus, CatalogNode, CatalogPage, CatalogPetPalett
 import { CatalogPurchasedEvent, CatalogPurchaseFailureEvent, CatalogPurchaseNotAllowedEvent, CatalogPurchaseSoldOutEvent, InventoryFurniAddedEvent } from '../../events';
 import { useMessageEvent, useRoomEngineEvent, useUiEvent } from '../events';
 import { useNotification } from '../notification';
-import { useCatalogPlaceMultipleItems } from './useCatalogPlaceMultipleItems';
-import { useCatalogSkipPurchaseConfirmation } from './useCatalogSkipPurchaseConfirmation';
 import { IsRoomOwnerNow } from '../../api/rp-rights/RpRoomRightsMessages';
 
 const DUMMY_PAGE_ID_FOR_OFFER_SEARCH = -12345678;
@@ -31,8 +29,6 @@ const useCatalogState = () =>
     const [ purchaseOptions, setPurchaseOptions ] = useState<IPurchaseOptions>({ quantity: 1, extraData: null, extraParamRequired: false, previewStuffData: null });
     const [ catalogOptions, setCatalogOptions ] = useState<ICatalogOptions>({});
     const [ objectMoverRequested, setObjectMoverRequested ] = useState(false);
-    const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
-    const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
     const [ purchasableOffer, setPurchaseableOffer ] = useState<IPurchasableOffer>(null);
     const [ placedObjectPurchaseData, setPlacedObjectPurchaseData ] = useState<PlacedObjectPurchaseData>(null);
     const [ furniCount, setFurniCount ] = useState(0);
@@ -848,18 +844,16 @@ const useCatalogState = () =>
 
                 if(roomObject) roomObject.model.setValue(RoomObjectVariable.FURNITURE_ALPHA_MULTIPLIER, 0.5);
 
-                if(catalogSkipPurchaseConfirmation)
-                {
-                    SendMessageComposer(new PurchaseFromCatalogComposer(pageId, purchasableOffer.offerId, product.extraParam, 1));
+                // pixelrp: a furni dragged from the shop into the room is bought
+                // there and then, and the next one is already on the cursor.
+                // These were two switches in Settings (skip the purchase
+                // confirmation, place multiple items). Everything in the shop
+                // is free, and with the confirmation on this branch bought
+                // nothing at all - the confirm step was never built - so both
+                // are simply always on now and the switches are gone.
+                SendMessageComposer(new PurchaseFromCatalogComposer(pageId, purchasableOffer.offerId, product.extraParam, 1));
 
-                    if(catalogPlaceMultipleObjects) requestOfferToMover(purchasableOffer);
-                }
-                else
-                {
-                    // confirm
-
-                    if(catalogPlaceMultipleObjects) requestOfferToMover(purchasableOffer);
-                }
+                requestOfferToMover(purchasableOffer);
                 break;
             }
             case CatalogType.BUILDER: {
@@ -880,7 +874,8 @@ const useCatalogState = () =>
                         break;
                 }
 
-                if(catalogPlaceMultipleObjects) requestOfferToMover(purchasableOffer);
+                // pixelrp: always on - see the NORMAL case above.
+                requestOfferToMover(purchasableOffer);
                 break;
             }
         }
@@ -916,7 +911,6 @@ const useCatalogState = () =>
                 SendMessageComposer(new FurniturePlaceComposer(event.id, placedObjectPurchaseData.category, placedObjectPurchaseData.wallLocation, placedObjectPurchaseData.x, placedObjectPurchaseData.y, placedObjectPurchaseData.direction));
         }
 
-        if(!catalogPlaceMultipleObjects) resetPlacedOfferData();
     });
 
     useEffect(() =>
