@@ -7,6 +7,12 @@ export interface CurrencyIconProps extends BaseProps<HTMLDivElement>
     type: number | string;
 }
 
+// pixelrp: coins (credits, type -1) draw PixelRP's own green note, which ships
+// with the client (.nitro-currency-icon.is-coins in common/index.scss) rather
+// than coming from wallet/-1.png: the assets tree is cached for a week, and a
+// file in the client build reaches everyone with the next deploy.
+const IsCoins = (type: number | string) => (type.toString() === '-1');
+
 export const LayoutCurrencyIcon: FC<CurrencyIconProps> = props =>
 {
     const { type = '', classNames = [], style = {}, ...rest } = props;
@@ -15,10 +21,12 @@ export const LayoutCurrencyIcon: FC<CurrencyIconProps> = props =>
     {
         const newClassNames: string[] = [ 'nitro-currency-icon' ];
 
+        if(IsCoins(type)) newClassNames.push('is-coins');
+
         if(classNames.length) newClassNames.push(...classNames);
 
         return newClassNames;
-    }, [ classNames ]);
+    }, [ classNames, type ]);
 
     const urlString = useMemo(() =>
     {
@@ -33,12 +41,12 @@ export const LayoutCurrencyIcon: FC<CurrencyIconProps> = props =>
     {
         let newStyle: CSSProperties = {};
 
-        newStyle.backgroundImage = urlString;
+        if(!IsCoins(type)) newStyle.backgroundImage = urlString;
 
         if(Object.keys(style).length) newStyle = { ...newStyle, ...style };
 
         return newStyle;
-    }, [ style, urlString ]);
+    }, [ style, type, urlString ]);
 
     return <Base classNames={ getClassNames } style={ getStyle } { ...rest } />
 }

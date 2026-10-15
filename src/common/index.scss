@@ -229,6 +229,11 @@
     background-repeat: no-repeat;
     width: 15px;
     height: 15px;
+
+    // pixelrp: see LayoutCurrencyIcon - coins are the client's own note.
+    &.is-coins {
+        background-image: url('@/assets/images/purse/coins.png');
+    }
 }
 
 .nitro-item-count {
