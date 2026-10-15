@@ -11,6 +11,10 @@ export default defineConfig(({ command }) => ({
     // Dev serves assets and the CMS API same-origin via the docker web
     // container - public/renderer-config.json uses relative URLs, so asset
     // requests never leave :5173 and CORS/stale-cache issues can't bite.
+    // The web container only serves game files to a holder of the asset pass
+    // (parent repo docs/asset-protection-plan.md): open localhost:8080/game
+    // once to get it. Cookies ignore the port, so :5173's proxied requests
+    // carry it too.
     server: {
         proxy: {
             '/nitro-assets': 'http://localhost:8080',

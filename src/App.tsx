@@ -1,6 +1,7 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
+import { InstallAssetPassRefresh } from './api/assets/AssetPassRefresh';
 import { ExtendAvatarStructure } from './api/avatar/ExtendAvatarStructure';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
 import { InstallJitterTrace } from './api/diagnostics/JitterTrace';
@@ -74,6 +75,9 @@ export const App: FC<{}> = props =>
         // Before bootstrap: the renderer reads its avatar tables once, at
         // init, and misc items and pets have to be in them by then.
         ExtendAvatarStructure();
+
+        // Keeps the asset pass alive for as long as the client stays open.
+        InstallAssetPassRefresh();
 
         Nitro.bootstrap();
     }
