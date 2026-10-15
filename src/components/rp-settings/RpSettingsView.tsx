@@ -119,7 +119,7 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
     const [ generalPage, setGeneralPage ] = useState<string>(GENERAL_PAGES[0]);
-    const { userSettings, setOldChat, setRoomInvites, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
+    const { userSettings, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
     // General > Sound > Ping sound: the @mention alert's own volume, on this computer (MentionSound).
     const [ pingVolume, setPingVolumeState ] = useState<number>(GetPingVolume);
     const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
@@ -1578,9 +1578,10 @@ export const RpSettingsView: FC<{}> = props =>
                                         <span className="rp-settings-fps-end">100</span>
                                     </div>
                                 </div> }
+                            { /* pixelrp: no "Prefer old chat" (chat is always free flow, and
+                               nothing reads it) and no "Ignore room invites" (PixelRP has no
+                               room invites). */ }
                             { (generalPage === 'Preferences') && [
-                                { key: 'old-chat', text: 'memenu.settings.chat.prefer.old.chat', on: !!userSettings?.oldChat, ready: !!userSettings, toggle: () => setOldChat(!userSettings.oldChat) },
-                                { key: 'room-invites', text: 'memenu.settings.other.ignore.room.invites', on: !!userSettings?.roomInvites, ready: !!userSettings, toggle: () => setRoomInvites(!userSettings.roomInvites) },
                                 { key: 'camera-follow', text: 'memenu.settings.other.disable.room.camera.follow', on: !!userSettings?.cameraFollow, ready: !!userSettings, toggle: () => setCameraFollow(!userSettings.cameraFollow) },
                                 { key: 'place-multiple', text: 'memenu.settings.other.place.multiple.objects', on: catalogPlaceMultipleObjects, ready: true, toggle: () => setCatalogPlaceMultipleObjects(!catalogPlaceMultipleObjects) },
                                 { key: 'skip-confirm', text: 'memenu.settings.other.skip.purchase.confirmation', on: catalogSkipPurchaseConfirmation, ready: true, toggle: () => setCatalogSkipPurchaseConfirmation(!catalogSkipPurchaseConfirmation) }

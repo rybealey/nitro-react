@@ -10,7 +10,7 @@ import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useUs
 export const UserSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
-    const { userSettings, setOldChat, setRoomInvites, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
+    const { userSettings, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
     const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
     const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
 
@@ -20,12 +20,6 @@ export const UserSettingsView: FC<{}> = props =>
         {
             case 'close_view':
                 setIsVisible(false);
-                return;
-            case 'oldchat':
-                setOldChat(value as boolean);
-                return;
-            case 'room_invites':
-                setRoomInvites(value as boolean);
                 return;
             case 'camera_follow':
                 setCameraFollow(value as boolean);
@@ -84,14 +78,7 @@ export const UserSettingsView: FC<{}> = props =>
             <NitroCardHeaderView headerText={ LocalizeText('widget.memenu.settings.title') } onCloseClick={ event => processAction('close_view') } />
             <NitroCardContentView className="text-black">
                 <Column gap={ 1 }>
-                    <Flex alignItems="center" gap={ 1 }>
-                        <input className="form-check-input" type="checkbox" checked={ userSettings.oldChat } onChange={ event => processAction('oldchat', event.target.checked) } />
-                        <Text>{ LocalizeText('memenu.settings.chat.prefer.old.chat') }</Text>
-                    </Flex>
-                    <Flex alignItems="center" gap={ 1 }>
-                        <input className="form-check-input" type="checkbox" checked={ userSettings.roomInvites } onChange={ event => processAction('room_invites', event.target.checked) } />
-                        <Text>{ LocalizeText('memenu.settings.other.ignore.room.invites') }</Text>
-                    </Flex>
+                    { /* pixelrp: no "Prefer old chat" or "Ignore room invites" - see RpSettingsView. */ }
                     <Flex alignItems="center" gap={ 1 }>
                         <input className="form-check-input" type="checkbox" checked={ userSettings.cameraFollow } onChange={ event => processAction('camera_follow', event.target.checked) } />
                         <Text>{ LocalizeText('memenu.settings.other.disable.room.camera.follow') }</Text>
