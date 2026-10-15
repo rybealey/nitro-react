@@ -50,6 +50,13 @@ SetRpStaffResolver(IsRpStaff);
 // the player had done.
 const statsWithWanted = (userId: number): HudStats => ({ ...DEFAULT_STATS, wanted: GetRpWanted(userId) });
 
+// pixelrp: a bot can be the HUD target too (":lt <bot>", ":t <bot>"), but only
+// on screen. Its webID counts bots, not players, so nothing keyed by user id
+// may see it - the server's target, the gang crest, wanted stars, the profile,
+// the room-change re-pick, and the "x" shorthand would all land on whichever
+// player happens to share the number (or the name).
+const IsBotTarget = (info: AvatarInfoUser): boolean => (!!info && (info.userType !== RoomObjectType.USER));
+
 // Merge the live server stats (when known) over the base values.
 const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
 {
@@ -274,7 +281,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // torn down, and that must not be mistaken for letting somebody go.
     useEffect(() =>
     {
-        if(target) rememberedTarget = { webID: target.webID, locked };
+        // pixelrp: a bot is not picked back up after a room change - by webID
+        // it would find a player instead (IsBotTarget) - so wanting one forgets
+        // any player remembered before it.
+        if(target) rememberedTarget = (IsBotTarget(target) ? null : { webID: target.webID, locked });
     }, [ target, locked ]);
 
     // The other half of the room change: somebody who lands after you do. The
@@ -324,12 +334,15 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     // Shared room-unit lookup behind both :lt and :t - case-insensitive, scoped
     // to the current room, and never your own avatar (matching click targeting).
+    // A player's id only - never a bot's (IsBotTarget).
+    const gangLookupId = ((target && !IsBotTarget(target)) ? target.webID : 0);
+
     useEffect(() =>
     {
-        if(!target?.webID) return;
+        if(!gangLookupId) return;
 
-        SendMessageComposer(new RpGetUserGangComposer(target.webID));
-    }, [ target?.webID ]);
+        SendMessageComposer(new RpGetUserGangComposer(gangLookupId));
+    }, [ gangLookupId ]);
 
     // The viewer's OWN gang, asked for once when the HUD mounts. Nothing else
     // in a room requests it - the wallet, the profile and the Gang window all
@@ -352,7 +365,12 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         {
             const userData = roomSession.userDataManager.getUserDataByIndex(roomObject.id);
 
-            if(!userData || (userData.type !== RoomObjectType.USER) || (userData.name.toLowerCase() !== requestedName)) continue;
+            if(!userData || (userData.name.toLowerCase() !== requestedName)) continue;
+
+            // pixelrp: bots answer to their name too (see IsBotTarget); pets do not.
+            if((userData.type === RoomObjectType.BOT) || (userData.type === RoomObjectType.RENTABLE_BOT)) return AvatarInfoUtilities.getBotInfo(RoomObjectCategory.UNIT, userData);
+
+            if(userData.type !== RoomObjectType.USER) continue;
 
             const info = AvatarInfoUtilities.getUserInfo(RoomObjectCategory.UNIT, userData);
 
@@ -394,7 +412,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     // Tell the server who is selected, on every change: a target command typed
     // without a name (":kiss", ":charge theft") is aimed at them.
-    const targetUserId = (target ? target.webID : 0);
+    const targetUserId = ((target && !IsBotTarget(target)) ? target.webID : 0);
 
     useEffect(() =>
     {
@@ -405,7 +423,8 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // this when expanding the "@x" target-mention shorthand into a shout.
     useEffect(() =>
     {
-        TargetState.name = (target ? target.name : null);
+        TargetState.name = ((target && !IsBotTarget(target)) ? target.name : null);
+        TargetState.label = (target ? target.name : null);
         TargetState.toggleLock = toggleTargetLock;
         TargetState.lockByName = lockTargetByName;
         TargetState.selectByName = selectTargetByName;
@@ -413,6 +432,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         return () =>
         {
             TargetState.name = null;
+            TargetState.label = null;
             TargetState.toggleLock = null;
             TargetState.lockByName = null;
             TargetState.selectByName = null;
@@ -428,8 +448,9 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
     const playerStats = withLiveStats(roomSession?.ownRoomIndex ?? -1, statsWithWanted(GetSessionDataManager().userId));
-    const targetStats = target ? withLiveStats(target.roomIndex, statsWithWanted(target.webID)) : null;
-    const targetGang = (target ? GetRpGang(target.webID) : null);
+    const targetIsBot = IsBotTarget(target);
+    const targetStats = target ? withLiveStats(target.roomIndex, (targetIsBot ? DEFAULT_STATS : statsWithWanted(target.webID))) : null;
+    const targetGang = ((target && !targetIsBot) ? GetRpGang(target.webID) : null);
 
     return (
         // plates hang from the top edge (purse-style), so they align at the
@@ -480,7 +501,11 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                                 <HoverBubble text="PixelRP Staff" placement="bottom"><i className="fa-solid fa-badge-check hud-verified" aria-hidden="true" /></HoverBubble> }
                             <span className="hud-name">{ target.name }</span>
                         </div>
-                        <HudBars stats={ targetStats } mirrored />
+                        { /* pixelrp: a bot has no health or energy - the server keeps
+                             RP stats for players only - so its plate shows none
+                             rather than two bars stuck at full. */ }
+                        { !targetIsBot &&
+                            <HudBars stats={ targetStats } mirrored /> }
                     </div>
                     <div className="hud-portrait">
                         <HoverBubble text="Clear target" placement="bottom"><span className="hud-close" onClick={ closeTarget }><FaTimes /></span></HoverBubble>
@@ -498,7 +523,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                                     <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 56 } />
                                 </span>
                             </HoverBubble> }
-                        <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ () =>
+                        <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ targetIsBot ? null : () =>
                         {
                             RpProfileState.name = target.name;
                             RpProfileState.figure = target.figure;

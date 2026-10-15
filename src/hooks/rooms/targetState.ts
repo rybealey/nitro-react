@@ -13,7 +13,11 @@ export type TargetSelectResult =
     | { status: 'missing' };
 
 export const TargetState = {
+    // A PLAYER target's name - what "x" and "@x" expand to. Null for a bot
+    // target, so the shorthands never type a bot's name into a command.
     name: null as string | null,
+    // Any target's name, bots included - only for the :t / :lt whispers.
+    label: null as string | null,
     toggleLock: null as (() => boolean | null) | null,
     lockByName: null as ((name: string) => string | null) | null,
     // ":t" - select only. Never touches the lock, and refuses outright while

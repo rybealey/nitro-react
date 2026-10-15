@@ -125,7 +125,7 @@ const useChatInputWidgetState = () =>
 
                     if(!requestedName)
                     {
-                        const status = TargetState.name ? `You are now targeting ${ TargetState.name }.` : 'Usage: :t <name>.';
+                        const status = TargetState.label ? `You are now targeting ${ TargetState.label }.` : 'Usage: :t <name>.';
 
                         GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
@@ -165,7 +165,7 @@ const useChatInputWidgetState = () =>
                     }
 
                     const lockState = TargetState.toggleLock?.() ?? null;
-                    const status = (lockState === null) ? 'No target selected.' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.name }.`;
+                    const status = (lockState === null) ? 'No target selected.' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.label }.`;
                     const style = (lockState === null) ? SYSTEM_WHISPER_STYLE : (lockState ? TARGET_LOCKED_STYLE : TARGET_UNLOCKED_STYLE);
 
                     GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, style));
