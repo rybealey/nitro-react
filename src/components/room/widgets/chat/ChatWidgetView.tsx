@@ -143,10 +143,10 @@ export const ChatWidgetView: FC<{}> = props =>
 
         worker.postMessage({ action: 'START', content: getScrollSpeed });
 
-        return () =>
-        {
-            worker.postMessage({ action: 'STOP' });
-        }
+        // pixelrp: terminate, not just STOP - this runs on every room change,
+        // and a stopped worker is still a whole thread holding the old room's
+        // chat alive.
+        return () => worker.terminate();
     }, [ getScrollSpeed, removeHiddenChats, setChatMessages ]);
 
     return (
