@@ -43,6 +43,9 @@ import { GetRoomSessionManager } from '../nitro/session/GetRoomSessionManager';
 //
 //     pixelrpTurns          recent turns, newest last
 //     pixelrpTurnStats      counters and histograms since page load
+//     pixelrpTurnLog()      print flagged turns and the minute summary to
+//                           the console (off by default, so players' consoles
+//                           stay clean); pixelrpTurnLog(false) stops it
 // ---------------------------------------------------------------------------
 
 // A turn's facing is "late" past this. One 60fps frame is ~17ms, and sampling
@@ -110,6 +113,9 @@ interface TurnState
 
     turn: any;
 }
+
+// Recording is always on; printing only once pixelrpTurnLog() asks for it.
+let verbose = false;
 
 const states: Map<number, TurnState> = new Map();
 const turns: any[] = [];
@@ -196,6 +202,12 @@ const publish = (): void =>
     {
         target.pixelrpTurns = turns;
         target.pixelrpTurnStats = stats;
+        target.pixelrpTurnLog = (on = true) =>
+        {
+            verbose = on;
+
+            return (on ? '[MV2/TURN] printing flagged turns' : '[MV2/TURN] quiet - still recording');
+        };
     };
 
     install(window);
@@ -250,6 +262,8 @@ const closeTurn = (turn: any, matched: boolean, lagMs: number): void =>
     if(!reasons.length) return;
 
     stats.flagged++;
+
+    if(!verbose) return;
 
     if(stats.logged >= LOG_LIMIT)
     {
@@ -524,7 +538,7 @@ const sample = (): void =>
 
     if((tickerNow - lastSummaryAt) >= SUMMARY_MS)
     {
-        if(lastSummaryAt && (stats.turns > turnsAtLastSummary)) console.log('[MV2/TURN] summary', { ...stats });
+        if(verbose && lastSummaryAt && (stats.turns > turnsAtLastSummary)) console.log('[MV2/TURN] summary', { ...stats });
 
         lastSummaryAt = tickerNow;
         turnsAtLastSummary = stats.turns;

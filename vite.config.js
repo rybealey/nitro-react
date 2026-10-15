@@ -3,6 +3,37 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
+// @pixi/tilemap 3.2.2 registers its renderer plugin with
+// Renderer.registerPlugin(), deprecated since PixiJS 6.5 - which prints a
+// deprecation warning in every player's console on load. That call is only
+// a wrapper around extensions.add() (@pixi/core), so make the same call
+// directly. A build-time rewrite rather than a yarn patch: a new patch needs
+// yarn to regenerate the lockfile, and deploy installs with --immutable.
+// Dev pre-bundles dependencies with esbuild, which skips transform hooks, so
+// `yarn start` still shows the warning; builds do not.
+const TILEMAP_REGISTER = "Renderer.registerPlugin('tilemap', TileRenderer );";
+
+const pixiTilemapExtensions = () => ({
+    name: 'pixelrp-pixi-tilemap-extensions',
+    transform(code, id)
+    {
+        if(!id.includes('@pixi/tilemap/') || !code.includes('registerPlugin')) return null;
+
+        if(!code.includes(TILEMAP_REGISTER))
+        {
+            this.warn('@pixi/tilemap changed - its registerPlugin call was not rewritten, so the deprecation warning is back');
+
+            return null;
+        }
+
+        return {
+            code: "import { extensions as __pixelrpExtensions, ExtensionType as __pixelrpExtensionType } from '@pixi/extensions';\n"
+                + code.replace(TILEMAP_REGISTER, "__pixelrpExtensions.add({ name: 'tilemap', type: __pixelrpExtensionType.RendererPlugin, ref: TileRenderer });"),
+            map: null
+        };
+    }
+});
+
 export default defineConfig(({ command }) => ({
     // The deployed client is served from /nitro-assets/client/, not the site
     // root — without this, built asset URLs 404 behind the nginx prefix. The
@@ -21,7 +52,7 @@ export default defineConfig(({ command }) => ({
             '/api': 'http://localhost:8080'
         }
     },
-    plugins: [ react() ],
+    plugins: [ react(), pixiTilemapExtensions() ],
     resolve: {
         alias: {
             '@': resolve(__dirname, 'src'),

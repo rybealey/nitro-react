@@ -51,7 +51,8 @@ const useGameCenterState = () =>
         switch(parser.gameTypeId) 
         {
             case 2:
-                return console.log('snowwar')
+                // SnowWar has no client here.
+                return;
             default:
                 return setGameURL(parser.url);
         }

@@ -1,4 +1,5 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
+import { skipHello } from '@pixi/utils';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
 import { InstallAssetPassRefresh } from './api/assets/AssetPassRefresh';
@@ -78,6 +79,10 @@ export const App: FC<{}> = props =>
 
         // Keeps the asset pass alive for as long as the client stays open.
         InstallAssetPassRefresh();
+
+        // No version banners in players' consoles - Nitro's and PixiJS's.
+        NitroVersion.sayHello = () => null;
+        skipHello();
 
         Nitro.bootstrap();
     }
@@ -159,7 +164,8 @@ export const App: FC<{}> = props =>
                 // nothing is measured until pixelrpCrossingTrace() arms it.
                 InstallProximityTrace();
                 // Always on, unlike the proximity trace: it registers its own
-                // ticker callback and logs only flagged turns, capped.
+                // ticker callback and records every turn, but prints flagged
+                // ones only after pixelrpTurnLog() in DevTools.
                 InstallTurnTrace();
                 // Always on, counters only: how unevenly movement packets
                 // arrive. Read as pixelrpJitter in DevTools.
