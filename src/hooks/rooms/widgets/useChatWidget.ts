@@ -13,6 +13,20 @@ const avatarColorCache: Map<string, number> = new Map();
 const avatarImageCache: Map<string, string> = new Map();
 const petImageCache: Map<string, string> = new Map();
 
+// pixelrp: these keep a head picture per outfit for the whole session, and
+// every shift uniform and change of clothes is a new outfit - so they are
+// capped, the oldest dropped first (a Map keeps insertion order). The colour
+// and head caches are always set together, so they drop the same outfits.
+const FIGURE_CACHE_LIMIT = 300;
+
+const setCapped = <T, >(cache: Map<string, T>, key: string, value: T) =>
+{
+    cache.delete(key);
+    cache.set(key, value);
+
+    while(cache.size > FIGURE_CACHE_LIMIT) cache.delete(cache.keys().next().value);
+}
+
 const useChatWidgetState = () =>
 {
     const [ chatMessages, setChatMessages ] = useState<ChatBubbleMessage[]>([]);
@@ -61,11 +75,11 @@ const useChatWidgetState = () =>
         const image = avatarImage.getCroppedImage(AvatarSetType.HEAD);
         const color = avatarImage.getPartColor(AvatarFigurePartType.CHEST);
 
-        avatarColorCache.set(figure, ((color && color.rgb) || 16777215));
+        setCapped(avatarColorCache, figure, ((color && color.rgb) || 16777215));
 
         avatarImage.dispose();
 
-        avatarImageCache.set(figure, image.src);
+        setCapped(avatarImageCache, figure, image.src);
 
         return image.src;
     }
@@ -93,7 +107,10 @@ const useChatWidgetState = () =>
         {
             existing = TextureUtils.generateImageUrl(image.data);
 
-            petImageCache.set((figure + posture), existing);
+            // pixelrp: a fresh render made for this picture - free it once read.
+            if(image.data) image.data.destroy(true);
+
+            setCapped(petImageCache, (figure + posture), existing);
         }
 
         return existing;
