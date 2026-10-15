@@ -17,13 +17,14 @@ import { HabboAvatarAnimations, HabboAvatarGeometry, HabboAvatarPartSets } from 
 // and wave frames. mc and pt are the body-level layer and sit in the torso,
 // outermost, above the chest accessory.
 //
-// mco is an aura: flames and smoke drawn AROUND the body, with an almost
-// opaque middle, so it has to stay behind the avatar whichever way they face.
-// The geometry already has a layer for exactly that - the empty "bottom" body
-// part, centred with a near-zero radius, which makes it the farthest layer at
-// every rotation (its mirror, "top", is always the nearest). Lying has no
-// bottom, so it is given one of the same shape. The aura's eight frames then
-// animate on their own, like any idle-animated clothing (std / sit / lay).
+// mco is an aura: flames and smoke wrapped round the body, drawn OVER the
+// avatar whichever way they face (behind it, the body hid all of it but a
+// shadow at the feet). The geometry already has a layer for exactly that -
+// the empty "top" body part, centred with a large radius, which makes it the
+// nearest layer at every rotation (its mirror, "bottom", is always the
+// farthest). Lying has no top, so it is given one of the same shape. The
+// aura's eight frames then animate on their own, like any idle-animated
+// clothing (std / sit / lay).
 //
 // The renderer reads these tables once, when its avatar structure
 // initialises inside Nitro init, so this runs before bootstrap. It extends
@@ -33,7 +34,7 @@ import { HabboAvatarAnimations, HabboAvatarGeometry, HabboAvatarPartSets } from 
 const TORSO_TYPES = [ { id: 'mc', radius: 0.08 }, { id: 'pt', radius: 0.085 } ];
 const LEFT_TYPES = [ { id: 'mcl', radius: 0.03 }, { id: 'ptl', radius: 0.035 } ];
 const RIGHT_TYPES = [ { id: 'mcr', radius: 0.03 }, { id: 'ptr', radius: 0.035 } ];
-const BOTTOM_TYPES = [ { id: 'mco', radius: 0.001 } ];
+const TOP_TYPES = [ { id: 'mco', radius: 0.01 } ];
 
 // swim is left alone: a swimmer is a head over water and draws nothing else.
 const GEOMETRY_TYPES = [ 'vertical', 'sitting', 'horizontal', 'swhorizontal' ];
@@ -104,9 +105,9 @@ const extend = (): void =>
         addItems(bodyPart('leftarm'), LEFT_TYPES);
         addItems(bodyPart('rightarm'), RIGHT_TYPES);
 
-        if(!bodyPart('bottom')) type.bodyParts.unshift({ id: 'bottom', x: 0, y: 0, z: 0, radius: 0.001, items: [] });
+        if(!bodyPart('top')) type.bodyParts.unshift({ id: 'top', x: 0, y: 0, z: 0, radius: 2, items: [] });
 
-        addItems(bodyPart('bottom'), BOTTOM_TYPES);
+        addItems(bodyPart('top'), TOP_TYPES);
     }
 
     const partSets: any = HabboAvatarPartSets.partSets;
