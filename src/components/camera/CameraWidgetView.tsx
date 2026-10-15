@@ -28,6 +28,9 @@ export const CameraWidgetView: FC<{}> = props =>
                 setMode(MODE_EDITOR);
                 return;
             case 'delete':
+                // pixelrp: a deleted picture is gone for good - free its render.
+                cameraRoll[selectedPictureIndex]?.texture?.destroy(true);
+
                 setCameraRoll(prevValue =>
                 {
                     const clone = [ ...prevValue ];

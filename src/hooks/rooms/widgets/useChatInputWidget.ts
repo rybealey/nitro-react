@@ -213,6 +213,9 @@ const useChatInputWidgetState = () =>
                     const image = new Image();
                     
                     image.src = TextureUtils.generateImageUrl(texture);
+
+                    // pixelrp: a whole-room render, done with once in the image.
+                    texture?.destroy(true);
                     
                     const newWindow = window.open('');
                     newWindow.document.write(image.outerHTML);

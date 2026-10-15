@@ -33,6 +33,9 @@ export const RoomThumbnailWidgetView: FC<{}> = props =>
     {
         GetRoomEngine().saveTextureAsScreenshot(texture, true);
 
+        // pixelrp: sent as an image above; the render itself is done with.
+        texture?.destroy(true);
+
         setIsVisible(false);
     }
 

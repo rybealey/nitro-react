@@ -20,6 +20,9 @@ export const CatalogRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props 
 
         const image = TextureUtils.generateImage(renderTexture);
 
+        // pixelrp: a fresh render for this one purchase - free it once read.
+        renderTexture.destroy(true);
+
         if(!image) return;
 
         const bounds = elementRef.current.getBoundingClientRect();

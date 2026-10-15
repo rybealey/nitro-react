@@ -51,6 +51,10 @@ export const LayoutFurniImageView: FC<LayoutFurniImageViewProps> = props =>
                 if(!image && texture)
                 {
                     image = TextureUtils.generateImage(texture);
+
+                    // pixelrp: a fresh render made for this request - free it
+                    // once its pixels are in the image.
+                    texture.destroy(true);
                 }
 
                 image.onload = () => setImageElement(image);

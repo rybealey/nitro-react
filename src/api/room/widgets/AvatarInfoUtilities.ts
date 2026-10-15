@@ -146,6 +146,10 @@ export class AvatarInfoUtilities
 
         if(!roomObjectImage.data || (roomObjectImage.data.width > 140) || (roomObjectImage.data.height > 200))
         {
+            // pixelrp: the too-big render is never read - free it here
+            // (getImage frees the one that is).
+            if(roomObjectImage.data) roomObjectImage.data.destroy(true);
+
             roomObjectImage = GetRoomEngine().getRoomObjectImage(roomSession.roomId, objectId, category, new Vector3d(180), 1, null);
         }
 

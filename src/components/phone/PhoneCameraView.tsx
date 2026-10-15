@@ -124,6 +124,10 @@ export const PhoneCameraView: FC<PhoneCameraViewProps> = props =>
         setShowFlash(true);
         window.setTimeout(() => setShowFlash(false), 180);
         setCapturedUrl(TextureUtils.generateImageUrl(texture));
+
+        // pixelrp: the snap is kept as the image url; the render it came from
+        // is viewfinder-sized and was kept in graphics memory for every photo.
+        texture.destroy(true);
     }
 
     const usePhoto = () =>

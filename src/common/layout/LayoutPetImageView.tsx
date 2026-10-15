@@ -70,21 +70,26 @@ export const LayoutPetImageView: FC<LayoutPetImageViewProps> = props =>
         const imageResult = GetRoomEngine().getRoomObjectPetImage(petTypeId, petPaletteId, petColor1, new Vector3d((direction * 45)), 64, {
             imageReady: (id, texture, image) =>
             {
-                if(isDisposed.current) return;
-
-                if(image)
+                if(!isDisposed.current)
                 {
-                    setPetUrl(image.src);
-                    setWidth(image.width);
-                    setHeight(image.height);
+                    if(image)
+                    {
+                        setPetUrl(image.src);
+                        setWidth(image.width);
+                        setHeight(image.height);
+                    }
+
+                    else if(texture)
+                    {
+                        setPetUrl(TextureUtils.generateImageUrl(texture));
+                        setWidth(texture.width);
+                        setHeight(texture.height);
+                    }
                 }
 
-                else if(texture)
-                {
-                    setPetUrl(TextureUtils.generateImageUrl(texture));
-                    setWidth(texture.width);
-                    setHeight(texture.height);
-                }
+                // pixelrp: a fresh render made for this request - free it once
+                // read, or every pet picture kept one in graphics memory.
+                if(texture) texture.destroy(true);
             },
             imageFailed: (id) =>
             {

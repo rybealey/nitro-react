@@ -48,7 +48,8 @@ export const CameraWidgetCaptureView: FC<CameraWidgetCaptureViewProps> = props =
         {
             simpleAlert(LocalizeText('camera.full.body'));
 
-            clone.pop();
+            // pixelrp: a picture off the roll is gone for good - free its render.
+            clone.pop()?.texture?.destroy(true);
         }
 
         PlaySound(SoundNames.CAMERA_SHUTTER);
