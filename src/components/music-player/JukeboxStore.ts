@@ -38,6 +38,12 @@ export interface JukeboxPrefs
     // exactly the thing sharing one slider makes impossible.
     songVolume: number;
     songMuted: boolean;
+    // pixelrp: Settings > General > Sound > Music - one level over ALL of
+    // PixelRP's music, the room's jukebox (the music player and the phone's
+    // Spotify app) and your own song alike. It scales each player's own
+    // slider rather than replacing it, so the two keep their own balance
+    // underneath (MusicLevel).
+    musicVolume: number;
 }
 
 const ROOM_PAUSED_KEY = 'pixelrp.jukebox.roompaused';
@@ -45,6 +51,7 @@ const VOLUME_KEY = 'pixelrp.jukebox.volume';
 const MUTED_KEY = 'pixelrp.jukebox.muted';
 const SONG_VOLUME_KEY = 'pixelrp.song.volume';
 const SONG_MUTED_KEY = 'pixelrp.song.muted';
+const MUSIC_VOLUME_KEY = 'pixelrp.music.volume';
 
 const read = (key: string): string =>
 {
@@ -64,7 +71,13 @@ let prefs: JukeboxPrefs = {
     volume: (() => { const stored = parseInt(read(VOLUME_KEY)); return isNaN(stored) ? 50 : Math.min(100, Math.max(0, stored)); })(),
     muted: (read(MUTED_KEY) === 'true'),
     songVolume: (() => { const stored = parseInt(read(SONG_VOLUME_KEY)); return isNaN(stored) ? 50 : Math.min(100, Math.max(0, stored)); })(),
-    songMuted: (read(SONG_MUTED_KEY) === 'true')
+    songMuted: (read(SONG_MUTED_KEY) === 'true'),
+    musicVolume: (() =>
+    {
+        const stored = parseInt(read(MUSIC_VOLUME_KEY));
+
+        return isNaN(stored) ? 100 : Math.min(100, Math.max(0, stored));
+    })()
 };
 
 const listeners = new Set<() => void>();
@@ -180,6 +193,16 @@ export const SetJukeboxVolume = (volume: number) =>
     write(VOLUME_KEY, volume.toString());
     notify();
 }
+
+export const SetMusicVolume = (musicVolume: number) =>
+{
+    prefs = { ...prefs, musicVolume };
+    write(MUSIC_VOLUME_KEY, musicVolume.toString());
+    notify();
+}
+
+// What a player actually plays at: its own slider, scaled by the Music level.
+export const MusicLevel = (volume: number, musicVolume: number = prefs.musicVolume): number => Math.round((volume * musicVolume) / 100);
 
 export const SetJukeboxMuted = (muted: boolean) =>
 {

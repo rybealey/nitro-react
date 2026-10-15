@@ -1,5 +1,5 @@
 import { FC, useEffect, useRef, useState } from 'react';
-import { GetJukeboxPrefs, useJukeboxPrefs } from './JukeboxStore';
+import { GetJukeboxPrefs, MusicLevel, useJukeboxPrefs } from './JukeboxStore';
 import { loadIframeApi } from './JukeboxYoutubePlayer';
 import { GetJamState, ReportJam, useJamState } from './JamStore';
 import { AdvanceSitchSong, GetSitchRepeat, GetSitchSong, SetSitchPlayback, SetSitchSongMeta, useSitchSong, useSitchSongPaused } from './SitchSongStore';
@@ -15,7 +15,9 @@ import { AdvanceSitchSong, GetSitchRepeat, GetSitchSong, SetSitchPlayback, SetSi
 export const SitchSongPlayer: FC<{}> = props =>
 {
     const song = useSitchSong();
-    const { songVolume, songMuted } = useJukeboxPrefs();
+    const { songVolume, songMuted, musicVolume } = useJukeboxPrefs();
+    // pixelrp: what the song plays at - its own slider under the Music level.
+    const level = MusicLevel(songVolume, musicVolume);
     const songPaused = useSitchSongPaused();
     // The HOST's pause is everyone's, so it stops this player too. Your own
     // pause is still your own: a guest pressing pause silences themselves and
@@ -49,7 +51,7 @@ export const SitchSongPlayer: FC<{}> = props =>
                         // sounds that can play at different moments, and turning
                         // the room down to hear this over it is exactly what one
                         // shared slider made impossible.
-                        playerRef.current.setVolume?.(GetJukeboxPrefs().songVolume);
+                        playerRef.current.setVolume?.(MusicLevel(GetJukeboxPrefs().songVolume));
                         // startSeconds is how a guest joins mid-song: the jam
                         // says where it is, and the player opens there.
                         playerRef.current.loadVideoById?.({ videoId: song.videoId, startSeconds: (song.startAtSec || 0) });
@@ -201,7 +203,7 @@ export const SitchSongPlayer: FC<{}> = props =>
         //
         // The room's player has always done these two the other way round, which
         // is exactly why only this one had the bug.
-        const silent = (songMuted || (songVolume === 0));
+        const silent = (songMuted || (level === 0));
 
         if(silent)
         {
@@ -212,8 +214,8 @@ export const SitchSongPlayer: FC<{}> = props =>
         }
 
         player.unMute?.();
-        player.setVolume?.(songVolume);
-    }, [ songVolume, songMuted, song?.videoId ]);
+        player.setVolume?.(level);
+    }, [ level, songMuted, song?.videoId ]);
 
     // A RESTART is the same song with its clock wound back, which nothing else
     // here would notice: the song's own screen keys off the video id, and that
@@ -294,7 +296,7 @@ export const SitchSongPlayer: FC<{}> = props =>
         const unmuteOnGesture = () =>
         {
             playerRef.current?.unMute?.();
-            playerRef.current?.setVolume?.(GetJukeboxPrefs().songVolume);
+            playerRef.current?.setVolume?.(MusicLevel(GetJukeboxPrefs().songVolume));
             // a blocked autoplay may have left the player paused
             playerRef.current?.playVideo?.();
             setNeedsUnmute(false);

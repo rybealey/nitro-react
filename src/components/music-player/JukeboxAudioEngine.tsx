@@ -3,7 +3,7 @@ import { FC, useEffect } from 'react';
 import { useMessageEvent, useRoom } from '../../hooks';
 import { JukeboxYoutubePlayer } from './JukeboxYoutubePlayer';
 import { useJamState } from './JamStore';
-import { SetJukeboxState, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
+import { MusicLevel, SetJukeboxState, useJukeboxPrefs, useJukeboxState } from './JukeboxStore';
 import { useSitchSong, useSitchSongPaused } from './SitchSongStore';
 
 // THE one place a room's jukebox is heard. Mounted once at the app root, so
@@ -18,7 +18,7 @@ export const JukeboxAudioEngine: FC<{}> = props =>
 {
     const { roomSession = null } = useRoom();
     const { present, current } = useJukeboxState();
-    const { roomPaused, volume, muted } = useJukeboxPrefs();
+    const { roomPaused, volume, muted, musicVolume } = useJukeboxPrefs();
     // A favorite song playing off somebody's Sitch profile takes the ears for
     // as long as it lasts. Spotify was already switched off by PlaySitchSong -
     // that is a real stop the player can see - but a jukebox belongs to the
@@ -87,5 +87,6 @@ export const JukeboxAudioEngine: FC<{}> = props =>
     // mute was about the furni. With per-room queues a jukebox plays out loud to
     // the room regardless, so two competing answers to "am I hearing this" was
     // one too many.
-    return <JukeboxYoutubePlayer current={ current } volume={ volume } muted={ muted } />;
+    // pixelrp: under the Music level (MusicLevel), like every PixelRP song.
+    return <JukeboxYoutubePlayer current={ current } volume={ MusicLevel(volume, musicVolume) } muted={ muted } />;
 }
