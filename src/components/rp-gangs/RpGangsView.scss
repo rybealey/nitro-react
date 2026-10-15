@@ -289,12 +289,6 @@ $gang-state-off: #b23b3b;
         gap: 6px;
     }
 
-    .gang-rank-none {
-        font-size: 10px;
-        color: rgba(0, 0, 0, 0.35);
-        padding: 0 2px 2px;
-    }
-
     // A member: portrait square on top, name underneath. Offline members are
     // greyed (the .is-offline rule below), which is the whole presence cue -
     // no dot. Clicking opens the player's RP profile.

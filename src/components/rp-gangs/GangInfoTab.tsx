@@ -12,7 +12,8 @@ import { OpenGangMemberProfile } from './GangPortrait';
 // each member a portrait card with their name under it (Gang Window canvas,
 // "member cards by rank"). Every role is a real one - there is no implicit
 // Leader or Member group - and who owns the gang is not shown here (only the
-// Manage tab tags the owner, for the owner and admins). Offline members are
+// Manage tab tags the owner, for the owner and admins). A role with nobody in
+// it shows just its name bar - no "No members" line. Offline members are
 // greyed out; there is no dot. Only the owner can disband; everyone else sees
 // Leave Gang.
 interface GangInfoTabProps
@@ -79,8 +80,6 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
                 { groups.map(({ role, members }) => (
                     <section key={ role.id } className="gang-rank" aria-label={ role.name }>
                         <div className="gang-rank-bar">{ role.name }</div>
-                        { (members.length === 0) &&
-                            <div className="gang-rank-none">No members</div> }
                         { (members.length > 0) &&
                             <div className="gang-rank-cards">
                                 { members.map(member => (
