@@ -1,0 +1,284 @@
+diff --git a/src/api/asset/AssetManager.ts b/src/api/asset/AssetManager.ts
+--- a/src/api/asset/AssetManager.ts
++++ b/src/api/asset/AssetManager.ts
+@@ -83,81 +83,107 @@
+         return await this.downloadAssets([url]);
+     }
+ 
++    // PixelRP: the same download, but it says how it went: the HTTP status -
++    // 200 when the file was loaded - or 0 when the request itself failed.
++    // downloadAssets reports a file the server turned away (the asset pass
++    // gate's 403, a 404) as a success, so a caller that needs to tell those
++    // apart asks here instead. downloadAssets behaves exactly as before.
++    public async downloadAssetStatus(url: string): Promise<number>
++    {
++        try
++        {
++            return await this.downloadOne(url);
++        }
++        catch (err)
++        {
++            NitroLogger.error(err);
++
++            return 0;
++        }
++    }
++
+     public async downloadAssets(urls: string[]): Promise<boolean>
+     {
+         if(!urls || !urls.length) return Promise.resolve(true);
+ 
+         try
+         {
+-            for(const url of urls)
+-            {
+-                const response = await fetch(url);
++            for(const url of urls) await this.downloadOne(url);
+ 
+-                if(response.status !== 200) continue;
++            return Promise.resolve(true);
++        }
++        catch (err)
++        {
++            NitroLogger.error(err);
+ 
+-                let contentType = 'application/octet-stream';
++            return Promise.resolve(false);
++        }
++    }
+ 
+-                if(response.headers.has('Content-Type'))
+-                {
+-                    contentType = response.headers.get('Content-Type');
+-                }
++    // PixelRP: one file of downloadAssets, moved out so downloadAssetStatus
++    // can share it. A file that is not a 200 is skipped, as the loop's
++    // continue did; the status is returned either way.
++    private async downloadOne(url: string): Promise<number>
++    {
++        const response = await fetch(url);
+ 
+-                switch(contentType)
+-                {
+-                    case 'application/octet-stream': {
+-                        const buffer = await response.arrayBuffer();
+-                        const nitroBundle = new NitroBundle(buffer);
+-
+-                        await this.processAsset(
+-                            nitroBundle.baseTexture,
+-                            nitroBundle.jsonFile as IAssetData
+-                        );
+-                        break;
+-                    }
+-                    case 'image/png':
+-                    case 'image/jpeg':
+-                    case 'image/gif': {
+-                        const buffer = await response.arrayBuffer();
+-                        const base64 = ArrayBufferToBase64(buffer);
+-                        const baseTexture = BaseTexture.from(
+-                            `data:${ contentType };base64,${ base64 }`
+-                        );
++        if(response.status !== 200) return response.status;
+ 
+-                        const createAsset = async () =>
+-                        {
+-                            const texture = new Texture(baseTexture);
+-                            this.setTexture(url, texture);
+-                        };
++        let contentType = 'application/octet-stream';
++
++        if(response.headers.has('Content-Type'))
++        {
++            contentType = response.headers.get('Content-Type');
++        }
+ 
+-                        if(baseTexture.valid)
++        switch(contentType)
++        {
++            case 'application/octet-stream': {
++                const buffer = await response.arrayBuffer();
++                const nitroBundle = new NitroBundle(buffer);
++
++                await this.processAsset(
++                    nitroBundle.baseTexture,
++                    nitroBundle.jsonFile as IAssetData
++                );
++                break;
++            }
++            case 'image/png':
++            case 'image/jpeg':
++            case 'image/gif': {
++                const buffer = await response.arrayBuffer();
++                const base64 = ArrayBufferToBase64(buffer);
++                const baseTexture = BaseTexture.from(
++                    `data:${ contentType };base64,${ base64 }`
++                );
++
++                const createAsset = async () =>
++                {
++                    const texture = new Texture(baseTexture);
++                    this.setTexture(url, texture);
++                };
++
++                if(baseTexture.valid)
++                {
++                    await createAsset();
++                }
++                else
++                {
++                    await new Promise<void>((resolve, reject) =>
++                    {
++                        baseTexture.once('update', async () =>
+                         {
+                             await createAsset();
+-                        }
+-                        else
+-                        {
+-                            await new Promise<void>((resolve, reject) =>
+-                            {
+-                                baseTexture.once('update', async () =>
+-                                {
+-                                    await createAsset();
+-
+-                                    return resolve();
+-                                });
+-                            });
+-                        }
+-                        break;
+-                    }
++
++                            return resolve();
++                        });
++                    });
+                 }
++                break;
+             }
+-
+-            return Promise.resolve(true);
+         }
+-        catch (err)
+-        {
+-            NitroLogger.error(err);
+ 
+-            return Promise.resolve(false);
+-        }
++        return response.status;
+     }
+ 
+     private async processAsset(baseTexture: BaseTexture, data: IAssetData): Promise<void>
+diff --git a/src/api/asset/IAssetManager.ts b/src/api/asset/IAssetManager.ts
+--- a/src/api/asset/IAssetManager.ts
++++ b/src/api/asset/IAssetManager.ts
+@@ -14,5 +14,6 @@
+     createCollection(data: IAssetData, spritesheet: Spritesheet): IGraphicAssetCollection;
+     downloadAssets(urls: string[]): Promise<boolean>;
+     downloadAsset(url: string): Promise<boolean>;
++    downloadAssetStatus(url: string): Promise<number>;
+     collections: Map<string, IGraphicAssetCollection>;
+ }
+diff --git a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+--- a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
++++ b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+@@ -10,7 +10,11 @@
+     private static LOADING: number = 1;
+     private static LOADED: number = 2;
+ 
++    // PixelRP: see downloadAsset.
++    private static REFUSED_RETRY_MS: number = 60000;
++
+     private _state: number;
++    private _refusedAt: number = 0;
+     private _libraryName: string;
+     private _revision: string;
+     private _downloadUrl: string;
+@@ -51,7 +55,7 @@
+ 
+         this._state = AvatarAssetDownloadLibrary.LOADING;
+ 
+-        const status = await this._assets.downloadAsset(this._downloadUrl);
++        const status = await this._assets.downloadAssetStatus(this._downloadUrl);
+ 
+         // PixelRP: a download that failed outright (the fetch threw - offline,
+         // or a redirect the browser refused) left this LOADING for good: it was
+@@ -67,6 +71,13 @@
+             return;
+         }
+ 
++        // PixelRP: a file the asset pass gate turned away (403 - the pass had
++        // run out) still loads as before, so avatars draw without the piece
++        // rather than as a placeholder; but it is marked to be asked for again
++        // a minute later (isLoaded), where it used to stay missing until the
++        // page was reloaded. A 404 is a missing file and is left as it was.
++        this._refusedAt = ((status === 403) ? Date.now() : 0);
++
+         this._state = AvatarAssetDownloadLibrary.LOADED;
+ 
+         this.dispatchEvent(new AvatarRenderLibraryEvent(AvatarRenderLibraryEvent.DOWNLOAD_COMPLETE, this));
+@@ -79,6 +90,14 @@
+ 
+     public get isLoaded(): boolean
+     {
++        // PixelRP: see downloadAsset - a refused file counts as loaded until a
++        // minute has passed, then the next avatar that needs it asks again.
++        if(this._refusedAt && ((Date.now() - this._refusedAt) >= AvatarAssetDownloadLibrary.REFUSED_RETRY_MS))
++        {
++            this._refusedAt = 0;
++            this._state = AvatarAssetDownloadLibrary.NOT_LOADED;
++        }
++
+         return (this._state === AvatarAssetDownloadLibrary.LOADED);
+     }
+ }
+diff --git a/src/nitro/avatar/EffectAssetDownloadLibrary.ts b/src/nitro/avatar/EffectAssetDownloadLibrary.ts
+--- a/src/nitro/avatar/EffectAssetDownloadLibrary.ts
++++ b/src/nitro/avatar/EffectAssetDownloadLibrary.ts
+@@ -10,7 +10,11 @@
+     private static LOADING: number = 1;
+     private static LOADED: number = 2;
+ 
++    // PixelRP: see downloadAsset.
++    private static REFUSED_RETRY_MS: number = 60000;
++
+     private _state: number;
++    private _refusedAt: number = 0;
+     private _libraryName: string;
+     private _revision: string;
+     private _downloadUrl: string;
+@@ -53,7 +57,7 @@
+ 
+         this._state = EffectAssetDownloadLibrary.LOADING;
+ 
+-        const status = await this._assets.downloadAsset(this._downloadUrl);
++        const status = await this._assets.downloadAssetStatus(this._downloadUrl);
+ 
+         // PixelRP: a download that failed outright (the fetch threw - offline,
+         // or a redirect the browser refused) left this LOADING for good: it was
+@@ -69,6 +73,13 @@
+             return;
+         }
+ 
++        // PixelRP: a file the asset pass gate turned away (403 - the pass had
++        // run out) still loads as before, so avatars draw without the piece
++        // rather than as a placeholder; but it is marked to be asked for again
++        // a minute later (isLoaded), where it used to stay missing until the
++        // page was reloaded. A 404 is a missing file and is left as it was.
++        this._refusedAt = ((status === 403) ? Date.now() : 0);
++
+         this._state = EffectAssetDownloadLibrary.LOADED;
+ 
+         const collection = this._assets.getCollection(this._libraryName);
+@@ -90,6 +101,14 @@
+ 
+     public get isLoaded(): boolean
+     {
++        // PixelRP: see downloadAsset - a refused file counts as loaded until a
++        // minute has passed, then the next avatar that needs it asks again.
++        if(this._refusedAt && ((Date.now() - this._refusedAt) >= EffectAssetDownloadLibrary.REFUSED_RETRY_MS))
++        {
++            this._refusedAt = 0;
++            this._state = EffectAssetDownloadLibrary.NOT_LOADED;
++        }
++
+         return (this._state === EffectAssetDownloadLibrary.LOADED);
+     }
+ }
