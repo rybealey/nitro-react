@@ -100,7 +100,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                 </Flex>
                 <Flex alignItems="center" gap={ 2 }>
                     <Flex gap={ 2 }>
-                        <HoverBubble text="Diamonds">
+                        <HoverBubble text="Diamonds Shop">
                             <div className="cursor-pointer navigation-item icon-diamonds" onClick={ event => CreateLinkEvent('diamonds-store/toggle') } />
                         </HoverBubble>
                         <HoverBubble text="Phone">
