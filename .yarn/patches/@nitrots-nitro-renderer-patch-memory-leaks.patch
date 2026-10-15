@@ -1,0 +1,657 @@
+diff --git a/src/api/asset/GraphicAssetCollection.ts b/src/api/asset/GraphicAssetCollection.ts
+--- a/src/api/asset/GraphicAssetCollection.ts
++++ b/src/api/asset/GraphicAssetCollection.ts
+@@ -312,6 +312,14 @@
+             texture.destroy(true);
+         }
+ 
++        // PixelRP: addAsset files a texture under its plain name, but the
++        // lookup above puts the library name in front, so a generated asset
++        // (mannequin figure, photo, guild badge) was never found here and its
++        // entry stayed in _textures for good. Dropping the entry is all this
++        // does: some of those textures are shared (a billboard's image), so
++        // freeing them is left to the visualization that made them.
++        this._textures.delete(existing.source);
++
+         existing.recycle();
+     }
+ 
+diff --git a/src/events/avatar/AvatarRenderEffectLibraryEvent.ts b/src/events/avatar/AvatarRenderEffectLibraryEvent.ts
+--- a/src/events/avatar/AvatarRenderEffectLibraryEvent.ts
++++ b/src/events/avatar/AvatarRenderEffectLibraryEvent.ts
+@@ -4,6 +4,7 @@
+ export class AvatarRenderEffectLibraryEvent extends NitroEvent
+ {
+     public static DOWNLOAD_COMPLETE: string = 'ARELE_DOWNLOAD_COMPLETE';
++    public static DOWNLOAD_FAILED: string = 'ARELE_DOWNLOAD_FAILED';
+ 
+     private _library: IEffectAssetDownloadLibrary;
+ 
+diff --git a/src/events/avatar/AvatarRenderLibraryEvent.ts b/src/events/avatar/AvatarRenderLibraryEvent.ts
+--- a/src/events/avatar/AvatarRenderLibraryEvent.ts
++++ b/src/events/avatar/AvatarRenderLibraryEvent.ts
+@@ -4,6 +4,7 @@
+ export class AvatarRenderLibraryEvent extends NitroEvent
+ {
+     public static DOWNLOAD_COMPLETE: string = 'ARLE_DOWNLOAD_COMPLETE';
++    public static DOWNLOAD_FAILED: string = 'ARLE_DOWNLOAD_FAILED';
+ 
+     private _library: IAvatarAssetDownloadLibrary;
+ 
+diff --git a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+--- a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
++++ b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+@@ -53,7 +53,19 @@
+ 
+         const status = await this._assets.downloadAsset(this._downloadUrl);
+ 
+-        if(!status) return;
++        // PixelRP: a download that failed outright (the fetch threw - offline,
++        // or a redirect the browser refused) left this LOADING for good: it was
++        // never tried again, and everything waiting on it waited forever. Now
++        // it goes back to not loaded, and the manager lets go of the waiters;
++        // the next avatar that needs it tries again.
++        if(!status)
++        {
++            this._state = AvatarAssetDownloadLibrary.NOT_LOADED;
++
++            this.dispatchEvent(new AvatarRenderLibraryEvent(AvatarRenderLibraryEvent.DOWNLOAD_FAILED, this));
++
++            return;
++        }
+ 
+         this._state = AvatarAssetDownloadLibrary.LOADED;
+ 
+diff --git a/src/nitro/avatar/AvatarAssetDownloadManager.ts b/src/nitro/avatar/AvatarAssetDownloadManager.ts
+--- a/src/nitro/avatar/AvatarAssetDownloadManager.ts
++++ b/src/nitro/avatar/AvatarAssetDownloadManager.ts
+@@ -42,6 +42,7 @@
+         this._isReady = false;
+ 
+         this.onLibraryLoaded = this.onLibraryLoaded.bind(this);
++        this.onLibraryFailed = this.onLibraryFailed.bind(this);
+         this.onAvatarRenderReady = this.onAvatarRenderReady.bind(this);
+ 
+         this.loadFigureMap();
+@@ -105,6 +106,7 @@
+             const downloadLibrary = new AvatarAssetDownloadLibrary(id, revision, this._assets, NitroConfiguration.getValue<string>('avatar.asset.url'));
+ 
+             downloadLibrary.addEventListener(AvatarRenderLibraryEvent.DOWNLOAD_COMPLETE, this.onLibraryLoaded);
++            downloadLibrary.addEventListener(AvatarRenderLibraryEvent.DOWNLOAD_FAILED, this.onLibraryFailed);
+ 
+             for(const part of library.parts)
+             {
+@@ -135,6 +137,27 @@
+         this._pendingContainers = [];
+     }
+ 
++    // PixelRP: a library whose download failed (see AvatarAssetDownloadLibrary)
++    // stayed in _currentDownloads, so downloadLibrary never queued it again,
++    // and every figure waiting on it kept its listeners - avatars, and all
++    // they hold - for good. Let both go; asking for the figure again retries.
++    private onLibraryFailed(event: AvatarRenderLibraryEvent): void
++    {
++        if(!event || !event.library) return;
++
++        const libraryName = event.library.libraryName;
++
++        for(const [figure, libraries] of this._incompleteFigures.entries())
++        {
++            if(!libraries.some(library => (library && (library.libraryName === libraryName)))) continue;
++
++            this._incompleteFigures.delete(figure);
++            this._figureListeners.delete(figure);
++        }
++
++        this._currentDownloads = this._currentDownloads.filter(download => (download && (download.libraryName !== libraryName)));
++    }
++
+     private onLibraryLoaded(event: AvatarRenderLibraryEvent): void
+     {
+         if(!event || !event.library) return;
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -112,9 +112,21 @@
+         this._avatarSpriteData = null;
+         this._actions = null;
+ 
++        // PixelRP: the avatar's picture is _reusableTexture (_image is the
++        // same texture, or null between redraws). destroy() without true kept
++        // its graphics memory, so every avatar that left, changed outfit or
++        // swapped an effect left one behind. destroy() already invalidated the
++        // texture, so true adds no new risk - it only frees the memory too.
++        if(this._reusableTexture)
++        {
++            this._reusableTexture.destroy(true);
++
++            this._reusableTexture = null;
++        }
++
+         if(this._image)
+         {
+-            this._image.destroy();
++            this._image.destroy(true);
+ 
+             this._image = null;
+         }
+@@ -127,7 +139,8 @@
+ 
+         if(this._fullImageCache)
+         {
+-            for(const k of this._fullImageCache.getValues()) (k && k.destroy());
++            // PixelRP: true, as cacheFullImage does when it drops one.
++            for(const k of this._fullImageCache.getValues()) (k && k.destroy(true));
+ 
+             this._fullImageCache = null;
+         }
+diff --git a/src/nitro/avatar/EffectAssetDownloadLibrary.ts b/src/nitro/avatar/EffectAssetDownloadLibrary.ts
+--- a/src/nitro/avatar/EffectAssetDownloadLibrary.ts
++++ b/src/nitro/avatar/EffectAssetDownloadLibrary.ts
+@@ -55,7 +55,19 @@
+ 
+         const status = await this._assets.downloadAsset(this._downloadUrl);
+ 
+-        if(!status) return;
++        // PixelRP: a download that failed outright (the fetch threw - offline,
++        // or a redirect the browser refused) left this LOADING for good: it was
++        // never tried again, and everything waiting on it waited forever. Now
++        // it goes back to not loaded, and the manager lets go of the waiters;
++        // the next avatar that needs it tries again.
++        if(!status)
++        {
++            this._state = EffectAssetDownloadLibrary.NOT_LOADED;
++
++            this.dispatchEvent(new AvatarRenderEffectLibraryEvent(AvatarRenderEffectLibraryEvent.DOWNLOAD_FAILED, this));
++
++            return;
++        }
+ 
+         this._state = EffectAssetDownloadLibrary.LOADED;
+ 
+diff --git a/src/nitro/avatar/EffectAssetDownloadManager.ts b/src/nitro/avatar/EffectAssetDownloadManager.ts
+--- a/src/nitro/avatar/EffectAssetDownloadManager.ts
++++ b/src/nitro/avatar/EffectAssetDownloadManager.ts
+@@ -42,6 +42,7 @@
+         this._isReady = false;
+ 
+         this.onLibraryLoaded = this.onLibraryLoaded.bind(this);
++        this.onLibraryFailed = this.onLibraryFailed.bind(this);
+         this.onAvatarRenderReady = this.onAvatarRenderReady.bind(this);
+ 
+         this.loadEffectMap();
+@@ -106,6 +107,7 @@
+             const downloadLibrary = new EffectAssetDownloadLibrary(lib, revision, this._assets, NitroConfiguration.getValue<string>('avatar.asset.effect.url'));
+ 
+             downloadLibrary.addEventListener(AvatarRenderEffectLibraryEvent.DOWNLOAD_COMPLETE, this.onLibraryLoaded);
++            downloadLibrary.addEventListener(AvatarRenderEffectLibraryEvent.DOWNLOAD_FAILED, this.onLibraryFailed);
+ 
+             let existing = this._effectMap.get(id);
+ 
+@@ -168,6 +170,25 @@
+         this._initDownloadBuffer = [];
+     }
+ 
++    // PixelRP: see AvatarAssetDownloadManager.onLibraryFailed - the same for
++    // effects (cuffs, stun birds): let the waiters and the download go.
++    private onLibraryFailed(event: AvatarRenderEffectLibraryEvent): void
++    {
++        if(!event || !event.library) return;
++
++        const libraryName = event.library.libraryName;
++
++        for(const [id, libraries] of this._incompleteEffects.entries())
++        {
++            if(!libraries.some(library => (library && (library.libraryName === libraryName)))) continue;
++
++            this._incompleteEffects.delete(id);
++            this._effectListeners.delete(id);
++        }
++
++        this._currentDownloads = this._currentDownloads.filter(download => (download && (download.libraryName !== libraryName)));
++    }
++
+     private onLibraryLoaded(event: AvatarRenderEffectLibraryEvent): void
+     {
+         if(!event || !event.library) return;
+diff --git a/src/nitro/room/ImageResult.ts b/src/nitro/room/ImageResult.ts
+--- a/src/nitro/room/ImageResult.ts
++++ b/src/nitro/room/ImageResult.ts
+@@ -14,6 +14,15 @@
+ 
+         if(!this.data) return null;
+ 
+-        return TextureUtils.generateImage(this.data);
++        // PixelRP: data is a one-off render nobody else holds - the room
++        // engine makes a fresh one for every request. Once its pixels are
++        // copied into the image it is freed, or every furni click, pet
++        // picture and pickup icon kept one in graphics memory for good.
++        this.image = TextureUtils.generateImage(this.data);
++
++        this.data.destroy(true);
++        this.data = null;
++
++        return this.image;
+     }
+ }
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -1759,6 +1759,10 @@
+                         {
+                             const image = TextureUtils.generateImage(icon);
+ 
++                            // PixelRP: a fresh render for this one pickup - free it
++                            // once its pixels are in the image.
++                            icon.destroy(true);
++
+                             if(this.events)
+                             {
+                                 const event = new NitroToolbarAnimateIconEvent(image, screenLocation.x, screenLocation.y);
+@@ -1804,6 +1808,10 @@
+                     {
+                         const image = TextureUtils.generateImage(icon);
+ 
++                        // PixelRP: a fresh render for this one pickup - free it
++                        // once its pixels are in the image.
++                        icon.destroy(true);
++
+                         if(this.events)
+                         {
+                             const event = new NitroToolbarAnimateIconEvent(image, screenLocation.x, screenLocation.y);
+@@ -2784,7 +2792,14 @@
+ 
+         const canvas = this.getActiveRoomInstanceRenderingCanvas();
+ 
+-        if(!canvas) return;
++        // PixelRP: the picture is a fresh render; one that never makes it
++        // onto the overlay is freed here, the rest by removeOverlayIconSprite.
++        if(!canvas)
++        {
++            imageResult.data.destroy(true);
++
++            return;
++        }
+ 
+         const overlay = this.getRenderingCanvasOverlay(canvas);
+ 
+@@ -2797,6 +2812,10 @@
+             _local_15.x = (this._activeRoomActiveCanvasMouseX - (imageResult.data.width / 2));
+             _local_15.y = (this._activeRoomActiveCanvasMouseY - (imageResult.data.height / 2));
+         }
++        else
++        {
++            imageResult.data.destroy(true);
++        }
+     }
+ 
+     public getRoomObjectImage(roomId: number, objectId: number, category: number, direction: IVector3D, scale: number, listener: IGetImageListener, bgColor: number = 0): IImageResult
+@@ -3288,6 +3307,11 @@
+                         firstChild.destroy();
+                     }
+ 
++                    // PixelRP: the icon sprite itself was only taken off the
++                    // overlay, keeping the furni picture it was made with - a
++                    // fresh render for every furni move. It is off screen now.
++                    child.destroy({ texture: true, baseTexture: true });
++
+                     return true;
+                 }
+             }
+diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
+--- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
++++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
+@@ -154,6 +154,25 @@
+ 
+         if(this._avatarImage) this._avatarImage.dispose();
+ 
++        // PixelRP: the images kept for the other zoom level and recent effects
++        // (cuffs, stun birds) were only let go, never disposed, so each kept
++        // its picture in graphics memory after the avatar left. Disposing one
++        // twice does nothing, so _avatarImage being among them is fine.
++        if(this._cachedAvatars)
++        {
++            for(const avatar of this._cachedAvatars.getValues()) avatar && avatar.dispose();
++
++            this._cachedAvatars.reset();
++        }
++
++        if(this._cachedAvatarEffects)
++        {
++            for(const avatar of this._cachedAvatarEffects.getValues()) avatar && avatar.dispose();
++
++            this._cachedAvatarEffects.reset();
++        }
++
++        this._avatarImage = null;
+         this._shadow = null;
+         this._disposed = true;
+     }
+diff --git a/src/nitro/room/object/visualization/furniture/FurnitureDynamicThumbnailVisualization.ts b/src/nitro/room/object/visualization/furniture/FurnitureDynamicThumbnailVisualization.ts
+--- a/src/nitro/room/object/visualization/furniture/FurnitureDynamicThumbnailVisualization.ts
++++ b/src/nitro/room/object/visualization/furniture/FurnitureDynamicThumbnailVisualization.ts
+@@ -5,15 +5,39 @@
+ export class FurnitureDynamicThumbnailVisualization extends IsometricImageFurniVisualization
+ {
+     private _cachedUrl: string;
++    private _loadedTexture: Texture;
+ 
+     constructor()
+     {
+         super();
+ 
+         this._cachedUrl = null;
++        this._loadedTexture = null;
+         this._hasOutline = true;
+     }
+ 
++    public dispose(): void
++    {
++        // PixelRP: see setLoadedTexture. Clearing the url also stops a photo
++        // still downloading from landing on a furni that has gone.
++        this._cachedUrl = null;
++
++        this.setLoadedTexture(null);
++
++        super.dispose();
++    }
++
++    // PixelRP: the downloaded photo is this furni's own texture, only ever
++    // drawn into the thumbnail, and Texture.from also files it in Pixi's
++    // global cache under the image's id - so every photo loaded stayed there
++    // for good. destroy(true) frees it and takes it out of that cache.
++    private setLoadedTexture(texture: Texture): void
++    {
++        if(this._loadedTexture && (this._loadedTexture !== texture)) this._loadedTexture.destroy(true);
++
++        this._loadedTexture = texture;
++    }
++
+     protected updateModel(scale: number): boolean
+     {
+         if(this.object)
+@@ -33,16 +57,20 @@
+ 
+                     image.onload = () =>
+                     {
++                        if(this._cachedUrl !== thumbnailUrl) return;
++
+                         const texture = Texture.from(image);
+ 
+                         texture.baseTexture.scaleMode = SCALE_MODES.LINEAR;
+ 
+                         this.setThumbnailImages(texture);
++                        this.setLoadedTexture(texture);
+                     };
+                 }
+                 else
+                 {
+                     this.setThumbnailImages(null);
++                    this.setLoadedTexture(null);
+                 }
+             }
+         }
+diff --git a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
+--- a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
++++ b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
+@@ -1,4 +1,5 @@
+ import { AvatarSetType, IAvatarImageListener, IObjectVisualizationData, RoomObjectVariable } from '../../../../../api';
++import { TextureUtils } from '../../../../../pixi-proxy';
+ import { FurnitureMannequinVisualizationData } from './FurnitureMannequinVisualizationData';
+ import { FurnitureVisualization } from './FurnitureVisualization';
+ 
+@@ -44,12 +45,7 @@
+ 
+         this._disposed = true;
+ 
+-        if(this._dynamicAssetName && this.asset)
+-        {
+-            this.asset.disposeAsset(this._dynamicAssetName);
+-
+-            this._dynamicAssetName = null;
+-        }
++        this.disposeDynamicAsset();
+ 
+         super.dispose();
+     }
+@@ -120,7 +116,7 @@
+             {
+                 avatarImage.setDirection(AvatarSetType.FULL, this.direction);
+ 
+-                if(this._dynamicAssetName) this.asset.disposeAsset(this._dynamicAssetName);
++                this.disposeDynamicAsset();
+ 
+                 this.asset.addAsset(this.getAvatarAssetName(), avatarImage.getImage(AvatarSetType.FULL, false, 1, false), true);
+ 
+@@ -137,6 +133,23 @@
+         return (this._figure && (this.getAsset(this.getAvatarAssetName()) !== null));
+     }
+ 
++    // pixelrp: the figure picture is a fresh render for this one mannequin,
++    // and disposing the asset only forgot it - every room visit, rotate, zoom
++    // or outfit save left one in graphics memory. Released rather than
++    // destroyed: the sprite still shows it until its next update.
++    private disposeDynamicAsset(): void
++    {
++        if(!this._dynamicAssetName || !this.asset) return;
++
++        const texture = this.asset.getAsset(this._dynamicAssetName)?.texture;
++
++        this.asset.disposeAsset(this._dynamicAssetName);
++
++        TextureUtils.releaseTexture(texture);
++
++        this._dynamicAssetName = null;
++    }
++
+     private getAvatarAssetName(): string
+     {
+         return (((((('mannequin_' + this._figure) + '_') + this._mannequinScale) + '_') + this.direction) + '_') + this.object.id;
+diff --git a/src/nitro/room/object/visualization/furniture/IsometricImageFurniVisualization.ts b/src/nitro/room/object/visualization/furniture/IsometricImageFurniVisualization.ts
+--- a/src/nitro/room/object/visualization/furniture/IsometricImageFurniVisualization.ts
++++ b/src/nitro/room/object/visualization/furniture/IsometricImageFurniVisualization.ts
+@@ -25,6 +25,15 @@
+         this._hasOutline = false;
+     }
+ 
++    public dispose(): void
++    {
++        // PixelRP: the thumbnail asset is this furni's own render (the name
++        // carries its object id) and was left behind when the furni went.
++        if(this.asset && this._thumbnailAssetNameNormal) this.disposeThumbnailAsset(this._thumbnailAssetNameNormal);
++
++        super.dispose();
++    }
++
+     public get hasThumbnailImage(): boolean
+     {
+         return !(this._thumbnailImageNormal == null);
+@@ -57,7 +66,7 @@
+         }
+         else
+         {
+-            this.asset.disposeAsset(this.getThumbnailAssetName(64));
++            this.disposeThumbnailAsset(this.getThumbnailAssetName(64));
+         }
+ 
+         this._thumbnailChanged = false;
+@@ -80,7 +89,7 @@
+                     const _local_6 = this.generateTransformedThumbnail(k, asset);
+                     const _local_7 = this.getThumbnailAssetName(scale);
+ 
+-                    this.asset.disposeAsset(_local_7);
++                    this.disposeThumbnailAsset(_local_7);
+                     this.asset.addAsset(_local_7, _local_6, true, asset.offsetX, asset.offsetY, false, false);
+                 }
+ 
+@@ -91,8 +100,23 @@
+         }
+     }
+ 
++    // PixelRP: disposing the asset only forgot the thumbnail - a fresh render
++    // per photo or badge furni, per room visit and turn - so its graphics
++    // memory was never given back. Released rather than destroyed: the
++    // sprite still shows it until its next update.
++    private disposeThumbnailAsset(name: string): void
++    {
++        const texture = this.asset.getAsset(name)?.texture;
++
++        this.asset.disposeAsset(name);
++
++        TextureUtils.releaseTexture(texture);
++    }
++
+     protected generateTransformedThumbnail(texture: Texture<Resource>, asset: IGraphicAsset): Texture<Resource>
+     {
++        let outlined: Texture<Resource> = null;
++
+         if(this._hasOutline)
+         {
+             const container = new NitroSprite();
+@@ -110,7 +134,7 @@
+ 
+             container.addChild(background, sprite);
+ 
+-            texture = TextureUtils.generateTexture(container);
++            texture = outlined = TextureUtils.generateTexture(container);
+         }
+ 
+         const scale = 1.1;
+@@ -149,7 +173,12 @@
+ 
+         sprite.transform.setFromMatrix(matrix);
+ 
+-        return TextureUtils.generateTexture(sprite);
++        const transformed = TextureUtils.generateTexture(sprite);
++
++        // PixelRP: the outlined step is only drawn into the result - free it.
++        if(outlined) outlined.destroy(true);
++
++        return transformed;
+     }
+ 
+     protected getSpriteAssetName(scale: number, layerId: number): string
+diff --git a/src/nitro/room/object/visualization/room/RoomPlane.ts b/src/nitro/room/object/visualization/room/RoomPlane.ts
+--- a/src/nitro/room/object/visualization/room/RoomPlane.ts
++++ b/src/nitro/room/object/visualization/room/RoomPlane.ts
+@@ -530,7 +530,9 @@
+                 {
+                     if((this._width !== this._bitmapData.width) || (this._height !== this._bitmapData.height))
+                     {
+-                        this._bitmapData.destroy();
++                        // PixelRP: destroy() kept the graphics memory - every zoom
++                        // left the old-size picture behind. This frees it.
++                        this._textureCache.disposeRenderTexture(this._bitmapData);
+ 
+                         this._bitmapData = null;
+ 
+@@ -542,7 +544,7 @@
+                     {
+                         if((this._width < 1) || (this._height < 1))
+                         {
+-                            this._bitmapData.destroy();
++                            this._textureCache.disposeRenderTexture(this._bitmapData);
+ 
+                             this._bitmapData = null;
+ 
+diff --git a/src/pixi-proxy/RoomTextureUtils.ts b/src/pixi-proxy/RoomTextureUtils.ts
+--- a/src/pixi-proxy/RoomTextureUtils.ts
++++ b/src/pixi-proxy/RoomTextureUtils.ts
+@@ -4,6 +4,7 @@
+ import { Matrix, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { PixiApplicationProxy } from './PixiApplicationProxy';
++import { TextureUtils } from './TextureUtils';
+ 
+ export class PlaneTextureCache
+ {
+@@ -16,10 +17,33 @@
+     {
+         this.RENDER_TEXTURE_POOL.forEach(renderTexture => renderTexture?.destroy(true));
+ 
++        // PixelRP: the floor and wall pictures themselves are made without a
++        // plane id, so they are only in this list - and emptying it freed
++        // none of them. This runs when the room goes, so every room visited
++        // kept its floor and walls in graphics memory for good. (Pooled ones
++        // are in the list too; destroying one twice does nothing.)
++        this.RENDER_TEXTURE_CACHE.forEach(renderTexture => renderTexture?.destroy(true));
++
+         this.RENDER_TEXTURE_POOL.clear();
+         this.RENDER_TEXTURE_CACHE = [];
+     }
+ 
++    // PixelRP: frees a picture made here that its plane no longer uses, and
++    // takes it off the list so the list does not grow with every zoom.
++    // release: the picture may still be on screen until the next update, so
++    // only its graphics memory goes (see TextureUtils.releaseTexture).
++    public disposeRenderTexture(renderTexture: RenderTexture, release: boolean = false): void
++    {
++        if(!renderTexture) return;
++
++        const index = this.RENDER_TEXTURE_CACHE.indexOf(renderTexture);
++
++        if(index >= 0) this.RENDER_TEXTURE_CACHE.splice(index, 1);
++
++        if(release) TextureUtils.releaseTexture(renderTexture);
++        else renderTexture.destroy(true);
++    }
++
+     public clearRenderTexture(renderTexture: RenderTexture): RenderTexture
+     {
+         if(!renderTexture) return null;
+diff --git a/src/pixi-proxy/TextureUtils.ts b/src/pixi-proxy/TextureUtils.ts
+--- a/src/pixi-proxy/TextureUtils.ts
++++ b/src/pixi-proxy/TextureUtils.ts
+@@ -116,6 +116,20 @@
+         return this.getExtractor().pixels(displayObject);
+     }
+ 
++    // PixelRP: gives back a texture's graphics memory but leaves the texture
++    // itself working. Pixi never frees a render texture on its own, so one
++    // nobody destroys holds its memory until the tab closes. This is for a
++    // picture that may still be on screen for a frame - a sprite only moves
++    // to the replacement on its next update. destroy() there would leave the
++    // sprite holding a texture with no frame, which throws when drawn; after
++    // this it is only drawn blank. Once nothing points at it, it is collected.
++    public static releaseTexture(texture: Texture<Resource>): void
++    {
++        if(!texture || !texture.baseTexture) return;
++
++        texture.baseTexture.dispose();
++    }
++
+     public static getRenderer(): Renderer | AbstractRenderer
+     {
+         return PixiApplicationProxy.instance.renderer;
+diff --git a/src/room/renderer/PixelRPMovementV2.ts b/src/room/renderer/PixelRPMovementV2.ts
+--- a/src/room/renderer/PixelRPMovementV2.ts
++++ b/src/room/renderer/PixelRPMovementV2.ts
+@@ -723,6 +723,11 @@
+     public clearUnits(): void
+     {
+         this._units.clear();
++
++        // The anomaly trace is keyed by the same per-room virtual ids, and
++        // every room entry hands out a new one - so it grew with every avatar
++        // seen all session. Its counters are kept.
++        PixelRPMovementAnomaly.instance.forgetUnits();
+     }
+ 
+     /**
+@@ -1203,10 +1208,15 @@
+ 
+     public reset(): void
+     {
++        this.forgetUnits();
++        this.stats = { jumps: 0, hitches: 0, worstJumpTiles: 0, worstHitchTiles: 0, logged: 0, suppressed: 0 };
++    }
++
++    public forgetUnits(): void
++    {
+         this._trace.clear();
+         this._render.clear();
+         this._loggedAt.clear();
+-        this.stats = { jumps: 0, hitches: 0, worstJumpTiles: 0, worstHitchTiles: 0, logged: 0, suppressed: 0 };
+     }
+ 
+     private note(virtualId: number, entry: any): void
