@@ -14,6 +14,10 @@ import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../api/rp-rights/RpRoomR
 // the emulator's SendWhisper - a message from the hotel must never wear the
 // player's own chat bubble, and must not vary by outcome.
 const SYSTEM_WHISPER_STYLE: number = 1;
+// pixelrp: locking a target whispers in green (201, RpChatBubbleStyles.scss),
+// unlocking in pink (stock bubble 3), so the two read apart at a glance.
+const TARGET_LOCKED_STYLE: number = 201;
+const TARGET_UNLOCKED_STYLE: number = 3;
 
 const useChatInputWidgetState = () =>
 {
@@ -155,15 +159,16 @@ const useChatInputWidgetState = () =>
                         const targetName = TargetState.lockByName?.(requestedName) ?? null;
                         const status = targetName ? `You have locked target on ${ targetName }.` : `${ requestedName } is not online.`;
 
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, (targetName ? TARGET_LOCKED_STYLE : SYSTEM_WHISPER_STYLE)));
 
                         return null;
                     }
 
                     const lockState = TargetState.toggleLock?.() ?? null;
                     const status = (lockState === null) ? 'No target selected.' : `You have ${ lockState ? 'locked' : 'unlocked' } target on ${ TargetState.name }.`;
+                    const style = (lockState === null) ? SYSTEM_WHISPER_STYLE : (lockState ? TARGET_LOCKED_STYLE : TARGET_UNLOCKED_STYLE);
 
-                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
+                    GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, style));
 
                     return null;
                 }

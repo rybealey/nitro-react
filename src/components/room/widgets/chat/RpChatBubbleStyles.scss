@@ -23,3 +23,10 @@
 // #cdffc9 body and #357b2e head.
 .bubble-container .chat-bubble.bubble-200{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_200_background-01.png')}
 .bubble-container .chat-bubble.bubble-200 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_200_pointer-02.png')}
+
+// bubble 201 - target locked (:lt). The gang alert's green, drawn from 200's
+// own artwork, but its own id: everything in 200 is filed under Chat History's
+// Gang Chat tab (useChatWidget), and a lock line is not gang chat. Its unlock
+// partner is stock bubble 3, the pink one (useChatInputWidget).
+.bubble-container .chat-bubble.bubble-201{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_200_background-01.png')}
+.bubble-container .chat-bubble.bubble-201 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_200_pointer-02.png')}
