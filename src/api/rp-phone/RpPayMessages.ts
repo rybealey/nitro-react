@@ -1,5 +1,6 @@
 import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
+import { GetSessionDataManager } from '../nitro/session/GetSessionDataManager';
 
 // PixelRP Pixel Cash - sending money to another player from inside a
 // conversation. Client-source packets, registered at runtime.
@@ -281,12 +282,16 @@ const onReceipt = (event: RpPayReceiptEvent) =>
     if(!parser) return;
 
     const record = parser.record;
-    // Whichever of the two is not us is the conversation it belongs to. We do
-    // not know our own id here, so file it under both and let the thread read
-    // the one it is showing - a payment always has exactly one of these two as
-    // the other party, and the entry under our own id is never read.
+    // Whichever of the two is not us is the conversation it belongs to - a
+    // payment always has exactly one of these two as the other party. The
+    // copy filed under our own id was never read and never cleared, so it is
+    // no longer made.
+    const ownId = (GetSessionDataManager()?.userId ?? -1);
+
     for(const key of [ record.senderId, record.recipientId ])
     {
+        if(key === ownId) continue;
+
         const existing = (records.get(key) ?? []);
 
         if(existing.some(entry => (entry.id === record.id))) continue;
