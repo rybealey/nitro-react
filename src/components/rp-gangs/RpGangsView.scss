@@ -264,6 +264,11 @@ $gang-state-off: #b23b3b;
         background: $white;
         border: 1px solid rgba(0, 0, 0, 0.1);
         border-radius: 6px;
+
+        // pixelrp: an empty rank is only its name bar, so its tile keeps its
+        // own height rather than stretching to the tallest rank in its row -
+        // the white field closes around the bar.
+        &.is-empty { align-self: flex-start; }
     }
 
     .gang-rank-bar {

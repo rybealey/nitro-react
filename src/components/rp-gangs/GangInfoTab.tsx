@@ -78,7 +78,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
             </div>
             <div className="gang-roster">
                 { groups.map(({ role, members }) => (
-                    <section key={ role.id } className="gang-rank" aria-label={ role.name }>
+                    <section key={ role.id } className={ `gang-rank${ (members.length === 0) ? ' is-empty' : '' }` } aria-label={ role.name }>
                         <div className="gang-rank-bar">{ role.name }</div>
                         { (members.length > 0) &&
                             <div className="gang-rank-cards">
