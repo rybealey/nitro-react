@@ -1,13 +1,15 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
-import { FC, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { AddEventLinkTracker, GetAvatarRenderManager, GetPingVolume, GetSessionDataManager, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
 import { SetMusicVolume, useJukeboxPrefs } from '../music-player/JukeboxStore';
 import { GetSelectableChatStyleIds } from './ChatStyles';
-import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { ApplyUiChrome, CHROME_OPACITY_STEPS, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HeaderColor, HeaderKeyForColor, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { ColourPicker } from './ColourPicker';
+import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
@@ -46,10 +48,21 @@ const PERSONALIZATION_PAGES: string[] = [ 'Name Color', 'Icon' ];
 // ...and the Chat group below it: the whole bubble, not just the name.
 const CHAT_PAGES: string[] = [ 'Chat Bubble' ];
 
-// Interface tab sub-pages (left rail).
-const INTERFACE_PAGES: string[] = [ 'Windows', 'Components' ];
+// Interface tab sub-pages (left rail). Colours (Settings canvas, boards N/O)
+// replaced the Windows and Components pages' fixed swatches.
+const INTERFACE_PAGES: string[] = [ 'Colours' ];
 // Environment pages, same rail under their own eyebrow: the sky behind rooms.
 const ENVIRONMENT_PAGES: string[] = [ 'Weather' ];
+
+// UI > Colours > HUD > Style: the label on each choice, in HudPrefsStore's order.
+const HUD_STYLE_LABELS: Record<HudStyle, string> = { classic: 'Classic', light: 'Light' };
+
+// UI > Colours: the account's colours first (saved on the server), then the
+// HUD's (this device). Each row is a reset button and a chip that opens the
+// colour picker.
+type ColourRowKey = 'headers' | 'interface' | HudBar;
+
+const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.
 const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
@@ -131,6 +144,12 @@ export const RpSettingsView: FC<{}> = props =>
     const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
     const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
+    // UI > Colours: the row whose picker is open, or null.
+    const [ openColour, setOpenColour ] = useState<ColourRowKey>(null);
+    const { hudStyle, hudBars } = useHudPrefs();
+    // A drag in the picker changes the colour on every move; the server only
+    // hears the colour it settles on.
+    const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
     const { weatherOn: environmentWeatherOn } = useEnvironmentPrefs();
     const weatherSnapshot = useWeatherSnapshot();
     const { clock24: unitsClock24 } = useUnitsPrefs();
@@ -961,6 +980,10 @@ export const RpSettingsView: FC<{}> = props =>
 
     const saveSettings = (color: string, opacity: number, header: string, uname: string, icon: string, iconColor: string) =>
     {
+        // a save now replaces any picker colour still waiting to go
+        clearTimeout(uiSaveTimer.current);
+        uiSaveTimer.current = null;
+
         // '' resets the server row's color/header/username/icon to default
         SendMessageComposer(new RpSaveUiSettingsComposer(
             (color === DEFAULT_CHROME_COLOR) ? '' : color,
@@ -992,6 +1015,61 @@ export const RpSettingsView: FC<{}> = props =>
         setHeaderKey(key);
         ApplyUiChrome(chromeColor, chromeOpacity, key);
         saveSettings(chromeColor, chromeOpacity, key, usernameColor, usernameIcon, usernameIconColor);
+    }
+
+    // UI > Colours: the picker's live colours. Applied at once; saved once
+    // the picker has been still for a moment.
+    const queueUiSave = (color: string, header: string) =>
+    {
+        clearTimeout(uiSaveTimer.current);
+        uiSaveTimer.current = setTimeout(() => saveSettings(color, chromeOpacity, header, usernameColor, usernameIcon, usernameIconColor), 500);
+    }
+
+    const pickHeaderColour = (colour: string) =>
+    {
+        const key = HeaderKeyForColor(colour);
+
+        setHeaderKey(key);
+        ApplyUiChrome(chromeColor, chromeOpacity, key);
+        queueUiSave(chromeColor, key);
+    }
+
+    const pickInterfaceColour = (colour: string) =>
+    {
+        setChromeColor(colour);
+        ApplyUiChrome(colour, chromeOpacity, headerKey);
+        queueUiSave(colour, headerKey);
+    }
+
+    const closeColourPicker = useCallback(() => setOpenColour(null), []);
+
+    const colourRows: Record<ColourRowKey, { colour: string, isDefault: boolean, pick: (colour: string) => void, reset: () => void }> = {
+        headers: { colour: HeaderColor(headerKey), isDefault: (headerKey === DEFAULT_HEADER_KEY), pick: pickHeaderColour, reset: () => selectHeader(DEFAULT_HEADER_KEY) },
+        interface: { colour: chromeColor.toLowerCase(), isDefault: (chromeColor.toLowerCase() === DEFAULT_CHROME_COLOR), pick: pickInterfaceColour, reset: () => selectChrome(DEFAULT_CHROME_COLOR) },
+        hp: { colour: hudBars.hp, isDefault: (hudBars.hp === HUD_BAR_DEFAULTS.hp), pick: colour => SetHudBarColour('hp', colour), reset: () => SetHudBarColour('hp', HUD_BAR_DEFAULTS.hp) },
+        energy: { colour: hudBars.energy, isDefault: (hudBars.energy === HUD_BAR_DEFAULTS.energy), pick: colour => SetHudBarColour('energy', colour), reset: () => SetHudBarColour('energy', HUD_BAR_DEFAULTS.energy) },
+        aggro: { colour: hudBars.aggro, isDefault: (hudBars.aggro === HUD_BAR_DEFAULTS.aggro), pick: colour => SetHudBarColour('aggro', colour), reset: () => SetHudBarColour('aggro', HUD_BAR_DEFAULTS.aggro) }
+    };
+
+    const renderColourRow = (key: ColourRowKey) =>
+    {
+        const row = colourRows[key];
+        const label = COLOUR_LABELS[key];
+        const isOpen = (openColour === key);
+
+        return (
+            <div key={ key } className="rp-settings-row">
+                <span className="rp-settings-row-label is-colour">{ label }</span>
+                <button type="button" className="rp-settings-reset" title="Reset to default" aria-label={ `Reset ${ label } to its default` }
+                    disabled={ row.isDefault } onClick={ row.reset }>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 5A4 4 0 1 1 3 8.2" /><path d="M2.2 1.8v3.4h3.4" /></svg>
+                </button>
+                <button type="button" className={ `rp-settings-chip ${ isOpen ? 'is-open' : '' }` } title={ row.colour }
+                    aria-label={ `${ label } colour, ${ row.colour }` } aria-expanded={ isOpen }
+                    style={ { background: row.colour } }
+                    onClick={ () => setOpenColour(isOpen ? null : key) } />
+            </div>
+        );
     }
 
     const selectUsernameColor = (color: string) =>
@@ -1089,20 +1167,47 @@ export const RpSettingsView: FC<{}> = props =>
                             )) }
                         </div>
                         <Column gap={ 2 } className="prp-subnav-page">
-                            { (interfacePage === 'Windows') &&
-                                <div className="rp-settings-section">
-                                    <div className="rp-settings-section-info">
-                                        <Text bold>Header Style</Text>
-                                        <Text small className="text-muted">The color of window title bars, in the classic two-tone style.</Text>
-                                    </div>
-                                    <div className="rp-settings-swatches rp-settings-swatches--headers">
-                                        { HEADER_SCHEMES.map(scheme => (
-                                            <div key={ scheme.key } title={ scheme.name }
-                                                className={ `rp-settings-swatch ${ (headerKey === scheme.key) ? 'is-selected' : '' }` }
-                                                style={ { background: `linear-gradient(${ scheme.top } 50%, ${ scheme.bottom } 50%)` } }
-                                                onClick={ () => selectHeader(scheme.key) } />
-                                        )) }
-                                    </div>
+                            { (interfacePage === 'Colours') &&
+                                <div className="rp-settings-colours">
+                                    <section className="rp-settings-group" aria-labelledby="rp-settings-h-windows">
+                                        <div id="rp-settings-h-windows" className="rp-settings-group-head">Windows &amp; interface</div>
+                                        <div className="rp-settings-panel">
+                                            { renderColourRow('headers') }
+                                            { renderColourRow('interface') }
+                                            <div className="rp-settings-row">
+                                                <label htmlFor="rp-settings-opacity" className="rp-settings-row-label is-opacity">Opacity</label>
+                                                <input id="rp-settings-opacity" type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
+                                                    value={ CHROME_OPACITY_STEPS.indexOf(chromeOpacity) }
+                                                    onChange={ event => selectOpacity(parseInt(event.target.value)) } />
+                                                <span className="rp-settings-row-value">{ chromeOpacity }%</span>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <section className="rp-settings-group" aria-labelledby="rp-settings-h-hud">
+                                        <div id="rp-settings-h-hud" className="rp-settings-group-head">HUD</div>
+                                        <div className="rp-settings-panel">
+                                            <div className="rp-settings-row">
+                                                <span id="rp-settings-h-hud-style" className="rp-settings-row-label is-colour">Style</span>
+                                                <div className="rp-settings-choice" role="radiogroup" aria-labelledby="rp-settings-h-hud-style">
+                                                    { HUD_STYLES.map(style => (
+                                                        <div key={ style } role="radio" aria-checked={ hudStyle === style }
+                                                            className={ `rp-settings-choice-option ${ (hudStyle === style) ? 'is-selected' : '' }` }
+                                                            onClick={ () => SetHudStyle(style) }>
+                                                            { HUD_STYLE_LABELS[style] }
+                                                        </div>
+                                                    )) }
+                                                </div>
+                                            </div>
+                                            { renderColourRow('hp') }
+                                            { renderColourRow('energy') }
+                                            { renderColourRow('aggro') }
+                                        </div>
+                                    </section>
+                                    { openColour &&
+                                        <ColourPicker key={ openColour } label={ COLOUR_LABELS[openColour] }
+                                            colour={ colourRows[openColour].colour }
+                                            onChange={ colourRows[openColour].pick }
+                                            onClose={ closeColourPicker } /> }
                                 </div> }
                             { (interfacePage === 'Weather') &&
                                 <>
@@ -1121,29 +1226,6 @@ export const RpSettingsView: FC<{}> = props =>
                                         </div>
                                     </div>
                                 </> }
-                            { (interfacePage === 'Components') &&
-                                <div className="rp-settings-section">
-                                    <div className="rp-settings-section-info">
-                                        <Text bold>Color</Text>
-                                        <Text small className="text-muted">The color and opacity of your interface: the HUDs, drawer, purse and toolbars.</Text>
-                                    </div>
-                                    <div className="rp-settings-color-control">
-                                        <div className="rp-settings-swatches">
-                                            { CHROME_SCHEMES.map(scheme => (
-                                                <div key={ scheme.key } title={ scheme.name }
-                                                    className={ `rp-settings-swatch ${ (chromeColor === scheme.color) ? 'is-selected' : '' }` }
-                                                    style={ { backgroundColor: ChromeSwatchColor(scheme.color) } }
-                                                    onClick={ () => selectChrome(scheme.color) } />
-                                            )) }
-                                        </div>
-                                        <div className="rp-settings-opacity">
-                                            <input type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
-                                                value={ CHROME_OPACITY_STEPS.indexOf(chromeOpacity) }
-                                                onChange={ event => selectOpacity(parseInt(event.target.value)) } />
-                                            <Text small className="rp-settings-opacity-value">{ chromeOpacity }%</Text>
-                                        </div>
-                                    </div>
-                                </div> }
                         </Column>
                     </div> }
                 { (currentTab === 'Macros') &&

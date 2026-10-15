@@ -54,7 +54,45 @@ export const HEADER_SCHEMES: HeaderScheme[] = [
 
 export const DEFAULT_HEADER_KEY: string = 'orange';
 
-export const IsValidHeaderKey = (key: string): boolean => HEADER_SCHEMES.some(scheme => (scheme.key === key));
+// A header is one of the three preset keys, or (Settings > UI > Colours) any
+// '#rrggbb' from the colour picker, which is the bottom stop.
+export const IsValidHeaderKey = (key: string): boolean => (HEADER_SCHEMES.some(scheme => (scheme.key === key)) || /^#[0-9a-fA-F]{6}$/.test(key));
+
+// The colour the picker shows for a header: a preset's bottom stop, or the
+// picked colour itself.
+export const HeaderColor = (key: string): string =>
+{
+    const scheme = HEADER_SCHEMES.find(entry => (entry.key === key));
+
+    if(scheme) return scheme.bottom;
+
+    return (/^#[0-9a-fA-F]{6}$/.test(key) ? key.toLowerCase() : HEADER_SCHEMES[0].bottom);
+}
+
+// The key to keep for a picked header colour: a preset's own bottom stop maps
+// back to that preset, so its hand-picked top stop is kept.
+export const HeaderKeyForColor = (color: string): string =>
+{
+    const hex = color.toLowerCase();
+    const scheme = HEADER_SCHEMES.find(entry => (entry.bottom === hex));
+
+    return (scheme ? scheme.key : hex);
+}
+
+// Mix a '#rrggbb' toward white (amount > 0) or black (amount < 0).
+const mixHex = (hex: string, amount: number): string =>
+{
+    const target = ((amount > 0) ? 255 : 0);
+    const part = Math.abs(amount);
+    const channel = (offset: number) =>
+    {
+        const value = parseInt(hex.slice(offset, offset + 2), 16);
+
+        return Math.round(value + ((target - value) * part)).toString(16).padStart(2, '0');
+    }
+
+    return `#${ channel(1) }${ channel(3) }${ channel(5) }`;
+}
 
 const hexToHsl = (hex: string): { h: number, s: number, l: number } =>
 {
@@ -93,19 +131,6 @@ const hsla = (h: number, s: number, l: number, a: number): string =>
 }
 
 export const IsValidChromeColor = (color: string): boolean => /^#[0-9a-fA-F]{6}$/.test(color);
-
-// Display color for a scheme's picker swatch: the same vibrant mid-tone the
-// drawer icons tint to (hue of the scheme at 45%/55%), so the picker shows
-// the hue you'll actually experience instead of eight near-black squares.
-// Charcoal (neutral, untinted icons) gets a plain gray.
-export const ChromeSwatchColor = (color: string): string =>
-{
-    if(color === DEFAULT_CHROME_COLOR) return 'hsl(220, 6%, 52%)';
-
-    const { h } = hexToHsl(color);
-
-    return hsla(h, 45, 55, 1);
-}
 
 // Apply a scheme ('' or invalid = default) by overriding the chrome CSS
 // variables on the document root. The SCSS fallbacks equal the default
@@ -163,8 +188,20 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
 
     // Window header duo-tone: set the two stops (+ a border 5% darker than
     // the bottom stop, matching the slim theme's original derivation); the
-    // gradient var composes from these automatically.
-    const header = (HEADER_SCHEMES.find(scheme => (scheme.key === headerKey)) ?? HEADER_SCHEMES[0]);
+    // gradient var composes from these automatically. A picked colour is the
+    // bottom stop; its top is 18% toward white and its border 8% darker.
+    const scheme = HEADER_SCHEMES.find(entry => (entry.key === headerKey));
+
+    if(!scheme && /^#[0-9a-fA-F]{6}$/.test(headerKey))
+    {
+        style.setProperty('--prp-header-top', mixHex(headerKey, 0.18));
+        style.setProperty('--prp-header-bottom', headerKey);
+        style.setProperty('--prp-header-border', mixHex(headerKey, -0.08));
+
+        return;
+    }
+
+    const header = (scheme ?? HEADER_SCHEMES[0]);
     const hb = hexToHsl(header.bottom);
 
     style.setProperty('--prp-header-top', header.top);

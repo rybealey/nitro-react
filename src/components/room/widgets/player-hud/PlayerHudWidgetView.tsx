@@ -1,7 +1,8 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { CSSProperties, FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
+import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
 import { Flex, HoverBubble, LayoutAvatarImageView } from '../../../../common';
@@ -451,11 +452,14 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const targetIsBot = IsBotTarget(target);
     const targetStats = target ? withLiveStats(target.roomIndex, (targetIsBot ? DEFAULT_STATS : statsWithWanted(target.webID))) : null;
     const targetGang = ((target && !targetIsBot) ? GetRpGang(target.webID) : null);
+    // Settings > UI > Colours > HUD: Classic or Light, and the bar colours
+    const { hudStyle, hudBars } = useHudPrefs();
+    const hudColours = { '--hud-bar-hp': hudBars.hp, '--hud-bar-en': hudBars.energy, '--hud-bar-agg': hudBars.aggro } as CSSProperties;
 
     return (
         // plates hang from the top edge (purse-style), so they align at the
         // top and drop to their own heights
-        <Flex alignItems="start" gap={ 2 } className="nitro-player-hud-bar">
+        <Flex alignItems="start" gap={ 2 } className={ `nitro-player-hud-bar ${ (hudStyle === 'light') ? 'is-light' : '' }` } style={ hudColours }>
             <Flex alignItems="center" gap={ 2 } className="hud-plate">
                 <div className="hud-portrait">
                     <HudAvatar figure={ ownFigure } gender={ selfGender } variant="self" onClick={ () =>

@@ -301,11 +301,12 @@
         border-radius: $border-radius;
         transition: width 200ms steps(6, end);
 
-        &.hp { background: var(--hud-danger); }
-        &.en { background: var(--hud-info); }
-        // Aggression in the pixel design system's orange-500, the window
-        // headers' own orange.
-        &.agg { background: var(--hud-orange); border-radius: 2px; }
+        // Settings > UI > Colours > HUD sets these on the HUD; the fallbacks
+        // are the defaults. Aggression's is the pixel design system's
+        // orange-500, the window headers' own orange.
+        &.hp { background: var(--hud-bar-hp, var(--hud-danger)); }
+        &.en { background: var(--hud-bar-en, var(--hud-info)); }
+        &.agg { background: var(--hud-bar-agg, var(--hud-orange)); border-radius: 2px; }
     }
 
     // Floating action chips that deliberately overlap whatever sits behind
@@ -382,6 +383,39 @@
         }
 
         &:active { transform: none; }
+    }
+
+    // Settings > UI > Colours > HUD > Light (Settings canvas, boards P/Q): no
+    // plate, so the room shows through. Without the plate behind them the
+    // name, tick, bars and portrait carry thin black outlines so they read
+    // over a bright floor and the black around a room alike.
+    &.is-light {
+        .hud-plate {
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        .hud-name,
+        .hud-verified {
+            text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000, 0 2px 2px rgba(0, 0, 0, .35);
+        }
+
+        .hud-bar {
+            background: rgba(0, 0, 0, .5);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, .75);
+        }
+
+        .hud-bar-value {
+            text-shadow: -1px 0 rgba(0, 0, 0, .65), 1px 0 rgba(0, 0, 0, .65), 0 -1px rgba(0, 0, 0, .65), 0 1px rgba(0, 0, 0, .65);
+        }
+
+        .hud-avatar { box-shadow: 0 0 0 1px rgba(0, 0, 0, .75); }
+
+        // the passive chip's faint white wash vanishes over a light floor
+        .hud-state.passive { background: rgba(0, 0, 0, .5); }
+
+        .hud-stars span { filter: drop-shadow(0 0 1px #000); }
     }
 }
 
