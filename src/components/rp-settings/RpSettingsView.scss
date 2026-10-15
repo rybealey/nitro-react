@@ -983,6 +983,102 @@ $mx-font: Ubuntu, sans-serif;
         span { font-size: 10px; color: $mx-muted; }
     }
 
+    // General (Settings canvas, board L): one page in two columns, no rail.
+    // Each group is a small caps heading over one white panel; the rows in a
+    // panel are set apart by spacing alone - no divider lines.
+    .rp-settings-general {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        height: 100%;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .rp-settings-general-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .rp-settings-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rp-settings-group-head {
+        padding: 0 2px 4px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .rp-settings-panel {
+        display: flex;
+        flex-direction: column;
+        padding: 2px 10px;
+        border-radius: 6px;
+        background: $white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+    }
+
+    .rp-settings-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+        padding: 3px 2px;
+        box-sizing: border-box;
+
+        input[type='range'] {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            accent-color: var(--prp-chrome-95);
+            cursor: pointer;
+
+            &:disabled { opacity: 0.5; cursor: default; }
+        }
+
+        .rp-settings-env-switch { margin-left: auto; }
+    }
+
+    .rp-settings-row-label {
+        flex-shrink: 0;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: $mx-ink;
+
+        &.is-fps { width: 30px; }
+        &.is-sound { width: 44px; }
+    }
+
+    .rp-settings-row-value {
+        width: 38px;
+        flex-shrink: 0;
+        text-align: right;
+        font-family: $mx-font;
+        font-size: 11.5px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: $mx-ink;
+    }
+
+    // General > Drag the room with: the three choices fill their panel row.
+    .rp-settings-choice.is-wide {
+        flex: 1;
+
+        .rp-settings-choice-option {
+            flex: 1;
+            padding: 4px 6px;
+            text-align: center;
+        }
+    }
+
     // General > Drag the Room: one of three, as a joined row of segments. The
     // chosen one takes the header's orange, so it follows the header scheme.
     .rp-settings-choice {

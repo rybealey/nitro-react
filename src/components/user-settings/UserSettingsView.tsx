@@ -3,7 +3,7 @@ import { FC, useEffect, useState } from 'react';
 import { FaVolumeDown, FaVolumeMute, FaVolumeUp } from 'react-icons/fa';
 import { AddEventLinkTracker, LocalizeText, RemoveLinkEventTracker } from '../../api';
 import { classNames, Column, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardView, Text } from '../../common';
-import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useUserSettings } from '../../hooks';
+import { useUserSettings } from '../../hooks';
 
 // The top-right cog's window. The settings themselves live in useUserSettings,
 // shared with Settings > General (Sound, Preferences), so both show the same.
@@ -11,8 +11,6 @@ export const UserSettingsView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
     const { userSettings, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
-    const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
-    const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
 
     const processAction = (type: string, value?: boolean | number | string) =>
     {
@@ -29,9 +27,6 @@ export const UserSettingsView: FC<{}> = props =>
                 return;
             case 'furni_volume':
                 setVolume('furni', Number(value));
-                return;
-            case 'trax_volume':
-                setVolume('trax', Number(value));
                 return;
         }
     }
@@ -83,14 +78,8 @@ export const UserSettingsView: FC<{}> = props =>
                         <input className="form-check-input" type="checkbox" checked={ userSettings.cameraFollow } onChange={ event => processAction('camera_follow', event.target.checked) } />
                         <Text>{ LocalizeText('memenu.settings.other.disable.room.camera.follow') }</Text>
                     </Flex>
-                    <Flex alignItems="center" gap={ 1 }>
-                        <input className="form-check-input" type="checkbox" checked={ catalogPlaceMultipleObjects } onChange={ event => setCatalogPlaceMultipleObjects(event.target.checked) } />
-                        <Text>{ LocalizeText('memenu.settings.other.place.multiple.objects') }</Text>
-                    </Flex>
-                    <Flex alignItems="center" gap={ 1 }>
-                        <input className="form-check-input" type="checkbox" checked={ catalogSkipPurchaseConfirmation } onChange={ event => setCatalogSkipPurchaseConfirmation(event.target.checked) } />
-                        <Text>{ LocalizeText('memenu.settings.other.skip.purchase.confirmation') }</Text>
-                    </Flex>
+                    { /* pixelrp: no shop switches - dragging furni from the shop always
+                       buys it and keeps the next one on the cursor (useCatalog). */ }
                 </Column>
                 <Column>
                     <Text bold>{ LocalizeText('widget.memenu.settings.volume') }</Text>
@@ -112,15 +101,7 @@ export const UserSettingsView: FC<{}> = props =>
                             <FaVolumeUp className={ classNames((userSettings.volumeFurni < 50) && 'text-muted', 'fa-icon') } />
                         </Flex>
                     </Column>
-                    <Column gap={ 1 }>
-                        <Text>{ LocalizeText('widget.memenu.settings.volume.trax') }</Text>
-                        <Flex alignItems="center" gap={ 1 }>
-                            { (userSettings.volumeTrax === 0) && <FaVolumeMute className={ classNames((userSettings.volumeTrax >= 50) && 'text-muted', 'fa-icon') } /> }
-                            { (userSettings.volumeTrax > 0) && <FaVolumeDown className={ classNames((userSettings.volumeTrax >= 50) && 'text-muted', 'fa-icon') } /> }
-                            <input type="range" className="custom-range w-100" min="0" max="100" step="1" id="volumeTrax" value={ userSettings.volumeTrax } onChange={ event => processAction('trax_volume', event.target.value) } onMouseUp={ () => saveRangeSlider('volume') }/>
-                            <FaVolumeUp className={ classNames((userSettings.volumeTrax < 50) && 'text-muted', 'fa-icon') } />
-                        </Flex>
-                    </Column>
+                    { /* pixelrp: no Trax slider - PixelRP has no Trax songs. */ }
                 </Column>
             </NitroCardContentView>
         </NitroCardView>

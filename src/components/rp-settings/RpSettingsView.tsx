@@ -2,9 +2,10 @@ import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker
 import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { AddEventLinkTracker, GetAvatarRenderManager, GetPingVolume, GetSessionDataManager, LocalizeText, PlayMentionSound, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
+import { AddEventLinkTracker, GetAvatarRenderManager, GetPingVolume, GetSessionDataManager, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
-import { useCatalogPlaceMultipleItems, useCatalogSkipPurchaseConfirmation, useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
+import { useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
+import { SetMusicVolume, useJukeboxPrefs } from '../music-player/JukeboxStore';
 import { GetSelectableChatStyleIds } from './ChatStyles';
 import { ApplyUiChrome, CHROME_OPACITY_STEPS, CHROME_SCHEMES, ChromeSwatchColor, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HEADER_SCHEMES, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
@@ -28,16 +29,11 @@ const TABS: string[] = [ 'General', 'Macros', 'Personalization', 'UI', 'Discord'
 const MACRO_DRAG_SLACK = 4;
 const MACRO_DRAG_EDGE = 28;
 
-// General tab sub-pages (left rail). Sound and Preferences are the top-right
-// cog's settings, the same shared state (useUserSettings), so either place
-// changes both.
-const GENERAL_PAGES: string[] = [ 'Performance', 'Controls', 'Sound', 'Preferences' ];
 
 // General > Sound: one card per volume, labelled with the cog window's texts.
 const VOLUME_ROWS: { kind: UserSettingsVolume, text: string }[] = [
     { kind: 'system', text: 'widget.memenu.settings.volume.ui' },
-    { kind: 'furni', text: 'widget.memenu.settings.volume.furni' },
-    { kind: 'trax', text: 'widget.memenu.settings.volume.trax' }
+    { kind: 'furni', text: 'widget.memenu.settings.volume.furni' }
 ];
 
 // The Macros tab is live: bindings are saved server-side (RpSaveMacrosComposer)
@@ -118,12 +114,11 @@ export const RpSettingsView: FC<{}> = props =>
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
-    const [ generalPage, setGeneralPage ] = useState<string>(GENERAL_PAGES[0]);
     const { userSettings, setCameraFollow, setVolume, saveVolumes } = useUserSettings();
     // General > Sound > Ping sound: the @mention alert's own volume, on this computer (MentionSound).
     const [ pingVolume, setPingVolumeState ] = useState<number>(GetPingVolume);
-    const [ catalogPlaceMultipleObjects, setCatalogPlaceMultipleObjects ] = useCatalogPlaceMultipleItems();
-    const [ catalogSkipPurchaseConfirmation, setCatalogSkipPurchaseConfirmation ] = useCatalogSkipPurchaseConfirmation();
+    // General > Sound > Music: the level over all of PixelRP's music (JukeboxStore).
+    const { musicVolume } = useJukeboxPrefs();
     const [ personalPage, setPersonalPage ] = useState<string>(PERSONALIZATION_PAGES[0]);
     // null = unknown/loading; refreshed every time the Discord page opens
     const [ discordLinked, setDiscordLinked ] = useState<boolean>(null);
@@ -1491,82 +1486,76 @@ export const RpSettingsView: FC<{}> = props =>
                             </Column>
                         </Column>
                     </div> }
+                { /* pixelrp: General is one page in two columns (Settings canvas,
+                     board L) - no rail. Each group sits on its own panel and
+                     there are no divider lines. Trax is gone (PixelRP has no
+                     Trax songs); Music is the level over all PixelRP music. The
+                     shop switches are gone too: dragging furni from the shop
+                     always buys it and keeps it on the cursor (useCatalog). */ }
                 { (currentTab === 'General') &&
-                    <div className="prp-subnav-layout">
-                        <div className="prp-subnav">
-                            <div className="prp-subnav-eyebrow">General</div>
-                            { GENERAL_PAGES.map(page => (
-                                <div key={ page }
-                                    className={ `prp-subnav-item ${ (generalPage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setGeneralPage(page) }>
-                                    { page }
+                    <div className="rp-settings-general">
+                        <div className="rp-settings-general-col">
+                            <section className="rp-settings-group" aria-labelledby="rp-settings-h-display">
+                                <div id="rp-settings-h-display" className="rp-settings-group-head">Display</div>
+                                <div className="rp-settings-panel">
+                                    <div className="rp-settings-row">
+                                        <label htmlFor="rp-settings-fps" className="rp-settings-row-label is-fps">FPS</label>
+                                        <input id="rp-settings-fps" type="range" min={ FPS_MIN } max={ FPS_MAX } step={ 5 } value={ maxFps }
+                                            onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
+                                        <span className="rp-settings-row-value">{ maxFps }</span>
+                                    </div>
+                                    <div className="rp-settings-row">
+                                        <span className="rp-settings-row-label">{ LocalizeText('memenu.settings.other.disable.room.camera.follow') }</span>
+                                        <button type="button" role="switch" aria-checked={ !!userSettings?.cameraFollow } aria-label={ LocalizeText('memenu.settings.other.disable.room.camera.follow') } disabled={ !userSettings }
+                                            className={ `rp-settings-env-switch${ userSettings?.cameraFollow ? ' is-on' : '' }` }
+                                            onClick={ () => setCameraFollow(!userSettings.cameraFollow) }><span /></button>
+                                    </div>
                                 </div>
-                            )) }
+                            </section>
+                            <section className="rp-settings-group" aria-labelledby="rp-settings-h-drag">
+                                <div id="rp-settings-h-drag" className="rp-settings-group-head">Drag the room with</div>
+                                <div className="rp-settings-panel">
+                                    <div className="rp-settings-row">
+                                        <div className="rp-settings-choice is-wide" role="radiogroup" aria-labelledby="rp-settings-h-drag">
+                                            { ROOM_DRAG_BUTTONS.map(button => (
+                                                <div key={ button } role="radio" aria-checked={ (dragButton === button) }
+                                                    className={ `rp-settings-choice-option ${ (dragButton === button) ? 'is-selected' : '' }` }
+                                                    onClick={ () => SetRoomDragButton(button) }>
+                                                    { ROOM_DRAG_LABELS[button] }
+                                                </div>
+                                            )) }
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
-                        <Column gap={ 2 } className="prp-subnav-page">
-                            { (generalPage === 'Performance') &&
-                            <div className="rp-settings-card">
-                                <div className="rp-settings-card-head">
-                                    <label htmlFor="rp-settings-fps" className="rp-settings-card-title">FPS Setting</label>
-                                    <div className="rp-settings-fps-value">{ maxFps } <span>fps</span></div>
-                                </div>
-                                <div className="rp-settings-fps">
-                                    <span className="rp-settings-fps-end">{ FPS_MIN }</span>
-                                    <input id="rp-settings-fps" type="range" min={ FPS_MIN } max={ FPS_MAX } step={ 5 } value={ maxFps }
-                                        onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
-                                    <span className="rp-settings-fps-end">{ FPS_MAX }</span>
-                                </div>
-                            </div> }
-                            { (generalPage === 'Controls') &&
-                            <div className="rp-settings-section">
-                                <div className="rp-settings-section-info">
-                                    <Text bold>Drag the Room</Text>
-                                    <Text small className="text-muted">The left button always pans. Right click or Either lets the right button pan too.</Text>
-                                </div>
-                                <div className="rp-settings-choice" role="radiogroup" aria-label="Drag the room with">
-                                    { ROOM_DRAG_BUTTONS.map(button => (
-                                        <div key={ button } role="radio" aria-checked={ (dragButton === button) }
-                                            className={ `rp-settings-choice-option ${ (dragButton === button) ? 'is-selected' : '' }` }
-                                            onClick={ () => SetRoomDragButton(button) }>
-                                            { ROOM_DRAG_LABELS[button] }
-                                        </div>
-                                    )) }
-                                </div>
-                            </div> }
-                            { (generalPage === 'Sound') && !userSettings &&
-                                <Text small className="text-muted">Your sound settings are still loading.</Text> }
-                            { (generalPage === 'Sound') && userSettings && VOLUME_ROWS.map(row =>
-                            {
-                                const volume = Math.round((row.kind === 'system') ? userSettings.volumeSystem : (row.kind === 'furni') ? userSettings.volumeFurni : userSettings.volumeTrax);
+                        <div className="rp-settings-general-col">
+                            <section className="rp-settings-group" aria-labelledby="rp-settings-h-sound">
+                                <div id="rp-settings-h-sound" className="rp-settings-group-head">Sound</div>
+                                <div className="rp-settings-panel">
+                                    { VOLUME_ROWS.map(row =>
+                                    {
+                                        // System and Furni are the account's, so they wait for it to load.
+                                        const volume = (userSettings ? Math.round((row.kind === 'system') ? userSettings.volumeSystem : userSettings.volumeFurni) : 0);
 
-                                return (
-                                    <div key={ row.kind } className="rp-settings-card">
-                                        <div className="rp-settings-card-head">
-                                            <label htmlFor={ `rp-settings-volume-${ row.kind }` } className="rp-settings-card-title">{ LocalizeText(row.text) }</label>
-                                            <div className="rp-settings-fps-value">{ volume } <span>%</span></div>
-                                        </div>
-                                        <div className="rp-settings-fps">
-                                            <span className="rp-settings-fps-end">0</span>
-                                            <input id={ `rp-settings-volume-${ row.kind }` } type="range" min={ 0 } max={ 100 } step={ 1 } value={ volume }
-                                                onChange={ event => setVolume(row.kind, parseInt(event.target.value)) }
-                                                onMouseUp={ saveVolumes } onTouchEnd={ saveVolumes } onKeyUp={ saveVolumes } />
-                                            <span className="rp-settings-fps-end">100</span>
-                                        </div>
+                                        return (
+                                            <div key={ row.kind } className="rp-settings-row">
+                                                <label htmlFor={ `rp-settings-volume-${ row.kind }` } className="rp-settings-row-label is-sound">{ LocalizeText(row.text) }</label>
+                                                <input id={ `rp-settings-volume-${ row.kind }` } type="range" min={ 0 } max={ 100 } step={ 1 } value={ volume } disabled={ !userSettings }
+                                                    onChange={ event => setVolume(row.kind, parseInt(event.target.value)) }
+                                                    onMouseUp={ saveVolumes } onTouchEnd={ saveVolumes } onKeyUp={ saveVolumes } />
+                                                <span className="rp-settings-row-value">{ userSettings ? `${ volume }%` : '' }</span>
+                                            </div>
+                                        );
+                                    }) }
+                                    <div className="rp-settings-row">
+                                        <label htmlFor="rp-settings-volume-music" className="rp-settings-row-label is-sound">Music</label>
+                                        <input id="rp-settings-volume-music" type="range" min={ 0 } max={ 100 } step={ 1 } value={ musicVolume }
+                                            onChange={ event => SetMusicVolume(parseInt(event.target.value)) } />
+                                        <span className="rp-settings-row-value">{ musicVolume }%</span>
                                     </div>
-                                );
-                            }) }
-                            { (generalPage === 'Sound') &&
-                                <div className="rp-settings-card">
-                                    <div className="rp-settings-card-head">
-                                        <label htmlFor="rp-settings-volume-ping" className="rp-settings-card-title">Ping sound</label>
-                                        <div className="rp-settings-card-actions">
-                                            <button type="button" className="rp-settings-card-test" disabled={ (pingVolume <= 0) } onClick={ () => PlayMentionSound() }>Play</button>
-                                            <div className="rp-settings-fps-value">{ (pingVolume > 0) ? <>{ pingVolume } <span>%</span></> : 'Off' }</div>
-                                        </div>
-                                    </div>
-                                    <Text small className="text-muted">The sound when someone @mentions you. 0 turns it off.</Text>
-                                    <div className="rp-settings-fps">
-                                        <span className="rp-settings-fps-end">0</span>
+                                    <div className="rp-settings-row">
+                                        <label htmlFor="rp-settings-volume-ping" className="rp-settings-row-label is-sound">Ping</label>
                                         <input id="rp-settings-volume-ping" type="range" min={ 0 } max={ 100 } step={ 1 } value={ pingVolume }
                                             onChange={ event =>
                                             {
@@ -1575,27 +1564,11 @@ export const RpSettingsView: FC<{}> = props =>
                                                 setPingVolumeState(volume);
                                                 SetPingVolume(volume);
                                             } } />
-                                        <span className="rp-settings-fps-end">100</span>
+                                        <span className="rp-settings-row-value">{ (pingVolume > 0) ? `${ pingVolume }%` : 'Off' }</span>
                                     </div>
-                                </div> }
-                            { /* pixelrp: no "Prefer old chat" (chat is always free flow, and
-                               nothing reads it) and no "Ignore room invites" (PixelRP has no
-                               room invites). */ }
-                            { (generalPage === 'Preferences') && [
-                                { key: 'camera-follow', text: 'memenu.settings.other.disable.room.camera.follow', on: !!userSettings?.cameraFollow, ready: !!userSettings, toggle: () => setCameraFollow(!userSettings.cameraFollow) },
-                                { key: 'place-multiple', text: 'memenu.settings.other.place.multiple.objects', on: catalogPlaceMultipleObjects, ready: true, toggle: () => setCatalogPlaceMultipleObjects(!catalogPlaceMultipleObjects) },
-                                { key: 'skip-confirm', text: 'memenu.settings.other.skip.purchase.confirmation', on: catalogSkipPurchaseConfirmation, ready: true, toggle: () => setCatalogSkipPurchaseConfirmation(!catalogSkipPurchaseConfirmation) }
-                            ].map(pref => (
-                                <div key={ pref.key } className="rp-settings-section">
-                                    <div className="rp-settings-section-info">
-                                        <Text bold>{ LocalizeText(pref.text) }</Text>
-                                    </div>
-                                    <button type="button" role="switch" aria-checked={ pref.on } aria-label={ LocalizeText(pref.text) } disabled={ !pref.ready }
-                                        className={ `rp-settings-env-switch${ pref.on ? ' is-on' : '' }` }
-                                        onClick={ pref.toggle }><span /></button>
                                 </div>
-                            )) }
-                        </Column>
+                            </section>
+                        </div>
                     </div> }
                 { !TABS.includes(currentTab) &&
                     <Column center fullHeight gap={ 1 } className="rp-settings-placeholder">
