@@ -130,6 +130,15 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     style.setProperty('--prp-chrome-band-hi', hsla(h, s, (l + 1.5), a(0.95)));
     style.setProperty('--prp-chrome-band-lo', hsla(h, s, (l - 2.4), a(0.95)));
 
+    // pixelrp: windows take the scheme color at full alpha whatever the
+    // surface opacity (the .nitro-card block in _chrome.scss); the toolbar,
+    // HUD and side drawer above keep the chosen opacity.
+    style.setProperty('--prp-window-95', hsla(h, s, l, 1));
+    style.setProperty('--prp-window-hover', hsla(h, s, (l + 6), 1));
+    style.setProperty('--prp-window-slot', hsla(h, s, (l + 7), 1));
+    style.setProperty('--prp-window-band-hi', hsla(h, s, (l + 1.5), 1));
+    style.setProperty('--prp-window-band-lo', hsla(h, s, (l - 2.4), 1));
+
     // Room context menu: lighter header band + the dual-tone item/hover
     // splits (the grad vars in _chrome.scss compose from these).
     style.setProperty('--prp-menu-header', hsla(h, s, (l + 14), a(0.95)));

@@ -78,6 +78,15 @@
     --prp-chrome-chip: linear-gradient(var(--prp-chrome-band-hi) 0, var(--prp-chrome-band-hi) 3px, var(--prp-chrome-95) 3px, var(--prp-chrome-95) calc(100% - 3px), var(--prp-chrome-band-lo) calc(100% - 3px));
     --prp-chrome-icon-tint: transparent;
 
+    /* PixelRP: the same scheme at FULL alpha, for windows (.nitro-card below).
+       UiChrome.ts re-states these with the player's color; the surface
+       opacity setting never touches them. */
+    --prp-window-95: #{rgba($dark, 1)};
+    --prp-window-hover: #{lighten(rgba($dark, 1), 6)};
+    --prp-window-slot: #{lighten(rgba($dark, 1), 7)};
+    --prp-window-band-hi: #{lighten(rgba($dark, 1), 1.5)};
+    --prp-window-band-lo: #{darken(rgba($dark, 1), 2.4)};
+
     /* Room context menu (avatar/furni click menus). Same scheme base, with
        the original menu's relative steps: a clearly lighter header band,
        list items split two-tone slightly darker than the frame, and a
@@ -96,6 +105,27 @@
     --prp-header-bottom: #e87332;
     --prp-header-border: #{darken(#e87332, 5%)};
     --prp-header-grad: repeating-linear-gradient(var(--prp-header-top), var(--prp-header-top) 50%, var(--prp-header-bottom) 50%, var(--prp-header-bottom) 100%);
+}
+
+// PixelRP: windows are solid. Inside any window (every NitroCardView is a
+// .nitro-card - Settings, Chat History, the Backpack, the Shop...) the chrome
+// variables point at the full-alpha set above, so tab strips, dark buttons and
+// the rail's active item no longer show the room through them. Everything
+// outside a window - the toolbar, HUD plates, the side drawer, the infostand,
+// the context menu - keeps the player's surface opacity.
+//
+// The plate and chip are re-stated here, not just their stops: a custom
+// property's var()s resolve where it is DECLARED, so the :root plate would
+// keep the see-through stops however they are changed down here.
+.nitro-card {
+    --prp-chrome-95: var(--prp-window-95);
+    --prp-chrome-92: var(--prp-window-95);
+    --prp-chrome-hover: var(--prp-window-hover);
+    --prp-chrome-slot: var(--prp-window-slot);
+    --prp-chrome-band-hi: var(--prp-window-band-hi);
+    --prp-chrome-band-lo: var(--prp-window-band-lo);
+    --prp-chrome-plate: linear-gradient(var(--prp-chrome-band-hi) 0, var(--prp-chrome-band-hi) 5px, var(--prp-chrome-95) 5px, var(--prp-chrome-95) calc(100% - 4px), var(--prp-chrome-band-lo) calc(100% - 4px));
+    --prp-chrome-chip: linear-gradient(var(--prp-chrome-band-hi) 0, var(--prp-chrome-band-hi) 3px, var(--prp-chrome-95) 3px, var(--prp-chrome-95) calc(100% - 3px), var(--prp-chrome-band-lo) calc(100% - 3px));
 }
 
 // The close button, from the Backpack redesign: a red rounded square with a
