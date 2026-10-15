@@ -1,7 +1,8 @@
 import { HabboAvatarAnimations, HabboAvatarGeometry, HabboAvatarPartSets } from '@nitrots/nitro-renderer';
 
 // PixelRP: teach the avatar renderer the part types Habbo added for its Unity
-// client - misc items (mc / mcl / mcr) and pets (pt / ptl / ptr).
+// client - misc items (mc / mcl / mcr), pets (pt / ptl / ptr) and the misc
+// overlay (mco), which only the Dark Aura uses.
 //
 // The renderer draws a part only if its TYPE is listed in a body part of the
 // avatar geometry (AvatarStructure.getParts drops anything else without a
@@ -16,6 +17,14 @@ import { HabboAvatarAnimations, HabboAvatarGeometry, HabboAvatarPartSets } from 
 // and wave frames. mc and pt are the body-level layer and sit in the torso,
 // outermost, above the chest accessory.
 //
+// mco is an aura: flames and smoke drawn AROUND the body, with an almost
+// opaque middle, so it has to stay behind the avatar whichever way they face.
+// The geometry already has a layer for exactly that - the empty "bottom" body
+// part, centred with a near-zero radius, which makes it the farthest layer at
+// every rotation (its mirror, "top", is always the nearest). Lying has no
+// bottom, so it is given one of the same shape. The aura's eight frames then
+// animate on their own, like any idle-animated clothing (std / sit / lay).
+//
 // The renderer reads these tables once, when its avatar structure
 // initialises inside Nitro init, so this runs before bootstrap. It extends
 // the renderer's own objects rather than replacing them, and is idempotent,
@@ -24,6 +33,7 @@ import { HabboAvatarAnimations, HabboAvatarGeometry, HabboAvatarPartSets } from 
 const TORSO_TYPES = [ { id: 'mc', radius: 0.08 }, { id: 'pt', radius: 0.085 } ];
 const LEFT_TYPES = [ { id: 'mcl', radius: 0.03 }, { id: 'ptl', radius: 0.035 } ];
 const RIGHT_TYPES = [ { id: 'mcr', radius: 0.03 }, { id: 'ptr', radius: 0.035 } ];
+const BOTTOM_TYPES = [ { id: 'mco', radius: 0.001 } ];
 
 // swim is left alone: a swimmer is a head over water and draws nothing else.
 const GEOMETRY_TYPES = [ 'vertical', 'sitting', 'horizontal', 'swhorizontal' ];
@@ -76,7 +86,7 @@ export const ExtendAvatarStructure = (): void =>
     }
     catch(error)
     {
-        console.warn('[pixelrp] could not teach the avatar renderer misc items and pets', error);
+        console.warn('[pixelrp] could not teach the avatar renderer misc items, pets and auras', error);
     }
 }
 
@@ -93,6 +103,10 @@ const extend = (): void =>
         addItems(bodyPart('torso'), TORSO_TYPES);
         addItems(bodyPart('leftarm'), LEFT_TYPES);
         addItems(bodyPart('rightarm'), RIGHT_TYPES);
+
+        if(!bodyPart('bottom')) type.bodyParts.unshift({ id: 'bottom', x: 0, y: 0, z: 0, radius: 0.001, items: [] });
+
+        addItems(bodyPart('bottom'), BOTTOM_TYPES);
     }
 
     const partSets: any = HabboAvatarPartSets.partSets;
@@ -103,7 +117,7 @@ const extend = (): void =>
         if(!known(setType)) partSets.partSet.push({ setType, flippedSetType });
     }
 
-    for(const setType of [ 'mc', 'pt' ])
+    for(const setType of [ 'mc', 'pt', 'mco' ])
     {
         if(!known(setType)) partSets.partSet.push({ setType });
     }
@@ -112,7 +126,10 @@ const extend = (): void =>
 
     addActive(partSets.activePartSets, 'figure', all);
     addActive(partSets.activePartSets, 'walk', all);
-    addActive(partSets.activePartSets, 'sit', [ 'mc', 'pt' ]);
+    // The aura has standing, sitting and lying art but no walk: it is held
+    // out of walk, so a walker keeps the standing aura rather than losing it.
+    addActive(partSets.activePartSets, 'figure', [ 'mco' ]);
+    addActive(partSets.activePartSets, 'sit', [ 'mc', 'pt', 'mco' ]);
     addActive(partSets.activePartSets, 'handLeft', [ 'mcl' ]);
     addActive(partSets.activePartSets, 'handRight', [ 'mcr' ]);
 
