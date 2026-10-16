@@ -173,11 +173,17 @@ export const EmergencyCallsView: FC<{}> = props =>
                                     </span>
                                     <span className="emergency-ago">{ agoText(age) }</span>
                                 </div>
-                                <div className="emergency-room">
-                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
-                                    <span>{ call.roomName || 'Unknown room' }</span>
-                                </div>
-                                <p className="emergency-message">{ isBackup ? 'Requesting backup' : call.message }</p>
+                                { !isBackup &&
+                                    <div className="emergency-room">
+                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
+                                        <span>{ call.roomName || 'Unknown room' }</span>
+                                    </div> }
+                                { isBackup
+                                    ? <p className="emergency-message emergency-at">
+                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
+                                        <span>Requesting for back up at { call.roomName || 'an unknown room' }.</span>
+                                    </p>
+                                    : <p className="emergency-message">{ call.message }</p> }
                             </div>
                         </div>
                         <div className={ `emergency-status ${ statusClass }` } role="status">

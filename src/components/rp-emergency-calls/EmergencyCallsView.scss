@@ -154,8 +154,9 @@ $emergency-blue: #1e7295;
         overflow-wrap: anywhere;
     }
 
-    // The medical card's one line: a pin, then "knocked out at <room>".
-    .emergency-knockout {
+    // A card's one line that ends in a place: a pin, then the sentence
+    // ("knocked out at <room>", "requesting for back up at <room>").
+    .emergency-at {
         display: flex;
         align-items: flex-start;
         gap: 3px;
