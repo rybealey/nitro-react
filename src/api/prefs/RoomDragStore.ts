@@ -44,6 +44,12 @@ export const GetRoomDragButton = (): RoomDragButton => chosen;
 
 export const RoomDragUsesRight = (): boolean => (chosen !== 'left');
 
+// Which button may drag (pan) the room. Exclusive: 'left' = left only, 'right'
+// = right only, 'both' = either. The engine honours this per press, so e.g.
+// 'right' makes a left-drag go back to just clicking/walking.
+export const RoomDragAllowsLeft = (): boolean => (chosen !== 'right');
+export const RoomDragAllowsRight = (): boolean => (chosen !== 'left');
+
 export const SetRoomDragButton = (button: RoomDragButton): void =>
 {
     if(!ROOM_DRAG_BUTTONS.includes(button)) return;
@@ -72,7 +78,10 @@ export const useRoomDragPref = (): { dragButton: RoomDragButton } =>
 
         listeners.add(listener);
 
-        return () => { listeners.delete(listener); };
+        return () =>
+        {
+            listeners.delete(listener);
+        };
     }, []);
 
     return { dragButton: chosen };

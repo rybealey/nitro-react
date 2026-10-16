@@ -1,0 +1,56 @@
+diff --git a/src/api/nitro/room/IRoomEngine.ts b/src/api/nitro/room/IRoomEngine.ts
+index 7dca220..a957ce3 100644
+--- a/src/api/nitro/room/IRoomEngine.ts
++++ b/src/api/nitro/room/IRoomEngine.ts
+@@ -84,7 +84,7 @@ export interface IRoomEngine extends INitroManager
+     modifyRoomObjectDataWithMap(objectId: number, category: number, operation: string, data: Map<string, string>): boolean
+     modifyRoomObjectData(objectId: number, category: number, colorHex: string, data: string): boolean
+     processRoomObjectPlacement(placementSource: string, id: number, category: number, typeId: number, legacyString?: string, stuffData?: IObjectData, state?: number, frameNumber?: number, posture?: string): boolean;
+-    dispatchMouseEvent(canvasId: number, x: number, y: number, type: string, altKey: boolean, ctrlKey: boolean, shiftKey: boolean, buttonDown: boolean): void;
++    dispatchMouseEvent(canvasId: number, x: number, y: number, type: string, altKey: boolean, ctrlKey: boolean, shiftKey: boolean, buttonDown: boolean, canStartDrag?: boolean): void;
+     createTextureFromRoom(roomId: number, canvasId?: number, bounds?: Rectangle): RenderTexture;
+     saveTextureAsScreenshot(texture: RenderTexture, saveAsThumbnail?: boolean): void;
+     saveBase64AsScreenshot(base64: string, saveAsThumbnail?: boolean): void;
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index bc98d3b..39a58eb 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -2388,7 +2388,7 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+         if(badgeImage) this._roomContentLoader.addAssetToCollection(object.type, badgeName, badgeImage, false);
+     }
+ 
+-    public dispatchMouseEvent(canvasId: number, x: number, y: number, type: string, altKey: boolean, ctrlKey: boolean, shiftKey: boolean, buttonDown: boolean): void
++    public dispatchMouseEvent(canvasId: number, x: number, y: number, type: string, altKey: boolean, ctrlKey: boolean, shiftKey: boolean, buttonDown: boolean, canStartDrag: boolean = true): void
+     {
+         const canvas = this.getRoomInstanceRenderingCanvas(this._activeRoomId, canvasId);
+ 
+@@ -2405,7 +2405,7 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+             sprite.y = (y - (rectangle.height / 2));
+         }
+ 
+-        if(!this.handleRoomDragging(canvas, x, y, type, altKey, ctrlKey, shiftKey))
++        if(!this.handleRoomDragging(canvas, x, y, type, altKey, ctrlKey, shiftKey, canStartDrag))
+         {
+             if(!canvas.handleMouseEvent(x, y, type, altKey, ctrlKey, shiftKey, buttonDown))
+             {
+@@ -2440,14 +2440,18 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+         this._activeRoomActiveCanvasMouseY = y;
+     }
+ 
+-    private handleRoomDragging(canvas: IRoomRenderingCanvas, x: number, y: number, type: string, altKey: boolean, ctrlKey: boolean, shiftKey: boolean): boolean
++    private handleRoomDragging(canvas: IRoomRenderingCanvas, x: number, y: number, type: string, altKey: boolean, ctrlKey: boolean, shiftKey: boolean, canStartDrag: boolean = true): boolean
+     {
+         let offsetX = (x - this._activeRoomActiveCanvasMouseX);
+         let offsetY = (y - this._activeRoomActiveCanvasMouseY);
+ 
+         if(type === MouseEventType.MOUSE_DOWN)
+         {
+-            if(!altKey && !ctrlKey && !shiftKey && !this.isDecorating)
++            // PixelRP: only the allowed mouse button may start a room drag
++            // (Settings > General > Drag the room with). The client passes
++            // canStartDrag per press; default true keeps touch and any other
++            // caller dragging as before.
++            if(canStartDrag && !altKey && !ctrlKey && !shiftKey && !this.isDecorating)
+             {
+                 if(this._roomAllowsDragging)
+                 {

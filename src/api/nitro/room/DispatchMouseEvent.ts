@@ -1,5 +1,5 @@
 import { MouseEventType } from '@nitrots/nitro-renderer';
-import { ROOM_DRAG_STILL_PX } from '../../prefs/RoomDragStore';
+import { ROOM_DRAG_STILL_PX, RoomDragAllowsLeft, RoomDragAllowsRight } from '../../prefs/RoomDragStore';
 import { GetRoomEngine } from './GetRoomEngine';
 
 let didMouseMove = false;
@@ -67,5 +67,9 @@ export const DispatchMouseEvent = (event: MouseEvent, canvasId: number = 1) =>
         default: return;
     }
 
-    GetRoomEngine().dispatchMouseEvent(canvasId, x, y, eventType, event.altKey, (event.ctrlKey || event.metaKey), event.shiftKey, false);
+    // Only the button chosen in Settings > General > Drag the room with may
+    // start a pan; the engine checks this on the press.
+    const canStartDrag = (event.button === 2) ? RoomDragAllowsRight() : RoomDragAllowsLeft();
+
+    GetRoomEngine().dispatchMouseEvent(canvasId, x, y, eventType, event.altKey, (event.ctrlKey || event.metaKey), event.shiftKey, false, canStartDrag);
 }
