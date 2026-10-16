@@ -21,6 +21,13 @@ $phone-red: #e03131;
 // the wrapper is sized to the scaled result so the draggable layout box
 // always matches what's visible on screen (drag bounds depend on it).
 $phone-scale: 0.8;
+// Silkscreen is drawn on an 8px grid and is crisp only at 8px of screen, which
+// after the shell's scale is 10px here. Not multiplied by --ph-text-scale,
+// which would take it back off the grid; its letter-spacing is whole screen
+// pixels for the same reason. $phone-screen-px is one screen pixel
+// (1px / $phone-scale) - keep both in step if the scale changes.
+$phone-screen-px: 1.25px;
+$phone-pixel-size: $phone-screen-px * 8;
 
 // The camera preview's action bar. Named because the landscape rules size the
 // picture against "the screen minus this", and the two drifting apart is what
@@ -603,8 +610,8 @@ $camera-bar-height: 84px;
     .phone-app-label {
         --ph-text-scale: 1;
         font-family: 'Silkscreen', monospace;
-        font-size: calc(9px * var(--ph-text-scale, 1));
-        letter-spacing: 0.3px;
+        font-size: $phone-pixel-size;
+        letter-spacing: 0;
         color: #ffffff;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         white-space: nowrap;
@@ -1030,8 +1037,8 @@ $camera-bar-height: 84px;
 
         span {
             font-family: 'Silkscreen', monospace;
-            font-size: calc(8px * var(--ph-text-scale, 1));
-            letter-spacing: 0.5px;
+            font-size: $phone-pixel-size;
+            letter-spacing: $phone-screen-px;
         }
 
         &.is-pin { background: #e87332; }
@@ -1195,8 +1202,8 @@ $camera-bar-height: 84px;
         background: linear-gradient(180deg, $phone-pink-hot, $phone-magenta);
         color: #ffffff;
         font-family: 'Silkscreen', monospace;
-        font-size: calc(11px * var(--ph-text-scale, 1));
-        letter-spacing: 0.5px;
+        font-size: $phone-pixel-size;
+        letter-spacing: $phone-screen-px;
         border: 2px solid $phone-ink;
         border-radius: 12px;
         box-shadow: 3px 3px 0 #4a0b3d;
@@ -1261,8 +1268,8 @@ $camera-bar-height: 84px;
 
     .phone-pin-menu-hint {
         font-family: 'Silkscreen', monospace;
-        font-size: calc(8px * var(--ph-text-scale, 1));
-        letter-spacing: 0.5px;
+        font-size: $phone-pixel-size;
+        letter-spacing: $phone-screen-px;
         color: rgba(255, 255, 255, 0.6);
     }
 
@@ -1350,8 +1357,8 @@ $camera-bar-height: 84px;
     .phone-thread-daystamp {
         align-self: center;
         font-family: 'Silkscreen', monospace;
-        font-size: calc(8px * var(--ph-text-scale, 1));
-        letter-spacing: 0.5px;
+        font-size: $phone-pixel-size;
+        letter-spacing: $phone-screen-px;
         color: var(--ph-faint);
         padding: 5px 0 9px;
     }
@@ -7320,8 +7327,8 @@ $camera-bar-height: 84px;
 
     .phone-wallet-debit-issuer {
         font-family: 'Silkscreen', monospace;
-        font-size: calc(7px * var(--ph-text-scale, 1));
-        letter-spacing: .3px;
+        font-size: $phone-pixel-size;
+        letter-spacing: 0;
         color: rgba(244, 240, 247, .5);
         text-align: right;
         line-height: 1.7;
@@ -8919,8 +8926,8 @@ $camera-bar-height: 84px;
 
     .phone-call-kicker {
         font-family: 'Silkscreen', monospace;
-        font-size: calc(9px * var(--ph-text-scale, 1));
-        letter-spacing: 1.5px;
+        font-size: $phone-pixel-size;
+        letter-spacing: $phone-screen-px * 2;
         color: rgba(255, 255, 255, 0.7);
     }
 
@@ -9130,8 +9137,8 @@ $camera-bar-height: 84px;
 
 .phone-pay-kicker {
     font-family: 'Silkscreen', monospace;
-    font-size: 8.5px;
-    letter-spacing: 0.8px;
+    font-size: $phone-pixel-size;
+    letter-spacing: $phone-screen-px;
     color: $phone-faint-text;
 
     &.phone-pay-centre { text-align: center; }
@@ -9172,7 +9179,7 @@ $camera-bar-height: 84px;
         border-top: 1px solid rgba(255, 255, 255, 0.10);
     }
 
-    .phone-pay-status { flex-grow: 1; font-family: 'Silkscreen', monospace; font-size: 8.5px; letter-spacing: 0.8px; opacity: 0.85; }
+    .phone-pay-status { flex-grow: 1; font-family: 'Silkscreen', monospace; font-size: $phone-pixel-size; letter-spacing: $phone-screen-px; opacity: 0.85; }
     .phone-pay-time { font-size: 10.5px; opacity: 0.7; }
 }
 
@@ -9237,8 +9244,8 @@ $camera-bar-height: 84px;
     display: block;
     margin: 18px 0 0;
     font-family: 'Silkscreen', monospace;
-    font-size: 9px;
-    letter-spacing: 0.9px;
+    font-size: $phone-pixel-size;
+    letter-spacing: $phone-screen-px;
     color: $phone-muted-text;
 }
 

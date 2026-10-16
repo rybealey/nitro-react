@@ -34,7 +34,7 @@
     --font-display: 'Press Start 2P', monospace;
     --font-pixel: 'Silkscreen', monospace;
     --font-body: 'Barlow', system-ui, sans-serif;
-    --tracking-pixel: 0.5px;
+    --tracking-pixel: 1px;
     --leading-body: 1.5;
 
     position: fixed;
@@ -83,7 +83,7 @@
         span:last-child {
             font-family: var(--font-pixel);
             font-weight: 700;
-            font-size: 13px;
+            font-size: 16px;
             letter-spacing: var(--tracking-pixel);
             text-transform: uppercase;
             color: var(--cream);
@@ -104,9 +104,9 @@
     }
 
     .deploy-progress-label {
-        font-size: 11px;
+        font-size: 8px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
         margin-bottom: 6px;
         display: flex;
         justify-content: space-between;
@@ -149,7 +149,7 @@
 
     .deploy-step-eta {
         font-family: var(--font-pixel);
-        font-size: 11px;
+        font-size: 8px;
         text-transform: uppercase;
         color: var(--mauve-300);
         white-space: nowrap;
@@ -217,7 +217,7 @@
 
     .deploy-notes-title {
         font-family: var(--font-display);
-        font-size: 13px;
+        font-size: 16px;
         color: #fff;
         text-shadow: 2px 2px 0 var(--ink);
     }
@@ -225,7 +225,7 @@
     .deploy-notes-version {
         font-family: var(--font-pixel);
         font-weight: 700;
-        font-size: 12px;
+        font-size: 8px;
         color: var(--cream);
         text-transform: uppercase;
     }
@@ -253,9 +253,9 @@
         color: #fff;
         font-family: var(--font-pixel);
         font-weight: 700;
-        font-size: 11px;
+        font-size: 8px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
         padding: 3px 8px;
         border: 2px solid var(--ink);
         box-shadow: var(--shadow-pixel-sm);
@@ -277,7 +277,7 @@
 
     .deploy-notes-marker {
         font-family: var(--font-pixel);
-        font-size: 10px;
+        font-size: 8px;
         color: var(--magenta-500);
         margin-top: 4px;
     }

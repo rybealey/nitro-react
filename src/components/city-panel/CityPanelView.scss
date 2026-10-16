@@ -29,7 +29,10 @@ $city-line: rgba(0, 0, 0, 0.06);
         .mt-seg-button { padding: 1px 4px; }
     }
 
-    .city-mono { font-family: 'Ubuntu Mono', monospace; }
+    // Ubuntu, not Ubuntu Mono: the client never loads the mono face, so Windows
+    // drew these in Consolas. Ubuntu's digits are all one width already, so
+    // the figures still line up.
+    .city-mono { font-family: 'Ubuntu', sans-serif; }
 
     .city-notice {
         padding: 6px 10px;

@@ -36,7 +36,11 @@
     font-style: italic;
 }
 
-// PixelRP design-system faces (deployment screen).
+// PixelRP design-system faces (deployment screen, phone, offer card).
+// Silkscreen and Press Start 2P are pixel fonts drawn on an 8px grid: they are
+// crisp at 8px, 16px or 24px of screen and smear their pixels anywhere between,
+// so size them only at those (inside the phone, see $phone-pixel-size), with
+// whole-pixel letter-spacing.
 @font-face {
     font-family: 'Press Start 2P';
     src: url('@/assets/webfonts/PressStart2P-Regular.woff2') format('woff2');
