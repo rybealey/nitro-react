@@ -17,6 +17,7 @@ import { RegisterRpRegionMessages } from './api/rp-region/RpRegionMessages';
 import { RegisterRpRoomRightsMessages } from './api/rp-rights/RpRoomRightsMessages';
 import { RegisterRpCatalogSearchMessages } from './api/rp-catalog/RpCatalogSearchMessages';
 import { RegisterRpTellerMessages } from './api/rp-teller/RpTellerMessages';
+import { InstallBrowserGuard, StartDevToolsWatch } from './api/security/BrowserGuard';
 import { RegisterRpBankMessages } from './api/rp-phone/RpBankMessages';
 import { RegisterRpPayMessages } from './api/rp-phone/RpPayMessages';
 import { RegisterRpOfferMessages } from './api/rp-offer/RpOfferMessages';
@@ -80,6 +81,10 @@ export const App: FC<{}> = props =>
 
         // Keeps the asset pass alive for as long as the client stays open.
         InstallAssetPassRefresh();
+
+        // No browser right-click menu in-game; DevTools shortcuts send the
+        // player back to the website.
+        InstallBrowserGuard();
 
         // No version banners in players' consoles - Nitro's and PixiJS's.
         NitroVersion.sayHello = () => null;
@@ -251,6 +256,10 @@ export const App: FC<{}> = props =>
                 // the player's own cap has to be re-applied after the ticker
                 // exists or it would only take effect on the next change.
                 ApplyMaxFps();
+
+                // DevTools that are already open, checked from here on - by now
+                // the rank that exempts staff has arrived.
+                StartDevToolsWatch();
 
                 setTimeout(() => setIsReady(true), 300);
                 return;
