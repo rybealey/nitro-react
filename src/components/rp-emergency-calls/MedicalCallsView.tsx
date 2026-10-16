@@ -158,7 +158,7 @@ export const MedicalCallsView: FC<{}> = props =>
             break;
         case MedicalCallState.Admitted:
             statusClass = 'is-closed';
-            statusText = 'Taken in by the hospital';
+            statusText = 'Auto revived';
             break;
         case MedicalCallState.Gone:
             statusClass = 'is-closed';
@@ -167,14 +167,13 @@ export const MedicalCallsView: FC<{}> = props =>
     }
 
     return (
-        <NitroCardView uniqueKey="medical-calls" className="nitro-emergency-calls nitro-medical-calls" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_LEFT }>
+        <NitroCardView uniqueKey="medical-calls" className="nitro-emergency-calls nitro-medical-calls" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_RIGHT }>
             <NitroCardHeaderView headerText="Paramedic Dispatch" onCloseClick={ () => setIsDismissed(true) } />
             <NitroCardContentView className="emergency-body" overflow="hidden">
                 { !call &&
                     <div className="emergency-empty">
                         <CrossIcon size={ 20 } />
                         <b>No emergencies</b>
-                        <span>Calls dispatched to you show up here while you are on duty.</span>
                     </div> }
                 { call &&
                     <article className={ `emergency-card is-medical${ (statusClass === 'is-closed') ? ' is-closed' : '' }` } aria-label={ `${ call.patientName } died` }>
