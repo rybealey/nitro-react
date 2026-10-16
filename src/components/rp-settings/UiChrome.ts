@@ -132,6 +132,16 @@ const hsla = (h: number, s: number, l: number, a: number): string =>
 
 export const IsValidChromeColor = (color: string): boolean => /^#[0-9a-fA-F]{6}$/.test(color);
 
+// Drawer icon tint: the drawer PNGs are grayscale; each icon carries a masked
+// overlay painted with this colour and blended with mix-blend-mode: color, so
+// the hue carries and the art keeps its shading. Its own setting now (Settings
+// > UI > Colours > Sidebar Icons), no longer derived from the interface colour.
+// '' or invalid = transparent = the neutral grayscale art.
+export const ApplyIconTint = (colour: string): void =>
+{
+    document.documentElement.style.setProperty('--prp-chrome-icon-tint', (IsValidChromeColor(colour) ? colour : 'transparent'));
+}
+
 // Apply a scheme ('' or invalid = default) by overriding the chrome CSS
 // variables on the document root. The SCSS fallbacks equal the default
 // scheme, so applying the default just re-states them.
@@ -171,20 +181,6 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     style.setProperty('--prp-menu-item-lo', hsla(h, s, (l - 7), a(0.95)));
     style.setProperty('--prp-menu-hover-hi', hsla(h, s, (l + 7), a(0.95)));
     style.setProperty('--prp-menu-hover-lo', hsla(h, s, (l + 4), a(0.95)));
-
-    // Drawer icon tint: the drawer PNGs are grayscale; each icon carries a
-    // masked overlay pseudo-element painted with this color and blended
-    // with mix-blend-mode: color — exact hue, original shading preserved
-    // (unlike hue-rotate, whose matrix approximation drifts badly on large
-    // rotations). Transparent on the default scheme = neutral gray art.
-    if(base === DEFAULT_CHROME_COLOR)
-    {
-        style.setProperty('--prp-chrome-icon-tint', 'transparent');
-    }
-    else
-    {
-        style.setProperty('--prp-chrome-icon-tint', hsla(h, 45, 55, 1));
-    }
 
     // Window header duo-tone: set the two stops (+ a border 5% darker than
     // the bottom stop, matching the slim theme's original derivation); the

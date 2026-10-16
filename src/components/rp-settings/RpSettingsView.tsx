@@ -7,9 +7,10 @@ import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardH
 import { useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
 import { SetMusicVolume, useJukeboxPrefs } from '../music-player/JukeboxStore';
 import { GetSelectableChatStyleIds } from './ChatStyles';
-import { ApplyUiChrome, CHROME_OPACITY_STEPS, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HeaderColor, HeaderKeyForColor, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { ApplyIconTint, ApplyUiChrome, CHROME_OPACITY_STEPS, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HeaderColor, HeaderKeyForColor, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
+import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
@@ -60,9 +61,9 @@ const HUD_STYLE_LABELS: Record<HudStyle, string> = { classic: 'Classic', light: 
 // UI > Colours: the account's colours first (saved on the server), then the
 // HUD's (this device). Each row is a reset button and a chip that opens the
 // colour picker.
-type ColourRowKey = 'headers' | 'interface' | HudBar;
+type ColourRowKey = 'headers' | 'interface' | 'icons' | HudBar;
 
-const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
+const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', icons: 'Sidebar Icons', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.
 const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
@@ -147,6 +148,7 @@ export const RpSettingsView: FC<{}> = props =>
     // UI > Colours: the row whose picker is open, or null.
     const [ openColour, setOpenColour ] = useState<ColourRowKey>(null);
     const { hudStyle, hudBars } = useHudPrefs();
+    const { iconTint } = useIconTint();
     // A drag in the picker changes the colour on every move; the server only
     // hears the colour it settles on.
     const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -248,6 +250,7 @@ export const RpSettingsView: FC<{}> = props =>
         setUsernameIcon(uicon);
         setUsernameIconColor(uiconColor);
         ApplyUiChrome(color, opacity, header);
+        ApplyIconTint(GetIconTint());
     });
 
     // ---- Macros ----------------------------------------------------------
@@ -1041,11 +1044,19 @@ export const RpSettingsView: FC<{}> = props =>
         queueUiSave(colour, headerKey);
     }
 
+    // UI > Colours: the sidebar icon tint, this device only. Applied live.
+    const selectIconColour = (colour: string) =>
+    {
+        SetIconTint(colour);
+        ApplyIconTint(colour);
+    }
+
     const closeColourPicker = useCallback(() => setOpenColour(null), []);
 
     const colourRows: Record<ColourRowKey, { colour: string, isDefault: boolean, pick: (colour: string) => void, reset: () => void }> = {
         headers: { colour: HeaderColor(headerKey), isDefault: (headerKey === DEFAULT_HEADER_KEY), pick: pickHeaderColour, reset: () => selectHeader(DEFAULT_HEADER_KEY) },
         interface: { colour: chromeColor.toLowerCase(), isDefault: (chromeColor.toLowerCase() === DEFAULT_CHROME_COLOR), pick: pickInterfaceColour, reset: () => selectChrome(DEFAULT_CHROME_COLOR) },
+        icons: { colour: (iconTint || ICON_TINT_NEUTRAL), isDefault: (iconTint === DEFAULT_ICON_TINT), pick: selectIconColour, reset: () => selectIconColour(DEFAULT_ICON_TINT) },
         hp: { colour: hudBars.hp, isDefault: (hudBars.hp === HUD_BAR_DEFAULTS.hp), pick: colour => SetHudBarColour('hp', colour), reset: () => SetHudBarColour('hp', HUD_BAR_DEFAULTS.hp) },
         energy: { colour: hudBars.energy, isDefault: (hudBars.energy === HUD_BAR_DEFAULTS.energy), pick: colour => SetHudBarColour('energy', colour), reset: () => SetHudBarColour('energy', HUD_BAR_DEFAULTS.energy) },
         aggro: { colour: hudBars.aggro, isDefault: (hudBars.aggro === HUD_BAR_DEFAULTS.aggro), pick: colour => SetHudBarColour('aggro', colour), reset: () => SetHudBarColour('aggro', HUD_BAR_DEFAULTS.aggro) }
@@ -1174,6 +1185,7 @@ export const RpSettingsView: FC<{}> = props =>
                                         <div className="rp-settings-panel">
                                             { renderColourRow('headers') }
                                             { renderColourRow('interface') }
+                                            { renderColourRow('icons') }
                                             <div className="rp-settings-row">
                                                 <label htmlFor="rp-settings-opacity" className="rp-settings-row-label is-opacity">Opacity</label>
                                                 <input id="rp-settings-opacity" type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
