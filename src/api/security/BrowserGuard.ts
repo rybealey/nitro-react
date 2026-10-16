@@ -1,4 +1,4 @@
-import { GetConfiguration, GetSessionDataManager } from '../nitro';
+import { GetConfiguration, GetConnection, GetSessionDataManager } from '../nitro';
 
 // PixelRP: no browser right-click menu in-game, and no Inspect Element.
 //
@@ -12,31 +12,52 @@ import { GetConfiguration, GetSessionDataManager } from '../nitro';
 //     Cmd+Shift+C on a Mac) and view-source (Ctrl+U, Cmd+Option+U). Matched on
 //     event.code, because Option turns event.key into symbols on a Mac.
 //
-//   - DevTools already open, however it got there (the browser menu, before
-//     the client loaded, undocked into its own window): a `debugger` statement
-//     is a no-op until DevTools is open, and then it pauses right there, so a
-//     statement that takes more than a moment to run means someone is
-//     watching. That is the one signal every browser gives. Window-size gaps
-//     are left alone on purpose - browser zoom and Chrome's or Edge's side
-//     panels open the same gap, and a false positive throws a player out.
+//   - DevTools open, however it got there (the browser's own menu - Safari's
+//     Develop menu, Chrome's More Tools - before the client loaded, undocked):
+//     a `debugger` statement is a no-op until DevTools is open, and then it
+//     pauses right there. It runs in a WORKER that answers the game's pings.
+//     Paused, it stops answering, and the game - still running, because only
+//     the worker is paused - sees the silence and leaves while DevTools is
+//     still open. (Run on the game's own thread, as it first was, the pause
+//     froze the game too, so nothing could leave until DevTools was closed.)
+//
+// Not done: timing console.table against console.log, the usual way to catch
+// DevTools with breakpoints deactivated. Tried (2026-10-16), it read as open
+// with no DevTools at all in a browser driven over the debugging protocol -
+// as automation and some extensions are - and a false positive throws a
+// player out. It also had to console.clear() every reading.
+//
+// Leaving cuts the game first - the connection to the server closed and the
+// page emptied - so a player who manages to hold the redirect up has no game
+// left to look at.
+//
+// Window-size gaps are left alone on purpose - browser zoom and Chrome's or
+// Edge's side panels open the same gap, and a false positive throws a player
+// out.
 //
 // Best effort only, and it cannot be anything more: nothing a page does stops
-// a player who disables JavaScript, deactivates breakpoints before opening
-// DevTools, or reads the files some other way. Every rule that matters is
-// enforced by the server.
+// a player who disables JavaScript, reads the files some other way or runs a
+// modified browser. Every rule that matters is enforced by the server.
 //
 // Staff (moderator rank and up) are exempt once their rank has arrived - they
-// read the pixelrp* traces in DevTools - and so is the dev server.
+// read the pixelrp* traces in DevTools - and so is the dev server. For them no
+// worker runs at all, so DevTools never pauses on it.
 
-// A `debugger` that DevTools did not pause on returns in well under a
-// millisecond; a paused one takes as long as the person takes to resume.
-// Far above any garbage-collection pause, so a slow machine is never taken
-// for an open DevTools.
-const PAUSED_AFTER_MS = 500;
-const WATCH_EVERY_MS = 1000;
 // The watch starts once the room engine is up; this leaves the permissions
 // packet time to land first, so staff are known before the first check.
 const WATCH_AFTER_MS = 5000;
+
+// The worker is pinged every PING_EVERY_MS and answers at once unless paused.
+// It is only taken for paused after STALL_TICKS of the game's own ticks, each
+// on time, have gone by with the ping unanswered: a game that was itself busy
+// (a room loading, a long frame) runs late ticks, which do not count, so its
+// own stall is never read as the worker's.
+const PING_EVERY_MS = 500;
+const LATE_TICK_MS = (PING_EVERY_MS * 2);
+const STALL_TICKS = 4;
+
+// A `debugger` that is a no-op unless DevTools is open, then a reply.
+const WORKER_SOURCE = 'self.onmessage = function(event) { debugger; self.postMessage(event.data); };';
 
 // ui-config.json.example's url.prefix. The live configs still carry it, so it
 // names no site at all.
@@ -45,6 +66,7 @@ const EXAMPLE_URL_PREFIX = 'https://website.com';
 let installed = false;
 let watching = false;
 let leaving = false;
+let stopWatch: () => void = () => null;
 
 const isExempt = (): boolean =>
 {
@@ -78,8 +100,22 @@ const leaveForWebsite = () =>
     if(leaving) return;
 
     leaving = true;
+    stopWatch();
 
     const url = GetWebsiteUrl();
+
+    // Nothing left to look at: off the server, and an empty page, before the
+    // navigation - which DevTools can hold up - even starts.
+    try
+    {
+        GetConnection()?.dispose();
+    }
+    catch
+    {
+        // Already gone.
+    }
+
+    document.body?.replaceChildren();
 
     // The client lives in the CMS's /game iframe: send the whole page, not
     // just the frame.
@@ -140,16 +176,6 @@ const onKeyDown = (event: KeyboardEvent) =>
 
 const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
-const pausedByDevTools = (): boolean =>
-{
-    const startedAt = performance.now();
-
-    // eslint-disable-next-line no-debugger
-    debugger;
-
-    return ((performance.now() - startedAt) > PAUSED_AFTER_MS);
-}
-
 export const InstallBrowserGuard = () =>
 {
     if(installed) return;
@@ -160,16 +186,96 @@ export const InstallBrowserGuard = () =>
     window.addEventListener('keydown', onKeyDown, { capture: true });
 }
 
+// The pinged worker, or null where a page may not start one - then only the
+// shortcuts are watched.
+const startWorkerWatch = (): (() => void) | null =>
+{
+    let worker: Worker = null;
+    let workerUrl = '';
+
+    try
+    {
+        workerUrl = URL.createObjectURL(new Blob([ WORKER_SOURCE ], { type: 'text/javascript' }));
+        worker = new Worker(workerUrl);
+    }
+    catch
+    {
+        if(workerUrl) URL.revokeObjectURL(workerUrl);
+
+        return null;
+    }
+
+    let ping = 0;
+    let answered = 0;
+    let ticksWaiting = 0;
+    let lastTickAt = performance.now();
+
+    worker.onmessage = (event: MessageEvent<number>) =>
+    {
+        answered = Math.max(answered, event.data);
+        ticksWaiting = 0;
+    };
+
+    const interval = setInterval(() =>
+    {
+        const now = performance.now();
+        const late = ((now - lastTickAt) > LATE_TICK_MS);
+
+        lastTickAt = now;
+
+        // A hidden tab's timers are throttled and Safari suspends it outright:
+        // nothing there is evidence, and the count starts over on return.
+        if(document.visibilityState !== 'visible' || late)
+        {
+            ticksWaiting = 0;
+
+            if(answered < ping) return;
+        }
+        else if(answered < ping)
+        {
+            if(++ticksWaiting >= STALL_TICKS) leaveForWebsite();
+
+            return;
+        }
+
+        worker.postMessage(++ping);
+    }, PING_EVERY_MS);
+
+    return () =>
+    {
+        clearInterval(interval);
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+    };
+}
+
 export const StartDevToolsWatch = () =>
 {
     if(watching) return;
 
     watching = true;
 
-    setTimeout(() => setInterval(() =>
+    setTimeout(() =>
     {
-        if(isExempt()) return;
+        if(leaving || isExempt()) return;
 
-        if(pausedByDevTools()) leaveForWebsite();
-    }, WATCH_EVERY_MS), WATCH_AFTER_MS);
+        const stopWorker = startWorkerWatch();
+
+        if(!stopWorker) return;
+
+        stopWatch = () =>
+        {
+            stopWorker();
+            stopWatch = () => null;
+        };
+
+        // A rank that arrives late still exempts: the watch stands down.
+        const exemptCheck = setInterval(() =>
+        {
+            if(!isExempt()) return;
+
+            clearInterval(exemptCheck);
+            stopWatch();
+        }, WATCH_AFTER_MS);
+    }, WATCH_AFTER_MS);
 }
