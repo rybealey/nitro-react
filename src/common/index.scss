@@ -234,6 +234,14 @@
     &.is-coins {
         background-image: url('@/assets/images/purse/coins.png');
     }
+
+    // pixelrp: the diamonds (type 5) icon, shipped in the client instead of
+    // the anti-aliased wallet/5.png whose soft edge left a grey halo on the
+    // dark purse. Hard-edged; pixelated so display scaling can't blur it back.
+    &.is-diamonds {
+        background-image: url('@/assets/images/purse/diamond.png');
+        image-rendering: pixelated;
+    }
 }
 
 .nitro-item-count {

@@ -13,6 +13,10 @@ export interface CurrencyIconProps extends BaseProps<HTMLDivElement>
 // file in the client build reaches everyone with the next deploy.
 const IsCoins = (type: number | string) => (type.toString() === '-1');
 
+// pixelrp: diamonds (type 5) also ship in the client (.is-diamonds), replacing
+// the remote wallet/5.png whose anti-aliased edge showed as a grey halo.
+const IsDiamonds = (type: number | string) => (type.toString() === '5');
+
 export const LayoutCurrencyIcon: FC<CurrencyIconProps> = props =>
 {
     const { type = '', classNames = [], style = {}, ...rest } = props;
@@ -22,6 +26,8 @@ export const LayoutCurrencyIcon: FC<CurrencyIconProps> = props =>
         const newClassNames: string[] = [ 'nitro-currency-icon' ];
 
         if(IsCoins(type)) newClassNames.push('is-coins');
+
+        if(IsDiamonds(type)) newClassNames.push('is-diamonds');
 
         if(classNames.length) newClassNames.push(...classNames);
 
@@ -41,7 +47,7 @@ export const LayoutCurrencyIcon: FC<CurrencyIconProps> = props =>
     {
         let newStyle: CSSProperties = {};
 
-        if(!IsCoins(type)) newStyle.backgroundImage = urlString;
+        if(!IsCoins(type) && !IsDiamonds(type)) newStyle.backgroundImage = urlString;
 
         if(Object.keys(style).length) newStyle = { ...newStyle, ...style };
 
