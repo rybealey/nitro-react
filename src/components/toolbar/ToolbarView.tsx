@@ -1,7 +1,7 @@
 import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { CreateLinkEvent, GetSessionDataManager, HasHabboVip } from '../../api';
-import { Base, Flex, HoverBubble, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
+import { Flex, HoverBubble, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
 import { usePhoneAppBadges } from '../phone/usePhoneNotifications';
 import { ToolbarMeView } from './ToolbarMeView';
@@ -82,18 +82,28 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                         </HoverBubble>
                         <Flex alignItems="center" gap={ 2 } className={ 'toolbar-menu-items' + ((isMenuExpanded && hasMenuItems) ? ' expanded' : '') }>
                             { isMod &&
-                                <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } /> }
+                                <HoverBubble text="Navigator">
+                                    <div className="cursor-pointer navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } />
+                                </HoverBubble> }
                             { isMod &&
-                                <Base pointer className="navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } /> }
+                                <HoverBubble text="Furni Shop">
+                                    <div className="cursor-pointer navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } />
+                                </HoverBubble> }
                             { isMod &&
-                                <Base pointer className="navigation-item icon icon-inventory" onClick={ event => CreateLinkEvent('inventory/toggle') }>
-                                    { (getFullCount > 0) &&
-                                        <LayoutItemCountView count={ getFullCount } /> }
-                                </Base> }
+                                <HoverBubble text="Inventory">
+                                    <div className="cursor-pointer navigation-item icon icon-inventory" onClick={ event => CreateLinkEvent('inventory/toggle') }>
+                                        { (getFullCount > 0) &&
+                                            <LayoutItemCountView count={ getFullCount } /> }
+                                    </div>
+                                </HoverBubble> }
                             { showCamera &&
-                                <Base pointer className="navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } /> }
+                                <HoverBubble text="Camera">
+                                    <div className="cursor-pointer navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } />
+                                </HoverBubble> }
                             { isMod &&
-                                <Base pointer className="navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } /> }
+                                <HoverBubble text="Mod Tools">
+                                    <div className="cursor-pointer navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } />
+                                </HoverBubble> }
                         </Flex>
                     </Flex>
                     <Flex alignItems="center" id="toolbar-chat-input-container" />

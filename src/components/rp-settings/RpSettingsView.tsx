@@ -1382,7 +1382,7 @@ export const RpSettingsView: FC<{}> = props =>
                                                     onClick={ () => setEditingCommand({ index, text: macro.c }) }>{ macro.c }</button>
                                             </span> }
                                     </div>
-                                    <button type="button" className="rp-mx-delete" title="Delete this macro" aria-label={ `Delete ${ macro.b } ${ macro.c }` } onClick={ () => deleteMacro(index) }>
+                                    <button type="button" className="rp-mx-delete" aria-label={ `Delete ${ macro.b } ${ macro.c }` } onClick={ () => deleteMacro(index) }>
                                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 2L8 8M8 2L2 8" /></svg>
                                     </button>
                                 </div>
