@@ -512,7 +512,7 @@ const RpDiscardConfirmView: FC<RpDiscardConfirmViewProps> = props =>
 
     return (
         <NitroCardView uniqueKey="rp-inventory-discard" className="rp-discard-window" theme="primary-slim" windowPosition={ DraggableWindowPosition.CENTER }>
-            <NitroCardHeaderView headerText="Throw away?" onCloseClick={ onCancel } />
+            <NitroCardHeaderView headerText="Delete Item" onCloseClick={ onCancel } />
             <NitroCardContentView className="rp-discard-body">
                 <div className="rp-discard-item">
                     <div className="rp-discard-icon">
@@ -520,12 +520,12 @@ const RpDiscardConfirmView: FC<RpDiscardConfirmViewProps> = props =>
                     </div>
                     <div className="rp-discard-text">
                         <div className="rp-discard-name">{ itemName }</div>
-                        <div className="rp-discard-owned">You have { owned }.</div>
+                        <div className="rp-discard-owned">You have <span className="rp-discard-qty">{ owned }</span></div>
                     </div>
                 </div>
                 { (owned > 1) &&
                     <div className="rp-discard-amount">
-                        <span>How many?</span>
+                        <span>Amount</span>
                         <div className="rp-discard-stepper">
                             <button type="button" aria-label="One fewer" disabled={ count <= 1 } onClick={ () => setBoth(count - 1) }>&minus;</button>
                             <input type="number" min={ 1 } max={ owned } aria-label="How many to throw away" value={ typed }
@@ -542,11 +542,10 @@ const RpDiscardConfirmView: FC<RpDiscardConfirmViewProps> = props =>
                             <button type="button" className="rp-discard-all" disabled={ count >= owned } onClick={ () => setBoth(owned) }>All</button>
                         </div>
                     </div> }
-                <div className="rp-discard-warning">This can&apos;t be undone.</div>
                 <div className="rp-discard-actions">
                     <button type="button" className="rp-discard-cancel" onClick={ onCancel }>Cancel</button>
                     <button type="button" className="rp-discard-confirm" onClick={ () => onConfirm(count) }>
-                        { (owned > 1) ? `Throw away ${ count }` : 'Throw away' }
+                        { (owned > 1) ? <>Delete <span className="rp-discard-count">{ count }</span></> : 'Delete' }
                     </button>
                 </div>
             </NitroCardContentView>
