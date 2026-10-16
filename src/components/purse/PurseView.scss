@@ -15,6 +15,10 @@
         // stays square and the quick tools (RightSideView.scss) still fit
         // under the room title.
         min-height: 68px;
+        // The same 8px from the first currency value to the left edge as from
+        // the VIP text to the right edge (the currency buttons add their own
+        // 4px, matched by the column gap on the other side).
+        padding: 4px 8px 4px 4px;
 
         // Square Diamonds button in the purse's left slot. Pixel icon renders
         // at NATIVE size (43x40, no scaling) centered in the square.
@@ -31,17 +35,14 @@
         // No tile of its own (Twist, 2026-10-15): the VIP badge and its days
         // sit straight on the purse's plate, seamless with the currencies.
         .nitro-purse-subscription {
-            // 1:1 slot. aspect-ratio can't do this here (the row's auto
-            // height is never a definite cross size, so the ratio has no
-            // axis to resolve from - verified both stretch and centered
-            // variants render non-square). The row's height IS deterministic
-            // chrome though: the purse's min-height holds it at 60px, so a
-            // fixed 60px width makes the stretched tile exactly square.
-            width: 60px;
+            // Hugs the badge and its text: with no tile of its own there is
+            // nothing to keep square, and a fixed slot only left the right
+            // edge with more room than the left.
+            flex: none;
         }
 
         .nitro-purse-button {
-            padding: 3px 2px;
+            padding: 3px 4px;
 
             // let a long currency value expand the purse rather than clip
             .text-truncate {
