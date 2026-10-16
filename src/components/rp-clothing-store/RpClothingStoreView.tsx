@@ -1,7 +1,7 @@
 import { FigureSetIdsMessageEvent, IFigurePartSet, ILinkEventTracker, IPartColor, UserFigureComposer } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, AvatarEditorGridPartItem, AvatarEditorUtilities, FigureData, GetAvatarPalette, GetAvatarRenderManager, GetAvatarSetType, GetConfiguration, GetSessionDataManager, LocalizeFormattedNumber, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
-import { BUY_CLOTHING_BACKPACK_FULL, BUY_CLOTHING_INSUFFICIENT, BUY_CLOTHING_OK, BUY_CLOTHING_SOLD_OUT, ClothingListing, ClothingShelfName, IsLtdListing, IsSoldOutListing, RpBuyClothingComposer, RpBuyClothingResultEvent, RpClothingStoreEvent, RpGetClothingStoreComposer, RpOpenClothingStoreEvent } from '../../api/rp-clothing/RpClothingMessages';
+import { BUY_CLOTHING_BACKPACK_FULL, BUY_CLOTHING_INSUFFICIENT, BUY_CLOTHING_OK, BUY_CLOTHING_SOLD_OUT, ClothingListing, IsLtdListing, IsSoldOutListing, RpBuyClothingComposer, RpBuyClothingResultEvent, RpClothingStoreEvent, RpGetClothingStoreComposer, RpOpenClothingStoreEvent } from '../../api/rp-clothing/RpClothingMessages';
 import { LayoutAvatarImageView, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent, usePurse } from '../../hooks';
 import { AvatarEditorIcon } from '../avatar-editor/views/AvatarEditorIcon';
@@ -42,6 +42,8 @@ interface ResolvedPart
 interface ShelfItem
 {
     listing: ClothingListing;
+    // the row's raw clothing_name - its Habbo libraries (hat_U_autumnberet2) -
+    // on the tile and in the fitting room, and what the search matches
     name: string;
     // the parts this piece puts on (gender-matched where possible), first is the tile's art
     parts: ResolvedPart[];
@@ -242,7 +244,7 @@ export const RpClothingStoreView: FC<{}> = props =>
             const type = parts[0].type;
             const tab = TABS.find(candidate => (candidate.types.indexOf(type) >= 0));
 
-            items.push({ listing, name: ClothingShelfName(listing), parts, type, tab: (tab ? tab.key : 'head'), fitsGender: !!matching.length });
+            items.push({ listing, name: listing.clothingName, parts, type, tab: (tab ? tab.key : 'head'), fitsGender: !!matching.length });
         }
 
         return items;
