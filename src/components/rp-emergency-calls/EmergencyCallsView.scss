@@ -43,8 +43,8 @@ $emergency-blue: #1e7295;
         // An officer's :backup request, told from a 911 call at a glance.
         &.is-backup { border-left: 3px solid $emergency-blue; }
 
-        // A death in the paramedics' queue (MedicalCallsView): the hospital's red.
-        &.is-medical { border-left: 3px solid $emergency-red; }
+        // A death in the paramedics' queue (MedicalCallsView): a plain card,
+        // no red left accent (Twist, 2026-10-16).
 
         // A death nobody needs to go to any more - recovered, collected or gone.
         &.is-closed { opacity: 0.6; }
