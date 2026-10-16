@@ -35,16 +35,6 @@
     image-rendering: pixelated;
 }
 
-// pixelrp: chat text that reads as bold - a shout, an action line - is drawn
-// as Ubuntu Medium with a stroke in its own colour, not with the real Bold.
-// The Habbo Ubuntu Bold hints roughly on Windows and reads as jagged at 14px
-// (a Retina Mac hides it). The font has no weight between Medium and Bold, so
-// the stroke is what brings Medium up: 0.4px lands close to Bold's weight.
-@mixin chat-bold {
-    font-weight: 500;
-    -webkit-text-stroke-width: 0.4px;
-}
-
 .bubble-container {
     position: absolute;
     width: fit-content;
@@ -112,7 +102,7 @@
         &.type-2 {
             // shout
             .message {
-                @include chat-bold;
+                font-weight: 700;
             }
         }
 
@@ -125,17 +115,15 @@
         // The name is bold with the rest: the line reads as one sentence.
         &.is-action .message,
         &.is-action .username {
-            @include chat-bold;
+            font-weight: 700;
         }
 
-        // pixelrp: every other name is Medium with a lighter stroke than
-        // chat-bold's, so it stands out from the message without shouting
-        // over it. Shouts included: an "@x" mention always goes out as one
-        // (ChatInputView). Chat history and the settings preview reuse these
-        // classes.
+        // pixelrp: every other name is Medium, a step under a shout's Bold,
+        // so it stands out from the message without shouting over it. Shouts
+        // included: an "@x" mention always goes out as one (ChatInputView).
+        // Chat history and the settings preview reuse these classes.
         &:not(.is-action) .username {
             font-weight: 500;
-            -webkit-text-stroke-width: 0.25px;
         }
 
         .user-container {

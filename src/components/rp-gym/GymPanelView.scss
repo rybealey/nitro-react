@@ -59,7 +59,6 @@ $gym-head-gap: 8px;
 .rp-gym-label {
     font-size: 10px;
     font-weight: 700;
-    @include prp-bold;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: $gym-muted;
@@ -78,13 +77,11 @@ $gym-head-gap: 8px;
 .rp-gym-level {
     font-size: 13px;
     font-weight: 700;
-    @include prp-bold;
 }
 
 .rp-gym-clock {
     font-size: 13px;
     font-weight: 700;
-    @include prp-bold;
     font-variant-numeric: tabular-nums;
 }
 
@@ -96,7 +93,6 @@ $gym-head-gap: 8px;
     text-align: center;
     font-size: 13px;
     font-weight: 700;
-    @include prp-bold;
 }
 
 .rp-gym-progress {
