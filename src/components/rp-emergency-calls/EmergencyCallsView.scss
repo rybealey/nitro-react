@@ -45,6 +45,9 @@ $emergency-blue: #1e7295;
 
         // A death in the paramedics' queue (MedicalCallsView): the hospital's red.
         &.is-medical { border-left: 3px solid $emergency-red; }
+
+        // A death nobody needs to go to any more - recovered, collected or gone.
+        &.is-closed { opacity: 0.6; }
     }
 
     // Names never cut off (Twist, 2026-10-15): a long one wraps, and the
@@ -166,6 +169,7 @@ $emergency-blue: #1e7295;
         &.is-waiting { background: #fff4e5; border: 1px solid #f0c9a8; color: #7a3a06; }
         &.is-responded { background: #e6f4ea; border: 1px solid #b9dcc3; color: #1d5e31; }
         &.is-abuse { background: #fbe9e7; border: 1px solid #efc0ba; color: #7f1d16; }
+        &.is-closed { background: #ececef; border: 1px solid #d3d3d9; color: rgba(0, 0, 0, 0.6); }
     }
 
     .emergency-ring {
@@ -195,6 +199,14 @@ $emergency-blue: #1e7295;
             box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
 
             &:hover { background: #22809f; }
+
+            // Paramedic Dispatch's Claim, out of time or while holding a claim.
+            &:disabled {
+                opacity: 0.5;
+                cursor: default;
+
+                &:hover { background: $emergency-blue; }
+            }
         }
 
         &.is-go {
