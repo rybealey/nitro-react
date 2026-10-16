@@ -21,6 +21,14 @@ import { GetConfiguration, GetConnection, GetSessionDataManager } from '../nitro
 //     still open. (Run on the game's own thread, as it first was, the pause
 //     froze the game too, so nothing could leave until DevTools was closed.)
 //
+//     Except in Safari, and every other WebKit browser: its Web Inspector
+//     never pauses a worker on `debugger` (2026-10-16 - opened from the
+//     Develop menu, nothing happened at all). There the `debugger` runs on
+//     the game's own thread after all: the game freezes for as long as the
+//     inspector is open - nothing live to look at, and the server drops the
+//     silent connection - and leaves the moment it resumes, whether that is
+//     the inspector closing or the player pressing Continue.
+//
 // Not done: timing console.table against console.log, the usual way to catch
 // DevTools with breakpoints deactivated. Tried (2026-10-16), it read as open
 // with no DevTools at all in a browser driven over the debugging protocol -
@@ -55,6 +63,13 @@ const WATCH_AFTER_MS = 5000;
 const PING_EVERY_MS = 500;
 const LATE_TICK_MS = (PING_EVERY_MS * 2);
 const STALL_TICKS = 4;
+
+// Safari's fallback: a `debugger` on the game's own thread that DevTools did
+// not pause on returns in well under a millisecond; a paused one takes as
+// long as the person takes to resume. Far above any garbage-collection pause,
+// so a slow machine is never taken for an open inspector.
+const PAUSED_AFTER_MS = 500;
+const PAUSE_CHECK_EVERY_MS = 1000;
 
 // A `debugger` that is a no-op unless DevTools is open, then a reply.
 const WORKER_SOURCE = 'self.onmessage = function(event) { debugger; self.postMessage(event.data); };';
@@ -186,8 +201,8 @@ export const InstallBrowserGuard = () =>
     window.addEventListener('keydown', onKeyDown, { capture: true });
 }
 
-// The pinged worker, or null where a page may not start one - then only the
-// shortcuts are watched.
+// The pinged worker, or null where a page may not start one - then the game's
+// own thread is watched instead (startPauseWatch).
 const startWorkerWatch = (): (() => void) | null =>
 {
     let worker: Worker = null;
@@ -249,6 +264,32 @@ const startWorkerWatch = (): (() => void) | null =>
     };
 }
 
+// WebKit's engine, whatever the browser's name: Safari, and every browser on
+// iOS (CriOS, FxiOS, EdgiOS carry no Chrome token). Every Chromium browser on
+// a desktop says Chrome, and Firefox's desktop engine is not WebKit.
+const isWebKit = (): boolean =>
+{
+    const agent = (navigator.userAgent ?? '');
+
+    return (/AppleWebKit/.test(agent) && !/Chrome|Chromium/.test(agent));
+}
+
+// Safari's watch, and the fallback wherever a worker cannot be started.
+const startPauseWatch = (): (() => void) =>
+{
+    const interval = setInterval(() =>
+    {
+        const startedAt = performance.now();
+
+        // eslint-disable-next-line no-debugger
+        debugger;
+
+        if((performance.now() - startedAt) > PAUSED_AFTER_MS) leaveForWebsite();
+    }, PAUSE_CHECK_EVERY_MS);
+
+    return () => clearInterval(interval);
+}
+
 export const StartDevToolsWatch = () =>
 {
     if(watching) return;
@@ -259,13 +300,11 @@ export const StartDevToolsWatch = () =>
     {
         if(leaving || isExempt()) return;
 
-        const stopWorker = startWorkerWatch();
-
-        if(!stopWorker) return;
+        const stop = ((!isWebKit() && startWorkerWatch()) || startPauseWatch());
 
         stopWatch = () =>
         {
-            stopWorker();
+            stop();
             stopWatch = () => null;
         };
 
