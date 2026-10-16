@@ -2,11 +2,11 @@ export interface WindowSaveOptions
 {
     offset: { x: number, y: number };
     size: { width: number, height: number };
-    // PixelRP: set once a SIDE_DRAWER window has been re-anchored beside the
-    // drawer. An offset saved against the old centred default means something
-    // different against the new one, so the first open after the change drops
-    // it rather than applying it to a base it was never measured from.
-    drawerAnchored?: boolean;
-    // The same, for a window moved to TOP_RIGHT.
-    topRightAnchored?: boolean;
+    // PixelRP: the windowPosition the offset was dragged against. The anchored
+    // positions (SIDE_DRAWER, TOP_RIGHT) are measured from a live element, so
+    // an offset saved against a different anchor - or from before this was
+    // tracked - points somewhere nobody chose for the current layout. The
+    // first open under a new anchor drops it rather than applying it to a base
+    // it was never measured from.
+    offsetPosition?: string;
 }

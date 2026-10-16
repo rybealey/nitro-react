@@ -184,12 +184,13 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
             const newStorage = { ...GetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`) } as WindowSaveOptions;
 
             newStorage.offset = { x: offsetX, y: offsetY };
-            newStorage.drawerAnchored = true;
-            newStorage.topRightAnchored = true;
+            // The offset belongs to the anchor it was just dragged against, so
+            // a later switch to a different anchor knows to drop it.
+            newStorage.offsetPosition = windowPosition;
 
             SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, newStorage);
         }
-    }, [ dragHandler, delta, offset, uniqueKey, minVisible ]);
+    }, [ dragHandler, delta, offset, uniqueKey, minVisible, windowPosition ]);
 
     const onDragMouseUp = useCallback((event: MouseEvent) =>
     {
@@ -319,20 +320,17 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
 
         if(!localStorage || !localStorage.offset) return;
 
-        // A drawer window's offset was measured from the centred default it
-        // used to open at; against its new anchor beside the drawer the same
-        // number points somewhere nobody chose. Dropped once, then honoured
-        // normally - a player who drags it after this keeps their spot.
-        if((windowPosition === DraggableWindowPosition.SIDE_DRAWER) && !localStorage.drawerAnchored)
-        {
-            SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, { ...localStorage, offset: null, drawerAnchored: true });
+        // The anchored positions (SIDE_DRAWER, TOP_RIGHT) open against a live
+        // element, not the fixed corner the free positions use. An offset saved
+        // against a different anchor - or from before offsetPosition was tracked
+        // (its value is then undefined) - was measured from a base this layout
+        // never had, so it points somewhere nobody chose. Dropped once, then
+        // honoured normally: a player who drags it after this keeps their spot.
+        const isAnchored = ((windowPosition === DraggableWindowPosition.SIDE_DRAWER) || (windowPosition === DraggableWindowPosition.TOP_RIGHT));
 
-            return;
-        }
-
-        if((windowPosition === DraggableWindowPosition.TOP_RIGHT) && !localStorage.topRightAnchored)
+        if(isAnchored && (localStorage.offsetPosition !== windowPosition))
         {
-            SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, { ...localStorage, offset: null, topRightAnchored: true });
+            SetLocalStorage<WindowSaveOptions>(`nitro.windows.${ uniqueKey }`, { ...localStorage, offset: null, offsetPosition: windowPosition });
 
             return;
         }
