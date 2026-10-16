@@ -270,19 +270,24 @@ $emergency-blue: #1e7295;
 
     .emergency-foot {
         display: flex;
-        flex-direction: column;
         align-items: center;
+        justify-content: center;
         gap: 4px;
         padding-top: 1px;
     }
 
-    // The arrows (and their counter) sit centred on their own row; the 911
-    // window's Mark-as controls drop to a centred row beneath them.
     .emergency-pager-group,
     .emergency-mark-wrap {
         display: flex;
         align-items: center;
         gap: 4px;
+    }
+
+    // A 911 call's Mark-as controls sit on the right, which pushes its arrows
+    // back to the left edge. A backup call and the paramedic window have no
+    // such controls, so their arrows stay centred.
+    .emergency-mark-wrap {
+        margin-left: auto;
     }
 
     .emergency-pager {
