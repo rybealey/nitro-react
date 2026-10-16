@@ -18,6 +18,7 @@ import { RegisterRpRoomRightsMessages } from './api/rp-rights/RpRoomRightsMessag
 import { RegisterRpCatalogSearchMessages } from './api/rp-catalog/RpCatalogSearchMessages';
 import { RegisterRpTellerMessages } from './api/rp-teller/RpTellerMessages';
 import { InstallBrowserGuard, StartDevToolsWatch } from './api/security/BrowserGuard';
+import { RegisterRpBrowserGuardMessages } from './api/security/RpBrowserGuardMessages';
 import { RegisterRpBankMessages } from './api/rp-phone/RpBankMessages';
 import { RegisterRpPayMessages } from './api/rp-phone/RpPayMessages';
 import { RegisterRpOfferMessages } from './api/rp-offer/RpOfferMessages';
@@ -216,6 +217,7 @@ export const App: FC<{}> = props =>
                 RegisterRpDepositBoxMessages();
                 RegisterRpEmergencyCallsMessages();
                 RegisterRpMedicalCallsMessages();
+                RegisterRpBrowserGuardMessages();
                 RegisterRpTradeMessages();
                 RegisterRpGymMessages();
 

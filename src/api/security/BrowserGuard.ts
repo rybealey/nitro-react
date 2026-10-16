@@ -1,4 +1,5 @@
 import { GetConfiguration, GetConnection, GetSessionDataManager } from '../nitro';
+import { BrowserGuardReason, RpBrowserGuardComposer } from './RpBrowserGuardMessages';
 
 // PixelRP: no browser right-click menu in-game, and no Inspect Element.
 //
@@ -35,9 +36,15 @@ import { GetConfiguration, GetConnection, GetSessionDataManager } from '../nitro
 // as automation and some extensions are - and a false positive throws a
 // player out. It also had to console.clear() every reading.
 //
-// Leaving cuts the game first - the connection to the server closed and the
-// page emptied - so a player who manages to hold the redirect up has no game
-// left to look at.
+// A browser driven by automation (navigator.webdriver - Selenium, Puppeteer,
+// Playwright and the like) is sent away too, once the watch starts.
+//
+// Leaving tells the server why first (RpBrowserGuardComposer; the emulator's
+// BrowserGuardLog writes it down for staff), then cuts the game - the
+// connection to the server closed and the page emptied - so a player who
+// manages to hold the redirect up has no game left to look at. The report is
+// a lead, not proof: it can be blocked, and under Safari's pause the server
+// may have dropped the silent connection before it is sent.
 //
 // Window-size gaps are left alone on purpose - browser zoom and Chrome's or
 // Edge's side panels open the same gap, and a false positive throws a player
@@ -110,7 +117,7 @@ const GetWebsiteUrl = (): string =>
     }
 }
 
-const leaveForWebsite = () =>
+const leaveForWebsite = (reason: number, detail: string) =>
 {
     if(leaving) return;
 
@@ -118,6 +125,17 @@ const leaveForWebsite = () =>
     stopWatch();
 
     const url = GetWebsiteUrl();
+
+    // Why, for staff - before the connection goes. A socket sends what it
+    // already has before it closes. Nothing is sent before login.
+    try
+    {
+        GetConnection()?.send(new RpBrowserGuardComposer(reason, `${ detail } | ${ navigator.userAgent ?? '' }`));
+    }
+    catch
+    {
+        // Not connected, or the packet is not registered yet.
+    }
 
     // Nothing left to look at: off the server, and an empty page, before the
     // navigation - which DevTools can hold up - even starts.
@@ -186,7 +204,7 @@ const onKeyDown = (event: KeyboardEvent) =>
     event.preventDefault();
     event.stopPropagation();
 
-    leaveForWebsite();
+    leaveForWebsite(BrowserGuardReason.Shortcut, `shortcut ${ [ (event.ctrlKey ? 'Ctrl' : ''), (event.metaKey ? 'Cmd' : ''), (event.altKey ? 'Alt' : ''), (event.shiftKey ? 'Shift' : ''), event.code ].filter(Boolean).join('+') }`);
 }
 
 const onContextMenu = (event: MouseEvent) => event.preventDefault();
@@ -248,7 +266,7 @@ const startWorkerWatch = (): (() => void) | null =>
         }
         else if(answered < ping)
         {
-            if(++ticksWaiting >= STALL_TICKS) leaveForWebsite();
+            if(++ticksWaiting >= STALL_TICKS) leaveForWebsite(BrowserGuardReason.DevToolsOpen, 'open (worker paused)');
 
             return;
         }
@@ -284,7 +302,7 @@ const startPauseWatch = (): (() => void) =>
         // eslint-disable-next-line no-debugger
         debugger;
 
-        if((performance.now() - startedAt) > PAUSED_AFTER_MS) leaveForWebsite();
+        if((performance.now() - startedAt) > PAUSED_AFTER_MS) leaveForWebsite(BrowserGuardReason.DevToolsOpen, 'open (page paused)');
     }, PAUSE_CHECK_EVERY_MS);
 
     return () => clearInterval(interval);
@@ -299,6 +317,14 @@ export const StartDevToolsWatch = () =>
     setTimeout(() =>
     {
         if(leaving || isExempt()) return;
+
+        // Automation sets this for the whole session; nothing a person does.
+        if(navigator.webdriver)
+        {
+            leaveForWebsite(BrowserGuardReason.Automation, 'navigator.webdriver');
+
+            return;
+        }
 
         const stop = ((!isWebKit() && startWorkerWatch()) || startPauseWatch());
 
