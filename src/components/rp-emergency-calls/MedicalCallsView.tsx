@@ -7,15 +7,17 @@ import { useMessageEvent } from '../../hooks';
 // PixelRP Paramedic Dispatch - 911 Dispatch's counterpart for the hospital, in
 // its look (EmergencyCallsView.scss). Emulator: MedicalCalls.
 //
-// Open while you are an on-duty paramedic or above - the server opens it on
-// clock-in and closes it on clock-out. Every death is on everyone's queue, with
-// who died and the room they died in, but it is OFFERED to one paramedic at a
-// time, round robin: theirs comes up on it with a Claim button and ten seconds
-// to press it, after which it moves on to the next paramedic. One claim at a
-// time. The call reads "Revived by" whoever drops the patient off at the
-// hospital. The X only puts the window away: the next call offered to you
-// brings it back, :calls does too, and it opens again on the next clock-in.
-// One death at a time, the newest first; the arrows page through older ones.
+// Live while you are an on-duty paramedic or above - the server sends it on
+// clock-in and takes it away on clock-out - but only on screen when a call is
+// dispatched to you. Each death, with who died and the room they died in, is
+// OFFERED to one paramedic at a time, round robin: theirs comes up on it with
+// a Claim button and ten seconds to press it, after which it leaves their
+// window for the next paramedic's. The server sends each paramedic only their
+// own calls - the one offered to them, and the ones they claimed or dropped
+// off. One claim at a time. The call reads "Revived by" whoever drops the
+// patient off at the hospital. The X puts the window away: the next call
+// offered to you brings it back, and :calls does too. The newest first; the
+// arrows page through older ones.
 
 const NOTICE_MS = 6000;
 // Ages are counted on from when the queue arrived; a claim countdown each second.
@@ -92,9 +94,10 @@ export const MedicalCallsView: FC<{}> = props =>
         setCalls(next);
         setReceivedAt(Date.now());
 
-        // A fresh clock-in opens it whether or not it was put away last shift,
-        // and :calls brings it back whenever it was.
-        if(!isOpen || parser.reopen) setIsDismissed(false);
+        // A clock-in only readies it: it stays off screen until a call is
+        // dispatched to you. :calls brings it up whenever.
+        if(parser.reopen) setIsDismissed(false);
+        else if(!isOpen && (offered < 0)) setIsDismissed(true);
 
         setIsOpen(true);
 
@@ -131,7 +134,6 @@ export const MedicalCallsView: FC<{}> = props =>
     const claimLeft = (call ? Math.max(0, call.claimSeconds - elapsed) : 0);
     const offeredToMe = (!!call && (call.state === MedicalCallState.Offered) && (call.actorId === myId));
     const holdingClaim = calls.some(entry => ((entry.state === MedicalCallState.Claimed) && (entry.actorId === myId)));
-    const who = (entry: MedicalCall) => ((entry.actorId === myId) ? 'you' : entry.actorName);
 
     let statusClass = 'is-waiting';
     let statusText = 'Waiting for a paramedic';
@@ -143,11 +145,11 @@ export const MedicalCallsView: FC<{}> = props =>
             break;
         case MedicalCallState.Claimed:
             statusClass = 'is-responded';
-            statusText = `Claimed by ${ who(call) }`;
+            // Always the name, yours included.
+            statusText = `Claimed by ${ call.actorName }`;
             break;
         case MedicalCallState.Revived:
             statusClass = 'is-responded';
-            // Always the name, yours included: it is the record of who brought them in.
             statusText = `Revived by ${ call.actorName }`;
             break;
         case MedicalCallState.Recovered:
@@ -172,7 +174,7 @@ export const MedicalCallsView: FC<{}> = props =>
                     <div className="emergency-empty">
                         <CrossIcon size={ 20 } />
                         <b>No emergencies</b>
-                        <span>Anybody who dies shows up here while you are on duty.</span>
+                        <span>Calls dispatched to you show up here while you are on duty.</span>
                     </div> }
                 { call &&
                     <article className={ `emergency-card is-medical${ (statusClass === 'is-closed') ? ' is-closed' : '' }` } aria-label={ `${ call.patientName } died` }>
