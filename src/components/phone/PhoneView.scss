@@ -17,12 +17,18 @@ $phone-hairline: var(--ph-hairline);
 $phone-green: #3fbf5a;
 $phone-red: #e03131;
 
-// Hardware is authored at 336x700; the shell is transform-scaled down and
-// the wrapper is sized to the scaled result so the draggable layout box
-// always matches what's visible on screen (drag bounds depend on it).
+// Hardware is authored at 336x700 and shrunk with `zoom` on the shell, NOT
+// transform: scale(). A scale transform resamples text after layout, so every
+// glyph lands between whole pixels and Windows drops ClearType - the phone's
+// text came out blurry. Zoom lays the phone out at its on-screen size, so text
+// is rasterized at its real size. The wrapper is sized to the zoomed result so
+// the draggable layout box always matches what's visible (drag bounds depend
+// on it). getBoundingClientRect inside the phone reports on-screen px while
+// offsetWidth/clientWidth report authored px (Chrome 128+ standardized zoom),
+// which is the ratio the home grid, pin and photo-edit pointer math divide by.
 $phone-scale: 0.8;
 // Silkscreen is drawn on an 8px grid and is crisp only at 8px of screen, which
-// after the shell's scale is 10px here. Not multiplied by --ph-text-scale,
+// after the shell's zoom is 10px here. Not multiplied by --ph-text-scale,
 // which would take it back off the grid; its letter-spacing is whole screen
 // pixels for the same reason. $phone-screen-px is one screen pixel
 // (1px / $phone-scale) - keep both in step if the scale changes.
@@ -54,7 +60,8 @@ $camera-bar-height: 84px;
         // lists into matrices. The transition lives on the base rule, not on
         // .is-landscape, or turning back to portrait would snap: the class that
         // carried it would already be gone.
-        transform: scale($phone-scale) translate(50%, 50%) rotate(0deg) translate(-50%, -50%);
+        zoom: $phone-scale;
+        transform: translate(50%, 50%) rotate(0deg) translate(-50%, -50%);
         transform-origin: top left;
         transition: transform .38s cubic-bezier(.2, .8, .2, 1);
         border-radius: 48px;
@@ -7462,13 +7469,13 @@ $camera-bar-height: 84px;
     // genuinely becomes a landscape frame rather than a letterboxed portrait
     // one.
     //
-    // transform-origin moves to the centre for this: the shell's usual origin
-    // is top left (it is scaled from there), and rotating about that corner
-    // would swing the phone off the side of its own window instead of turning
-    // it on the spot. Composed with the scale rather than replacing it, or the
-    // phone would jump to full size as it turned.
+    // It turns about the shell's center: the translate pair around the rotate
+    // moves the pivot there from the top-left transform-origin, since rotating
+    // about that corner would swing the phone off the side of its own window
+    // instead of turning it on the spot. The size comes from the shell's zoom,
+    // which the rotation leaves alone, so the phone keeps its size as it turns.
     .phone-shell.is-landscape {
-        transform: scale($phone-scale) translate(50%, 50%) rotate(-90deg) translate(-50%, -50%);
+        transform: translate(50%, 50%) rotate(-90deg) translate(-50%, -50%);
     }
 
     // Reduce Motion. The blanket rule above covers .phone-display and its

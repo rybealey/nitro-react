@@ -339,7 +339,7 @@ export const PhoneMessagesView: FC<PhoneMessagesViewProps> = props =>
     const menuThread = (menuFriendId ? threadForFriend(menuFriendId) : null);
     const dragPinFriend = ((dragPin && getFriend) ? getFriend(dragPin.friendId) : null);
 
-    // Ghost coordinates in the (possibly transform-scaled) screen's local
+    // Ghost coordinates in the (zoomed) screen's local
     // space: convert visual pixels back through the scale factor.
     let pinGhostStyle = null;
 

@@ -190,7 +190,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
 
     const badgeCount = (key: string) => (badgeCounts[key] ?? 0);
 
-    // Pointer -> grid slot index, through the phone's transform scale: convert
+    // Pointer -> grid slot index, through the phone shell's zoom: convert
     // the client point into the grid's local space and snap to the 4-column,
     // fixed-pitch cell it falls in.
     const slotAt = (clientX: number, clientY: number): number =>
@@ -406,7 +406,7 @@ export const PhoneHomeView: FC<PhoneHomeViewProps> = props =>
         );
     }
 
-    // Ghost coordinates in the (possibly transform-scaled) screen's local
+    // Ghost coordinates in the (zoomed) screen's local
     // space: convert visual pixels back through the scale factor.
     let ghostStyle = null;
 

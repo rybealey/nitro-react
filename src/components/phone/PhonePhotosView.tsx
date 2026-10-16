@@ -136,7 +136,7 @@ export const PhonePhotosView: FC<PhonePhotosViewProps> = props =>
         image.src = viewerPhoto.url;
     }
 
-    // The phone shell is transform-scaled, so the stage's visual rect and its
+    // The phone shell is zoomed, so the stage's visual rect and its
     // layout box differ. All edit math runs in layout px (what the CSS left/
     // top/width land in); pointer movement converts through this factor.
     const stageLocalScale = () =>
