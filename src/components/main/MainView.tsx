@@ -21,6 +21,7 @@ import { ModToolsView } from '../mod-tools/ModToolsView';
 import { CityPanelView } from '../city-panel/CityPanelView';
 import { DepositBoxView } from '../rp-deposit-box/DepositBoxView';
 import { EmergencyCallsView } from '../rp-emergency-calls/EmergencyCallsView';
+import { MedicalCallsView } from '../rp-emergency-calls/MedicalCallsView';
 import { TradeView } from '../rp-trade/TradeView';
 import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
@@ -107,6 +108,7 @@ export const MainView: FC<{}> = props =>
             <CityPanelView />
             <DepositBoxView />
             <EmergencyCallsView />
+            <MedicalCallsView />
             <TradeView />
             <RoomView />
             <ChatHistoryView />
