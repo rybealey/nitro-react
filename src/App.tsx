@@ -19,6 +19,7 @@ import { RegisterRpCatalogSearchMessages } from './api/rp-catalog/RpCatalogSearc
 import { RegisterRpTellerMessages } from './api/rp-teller/RpTellerMessages';
 import { InstallBrowserGuard, StartDevToolsWatch } from './api/security/BrowserGuard';
 import { RegisterRpBrowserGuardMessages } from './api/security/RpBrowserGuardMessages';
+import { GetDisconnectReason, RegisterRpDisconnectReasonMessages } from './api/security/RpDisconnectReasonMessages';
 import { RegisterRpBankMessages } from './api/rp-phone/RpBankMessages';
 import { RegisterRpPayMessages } from './api/rp-phone/RpPayMessages';
 import { RegisterRpOfferMessages } from './api/rp-offer/RpOfferMessages';
@@ -218,6 +219,7 @@ export const App: FC<{}> = props =>
                 RegisterRpEmergencyCallsMessages();
                 RegisterRpMedicalCallsMessages();
                 RegisterRpBrowserGuardMessages();
+                RegisterRpDisconnectReasonMessages();
                 RegisterRpTradeMessages();
                 RegisterRpGymMessages();
 
@@ -247,7 +249,11 @@ export const App: FC<{}> = props =>
                     // and must not be painted over with the loading screen.
                     if(!isReadyRef.current) setIsError(true);
 
-                    HabboWebTools.send(-1, 'client.init.handshake.fail');
+                    // The website's /game page draws the disconnected screen
+                    // over this frame. Before we were in, the close is a failed
+                    // login; after, it is whatever the server said it was
+                    // (RpDisconnectReasonMessages) or a line that just dropped.
+                    HabboWebTools.send(-1, isReadyRef.current ? (GetDisconnectReason() ?? 'connection.lost') : 'client.init.handshake.fail');
                 });
                 return;
             case RoomEngineEvent.ENGINE_INITIALIZED:
