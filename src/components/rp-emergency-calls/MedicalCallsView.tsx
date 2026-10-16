@@ -147,7 +147,8 @@ export const MedicalCallsView: FC<{}> = props =>
             break;
         case MedicalCallState.Revived:
             statusClass = 'is-responded';
-            statusText = `Revived by ${ who(call) }`;
+            // Always the name, yours included: it is the record of who brought them in.
+            statusText = `Revived by ${ call.actorName }`;
             break;
         case MedicalCallState.Recovered:
             statusClass = 'is-closed';
