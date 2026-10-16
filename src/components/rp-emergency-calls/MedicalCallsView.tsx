@@ -166,6 +166,15 @@ export const MedicalCallsView: FC<{}> = props =>
             break;
     }
 
+    // A call you were offered and let lapse stays in your window, greyed:
+    // "Missed" while it is still unclaimed, then its outcome once resolved
+    // (Revived by X, Auto revived, ...).
+    if(call && call.missedByMe)
+    {
+        statusClass = 'is-closed';
+        if(call.state < MedicalCallState.Revived) statusText = 'Missed';
+    }
+
     return (
         <NitroCardView uniqueKey="medical-calls" className="nitro-emergency-calls nitro-medical-calls" theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_RIGHT }>
             <NitroCardHeaderView headerText="Paramedic Dispatch" onCloseClick={ () => setIsDismissed(true) } />
@@ -200,7 +209,7 @@ export const MedicalCallsView: FC<{}> = props =>
                             { (statusClass === 'is-responded') && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }
                             <span>{ statusText }</span>
                         </div>
-                        { offeredToMe &&
+                        { offeredToMe && !call.missedByMe &&
                             <button type="button" className="emergency-button is-respond" disabled={ holdingClaim || (claimLeft <= 0) } title={ holdingClaim ? 'Drop off your claimed patient first' : undefined } onClick={ () => SendMessageComposer(new RpMedicalCallClaimComposer(call.id)) }>
                                 <CrossIcon size={ 10 } /> Claim
                             </button> }

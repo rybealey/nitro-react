@@ -28,6 +28,8 @@ export interface MedicalCall
     actorName: string;
     /** While offered: seconds left to claim it when the server sent it. */
     claimSeconds: number;
+    /** A call you were offered and let lapse: kept in your window, greyed. */
+    missedByMe: boolean;
 }
 
 export class RpMedicalCallsParser implements IMessageParser
@@ -67,7 +69,8 @@ export class RpMedicalCallsParser implements IMessageParser
             state: wrapper.readInt(),
             actorId: wrapper.readInt(),
             actorName: wrapper.readString(),
-            claimSeconds: wrapper.readInt()
+            claimSeconds: wrapper.readInt(),
+            missedByMe: wrapper.readBoolean()
         });
 
         this._notice = wrapper.readString();
