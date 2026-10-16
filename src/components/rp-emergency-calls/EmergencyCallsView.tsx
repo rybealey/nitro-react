@@ -198,19 +198,21 @@ export const EmergencyCallsView: FC<{}> = props =>
                 { notice && <div className="emergency-notice" role="status">{ notice }</div> }
                 { call &&
                     <div className="emergency-foot">
-                        <button type="button" className="emergency-pager" aria-label="Newer call" disabled={ (index === 0) } onClick={ () => setIndex(index - 1) }>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-                        </button>
-                        <span className="emergency-position">{ index + 1 } / { calls.length }</span>
-                        <button type="button" className="emergency-pager" aria-label="Older call" disabled={ (index >= (calls.length - 1)) } onClick={ () => setIndex(index + 1) }>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
-                        </button>
+                        <div className="emergency-pager-group">
+                            <button type="button" className="emergency-pager" aria-label="Newer call" disabled={ (index === 0) } onClick={ () => setIndex(index - 1) }>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                            </button>
+                            <span className="emergency-position">{ index + 1 } / { calls.length }</span>
+                            <button type="button" className="emergency-pager" aria-label="Older call" disabled={ (index >= (calls.length - 1)) } onClick={ () => setIndex(index + 1) }>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
                         { !isBackup &&
-                            <>
+                            <div className="emergency-mark-wrap">
                                 <span className="emergency-mark-label">Mark as</span>
                                 <button type="button" className={ `emergency-mark is-helpful${ (call.mark === EmergencyCallMark.Helpful) ? ' is-on' : '' }` } aria-pressed={ (call.mark === EmergencyCallMark.Helpful) } disabled={ !canMark } title={ markTitle } onClick={ () => act(EmergencyCallAction.Helpful) }>Helpful</button>
                                 <button type="button" className={ `emergency-mark is-abuse${ (call.mark === EmergencyCallMark.Abuse) ? ' is-on' : '' }` } aria-pressed={ (call.mark === EmergencyCallMark.Abuse) } disabled={ !canMark } title={ markTitle } onClick={ () => act(EmergencyCallAction.Abuse) }>Abuse</button>
-                            </> }
+                            </div> }
                     </div> }
             </NitroCardContentView>
         </NitroCardView>

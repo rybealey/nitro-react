@@ -154,6 +154,24 @@ $emergency-blue: #1e7295;
         overflow-wrap: anywhere;
     }
 
+    // The medical card's one line: a pin, then "knocked out at <room>".
+    .emergency-knockout {
+        display: flex;
+        align-items: flex-start;
+        gap: 3px;
+
+        svg {
+            flex-shrink: 0;
+            margin-top: 2px;
+            color: $emergency-red;
+        }
+
+        span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+    }
+
     .emergency-status {
         display: flex;
         align-items: center;
@@ -251,9 +269,19 @@ $emergency-blue: #1e7295;
 
     .emergency-foot {
         display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 4px;
         padding-top: 1px;
+    }
+
+    // The arrows (and their counter) sit centred on their own row; the 911
+    // window's Mark-as controls drop to a centred row beneath them.
+    .emergency-pager-group,
+    .emergency-mark-wrap {
+        display: flex;
+        align-items: center;
+        gap: 4px;
     }
 
     .emergency-pager {
@@ -286,7 +314,6 @@ $emergency-blue: #1e7295;
     }
 
     .emergency-mark-label {
-        margin-left: auto;
         font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.4px;

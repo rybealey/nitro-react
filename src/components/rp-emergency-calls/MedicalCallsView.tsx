@@ -154,7 +154,7 @@ export const MedicalCallsView: FC<{}> = props =>
             break;
         case MedicalCallState.Recovered:
             statusClass = 'is-closed';
-            statusText = 'Back on their feet';
+            statusText = 'Revived';
             break;
         case MedicalCallState.Admitted:
             statusClass = 'is-closed';
@@ -162,7 +162,7 @@ export const MedicalCallsView: FC<{}> = props =>
             break;
         case MedicalCallState.Gone:
             statusClass = 'is-closed';
-            statusText = 'Left the hotel';
+            statusText = 'Logged out';
             break;
     }
 
@@ -185,7 +185,7 @@ export const MedicalCallsView: FC<{}> = props =>
                         <b>No emergencies</b>
                     </div> }
                 { call &&
-                    <article className={ `emergency-card is-medical${ (statusClass === 'is-closed') ? ' is-closed' : '' }` } aria-label={ `${ call.patientName } died` }>
+                    <article className={ `emergency-card is-medical${ (statusClass === 'is-closed') ? ' is-closed' : '' }` } aria-label={ `${ call.patientName } knocked out` }>
                         <div className="emergency-caller">
                             <div className="emergency-figure" title={ `${ call.patientName }'s look` }>
                                 <LayoutAvatarImageView figure={ call.patientLook } gender={ call.patientGender } direction={ 2 } />
@@ -197,11 +197,10 @@ export const MedicalCallsView: FC<{}> = props =>
                                     </span>
                                     <span className="emergency-ago">{ agoText(age) }</span>
                                 </div>
-                                <div className="emergency-room">
+                                <p className="emergency-message emergency-knockout">
                                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
-                                    <span>{ call.roomName || 'Unknown room' }</span>
-                                </div>
-                                <p className="emergency-message">Has died and needs a paramedic.</p>
+                                    <span>Has been knocked out at { call.roomName || 'an unknown room' }.</span>
+                                </p>
                             </div>
                         </div>
                         <div className={ `emergency-status ${ statusClass }` } role="status">
@@ -217,13 +216,15 @@ export const MedicalCallsView: FC<{}> = props =>
                 { notice && <div className="emergency-notice" role="status">{ notice }</div> }
                 { call &&
                     <div className="emergency-foot">
-                        <button type="button" className="emergency-pager" aria-label="Newer emergency" disabled={ (index === 0) } onClick={ () => setIndex(index - 1) }>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-                        </button>
-                        <span className="emergency-position">{ index + 1 } / { calls.length }</span>
-                        <button type="button" className="emergency-pager" aria-label="Older emergency" disabled={ (index >= (calls.length - 1)) } onClick={ () => setIndex(index + 1) }>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
-                        </button>
+                        <div className="emergency-pager-group">
+                            <button type="button" className="emergency-pager" aria-label="Newer emergency" disabled={ (index === 0) } onClick={ () => setIndex(index - 1) }>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                            </button>
+                            <span className="emergency-position">{ index + 1 } / { calls.length }</span>
+                            <button type="button" className="emergency-pager" aria-label="Older emergency" disabled={ (index >= (calls.length - 1)) } onClick={ () => setIndex(index + 1) }>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
                     </div> }
             </NitroCardContentView>
         </NitroCardView>
