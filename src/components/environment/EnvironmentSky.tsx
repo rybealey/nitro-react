@@ -1,18 +1,21 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetNitroInstance, SendMessageComposer } from '../../api';
 import { SetWeatherSnapshot, useEnvironmentPrefs, useWeatherSnapshot } from '../../api/environment/EnvironmentStore';
+import { RpGameClockEvent, SetGameClock } from '../../api/environment/GameClock';
 import { RpGetWeatherComposer, RpWeatherEvent } from '../../api/rp-phone/RpWeatherMessages';
 import { useMessageEvent } from '../../hooks';
 import { ComputeSky, SkyLook } from './SkyModel';
 
 // The space behind rooms. Mounted once at the app root, under everything:
-// it paints San Francisco's sky (time from the city's clock, conditions from
-// the Weather app's snapshot) where the room canvas used to be black. The
+// it paints the city's sky (time of day from the in-game clock, GameClock;
+// conditions from the Weather app's real San Francisco snapshot) where the room canvas used to be black. The
 // room canvas is made transparent so the sky shows through; with the
 // Environment > Weather switch off this paints plain black instead, so the
 // classic look is exactly what it was.
 
-const TICK_MS = 60000;
+// Every 5 s: an in-game hour is under 4 real minutes, so a dusk passes in a
+// few minutes and a once-a-minute repaint would step through it.
+const TICK_MS = 5000;
 const CROSSFADE_MS = 2000;
 
 const setCanvasAlpha = (alpha: number) =>
@@ -193,6 +196,14 @@ export const EnvironmentSky: FC<{}> = props =>
         const parser = event.getParser();
 
         if(parser.snapshot) SetWeatherSnapshot(parser.snapshot);
+    });
+
+    // ...and the city's clock, which everything that tells the time reads
+    useMessageEvent<RpGameClockEvent>(RpGameClockEvent, event =>
+    {
+        const parser = event.getParser();
+
+        SetGameClock(parser.cycleOffsetMs, parser.cycleMs, parser.pinnedMinutes);
     });
 
     if(!weatherOn) return <div className="env-sky is-off" />;

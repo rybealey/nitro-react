@@ -1,3 +1,4 @@
+import { GameMinutes } from '../../api/environment/GameClock';
 import { WeatherSnapshot } from '../../api/rp-phone/RpWeatherMessages';
 
 // The sky behind rooms: time of day sets the base, the Weather app's
@@ -34,17 +35,20 @@ const scale = (a: Rgb, f: number): Rgb => [ a[0] * f, a[1] * f, a[2] * f ];
 const css = (a: Rgb): string => `rgb(${ Math.round(a[0]) }, ${ Math.round(a[1]) }, ${ Math.round(a[2]) })`;
 const cssA = (a: Rgb, alpha: number): string => `rgba(${ Math.round(a[0]) }, ${ Math.round(a[1]) }, ${ Math.round(a[2]) }, ${ alpha })`;
 
-// clear-sky keyframes by hour (San Francisco time): night, dawn, morning,
-// midday, dusk, evening - each with the horizon glow colour and strength
+// clear-sky keyframes by hour of the city's in-game clock (GameClock): night,
+// dawn, morning, midday, dusk, evening - each with the horizon glow colour and
+// strength. Timed to the game's 7 AM morning and 7 PM night (Twist,
+// 2026-10-18): first light at 6:30, full morning by 7:30; the dusk glow peaks
+// at 6:30 PM and the stars come out at 7 PM (daylight under .3).
 interface Keyframe { hour: number; stops: SkyStops; horizon: Rgb; glow: number; daylight: number; }
 
 const KEYFRAMES: Keyframe[] = [
     { hour: 0, stops: { top: hex('#05070f'), mid: hex('#0a1020'), bottom: hex('#101a30') }, horizon: hex('#5a6eaa'), glow: .14, daylight: 0 },
-    { hour: 5, stops: { top: hex('#0d1424'), mid: hex('#1c2438'), bottom: hex('#3a3a4a') }, horizon: hex('#c8785a'), glow: .22, daylight: .15 },
-    { hour: 8, stops: { top: hex('#121b2c'), mid: hex('#1c2b44'), bottom: hex('#2c4466') }, horizon: hex('#5a82b4'), glow: .24, daylight: .8 },
+    { hour: 6.5, stops: { top: hex('#0d1424'), mid: hex('#1c2438'), bottom: hex('#3a3a4a') }, horizon: hex('#c8785a'), glow: .22, daylight: .15 },
+    { hour: 7.5, stops: { top: hex('#121b2c'), mid: hex('#1c2b44'), bottom: hex('#2c4466') }, horizon: hex('#5a82b4'), glow: .24, daylight: .8 },
     { hour: 13, stops: { top: hex('#141d2e'), mid: hex('#1d2b44'), bottom: hex('#33507a') }, horizon: hex('#5a82b4'), glow: .28, daylight: 1 },
-    { hour: 18, stops: { top: hex('#121420'), mid: hex('#2a1c22'), bottom: hex('#5a3418') }, horizon: hex('#e68c3c'), glow: .30, daylight: .5 },
-    { hour: 21, stops: { top: hex('#070a14'), mid: hex('#0d1526'), bottom: hex('#182644') }, horizon: hex('#5a6eaa'), glow: .14, daylight: .05 },
+    { hour: 18.5, stops: { top: hex('#121420'), mid: hex('#2a1c22'), bottom: hex('#5a3418') }, horizon: hex('#e68c3c'), glow: .30, daylight: .5 },
+    { hour: 19.5, stops: { top: hex('#070a14'), mid: hex('#0d1526'), bottom: hex('#182644') }, horizon: hex('#5a6eaa'), glow: .14, daylight: .05 },
     { hour: 24, stops: { top: hex('#05070f'), mid: hex('#0a1020'), bottom: hex('#101a30') }, horizon: hex('#5a6eaa'), glow: .14, daylight: 0 }
 ];
 
@@ -69,41 +73,11 @@ export const SkyKindOf = (code: number): SkyKind =>
     return 'cloud';
 }
 
-// San Francisco's clock, wherever the player sits
-export const SanFranciscoMinutes = (now: number): number =>
-{
-    try
-    {
-        const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date(now));
-        const hour = parseInt(parts.find(part => part.type === 'hour')?.value ?? '0') % 24;
-        const minute = parseInt(parts.find(part => part.type === 'minute')?.value ?? '0');
-
-        return (hour * 60) + minute;
-    }
-    catch(e)
-    {
-        const date = new Date(now);
-
-        return (date.getHours() * 60) + date.getMinutes();
-    }
-}
-
-export const SanFranciscoClock = (now: number, hour24: boolean = true): string =>
-{
-    try
-    {
-        return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: (hour24 ? '2-digit' : 'numeric'), minute: '2-digit', hour12: !hour24 }).format(new Date(now));
-    }
-    catch(e)
-    {
-        return new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    }
-}
-
 export const ComputeSky = (snapshot: WeatherSnapshot, now: number): SkyLook =>
 {
-    // A time of day staff have pinned (City Panel) holds the sky there.
-    const minutes = (((snapshot?.pinnedMinutes ?? -1) >= 0) ? snapshot.pinnedMinutes : SanFranciscoMinutes(now));
+    // The city's in-game clock, which a staff pin (City Panel) holds still.
+    // The weather on top stays the real San Francisco reading.
+    const minutes = GameMinutes();
     const hour = (minutes / 60);
 
     let a = KEYFRAMES[0];

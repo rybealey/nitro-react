@@ -1,6 +1,7 @@
 import { FC } from 'react';
 import { Column, Flex } from '../../common';
 import { OfferView } from '../catalog/views/targeted-offer/OfferView';
+import { GameClockView } from '../game-clock/GameClockView';
 import { GroupRoomInformationView } from '../groups/views/GroupRoomInformationView';
 import { MusicPlayerView } from '../music-player/MusicPlayerView';
 import { NotificationCenterView } from '../notification-center/NotificationCenterView';
@@ -18,6 +19,7 @@ export const RightSideView: FC<{}> = props =>
             <Column position="relative" gap={ 1 }>
                 <Flex gap={ 1 } alignItems="start" className="purse-title-row">
                     <OnlineCountView />
+                    <GameClockView />
                     <RoomTitleView />
                     <RoomQuickToolsView />
                     <PurseView />

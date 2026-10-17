@@ -89,6 +89,35 @@ export const FormatClock = (instant: Date | number, suffix: boolean = true): str
     return `${ twelve }:${ pad(minutes) }${ suffix ? ((hours >= 12) ? ' PM' : ' AM') : '' }`;
 }
 
+// A time of day given as minutes after midnight - the city's in-game clock
+// (GameClock) - in the same form: "19:45" or "7:45 PM".
+export const FormatMinutes = (minutes: number, suffix: boolean = true): string =>
+{
+    const whole = (((Math.floor(minutes) % 1440) + 1440) % 1440);
+    const hours = Math.floor(whole / 60);
+    const mins = (whole % 60);
+
+    if(clock24) return `${ pad(hours) }:${ pad(mins) }`;
+
+    const twelve = (((hours + 11) % 12) + 1);
+
+    return `${ twelve }:${ pad(mins) }${ suffix ? ((hours >= 12) ? ' PM' : ' AM') : '' }`;
+}
+
+// The player's OWN local time, like Chat History - the phone's status bar.
+export const FormatLocalClock = (instant: Date | number, suffix: boolean = true): string =>
+{
+    const date = new Date(instant);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+
+    if(clock24) return `${ pad(hours) }:${ pad(minutes) }`;
+
+    const twelve = (((hours + 11) % 12) + 1);
+
+    return `${ twelve }:${ pad(minutes) }${ suffix ? ((hours >= 12) ? ' PM' : ' AM') : '' }`;
+}
+
 // an axis hour 0-24: "15:00" or "3 PM"
 export const FormatHour = (hour: number): string =>
 {

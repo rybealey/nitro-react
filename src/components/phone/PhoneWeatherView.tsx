@@ -3,6 +3,7 @@ import { SendMessageComposer } from '../../api';
 import { RpGetWeatherComposer, RpWeatherEvent, WeatherDay, WeatherHour, WeatherSnapshot } from '../../api/rp-phone/RpWeatherMessages';
 import { useMessageEvent } from '../../hooks';
 import { DistanceUnit, FormatClockLabel, FormatDistance, FormatHourLabel, FormatSpeed, FormatTemp, SpeedUnit, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { IsGameDay, useGameMinutes } from '../../api/environment/GameClock';
 import { PhoneIcon } from './PhoneIcon';
 
 // Weather app: the real San Francisco's real weather, on the phone. The
@@ -171,10 +172,17 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
         setCompact(scrollRef.current.scrollTop > COMPACT_AT);
     }
 
-    const sky: Sky = (snapshot ? skyFor(snapshot.code, snapshot.isDay) : 'cloudy');
+    // The day/night look runs on the city's in-game clock (GameClock), not
+    // San Francisco's: sunrise 7 AM, sunset 7 PM (Twist, 2026-10-18). The
+    // weather itself, and the hourly strip's own day/night, stay the real
+    // San Francisco reading.
+    const gameDay = IsGameDay(useGameMinutes(15000));
+    const current = useMemo(() => (snapshot ? { ...snapshot, isDay: gameDay, sunrise: '7:00 AM', sunset: '7:00 PM' } : null), [ snapshot, gameDay ]);
+
+    const sky: Sky = (current ? skyFor(current.code, current.isDay) : 'cloudy');
     const offline = (failures > 0);
-    const condition = (snapshot ? conditionLabel(snapshot.code, snapshot.isDay) : '');
-    const summary = useMemo(() => (snapshot ? summarize(snapshot) : ''), [ snapshot ]);
+    const condition = (current ? conditionLabel(current.code, current.isDay) : '');
+    const summary = useMemo(() => (current ? summarize(current) : ''), [ current ]);
 
     // the 10-day bars share one scale so they compare, like a real forecast
     // bars are scaled in the displayed unit
@@ -317,7 +325,7 @@ export const PhoneWeatherView: FC<PhoneWeatherViewProps> = props =>
                             <div className="phone-weather-kicker"><PhoneIcon icon="cloud" size={ 11 } />{ snapshot.daily.length }-day forecast</div>
                             <div className="phone-weather-days">{ dayRows(snapshot.daily) }</div>
                         </div>
-                        { tiles(snapshot) }
+                        { tiles(current) }
                     </div> }
             </div>
         </div>

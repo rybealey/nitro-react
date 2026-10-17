@@ -2,7 +2,7 @@ import { FC, useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../../api';
 import { CityAlertTarget, CityCapability, CityWorldState, CityWorldSwitch, RpCityAlertComposer, RpCityWorldComposer, RpCityWorldSetComposer, RpCityWorldStateEvent } from '../../../api/rp-city/RpCityMessages';
 import { useMessageEvent } from '../../../hooks';
-import { SanFranciscoMinutes } from '../../environment/SkyModel';
+import { GameMinutes, useGameMinutes } from '../../../api/environment/GameClock';
 import { CityPanelContext } from '../CityPanelView';
 
 // The City Panel's City tab: things that reach every player at once - the
@@ -51,6 +51,8 @@ const Switch: FC<{ on: boolean, label: string, disabled?: boolean, onToggle: () 
 export const CityWorldView: FC<{ context: CityPanelContext }> = props =>
 {
     const { context } = props;
+    // the live time-of-day readout runs on the city's clock (an in-game minute is 3.75 s)
+    useGameMinutes(3750);
     const [ state, setState ] = useState<CityWorldState>(null);
     const [ notice, setNotice ] = useState('');
     const [ message, setMessage ] = useState('');
@@ -88,7 +90,7 @@ export const CityWorldView: FC<{ context: CityPanelContext }> = props =>
     const canWorld = has(context.capabilities, CityCapability.World);
     const canHotel = has(context.capabilities, CityCapability.Hotel);
     const following = (!!state && (state.overrideCode < 0) && (state.pinnedMinutes < 0));
-    const shownMinutes = (minutes ?? ((state && (state.pinnedMinutes >= 0)) ? state.pinnedMinutes : SanFranciscoMinutes(Date.now())));
+    const shownMinutes = (minutes ?? ((state && (state.pinnedMinutes >= 0)) ? state.pinnedMinutes : Math.floor(GameMinutes())));
 
     const set = (what: number, value: number) => SendMessageComposer(new RpCityWorldSetComposer(what, value));
 
@@ -100,7 +102,7 @@ export const CityWorldView: FC<{ context: CityPanelContext }> = props =>
         {
             // Off: hold the sky as it is right now, then change it from there.
             set(CityWorldSwitch.Weather, Math.max(0, state.liveCode));
-            set(CityWorldSwitch.Time, SanFranciscoMinutes(Date.now()));
+            set(CityWorldSwitch.Time, Math.floor(GameMinutes()));
 
             return;
         }

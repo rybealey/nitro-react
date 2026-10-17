@@ -39,7 +39,7 @@ import { PhoneSettingsView } from './PhoneSettingsView';
 import { PhoneThreadView } from './PhoneThreadView';
 import { ReadPhonePosition, TEXT_SIZE_SCALES, useAirplane, usePhonePhotos, usePhonePrefs, usePhoneTheme } from './usePhone';
 import { PhoneNotification, usePhoneNotifications } from './usePhoneNotifications';
-import { FormatClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { FormatLocalClock, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 
 // The PixelRP phone — the player's window to their social life, replacing
 // the classic Habbo friends list + messenger windows. Opened from the
@@ -405,8 +405,10 @@ export const PhoneView: FC<{}> = props =>
         {
             const now = new Date();
 
-            // the status bar follows Settings > General; 12-hour drops the suffix like a real phone
-            setClock(FormatClock(now, false));
+            // the status bar follows Settings > General; 12-hour drops the suffix like a real phone.
+            // The player's OWN local time, like Chat History (Twist, 2026-10-18) -
+            // not the city's in-game clock, which is in the top-right HUD.
+            setClock(FormatLocalClock(now, false));
         }
 
         updateClock();

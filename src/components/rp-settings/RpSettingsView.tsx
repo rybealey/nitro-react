@@ -18,8 +18,9 @@ import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './Ic
 import { UsernameIconGlyph } from './UsernameIconGlyph';
 import { SetEnvironmentWeather, useEnvironmentPrefs, useWeatherSnapshot } from '../../api/environment/EnvironmentStore';
 import { EnvironmentSkyPreview } from '../environment/EnvironmentSky';
-import { SanFranciscoClock, SkyConditionLabel } from '../environment/SkyModel';
-import { FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { SkyConditionLabel } from '../environment/SkyModel';
+import { FormatMinutes, FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { GameMinutes } from '../../api/environment/GameClock';
 import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_KEY, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
 // PixelRP settings window, opened from the side drawer's Settings button
@@ -154,7 +155,8 @@ export const RpSettingsView: FC<{}> = props =>
     const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
     const { weatherOn: environmentWeatherOn } = useEnvironmentPrefs();
     const weatherSnapshot = useWeatherSnapshot();
-    const { clock24: unitsClock24 } = useUnitsPrefs();
+    // re-renders the weather preview's clock when the 12/24-hour setting changes
+    useUnitsPrefs();
     // Own avatar head + chest color for the preview bubble, built the same way
     // the chat widget builds them (useChatWidget's setFigureImage).
     const [ previewFigure, setPreviewFigure ] = useState<{ imageUrl: string, color: string }>(null);
@@ -1233,7 +1235,7 @@ export const RpSettingsView: FC<{}> = props =>
                                     <div className="rp-settings-env-preview">
                                         <EnvironmentSkyPreview dimmed={ !environmentWeatherOn } />
                                         <div className="rp-settings-env-preview-text">
-                                            <Text bold>{ environmentWeatherOn ? `Right now: ${ SkyConditionLabel(weatherSnapshot) }${ weatherSnapshot ? ` · ${ FormatTemp(weatherSnapshot.temp) }°` : '' } · ${ SanFranciscoClock(Date.now(), unitsClock24) }` : 'Classic black background' }</Text>
+                                            <Text bold>{ environmentWeatherOn ? `Right now: ${ SkyConditionLabel(weatherSnapshot) }${ weatherSnapshot ? ` · ${ FormatTemp(weatherSnapshot.temp) }°` : '' } · ${ FormatMinutes(GameMinutes()) }` : 'Classic black background' }</Text>
                                             <Text small className="text-muted">{ environmentWeatherOn ? 'Follows the Weather app: San Francisco time and conditions, refreshed every 10 minutes. Skies stay darker than the room so nothing competes with play.' : 'Turn Weather on to paint the sky behind rooms from the Weather app: San Francisco time and conditions.' }</Text>
                                         </div>
                                     </div>
