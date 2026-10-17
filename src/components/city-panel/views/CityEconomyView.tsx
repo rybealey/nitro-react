@@ -1,15 +1,17 @@
 import { FC, useState } from 'react';
 import { CityCapability } from '../../../api/rp-city/RpCityMessages';
 import { CityPanelContext } from '../CityPanelView';
+import { CityBinSearchView } from './CityBinSearchView';
 import { CityCorporationsView } from './CityCorporationsView';
 import { CityLedgerView } from './CityLedgerView';
 import { CityTradesView } from './CityTradesView';
 
 // The City Panel's Economy tab: a menu of views on the city's money. Global
 // Ledger is every movement of it, Trade History every backpack trade, and
-// Corporations is pay, shifts and prices.
+// Corporations is pay, shifts and prices. Bin Search is what searching a bin
+// can turn up.
 
-type View = 'ledger' | 'trades' | 'corporations';
+type View = 'ledger' | 'trades' | 'corporations' | 'bins';
 
 interface ViewEntry
 {
@@ -22,7 +24,8 @@ interface ViewEntry
 const VIEWS: ViewEntry[] = [
     { key: 'ledger', label: 'Global Ledger' },
     { key: 'trades', label: 'Trade History' },
-    { key: 'corporations', label: 'Corporations' }
+    { key: 'corporations', label: 'Corporations' },
+    { key: 'bins', label: 'Bin Search' }
 ];
 
 export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
@@ -52,6 +55,7 @@ export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
                 { (current === 'ledger') && <CityLedgerView /> }
                 { (current === 'trades') && <CityTradesView /> }
                 { (current === 'corporations') && <CityCorporationsView context={ context } /> }
+                { (current === 'bins') && <CityBinSearchView context={ context } /> }
             </div>
         </div>
     );

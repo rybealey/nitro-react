@@ -32,6 +32,10 @@ const RP_CITY_LEDGER = 4186; // client -> server: a page of the Global Ledger
 const RP_CITY_LEDGER_PAGE = 4187; // server -> client
 const RP_CITY_TRADES = 4192; // client -> server: a page of Trade History
 const RP_CITY_TRADES_PAGE = 4193; // server -> client
+const RP_CITY_BIN_REWARDS = 4211; // client -> server: Economy > Bin Search
+const RP_CITY_BIN_REWARDS_STATE = 4212; // server -> client
+const RP_CITY_BIN_REWARD_SAVE = 4213; // client -> server: add (id 0) or change a row
+const RP_CITY_BIN_REWARD_DELETE = 4214; // client -> server
 
 /** CityPanelAccess.Capability - what this staff member may do from the panel. */
 export const CityCapability = {
@@ -124,6 +128,23 @@ export interface CityServicePrice
     name: string;
     corporationId: number;
     price: number;
+}
+
+/** One row of BinRewards: what a bin search can turn up, and how likely. */
+export interface CityBinReward
+{
+    id: number;
+    key: string;
+    weight: number;
+    min: number;
+    max: number;
+}
+
+/** What a row can be: nothing, coins, or a backpack item. */
+export interface CityBinRewardOption
+{
+    key: string;
+    name: string;
 }
 
 /** RpCityWorldSetEvent's switches. */
@@ -541,6 +562,52 @@ export class RpCityEconomyStateParser implements IMessageParser
     }
 }
 
+export class RpCityBinRewardsParser implements IMessageParser
+{
+    private _rewards: CityBinReward[] = [];
+    private _options: CityBinRewardOption[] = [];
+    private _notice = '';
+
+    public flush(): boolean
+    {
+        this._rewards = [];
+        this._options = [];
+        this._notice = '';
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        let rewards = wrapper.readInt();
+
+        while(rewards-- > 0) this._rewards.push({ id: wrapper.readInt(), key: wrapper.readString(), weight: wrapper.readInt(), min: wrapper.readInt(), max: wrapper.readInt() });
+
+        let options = wrapper.readInt();
+
+        while(options-- > 0) this._options.push({ key: wrapper.readString(), name: wrapper.readString() });
+
+        this._notice = wrapper.readString();
+
+        return true;
+    }
+
+    public get rewards(): CityBinReward[] 
+    {
+        return this._rewards; 
+    }
+    public get options(): CityBinRewardOption[] 
+    {
+        return this._options; 
+    }
+    public get notice(): string 
+    {
+        return this._notice; 
+    }
+}
+
 export class RpCityPanelParser implements IMessageParser
 {
     private _capabilities = 0;
@@ -762,6 +829,18 @@ export class RpCityEconomyStateEvent extends MessageEvent implements IMessageEve
     }
 }
 
+export class RpCityBinRewardsEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function) 
+    {
+        super(callBack, RpCityBinRewardsParser); 
+    }
+    public getParser(): RpCityBinRewardsParser 
+    {
+        return this.parser as RpCityBinRewardsParser; 
+    }
+}
+
 export class RpCityLedgerPageEvent extends MessageEvent implements IMessageEvent
 {
     constructor(callBack: Function) 
@@ -948,6 +1027,30 @@ export class RpCityTradesComposer extends RpCityComposer<[ string, number ]>
     }
 }
 
+export class RpCityBinRewardsComposer extends RpCityComposer<[]>
+{
+    constructor() 
+    {
+        super(); 
+    }
+}
+
+export class RpCityBinRewardSaveComposer extends RpCityComposer<[ number, string, number, number, number ]>
+{
+    constructor(id: number, key: string, weight: number, min: number, max: number) 
+    {
+        super(id, key, weight, min, max); 
+    }
+}
+
+export class RpCityBinRewardDeleteComposer extends RpCityComposer<[ number ]>
+{
+    constructor(id: number) 
+    {
+        super(id); 
+    }
+}
+
 let registered = false;
 
 export const RegisterRpCityMessages = () =>
@@ -968,7 +1071,8 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_WORLD_STATE, RpCityWorldStateEvent ],
             [ RP_CITY_ECONOMY_STATE, RpCityEconomyStateEvent ],
             [ RP_CITY_LEDGER_PAGE, RpCityLedgerPageEvent ],
-            [ RP_CITY_TRADES_PAGE, RpCityTradesPageEvent ]
+            [ RP_CITY_TRADES_PAGE, RpCityTradesPageEvent ],
+            [ RP_CITY_BIN_REWARDS_STATE, RpCityBinRewardsEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CITY_PANEL_OPEN, RpCityPanelOpenComposer ],
@@ -988,7 +1092,10 @@ export const RegisterRpCityMessages = () =>
             [ RP_CITY_CLOCK_OUT, RpCityClockOutComposer ],
             [ RP_CITY_CORP_SETTING, RpCityCorpSettingComposer ],
             [ RP_CITY_LEDGER, RpCityLedgerComposer ],
-            [ RP_CITY_TRADES, RpCityTradesComposer ]
+            [ RP_CITY_TRADES, RpCityTradesComposer ],
+            [ RP_CITY_BIN_REWARDS, RpCityBinRewardsComposer ],
+            [ RP_CITY_BIN_REWARD_SAVE, RpCityBinRewardSaveComposer ],
+            [ RP_CITY_BIN_REWARD_DELETE, RpCityBinRewardDeleteComposer ]
         ])
     });
 

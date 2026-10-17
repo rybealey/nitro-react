@@ -906,4 +906,52 @@ $city-line: rgba(0, 0, 0, 0.06);
         flex-shrink: 0;
         text-align: right;
     }
+
+    // ---- Economy > Bin Search ----------------------------------------------
+
+    .city-bins {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-width: 560px;
+        overflow-y: auto;
+    }
+
+    // Reward, weight, chance, min, max, remove - one plain row each.
+    .city-bin-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 64px 40px 64px 64px 24px;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 2px 0;
+        border-bottom: 1px solid $city-line;
+        font-size: 12px;
+
+        .city-amount { width: 100%; }
+    }
+
+    .city-bin-head {
+        min-height: 0;
+        padding: 0 0 2px;
+        font-size: 11px;
+    }
+
+    .city-bin-chance,
+    .city-bin-none {
+        text-align: right;
+    }
+
+    .city-bin-remove {
+        padding: 0;
+        width: 24px;
+    }
+
+    .city-bin-add {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .form-select { max-width: 220px; }
+    }
 }

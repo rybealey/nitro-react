@@ -18,8 +18,8 @@ const has = (capabilities: number, capability: number) => ((capabilities & capab
 const REFRESH_MS = 60000;
 
 // A number field that saves when it loses focus or Enter is pressed, and only
-// when the value actually changed.
-const Amount: FC<{ value: number, label: string, disabled: boolean, max: number, onSave: (value: number) => void }> = props =>
+// when the value actually changed. Bin Search's rewards use it too.
+export const Amount: FC<{ value: number, label: string, disabled: boolean, max: number, onSave: (value: number) => void }> = props =>
 {
     const { value, label, disabled, max, onSave } = props;
     const [ text, setText ] = useState(String(value));
