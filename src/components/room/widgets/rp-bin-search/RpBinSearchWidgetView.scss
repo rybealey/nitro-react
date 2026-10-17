@@ -1,0 +1,28 @@
+// PixelRP bin search - the searcher's card above the chat bar. Everything else
+// it wears is the offer card's (.rp-offer, RpOfferWidgetView.scss); these are
+// only what it has and an offer does not.
+
+// The bin's own furni icon, at its own size: pixel art is never scaled.
+.rp-bin-mark img {
+    max-width: 31px;
+    max-height: 31px;
+    image-rendering: pixelated;
+}
+
+// Where an offer has its tick and cross: the seconds left.
+.rp-bin-timer {
+    flex: none;
+    min-width: 30px;
+    padding-right: 2px;
+    text-align: right;
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--hud-orange, #e87332);
+}
+
+// Redrawn ten times a second rather than once, so it glides on a short
+// transition of its own instead of the offer rail's one-second step.
+.rp-bin-rail-fill {
+    transition: width 0.1s linear;
+}

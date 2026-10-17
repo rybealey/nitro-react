@@ -23,6 +23,7 @@ import { GetDisconnectReason, RegisterRpDisconnectReasonMessages } from './api/s
 import { RegisterRpBankMessages } from './api/rp-phone/RpBankMessages';
 import { RegisterRpPayMessages } from './api/rp-phone/RpPayMessages';
 import { RegisterRpOfferMessages } from './api/rp-offer/RpOfferMessages';
+import { RegisterRpBinSearchMessages } from './api/rp-bin-search/RpBinSearchMessages';
 import { RegisterRpMacroMessages } from './api/rp-macros/RpMacroMessages';
 import { RegisterRpInventoryMessages } from './api/rp-inventory/RpInventoryMessages';
 import { RegisterRpJailMessages } from './api/rp-police/RpJailMessages';
@@ -196,6 +197,7 @@ export const App: FC<{}> = props =>
                 RegisterRpBankMessages();
                 RegisterRpPayMessages();
                 RegisterRpOfferMessages();
+                RegisterRpBinSearchMessages();
                 RegisterRpMacroMessages();
                 RegisterRpInventoryMessages();
                 RegisterRpJailMessages();

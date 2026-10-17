@@ -4,6 +4,7 @@ import { DispatchUiEvent, GetRoomEngine, LocalizeText, NotificationAlertType, Ro
 import { useNotification, useRoom, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../../hooks';
 import { AvatarInfoWidgetView } from './avatar-info/AvatarInfoWidgetView';
 import { ChatInputView } from './chat-input/ChatInputView';
+import { RpBinSearchWidgetView } from './rp-bin-search/RpBinSearchWidgetView';
 import { RpOfferWidgetView } from './rp-offer/RpOfferWidgetView';
 import { ChatWidgetView } from './chat/ChatWidgetView';
 import { FurniChooserWidgetView } from './choosers/FurniChooserWidgetView';
@@ -159,6 +160,7 @@ export const RoomWidgetsView: FC<{}> = props =>
             <ChatWidgetView />
             <ChatInputView />
             <RpOfferWidgetView />
+            <RpBinSearchWidgetView />
             <DoorbellWidgetView />
             <FurnitureWidgetsView />
             <SideDrawerWidgetView />

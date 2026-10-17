@@ -114,7 +114,7 @@ export const CityBinSearchView: FC<{ context: CityPanelContext }> = props =>
                     </select>
                     <button type="button" className="mt-chrome mt-small" disabled={ !canEconomy || !addKey } onClick={ add }>Add reward</button>
                 </div>
-                <span className="mt-hint">Chance is a row&apos;s weight out of the total. Coins and items pay between Min and Max. Only bins in PixelRP rooms can be searched; a searched bin stays empty for 15 minutes.</span>
+                <span className="mt-hint">Chance is a row&apos;s weight out of the total. Coins and items pay between Min and Max. Only bins in PixelRP rooms can be searched; a searched bin stays empty for 15 minutes, and each account can search 5 bins every 24 hours.</span>
             </section>
         </div>
     );
