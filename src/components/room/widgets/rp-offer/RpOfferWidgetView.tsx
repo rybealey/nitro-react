@@ -7,8 +7,9 @@ import { GetRpOffer, RpOffer, SendRpOfferReply, SubscribeRpOffer } from '../../.
 // :propose borrows it too: a proposal arrives as kind 'proposal' and draws a
 // heart, its own kicker and its own sentence, with no price - the queue, the
 // rail and the two buttons are the same card. So does a trade request (kind
-// 'trade', the avatar menu's Trade): the side drawer's backpack, tinted the
-// card's orange, and a yes opens the trade window for both.
+// 'trade', the avatar menu's Trade): two swap arrows in the icon well (Twist,
+// 2026-10-17 - it was the side drawer's backpack), and a yes opens the trade
+// window for both.
 //
 // It portals into #toolbar-chat-input-container, the SAME element the chat bar
 // portals into, which is what lets it sit directly above the bar and share its
@@ -91,7 +92,12 @@ export const RpOfferWidgetView: FC<{}> = () =>
         <div className={ `rp-offer${ isLeaving ? ' is-leaving' : '' }${ isProposal ? ' is-proposal' : '' }${ isTrade ? ' is-trade' : '' }` }>
             <div className="rp-offer-body">
                 <div className="rp-offer-mark" aria-hidden="true">
-                    { isTrade ? null : isProposal
+                    { isTrade
+                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 8h14l-4-4" />
+                            <path d="M20 16H6l4 4" />
+                        </svg>
+                        : isProposal
                         ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
                         </svg>
@@ -109,12 +115,9 @@ export const RpOfferWidgetView: FC<{}> = () =>
                         { (shown.queued > 1) && <span className="rp-offer-queued">&middot; 1 OF { shown.queued }</span> }
                     </div>
                     { isTrade &&
-                        <>
-                            <div className="rp-offer-line">
-                                <strong>{ shown.sellerName }</strong> wants to trade with you
-                            </div>
-                            <div className="rp-offer-price">backpack items</div>
-                        </> }
+                        <div className="rp-offer-line">
+                            <strong>{ shown.sellerName }</strong> wants to trade with you
+                        </div> }
                     { !isTrade && (isProposal
                         ? <div className="rp-offer-line">
                             <strong>{ shown.sellerName }</strong> is proposing to you

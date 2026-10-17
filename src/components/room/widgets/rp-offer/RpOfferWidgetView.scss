@@ -182,31 +182,6 @@
     .rp-offer-rail-fill:not(.is-urgent) { background: linear-gradient(90deg, #ff567a, #ffbac0); }
 }
 
-// A trade request wears the side drawer's backpack tile (its own rounded
-// plate, in place of the icon well), tinted the card's orange the way the
-// drawer tints it to the scheme: a colour-blend overlay masked to the art, so
-// the shading survives.
-.rp-offer.is-trade .rp-offer-mark {
-    position: relative;
-    isolation: isolate;
-    width: 37px;
-    height: 36px;
-    border: 0;
-    border-radius: 0;
-    background: url('@/assets/images/drawer/inventory.png') no-repeat center;
-    image-rendering: pixelated;
-
-    &::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: var(--hud-orange, #e87332);
-        mix-blend-mode: color;
-        mask: url('@/assets/images/drawer/inventory.png') no-repeat center;
-        -webkit-mask: url('@/assets/images/drawer/inventory.png') no-repeat center;
-    }
-}
-
 // Up from the bar it belongs to, not down from nowhere.
 @keyframes rp-offer-in {
     from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.98); }
