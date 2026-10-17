@@ -13,10 +13,19 @@
     pointer-events: none;
 }
 
+// pixelrp: "bold" chat - a shout, an action line, a mention - is Ubuntu Bold
+// with half a pixel between letters (Twist, 2026-10-18). At 13px over the room
+// Bold leaves barely a pixel between its letters, and the grey edge smoothing
+// (the only kind text over the room canvas gets) closed that up, so a shout
+// read as run together. Medium was tried first and was not bold enough.
+@mixin chat-bold {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
 .chat-mention {
     padding: 1px 5px;
-    // Medium, like the shout it sits in (see .type-2 below).
-    font-weight: 500;
+    @include chat-bold;
     background: rgba(0, 0, 0, 0.2);
     cursor: pointer;
     border-radius: 100px;
@@ -100,16 +109,10 @@
             }
         }
 
-        // pixelrp: "bold" chat - a shout, an action line, a mention - is
-        // Ubuntu Medium, not Bold (Twist, 2026-10-18). At 13px over the room
-        // the real Bold's letters come out as wide as they are tall, with
-        // 2px strokes top and bottom and barely a pixel between them, so a
-        // shout read as squat and run together. Medium keeps the same height
-        // with narrower letters and open counters.
         &.type-2 {
             // shout
             .message {
-                font-weight: 500;
+                @include chat-bold;
             }
         }
 
@@ -119,16 +122,16 @@
         // bubble-4 / bubble-5 alone - either can be a player-selectable chat
         // style, and ordinary chat in one must stay unbolded. Must follow the
         // type-N blocks above: same specificity, so source order decides.
-        // The name is Medium with the rest: the line reads as one sentence.
+        // The name is bold with the rest: the line reads as one sentence.
         &.is-action .message,
         &.is-action .username {
-            font-weight: 500;
+            @include chat-bold;
         }
 
-        // pixelrp: every other name is Medium too, set off from a normal
-        // message by weight. Shouts included: an "@x" mention always goes
-        // out as one (ChatInputView). Chat history and the settings preview
-        // reuse these classes.
+        // pixelrp: every other name is Medium, a step under a shout's Bold,
+        // so it stands out from the message without shouting over it. Shouts
+        // included: an "@x" mention always goes out as one (ChatInputView).
+        // Chat history and the settings preview reuse these classes.
         &:not(.is-action) .username {
             font-weight: 500;
         }
