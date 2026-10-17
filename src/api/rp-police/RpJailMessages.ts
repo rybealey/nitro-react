@@ -11,6 +11,7 @@ import { GetCommunication, GetConnection } from '../nitro';
 // switch; where an arrest is made is an Arrest point furni behaviour now.)
 const RP_ROOM_POLICE = 4155; // server -> client: a room's jail tag
 const RP_JAIL = 4156; // server -> client: your own sentence's countdown
+const RP_ROOM_PRISONERS = 4216; // server -> client: who in this room is serving time
 
 /** RpSetEmergencyComposer category for the Gameplay tab's Jail room switch. */
 export const ROOM_POLICE_JAIL = 4;
@@ -59,6 +60,40 @@ export class RpRoomPoliceEvent extends MessageEvent implements IMessageEvent
     public getParser(): RpRoomPoliceParser
     {
         return this.parser as RpRoomPoliceParser;
+    }
+}
+
+class RpRoomPrisonersParser implements IMessageParser
+{
+    public roomIndexes: number[] = [];
+
+    public flush(): boolean
+    {
+        this.roomIndexes = [];
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        let count = wrapper.readInt();
+
+        while(count-- > 0) this.roomIndexes.push(wrapper.readInt());
+
+        return true;
+    }
+}
+
+class RpRoomPrisonersEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callback: Function)
+    {
+        super(callback, RpRoomPrisonersParser);
+    }
+
+    public getParser(): RpRoomPrisonersParser
+    {
+        return this.parser as RpRoomPrisonersParser;
     }
 }
 
@@ -119,6 +154,16 @@ export const SubscribeJailSentence = (listener: () => void): (() => void) =>
     };
 }
 
+/**
+ * Who in the room you are in is serving time, by roomIndex - the whole list
+ * each time the server sends it: on coming into a room, and when somebody in
+ * it arrives as a prisoner, is sentenced or is let go. The avatar menu leaves
+ * Trade off them (Twist, 2026-10-18).
+ */
+let roomPrisoners = new Set<number>();
+
+export const IsRoomPrisoner = (roomIndex: number): boolean => roomPrisoners.has(roomIndex);
+
 let registered = false;
 
 // Called once from App at CONNECTION_AUTHENTICATED, with the other Rp packets.
@@ -135,7 +180,8 @@ export const RegisterRpJailMessages = () =>
     connection.registerMessages({
         events: new Map<number, Function>([
             [ RP_ROOM_POLICE, RpRoomPoliceEvent ],
-            [ RP_JAIL, RpJailEvent ]
+            [ RP_JAIL, RpJailEvent ],
+            [ RP_ROOM_PRISONERS, RpRoomPrisonersEvent ]
         ]),
         composers: new Map<number, Function>()
     });
@@ -146,6 +192,11 @@ export const RegisterRpJailMessages = () =>
 
         jailSentence = { secondsLeft: parser.secondsLeft, sentenceSeconds: parser.sentenceSeconds, receivedAt: performance.now() };
         jailListeners.forEach(listener => listener());
+    }));
+
+    GetCommunication().registerMessageEvent(new RpRoomPrisonersEvent((event: RpRoomPrisonersEvent) =>
+    {
+        roomPrisoners = new Set(event.getParser().roomIndexes);
     }));
 
     registered = true;

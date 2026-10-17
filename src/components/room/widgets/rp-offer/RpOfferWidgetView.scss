@@ -75,8 +75,6 @@
     font-size: 8px;
     letter-spacing: 1px;
     color: var(--hud-orange, #e87332);
-
-    &.is-urgent { color: var(--hud-danger, #e03131); }
 }
 
 .rp-offer-queued {
@@ -164,22 +162,18 @@
     height: 100%;
     background: linear-gradient(90deg, var(--hud-orange, #e87332), var(--hud-warning, #f5c542));
     // Matches the one-second tick that drives it, so the bar slides rather
-    // than stepping.
+    // than stepping. One colour the whole way down (Twist, 2026-10-18).
     transition: width 1s linear;
-
-    &.is-urgent { background: var(--hud-danger, #e03131); }
 }
 
 // A proposal wears bubble 16's pinks - the relationship bubble :propose was
-// asked in - where a sale wears the HUD orange. Only the accent changes; the
-// expiring red still wins, because running out of time means the same thing
-// on either card.
+// asked in - where a sale wears the HUD orange. Only the accent changes.
 .rp-offer.is-proposal {
     .rp-offer-mark { color: #ff567a; }
 
-    .rp-offer-kicker:not(.is-urgent) { color: #ff567a; }
+    .rp-offer-kicker { color: #ff567a; }
 
-    .rp-offer-rail-fill:not(.is-urgent) { background: linear-gradient(90deg, #ff567a, #ffbac0); }
+    .rp-offer-rail-fill { background: linear-gradient(90deg, #ff567a, #ffbac0); }
 }
 
 // Up from the bar it belongs to, not down from nowhere.

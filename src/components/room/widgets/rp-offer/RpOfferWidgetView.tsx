@@ -83,7 +83,9 @@ export const RpOfferWidgetView: FC<{}> = () =>
     const isLeaving = (!offer && !!leaving);
     const blocked = (shown.blocked ?? '');
     const fraction = ((shown.lifetime > 0) ? Math.max(0, Math.min(1, (left / shown.lifetime))) : 0);
-    const urgent = (!isLeaving && (left <= 5));
+    // No warning colour as it runs out (Twist, 2026-10-18): the title keeps
+    // saying what the card is and the rail keeps its colour to the end - the
+    // rail getting shorter is the whole of it.
     const goods = ((shown.quantity > 1) ? `${ shown.quantity } ${ shown.label }` : shown.label);
     const isProposal = (shown.kind === 'proposal');
     const isTrade = (shown.kind === 'trade');
@@ -110,8 +112,8 @@ export const RpOfferWidgetView: FC<{}> = () =>
                 </div>
 
                 <div className="rp-offer-text">
-                    <div className={ `rp-offer-kicker${ urgent ? ' is-urgent' : '' }` }>
-                        { urgent ? 'EXPIRING' : (isProposal ? 'PROPOSAL' : (isTrade ? 'TRADE REQUEST' : 'OFFER RECEIVED')) }
+                    <div className="rp-offer-kicker">
+                        { isProposal ? 'PROPOSAL' : (isTrade ? 'TRADE REQUEST' : 'OFFER RECEIVED') }
                         { (shown.queued > 1) && <span className="rp-offer-queued">&middot; 1 OF { shown.queued }</span> }
                     </div>
                     { isTrade &&
@@ -150,7 +152,7 @@ export const RpOfferWidgetView: FC<{}> = () =>
             </div>
 
             <div className="rp-offer-rail">
-                <div className={ `rp-offer-rail-fill${ urgent ? ' is-urgent' : '' }` } style={ { width: `${ fraction * 100 }%` } } />
+                <div className="rp-offer-rail-fill" style={ { width: `${ fraction * 100 }%` } } />
             </div>
         </div>, host);
 }

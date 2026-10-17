@@ -3,6 +3,7 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetOwnRoomObject, GetSessionDataManager, GetUserProfile, LocalizeText, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
 import { RpGangInviteComposer, RpUserGangEvent } from '../../../../../api/rp-gangs/RpGangMessages';
+import { GetJailSentence, IsRoomPrisoner, SubscribeJailSentence } from '../../../../../api/rp-police/RpJailMessages';
 import { GetRpGang, SetRpGang } from '../../../../../api/rp-gangs/RpGangRegistry';
 import { useFriends, useHelp, useMessageEvent, useRoom, useSessionInfo } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
@@ -30,6 +31,15 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
     const { report = null } = useHelp();
     const { roomSession = null } = useRoom();
     const [ gangVersion, setGangVersion ] = useState(0);
+    // pixelrp: no Trade while either of you is serving time (Twist,
+    // 2026-10-18) - your own sentence (RpJailMessages), or theirs from the
+    // room's prisoner list. The server refuses a prisoner's trade anyway
+    // (RpTrades), so this only stops the button offering what cannot happen.
+    const [ jailSentence, setJailSentence ] = useState(GetJailSentence);
+    const serving = ((jailSentence.secondsLeft - ((performance.now() - jailSentence.receivedAt) / 1000)) > 0)
+        || IsRoomPrisoner(avatarInfo.roomIndex);
+
+    useEffect(() => SubscribeJailSentence(() => setJailSentence(GetJailSentence())), []);
 
     // Membership is keyed by user id in the shared registry and arrives on the
     // hotel-wide broadcast every gang mutation sends, so a gang founded or
@@ -230,9 +240,10 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         <ContextMenuListItemView onClick={ event => processAction('friend') }>
                             { LocalizeText('infostand.button.friend') }
                         </ContextMenuListItemView> }
-                    <ContextMenuListItemView onClick={ event => processAction('trade') }>
-                        { LocalizeText('infostand.button.trade') }
-                    </ContextMenuListItemView>
+                    { !serving &&
+                        <ContextMenuListItemView onClick={ event => processAction('trade') }>
+                            { LocalizeText('infostand.button.trade') }
+                        </ContextMenuListItemView> }
                     <ContextMenuListItemView onClick={ event => processAction('whisper') }>
                         { LocalizeText('infostand.button.whisper') }
                     </ContextMenuListItemView>
