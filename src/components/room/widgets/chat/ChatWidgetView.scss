@@ -105,7 +105,7 @@
             .message {
                 font-weight: 400;
                 // a quarter pixel under the bubble's 13.5px (Twist,
-                // 2026-10-18); names, shouts and whispers stay at 13.5
+                // 2026-10-18), the same as names and shouts (chat-bold)
                 font-size: 13.25px;
             }
         }
@@ -116,6 +116,9 @@
                 font-weight: 400;
                 font-style: italic;
                 color: #595959;
+                // a quarter pixel under the bubble's 13.5px like normal chat
+                // (Twist, 2026-10-18); it was the last text left at 13.5
+                font-size: 13.25px;
             }
         }
 
