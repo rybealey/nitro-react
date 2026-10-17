@@ -1,21 +1,24 @@
 import { RpInventoryEvent } from '@nitrots/nitro-renderer';
-import { DragEvent, FC, useState } from 'react';
+import { DragEvent, FC, useEffect, useState } from 'react';
 import { HasHabboVip, SendMessageComposer } from '../../api';
 import { ResolveRpItem } from '../../api/rp-inventory/RpItems';
 import { RpTradeActionComposer, RpTradeEvent, TradeAction, TradeOfferEntry, TradeState } from '../../api/rp-trade/RpTradeMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 
-// PixelRP backpack trading (design: the "Trade Backpack" canvas). Emulator:
-// RpTrades. Opened when a trade request is accepted on the offer card.
+// PixelRP backpack trading (design: the "Trade window" canvas, A - Twist,
+// 2026-10-17). Emulator: RpTrades. Opened when a trade request is accepted on
+// the offer card.
 //
-// Your backpack on the left, the two offers beside it. Click an item to offer
-// one, drag it across to offer the stack, click an offered item to take one
-// back. Any change un-readies both sides; both Ready, then both Confirm, and
-// the server swaps the items in one go. The server answers every press with
-// the whole trade, so this only ever shows it. The window goes the moment the
-// trade ends, either way - the room bubble says a trade went through, and a
-// cancel is whispered to whoever did not cancel it.
+// The two offers side by side, each under a strip that says how that side
+// stands (grey Not ready, green Ready or Confirmed), and your backpack as one
+// row beneath them. Click an item to offer one, drag it up to offer the stack,
+// click an offered item to take one back. Any change un-readies both sides;
+// both Ready, then - after a three-second count on the button - both Confirm,
+// and the server swaps the items in one go. The server answers every press
+// with the whole trade, so this only ever shows it. The window goes the moment
+// the trade ends, either way - the room bubble says a trade went through, and
+// a cancel is whispered to whoever did not cancel it.
 
 const CARRY_SLOTS = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
 // The backpack's own rule (RpInventoryView): ten open, twelve with VIP.
@@ -26,6 +29,9 @@ const STACK = 10;
 const WEAPONS = [ 'knife', 'baseball_bat', 'axe', 'stun_gun' ];
 // PoliceUtility.PoliceGear - never tradeable (the server refuses it anyway).
 const POLICE_GEAR = [ 'handcuffs', 'stun_gun', 'flashbang', 'pepper_spray', 'cop_medkit' ];
+// RpTrades.ConfirmDelaySeconds: Confirm waits this long once both are Ready.
+// Counted from when this window saw it, which is never before the server did.
+const CONFIRM_DELAY_SECONDS = 3;
 
 interface PackEntry
 {
@@ -66,12 +72,51 @@ const ItemArt: FC<{ item: string }> = ({ item }) =>
 
 const itemName = (item: string, count: number) => `${ ResolveRpItem(item)?.name ?? item }${ (count > 1) ? ` ×${ count }` : '' }`;
 
+const Tick: FC<{}> = () =>
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
+
+const Chevron: FC<{}> = () =>
+    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>;
+
+// How a side stands, for its strip.
+const sideClass = (side: { ready: boolean, confirmed: boolean }) => (side.confirmed ? 'is-confirmed' : (side.ready ? 'is-ready' : 'is-waiting'));
+
+const SideState: FC<{ side: { ready: boolean, confirmed: boolean } }> = ({ side }) =>
+    <span className="trade-offer-state">
+        { (side.ready || side.confirmed) && <Tick /> }
+        { side.confirmed ? 'Confirmed' : (side.ready ? 'Ready' : 'Not ready') }
+    </span>;
+
 export const TradeView: FC<{}> = props =>
 {
     const [ pack, setPack ] = useState<PackEntry[]>([]);
     const [ trade, setTrade ] = useState<TradeState>(null);
     const [ notice, setNotice ] = useState('');
     const [ dragging, setDragging ] = useState(0);
+    // When this window last saw both sides Ready (0: they are not), for the
+    // Confirm countdown, and a re-render each beat while it runs.
+    const [ bothReadyAt, setBothReadyAt ] = useState(0);
+    const [ , setBeat ] = useState(0);
+    const bothReadyNow = (!!trade && trade.mine.ready && trade.theirs.ready);
+
+    useEffect(() =>
+    {
+        setBothReadyAt(bothReadyNow ? Date.now() : 0);
+    }, [ bothReadyNow ]);
+
+    useEffect(() =>
+    {
+        if(!bothReadyAt) return;
+
+        const interval = setInterval(() =>
+        {
+            setBeat(prev => (prev + 1));
+
+            if((Date.now() - bothReadyAt) >= (CONFIRM_DELAY_SECONDS * 1000)) clearInterval(interval);
+        }, 200);
+
+        return () => clearInterval(interval);
+    }, [ bothReadyAt ]);
 
     useMessageEvent<RpInventoryEvent>(RpInventoryEvent, event =>
     {
@@ -100,13 +145,13 @@ export const TradeView: FC<{}> = props =>
     const send = (action: number, slot: number = 0, all: boolean = false, item: string = '') =>
         SendMessageComposer(new RpTradeActionComposer(action, slot, all, item));
 
-    const header = <NitroCardHeaderView headerText="Trade" onCloseClick={ () =>
+    const partner = trade.partnerName;
+
+    const header = <NitroCardHeaderView headerText={ `Trading with ${ partner }` } onCloseClick={ () =>
     {
         send(TradeAction.Cancel);
         setTrade(null);
     } } />;
-
-    const partner = trade.partnerName;
     const packOpen = (HasHabboVip() ? CARRY_SLOTS.length : CARRY_OPEN);
 
     // What is still in the backpack once your offer is taken out of it - from
@@ -135,12 +180,18 @@ export const TradeView: FC<{}> = props =>
     let primaryAction: number = TradeAction.Ready;
     let primaryDisabled = (nothing || !fits);
 
+    // Seconds still to wait before Confirm counts; the whole wait until the
+    // effect has stamped the moment, so the button is never live early.
+    const confirmLeft = (bothReady
+        ? (bothReadyAt ? Math.max(0, Math.ceil(((bothReadyAt + (CONFIRM_DELAY_SECONDS * 1000)) - Date.now()) / 1000)) : CONFIRM_DELAY_SECONDS)
+        : 0);
+
     if(bothReady && !trade.mine.confirmed)
     {
-        primaryLabel = 'Confirm trade';
+        primaryLabel = (confirmLeft > 0) ? `Confirm trade in ${ confirmLeft }…` : 'Confirm trade';
         primaryClass = 'is-confirm';
         primaryAction = TradeAction.Confirm;
-        primaryDisabled = false;
+        primaryDisabled = (confirmLeft > 0);
     }
     else if(trade.mine.confirmed)
     {
@@ -203,65 +254,24 @@ export const TradeView: FC<{}> = props =>
         <NitroCardView uniqueKey="rp-trade" className="nitro-trade" theme="primary-slim" windowPosition={ DraggableWindowPosition.CENTER }>
             { header }
             <NitroCardContentView className="trade-body" overflow="hidden">
-                <div className="trade-strip">
-                    <span>Trading with <b>{ partner }</b></span>
-                    <div className="trade-steps">
-                        <span className={ step(!bothReady, bothReady) }>1 Offer</span>
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
-                        <span className={ step((trade.mine.ready || trade.theirs.ready) && !bothReady, bothReady) }>2 Ready</span>
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
-                        <span className={ step(bothReady, complete) }>3 Confirm</span>
-                    </div>
-                </div>
                 <div className="trade-sides">
-                    <section className="trade-pack" aria-label="Your backpack">
-                        <div className="trade-side-head">
-                            <span className="trade-label">Backpack</span>
-                            <span className="trade-count-label">{ CARRY_SLOTS.filter(slot => remaining.has(slot)).length }/{ packOpen }</span>
-                        </div>
-                        { equipped &&
-                            <div className="trade-equipped" title={ `${ itemName(equipped.item, 1) } - equipped. Put it away to trade it.` }>
-                                <div className="trade-equipped-art"><ItemArt item={ equipped.item } /></div>
-                                <span><b>Equipped</b>Put away to trade</span>
-                            </div> }
-                        <div className="trade-pack-grid">
-                            { CARRY_SLOTS.map(slot =>
-                            {
-                                const entry = remaining.get(slot) ?? null;
-                                const locked = ((slot > packOpen) && !entry);
-                                const gear = (!!entry && POLICE_GEAR.includes(entry.item));
-                                const label = (entry
-                                    ? (gear ? `${ itemName(entry.item, entry.count) } - police equipment, cannot be traded` : `${ itemName(entry.item, entry.count) } - click to offer one, drag to offer all`)
-                                    : (locked ? 'Locked - VIP' : 'Empty slot'));
-
-                                return (
-                                    <button key={ slot } type="button" title={ label } aria-label={ label } aria-disabled={ !entry || gear }
-                                        className={ `trade-slot${ entry ? ' has-item' : '' }${ gear ? ' is-gear' : '' }${ locked ? ' is-locked' : '' }${ (dragging === slot) ? ' is-lifted' : '' }` }
-                                        draggable={ !!entry && !gear } onDragStart={ (entry && !gear) ? onDragStart(slot) : undefined } onDragEnd={ () => setDragging(0) }
-                                        onClick={ () => entry && !gear && send(TradeAction.Offer, slot, false) }>
-                                        { entry && <ItemArt item={ entry.item } /> }
-                                        { (entry && (entry.count > 1)) && <span className="trade-count">{ entry.count }</span> }
-                                        { gear && <span className="trade-gear"><Lock /></span> }
-                                        { locked && <Lock /> }
-                                    </button>
-                                );
-                            }) }
-                        </div>
-                    </section>
-                    <section className={ `trade-offer${ trade.mine.ready ? ' is-ready' : '' }${ dragging ? ' is-drop-zone' : '' }` } aria-label="You are offering" { ...dropZone }>
-                        <div className="trade-side-head">
+                    <section className={ `trade-offer ${ sideClass(trade.mine) }${ dragging ? ' is-drop-zone' : '' }` } aria-label="You are offering" { ...dropZone }>
+                        <div className="trade-offer-strip">
                             <span className="trade-offer-title">You are offering</span>
-                            <span className={ `trade-chip${ trade.mine.ready ? ' is-ready' : '' }` }>{ trade.mine.ready ? 'Ready' : 'Not ready' }</span>
+                            <SideState side={ trade.mine } />
                         </div>
                         { offerGrid(mineCells, true) }
                         <span className={ `trade-hint${ trade.mineFits ? '' : ' is-warning' }` }>
-                            { trade.mineFits ? `${ mineCells.length } of ${ OFFER_SLOTS } slots` : `${ partner }'s backpack cannot hold all of that - take some back.` }
+                            { trade.mineFits ? `${ mineCells.length } of ${ OFFER_SLOTS } slots${ mineCells.length ? ' · click on the item to take it back' : '' }` : `${ partner }'s backpack cannot hold all of that - take some back.` }
                         </span>
                     </section>
-                    <section className={ `trade-offer${ trade.theirs.ready ? ' is-ready' : '' }` } aria-label={ `${ partner } is offering` }>
-                        <div className="trade-side-head">
+                    <div className="trade-swap" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h14l-4-4" /><path d="M20 16H6l4 4" /></svg>
+                    </div>
+                    <section className={ `trade-offer ${ sideClass(trade.theirs) }` } aria-label={ `${ partner } is offering` }>
+                        <div className="trade-offer-strip">
                             <span className="trade-offer-title">{ partner } is offering</span>
-                            <span className={ `trade-chip${ trade.theirs.ready ? ' is-ready' : '' }` }>{ trade.theirs.ready ? 'Ready' : 'Not ready' }</span>
+                            <SideState side={ trade.theirs } />
                         </div>
                         { offerGrid(theirCells, false) }
                         <span className={ `trade-hint${ trade.theirsFits ? '' : ' is-warning' }` }>
@@ -269,9 +279,50 @@ export const TradeView: FC<{}> = props =>
                         </span>
                     </section>
                 </div>
+                <section className="trade-pack" aria-label="Your backpack">
+                    <div className="trade-pack-head">
+                        <b>Your backpack</b>
+                        <span className="trade-count-label">{ CARRY_SLOTS.filter(slot => remaining.has(slot)).length }/{ packOpen }</span>
+                        { equipped &&
+                            <span className="trade-equipped" title={ `${ itemName(equipped.item, 1) } - equipped. Put it away to trade it.` }>
+                                <span className="trade-equipped-art"><ItemArt item={ equipped.item } /></span>
+                                { itemName(equipped.item, 1) } equipped - put it away to trade it
+                            </span> }
+                    </div>
+                    <div className="trade-pack-grid">
+                        { CARRY_SLOTS.map(slot =>
+                        {
+                            const entry = remaining.get(slot) ?? null;
+                            const locked = ((slot > packOpen) && !entry);
+                            const gear = (!!entry && POLICE_GEAR.includes(entry.item));
+                            const label = (entry
+                                ? (gear ? `${ itemName(entry.item, entry.count) } - police equipment, cannot be traded` : `${ itemName(entry.item, entry.count) } - click to offer one, drag to offer all`)
+                                : (locked ? 'Locked - VIP' : 'Empty slot'));
+
+                            return (
+                                <button key={ slot } type="button" title={ label } aria-label={ label } aria-disabled={ !entry || gear }
+                                    className={ `trade-slot${ entry ? ' has-item' : '' }${ gear ? ' is-gear' : '' }${ locked ? ' is-locked' : '' }${ (dragging === slot) ? ' is-lifted' : '' }` }
+                                    draggable={ !!entry && !gear } onDragStart={ (entry && !gear) ? onDragStart(slot) : undefined } onDragEnd={ () => setDragging(0) }
+                                    onClick={ () => entry && !gear && send(TradeAction.Offer, slot, false) }>
+                                    { entry && <ItemArt item={ entry.item } /> }
+                                    { (entry && (entry.count > 1)) && <span className="trade-count">{ entry.count }</span> }
+                                    { gear && <span className="trade-gear"><Lock /></span> }
+                                    { locked && <Lock /> }
+                                </button>
+                            );
+                        }) }
+                    </div>
+                </section>
                 { notice && <div className="trade-notice" role="status">{ notice }</div> }
                 <div className="trade-actions">
                     <button type="button" className="trade-button is-plain trade-cancel" onClick={ () => send(TradeAction.Cancel) }>Cancel</button>
+                    <div className="trade-steps">
+                        <span className={ step(!bothReady, bothReady) }>1 Offer</span>
+                        <Chevron />
+                        <span className={ step((trade.mine.ready || trade.theirs.ready) && !bothReady, bothReady) }>2 Ready</span>
+                        <Chevron />
+                        <span className={ step(bothReady, complete) }>3 Confirm</span>
+                    </div>
                     <button type="button" className={ `trade-button trade-primary ${ primaryClass }` } disabled={ primaryDisabled } onClick={ () => send(primaryAction) }>{ primaryLabel }</button>
                 </div>
             </NitroCardContentView>
