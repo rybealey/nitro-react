@@ -30,9 +30,13 @@ export const OnlineCountView: FC<{}> = props =>
 
     if(onlineCount === null) return null;
 
+    // pixelrp: an orange pixel person in place of the word "online" (Twist,
+    // 2026-10-18; design: the "Online count icon" canvas, A). The word stays
+    // for screen readers and in the hover title.
     return (
-        <Flex justifyContent="end" className="nitro-online-count rounded-bottom p-1 px-2">
-            <Text variant="white" className="text-nowrap"><b>{ onlineCount }</b> online</Text>
+        <Flex justifyContent="end" alignItems="center" className="nitro-online-count rounded-bottom p-1 px-2" title={ `${ onlineCount } online` }>
+            <span className="online-count-icon" aria-hidden="true" />
+            <Text variant="white" className="text-nowrap"><b>{ onlineCount }</b><span className="visually-hidden"> online</span></Text>
         </Flex>
     );
 }

@@ -21,7 +21,7 @@ export const GameClockView: FC<{}> = props =>
     return (
         <Flex alignItems="center" gap={ 1 } className="nitro-game-clock rounded-bottom p-1 px-2" title={ day ? 'Day in the city' : 'Night in the city' }>
             <span className={ `game-clock-icon ${ day ? 'is-sun' : 'is-moon' }` } aria-hidden="true" />
-            <Text variant="white" className="text-nowrap"><b>{ FormatMinutes(minutes) }</b></Text>
+            <Text variant="white" className="text-nowrap">{ FormatMinutes(minutes) }</Text>
         </Flex>
     );
 }

@@ -6,4 +6,15 @@
     -webkit-backdrop-filter: blur(6px);
     width: fit-content;
     flex-shrink: 0;
+
+    // 13x13 pixel person, drawn at its own size like the clock's sun and
+    // moon; the count sits close beside it
+    .online-count-icon {
+        width: 13px;
+        height: 13px;
+        margin-right: 3px;
+        flex-shrink: 0;
+        background: url('@/assets/images/online-count/online-person.png') no-repeat;
+        image-rendering: pixelated;
+    }
 }

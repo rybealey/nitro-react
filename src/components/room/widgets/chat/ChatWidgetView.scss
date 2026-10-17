@@ -101,6 +101,9 @@
             // normal
             .message {
                 font-weight: 400;
+                // a quarter pixel under the bubble's 13.5px (Twist,
+                // 2026-10-18); names, shouts and whispers stay at 13.5
+                font-size: 13.25px;
             }
         }
 
