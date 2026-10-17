@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
-import { SetCelsius, SetClock24, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { SetCelsius, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { GetRpRegion, RpRegionLabel, SubscribeRpRegion } from '../../api/rp-region/RpRegionMessages';
 import { PhoneIcon } from './PhoneIcon';
 
@@ -28,7 +28,7 @@ const Segmented: FC<{ options: [ string, string ], picked: number, onPick: (inde
 export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
 {
     const { onBack = null, openRegion = null } = props;
-    const { clock24, celsius } = useUnitsPrefs();
+    const { celsius } = useUnitsPrefs();
     const ownId = GetSessionDataManager().userId;
     const [ region, setRegion ] = useState<string>(() => GetRpRegion(ownId));
 
@@ -64,15 +64,10 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                         </div>
                     </div>
                     <div>
-                        <div className="phone-section-label">TIME AND UNITS</div>
+                        { /* pixelrp: the 12/24-hour clock moved to the main Settings >
+                             General (Twist, 2026-10-18); only Temperature is left here. */ }
+                        <div className="phone-section-label">UNITS</div>
                         <div className="phone-settings-card">
-                            <div className="phone-settings-item">
-                                <div className="phone-settings-icon" style={ { background: '#3f8fbf' } }>
-                                    <PhoneIcon icon="clock" size={ 17 } />
-                                </div>
-                                <div className="phone-settings-item-label">Clock</div>
-                                <Segmented options={ [ '12-hour', '24-hour' ] } picked={ clock24 ? 1 : 0 } onPick={ index => SetClock24(index === 1) } />
-                            </div>
                             <div className="phone-settings-item">
                                 <div className="phone-settings-icon" style={ { background: '#f0954a' } }>
                                     <PhoneIcon icon="temperature-half" size={ 17 } />
@@ -83,7 +78,7 @@ export const PhoneGeneralView: FC<PhoneGeneralViewProps> = props =>
                         </div>
                     </div>
                 </div>
-                <div className="phone-settings-footnote">The clock applies to the status bar, Calendar, News and Weather. Temperature applies to Weather and the sky behind rooms. Both are yours alone.</div>
+                <div className="phone-settings-footnote">Temperature applies to Weather and the sky behind rooms. It's yours alone. The 12/24-hour clock is in the game's Settings, under General.</div>
                 <div className="phone-scroll-spacer" />
             </div>
         </div>

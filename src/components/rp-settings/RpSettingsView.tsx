@@ -19,7 +19,7 @@ import { UsernameIconGlyph } from './UsernameIconGlyph';
 import { SetEnvironmentWeather, useEnvironmentPrefs, useWeatherSnapshot } from '../../api/environment/EnvironmentStore';
 import { EnvironmentSkyPreview } from '../environment/EnvironmentSky';
 import { SkyConditionLabel } from '../environment/SkyModel';
-import { FormatMinutes, FormatTemp, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { FormatMinutes, FormatTemp, SetClock24, useUnitsPrefs } from '../../api/prefs/UnitsStore';
 import { GameMinutes } from '../../api/environment/GameClock';
 import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_KEY, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
@@ -155,8 +155,8 @@ export const RpSettingsView: FC<{}> = props =>
     const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
     const { weatherOn: environmentWeatherOn } = useEnvironmentPrefs();
     const weatherSnapshot = useWeatherSnapshot();
-    // re-renders the weather preview's clock when the 12/24-hour setting changes
-    useUnitsPrefs();
+    // General > Clock, and the weather preview's clock reads it too
+    const { clock24: unitsClock24 } = useUnitsPrefs();
     // Own avatar head + chest color for the preview bubble, built the same way
     // the chat widget builds them (useChatWidget's setFigureImage).
     const [ previewFigure, setPreviewFigure ] = useState<{ imageUrl: string, color: string }>(null);
@@ -1620,6 +1620,21 @@ export const RpSettingsView: FC<{}> = props =>
                                                     { ROOM_DRAG_LABELS[button] }
                                                 </div>
                                             )) }
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                            { /* pixelrp: 12-hour (AM/PM) or 24-hour, for every clock in the
+                                 game - the city's clock beside "online", the phone and its
+                                 apps. The same setting as the phone's Settings > General
+                                 (UnitsStore), kept on this computer. */ }
+                            <section className="rp-settings-group" aria-labelledby="rp-settings-h-clock">
+                                <div id="rp-settings-h-clock" className="rp-settings-group-head">Clock</div>
+                                <div className="rp-settings-panel">
+                                    <div className="rp-settings-row">
+                                        <div className="rp-settings-choice is-wide" role="radiogroup" aria-labelledby="rp-settings-h-clock">
+                                            <div role="radio" aria-checked={ !unitsClock24 } className={ `rp-settings-choice-option ${ !unitsClock24 ? 'is-selected' : '' }` } onClick={ () => SetClock24(false) }>12-hour (AM/PM)</div>
+                                            <div role="radio" aria-checked={ unitsClock24 } className={ `rp-settings-choice-option ${ unitsClock24 ? 'is-selected' : '' }` } onClick={ () => SetClock24(true) }>24-hour</div>
                                         </div>
                                     </div>
                                 </div>
