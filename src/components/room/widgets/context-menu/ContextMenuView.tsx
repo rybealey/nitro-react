@@ -17,6 +17,8 @@ interface ContextMenuViewProps extends BaseProps<HTMLDivElement>
     fades?: boolean;
     onClose: () => void;
     collapsable?: boolean;
+    /** Moved down by this share of the object's on-screen height (0.1 = 10%), so it keeps its place at any zoom. */
+    drop?: number;
 }
 
 const LOCATION_STACK_SIZE: number = 25;
@@ -32,7 +34,7 @@ let FADE_TIME = 1;
 
 export const ContextMenuView: FC<ContextMenuViewProps> = props =>
 {
-    const { objectId = -1, category = -1, userType = -1, fades = false, onClose = null, position = 'absolute', classNames = [], style = {}, children = null, collapsable = false, ...rest } = props;
+    const { objectId = -1, category = -1, userType = -1, fades = false, onClose = null, position = 'absolute', classNames = [], style = {}, children = null, collapsable = false, drop = 0, ...rest } = props;
     const [ pos, setPos ] = useState<{ x: number, y: number }>({ x: null, y: null });
     const [ opacity, setOpacity ] = useState(1);
     const [ isFading, setIsFading ] = useState(false);
@@ -72,6 +74,8 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
             offset = (offset - 14);
         }
 
+        if(drop) offset = (offset + Math.round(bounds.height * drop));
+
         FIXED_STACK.addValue((location.y - bounds.top));
 
         let maxStack = FIXED_STACK.getMax();
@@ -95,7 +99,7 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
         else if(y > maxTop) y = maxTop;
 
         setPos({ x, y });
-    }, [ userType ]);
+    }, [ userType, drop ]);
 
     const getClassNames = useMemo(() =>
     {

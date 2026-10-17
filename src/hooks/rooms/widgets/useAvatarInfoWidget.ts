@@ -300,6 +300,12 @@ const useAvatarInfoWidgetState = () =>
         // to match the pass-through walk behaviour (no pointer, no menu, no name).
         if(ClickthroughState.enabled) return;
 
+        // pixelrp: no name tag on hovering a bot (Twist, 2026-10-18). Clicking
+        // one still opens its menu and infostand as before.
+        const hovered = AvatarInfoUtilities.getObjectName(event.id, event.category);
+
+        if(hovered && ((hovered.userType === RoomObjectType.BOT) || (hovered.userType === RoomObjectType.RENTABLE_BOT))) return;
+
         getObjectName(event.id, event.category);
     });
 
