@@ -14,13 +14,14 @@
 }
 
 // pixelrp: "bold" chat - a shout, an action line, a mention - is Ubuntu Bold
-// with half a pixel between letters (Twist, 2026-10-18). At 13px over the room
+// with a quarter pixel between letters (Twist, 2026-10-18; 0.5px at first,
+// halved once the text went to 13.5px). At 13px over the room
 // Bold leaves barely a pixel between its letters, and the grey edge smoothing
 // (the only kind text over the room canvas gets) closed that up, so a shout
 // read as run together. Medium was tried first and was not bold enough.
 @mixin chat-bold {
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.25px;
 }
 
 .chat-mention {
@@ -131,12 +132,11 @@
             @include chat-bold;
         }
 
-        // pixelrp: every other name is Medium, a step under a shout's Bold,
-        // so it stands out from the message without shouting over it. Shouts
-        // included: an "@x" mention always goes out as one (ChatInputView).
-        // Chat history and the settings preview reuse these classes.
+        // pixelrp: every other name - normal chat, shouts, whispers - is bold
+        // too (Twist, 2026-10-18; it was Medium), set off from the message by
+        // weight. Chat history and the settings preview reuse these classes.
         &:not(.is-action) .username {
-            font-weight: 500;
+            @include chat-bold;
         }
 
         .user-container {
