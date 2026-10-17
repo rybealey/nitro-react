@@ -5,7 +5,8 @@ import { GetConnection } from '../nitro';
 // and registered at runtime, like the 911 calls packet. Wire ids match the
 // emulator's Resources/Revisions/1.6.6.json.
 const RP_MEDICAL_CALLS = 4205; // server -> client: the window, open with its deaths, or closed
-const RP_MEDICAL_CALL_CLAIM = 4206; // client -> server: Claim on one call
+const RP_MEDICAL_CALL_CLAIM = 4206; // client -> server: Accept on one call
+const RP_MEDICAL_CALL_DECLINE = 4209; // client -> server: Decline on one call
 
 /** MedicalCalls.State* */
 export const MedicalCallState = { Waiting: 0, Offered: 1, Claimed: 2, Revived: 3, Recovered: 4, Admitted: 5, Gone: 6 };
@@ -134,6 +135,24 @@ export class RpMedicalCallClaimComposer implements IMessageComposer<[ number ]>
     { }
 }
 
+export class RpMedicalCallDeclineComposer implements IMessageComposer<[ number ]>
+{
+    private _data: [ number ];
+
+    constructor(callId: number)
+    {
+        this._data = [ callId ];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    { }
+}
+
 let registered = false;
 
 export const RegisterRpMedicalCallsMessages = () =>
@@ -149,7 +168,8 @@ export const RegisterRpMedicalCallsMessages = () =>
             [ RP_MEDICAL_CALLS, RpMedicalCallsEvent ]
         ]),
         composers: new Map<number, Function>([
-            [ RP_MEDICAL_CALL_CLAIM, RpMedicalCallClaimComposer ]
+            [ RP_MEDICAL_CALL_CLAIM, RpMedicalCallClaimComposer ],
+            [ RP_MEDICAL_CALL_DECLINE, RpMedicalCallDeclineComposer ]
         ])
     });
 

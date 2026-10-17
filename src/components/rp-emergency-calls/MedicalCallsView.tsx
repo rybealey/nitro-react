@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager, SendMessageComposer } from '../../api';
-import { MedicalCall, MedicalCallState, RpMedicalCallClaimComposer, RpMedicalCallsEvent } from '../../api/rp-hospital/RpMedicalCallsMessages';
+import { MedicalCall, MedicalCallState, RpMedicalCallClaimComposer, RpMedicalCallDeclineComposer, RpMedicalCallsEvent } from '../../api/rp-hospital/RpMedicalCallsMessages';
 import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 
@@ -11,10 +11,14 @@ import { useMessageEvent } from '../../hooks';
 // clock-in and takes it away on clock-out - but only on screen when a call is
 // dispatched to you. Each death, with who died and the room they died in, is
 // OFFERED to one paramedic at a time, round robin: theirs comes up on it with
-// a Claim button and ten seconds to press it, after which it leaves their
-// window for the next paramedic's. The server sends each paramedic only their
-// own calls - the one offered to them, and the ones they claimed or dropped
-// off. One claim at a time. The call reads "Revived by" whoever drops the
+// Accept and Decline buttons and thirty seconds to answer. Decline, or no
+// answer in time, sends it on to the next paramedic and leaves it greyed in
+// theirs. Accept turns the card into the Active Call - who and where - until
+// the patient is dropped off; the hospital collects them itself two minutes
+// after the Accept (emulator MedicalCalls.ReviveSeconds). The server sends
+// each paramedic only their own calls - the one offered to them, the ones
+// they declined or let run out, and the ones they claimed or dropped off.
+// One claim at a time. The call reads "Revived by" whoever drops the
 // patient off at the hospital. The X puts the window away: the next call
 // offered to you brings it back, and :calls does too. The newest first; the
 // arrows page through older ones.
@@ -133,6 +137,8 @@ export const MedicalCallsView: FC<{}> = props =>
     const age = (call ? call.age + elapsed : 0);
     const claimLeft = (call ? Math.max(0, call.claimSeconds - elapsed) : 0);
     const offeredToMe = (!!call && (call.state === MedicalCallState.Offered) && (call.actorId === myId));
+    // The call you accepted and have not dropped off yet: its own card.
+    const activeForMe = (!!call && (call.state === MedicalCallState.Claimed) && (call.actorId === myId));
     const holdingClaim = calls.some(entry => ((entry.state === MedicalCallState.Claimed) && (entry.actorId === myId)));
 
     let statusClass = 'is-waiting';
@@ -141,7 +147,7 @@ export const MedicalCallsView: FC<{}> = props =>
     if(call) switch(call.state)
     {
         case MedicalCallState.Offered:
-            statusText = (offeredToMe ? `Claim within ${ claimLeft }s` : `Offered to ${ call.actorName }`);
+            statusText = (offeredToMe ? `Accept within ${ claimLeft }s` : `Offered to ${ call.actorName }`);
             break;
         case MedicalCallState.Claimed:
             statusClass = 'is-responded';
@@ -184,7 +190,20 @@ export const MedicalCallsView: FC<{}> = props =>
                         <CrossIcon size={ 20 } />
                         <b>No emergencies</b>
                     </div> }
-                { call &&
+                { activeForMe &&
+                    <article className="emergency-card is-medical is-active" aria-label={ `Active call: ${ call.patientName }` }>
+                        <b className="emergency-active-title">Active Call</b>
+                        <div className="emergency-caller">
+                            <div className="emergency-figure" title={ `${ call.patientName }'s look` }>
+                                <LayoutAvatarImageView figure={ call.patientLook } gender={ call.patientGender } direction={ 2 } />
+                            </div>
+                            <div className="emergency-text">
+                                <p className="emergency-detail"><b>Patient:</b> { call.patientName }</p>
+                                <p className="emergency-detail"><b>Location:</b> { call.roomName || 'Unknown' }</p>
+                            </div>
+                        </div>
+                    </article> }
+                { call && !activeForMe &&
                     <article className={ `emergency-card is-medical${ (statusClass === 'is-closed') ? ' is-closed' : '' }` } aria-label={ `${ call.patientName } knocked out` }>
                         <div className="emergency-caller">
                             <div className="emergency-figure" title={ `${ call.patientName }'s look` }>
@@ -209,9 +228,14 @@ export const MedicalCallsView: FC<{}> = props =>
                             <span>{ statusText }</span>
                         </div>
                         { offeredToMe && !call.missedByMe &&
-                            <button type="button" className="emergency-button is-respond" disabled={ holdingClaim || (claimLeft <= 0) } title={ holdingClaim ? 'Drop off your claimed patient first' : undefined } onClick={ () => SendMessageComposer(new RpMedicalCallClaimComposer(call.id)) }>
-                                <CrossIcon size={ 10 } /> Claim
-                            </button> }
+                            <div className="emergency-actions">
+                                <button type="button" className="emergency-button is-respond" disabled={ holdingClaim || (claimLeft <= 0) } title={ holdingClaim ? 'Drop off your claimed patient first' : undefined } onClick={ () => SendMessageComposer(new RpMedicalCallClaimComposer(call.id)) }>
+                                    <CrossIcon size={ 10 } /> Accept
+                                </button>
+                                <button type="button" className="emergency-button is-decline" disabled={ (claimLeft <= 0) } onClick={ () => SendMessageComposer(new RpMedicalCallDeclineComposer(call.id)) }>
+                                    Decline
+                                </button>
+                            </div> }
                     </article> }
                 { notice && <div className="emergency-notice" role="status">{ notice }</div> }
                 { call &&
