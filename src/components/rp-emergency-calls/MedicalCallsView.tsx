@@ -167,12 +167,12 @@ export const MedicalCallsView: FC<{}> = props =>
     }
 
     // A call you were offered and let lapse stays in your window, greyed:
-    // "Missed" while it is still unclaimed, then its outcome once resolved
-    // (Revived by X, Auto revived, ...).
+    // "Declines the call" while it is still unclaimed, then its outcome once
+    // resolved (Revived by X, Auto revived, ...).
     if(call && call.missedByMe)
     {
         statusClass = 'is-closed';
-        if(call.state < MedicalCallState.Revived) statusText = 'You have missed this call';
+        if(call.state < MedicalCallState.Revived) statusText = 'Declines the call';
     }
 
     return (
