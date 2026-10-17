@@ -46,6 +46,12 @@ const agoText = (seconds: number) =>
 const CrossIcon: FC<{ size?: number }> = ({ size = 10 }) =>
     <svg width={ size } height={ size } viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" /></svg>;
 
+const ClockIcon: FC<{}> = () =>
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
+
+const CheckIcon: FC<{}> = () =>
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
+
 export const MedicalCallsView: FC<{}> = props =>
 {
     const [ isOpen, setIsOpen ] = useState(false);
@@ -173,12 +179,19 @@ export const MedicalCallsView: FC<{}> = props =>
     }
 
     // A call you were offered and let lapse stays in your window, greyed:
-    // "Declines the call" while it is still unclaimed, then its outcome once
+    // "Declined" while it is still unclaimed, then its outcome once
     // resolved (Revived by X, Auto revived, ...).
     if(call && call.missedByMe)
     {
         statusClass = 'is-closed';
-        if(call.state < MedicalCallState.Revived) statusText = 'Declines the call';
+        if(call.state < MedicalCallState.Revived) statusText = 'Declined';
+    }
+
+    // The call you accepted reads as your Active Call until the drop-off.
+    if(activeForMe)
+    {
+        statusClass = 'is-responded';
+        statusText = 'Active Call';
     }
 
     return (
@@ -190,42 +203,25 @@ export const MedicalCallsView: FC<{}> = props =>
                         <CrossIcon size={ 20 } />
                         <b>No emergencies</b>
                     </div> }
-                { activeForMe &&
-                    <article className="emergency-card is-medical is-active" aria-label={ `Active call: ${ call.patientName }` }>
-                        <b className="emergency-active-title">Active Call</b>
+                { call &&
+                    <article className={ `emergency-card is-medical ${ statusClass }` } aria-label={ activeForMe ? `Active call: ${ call.patientName }` : `${ call.patientName } knocked out` }>
+                        <div className={ `emergency-strip ${ statusClass }` } role="status">
+                            { (statusClass === 'is-waiting') && <ClockIcon /> }
+                            { activeForMe && <CrossIcon size={ 10 } /> }
+                            { (statusClass === 'is-responded') && !activeForMe && <CheckIcon /> }
+                            <span className="emergency-strip-text">{ statusText }</span>
+                            { !activeForMe && <span className="emergency-strip-ago">{ agoText(age) }</span> }
+                        </div>
                         <div className="emergency-caller">
                             <div className="emergency-figure" title={ `${ call.patientName }'s look` }>
                                 <LayoutAvatarImageView figure={ call.patientLook } gender={ call.patientGender } direction={ 2 } />
                             </div>
-                            <div className="emergency-text">
-                                <p className="emergency-detail"><b>Patient:</b> { call.patientName }</p>
-                                <p className="emergency-detail"><b>Location:</b> { call.roomName || 'Unknown' }</p>
+                            <div className="emergency-facts">
+                                <span>Patient:</span>
+                                <b className="is-patient">{ call.patientName }</b>
+                                <span>Location:</span>
+                                <b>{ call.roomName || 'Unknown' }</b>
                             </div>
-                        </div>
-                    </article> }
-                { call && !activeForMe &&
-                    <article className={ `emergency-card is-medical${ (statusClass === 'is-closed') ? ' is-closed' : '' }` } aria-label={ `${ call.patientName } knocked out` }>
-                        <div className="emergency-caller">
-                            <div className="emergency-figure" title={ `${ call.patientName }'s look` }>
-                                <LayoutAvatarImageView figure={ call.patientLook } gender={ call.patientGender } direction={ 2 } />
-                            </div>
-                            <div className="emergency-text">
-                                <div className="emergency-name-row">
-                                    <span className="emergency-who">
-                                        <b className="emergency-name">{ call.patientName }</b>
-                                    </span>
-                                    <span className="emergency-ago">{ agoText(age) }</span>
-                                </div>
-                                <p className="emergency-message emergency-at">
-                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>
-                                    <span>Has been knocked out at { call.roomName || 'an unknown room' }.</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className={ `emergency-status ${ statusClass }` } role="status">
-                            { (statusClass === 'is-waiting') && <span className="emergency-ring" /> }
-                            { (statusClass === 'is-responded') && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }
-                            <span>{ statusText }</span>
                         </div>
                         { offeredToMe && !call.missedByMe &&
                             <div className="emergency-actions">
