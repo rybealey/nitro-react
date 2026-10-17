@@ -15,7 +15,8 @@ import { Amount } from './CityCorporationsView';
 const COINS = 'coins';
 const NOTHING = 'nothing';
 const MAX_WEIGHT = 1000;
-const MAX_COINS = 10000;
+// BinRewards.MinCoins / MaxCoins: the server holds a coin row to 3c-20c.
+const MAX_COINS = 20;
 const MAX_ITEMS = 10;
 
 // What a new row, or a row switched to another reward, starts out as.
@@ -114,7 +115,7 @@ export const CityBinSearchView: FC<{ context: CityPanelContext }> = props =>
                     </select>
                     <button type="button" className="mt-chrome mt-small" disabled={ !canEconomy || !addKey } onClick={ add }>Add reward</button>
                 </div>
-                <span className="mt-hint">Chance is a row&apos;s weight out of the total. Coins and items pay between Min and Max. Only bins in PixelRP rooms can be searched; a searched bin stays empty for 15 minutes, and each account can search 5 bins every 24 hours.</span>
+                <span className="mt-hint">Chance is a row&apos;s weight out of the total. Coins and items pay between Min and Max; coins are always 3c to 20c. Only bins in PixelRP rooms can be searched; a searched bin stays empty for 15 minutes, and each account can search 5 bins every 24 hours.</span>
             </section>
         </div>
     );
