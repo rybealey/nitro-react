@@ -76,7 +76,10 @@
         word-break: break-word;
         max-width: 350px;
         min-height: 26px;
-        font-size: 13px;
+        // 13.5px (Twist, 2026-10-18): half a pixel up from 13 for normal and
+        // bold chat alike. Small letters still land on 7 rows; the extra
+        // half pixel goes to the widths and the gaps between letters.
+        font-size: 13.5px;
 
         border-image-slice: 17 6 6 29 fill;
         border-image-width: 17px 6px 6px 29px;
