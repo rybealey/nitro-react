@@ -282,12 +282,6 @@ $ch-clear: #c9453a;
         }
     }
 
-    .rp-ch-room-hidden {
-        flex-shrink: 0;
-        font-size: 11px;
-        color: $ch-muted;
-    }
-
     // points down while open, right while folded
     .rp-ch-room-caret {
         flex-shrink: 0;

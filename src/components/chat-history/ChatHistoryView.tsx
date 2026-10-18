@@ -95,35 +95,26 @@ export const ChatHistoryView: FC<{}> = props =>
     const matchCount = useMemo(() => rows.filter(row => (row.type === ChatEntryType.TYPE_CHAT)).length, [ rows ]);
 
     // The rows actually listed: a folded room keeps its header and drops its
-    // lines, and the header counts what it is hiding.
-    const { shownRows, hiddenCounts } = useMemo(() =>
+    // lines.
+    const shownRows = useMemo(() =>
     {
         const shown: IChatEntry[] = [];
-        const hidden = new Map<number, number>();
-        let folded: number = null;
+        let folded = false;
 
         for(const row of rows)
         {
             if(row.type === ChatEntryType.TYPE_ROOM_INFO)
             {
-                folded = collapsedRooms.includes(row.id) ? row.id : null;
-
-                if(folded !== null) hidden.set(row.id, 0);
+                folded = collapsedRooms.includes(row.id);
 
                 shown.push(row);
                 continue;
             }
 
-            if(folded !== null)
-            {
-                hidden.set(folded, (hidden.get(folded) + 1));
-                continue;
-            }
-
-            shown.push(row);
+            if(!folded) shown.push(row);
         }
 
-        return { shownRows: shown, hiddenCounts: hidden };
+        return shown;
     }, [ rows, collapsedRooms ]);
 
     const toggleRoom = (id: number) => setCollapsedRooms(prevValue => (prevValue.includes(id) ? prevValue.filter(roomId => (roomId !== id)) : [ ...prevValue, id ]));
@@ -195,14 +186,12 @@ export const ChatHistoryView: FC<{}> = props =>
     {
         if(row.type === ChatEntryType.TYPE_ROOM_INFO)
         {
-            const folded = hiddenCounts.has(row.id);
-            const hiddenLines = (hiddenCounts.get(row.id) ?? 0);
+            const folded = collapsedRooms.includes(row.id);
 
             return (
                 <button type="button" className={ `rp-ch-room${ folded ? ' is-collapsed' : '' }` } aria-expanded={ !folded } onClick={ () => toggleRoom(row.id) }>
                     <i className="icon icon-small-room" />
                     <span className="rp-ch-room-name">{ row.name }</span>
-                    { folded && <span className="rp-ch-room-hidden">{ hiddenLines } { (hiddenLines === 1) ? 'line' : 'lines' }</span> }
                     <span className="rp-ch-time">{ row.timestamp }</span>
                     <svg className="rp-ch-room-caret" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 3.75L5 6.25l2.5-2.5" /></svg>
                 </button>

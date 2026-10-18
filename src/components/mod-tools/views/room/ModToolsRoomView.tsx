@@ -57,7 +57,6 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
     const [ name, setName ] = useState<string>(null);
     const [ ownerId, setOwnerId ] = useState<number>(0);
     const [ ownerName, setOwnerName ] = useState<string>(null);
-    const [ usersInRoom, setUsersInRoom ] = useState(0);
     const [ roomData, setRoomData ] = useState<IRoomData>(null);
     const [ settingsDenied, setSettingsDenied ] = useState(false);
     const [ roomName, setRoomName ] = useState('');
@@ -89,7 +88,6 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         setName(parser.data.room.name);
         setOwnerId(parser.data.ownerId);
         setOwnerName(parser.data.ownerName);
-        setUsersInRoom(parser.data.userCount);
     });
 
     useMessageEvent<RoomSettingsDataEvent>(RoomSettingsDataEvent, event =>
@@ -420,7 +418,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                             <div className="mt-room-details">
                                 <div className="mt-owner-row">
                                     <div className="mt-owner">
-                                        <span className="mt-muted">Owner</span> <span className="mt-link" onClick={ () => ownerId && CreateLinkEvent(`mod-tools/open-user-info/${ ownerId }`) }>{ ownerName }</span> <span className="mt-muted">·</span> <b>{ usersInRoom }</b> <span className="mt-muted">in room</span>
+                                        <span className="mt-muted">Owner</span> <span className="mt-link" onClick={ () => ownerId && CreateLinkEvent(`mod-tools/open-user-info/${ ownerId }`) }>{ ownerName }</span>
                                     </div>
                                     { roomData &&
                                         <button type="button" className="mt-bin" aria-label="Delete room" title="Delete room" onClick={ deleteRoom }>
