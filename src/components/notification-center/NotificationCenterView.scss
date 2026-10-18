@@ -56,12 +56,17 @@ $cmds-params: #6a6e77;
 $cmds-desc: #3d4047;
 $cmds-input-border: #c6c9cf;
 $cmds-hover: #fff4ec;
-$cmds-use: #b4521c;
+$cmds-stripe: #f3f3f5;
+$cmds-band: #e6e7eb;
+$cmds-rule: rgba(0, 0, 0, 0.14);
 
 .nitro-alert.nitro-alert-commands {
-    width: 560px;
-    height: 420px;
-    min-height: 0;
+    // starting size; the corner grip writes inline width/height over these
+    width: 590px;
+    height: 440px;
+    // the rail and a usable list, side by side
+    min-width: 480px;
+    min-height: 320px;
     max-width: 96vw;
     max-height: 92vh;
 
@@ -85,9 +90,10 @@ $cmds-use: #b4521c;
         color: $cmds-ink;
     }
 
-    // The Settings window's prp-subnav rail, with a count on each item.
+    // The Settings window's prp-subnav rail, wider for 13px names, with a
+    // count on each item. It keeps its width when the window is resized.
     .rp-cmds-rail {
-        width: 124px;
+        width: 150px;
         flex-shrink: 0;
         box-sizing: border-box;
         padding-right: 10px;
@@ -99,17 +105,28 @@ $cmds-use: #b4521c;
         background: $cmds-body;
     }
 
+    // PLAYER / STAFF, each followed by a hairline to the rail's edge.
     .rp-cmds-eyebrow {
-        padding: 2px 10px;
-        font-size: 9px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 10px 6px;
+        font-size: 11px;
         font-weight: 700;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.6);
+        color: $cmds-ink;
 
         &.is-later {
-            margin-top: 10px;
+            margin-top: 16px;
         }
+    }
+
+    .rp-cmds-eyebrow-line {
+        flex: 1;
+        height: 1px;
+        background: $cmds-rule;
     }
 
     .rp-cmds-rail-item {
@@ -122,7 +139,7 @@ $cmds-use: #b4521c;
         border-radius: $border-radius;
         background: transparent;
         font-family: inherit;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         text-align: left;
         color: rgba(0, 0, 0, 0.6);
@@ -152,7 +169,7 @@ $cmds-use: #b4521c;
     }
 
     .rp-cmds-rail-count {
-        font-size: 10.5px;
+        font-size: 11.5px;
         font-weight: 500;
         font-variant-numeric: tabular-nums;
         color: rgba(0, 0, 0, 0.55);
@@ -173,11 +190,11 @@ $cmds-use: #b4521c;
         gap: 8px;
     }
 
-    // Chat History's search field.
+    // Chat History's search field, a size up.
     .rp-cmds-search {
         flex: 1;
         min-width: 0;
-        height: 28px;
+        height: 30px;
         margin: 0;
         box-sizing: border-box;
         padding: 0 8px;
@@ -196,7 +213,7 @@ $cmds-use: #b4521c;
             outline: none;
             background: transparent;
             font-family: inherit;
-            font-size: 12px;
+            font-size: 13px;
             color: $cmds-ink;
 
             &::placeholder {
@@ -211,7 +228,7 @@ $cmds-use: #b4521c;
 
     .rp-cmds-count {
         flex-shrink: 0;
-        font-size: 11px;
+        font-size: 12px;
         font-variant-numeric: tabular-nums;
         color: $cmds-muted;
     }
@@ -222,6 +239,8 @@ $cmds-use: #b4521c;
         flex: 1;
         min-height: 0;
         overflow-y: auto;
+        box-sizing: border-box;
+        padding: 6px;
         border-radius: 6px;
         background: #ffffff;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
@@ -231,47 +250,63 @@ $cmds-use: #b4521c;
         padding-bottom: 4px;
     }
 
+    // A group's heading in All and in search results: a grey band with the
+    // group's command count at the right.
     .rp-cmds-head {
-        padding: 7px 8px 2px;
-        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0 4px;
+        padding: 5px 8px;
+        border-radius: 4px;
+        background: $cmds-band;
+        font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.62);
+        color: $cmds-ink;
+    }
+
+    .rp-cmds-head-count {
+        margin-left: auto;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0;
+        font-variant-numeric: tabular-nums;
+        color: $cmds-muted;
     }
 
     .rp-cmds-empty {
         padding: 28px 16px;
         text-align: center;
-        font-size: 12px;
+        font-size: 13px;
         color: $cmds-muted;
     }
 
     // One row per command: the command and what you type after it in a fixed
-    // column, its description beside it. Use sits over the row's end while
-    // the row is pointed at, so it takes no width from the description.
+    // column, its description beside it. Every other row in a group is
+    // shaded; the rows sit in their own box so the heading does not count.
     .rp-cmds-row {
-        position: relative;
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        padding: 3px 8px;
+        padding: 4px 8px;
+        border-radius: 4px;
 
-        &:hover,
-        &:focus-within {
+        &:nth-child(even) {
+            background: $cmds-stripe;
+        }
+
+        &:hover {
             background: $cmds-hover;
-
-            .rp-cmds-use {
-                opacity: 1;
-            }
         }
     }
 
     .rp-cmds-key {
-        width: 132px;
+        width: 130px;
         flex-shrink: 0;
-        font-size: 12px;
-        line-height: 15px;
+        font-size: 13px;
+        line-height: 17px;
         overflow-wrap: anywhere;
     }
 
@@ -280,39 +315,16 @@ $cmds-use: #b4521c;
     }
 
     .rp-cmds-params {
-        font-size: 11px;
+        font-size: 12px;
         color: $cmds-params;
     }
 
     .rp-cmds-desc {
         flex: 1;
         min-width: 0;
-        font-size: 11px;
-        line-height: 15px;
+        font-size: 12px;
+        line-height: 17px;
         color: $cmds-desc;
-    }
-
-    .rp-cmds-use {
-        position: absolute;
-        top: 3px;
-        right: 6px;
-        height: 15px;
-        padding: 0 7px;
-        border: 0;
-        border-radius: 3px;
-        box-shadow: 0 0 0 4px $cmds-hover;
-        background: $cmds-use;
-        color: #ffffff;
-        font-family: inherit;
-        font-size: 10px;
-        font-weight: 700;
-        line-height: 15px;
-        cursor: pointer;
-        opacity: 0;
-
-        &:hover {
-            background: darken($cmds-use, 8%);
-        }
     }
 }
 

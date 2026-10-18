@@ -24,14 +24,15 @@ export const NotificationDefaultAlertView: FC<NotificationDefaultAlertViewProps>
 
     // The `:commands` list arrives as a MOTD; when detected, render it as the
     // Commands window (a group rail beside a searchable list). Every other
-    // MOTD/alert is untouched. The header's close is its only close.
+    // MOTD/alert is untouched. The header's close is its only close, and the
+    // corner grip resizes it.
     const messageText = (item.messages || []).join('\n');
     const isCommandList = isCommandListText(messageText);
 
     if(isCommandList)
     {
         return (
-            <LayoutNotificationAlertView title="Commands" onClose={ onClose } { ...rest } classNames={ [ 'nitro-alert-commands' ] } type={ item.alertType }>
+            <LayoutNotificationAlertView title="Commands" onClose={ onClose } { ...rest } resizable classNames={ [ 'nitro-alert-commands' ] } type={ item.alertType }>
                 <NotificationCommandListView text={ messageText } />
             </LayoutNotificationAlertView>
         );

@@ -1,5 +1,4 @@
 import { FC, useMemo, useState } from 'react';
-import { DispatchUiEvent, RoomWidgetUpdateChatInputContentEvent } from '../../../../api';
 
 const MARKER = 'This is the list of commands you have available:';
 
@@ -103,8 +102,8 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
     const playerGroups = useMemo(() => groups.filter(group => !group.staff), [ groups ]);
     const staffGroups = useMemo(() => groups.filter(group => group.staff), [ groups ]);
 
-    // Every command in a staff group needs Trial Moderator or higher, so a
-    // staff group in the list is the staff test.
+    // The server only sends staff groups to staff (Trial Moderator and up),
+    // so a staff group in the list is the staff test.
     const isStaff = (staffGroups.length > 0);
     const query = filter.trim().toLowerCase().replace(/^:/, '');
     const searching = (query.length > 0);
@@ -135,8 +134,6 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
         setFilter('');
     };
 
-    const putInChatBox = (command: string) => DispatchUiEvent(new RoomWidgetUpdateChatInputContentEvent(RoomWidgetUpdateChatInputContentEvent.COMMAND, command));
-
     const railItem = (id: number, name: string, count: number) => (
         <button key={ id } type="button" className={ `rp-cmds-rail-item${ (active === id) ? ' is-active' : '' }` } aria-current={ (active === id) ? 'true' : undefined } onClick={ () => pick(id) }>
             <span className="rp-cmds-rail-name">{ name }</span>
@@ -147,12 +144,12 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
     return (
         <div className="rp-cmds">
             <nav className="rp-cmds-rail" aria-label="Command groups">
-                <div className="rp-cmds-eyebrow">Player</div>
+                <div className="rp-cmds-eyebrow"><span>Player</span><span className="rp-cmds-eyebrow-line" /></div>
                 { isStaff && railItem(ALL, 'All', groups.reduce((count, group) => (count + group.rows.length), 0)) }
                 { playerGroups.map(group => railItem(group.id, group.name, group.rows.length)) }
                 { isStaff &&
                     <>
-                        <div className="rp-cmds-eyebrow is-later">Staff</div>
+                        <div className="rp-cmds-eyebrow is-later"><span>Staff</span><span className="rp-cmds-eyebrow-line" /></div>
                         { staffGroups.map(group => railItem(group.id, group.name, group.rows.length)) }
                     </> }
             </nav>
@@ -169,17 +166,22 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
                         <div className="rp-cmds-empty">{ searching ? `No commands match “${ filter.trim() }”.` : 'No commands here.' }</div> }
                     { shown.map(group => (
                         <div key={ group.id } className="rp-cmds-group">
-                            { showHeads && <div className="rp-cmds-head">{ group.name }</div> }
-                            { group.rows.map(row => (
-                                <div key={ row.command } className="rp-cmds-row">
-                                    <div className="rp-cmds-key">
-                                        <span className="rp-cmds-command">{ row.command }</span>
-                                        { (row.params.length > 0) && <> <span className="rp-cmds-params">{ row.params }</span></> }
+                            { showHeads &&
+                                <div className="rp-cmds-head">
+                                    <span>{ group.name }</span>
+                                    <span className="rp-cmds-head-count">{ group.rows.length }</span>
+                                </div> }
+                            <div className="rp-cmds-rows">
+                                { group.rows.map(row => (
+                                    <div key={ row.command } className="rp-cmds-row">
+                                        <div className="rp-cmds-key">
+                                            <span className="rp-cmds-command">{ row.command }</span>
+                                            { (row.params.length > 0) && <> <span className="rp-cmds-params">{ row.params }</span></> }
+                                        </div>
+                                        <div className="rp-cmds-desc">{ row.description }</div>
                                     </div>
-                                    <div className="rp-cmds-desc">{ row.description }</div>
-                                    <button type="button" className="rp-cmds-use" aria-label={ `Put ${ row.command } in the chat box` } onClick={ () => putInChatBox(row.command) }>Use</button>
-                                </div>
-                            )) }
+                                )) }
+                            </div>
                         </div>
                     )) }
                 </div>

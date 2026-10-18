@@ -383,11 +383,6 @@ export const ChatInputView: FC<{}> = props =>
             }
             case RoomWidgetUpdateChatInputContentEvent.SHOUT:
                 return;
-            case RoomWidgetUpdateChatInputContentEvent.COMMAND: {
-                setChatValue(`${ event.userName } `);
-                inputRef.current?.focus();
-                return;
-            }
         }
     });
 
