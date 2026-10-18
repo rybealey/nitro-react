@@ -1,6 +1,6 @@
 import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, RpSetEmergencyComposer, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, SendMessageComposer } from '../../../../api';
+import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, NotificationConfirmType, SendMessageComposer } from '../../../../api';
 import { ROOM_POLICE_JAIL, RpRoomPoliceEvent } from '../../../../api/rp-police/RpJailMessages';
 import { PIXELRP_ROOM_OWNER, RpMakePixelRpRoomComposer } from '../../../../api/rp-rights/RpRoomRightsMessages';
 import { ROOM_ZONE_SAFE, ROOM_ZONE_UNSAFE, RpRoomTurfEvent, RpRoomZoneTypeSaveComposer } from '../../../../api/rp-turf/RpTurfMessages';
@@ -338,7 +338,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         {
             SendMessageComposer(new RoomDeleteComposer(roomId));
             onCloseClick();
-        }, null, null, null, LocalizeText('navigator.roomsettings.deleteroom.confirm.title'));
+        }, null, null, null, LocalizeText('navigator.roomsettings.deleteroom.confirm.title'), NotificationConfirmType.DANGER);
     }
 
     // The room, its furni and its bots go to the PixelRP account - the owner
@@ -348,7 +348,7 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         showConfirm('This room and everything in it will belong to PixelRP. This cannot be undone.', () =>
         {
             SendMessageComposer(new RpMakePixelRpRoomComposer(roomId));
-        }, null, 'Set as public room', null, 'Set as public room');
+        }, null, 'Set as public room', null, 'Set as public room', NotificationConfirmType.DANGER);
     }
 
     // Safe or Unsafe. A turf plays as unsafe; choosing Unsafe on one leaves it

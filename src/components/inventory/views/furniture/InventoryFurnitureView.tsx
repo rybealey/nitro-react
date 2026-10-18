@@ -1,7 +1,7 @@
 import { IRoomSession, RoomObjectVariable, RoomPreviewer, Vector3d } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaTrash } from 'react-icons/fa';
-import { attemptItemPlacement, DispatchUiEvent, FurniCategory, GetRoomEngine, GetSessionDataManager, GroupItem, LocalizeText, UnseenItemCategory } from '../../../../api';
+import { attemptItemPlacement, DispatchUiEvent, FurniCategory, GetRoomEngine, GetSessionDataManager, GroupItem, LocalizeText, NotificationConfirmType, UnseenItemCategory } from '../../../../api';
 import { AutoGrid, Button, Column, Grid, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, LayoutRoomPreviewerView, Text } from '../../../../common';
 import { CatalogPostMarketplaceOfferEvent } from '../../../../events';
 import { DeleteInventoryFurni } from '../../../../api/rp-furni/RpFurniMessages';
@@ -51,7 +51,7 @@ export const InventoryFurnitureView: FC<InventoryFurnitureViewProps> = props =>
         showConfirm(LocalizeText('inventory.furni.delete.confirm', [ 'count', 'name' ], [ itemIds.length.toString(), groupItem.name ]), () =>
         {
             DeleteInventoryFurni(itemIds);
-        }, null, LocalizeText('inventory.furni.delete.confirm.button'), null, LocalizeText('inventory.furni.delete.confirm.title'));
+        }, null, LocalizeText('inventory.furni.delete.confirm.button'), null, LocalizeText('inventory.furni.delete.confirm.title'), NotificationConfirmType.DANGER);
     }
 
     useEffect(() =>

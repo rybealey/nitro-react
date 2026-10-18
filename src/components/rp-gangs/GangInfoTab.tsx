@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { SendMessageComposer } from '../../api';
+import { NotificationConfirmType, SendMessageComposer } from '../../api';
 import { RpGangLeaveComposer } from '../../api/rp-gangs/RpGangMessages';
 import { GANG_PERM_LEADER, GangDetail, GangMember, GangRole, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
 import { Button, LayoutAvatarImageView } from '../../common';
@@ -49,7 +49,7 @@ export const GangInfoTab: FC<GangInfoTabProps> = ({ detail, readOnly = false }) 
     {
         if(isOwner)
         {
-            showConfirm(`Disband ${ detail.name }? Every member is let go and the gang is gone for good.`, () => SendMessageComposer(new RpGangLeaveComposer()), () => {}, 'Disband', 'Keep it', 'Disband gang');
+            showConfirm('Are you sure you want to permanently disband this gang?',() => SendMessageComposer(new RpGangLeaveComposer()), () => {}, 'Disband', 'Keep it', 'Disband gang', NotificationConfirmType.DANGER);
             return;
         }
 

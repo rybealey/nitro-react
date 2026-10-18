@@ -45,6 +45,103 @@
     }
 }
 
+// PixelRP: the plain alert and confirm windows (simpleAlert, showConfirm), in
+// the light style of the backpack's Delete Item window (RpInventoryView.scss):
+// a pale plate, 13px text, a white secondary button and one solid button -
+// blue, or red when it cannot be undone.
+$dialog-body: #f3f3f5;
+$dialog-ink: #1c1c20;
+
+.nitro-alert.rp-dialog {
+    min-height: 0;
+
+    &.theme-primary-slim {
+        border-color: #a9b0b9;
+    }
+
+    // Doubled class: beats the theme's own .content-area background whatever
+    // order the sheets load in.
+    .content-area.content-area {
+        padding: 12px;
+        gap: 12px;
+        background-color: $dialog-body;
+        font-family: 'Ubuntu', sans-serif;
+    }
+
+    // picture (Frank or the alert's own image) beside the text
+    .rp-dialog-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        gap: 10px;
+    }
+
+    .rp-dialog-message {
+        font-size: 13px;
+        line-height: 1.45;
+        color: $dialog-ink;
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    .rp-dialog-scroll {
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        white-space: normal;
+    }
+
+    .rp-dialog-actions {
+        flex-shrink: 0;
+        display: flex;
+        gap: 7px;
+    }
+
+    .rp-dialog-button {
+        height: 30px;
+        padding: 0 14px;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+
+        &.is-secondary {
+            border: 1px solid rgba(0, 0, 0, 0.14);
+            background: #ffffff;
+            color: $dialog-ink;
+
+            &:hover { background: #eef0f3; }
+        }
+
+        &.is-primary {
+            flex: 1;
+            border: 1px solid #14506b;
+            background: #1e7295;
+            color: #ffffff;
+
+            &:hover { background: #1a6584; }
+            &:active { background: #14506b; }
+        }
+
+        // The close button's red: it deletes something for good.
+        &.is-danger {
+            flex: 1;
+            border: 1px solid #a3362d;
+            background: #c9453a;
+            color: #ffffff;
+
+            &:hover { background: #b23c32; }
+            &:active { background: #a3362d; }
+        }
+    }
+}
+
+// A confirm is a little wider than the old 250px alert, for 13px text.
+.nitro-alert.rp-confirm {
+    width: 280px;
+}
+
 // The `:commands` window (Commands Panel canvas, board B): a Settings-style
 // group rail beside a searchable list, one row per command with its
 // description beside it. Applied alongside .nitro-alert-motd, so it must come

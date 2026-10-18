@@ -1,5 +1,5 @@
 import { DragEvent, FC, useEffect, useState } from 'react';
-import { SendMessageComposer } from '../../api';
+import { NotificationConfirmType, SendMessageComposer } from '../../api';
 import { RpGangKickComposer, RpGangReorderRolesComposer, RpGangSetMemberRoleComposer, RpGangTransferOwnershipComposer } from '../../api/rp-gangs/RpGangMessages';
 import { GANG_PERM_ADMIN, GANG_PERM_KICK, GANG_PERM_LEADER, GangDetail, GangMember, GangRole, HasGangPermission } from '../../api/rp-gangs/RpGangTypes';
 import { Button } from '../../common';
@@ -151,7 +151,7 @@ export const GangManageTab: FC<GangManageTabProps> = ({ detail, ownUserId }) =>
 
     const kick = (member: GangMember) =>
     {
-        showConfirm(`Kick ${ member.username } from ${ detail.name }?`, () => SendMessageComposer(new RpGangKickComposer(member.userId)), () => {}, 'Kick', 'Cancel', 'Kick member');
+        showConfirm(`Kick ${ member.username } from ${ detail.name }?`, () => SendMessageComposer(new RpGangKickComposer(member.userId)), () => {}, 'Kick', 'Cancel', 'Kick member', NotificationConfirmType.DANGER);
     }
 
     const transfer = () =>

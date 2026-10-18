@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { SendMessageComposer } from '../../api';
+import { NotificationConfirmType, SendMessageComposer } from '../../api';
 import { RpGangDeleteRoleComposer, RpGangSaveRoleComposer } from '../../api/rp-gangs/RpGangMessages';
 import { GANG_PERM_ADMIN, GANG_PERM_BANK, GANG_PERM_INVITE, GANG_PERM_KICK, GANG_ROLE_NAME_MAX_LENGTH, GangRole } from '../../api/rp-gangs/RpGangTypes';
 import { Button } from '../../common';
@@ -52,7 +52,7 @@ export const GangRoleEditor: FC<GangRoleEditorProps> = ({ role, canDelete, onClo
         {
             SendMessageComposer(new RpGangDeleteRoleComposer(role.id));
             onClose();
-        }, () => {}, 'Delete', 'Keep it', 'Delete role');
+        }, () => {}, 'Delete', 'Keep it', 'Delete role', NotificationConfirmType.DANGER);
     }
 
     return (
