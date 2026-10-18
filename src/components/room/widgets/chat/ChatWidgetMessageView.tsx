@@ -6,6 +6,7 @@ import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../../../api/rp-chat/GangAlert';
 import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../../../api/rp-chat/CorpAlert';
 import { IsStaffAlert, ParseStaffAlert, STAFF_ALERT_PREFIX } from '../../../../api/rp-chat/StaffAlert';
+import { IsPartnerAlert, PARTNER_ALERT_PREFIX, ParsePartnerAlert } from '../../../../api/rp-chat/PartnerAlert';
 
 interface ChatWidgetMessageViewProps
 {
@@ -122,12 +123,14 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
     // bubble would show is theirs, with the real sender buried in the text.
     // Credit the sender and tag the line: "[GA] Ryan: hello".
     const gangAlert = IsGangAlert(chat.styleId) ? ParseGangAlert(formattedText) : null;
+    // Partner chat (:pa) arrives the same way; "[PA] Twist: hello".
+    const partnerAlert = IsPartnerAlert(chat.styleId) ? ParsePartnerAlert(formattedText) : null;
     // A corporation alert (:ca) arrives the same way; "[CA] Sana: hello".
     const corpAlert = (!gangAlert && IsCorpAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseCorpAlert(formattedText) : null;
     // A staff alert (:sa) too; "[Staff] Ryan: hello".
     const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseStaffAlert(formattedText) : null;
-    const alert = (gangAlert || corpAlert || staffAlert);
-    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : chat.username;
+    const alert = (gangAlert || partnerAlert || corpAlert || staffAlert);
+    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : partnerAlert ? PARTNER_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : chat.username;
     const displayText = alert ? alert.message : formattedText;
 
     return (

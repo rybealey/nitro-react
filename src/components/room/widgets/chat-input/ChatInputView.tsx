@@ -13,7 +13,7 @@ import { ChatInputStyleSelectorView } from './ChatInputStyleSelectorView';
 import { GetSelectableChatStyleIds } from '../../../rp-settings/ChatStyles';
 
 /** The alerts whose prefix the box keeps, with a message after it. Emulator: RpRetainChatPrefixComposer.Retains. */
-const RETAINED_PREFIX = /^:(ga|ca|sa)\s+\S/i;
+const RETAINED_PREFIX = /^:(ga|ca|sa|pa)\s+\S/i;
 
 export const ChatInputView: FC<{}> = props =>
 {

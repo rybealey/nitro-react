@@ -5,6 +5,7 @@ import { IsNarratedBubble, NarratedBubbleText } from '../../api/rp-chat/Narrated
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../api/rp-chat/GangAlert';
 import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../api/rp-chat/CorpAlert';
 import { IsStaffAlert, ParseStaffAlert, STAFF_ALERT_MIN_RANK, STAFF_ALERT_PREFIX } from '../../api/rp-chat/StaffAlert';
+import { IsPartnerAlert, PARTNER_ALERT_PREFIX, ParsePartnerAlert } from '../../api/rp-chat/PartnerAlert';
 import { DraggableWindowPosition, InfiniteScroll, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useChatHistory } from '../../hooks';
 import { UsernameIconGlyph } from '../rp-settings/UsernameIconGlyph';
@@ -209,10 +210,11 @@ export const ChatHistoryView: FC<{}> = props =>
         // Same treatment as the in-room bubble, from the same module, so the
         // Gang and Corporation tabs read exactly like the line in the room.
         const gangAlert = IsGangAlert(row.style) ? ParseGangAlert(message) : null;
+        const partnerAlert = IsPartnerAlert(row.style) ? ParsePartnerAlert(message) : null;
         const corpAlert = (!gangAlert && IsCorpAlert(row.style, row.chatType, row.name, row.text)) ? ParseCorpAlert(message) : null;
         const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(row.style, row.chatType, row.name, row.text)) ? ParseStaffAlert(message) : null;
-        const alert = (gangAlert || corpAlert || staffAlert);
-        const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : row.name;
+        const alert = (gangAlert || partnerAlert || corpAlert || staffAlert);
+        const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : partnerAlert ? PARTNER_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : row.name;
         const displayText = alert ? alert.message : message;
 
         return (

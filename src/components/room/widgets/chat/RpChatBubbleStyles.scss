@@ -30,3 +30,14 @@
 // partner is stock bubble 3, the pink one (useChatInputWidget).
 .bubble-container .chat-bubble.bubble-201{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_200_background-01.png')}
 .bubble-container .chat-bubble.bubble-201 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_200_pointer-02.png')}
+
+// bubble 202 - partner chat (:pa). The pink bubble 16 with its hearts taken
+// off (Twist, 2026-10-19): the top-left corner redrawn as the mirror of the
+// clean top-right one, the divider heart painted over, the three rows above
+// the outline that held only hearts cropped, and the heart pointer swapped for
+// the stock triangle in 16's colours. Its slices are 16's, less those three
+// rows. An id of its own for the same reason 200 is not 12: players can pick
+// 16, and a partner line must be told apart by its bubble alone
+// (api/rp-chat/PartnerAlert.ts).
+.bubble-container .chat-bubble.bubble-202{border-image-source:url('@/assets/images/chat/chatbubbles/bubble_202_background-01.png');border-image-slice:10 6 10 31 fill;border-image-width:10px 6px 10px 31px;border-image-outset:3px 0px 0px 0px}
+.bubble-container .chat-bubble.bubble-202 .pointer{background:url('@/assets/images/chat/chatbubbles/bubble_202_pointer-02.png')}
