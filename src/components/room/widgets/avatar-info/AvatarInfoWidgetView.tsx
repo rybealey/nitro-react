@@ -168,7 +168,8 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
                 <Column alignItems="end" className={ `nitro-infostand-container${ infostandClosing ? ' is-closing' : '' }` }>
                     { getInfostandView() }
                 </Column> }
-            { (nameBubbles.length > 0) && nameBubbles.map((name, index) => <AvatarInfoWidgetNameView key={ index } nameInfo={ name } onClose={ () => removeNameBubble(index) } />) }
+            { /* keyed by the unit, so each tag keeps its own fade and place when another one goes */ }
+            { (nameBubbles.length > 0) && nameBubbles.map(name => <AvatarInfoWidgetNameView key={ name.roomIndex } nameInfo={ name } onClose={ () => removeNameBubble(name.roomIndex) } />) }
             { (productBubbles.length > 0) && productBubbles.map((item, index) =>
             {
                 return <AvatarInfoUseProductView key={ item.id } item={ item } updateConfirmingProduct={ updateConfirmingProduct } onClose={ () => removeProductBubble(index) } />;

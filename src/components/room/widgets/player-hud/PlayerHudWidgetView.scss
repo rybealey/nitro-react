@@ -402,6 +402,11 @@
         .hud-bar {
             background: rgba(0, 0, 0, .5);
             box-shadow: 0 0 0 1px rgba(0, 0, 0, .75);
+
+            // The aggression strip waits tucked up behind the energy bar, and
+            // its ring reached 1px into the slot below - a dark line under the
+            // energy bar whenever aggression was off.
+            &.aggro:not(.is-active) { box-shadow: none; }
         }
 
         .hud-bar-value {

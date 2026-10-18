@@ -21,17 +21,10 @@ const useAvatarInfoWidgetState = () =>
     const { selectObjectForWired = null } = useWired();
     const { roomSession = null } = useRoom();
 
-    const removeNameBubble = (index: number) =>
-    {
-        setNameBubbles(prevValue =>
-        {
-            const newValue = [ ...prevValue ];
-
-            newValue.splice(index, 1);
-
-            return newValue;
-        });
-    }
+    // pixelrp: by the unit's room index, not its place in the list - removing
+    // one bubble moves the rest up, so an index held by another bubble's
+    // fade-out would take the wrong one.
+    const removeNameBubble = (roomIndex: number) => setNameBubbles(prevValue => prevValue.filter(bubble => (bubble.roomIndex !== roomIndex)));
 
     const removeProductBubble = (index: number) =>
     {
@@ -332,7 +325,10 @@ const useAvatarInfoWidgetState = () =>
         {
             let index = nameBubbles.findIndex(bubble => (bubble.roomIndex === event.id));
 
-            if(index > -1) setNameBubbles(prevValue => prevValue.filter(bubble => (bubble.roomIndex === event.id)));
+            // pixelrp: drop the leaver's bubble. This kept ONLY theirs (=== for
+            // !==), so a friend who walked out left their green tag frozen
+            // where they stood while everyone else's vanished.
+            if(index > -1) setNameBubbles(prevValue => prevValue.filter(bubble => (bubble.roomIndex !== event.id)));
 
             index = productBubbles.findIndex(bubble => (bubble.id === event.id));
 
