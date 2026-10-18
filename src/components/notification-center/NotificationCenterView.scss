@@ -45,87 +45,273 @@
     }
 }
 
-// The `:commands` table variant — wider, taller, with a filter + grouped,
-// zebra-striped table. Applied alongside .nitro-alert-motd, so it must come
+// The `:commands` window (Commands Panel canvas, board B): a Settings-style
+// group rail beside a searchable list, one row per command with its
+// description beside it. Applied alongside .nitro-alert-motd, so it must come
 // after that rule to win the equal-specificity width override.
+$cmds-body: #f3f3f5;
+$cmds-ink: #1c1c20;
+$cmds-muted: #5b5f68;
+$cmds-params: #6a6e77;
+$cmds-desc: #3d4047;
+$cmds-input-border: #c6c9cf;
+$cmds-hover: #fff4ec;
+$cmds-use: #b4521c;
+
 .nitro-alert.nitro-alert-commands {
     width: 560px;
-    max-height: 460px;
+    height: 420px;
+    min-height: 0;
+    max-width: 96vw;
+    max-height: 92vh;
 
-    .command-list {
-        flex: 1 1 auto;
-        min-height: 0;
+    &.theme-primary-slim {
+        border-color: #a9b0b9;
     }
 
-    .command-list-filter {
+    // Doubled class: beats the theme's own .content-area background whatever
+    // order the sheets load in.
+    .content-area.content-area {
+        padding: 10px;
+        background-color: $cmds-body;
+    }
+
+    .rp-cmds {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        gap: 12px;
+        font-family: 'Ubuntu', sans-serif;
+        color: $cmds-ink;
+    }
+
+    // The Settings window's prp-subnav rail, with a count on each item.
+    .rp-cmds-rail {
+        width: 124px;
         flex-shrink: 0;
+        box-sizing: border-box;
+        padding-right: 10px;
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow-y: auto;
+        background: $cmds-body;
     }
 
-    .command-list-scroll {
-        flex: 1 1 auto;
+    .rp-cmds-eyebrow {
+        padding: 2px 10px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.6);
+
+        &.is-later {
+            margin-top: 10px;
+        }
+    }
+
+    .rp-cmds-rail-item {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border: 0;
+        border-radius: $border-radius;
+        background: transparent;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: left;
+        color: rgba(0, 0, 0, 0.6);
+        cursor: pointer;
+        transition: background 0.1s ease, color 0.1s ease;
+
+        &:hover {
+            color: rgba(0, 0, 0, 0.85);
+        }
+
+        &.is-active {
+            background: var(--prp-chrome-95);
+            color: $white;
+
+            .rp-cmds-rail-count {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+
+    .rp-cmds-rail-name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rp-cmds-rail-count {
+        font-size: 10.5px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .rp-cmds-page {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .rp-cmds-search-row {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    // Chat History's search field.
+    .rp-cmds-search {
+        flex: 1;
+        min-width: 0;
+        height: 28px;
+        margin: 0;
+        box-sizing: border-box;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid $cmds-input-border;
+        border-radius: 4px;
+        background: #ffffff;
+        color: $cmds-muted;
+
+        input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 12px;
+            color: $cmds-ink;
+
+            &::placeholder {
+                color: $cmds-muted;
+            }
+        }
+
+        &:focus-within {
+            border-color: #8f96a0;
+        }
+    }
+
+    .rp-cmds-count {
+        flex-shrink: 0;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        color: $cmds-muted;
+    }
+
+    // The white panel is the scroller itself, so it is opaque - Windows only
+    // gives a scroll box's text ClearType when it is (see .rp-ch-list).
+    .rp-cmds-list {
+        flex: 1;
         min-height: 0;
+        overflow-y: auto;
+        border-radius: 6px;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
     }
 
-    .command-list-empty {
-        padding: 12px;
+    .rp-cmds-group {
+        padding-bottom: 4px;
+    }
+
+    .rp-cmds-head {
+        padding: 7px 8px 2px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.62);
+    }
+
+    .rp-cmds-empty {
+        padding: 28px 16px;
         text-align: center;
-        opacity: 0.7;
+        font-size: 12px;
+        color: $cmds-muted;
     }
 
-    .command-table {
-        border-collapse: collapse;
-        font-size: $font-size-sm;
+    // One row per command: the command and what you type after it in a fixed
+    // column, its description beside it. Use sits over the row's end while
+    // the row is pointed at, so it takes no width from the description.
+    .rp-cmds-row {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 3px 8px;
 
-        thead th {
-            position: sticky;
-            top: 0;
-            z-index: 1;
-            text-align: left;
-            padding: 3px 6px;
-            background-color: rgba($dark, 0.10);
-            border-bottom: 2px solid rgba($dark, 0.25);
-            font-weight: 700;
-        }
+        &:hover,
+        &:focus-within {
+            background: $cmds-hover;
 
-        .tier-row td {
-            padding: 4px 6px;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            letter-spacing: 0.04em;
-            background-color: rgba($dark, 0.16);
-            border-top: 1px solid rgba($dark, 0.2);
-        }
-
-        .command-row {
-            td {
-                padding: 2px 6px;
-                vertical-align: top;
-            }
-
-            &:nth-child(even) {
-                background-color: rgba($dark, 0.05);
-            }
-
-            &:hover {
-                background-color: rgba($primary, 0.12);
+            .rp-cmds-use {
+                opacity: 1;
             }
         }
+    }
 
-        .command-cell {
-            font-family: monospace;
-            font-weight: 700;
-            white-space: nowrap;
-        }
+    .rp-cmds-key {
+        width: 132px;
+        flex-shrink: 0;
+        font-size: 12px;
+        line-height: 15px;
+        overflow-wrap: anywhere;
+    }
 
-        .params-cell {
-            font-family: monospace;
-            opacity: 0.75;
-            white-space: nowrap;
-        }
+    .rp-cmds-command {
+        font-weight: 700;
+    }
 
-        .desc-cell {
-            width: 100%;
+    .rp-cmds-params {
+        font-size: 11px;
+        color: $cmds-params;
+    }
+
+    .rp-cmds-desc {
+        flex: 1;
+        min-width: 0;
+        font-size: 11px;
+        line-height: 15px;
+        color: $cmds-desc;
+    }
+
+    .rp-cmds-use {
+        position: absolute;
+        top: 3px;
+        right: 6px;
+        height: 15px;
+        padding: 0 7px;
+        border: 0;
+        border-radius: 3px;
+        box-shadow: 0 0 0 4px $cmds-hover;
+        background: $cmds-use;
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 15px;
+        cursor: pointer;
+        opacity: 0;
+
+        &:hover {
+            background: darken($cmds-use, 8%);
         }
     }
 }

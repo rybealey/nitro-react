@@ -22,21 +22,17 @@ export const NotificationDefaultAlertView: FC<NotificationDefaultAlertViewProps>
 
     const hasFrank = (item.alertType === NotificationAlertType.DEFAULT);
 
-    // The `:commands` list arrives as a MOTD; when detected, render it as a
-    // grouped, filterable table in a wider dialog. Every other MOTD/alert is
-    // untouched.
+    // The `:commands` list arrives as a MOTD; when detected, render it as the
+    // Commands window (a group rail beside a searchable list). Every other
+    // MOTD/alert is untouched. The header's close is its only close.
     const messageText = (item.messages || []).join('\n');
     const isCommandList = isCommandListText(messageText);
 
     if(isCommandList)
     {
         return (
-            <LayoutNotificationAlertView title="Chat Commands" onClose={ onClose } { ...rest } classNames={ [ 'nitro-alert-commands' ] } type={ item.alertType }>
+            <LayoutNotificationAlertView title="Commands" onClose={ onClose } { ...rest } classNames={ [ 'nitro-alert-commands' ] } type={ item.alertType }>
                 <NotificationCommandListView text={ messageText } />
-                <Column alignItems="center" center gap={ 0 }>
-                    <hr className="my-2 w-100" />
-                    <Button onClick={ onClose }>{ LocalizeText('generic.close') }</Button>
-                </Column>
             </LayoutNotificationAlertView>
         );
     }
