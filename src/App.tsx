@@ -63,6 +63,25 @@ import { useConfigurationEvent, useLocalizationEvent, useMainEvent, useRoomEngin
 
 NitroVersion.UI_VERSION = GetUIVersion();
 
+// PixelRP: start the game over by reloading the PARENT page, not this frame:
+// our own url carries the SSO ticket that was already spent at login, so
+// reloading here would hand the emulator a dead ticket. /game re-runs and
+// mints a fresh one.
+const ReloadGamePage = (): void =>
+{
+    try
+    {
+        window.parent.location.reload();
+    }
+    catch (error)
+    {
+        // A client served from another origin cannot reach its parent;
+        // reloading ourselves at least fails loudly rather than silently
+        // doing nothing.
+        window.location.reload();
+    }
+}
+
 export const App: FC<{}> = props =>
 {
     const [ isReady, setIsReady ] = useState(false);
@@ -151,7 +170,12 @@ export const App: FC<{}> = props =>
                 setIsError(true);
                 setMessage('WebGL Context Lost - Reloading');
 
-                setTimeout(() => window.location.reload(), 1500);
+                // PixelRP: the whole game page, not this frame - a graphics
+                // reset (sleep and wake, a driver update) reloading the frame
+                // logged in again with its already-spent SSO ticket, and was
+                // turned away. The page brings a fresh one, and the server puts
+                // the player back where they were.
+                setTimeout(ReloadGamePage, 1500);
                 return;
             case NitroCommunicationDemoEvent.CONNECTION_HANDSHAKING:
                 setPercent(prevValue => (prevValue + 20));
@@ -317,27 +341,14 @@ export const App: FC<{}> = props =>
 
     // PixelRP: switching character is a RECONNECT. The session is bound to
     // its character at authentication and cannot be rebound, so the server
-    // points the account at the new one and asks the client to leave.
-    //
-    // The PARENT page is what reloads, not this frame: our own url carries the
-    // SSO ticket that was already spent at login, so reloading here would
-    // hand the emulator a dead ticket. /game re-runs and mints a fresh one for
-    // whoever the account now points at.
+    // points the account at the new one and asks the client to leave. The
+    // game page reloads (ReloadGamePage) and logs in whoever the account now
+    // points at.
     useEffect(() => SubscribeRpCharacterResult(outcome =>
     {
         if(outcome !== CHARACTER_RELOAD) return;
 
-        try
-        {
-            window.parent.location.reload();
-        }
-        catch (error)
-        {
-            // A client served from another origin cannot reach its parent;
-            // reloading ourselves at least fails loudly rather than silently
-            // doing nothing.
-            window.location.reload();
-        }
+        ReloadGamePage();
     }), []);
 
     useEffect(() =>
