@@ -1,10 +1,11 @@
-import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer, RpStatsEvent } from '@nitrots/nitro-renderer';
+import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer } from '@nitrots/nitro-renderer';
 import { CSSProperties, FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
+import { GetRpUnitStats, SubscribeRpStats } from '../../../../api/rp-stats/RpStatsStore';
 import { Flex, HoverBubble, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
@@ -32,14 +33,13 @@ interface HudStats
 
 const DEFAULT_STATS: HudStats = { hp: 100, hpMax: 100, energy: 100, energyMax: 100, aggro: 0, wanted: 0, aggressive: false, passive: false };
 
-// Live RP stats per room unit, keyed by roomIndex. Filled by RpStatsEvent
-// (sent on room entry and on every change); cleared when the room changes.
-const rpStatsStore: Map<number, { hp: number, hpMax: number, energy: number, energyMax: number, aggro: number, passive: boolean, staff: boolean }> = new Map();
+// Live RP stats per room unit come from RpStatsStore (keyed by roomIndex,
+// listened for from login, cleared when the room changes).
 
 // Staff/verified flag rides the same RpStats packet; the infostand reads it
 // through this accessor (the store lives for the room and is keyed by
 // roomIndex, so entries exist from room entry - before any infostand opens).
-export const IsRpStaff = (roomIndex: number): boolean => (rpStatsStore.get(roomIndex)?.staff === true);
+export const IsRpStaff = (roomIndex: number): boolean => (GetRpUnitStats(roomIndex)?.staff === true);
 
 // the shared profile opener (api layer) asks for the flag through this hook
 SetRpStaffResolver(IsRpStaff);
@@ -61,7 +61,7 @@ const IsBotTarget = (info: AvatarInfoUser): boolean => (!!info && (info.userType
 // Merge the live server stats (when known) over the base values.
 const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
 {
-    const live = rpStatsStore.get(roomIndex);
+    const live = GetRpUnitStats(roomIndex);
 
     if(!live) return base;
 
@@ -188,16 +188,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         setGangVersion(value => (value + 1));
     });
 
-    useMessageEvent<RpStatsEvent>(RpStatsEvent, event =>
-    {
-        const parser = event.getParser();
+    useEffect(() => SubscribeRpStats(() => setStatsVersion(value => (value + 1))), []);
 
-        rpStatsStore.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression, passive: parser.passive, staff: parser.staff });
-
-        setStatsVersion(value => (value + 1));
-    });
-
-    // Room changed: roomIndexes reset, stale stats must not bleed across rooms.
+    // Room changed. (The stats store clears itself on RoomReady; clearing it
+    // here, after the room's stats have landed, would throw them away.)
     //
     // Because the widget tree unmounts on leave, this effect running IS the
     // room change - there is no previous instance to have kept anything. It is
@@ -211,8 +205,6 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // it.
     useEffect(() =>
     {
-        rpStatsStore.clear();
-
         if(!rememberedTarget) return;
 
         reacquireUntil = (Date.now() + REACQUIRE_WINDOW_MS);

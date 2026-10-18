@@ -30,6 +30,7 @@ import { RegisterRpJailMessages } from './api/rp-police/RpJailMessages';
 import { CHARACTER_RELOAD, RegisterRpCharacterMessages, SubscribeRpCharacterResult } from './api/rp-phone/RpCharacterMessages';
 import { RegisterRpPrivacyMessages } from './api/rp-phone/RpPrivacyMessages';
 import { RegisterRpWantedMessages } from './api/rp-wanted/RpWantedMessages';
+import { RegisterRpStatsStore } from './api/rp-stats/RpStatsStore';
 import { RegisterRpPhoneMessages } from './api/rp-phone/RpBirthdayMessages';
 import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
@@ -206,6 +207,7 @@ export const App: FC<{}> = props =>
                 RegisterRpCatalogSearchMessages();
                 RegisterRpPrivacyMessages();
                 RegisterRpWantedMessages();
+                RegisterRpStatsStore();
                 RegisterRpCalendarMessages();
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();
