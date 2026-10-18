@@ -31,6 +31,7 @@ import { CHARACTER_RELOAD, RegisterRpCharacterMessages, SubscribeRpCharacterResu
 import { RegisterRpPrivacyMessages } from './api/rp-phone/RpPrivacyMessages';
 import { RegisterRpWantedMessages } from './api/rp-wanted/RpWantedMessages';
 import { RegisterRpStatsStore } from './api/rp-stats/RpStatsStore';
+import { RegisterRpCityFurniPreload } from './api/rp-city/RpCityFurniPreload';
 import { RegisterRpPhoneMessages } from './api/rp-phone/RpBirthdayMessages';
 import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
@@ -208,6 +209,7 @@ export const App: FC<{}> = props =>
                 RegisterRpPrivacyMessages();
                 RegisterRpWantedMessages();
                 RegisterRpStatsStore();
+                RegisterRpCityFurniPreload();
                 RegisterRpCalendarMessages();
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();

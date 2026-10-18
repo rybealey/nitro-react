@@ -1,7 +1,7 @@
 import { RoomDataParser } from '@nitrots/nitro-renderer';
 import { FC, MouseEvent } from 'react';
 import { FaUser } from 'react-icons/fa';
-import { CreateRoomSession, DoorStateType, GetSessionDataManager, TryVisitRoom } from '../../../../api';
+import { CreateLinkEvent, DoorStateType, GetSessionDataManager, GoToRoom, TryVisitRoom } from '../../../../api';
 import { Column, Flex, LayoutBadgeImageView, LayoutGridItemProps, LayoutRoomThumbnailView, Text } from '../../../../common';
 import { useNavigator } from '../../../../hooks';
 import { NavigatorSearchResultItemInfoView } from './NavigatorSearchResultItemInfoView';
@@ -48,6 +48,11 @@ export const NavigatorSearchResultItemView: FC<NavigatorSearchResultItemViewProp
             {
                 TryVisitRoom(roomData.roomId);
 
+                // PixelRP: the server may move them straight in (no new
+                // session, so no CREATED to close this on). A doorbell or
+                // password has its own window, outside the navigator.
+                CreateLinkEvent('navigator/hide');
+
                 return;
             }
 
@@ -77,8 +82,11 @@ export const NavigatorSearchResultItemView: FC<NavigatorSearchResultItemViewProp
                     return;
             }
         }
-        
-        CreateRoomSession(roomData.roomId);
+
+        // PixelRP: arrow-style - this room stays up until the new one is there
+        // (GoToRoom), which starts no new session to close the navigator on.
+        GoToRoom(roomData.roomId);
+        CreateLinkEvent('navigator/hide');
     }
 
     if(thumbnail) return (

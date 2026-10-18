@@ -12,6 +12,7 @@ export * from './GetRoomSession';
 export * from './GetRoomSessionManager';
 export * from './GetSessionDataManager';
 export * from './GoToDesktop';
+export * from './GoToRoom';
 export * from './HasHabboClub';
 export * from './HasHabboVip';
 export * from './IsOwnerOfFloorFurniture';

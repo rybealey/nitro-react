@@ -1,7 +1,7 @@
 import { CanCreateRoomEventEvent, CantConnectMessageParser, DoorbellMessageEvent, FlatAccessDeniedMessageEvent, FlatCreatedEvent, FollowFriendMessageComposer, GenericErrorEvent, GetGuestRoomMessageComposer, GetGuestRoomResultEvent, GetUserEventCatsMessageComposer, GetUserFlatCatsMessageComposer, HabboWebTools, LegacyExternalInterface, NavigatorCategoryDataParser, NavigatorEventCategoryDataParser, NavigatorHomeRoomEvent, NavigatorMetadataEvent, NavigatorOpenRoomCreatorEvent, NavigatorSearchEvent, NavigatorSearchResultSet, NavigatorTopLevelContext, RoomDataParser, RoomDoorbellAcceptedEvent, RoomEnterErrorEvent, RoomEntryInfoMessageEvent, RoomForwardEvent, RoomScoreEvent, RoomSettingsUpdatedEvent, SecurityLevel, UserEventCatsEvent, UserFlatCatsEvent, UserInfoEvent, UserPermissionsEvent } from '@nitrots/nitro-renderer';
 import { useState } from 'react';
 import { useBetween } from 'use-between';
-import { CreateLinkEvent, CreateRoomSession, DoorStateType, GetConfiguration, GetSessionDataManager, INavigatorData, LocalizeText, NotificationAlertType, SendMessageComposer, TryVisitRoom, VisitDesktop } from '../../api';
+import { CreateLinkEvent, CreateRoomSession, DoorStateType, GetConfiguration, GetSessionDataManager, GoToRoom, INavigatorData, LocalizeText, NotificationAlertType, SendMessageComposer, TryVisitRoom, VisitDesktop } from '../../api';
 import { RpNavigatorZonesEvent } from '../../api/rp-navigator/RpNavigatorMessages';
 import { useMessageEvent } from '../events';
 import { useNotification } from '../notification';
@@ -100,7 +100,9 @@ const useNavigatorState = () =>
         // close room settings
         // close room filter
 
-        SendMessageComposer(new GetGuestRoomMessageComposer(parser.roomId, true, false));
+        // PixelRP: no GetGuestRoom request here. The emulator sends the room's
+        // details (GetGuestRoomResult, roomEnter) right behind this, with the
+        // rest of the room - asking cost a round trip before the title showed.
 
         if(LegacyExternalInterface.available) LegacyExternalInterface.call('legacyTrack', 'navigator', 'private', [ parser.roomId ]);
     });
@@ -170,7 +172,11 @@ const useNavigatorState = () =>
 
             if((parser.data.doorMode === RoomDataParser.NOOB_STATE) && !GetSessionDataManager().isAmbassador && !GetSessionDataManager().isRealNoob && !GetSessionDataManager().isModerator) return;
 
-            CreateRoomSession(parser.data.roomId);
+            // PixelRP: arrow-style from inside a room (GoToRoom). The server
+            // already moves a player straight in when it can; this is what is
+            // left - and should the server refuse, they stay in their room
+            // instead of on a torn-down blank one.
+            GoToRoom(parser.data.roomId);
         }
         else
         {

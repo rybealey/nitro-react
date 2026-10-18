@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
-import { CreateRoomSession, GetSessionDataManager, SendMessageComposer } from '../../api';
+import { GetSessionDataManager, GoToRoom, SendMessageComposer } from '../../api';
 import { CalendarBirthday, CalendarEvent, RpCalendarEvent, RpDeleteCalendarEventComposer, RpGetCalendarComposer, RpSaveCalendarEventComposer } from '../../api/rp-phone/RpCalendarMessages';
 import { useMessageEvent, useRoom } from '../../hooks';
 import { HotelDate, HotelInstant } from '../../api/prefs/HotelTime';
@@ -238,7 +238,7 @@ export const PhoneCalendarView: FC<PhoneCalendarViewProps> = props =>
 
     const goToRoom = (item: CalendarEvent) =>
     {
-        if(item.roomId > 0) CreateRoomSession(item.roomId);
+        if(item.roomId > 0) GoToRoom(item.roomId);
 
         setOpenEventId(0);
     }
