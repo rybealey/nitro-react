@@ -352,6 +352,17 @@ $cmds-use: #b4521c;
             color: $white;
         }
     }
+
+    // links in a :ha alert - white and underlined, readable on every skin
+    a {
+        color: $white;
+        text-decoration: underline;
+        word-break: break-all;
+
+        &:hover {
+            color: rgba($white, .75);
+        }
+    }
 }
 
 .nitro-notification-bubble.platform.moderation {
