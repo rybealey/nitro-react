@@ -124,6 +124,11 @@ const useAvatarInfoWidgetState = () =>
         {
             if(user.webID === GetSessionDataManager().userId) return;
 
+            // pixelrp: only players can be friends. A bot's or pet's webID is
+            // its own bot/pet id, so one that happened to equal a friend's
+            // user id was getting the green friend tag on room load.
+            if(user.type !== RoomObjectType.USER) return;
+
             if(friends.find(friend => (friend.id === user.webID)))
             {
                 addedNameBubbles.push(new AvatarInfoName(user.roomIndex, RoomObjectCategory.UNIT, user.webID, user.name, user.type, true));

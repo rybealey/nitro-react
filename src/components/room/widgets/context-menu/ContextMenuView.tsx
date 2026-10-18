@@ -28,9 +28,6 @@ const FADE_LENGTH = 75;
 const SPACE_AROUND_EDGES = 10;
 
 let COLLAPSED = false;
-let FIXED_STACK: FixedSizeStack = null;
-let MAX_STACK = -1000000;
-let FADE_TIME = 1;
 
 export const ContextMenuView: FC<ContextMenuViewProps> = props =>
 {
@@ -40,14 +37,24 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
     const [ isFading, setIsFading ] = useState(false);
     const [ isCollapsed, setIsCollapsed ] = useState(COLLAPSED);
     const elementRef = useRef<HTMLDivElement>();
+    // pixelrp: each menu keeps its own height history and fade clock. They
+    // were module-wide, so several tags at once (the green friend tags on
+    // room load) shared one: every tag sat at the TALLEST avatar's height
+    // rather than its own, each new menu reset the others', and N fading
+    // tags faded N times as fast.
+    const stackRef = useRef<FixedSizeStack>(null);
+    const maxStackRef = useRef<number>(-1000000);
+    const fadeTimeRef = useRef<number>(1);
+
+    if(!stackRef.current) stackRef.current = new FixedSizeStack(LOCATION_STACK_SIZE);
 
     const updateFade = useCallback((time: number) =>
     {
         if(!isFading) return;
 
-        FADE_TIME += time;
+        fadeTimeRef.current += time;
 
-        let newOpacity = ((1 - (FADE_TIME / FADE_LENGTH)) * 1);
+        let newOpacity = ((1 - (fadeTimeRef.current / FADE_LENGTH)) * 1);
 
         if(newOpacity <= 0)
         {
@@ -61,7 +68,7 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
 
     const updatePosition = useCallback((bounds: NitroRectangle, location: NitroPoint) =>
     {
-        if(!bounds || !location || !FIXED_STACK) return;
+        if(!bounds || !location) return;
 
         let offset = -(elementRef.current.offsetHeight);
 
@@ -76,13 +83,13 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
 
         if(drop) offset = (offset + Math.round(bounds.height * drop));
 
-        FIXED_STACK.addValue((location.y - bounds.top));
+        stackRef.current.addValue((location.y - bounds.top));
 
-        let maxStack = FIXED_STACK.getMax();
+        let maxStack = stackRef.current.getMax();
 
-        if(maxStack < (MAX_STACK - BUBBLE_DROP_SPEED)) maxStack = (MAX_STACK - BUBBLE_DROP_SPEED);
+        if(maxStack < (maxStackRef.current - BUBBLE_DROP_SPEED)) maxStack = (maxStackRef.current - BUBBLE_DROP_SPEED);
 
-        MAX_STACK = maxStack;
+        maxStackRef.current = maxStack;
 
         const deltaY = (location.y - maxStack);
 
@@ -165,13 +172,6 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
         COLLAPSED = isCollapsed;
     }, [ isCollapsed ]);
 
-    useEffect(() =>
-    {
-        FIXED_STACK = new FixedSizeStack(LOCATION_STACK_SIZE);
-        MAX_STACK = -1000000;
-        FADE_TIME = 1;
-    }, []);
-    
     return <Base innerRef={ elementRef } position={ position } classNames={ getClassNames } style={ getStyle } { ...rest }>
         { !(collapsable && COLLAPSED) && children }
         { collapsable && <ContextMenuCaretView onClick={ () => setIsCollapsed(!isCollapsed) } collapsed={ isCollapsed } /> }
