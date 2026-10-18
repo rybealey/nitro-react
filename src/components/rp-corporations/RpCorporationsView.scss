@@ -463,12 +463,25 @@ $corps-card-border: rgba(0, 0, 0, 0.09);
         color: rgba(0, 0, 0, 0.6);
     }
 
+    // "Weekly: 18 Total: 412" - darker than the other card text, the numbers
+    // bold and near-black, and a small gap rather than a dot between the two
+    // (Corporation cards: shifts canvas, board A; Twist, 2026-10-19).
     .rp-corps-employee-shifts {
         font-size: 11px;
-        color: #4a4e57;
+        color: #2f3238;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+
+        b {
+            font-weight: 700;
+            color: #1c1c20;
+        }
+    }
+
+    .rp-corps-employee-shifts-gap {
+        display: inline-block;
+        width: 3px;
     }
 
     // Its own line under the shift counts, not appended to them: the two

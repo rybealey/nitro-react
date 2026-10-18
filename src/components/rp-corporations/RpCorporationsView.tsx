@@ -323,7 +323,9 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                         </div>
                                                                         { (showWeekly || showTotal) &&
                                                                             <div className="rp-corps-employee-shifts">
-                                                                                { [ showWeekly && `Weekly: ${ FormatShifts(employee.shiftSecondsWeek + liveExtra) }`, showTotal && `Total: ${ FormatShifts(employee.shiftSeconds + liveExtra) }` ].filter(Boolean).join(' · ') }
+                                                                                { showWeekly && <span>Weekly: <b>{ FormatShifts(employee.shiftSecondsWeek + liveExtra) }</b></span> }
+                                                                                { showWeekly && showTotal && <span className="rp-corps-employee-shifts-gap" /> }
+                                                                                { showTotal && <span>Total: <b>{ FormatShifts(employee.shiftSeconds + liveExtra) }</b></span> }
                                                                             </div> }
                                                                         { showLastOnline &&
                                                                             <div className="rp-corps-employee-seen">Last online: { lastSeenLabel }</div> }
