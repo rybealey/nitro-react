@@ -6,14 +6,20 @@ const MARKER = 'This is the list of commands you have available:';
 // (CommandListLayout.cs); a player group's is just "[General]".
 const STAFF_PREFIX = 'Staff:';
 
-// The rail's "All" item. Staff only - a player opens on their first group.
+// The rail's "All" item: every command this player has, staff or not. The
+// window opens on it.
 const ALL = -1;
+
+// A command a VIP membership unlocks: the server starts its description with
+// this, and the row shows a VIP tag instead.
+const VIP_PREFIX = '[VIP]';
 
 interface CommandRow
 {
     command: string;
     params: string;
     description: string;
+    vip: boolean;
 }
 
 interface CommandGroup
@@ -68,7 +74,10 @@ const parseCommandList = (text: string): CommandGroup[] =>
 
         const sep = line.indexOf(' - ');
         const left = ((sep >= 0) ? line.slice(0, sep) : line).trim(); // ":key params"
-        const description = ((sep >= 0) ? line.slice(sep + 3) : '').trim();
+        let description = ((sep >= 0) ? line.slice(sep + 3) : '').trim();
+        const vip = description.startsWith(VIP_PREFIX);
+
+        if(vip) description = description.slice(VIP_PREFIX.length).trim();
         const space = left.indexOf(' ');
         const command = ((space >= 0) ? left.slice(0, space) : left).trim(); // ":key"
         const params = readableParams((space >= 0) ? left.slice(space + 1) : '');
@@ -79,7 +88,7 @@ const parseCommandList = (text: string): CommandGroup[] =>
             groups.push(current);
         }
 
-        current.rows.push({ command, params, description });
+        current.rows.push({ command, params, description, vip });
     }
 
     return groups;
@@ -108,8 +117,7 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
     const query = filter.trim().toLowerCase().replace(/^:/, '');
     const searching = (query.length > 0);
 
-    const home = (isStaff ? ALL : (groups[0]?.id ?? ALL));
-    const selected = ((picked === ALL && isStaff) || groups.some(group => group.id === picked)) ? picked : home;
+    const selected = groups.some(group => group.id === picked) ? picked : ALL;
 
     // A search looks through every group, whichever one is open.
     const shown = useMemo(() =>
@@ -145,7 +153,7 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
         <div className="rp-cmds">
             <nav className="rp-cmds-rail" aria-label="Command groups">
                 <div className="rp-cmds-eyebrow"><span>Player</span><span className="rp-cmds-eyebrow-line" /></div>
-                { isStaff && railItem(ALL, 'All', groups.reduce((count, group) => (count + group.rows.length), 0)) }
+                { railItem(ALL, 'All', groups.reduce((count, group) => (count + group.rows.length), 0)) }
                 { playerGroups.map(group => railItem(group.id, group.name, group.rows.length)) }
                 { isStaff &&
                     <>
@@ -177,6 +185,7 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
                                         <div className="rp-cmds-key">
                                             <span className="rp-cmds-command">{ row.command }</span>
                                             { (row.params.length > 0) && <> <span className="rp-cmds-params">{ row.params }</span></> }
+                                            { row.vip && <> <span className="rp-cmds-vip">VIP</span></> }
                                         </div>
                                         <div className="rp-cmds-desc">{ row.description }</div>
                                     </div>

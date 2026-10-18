@@ -319,6 +319,20 @@ $cmds-rule: rgba(0, 0, 0, 0.14);
         color: $cmds-params;
     }
 
+    // A command VIP unlocks (:wd, :pull): a small gold tag after it.
+    .rp-cmds-vip {
+        display: inline-block;
+        padding: 0 4px;
+        border-radius: 3px;
+        background: #fdf0c8;
+        color: #7a5300;
+        font-size: 9.5px;
+        font-weight: 700;
+        line-height: 14px;
+        letter-spacing: 0.06em;
+        vertical-align: 1px;
+    }
+
     .rp-cmds-desc {
         flex: 1;
         min-width: 0;
