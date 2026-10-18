@@ -148,9 +148,9 @@ $emergency-blue: #1e7295;
 
     // Paramedic Dispatch's card (design: "Active Call card" canvas, B - Twist,
     // 2026-10-17): the call's state as a solid strip across the top, then
-    // "Patient:" and "Location:" in two columns. Amber while waiting or
-    // offered, green once claimed (your own claim reads "Active Call"), grey
-    // when over.
+    // "Patient:" and "Location:" in two columns. Amber while offered, green
+    // once accepted (it reads "Active Call"). An ended call is not shown at
+    // all (no history, 2026-10-18).
     &.nitro-medical-calls {
         .emergency-card {
             padding: 0;
@@ -159,7 +159,6 @@ $emergency-blue: #1e7295;
 
             &.is-waiting { border-color: #8a3f06; }
             &.is-responded { border-color: #14502a; }
-            &.is-closed { border-color: #474d57; }
         }
 
         .emergency-caller {

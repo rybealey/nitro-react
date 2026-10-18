@@ -29,8 +29,6 @@ export interface MedicalCall
     actorName: string;
     /** While offered: seconds left to claim it when the server sent it. */
     claimSeconds: number;
-    /** A call you were offered and let lapse: kept in your window, greyed. */
-    missedByMe: boolean;
 }
 
 export class RpMedicalCallsParser implements IMessageParser
@@ -58,21 +56,27 @@ export class RpMedicalCallsParser implements IMessageParser
 
         let count = wrapper.readInt();
 
-        while(count-- > 0) this._calls.push({
-            id: wrapper.readInt(),
-            patientId: wrapper.readInt(),
-            patientName: wrapper.readString(),
-            patientLook: wrapper.readString(),
-            patientGender: wrapper.readString(),
-            roomId: wrapper.readInt(),
-            roomName: wrapper.readString(),
-            age: wrapper.readInt(),
-            state: wrapper.readInt(),
-            actorId: wrapper.readInt(),
-            actorName: wrapper.readString(),
-            claimSeconds: wrapper.readInt(),
-            missedByMe: wrapper.readBoolean()
-        });
+        while(count-- > 0)
+        {
+            this._calls.push({
+                id: wrapper.readInt(),
+                patientId: wrapper.readInt(),
+                patientName: wrapper.readString(),
+                patientLook: wrapper.readString(),
+                patientGender: wrapper.readString(),
+                roomId: wrapper.readInt(),
+                roomName: wrapper.readString(),
+                age: wrapper.readInt(),
+                state: wrapper.readInt(),
+                actorId: wrapper.readInt(),
+                actorName: wrapper.readString(),
+                claimSeconds: wrapper.readInt()
+            });
+
+            // Was "you let it lapse", from when the window kept history. Always
+            // false now - read only to stay in step with the packet.
+            wrapper.readBoolean();
+        }
 
         this._notice = wrapper.readString();
         this._reopen = wrapper.readBoolean();
