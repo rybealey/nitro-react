@@ -10,7 +10,9 @@ import { useMessageEvent } from '../../hooks';
 // Open while you are an on-duty officer - the server opens it on clock-in and
 // closes it on clock-out. The X only puts it away: the next new call brings it
 // back up, :calls does too, and it opens again on the next clock-in. One call at a time, the newest first; the right arrow goes back through older
-// ones. Respond claims a waiting call, after which the button is Go to room.
+// ones. Respond takes you to a waiting call's room and claims it; after that
+// the button is Go to room, for every officer. Both stop you and take you
+// there four seconds later - walking off calls it off (emulator EmergencyCalls).
 // Once responded, any officer marks it Helpful or Abuse - once, for good.
 //
 // A :backup request sits in the same queue: an officer asking the others to
@@ -140,7 +142,9 @@ export const EmergencyCallsView: FC<{}> = props =>
     else if(call && (call.mark === EmergencyCallMark.Abuse))
     {
         statusClass = 'is-abuse';
-        statusText = `Marked as abuse by ${ call.markedByName }`;
+        // Stays on the call for good; who marked it is said in corporation
+        // chat (Twist, 2026-10-18).
+        statusText = 'Marked as abuse';
     }
     else if(call && call.responderId)
     {
