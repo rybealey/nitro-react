@@ -123,15 +123,18 @@ export const EmergencyCallsView: FC<{}> = props =>
     // On a backup request each officer's own button: Respond until they have.
     const responded = (!!call && (isBackup ? call.responders.some(responder => (responder.id === myId)) : !!call.responderId));
 
-    let statusClass = 'is-waiting';
-    let statusText = (isBackup ? 'Waiting for backup' : 'Waiting for a response');
+    // A call or backup request nobody has answered yet shows no status line
+    // at all (Twist, 2026-10-18) - it appears once somebody responds.
+    let statusClass = '';
+    let statusText = '';
 
     if(isBackup)
     {
         if(call.responders.length)
         {
             statusClass = 'is-responded';
-            statusText = `Responding: ${ call.responders.map(responder => ((responder.id === myId) ? 'you' : responder.name)).join(', ') }`;
+            // Worded like a 911 call's, every responder listed (Twist, 2026-10-18).
+            statusText = `Responded by ${ call.responders.map(responder => ((responder.id === myId) ? 'you' : responder.name)).join(', ') }`;
         }
     }
     else if(call && (call.mark === EmergencyCallMark.Abuse))
@@ -160,7 +163,7 @@ export const EmergencyCallsView: FC<{}> = props =>
                         <span>New 911 calls show up here while you are on duty.</span>
                     </div> }
                 { call &&
-                    <article className={ `emergency-card${ (call.mark === EmergencyCallMark.Abuse) ? ' is-abuse' : '' }${ isBackup ? ' is-backup' : '' }` } aria-label={ isBackup ? `Backup request from ${ call.callerName }` : `Call from ${ call.callerName }` }>
+                    <article className={ `emergency-card${ (call.mark === EmergencyCallMark.Abuse) ? ' is-abuse' : '' }` } aria-label={ isBackup ? `Backup request from ${ call.callerName }` : `Call from ${ call.callerName }` }>
                         <div className="emergency-caller">
                             <div className="emergency-figure" title={ `${ call.callerName }'s look` }>
                                 <LayoutAvatarImageView figure={ call.callerLook } gender={ call.callerGender } direction={ 2 } />
@@ -186,11 +189,11 @@ export const EmergencyCallsView: FC<{}> = props =>
                                     : <p className="emergency-message">{ call.message }</p> }
                             </div>
                         </div>
-                        <div className={ `emergency-status ${ statusClass }` } role="status">
-                            { (statusClass === 'is-waiting') && <span className="emergency-ring" /> }
-                            { (statusClass === 'is-responded') && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }
-                            <span>{ statusText }</span>
-                        </div>
+                        { statusText &&
+                            <div className={ `emergency-status ${ statusClass }` } role="status">
+                                { (statusClass === 'is-responded') && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }
+                                <span>{ statusText }</span>
+                            </div> }
                         { !responded &&
                             <button type="button" className="emergency-button is-respond" onClick={ () => act(EmergencyCallAction.Respond) }>
                                 <PhoneIcon size={ 10 } /> Respond

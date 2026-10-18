@@ -19,8 +19,8 @@ import { useMessageEvent } from '../../hooks';
 // NO HISTORY (Twist, 2026-10-18): the server sends only your live call - the
 // one offered to you, or the one you accepted. A call you decline or let run
 // out, or one that ends, leaves the window, and the window closes with it.
-// The X puts it away too. The next call offered to you brings it back, and
-// :calls does, reading "No emergencies" when there is nothing.
+// The X puts it away too, until the next call is offered to you. There is no
+// :calls for paramedics (Twist, 2026-10-18) - that is the police's only.
 
 const NOTICE_MS = 6000;
 // The age is counted on from when the queue arrived; the claim countdown each second.
@@ -82,8 +82,7 @@ export const MedicalCallsView: FC<{}> = props =>
 
         // A call offered to you comes up whatever the window was doing - that
         // is the round robin's whole point. Your call leaving - declined, run
-        // out, dropped off or over - takes the window with it. A window opened
-        // with :calls on nothing stays until its X.
+        // out, dropped off or over - takes the window with it.
         if(offered && (offered.id !== offeredId.current)) setIsDismissed(false);
         else if(calls.length && !next.length) setIsDismissed(true);
 
@@ -92,9 +91,8 @@ export const MedicalCallsView: FC<{}> = props =>
         setReceivedAt(Date.now());
 
         // A clock-in only readies it: it stays off screen until a call is
-        // dispatched to you. :calls brings it up whenever.
-        if(parser.reopen) setIsDismissed(false);
-        else if(!isOpen && !offered) setIsDismissed(true);
+        // dispatched to you.
+        if(!isOpen && !offered) setIsDismissed(true);
 
         setIsOpen(true);
 

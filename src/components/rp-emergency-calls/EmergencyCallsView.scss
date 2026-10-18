@@ -6,12 +6,6 @@ $emergency-red: #a8281e;
 $emergency-green: #1d6b34;
 $emergency-blue: #1e7295;
 
-@keyframes emergency-ring {
-    0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.55); }
-    70% { box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
-}
-
 .nitro-card.nitro-emergency-calls {
     // ~70% of the canvas design's 380px, sized down as a whole so it sits
     // beside the HUD without crowding the room.
@@ -40,8 +34,8 @@ $emergency-blue: #1e7295;
         // A prank: dimmed, so the real calls stand out.
         &.is-abuse { opacity: 0.6; }
 
-        // An officer's :backup request, told from a 911 call at a glance.
-        &.is-backup { border-left: 3px solid $emergency-blue; }
+        // An officer's :backup request is told from a 911 call by the blue
+        // "Backup" tag beside the name - no coloured edge (Twist, 2026-10-18).
 
         // A death in the paramedics' queue (MedicalCallsView): a plain card,
         // no red left accent (Twist, 2026-10-16).
@@ -257,19 +251,9 @@ $emergency-blue: #1e7295;
         font-weight: 700;
         overflow-wrap: anywhere;
 
-        &.is-waiting { background: #fff4e5; border: 1px solid #f0c9a8; color: #7a3a06; }
         &.is-responded { background: #e6f4ea; border: 1px solid #b9dcc3; color: #1d5e31; }
         &.is-abuse { background: #fbe9e7; border: 1px solid #efc0ba; color: #7f1d16; }
         &.is-closed { background: #ececef; border: 1px solid #d3d3d9; color: rgba(0, 0, 0, 0.6); }
-    }
-
-    .emergency-ring {
-        width: 6px;
-        height: 6px;
-        flex-shrink: 0;
-        border-radius: 50%;
-        background: #d97706;
-        animation: emergency-ring 1.6s ease-out infinite;
     }
 
     .emergency-button {
