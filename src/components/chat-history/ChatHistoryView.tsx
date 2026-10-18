@@ -29,15 +29,6 @@ const EMPTY_TEXT: { [tab in HistoryTab]: string } = {
     staff: 'No staff chat yet. Send some with :sa.'
 };
 
-// All has no label: it is the whole log, and saying so said nothing.
-const FOOTER_TEXT: { [tab in HistoryTab]: string } = {
-    all: '',
-    mentions: 'Lines that @ mention you',
-    gang: 'Gang chat this session',
-    corp: 'Corporation chat this session',
-    staff: 'Staff chat this session'
-};
-
 const CLEAR_LABEL: { [tab in HistoryTab]: string } = {
     all: 'Clear chat history',
     mentions: 'Clear mentions',
@@ -71,6 +62,10 @@ export const ChatHistoryView: FC<{}> = props =>
     // Tabs emptied with the bin, so an empty tab can say why it is empty.
     const [ cleared, setCleared ] = useState<HistoryTab[]>([]);
     const [ scrollKey, setScrollKey ] = useState(0);
+    // Room headers folded shut by a click: their room's lines are hidden up to
+    // the next room header. Keyed by the header entry's id, so each visit to
+    // a room folds on its own.
+    const [ collapsedRooms, setCollapsedRooms ] = useState<number[]>([]);
     const {
         chatHistory = [], mentions = [], mentionsUnread = 0, clearMentionsUnread = null,
         gangChat = [], corpChat = [], staffChat = [], clearHistory = null
@@ -98,6 +93,40 @@ export const ChatHistoryView: FC<{}> = props =>
     }, [ isVisible, tab ]);
 
     const matchCount = useMemo(() => rows.filter(row => (row.type === ChatEntryType.TYPE_CHAT)).length, [ rows ]);
+
+    // The rows actually listed: a folded room keeps its header and drops its
+    // lines, and the header counts what it is hiding.
+    const { shownRows, hiddenCounts } = useMemo(() =>
+    {
+        const shown: IChatEntry[] = [];
+        const hidden = new Map<number, number>();
+        let folded: number = null;
+
+        for(const row of rows)
+        {
+            if(row.type === ChatEntryType.TYPE_ROOM_INFO)
+            {
+                folded = collapsedRooms.includes(row.id) ? row.id : null;
+
+                if(folded !== null) hidden.set(row.id, 0);
+
+                shown.push(row);
+                continue;
+            }
+
+            if(folded !== null)
+            {
+                hidden.set(folded, (hidden.get(folded) + 1));
+                continue;
+            }
+
+            shown.push(row);
+        }
+
+        return { shownRows: shown, hiddenCounts: hidden };
+    }, [ rows, collapsedRooms ]);
+
+    const toggleRoom = (id: number) => setCollapsedRooms(prevValue => (prevValue.includes(id) ? prevValue.filter(roomId => (roomId !== id)) : [ ...prevValue, id ]));
 
     // The count clears whenever the tab is actually in front of the player -
     // opening the window on it, switching to it, and a line landing while
@@ -166,12 +195,17 @@ export const ChatHistoryView: FC<{}> = props =>
     {
         if(row.type === ChatEntryType.TYPE_ROOM_INFO)
         {
+            const folded = hiddenCounts.has(row.id);
+            const hiddenLines = (hiddenCounts.get(row.id) ?? 0);
+
             return (
-                <div className="rp-ch-room">
+                <button type="button" className={ `rp-ch-room${ folded ? ' is-collapsed' : '' }` } aria-expanded={ !folded } onClick={ () => toggleRoom(row.id) }>
                     <i className="icon icon-small-room" />
                     <span className="rp-ch-room-name">{ row.name }</span>
+                    { folded && <span className="rp-ch-room-hidden">{ hiddenLines } { (hiddenLines === 1) ? 'line' : 'lines' }</span> }
                     <span className="rp-ch-time">{ row.timestamp }</span>
-                </div>
+                    <svg className="rp-ch-room-caret" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 3.75L5 6.25l2.5-2.5" /></svg>
+                </button>
             );
         }
 
@@ -241,6 +275,9 @@ export const ChatHistoryView: FC<{}> = props =>
                     </label>
                     { (query.length > 0) &&
                         <span className="rp-ch-matches">{ matchCount } { (matchCount === 1) ? 'match' : 'matches' }</span> }
+                    <button type="button" className="rp-ch-latest" aria-label="Jump to the latest line" title="Latest" onClick={ () => setScrollKey(prevValue => (prevValue + 1)) }>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 1.5v8.5M2.5 6.5L6 10l3.5-3.5" /></svg>
+                    </button>
                     <button type="button" className="rp-ch-clear" aria-label={ CLEAR_LABEL[tab] } title={ CLEAR_LABEL[tab] } onClick={ clearTab }>
                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3.5h10" /><path d="M5.5 3.5V2h3v1.5" /><path d="M3.5 3.5l.6 8.5h5.8l.6-8.5" /><path d="M5.8 6v3.8M8.2 6v3.8" /></svg>
                     </button>
@@ -249,14 +286,7 @@ export const ChatHistoryView: FC<{}> = props =>
                     { !rows.length &&
                         <div className="rp-ch-empty">{ emptyText }</div> }
                     { (rows.length > 0) &&
-                        <InfiniteScroll rows={ rows } scrollKey={ scrollKey } rowRender={ renderRow } /> }
-                </div>
-                <div className="rp-ch-footer">
-                    <span>{ FOOTER_TEXT[tab] }</span>
-                    <button type="button" className="rp-ch-latest" onClick={ () => setScrollKey(prevValue => (prevValue + 1)) }>
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 1.5v7M2 5.5l3 3 3-3" /></svg>
-                        Latest
-                    </button>
+                        <InfiniteScroll rows={ shownRows } scrollKey={ scrollKey } rowRender={ renderRow } /> }
                 </div>
             </div>
         </NitroCardView>
