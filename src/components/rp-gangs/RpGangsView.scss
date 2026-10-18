@@ -130,19 +130,21 @@ $gang-state-off: #b23b3b;
         &.is-online { background: $gang-online; }
     }
 
-    // Head-only sprite at native size, no mask, no fill: the stock group
-    // member list's crop box, the head centred by offsetting the 90x130
-    // canvas. Never scaled - resampling blurs the pixel art.
+    // Head-only sprite at native size, no mask, no fill: a 48x50 window on the
+    // 90x130 avatar canvas (x 19-66). The stock group member list's 40px
+    // window, centred on the canvas, clipped the left of fuller hair - a head
+    // facing direction 2 sits left of the middle (Twist, 2026-10-19). Never
+    // scaled - resampling blurs the pixel art.
     .gang-portrait {
         flex-shrink: 0;
         position: relative;
-        width: 40px;
+        width: 48px;
         height: 50px;
         overflow: hidden;
 
         .avatar-image {
             position: absolute;
-            left: -25px;
+            left: -19px;
             top: -20px;
             image-rendering: pixelated;
         }
