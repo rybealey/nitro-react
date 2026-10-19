@@ -67,7 +67,8 @@ export const NitroCardView: FC<NitroCardViewProps> = props =>
 
     const getClassNames = useMemo(() =>
     {
-        const newClassNames: string[] = [ 'nitro-card', 'rounded', 'shadow', ];
+        // no 'shadow' utility: .nitro-card draws its own soft shadow
+        const newClassNames: string[] = [ 'nitro-card', 'rounded' ];
 
         newClassNames.push(`theme-${ theme || 'primary' }`);
 

@@ -110,6 +110,10 @@
     --prp-header-bottom: #e87332;
     --prp-header-border: #{darken(#e87332, 5%)};
     --prp-header-grad: repeating-linear-gradient(var(--prp-header-top), var(--prp-header-top) 50%, var(--prp-header-bottom) 50%, var(--prp-header-bottom) 100%);
+    /* Window title bars are one flat colour with a light line along the top
+       (Window Frames canvas, D in pixel orange): the P logo's orange. */
+    --prp-header-face: #f59436;
+    --prp-header-hi: #ffc679;
 }
 
 // PixelRP: windows are solid. Inside any window (every NitroCardView is a

@@ -55,10 +55,6 @@ $dialog-ink: #1c1c20;
 .nitro-alert.rp-dialog {
     min-height: 0;
 
-    &.theme-primary-slim {
-        border-color: #a9b0b9;
-    }
-
     // Doubled class: beats the theme's own .content-area background whatever
     // order the sheets load in.
     .content-area.content-area {
@@ -166,10 +162,6 @@ $cmds-rule: rgba(0, 0, 0, 0.14);
     min-height: 320px;
     max-width: 96vw;
     max-height: 92vh;
-
-    &.theme-primary-slim {
-        border-color: #a9b0b9;
-    }
 
     // Doubled class: beats the theme's own .content-area background whatever
     // order the sheets load in.

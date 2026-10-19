@@ -37,18 +37,24 @@ export const DEFAULT_CHROME_COLOR: string = CHROME_SCHEMES[0].color;
 export const CHROME_OPACITY_STEPS: number[] = [ 55, 65, 75, 85, 95 ];
 export const DEFAULT_CHROME_OPACITY: number = 95;
 
-// Window header duo-tones, from the CMS pixel design system ramps. The
-// header keeps Nitro's split two-tone style; only the hues change.
+// Window header colours, from the CMS pixel design system ramps. Window title
+// bars are one flat colour (`face`, with a light `hi` line along the top -
+// Window Frames canvas, D in pixel orange); the top/bottom duo-tone is kept for
+// the other places that use the pair. A scheme without its own face uses its
+// top stop.
 export interface HeaderScheme
 {
     key: string;
     name: string;
     top: string;
     bottom: string;
+    face?: string;
+    hi?: string;
 }
 
 export const HEADER_SCHEMES: HeaderScheme[] = [
-    { key: 'orange', name: 'Orange', top: '#f0954a', bottom: '#e87332' },
+    // the P logo's orange and its highlight
+    { key: 'orange', name: 'Orange', top: '#f0954a', bottom: '#e87332', face: '#f59436', hi: '#ffc679' },
     { key: 'pink', name: 'Pink', top: '#f8558c', bottom: '#e93a7d' },
     { key: 'purple', name: 'Purple', top: '#6d1057', bottom: '#4a0b3d' },
 ];
@@ -195,17 +201,24 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
 
     if(!scheme && /^#[0-9a-fA-F]{6}$/.test(headerKey))
     {
-        style.setProperty('--prp-header-top', mixHex(headerKey, 0.18));
+        const top = mixHex(headerKey, 0.18);
+
+        style.setProperty('--prp-header-top', top);
         style.setProperty('--prp-header-bottom', headerKey);
         style.setProperty('--prp-header-border', mixHex(headerKey, -0.08));
+        style.setProperty('--prp-header-face', top);
+        style.setProperty('--prp-header-hi', mixHex(top, 0.35));
 
         return;
     }
 
     const header = (scheme ?? HEADER_SCHEMES[0]);
     const hb = hexToHsl(header.bottom);
+    const face = (header.face ?? header.top);
 
     style.setProperty('--prp-header-top', header.top);
     style.setProperty('--prp-header-bottom', header.bottom);
     style.setProperty('--prp-header-border', hsla(hb.h, hb.s, (hb.l - 5), 1));
+    style.setProperty('--prp-header-face', face);
+    style.setProperty('--prp-header-hi', (header.hi ?? mixHex(face, 0.35)));
 }

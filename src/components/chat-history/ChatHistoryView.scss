@@ -20,10 +20,6 @@ $ch-clear: #c9453a;
     max-width: 96vw;
     max-height: 92vh;
 
-    &.theme-primary-slim {
-        border-color: #a9b0b9;
-    }
-
     // The header runs straight into the dark tab strip, as on Settings.
     &.theme-primary-slim .nitro-card-header {
         border-bottom: 0;

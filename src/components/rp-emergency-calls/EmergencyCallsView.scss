@@ -153,8 +153,9 @@ $emergency-blue: #1e7295;
 
         .nitro-card-header.emergency-titlebar {
             // Clear of the close button on the right (its right 5 + its 20 + 5).
-            padding: 2px 30px 0 8px;
-            border-bottom-color: rgba(0, 0, 0, 0.3);
+            padding: 0 30px 0 8px;
+            // a neutral top line: the header scheme's own would tint the call colour
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 
             &.is-waiting { background: #b45309; }
             &.is-responded { background: #1d6b34; }

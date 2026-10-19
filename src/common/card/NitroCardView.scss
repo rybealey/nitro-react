@@ -7,6 +7,10 @@ $nitro-card-tabs-height: 33px;
     // grip below instead (NitroCardView `resizable`).
     resize: none;
 
+    // Window Frames canvas, D: a soft shadow under the window, so it floats
+    // over the room (it was a hard 2px drop - the .shadow utility).
+    box-shadow: 0 1px 0 rgba($black, 0.3), 0 8px 24px rgba($black, 0.4);
+
     // Corner grip from the Chat History redesign: two short diagonal strokes
     // tucked into the bottom-right corner. The grab area is 16px; the drawing
     // is 12px, inset 2px from each edge, dark enough to find on any surface.
@@ -30,8 +34,9 @@ $nitro-card-tabs-height: 33px;
         max-height: 100vh !important;
     }
 
+    // The HUD's black edge round every window (Window Frames canvas, D).
     &.theme-primary {
-        border: $border-width solid $border-color;
+        border: $border-width solid #0a0a0a;
 
         .nitro-card-header {
             min-height: 33px;
@@ -135,7 +140,7 @@ $nitro-card-tabs-height: 33px;
     }
 
     &.theme-primary-slim {
-        border: $border-width solid $border-color;
+        border: $border-width solid #0a0a0a;
 
         .nitro-card-header {
             position: relative;
@@ -280,19 +285,30 @@ $nitro-card-tabs-height: 33px;
 // Navigator, Avatar Editor...) included - with the title centred at 13px bold.
 // The Backpack alone keeps its title on the left (RpInventoryView.scss): its
 // narrow header shares the row with the pen and the close. The doubled class
-// beats each theme's own rules above whatever order sheets load in; the colour
-// still follows the player's header scheme.
+// beats each theme's own rules above whatever order sheets load in.
+//
+// Window Frames canvas, D in pixel orange (Twist, 2026-10-19): one flat colour
+// - the P logo's orange, or the player's header scheme (--prp-header-face) -
+// with a light line along the top, in place of the two-tone split, its white
+// top band and the darker bottom border.
 .nitro-card .nitro-card-header.nitro-card-header {
     min-height: 28px;
     max-height: 28px;
-    border-bottom: 2px solid var(--prp-header-border);
+    padding-top: 0;
+    border-bottom: 0;
+    background: var(--prp-header-face);
+    box-shadow: inset 0 1px 0 var(--prp-header-hi);
+
+    &::before {
+        content: none;
+    }
 
     .nitro-card-header-text {
         font-size: 13px !important;
         font-weight: 700;
         line-height: 1.6;
         min-height: 0;
-        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
     }
 }
 
