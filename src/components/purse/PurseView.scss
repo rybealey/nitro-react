@@ -24,13 +24,13 @@
         // at NATIVE size (43x40, no scaling) centered in the square.
 
         // The hotel's VIP badge in the P logo's pixel colours (HUD Toolbar
-        // Redesign canvas): the shop's icon_137 recoloured, shipped with the
-        // client at 20x20 so it draws at its own size. The shop's VIP page
-        // still uses icon_137 from the assets.
+        // Redesign canvas), redrawn at 22x22 so "VIP" is 5 pixels tall and
+        // reads at a glance; shipped with the client so it draws at its own
+        // size. The shop's VIP page still uses icon_137 from the assets.
         .nitro-purse-vip {
             display: block;
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             flex: none;
             background: url('@/assets/images/purse/vip.png') no-repeat;
             image-rendering: pixelated;
