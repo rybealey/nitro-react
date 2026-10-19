@@ -29,8 +29,7 @@ import { useMessageEvent } from '../../hooks';
 // :calls for paramedics (Twist, 2026-10-18) - that is the police's only.
 
 const NOTICE_MS = 6000;
-// The age is counted on from when the queue arrived; the countdowns each second.
-const TICK_MS = 30000;
+// The countdowns are counted on from when the queue arrived, each second.
 const COUNTDOWN_MS = 1000;
 // The bar turns red for an offer's last 10 seconds, and an Active Call's last
 // 30 - when the "30 seconds to retrieve the patient" whisper comes.
@@ -38,21 +37,6 @@ const OFFER_LOW_SECONDS = 10;
 const ACTIVE_LOW_SECONDS = 30;
 
 const clockText = (seconds: number) => `${ Math.floor(seconds / 60) }:${ String(seconds % 60).padStart(2, '0') }`;
-
-const agoText = (seconds: number) =>
-{
-    if(seconds < 60) return 'just now';
-
-    const minutes = Math.floor(seconds / 60);
-
-    if(minutes < 60) return `${ minutes } min ago`;
-
-    const hours = Math.floor(minutes / 60);
-
-    if(hours < 24) return `${ hours } h ago`;
-
-    return `${ Math.floor(hours / 24) } d ago`;
-}
 
 const CrossIcon: FC<{ size?: number }> = ({ size = 10 }) =>
     <svg width={ size } height={ size } viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" /></svg>;
@@ -124,9 +108,9 @@ export const MedicalCallsView: FC<{}> = props =>
 
     useEffect(() =>
     {
-        if(!isOpen) return;
+        if(!isOpen || !counting) return;
 
-        const interval = setInterval(() => setTick(prev => (prev + 1)), (counting ? COUNTDOWN_MS : TICK_MS));
+        const interval = setInterval(() => setTick(prev => (prev + 1)), COUNTDOWN_MS);
 
         return () => clearInterval(interval);
     }, [ isOpen, counting ]);
@@ -137,7 +121,6 @@ export const MedicalCallsView: FC<{}> = props =>
     // Only ever your one live call: offered to you, or your Active Call.
     const call = (calls[0] ?? null);
     const elapsed = Math.floor((Date.now() - receivedAt) / 1000);
-    const age = (call ? call.age + elapsed : 0);
     const secondsLeft = (call ? Math.max(0, call.secondsLeft - elapsed) : 0);
     const offeredToMe = (!!call && (call.state === MedicalCallState.Offered) && (call.actorId === myId));
     // The call you accepted and have not dropped off yet: its own card.
@@ -154,7 +137,6 @@ export const MedicalCallsView: FC<{}> = props =>
         <NitroCardView className={ `nitro-emergency-calls nitro-medical-calls ${ statusClass }` } theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_RIGHT }>
             <NitroCardHeaderView headerText="Paramedic Dispatch" classNames={ call ? [ 'emergency-titlebar', statusClass ] : [] } onCloseClick={ () => setIsDismissed(true) }>
                 { call && <span className="emergency-titlebar-icon"><CrossIcon size={ 11 } /></span> }
-                { call && !activeForMe && <span className="emergency-titlebar-ago">{ agoText(age) }</span> }
             </NitroCardHeaderView>
             <NitroCardContentView className="emergency-body" overflow="hidden">
                 { !call &&
