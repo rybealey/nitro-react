@@ -23,8 +23,9 @@ const LockIcon: FC<{}> = () => (
     </svg>
 );
 
+// Stopped in court during a trial: it holds where it was sent.
 const secondsLeftOf = (sentence: JailSentence, now: number) =>
-    Math.max(0, sentence.secondsLeft - ((now - sentence.receivedAt) / 1000));
+    (sentence.paused ? sentence.secondsLeft : Math.max(0, sentence.secondsLeft - ((now - sentence.receivedAt) / 1000)));
 
 export const RpJailView: FC<{}> = props =>
 {

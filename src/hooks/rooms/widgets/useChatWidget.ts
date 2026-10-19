@@ -223,7 +223,12 @@ const useChatWidgetState = () =>
             }
         }
 
-        const formattedText = RoomChatFormatter(text);
+        // pixelrp: a bot may bold a word by wrapping it in **, as the jury
+        // trial's judge does the verdict (Twist, 2026-10-20). Bots only - a
+        // player's ** stays as typed. The text is HTML-encoded by now, so
+        // only the tag added here is markup.
+        const isBot = ((userData.type === RoomObjectType.BOT) || (userData.type === RoomObjectType.RENTABLE_BOT));
+        const formattedText = isBot ? RoomChatFormatter(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') : RoomChatFormatter(text);
         const color = (avatarColor && (('#' + (avatarColor.toString(16).padStart(6, '0'))) || null));
         // pixelrp: the sender's chosen username color rides the chat packet.
         // '' / '#000000' both mean default — normalize to null so no override.

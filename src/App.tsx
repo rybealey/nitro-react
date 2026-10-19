@@ -27,6 +27,7 @@ import { RegisterRpBinSearchMessages } from './api/rp-bin-search/RpBinSearchMess
 import { RegisterRpMacroMessages } from './api/rp-macros/RpMacroMessages';
 import { RegisterRpInventoryMessages } from './api/rp-inventory/RpInventoryMessages';
 import { RegisterRpJailMessages } from './api/rp-police/RpJailMessages';
+import { RegisterRpJuryMessages } from './api/rp-police/RpJuryMessages';
 import { CHARACTER_RELOAD, RegisterRpCharacterMessages, SubscribeRpCharacterResult } from './api/rp-phone/RpCharacterMessages';
 import { RegisterRpPrivacyMessages } from './api/rp-phone/RpPrivacyMessages';
 import { RegisterRpWantedMessages } from './api/rp-wanted/RpWantedMessages';
@@ -228,6 +229,7 @@ export const App: FC<{}> = props =>
                 RegisterRpMacroMessages();
                 RegisterRpInventoryMessages();
                 RegisterRpJailMessages();
+                RegisterRpJuryMessages();
                 RegisterRpRoomRightsMessages();
                 RegisterRpTellerMessages();
                 RegisterRpCatalogSearchMessages();

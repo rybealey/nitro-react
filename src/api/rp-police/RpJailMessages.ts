@@ -1,4 +1,4 @@
-import { IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
+import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection } from '../nitro';
 
 // PixelRP jail (emulator JailState / ArrestCommand). Defined in client source
@@ -12,6 +12,10 @@ import { GetCommunication, GetConnection } from '../nitro';
 const RP_ROOM_POLICE = 4155; // server -> client: a room's jail tag
 const RP_JAIL = 4156; // server -> client: your own sentence's countdown
 const RP_ROOM_PRISONERS = 4216; // server -> client: who in this room is serving time
+const RP_REQUEST_TRIAL = 4220; // client -> server: the jury card's Request a Trial button
+
+/** Where you stand on a jury trial (emulator JailState.Trial*): no card, Request a Trial, or waiting for a jury. */
+export const JailTrial = { None: 0, Open: 1, Requested: 2 };
 
 /** RpSetEmergencyComposer category for the Gameplay tab's Jail room switch. */
 export const ROOM_POLICE_JAIL = 4;
@@ -101,11 +105,15 @@ class RpJailParser implements IMessageParser
 {
     public secondsLeft = 0;
     public sentenceSeconds = 0;
+    public trial = JailTrial.None;
+    public paused = false;
 
     public flush(): boolean
     {
         this.secondsLeft = 0;
         this.sentenceSeconds = 0;
+        this.trial = JailTrial.None;
+        this.paused = false;
 
         return true;
     }
@@ -114,6 +122,9 @@ class RpJailParser implements IMessageParser
     {
         this.secondsLeft = wrapper.readInt();
         this.sentenceSeconds = wrapper.readInt();
+        // Appended last (the jury trial card, then the clock stopped in court).
+        this.trial = (wrapper.bytesAvailable ? wrapper.readInt() : JailTrial.None);
+        this.paused = (wrapper.bytesAvailable ? wrapper.readBoolean() : false);
 
         return true;
     }
@@ -132,14 +143,36 @@ class RpJailEvent extends MessageEvent implements IMessageEvent
     }
 }
 
+/** The jury card's Request a Trial button. No payload: your own sentence. */
+export class RpRequestTrialComposer implements IMessageComposer<[]>
+{
+    private _data: [];
+
+    constructor()
+    {
+        this._data = [];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    {
+        return;
+    }
+}
+
 /**
  * Your own sentence, as last sent: seconds left then, and when "then" was on
  * performance.now(), so the countdown runs on locally between sends. Free is
- * secondsLeft 0.
+ * secondsLeft 0. `trial` is where you stand on a jury trial (JailTrial);
+ * `paused`, that the clock is stopped - in the Courthouse during your trial.
  */
-export interface JailSentence { secondsLeft: number; sentenceSeconds: number; receivedAt: number; }
+export interface JailSentence { secondsLeft: number; sentenceSeconds: number; trial: number; paused: boolean; receivedAt: number; }
 
-let jailSentence: JailSentence = { secondsLeft: 0, sentenceSeconds: 0, receivedAt: 0 };
+let jailSentence: JailSentence = { secondsLeft: 0, sentenceSeconds: 0, trial: JailTrial.None, paused: false, receivedAt: 0 };
 const jailListeners = new Set<() => void>();
 
 export const GetJailSentence = (): JailSentence => jailSentence;
@@ -183,14 +216,16 @@ export const RegisterRpJailMessages = () =>
             [ RP_JAIL, RpJailEvent ],
             [ RP_ROOM_PRISONERS, RpRoomPrisonersEvent ]
         ]),
-        composers: new Map<number, Function>()
+        composers: new Map<number, Function>([
+            [ RP_REQUEST_TRIAL, RpRequestTrialComposer ]
+        ])
     });
 
     GetCommunication().registerMessageEvent(new RpJailEvent((event: RpJailEvent) =>
     {
         const parser = event.getParser();
 
-        jailSentence = { secondsLeft: parser.secondsLeft, sentenceSeconds: parser.sentenceSeconds, receivedAt: performance.now() };
+        jailSentence = { secondsLeft: parser.secondsLeft, sentenceSeconds: parser.sentenceSeconds, trial: parser.trial, paused: parser.paused, receivedAt: performance.now() };
         jailListeners.forEach(listener => listener());
     }));
 
