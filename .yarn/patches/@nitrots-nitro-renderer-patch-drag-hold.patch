@@ -1,0 +1,140 @@
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -1061,6 +1061,9 @@
+ 
+             camera.activateFollowing(this.cameraFollowDuration);
+         }
++
++        // PixelRP: a new arrival starts with the camera in charge.
++        this._pixelrpDragHold = null;
+     }
+ 
+     private get cameraFollowDuration(): number
+@@ -1129,7 +1132,13 @@
+         if(bounds && ((bounds.right < 0) || (bounds.bottom < 0) || (bounds.left >= width) || (bounds.top >= height)))
+         {
+             roomCamera.reset();
+-        }
++
++            // PixelRP: a room dragged right off the screen is brought back,
++            // drag or not.
++            this._pixelrpDragHold = null;
++        }
++
++        if(this.pixelrpDragHolds(roomId, objectLocation, roomCamera, roomGeometry.scale, width, height)) return;
+ 
+         if((roomCamera.screenWd !== width) || (roomCamera.screenHt !== height) || (roomCamera.scale !== roomGeometry.scale) || (roomCamera.geometryUpdateId !== roomGeometry.updateId) || !Vector3d.isEqual(objectLocation, roomCamera.targetObjectLoc) || roomCamera.isMoving)
+         {
+@@ -2520,6 +2529,8 @@
+                     this._activeRoomDragY += offsetY;
+ 
+                     this._activeRoomWasDragged = true;
++
++                    this.pixelrpHoldCamera();
+                 }
+             }
+         }
+@@ -3653,6 +3664,81 @@
+     // PixelRP: per room, the tile the own avatar arrived on and where a room
+     // bigger than the screen was centred for it (pixelrpRoomAreaTarget).
+     private _pixelrpArrivals: Map<number, { x: number, y: number, target: Vector3d }> = new Map();
++
++    // PixelRP: a room the player has dragged - which room, the tile their
++    // avatar stood on, and the zoom and screen size at the time (pixelrpHoldCamera).
++    private _pixelrpDragHold: { roomId: number, x: number, y: number, scale: number, width: number, height: number } = null;
++
++    /**
++     * PixelRP: the player dragged the room, so the camera stops steering it.
++     * A camera move still under way is dropped, and so is the arrival aim, and
++     * the room stays where it was put until pixelrpDragHolds lets go. Without
++     * this a drag straight after entering snapped back: the avatar's location
++     * changes a few times as a room loads (its height as the furni under it
++     * arrives, its first status), every change set the camera re-aiming, and a
++     * floor that fits on screen is always re-centred.
++     */
++    private pixelrpHoldCamera(): void
++    {
++        const camera = this.getRoomCamera(this._activeRoomId);
++        const canvas = this.getRoomCanvasRectangle(this._activeRoomId, 1);
++        const geometry = this.getRoomInstanceGeometry(this._activeRoomId, 1);
++
++        if(!camera || !canvas || !geometry) return;
++
++        camera.stopMoving();
++
++        this._pixelrpArrivals.delete(this._activeRoomId);
++
++        const avatar = this.getRoomObject(this._activeRoomId, camera.targetId, camera.targetCategory);
++        const location = (avatar ? avatar.getLocation() : null);
++
++        this._pixelrpDragHold = {
++            roomId: this._activeRoomId,
++            x: (location ? Math.round(location.x) : NaN),
++            y: (location ? Math.round(location.y) : NaN),
++            scale: geometry.scale,
++            width: Math.round(canvas.width),
++            height: Math.round(canvas.height)
++        };
++    }
++
++    /**
++     * PixelRP: true while a dragged room should stay put - the avatar is still
++     * on the tile it stood on, at the same zoom and screen size. A step, a
++     * teleport, a zoom or a resized window hands the room back to the camera.
++     */
++    private pixelrpDragHolds(roomId: number, avatar: IVector3D, camera: RoomCamera, scale: number, width: number, height: number): boolean
++    {
++        const hold = this._pixelrpDragHold;
++
++        if(!hold || (hold.roomId !== roomId)) return false;
++
++        const x = Math.round(avatar.x);
++        const y = Math.round(avatar.y);
++
++        // Dragged before the own avatar was in the room: hold from where it is.
++        if(isNaN(hold.x))
++        {
++            hold.x = x;
++            hold.y = y;
++        }
++
++        if((x === hold.x) && (y === hold.y) && (scale === hold.scale) && (width === hold.width) && (height === hold.height))
++        {
++            // The camera's record of the screen, which a drag straight after
++            // entering can beat it to: otherwise the first step re-aims for a
++            // "new" screen size and the room snaps back then instead.
++            camera.screenWd = width;
++            camera.screenHt = height;
++
++            return true;
++        }
++
++        this._pixelrpDragHold = null;
++
++        return false;
++    }
+ 
+     // PixelRP: how far below the middle of the screen the floor's centre goes,
+     // as a share of the window's height - a little nearer the chat box.
+diff --git a/src/nitro/room/utils/RoomCamera.ts b/src/nitro/room/utils/RoomCamera.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/utils/RoomCamera.ts
++++ b/src/nitro/room/utils/RoomCamera.ts
+@@ -218,6 +218,15 @@
+             this._currentLoc = new Vector3d();
+         }
+         this._currentLoc.assign(k);
++    }
++
++    // PixelRP: drops a move the camera has not finished, where it stands. A
++    // player dragging the room takes over from it (RoomEngine's drag hold).
++    public stopMoving(): void
++    {
++        this._targetLoc = null;
++        this._previousMoveSpeed = 0;
++        this._maintainPreviousMoveSpeed = false;
+     }
+ 
+     public update(k: number, _arg_2: number): void
