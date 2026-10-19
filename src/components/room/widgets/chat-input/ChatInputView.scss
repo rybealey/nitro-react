@@ -133,9 +133,14 @@
     font-size: 20px;
     line-height: 1;
     margin: 0 6px 0 2px;
+    border-radius: 6px;
 
     &:hover {
         filter: brightness(1.1);
+    }
+
+    &.is-open {
+        background: rgba(0, 0, 0, 0.08);
     }
 
     // the pop replays via an animation restart (style.animation reset + reflow
@@ -153,25 +158,97 @@
     100% { transform: scale(1); }
 }
 
+// The emoji picker (Emoji Picker Redesign canvas, board C): a category rail
+// beside the search, the grid and a preview strip, on the player's HUD colour.
+// The popover itself keeps overflow visible so its arrow still shows; the
+// rounded clip is on .emoji-picker inside it.
 .nitro-chat-emoji-selector-container {
+    width: 402px;
+    max-width: none;
+    border: 1px solid #101010;
+    border-radius: 8px;
     background-color: var(--prp-chrome-95);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    border: 1px solid #101010;
-    box-shadow: inset 2px 2px rgba(255, 255, 255, .1), inset -2px -2px rgba(255, 255, 255, .1);
-    max-width: 360px;
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
+    font-family: 'Ubuntu', sans-serif;
+    color: #ffffff;
+
+    // Bootstrap draws the arrow in its light popover colour; this one points
+    // out of the preview strip, so it takes that strip's shade.
+    &.bs-popover-top > .popover-arrow {
+        &::before {
+            border-top-color: #101010;
+        }
+
+        &::after {
+            border-top-color: var(--prp-chrome-solid);
+            border-top-color: color-mix(in srgb, var(--prp-chrome-solid) 82%, #000000);
+        }
+    }
+
+    .emoji-picker {
+        display: flex;
+        height: 354px;
+        border-radius: 7px;
+        overflow: hidden;
+    }
+
+    .emoji-rail {
+        width: 44px;
+        flex-shrink: 0;
+        padding: 6px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        background: rgba(0, 0, 0, 0.22);
+    }
+
+    .emoji-rail-item {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        cursor: pointer;
+        transition: background 0.12s ease, color 0.12s ease;
+
+        &:hover {
+            color: #ffffff;
+        }
+
+        &.is-active {
+            background: rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+        }
+    }
+
+    .emoji-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
 
     .emoji-search {
+        flex-shrink: 0;
         display: flex;
         align-items: center;
         gap: 6px;
-        height: 28px;
-        margin: 8px 8px 2px;
+        height: 30px;
+        margin: 8px 8px 6px;
         padding: 0 8px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 4px;
-        background: rgba(0, 0, 0, 0.25);
-        color: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.28);
+        color: rgba(255, 255, 255, 0.55);
 
         input {
             flex: 1;
@@ -184,7 +261,7 @@
             color: #ffffff;
 
             &::placeholder {
-                color: rgba(255, 255, 255, 0.45);
+                color: rgba(255, 255, 255, 0.5);
             }
         }
 
@@ -193,42 +270,129 @@
         }
     }
 
-    .emoji-empty {
-        padding: 24px 8px;
-        text-align: center;
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.55);
+    // Positioned, so each section's offsetTop is measured from the list top -
+    // the rail scrolls to it and follows the scroll with it.
+    .emoji-list {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
     }
 
-    .emoji-drawer {
-        width: 340px;
-        max-height: 300px;
-    }
-
-    .emoji-category-header {
+    .emoji-section-header {
         position: sticky;
         top: 0;
-        background-color: var(--prp-chrome-95);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
         z-index: 1;
+        padding: 6px 10px 4px;
+        background: var(--prp-chrome-solid);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.6);
     }
 
     .emoji-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+        grid-template-columns: repeat(8, minmax(0, 1fr));
         gap: 2px;
+        padding: 0 6px 6px;
     }
 
     .emoji-cell {
-        font-size: 18px;
-        line-height: 26px;
+        height: 38px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        font-size: 24px;
+        line-height: 38px;
         text-align: center;
         cursor: pointer;
-        border-radius: 4px;
 
         &:hover {
-            background-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        // the top search result - the one Enter adds
+        &.is-top {
+            background: rgba(232, 115, 50, 0.28);
+        }
+    }
+
+    .emoji-rail-item,
+    .emoji-cell {
+        &:focus-visible {
+            outline: 2px solid #f0954a;
+            outline-offset: -2px;
+        }
+    }
+
+    .emoji-section-empty {
+        padding: 4px 10px 10px;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .emoji-empty {
+        padding: 32px 16px;
+        text-align: center;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .emoji-preview {
+        height: 44px;
+        flex-shrink: 0;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.18);
+    }
+
+    .emoji-preview-face {
+        font-size: 26px;
+        line-height: 1;
+    }
+
+    .emoji-preview-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .emoji-preview-name {
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .emoji-preview-code,
+    .emoji-preview-hint {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .emoji-preview-key {
+        flex-shrink: 0;
+        padding: 2px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.75);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .emoji-rail-item {
+            transition: none;
         }
     }
 }
