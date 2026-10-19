@@ -27,9 +27,13 @@ export interface MedicalCall
     /** Offered to, claimed by or revived by - whichever state says; 0 for none. */
     actorId: number;
     actorName: string;
-    /** While offered: seconds left to claim it when the server sent it. */
-    claimSeconds: number;
+    /** Seconds left when the server sent it: to accept it while offered, to retrieve the patient once claimed; 0 otherwise. */
+    secondsLeft: number;
 }
+
+// The full countdowns, if an older server does not send them (MedicalCalls.ClaimSeconds / ReviveSeconds).
+const CLAIM_SECONDS = 30;
+const REVIVE_SECONDS = 120;
 
 export class RpMedicalCallsParser implements IMessageParser
 {
@@ -37,6 +41,8 @@ export class RpMedicalCallsParser implements IMessageParser
     private _calls: MedicalCall[] = [];
     private _notice = '';
     private _reopen = false;
+    private _claimSeconds = CLAIM_SECONDS;
+    private _reviveSeconds = REVIVE_SECONDS;
 
     public flush(): boolean
     {
@@ -44,6 +50,8 @@ export class RpMedicalCallsParser implements IMessageParser
         this._calls = [];
         this._notice = '';
         this._reopen = false;
+        this._claimSeconds = CLAIM_SECONDS;
+        this._reviveSeconds = REVIVE_SECONDS;
 
         return true;
     }
@@ -70,7 +78,7 @@ export class RpMedicalCallsParser implements IMessageParser
                 state: wrapper.readInt(),
                 actorId: wrapper.readInt(),
                 actorName: wrapper.readString(),
-                claimSeconds: wrapper.readInt()
+                secondsLeft: wrapper.readInt()
             });
 
             // Was "you let it lapse", from when the window kept history. Always
@@ -80,6 +88,13 @@ export class RpMedicalCallsParser implements IMessageParser
 
         this._notice = wrapper.readString();
         this._reopen = wrapper.readBoolean();
+
+        // How long each countdown is in full, for the bar under the call (appended last).
+        if(wrapper.bytesAvailable)
+        {
+            this._claimSeconds = wrapper.readInt();
+            this._reviveSeconds = wrapper.readInt();
+        }
 
         return true;
     }
@@ -105,6 +120,18 @@ export class RpMedicalCallsParser implements IMessageParser
     public get reopen(): boolean
     {
         return this._reopen;
+    }
+
+    /** How long an offer lasts in full. */
+    public get claimSeconds(): number
+    {
+        return this._claimSeconds;
+    }
+
+    /** How long a paramedic has from Accept to retrieve the patient. */
+    public get reviveSeconds(): number
+    {
+        return this._reviveSeconds;
     }
 }
 
