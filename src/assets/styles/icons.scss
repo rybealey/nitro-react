@@ -143,16 +143,6 @@
         height: 28px;
     }
 
-    &.icon-pixelrp {
-        background-image: url('@/assets/images/toolbar/icons/pixelrp-logo.png');
-        background-size: contain;
-        // 16x28, then ~30% up to 21x36, then 15% more. Source art is 31x55,
-        // so even at this size it is still being scaled DOWN - no blur from
-        // stretching.
-        width: 24px;
-        height: 41px;
-    }
-
     &.icon-camera {
         background-image: url('@/assets/images/toolbar/icons/pixelrp-camera.png');
         width: 29px;

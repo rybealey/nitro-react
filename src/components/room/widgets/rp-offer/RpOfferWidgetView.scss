@@ -10,8 +10,9 @@
     position: absolute;
     left: 50%;
     // Anchored by its BOTTOM to just above the chat bar's top edge. The bar is
-    // 44px tall and centred on this container, so 50% is its middle, +22px is
-    // its top, and +10px is the gap. Anchoring the bottom rather than the top
+    // 44px tall in a 3px HUD frame (50px in all) and centred on this
+    // container, so 50% is its middle, +25px is the frame's top, and +10px is
+    // the gap. Anchoring the bottom rather than the top
     // means a card that grows a line pushes upward and the gap never moves.
     //
     // Narrower than the bar by a fifth, and everything inside it with it. Sized
@@ -19,7 +20,7 @@
     // fight the translate that centres it, and the animations below own that
     // transform too. Still centred on the same axis, so it reads as belonging
     // to the bar without pretending to be part of it.
-    bottom: calc(50% + 32px);
+    bottom: calc(50% + 35px);
     transform: translateX(-50%);
     width: 452px;
     box-sizing: border-box;

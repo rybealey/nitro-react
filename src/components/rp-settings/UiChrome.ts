@@ -32,9 +32,11 @@ export const DEFAULT_CHROME_COLOR: string = CHROME_SCHEMES[0].color;
 // Five opacity stops for the chrome surfaces; 95 = the original look. The
 // stored value is the SURFACE alpha in percent — every derived alpha (HUD
 // chips, bevels, hover) scales by the same factor so the bevel language
-// keeps its contrast at any opacity.
+// keeps its contrast at any opacity. The default is 85 (Twist, 2026-10-19,
+// with the HUD Toolbar Redesign); the emulator's default for a player with
+// no saved settings matches it (Habbo.RpUiChromeOpacity).
 export const CHROME_OPACITY_STEPS: number[] = [ 55, 65, 75, 85, 95 ];
-export const DEFAULT_CHROME_OPACITY: number = 95;
+export const DEFAULT_CHROME_OPACITY: number = 85;
 
 // Window header duo-tones, from the CMS pixel design system ramps. The
 // header keeps Nitro's split two-tone style; only the hues change.
@@ -164,6 +166,10 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     style.setProperty('--prp-chrome-solid', hsla(h, s, l, 1));
     style.setProperty('--prp-chrome-band-hi', hsla(h, s, (l + 1.5), a(0.95)));
     style.setProperty('--prp-chrome-band-lo', hsla(h, s, (l - 2.4), a(0.95)));
+    // toolbar and side drawer tiles: solid whatever the surface opacity
+    style.setProperty('--prp-chrome-tile', hsla(h, s, (l + 2.5), 1));
+    style.setProperty('--prp-chrome-tile-hover', hsla(h, s, (l + 6.5), 1));
+    style.setProperty('--prp-chrome-tile-down', hsla(h, s, (l - 0.5), 1));
 
     // pixelrp: windows take the scheme color at full alpha whatever the
     // surface opacity (the .nitro-card block in _chrome.scss); the toolbar,

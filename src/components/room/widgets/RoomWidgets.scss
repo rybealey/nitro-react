@@ -15,13 +15,23 @@
     // the stack from being pushed off-center.
     .nitro-side-drawer {
         position: relative;
-        // One flat surface (Sidebar UI canvas): no lighter top band or darker
-        // bottom band, which read as shading round the tray.
-        background: var(--prp-chrome-95);
+        // Docked to the screen edge like the toolbar's panels (HUD Toolbar
+        // Redesign canvas, D): the player's HUD colour, the HUD's black edge
+        // on the sides that face the room and its faint light top line.
+        // The right edge is two 1px strips in the background, above and below
+        // the 44px tab, not a border: a border can't have a gap, and a line
+        // between the tray and its tab read as a seam.
+        background:
+            linear-gradient(#0a0a0a, #0a0a0a) right top / 1px calc(50% - 22px) no-repeat,
+            linear-gradient(#0a0a0a, #0a0a0a) right bottom / 1px calc(50% - 22px) no-repeat,
+            var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
+        border-top: 1px solid #0a0a0a;
+        border-bottom: 1px solid #0a0a0a;
         border-top-right-radius: $border-radius;
         border-bottom-right-radius: $border-radius;
+        box-shadow: inset 0 1px 0 rgba($white, 0.14), inset 0 -1px 0 rgba($black, 0.3);
         transition: all .2s ease;
         // Collapsed: no tray at all — the notch alone is the pull-tab.
         padding: 0;
@@ -34,16 +44,19 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
         overflow: hidden;
         width: 0;
         max-height: 0;
         opacity: 0;
+        // keeps the last tile's bottom lip inside the clip
+        padding-bottom: 1px;
+        margin-bottom: -1px;
         transition: max-height .2s ease, opacity .15s ease;
     }
 
     &.is-expanded {
-        .nitro-side-drawer { padding: 14px; }
+        .nitro-side-drawer { padding: 7px; }
 
         .side-drawer-items {
             width: auto;
@@ -54,13 +67,14 @@
 
     // Icons render at their NATIVE pixel size (background-size: auto — no
     // scaling), centered in a uniform tile a few px larger than the icons
-    // (37x36). 49x50 (Sidebar Redesign canvas) because the icons are an odd
-    // width and an even height: inside the 1px border that leaves whole
-    // pixels either side, where 45x45 put every icon on a half pixel.
-    // Keep new icons <= 47x48 or bump the tile, otherwise they clip.
+    // (37x36). 45x44, the toolbar's tile (HUD Toolbar Redesign canvas, D),
+    // one pixel shorter because the icons are an odd width and an even
+    // height: inside the 1px border that leaves whole pixels either side,
+    // where 45x45 put every icon on a half pixel.
+    // Keep new icons <= 43x42 or bump the tile, otherwise they clip.
     .side-drawer-item {
-        width: 49px;
-        height: 50px;
+        width: 45px;
+        height: 44px;
         box-sizing: border-box;
         background-repeat: no-repeat;
         background-position: center;
@@ -73,27 +87,24 @@
         position: relative;
         isolation: isolate;
 
-        // Each icon sits on its own raised tile (Sidebar Icons canvas, "dark
-        // tiles", lightened on Sidebar UI): a faint light fill, a dark edge and
-        // a faint light line along the top - no bottom lip since the Sidebar
-        // Redesign. All see-through black and white, so the tile follows
-        // whichever colour scheme the player picks.
+        // Each icon sits on the toolbar's tile: solid at any panel opacity, a
+        // step lighter than the player's HUD colour (--prp-chrome-tile,
+        // UiChrome.ts), a dark edge, a faint light line along the top and a
+        // faint lip below.
         // background-COLOR specifically, never the shorthand - the icon
         // itself is this element's background-image.
-        border: 1px solid rgba(0, 0, 0, 0.45);
+        border: 1px solid #111110;
         border-radius: $border-radius;
-        background-color: rgba(255, 255, 255, 0.05);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        transition: background-color .1s ease, transform .06s ease, box-shadow .06s ease;
+        background-color: var(--prp-chrome-tile);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 0 rgba(255, 255, 255, 0.07);
+        transition: background-color .1s ease;
 
-        &:hover { background-color: rgba(255, 255, 255, 0.11); }
+        &:hover { background-color: var(--prp-chrome-tile-hover); }
 
-        // Pressed: the tile sinks 2px (icon and tint with it), darkens, and
-        // a shadow appears inside its top edge - pushed in.
+        // Pressed: the tile sinks a pixel (icon and tint with it) and darkens.
         &:active {
-            transform: translateY(2px);
-            background-color: rgba(0, 0, 0, 0.18);
-            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45);
+            transform: translateY(1px);
+            background-color: var(--prp-chrome-tile-down);
         }
 
         &::after {
@@ -122,13 +133,13 @@
     // backdrop-filter would otherwise become the tab's backdrop root and eat
     // its blur; see SideDrawerWidgetView). The container's width is the
     // tray's width, so the tab still rides outward as the tray widens,
-    // reading as the tray sliding out from under it. Narrow (16px) so it
-    // reads as a tab, not a sixth button. An even height, like the tray's,
-    // so it centres on whole pixels.
-    // Painted with the tray's own plate surface + blur so the two read as one
-    // piece of chrome, both following the player's colour scheme. Collapsed,
-    // the tray has zero width, so the notch sits flush against the screen
-    // edge and becomes the pull-tab.
+    // reading as the tray sliding out from under it. Narrow (15px) so it
+    // reads as a tab, not a sixth button. A tile's height, and even like the
+    // tray's, so it centres on whole pixels.
+    // Painted with the tray's own plate surface + blur, edge and top line so
+    // the two read as one piece of chrome, both following the player's colour
+    // scheme. Collapsed, the tray has zero width, so the notch sits flush
+    // against the screen edge and becomes the pull-tab.
     .side-drawer-toggle {
         position: absolute;
         left: 100%;
@@ -137,12 +148,16 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
-        height: 50px;
+        width: 15px;
+        height: 44px;
+        box-sizing: border-box;
         background: var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        border-radius: 0 6px 6px 0;
+        border: 1px solid #0a0a0a;
+        border-left: 0;
+        border-radius: 0 $border-radius $border-radius 0;
+        box-shadow: inset 0 1px 0 rgba($white, 0.14);
         color: rgba($white, .55);
         user-select: none;
         transition: color .1s ease;

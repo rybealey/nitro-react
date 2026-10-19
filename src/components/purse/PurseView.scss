@@ -23,12 +23,16 @@
         // Square Diamonds button in the purse's left slot. Pixel icon renders
         // at NATIVE size (43x40, no scaling) centered in the square.
 
-        // VIP badge, at its native 20x20 like the Diamonds icon above - the
-        // source is a 20px pixel sprite, so any scaling muddies the outline.
+        // The hotel's VIP badge in the P logo's pixel colours (HUD Toolbar
+        // Redesign canvas): the shop's icon_137 recoloured, shipped with the
+        // client at 20x20 so it draws at its own size. The shop's VIP page
+        // still uses icon_137 from the assets.
         .nitro-purse-vip {
+            display: block;
             width: 20px;
             height: 20px;
             flex: none;
+            background: url('@/assets/images/purse/vip.png') no-repeat;
             image-rendering: pixelated;
         }
 

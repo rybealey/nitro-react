@@ -74,52 +74,68 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
             <TransitionAnimation type={ TransitionAnimationTypes.FADE_IN } inProp={ isMeExpanded } timeout={ 300 }>
                 <ToolbarMeView useGuideTool={ useGuideTool } unseenAchievementCount={ getTotalUnseen } setMeExpanded={ setMeExpanded } />
             </TransitionAnimation>
-            <Flex alignItems="center" justifyContent="between" gap={ 2 } className="nitro-toolbar py-1 px-3">
-                <Flex gap={ 2 } alignItems="center">
-                    <Flex alignItems="center" gap={ 2 }>
-                        <HoverBubble text="Menu">
-                            <div className="cursor-pointer navigation-item icon icon-pixelrp" onClick={ event => setMenuExpanded(!isMenuExpanded) } />
-                        </HoverBubble>
-                        <Flex alignItems="center" gap={ 2 } className={ 'toolbar-menu-items' + ((isMenuExpanded && hasMenuItems) ? ' expanded' : '') }>
+            { /* Two panels docked into the screen's bottom corners, each icon on
+                 its own tile (HUD Toolbar Redesign canvas, D). The chat bar
+                 portals into the middle one and centres itself on the toolbar. */ }
+            <Flex alignItems="end" justifyContent="between" className="nitro-toolbar">
+                <Flex alignItems="center" className="toolbar-panel is-left">
+                    <HoverBubble text="Menu">
+                        <div className="cursor-pointer toolbar-logo" onClick={ event => setMenuExpanded(!isMenuExpanded) }>
+                            <span className="toolbar-logo-shine" />
+                        </div>
+                    </HoverBubble>
+                    <Flex alignItems="center" className={ 'toolbar-menu-items' + ((isMenuExpanded && hasMenuItems) ? ' expanded' : '') }>
+                        <div className="toolbar-groove" />
+                        <Flex alignItems="center" gap={ 2 }>
                             { isMod &&
                                 <HoverBubble text="Navigator">
-                                    <div className="cursor-pointer navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } />
+                                    <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('navigator/toggle') }>
+                                        <div className="icon icon-rooms" />
+                                    </div>
                                 </HoverBubble> }
                             { isMod &&
                                 <HoverBubble text="Furni Shop">
-                                    <div className="cursor-pointer navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } />
+                                    <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('catalog/toggle') }>
+                                        <div className="icon icon-catalog" />
+                                    </div>
                                 </HoverBubble> }
                             { isMod &&
                                 <HoverBubble text="Inventory">
-                                    <div className="cursor-pointer navigation-item icon icon-inventory" onClick={ event => CreateLinkEvent('inventory/toggle') }>
+                                    <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('inventory/toggle') }>
+                                        <div className="icon icon-inventory" />
                                         { (getFullCount > 0) &&
                                             <LayoutItemCountView count={ getFullCount } /> }
                                     </div>
                                 </HoverBubble> }
                             { showCamera &&
                                 <HoverBubble text="Camera">
-                                    <div className="cursor-pointer navigation-item icon icon-camera" onClick={ event => CreateLinkEvent('camera/toggle') } />
+                                    <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('camera/toggle') }>
+                                        <div className="icon icon-camera" />
+                                    </div>
                                 </HoverBubble> }
                             { isMod &&
                                 <HoverBubble text="Mod Tools">
-                                    <div className="cursor-pointer navigation-item icon icon-modtools" onClick={ event => CreateLinkEvent('mod-tools/toggle') } />
+                                    <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('mod-tools/toggle') }>
+                                        <div className="icon icon-modtools" />
+                                    </div>
                                 </HoverBubble> }
                         </Flex>
                     </Flex>
-                    <Flex alignItems="center" id="toolbar-chat-input-container" />
                 </Flex>
-                <Flex alignItems="center" gap={ 2 }>
-                    <Flex gap={ 2 }>
-                        <HoverBubble text="Diamonds Shop">
-                            <div className="cursor-pointer navigation-item icon-diamonds" onClick={ event => CreateLinkEvent('diamonds-store/toggle') } />
-                        </HoverBubble>
-                        <HoverBubble text="Phone">
-                            <div className="cursor-pointer navigation-item icon icon-phone" onClick={ event => CreateLinkEvent('phone/toggle') }>
-                                { (phoneBadge > 0) &&
-                                    <LayoutItemCountView count={ phoneBadge } /> }
-                            </div>
-                        </HoverBubble>
-                    </Flex>
+                <Flex alignItems="center" id="toolbar-chat-input-container" />
+                <Flex alignItems="center" gap={ 2 } className="toolbar-panel is-right">
+                    <HoverBubble text="Diamonds Shop">
+                        <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('diamonds-store/toggle') }>
+                            <div className="icon-diamonds" />
+                        </div>
+                    </HoverBubble>
+                    <HoverBubble text="Phone">
+                        <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('phone/toggle') }>
+                            <div className="icon icon-phone" />
+                            { (phoneBadge > 0) &&
+                                <LayoutItemCountView count={ phoneBadge } /> }
+                        </div>
+                    </HoverBubble>
                 </Flex>
             </Flex>
         </>

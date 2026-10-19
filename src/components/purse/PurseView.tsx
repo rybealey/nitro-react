@@ -14,11 +14,6 @@ export const PurseView: FC<{}> = props =>
     const displayedCurrencies = useMemo(() => GetConfiguration<number[]>('system.currency.types', []), []);
     const currencyDisplayNumberShort = useMemo(() => GetConfiguration<boolean>('currency.display.number.short', false), []);
 
-    // The subscription tile carries the hotel's own VIP badge, not the stock HC
-    // logo - the same c_images icon the catalog's VIP page uses, so the HUD and
-    // the shop agree on what the subscription is called.
-    const vipIconUrl = useMemo(() => GetConfiguration<string>('catalog.asset.icon.url', '').replace('%name%', '137'), []);
-
     // Publish the purse's actual (dynamic) width to .purse-title-row so the
     // quick-tools pinned to its left edge track it as currency values grow.
     useEffect(() =>
@@ -99,7 +94,7 @@ export const PurseView: FC<{}> = props =>
                 </Column>
                 { !hcDisabled &&
                     <Column center gap={ 1 } className="nitro-purse-subscription ps-2">
-                        <img alt="" className="nitro-purse-vip" src={ vipIconUrl } />
+                        <span className="nitro-purse-vip" aria-hidden="true" />
                         <Text variant="white">{ getClubText }</Text>
                     </Column> }
             </Flex>

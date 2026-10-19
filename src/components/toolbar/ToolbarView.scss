@@ -8,59 +8,146 @@
     pointer-events: all;
     background: transparent;
 
-    .navigation-item {
+    // HUD Toolbar Redesign canvas, D: the icons sit on two panels docked into
+    // the screen's bottom corners - the player's HUD colour and opacity
+    // (--prp-chrome-95), a black edge only on the sides that face the room,
+    // and the faint light line along the top that the HUD plates have.
+    // 1 + 7 + 45 + 7 = 60px tall, the toolbar's height.
+    .toolbar-panel {
+        padding: 7px;
+        background: var(--prp-chrome-95);
+        border-top: 1px solid #0a0a0a;
+        box-shadow: inset 0 1px 0 rgba($white, 0.14);
+
+        &.is-left {
+            border-right: 1px solid #0a0a0a;
+            border-top-right-radius: $border-radius;
+        }
+
+        &.is-right {
+            border-left: 1px solid #0a0a0a;
+            border-top-left-radius: $border-radius;
+        }
+    }
+
+    // The PixelRP P: the logo, not one of the buttons, so it has no tile. It
+    // draws at its own 24x43 - pixelrp-logo-small.png is the 31x55 art shrunk
+    // ahead of time, so the browser never scales it - and a soft band of
+    // light crosses it every few seconds. It folds the menu, as before.
+    .toolbar-logo {
         position: relative;
-
-        // Diamonds shortcut (moved from the purse): native-size 43x40
-        // pixel icon, no scaling.
-        &.icon-diamonds {
-            width: 43px;
-            height: 40px;
-            background: url('@/assets/images/purse/diamonds.png') no-repeat center;
-            image-rendering: pixelated;
-        }
-
-        &.item-avatar {
-            width: 50px;
-            height: 45px;
-            overflow: hidden;
-
-            .avatar-image {
-                margin-left: -5px;
-                margin-top: 25px;
-            }
-
-            // purely visual: no hover lift, no click menu
-            &:hover {
-                transform: none;
-                filter: none;
-            }
-        }
+        flex-shrink: 0;
+        width: 24px;
+        height: 43px;
+        background: url('@/assets/images/toolbar/icons/pixelrp-logo-small.png') no-repeat;
+        image-rendering: pixelated;
 
         &:hover {
-            -webkit-transform: translate(-1px, -1px);
             transform: translate(-1px, -1px);
             filter: drop-shadow(2px 2px 0 rgba($black, 0.8));
         }
 
-        &.active,
         &:active {
-            -webkit-transform: unset;
-            transform: unset;
+            transform: none;
             filter: none;
         }
     }
 
-    // menu items grow out from behind the PixelRP emblem
+    // The shine: a white band blended onto the P (overlay keeps its black
+    // outline black) and masked to its shape, sweeping across in the first
+    // ~2 seconds of every 6.
+    .toolbar-logo-shine {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(115deg, transparent 32%, rgba($white, 0.75) 50%, transparent 68%) no-repeat;
+        background-size: 300% 100%;
+        mix-blend-mode: overlay;
+        -webkit-mask: url('@/assets/images/toolbar/icons/pixelrp-logo-small.png') center / 100% 100% no-repeat;
+        mask: url('@/assets/images/toolbar/icons/pixelrp-logo-small.png') center / 100% 100% no-repeat;
+        animation: toolbar-logo-shine 6s ease-in-out infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+            opacity: 0;
+        }
+    }
+
+    // The groove between the P and the buttons: a line cut into the panel,
+    // dark with a faint light edge, the full height of the tiles.
+    .toolbar-groove {
+        flex-shrink: 0;
+        width: 1px;
+        height: 45px;
+        margin: 0 8px 0 7px;
+        background: #070708;
+        box-shadow: 1px 0 0 rgba($white, 0.08);
+    }
+
+    // One square button per icon, solid at any panel opacity: a step lighter
+    // than the player's HUD colour (--prp-chrome-tile, UiChrome.ts).
+    .toolbar-tile {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 45px;
+        height: 45px;
+        box-sizing: border-box;
+        border: 1px solid #111110;
+        border-radius: $border-radius;
+        background-color: var(--prp-chrome-tile);
+        box-shadow: inset 0 1px 0 rgba($white, 0.04), 0 1px 0 rgba($white, 0.07);
+        transition: background-color .1s ease;
+
+        &:hover {
+            background-color: var(--prp-chrome-tile-hover);
+        }
+
+        &:active {
+            transform: translateY(1px);
+            background-color: var(--prp-chrome-tile-down);
+        }
+
+        // The icons draw at their native size. The tile's inside is 43px, an
+        // odd number, so an icon with an even side would be centred on a half
+        // pixel and smear: each box is rounded up to an odd size and the art
+        // drawn from its top-left corner.
+        .icon,
+        .icon-diamonds {
+            background-position: 0 0;
+            image-rendering: pixelated;
+        }
+
+        .icon-rooms { width: 29px; height: 31px; }
+        .icon-catalog { width: 25px; height: 31px; }
+        .icon-inventory { width: 31px; height: 29px; }
+        .icon-camera { width: 29px; height: 31px; }
+        .icon-modtools { width: 31px; height: 31px; }
+        .icon-phone { width: 41px; height: 41px; }
+
+        // Diamonds shortcut (moved from the purse): the 43x40 pixel icon
+        .icon-diamonds {
+            width: 43px;
+            height: 41px;
+            background-image: url('@/assets/images/purse/diamonds.png');
+            background-repeat: no-repeat;
+        }
+    }
+
+    // The menu's buttons slide out from behind the P (with the groove); with
+    // nothing in them the panel is just the P. The 1px of padding keeps the
+    // tiles' bottom lip inside the clip.
     .toolbar-menu-items {
         flex-wrap: nowrap;
         overflow: hidden;
         max-width: 0;
+        padding: 1px 0;
+        margin: -1px 0;
         opacity: 0;
-        // cancel the parent flex gap while collapsed so the emblem has no ghost spacing
-        margin-left: -0.5rem;
         pointer-events: none;
-        transition: max-width .3s ease, opacity .25s ease, margin-left .3s ease;
+        transition: max-width .3s ease, opacity .25s ease;
 
         > * {
             flex-shrink: 0;
@@ -69,7 +156,6 @@
         &.expanded {
             max-width: 320px;
             opacity: 1;
-            margin-left: 0;
             pointer-events: all;
         }
     }
@@ -101,6 +187,11 @@
             filter: grayscale(0) drop-shadow(2px 2px 0 rgba($black, 0.8));
         }
     }
+}
+
+@keyframes toolbar-logo-shine {
+    0% { background-position: 100% 0; }
+    30%, 100% { background-position: 0% 0; }
 }
 
 .toolbar-icon-animation {
