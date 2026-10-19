@@ -12,9 +12,9 @@
     // the screen's bottom corners - the player's HUD colour and opacity
     // (--prp-chrome-95), a black edge only on the sides that face the room,
     // and the faint light line along the top that the HUD plates have.
-    // 1 + 7 + 45 + 7 = 60px tall, the toolbar's height.
+    // 1 + 9 + 45 + 9 = 64px tall, the toolbar's height.
     .toolbar-panel {
-        padding: 7px;
+        padding: 9px;
         background: var(--prp-chrome-95);
         border-top: 1px solid #0a0a0a;
         box-shadow: inset 0 1px 0 rgba($white, 0.14);

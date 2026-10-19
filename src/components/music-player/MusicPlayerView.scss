@@ -345,8 +345,8 @@ $player-teal: #1E7295;
 // (SiriView). Styled as the chat bar's twin (same #EDEDED plate, white gloss
 // stripe, 2px black border, 6px radius as .nitro-chat-input-container; its
 // glowing halo stands in for the bar's HUD frame) and positioned in its slot:
-// the bar is 44px tall centered in the 60px toolbar, so its footprint starts
-// 8px off the viewport bottom. While Siri is
+// the bar is 44px tall centered in the 64px toolbar, so its footprint starts
+// 10px off the viewport bottom. While Siri is
 // mounted, body.siri-active fades the chat bar out (see ChatInputView.scss);
 // unmounting restores it, whatever closed Siri.
 // Outcome states. Sending and failed ride the same plate as the existing
@@ -367,7 +367,7 @@ $player-teal: #1E7295;
 .nitro-siri {
     position: fixed;
     left: 50%;
-    bottom: 8px;
+    bottom: 10px;
     z-index: calc(#{$chatinput-zindex} + 5);
     // same footprint as the chat bar it replaces (564px fixed)
     width: 564px;

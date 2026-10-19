@@ -21,8 +21,8 @@
         // The right edge is two 1px strips in the background, above and below
         // the 45px tab, not a border: a border can't have a gap, and a line
         // between the tray and its tab read as a seam. The strips sit inside
-        // the right padding, so it is 8px - 7 from the tiles to the edge,
-        // and 60px deep in all, the bottom toolbar panel's height.
+        // the right padding, so it is 10px - 9 from the tiles to the edge,
+        // and 64px deep in all, the bottom toolbar panel's height.
         background:
             linear-gradient(#0a0a0a, #0a0a0a) right top / 1px calc(50% - 22.5px) no-repeat,
             linear-gradient(#0a0a0a, #0a0a0a) right bottom / 1px calc(50% - 22.5px) no-repeat,
@@ -58,7 +58,7 @@
     }
 
     &.is-expanded {
-        .nitro-side-drawer { padding: 7px 8px 7px 7px; }
+        .nitro-side-drawer { padding: 9px 10px 9px 9px; }
 
         .side-drawer-items {
             width: auto;
@@ -136,7 +136,7 @@
     // tray's width, so the tab still rides outward as the tray widens,
     // reading as the tray sliding out from under it. Narrow (15px) so it
     // reads as a tab, not a sixth button. A tile's height, and odd like the
-    // tray's (273px), so it centres on whole pixels.
+    // tray's (277px), so it centres on whole pixels.
     // Painted with the tray's own plate surface + blur, edge and top line so
     // the two read as one piece of chrome, both following the player's colour
     // scheme. Collapsed, the tray has zero width, so the notch sits flush
