@@ -19,11 +19,13 @@
         // Redesign canvas, D): the player's HUD colour, the HUD's black edge
         // on the sides that face the room and its faint light top line.
         // The right edge is two 1px strips in the background, above and below
-        // the 44px tab, not a border: a border can't have a gap, and a line
-        // between the tray and its tab read as a seam.
+        // the 45px tab, not a border: a border can't have a gap, and a line
+        // between the tray and its tab read as a seam. The strips sit inside
+        // the right padding, so it is 8px - 7 from the tiles to the edge,
+        // and 60px deep in all, the bottom toolbar panel's height.
         background:
-            linear-gradient(#0a0a0a, #0a0a0a) right top / 1px calc(50% - 22px) no-repeat,
-            linear-gradient(#0a0a0a, #0a0a0a) right bottom / 1px calc(50% - 22px) no-repeat,
+            linear-gradient(#0a0a0a, #0a0a0a) right top / 1px calc(50% - 22.5px) no-repeat,
+            linear-gradient(#0a0a0a, #0a0a0a) right bottom / 1px calc(50% - 22.5px) no-repeat,
             var(--prp-chrome-95);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
@@ -56,7 +58,7 @@
     }
 
     &.is-expanded {
-        .nitro-side-drawer { padding: 7px; }
+        .nitro-side-drawer { padding: 7px 8px 7px 7px; }
 
         .side-drawer-items {
             width: auto;
@@ -66,18 +68,17 @@
     }
 
     // Icons render at their NATIVE pixel size (background-size: auto — no
-    // scaling), centered in a uniform tile a few px larger than the icons
-    // (37x36). 45x44, the toolbar's tile (HUD Toolbar Redesign canvas, D),
-    // one pixel shorter because the icons are an odd width and an even
-    // height: inside the 1px border that leaves whole pixels either side,
-    // where 45x45 put every icon on a half pixel.
-    // Keep new icons <= 43x42 or bump the tile, otherwise they clip.
+    // scaling) on the toolbar's 45x45 tile (HUD Toolbar Redesign canvas, D).
+    // The icons are 37x36: centred in the tile's 43px inside, the even height
+    // would land on a half pixel, so each is drawn from a fixed 3px corner
+    // instead (3px above, 4 below - one pixel only seen up close).
+    // Keep new icons <= 40x40 or bump the tile, otherwise they clip.
     .side-drawer-item {
         width: 45px;
-        height: 44px;
+        height: 45px;
         box-sizing: border-box;
         background-repeat: no-repeat;
-        background-position: center;
+        background-position: 3px 3px;
         background-size: auto;
         image-rendering: pixelated;
         // Scheme tint (UiChrome.ts): the ::after overlay is masked to the
@@ -114,9 +115,9 @@
             background: var(--prp-chrome-icon-tint, transparent);
             mix-blend-mode: color;
             mask-repeat: no-repeat;
-            mask-position: center;
+            mask-position: 3px 3px;
             -webkit-mask-repeat: no-repeat;
-            -webkit-mask-position: center;
+            -webkit-mask-position: 3px 3px;
             pointer-events: none;
         }
 
@@ -134,8 +135,8 @@
     // its blur; see SideDrawerWidgetView). The container's width is the
     // tray's width, so the tab still rides outward as the tray widens,
     // reading as the tray sliding out from under it. Narrow (15px) so it
-    // reads as a tab, not a sixth button. A tile's height, and even like the
-    // tray's, so it centres on whole pixels.
+    // reads as a tab, not a sixth button. A tile's height, and odd like the
+    // tray's (273px), so it centres on whole pixels.
     // Painted with the tray's own plate surface + blur, edge and top line so
     // the two read as one piece of chrome, both following the player's colour
     // scheme. Collapsed, the tray has zero width, so the notch sits flush
@@ -149,7 +150,7 @@
         align-items: center;
         justify-content: center;
         width: 15px;
-        height: 44px;
+        height: 45px;
         box-sizing: border-box;
         background: var(--prp-chrome-95);
         backdrop-filter: blur(6px);
