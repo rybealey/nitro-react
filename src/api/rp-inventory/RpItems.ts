@@ -7,6 +7,7 @@ import { ClothingIconUrl, ClothingShelfName, GetClothingCatalog, ParseClothingTo
 export const RP_ITEMS: Record<string, { name: string, cls: string }> = {
     smoothie: { name: 'Passive Smoothie', cls: 'rp-item-smoothie' },
     snack: { name: 'Snack', cls: 'rp-item-snack' },
+    vape: { name: 'Vape', cls: 'rp-item-vape' },
     medkit: { name: 'Medkit', cls: 'rp-item-medkit' },
     // Police: a medkit from the locker, one at a time. Heals the same as a medkit.
     cop_medkit: { name: 'Cop Medkit', cls: 'rp-item-cop-medkit' },

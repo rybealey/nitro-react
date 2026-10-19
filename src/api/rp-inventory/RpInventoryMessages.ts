@@ -5,6 +5,7 @@ import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 // other rp-* packets. The wire id matches the emulator's Resources/Revisions/1.6.6.json.
 const RP_DISCARD_ITEM = 4055; // client -> server: throw away the stack in a carry slot
 const RP_STUN_GUN_CHARGE = 4154; // server -> client: the stun gun's shots left, and how many it holds
+const RP_VAPE_CHARGE = 4223; // server -> client: the vape's hits left, and how many it holds
 
 // The backpack bin (the emulator's RpDiscardItemEvent): `count` of what sits in
 // the slot goes - all of it when the count covers the stack - and the server
@@ -40,8 +41,9 @@ export const SendRpDiscardItem = (slot: number, count: number): void =>
 // how many it holds, sent at login, after every shot and when the police locker
 // restocks the gun. It belongs to the player, not to an item, so it is kept here
 // rather than in the backpack view - the login send can arrive before the view
-// exists - and the view draws it as the green bar on a stun gun.
-class RpStunGunChargeParser implements IMessageParser
+// exists - and the view draws it as the green bar on a stun gun. The vape's hits
+// (RpVapeChargeComposer) come the same way, in the same shape.
+class RpChargeParser implements IMessageParser
 {
     public left = 0;
     public max = 0;
@@ -65,25 +67,49 @@ class RpStunGunChargeParser implements IMessageParser
 
 class RpStunGunChargeEvent extends MessageEvent implements IMessageEvent
 {
-    constructor(callback: Function) { super(callback, RpStunGunChargeParser); }
-    public getParser(): RpStunGunChargeParser { return this.parser as RpStunGunChargeParser; }
+    constructor(callback: Function) { super(callback, RpChargeParser); }
+    public getParser(): RpChargeParser { return this.parser as RpChargeParser; }
 }
 
-export interface StunGunCharge { left: number; max: number; }
-
-// Full until the server says otherwise: a gun nobody has fired is full, and the
-// login send corrects it straight away if it is not.
-let stunGunCharge: StunGunCharge = { left: 7, max: 7 };
-const stunGunChargeListeners = new Set<() => void>();
-
-export const GetStunGunCharge = (): StunGunCharge => stunGunCharge;
-
-export const SubscribeStunGunCharge = (listener: () => void): (() => void) =>
+class RpVapeChargeEvent extends MessageEvent implements IMessageEvent
 {
-    stunGunChargeListeners.add(listener);
-
-    return () => { stunGunChargeListeners.delete(listener); };
+    constructor(callback: Function) { super(callback, RpChargeParser); }
+    public getParser(): RpChargeParser { return this.parser as RpChargeParser; }
 }
+
+export interface ItemCharge { left: number; max: number; }
+export type StunGunCharge = ItemCharge;
+
+// Full until the server says otherwise: a gun nobody has fired, or a vape nobody
+// has used, is full, and the login send corrects it straight away if it is not.
+const createChargeStore = () =>
+{
+    let charge: ItemCharge = { left: 7, max: 7 };
+    const listeners = new Set<() => void>();
+
+    return {
+        get: (): ItemCharge => charge,
+        subscribe: (listener: () => void): (() => void) =>
+        {
+            listeners.add(listener);
+
+            return () => { listeners.delete(listener); };
+        },
+        set: (left: number, max: number): void =>
+        {
+            charge = { left, max };
+            listeners.forEach(listener => listener());
+        }
+    };
+}
+
+const stunGunCharge = createChargeStore();
+const vapeCharge = createChargeStore();
+
+export const GetStunGunCharge = stunGunCharge.get;
+export const SubscribeStunGunCharge = stunGunCharge.subscribe;
+export const GetVapeCharge = vapeCharge.get;
+export const SubscribeVapeCharge = vapeCharge.subscribe;
 
 let registered = false;
 
@@ -96,7 +122,7 @@ export const RegisterRpInventoryMessages = () =>
     if(!connection) return;
 
     connection.registerMessages({
-        events: new Map<number, Function>([ [ RP_STUN_GUN_CHARGE, RpStunGunChargeEvent ] ]),
+        events: new Map<number, Function>([ [ RP_STUN_GUN_CHARGE, RpStunGunChargeEvent ], [ RP_VAPE_CHARGE, RpVapeChargeEvent ] ]),
         composers: new Map<number, Function>([ [ RP_DISCARD_ITEM, RpDiscardItemComposer ] ])
     });
 
@@ -104,8 +130,14 @@ export const RegisterRpInventoryMessages = () =>
     {
         const parser = event.getParser();
 
-        stunGunCharge = { left: parser.left, max: parser.max };
-        stunGunChargeListeners.forEach(listener => listener());
+        stunGunCharge.set(parser.left, parser.max);
+    }));
+
+    GetCommunication().registerMessageEvent(new RpVapeChargeEvent((event: RpVapeChargeEvent) =>
+    {
+        const parser = event.getParser();
+
+        vapeCharge.set(parser.left, parser.max);
     }));
 
     registered = true;

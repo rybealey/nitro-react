@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
 import { AddEventLinkTracker, GetRoomSession, HasHabboVip, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { TargetState } from '../../hooks/rooms/targetState';
-import { GetStunGunCharge, SendRpDiscardItem, StunGunCharge, SubscribeStunGunCharge } from '../../api/rp-inventory/RpInventoryMessages';
+import { GetStunGunCharge, GetVapeCharge, ItemCharge, SendRpDiscardItem, SubscribeStunGunCharge, SubscribeVapeCharge } from '../../api/rp-inventory/RpInventoryMessages';
 import { DraggableWindowPosition, HoverBubble, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useLocalStorage, useMessageEvent } from '../../hooks';
 
@@ -34,19 +34,23 @@ const resolveItem = ResolveRpItem;
 
 const STUN_GUN = 'stun_gun';
 const PEPPER_SPRAY = 'pepper_spray';
+const VAPE = 'vape';
 
 // The stun gun's shots left, as a green bar along the bottom of its slot - in
 // the Weapon frame or a carry slot, wherever the gun is. Empties shot by shot
 // and fills again at a police locker (the emulator's PoliceState.StunGunShots).
-const StunGunChargeBar: FC<{ charge: StunGunCharge }> = ({ charge }) =>
+// The vape's hits get the same bar (RpVape.Hits); the last hit uses it up.
+const ChargeBar: FC<{ charge: ItemCharge, label: string }> = ({ charge, label }) =>
 {
     const fraction = ((charge.max > 0) ? Math.max(0, Math.min(1, (charge.left / charge.max))) : 0);
 
     return (
-        <div className="rp-inventory-charge" role="meter" aria-label="Stun gun shots" aria-valuemin={ 0 } aria-valuemax={ charge.max } aria-valuenow={ charge.left }>
+        <div className="rp-inventory-charge" role="meter" aria-label={ label } aria-valuemin={ 0 } aria-valuemax={ charge.max } aria-valuenow={ charge.left }>
             <div className="rp-inventory-charge-fill" style={ { width: `${ fraction * 100 }%` } } />
         </div>);
 }
+
+const hasCharge = (item: string): boolean => ((item === STUN_GUN) || (item === VAPE));
 
 export const RpInventoryView: FC<{}> = props =>
 {
@@ -75,6 +79,7 @@ export const RpInventoryView: FC<{}> = props =>
     const useModeRef = useRef<HTMLDivElement>(null);
     // Kept outside the view (RpInventoryMessages) - the login send can arrive before it mounts.
     const stunGunCharge = useSyncExternalStore(SubscribeStunGunCharge, GetStunGunCharge);
+    const vapeCharge = useSyncExternalStore(SubscribeVapeCharge, GetVapeCharge);
 
     // Live backpack contents — sent at login and after every change, so the
     // map is always a full snapshot.
@@ -396,7 +401,7 @@ export const RpInventoryView: FC<{}> = props =>
                                         onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
                                         onPointerDown={ event => onItemDown(event, WEAPON_SLOT) }>
                                         <div className={ `rp-inventory-item ${ meta.cls }` } />
-                                        { (equipped.item === STUN_GUN) && <StunGunChargeBar charge={ stunGunCharge } /> }
+                                        { (equipped.item === STUN_GUN) && <ChargeBar charge={ stunGunCharge } label="Stun gun shots" /> }
                                     </div>);
                             }
 
@@ -427,7 +432,7 @@ export const RpInventoryView: FC<{}> = props =>
                             {
                                 return (
                                     <div key={ slot } data-rp-slot={ slot }
-                                        className={ `rp-inventory-slot has-item${ (entry.item === STUN_GUN) ? ' has-charge' : '' }${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                        className={ `rp-inventory-slot has-item${ hasCharge(entry.item) ? ' has-charge' : '' }${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
                                         { ...bubbleProps(meta.name, slot, entry.item) }
                                         onClick={ () => onItemClick(slot) }
                                         onDoubleClick={ () => onItemDoubleClick(slot) }
@@ -435,7 +440,8 @@ export const RpInventoryView: FC<{}> = props =>
                                         <div className={ `rp-inventory-item ${ meta.cls }` } style={ meta.iconUrl ? { backgroundImage: `url(${ meta.iconUrl })` } : undefined } />
                                         { (entry.count > 1) &&
                                         <span className="rp-inventory-count">{ entry.count }</span> }
-                                        { (entry.item === STUN_GUN) && <StunGunChargeBar charge={ stunGunCharge } /> }
+                                        { (entry.item === STUN_GUN) && <ChargeBar charge={ stunGunCharge } label="Stun gun shots" /> }
+                                        { (entry.item === VAPE) && <ChargeBar charge={ vapeCharge } label="Vape hits" /> }
                                     </div>);
                             }
 
