@@ -1,0 +1,308 @@
+diff --git a/src/api/utils/BinaryReader.ts b/src/api/utils/BinaryReader.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/BinaryReader.ts
++++ b/src/api/utils/BinaryReader.ts
+@@ -2,6 +2,10 @@
+ 
+ export class BinaryReader implements IBinaryReader
+ {
++    // PixelRP: one decoder for every string. A room entry reads thousands of
++    // strings, and each one used to make its own TextDecoder.
++    private static TEXT_DECODER: TextDecoder = new TextDecoder();
++
+     private _position: number;
+     private _dataView: DataView;
+ 
+@@ -70,9 +74,24 @@
+         return this._dataView.byteLength - this._position;
+     }
+ 
++    // PixelRP: reads `length` bytes as UTF-8 straight from this buffer, with no
++    // copy - readBytes(length).toString() sliced a new buffer per string. Out
++    // of range reads give what the slice gave: the bytes that are there, or ''.
++    public readString(length: number): string
++    {
++        const start = this._position;
++        const end = Math.max(start, Math.min((start + length), this._dataView.byteLength));
++
++        this._position += length;
++
++        if(end <= start) return '';
++
++        return BinaryReader.TEXT_DECODER.decode(new Uint8Array(this._dataView.buffer, (this._dataView.byteOffset + start), (end - start)));
++    }
++
+     public toString(encoding?: string): string
+     {
+-        return new TextDecoder().decode(this._dataView.buffer);
++        return BinaryReader.TEXT_DECODER.decode(this._dataView.buffer);
+     }
+ 
+     public toArrayBuffer(): ArrayBuffer
+diff --git a/src/api/utils/IBinaryReader.ts b/src/api/utils/IBinaryReader.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/IBinaryReader.ts
++++ b/src/api/utils/IBinaryReader.ts
+@@ -7,6 +7,7 @@
+     readFloat(): number;
+     readDouble(): number;
+     remaining(): number;
++    readString(length: number): string;
+     toString(encoding?: string): string;
+     toArrayBuffer(): ArrayBuffer;
+ }
+diff --git a/src/api/utils/NitroBundle.ts b/src/api/utils/NitroBundle.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/NitroBundle.ts
++++ b/src/api/utils/NitroBundle.ts
+@@ -1,7 +1,43 @@
+-import { BaseTexture } from '@pixi/core';
++import { BaseTexture, GLTexture, ImageResource, Renderer } from '@pixi/core';
+ import { Data, inflate } from 'pako';
+-import { ArrayBufferToBase64 } from './ArrayBufferToBase64';
+ import { BinaryReader } from './BinaryReader';
++
++// PixelRP: a bundle's sheet, decoded off the main thread for its first upload.
++// The PNG used to be turned into a base64 data: URL one character at a time,
++// and the browser then decoded it on the main thread inside the first GPU
++// upload - the stall in the frame that first draws a new room. Pixi's bitmap
++// path decodes it in the background (createImageBitmap) and closes the bitmap
++// once it is on the GPU.
++class BundleImageResource extends ImageResource
++{
++    private _blobUrl: string;
++
++    constructor(blobUrl: string)
++    {
++        super(blobUrl, { autoLoad: false, createBitmap: true, crossorigin: false });
++
++        this._blobUrl = blobUrl;
++    }
++
++    public upload(renderer: Renderer, baseTexture: BaseTexture, glTexture: GLTexture): boolean
++    {
++        const uploaded = super.upload(renderer, baseTexture, glTexture);
++
++        // If the texture GC later drops the GPU copy, upload from the image
++        // itself, as before - a fresh bitmap would leave the sheet blank for a
++        // few frames, and a hit map built in those frames would stay empty.
++        if(uploaded) this.createBitmap = false;
++
++        return uploaded;
++    }
++
++    public destroy(): void
++    {
++        super.destroy();
++
++        URL.revokeObjectURL(this._blobUrl);
++    }
++}
+ 
+ export class NitroBundle
+ {
+@@ -39,13 +75,35 @@
+             else
+             {
+                 const decompressed = inflate((buffer.toArrayBuffer() as Data));
+-                const base64 = ArrayBufferToBase64(decompressed);
+ 
+-                this._baseTexture = new BaseTexture('data:image/png;base64,' + base64);
++                this._baseTexture = NitroBundle.createBaseTexture(decompressed);
+             }
+ 
+             fileCount--;
+         }
++    }
++
++    // PixelRP: the texture turns valid - and sends the 'update' the asset
++    // loaders wait for - only once its bitmap is decoded, so nothing can draw
++    // it before then. If the bitmap cannot be made it falls back to the plain
++    // image, which is what every sheet used before.
++    private static createBaseTexture(png: Uint8Array): BaseTexture
++    {
++        const resource = new BundleImageResource(URL.createObjectURL(new Blob([ png ], { type: 'image/png' })));
++        const baseTexture = new BaseTexture(resource);
++        const image = (resource.source as HTMLImageElement);
++        const ready = () => resource.load().catch(() => null);
++
++        image.addEventListener('load', () =>
++        {
++            resource.process()
++                .catch(() => (resource.createBitmap = false))
++                .then(ready);
++        }, { once: true });
++
++        image.addEventListener('error', ready, { once: true });
++
++        return baseTexture;
+     }
+ 
+     get jsonFile(): Object
+diff --git a/src/core/communication/SocketConnection.ts b/src/core/communication/SocketConnection.ts
+index 1111111..2222222 100644
+--- a/src/core/communication/SocketConnection.ts
++++ b/src/core/communication/SocketConnection.ts
+@@ -88,6 +88,11 @@
+         this._dataBuffer = new ArrayBuffer(0);
+         this._socket = new WebSocket(socketUrl);
+ 
++        // PixelRP: messages arrive as ArrayBuffers, ready to read. As Blobs
++        // (the default) each one went through a FileReader - another task and
++        // another copy before a single packet could be handled.
++        this._socket.binaryType = 'arraybuffer';
++
+         this._socket.addEventListener(WebSocketEventEnum.CONNECTION_OPENED, this.onOpen);
+         this._socket.addEventListener(WebSocketEventEnum.CONNECTION_CLOSED, this.onClose);
+         this._socket.addEventListener(WebSocketEventEnum.CONNECTION_ERROR, this.onError);
+@@ -129,16 +134,28 @@
+ 
+         //this.dispatchConnectionEvent(SocketConnectionEvent.CONNECTION_MESSAGE, event);
+ 
++        if(event.data instanceof ArrayBuffer)
++        {
++            this.receiveData(event.data);
++
++            return;
++        }
++
+         const reader = new FileReader();
+ 
+         reader.readAsArrayBuffer(event.data);
+ 
+-        reader.onloadend = () =>
+-        {
+-            this._dataBuffer = this.concatArrayBuffers(this._dataBuffer, (reader.result as ArrayBuffer));
+-
+-            this.processReceivedData();
+-        };
++        reader.onloadend = () => this.receiveData(reader.result as ArrayBuffer);
++    }
++
++    private receiveData(data: ArrayBuffer): void
++    {
++        // PixelRP: nothing left over from the last message (the usual case -
++        // the server only sends whole packets) means no copy at all.
++        if(this._dataBuffer && this._dataBuffer.byteLength) this._dataBuffer = this.concatArrayBuffers(this._dataBuffer, data);
++        else this._dataBuffer = data;
++
++        this.processReceivedData();
+     }
+ 
+     private dispatchConnectionEvent(type: string, event: Event): void
+diff --git a/src/core/communication/codec/evawire/EvaWireDataWrapper.ts b/src/core/communication/codec/evawire/EvaWireDataWrapper.ts
+index 1111111..2222222 100644
+--- a/src/core/communication/codec/evawire/EvaWireDataWrapper.ts
++++ b/src/core/communication/codec/evawire/EvaWireDataWrapper.ts
+@@ -61,9 +61,8 @@
+     public readString(): string
+     {
+         const length = this.readShort();
+-        const buffer = this._buffer.readBytes(length);
+ 
+-        return buffer.toString('utf8');
++        return this._buffer.readString(length);
+     }
+ 
+     public get header(): number
+diff --git a/src/core/communication/codec/evawire/EvaWireFormat.ts b/src/core/communication/codec/evawire/EvaWireFormat.ts
+index 1111111..2222222 100644
+--- a/src/core/communication/codec/evawire/EvaWireFormat.ts
++++ b/src/core/communication/codec/evawire/EvaWireFormat.ts
+@@ -67,20 +67,34 @@
+ 
+         const wrappers: IMessageDataWrapper[] = [];
+ 
+-        while(connection.dataBuffer.byteLength)
++        // PixelRP: walk the buffer with an offset and trim what was read once
++        // at the end. Trimming after every packet copied the whole rest of the
++        // buffer each time - a room entry arrives as one message of dozens of
++        // packets, so that was dozens of copies of up to the whole room.
++        const buffer = connection.dataBuffer;
++        const view = new DataView(buffer);
++
++        let offset = 0;
++
++        try
+         {
+-            if(connection.dataBuffer.byteLength < 4) break;
++            while((buffer.byteLength - offset) >= 4)
++            {
++                const length = view.getInt32(offset);
+ 
+-            const container = new BinaryReader(connection.dataBuffer);
+-            const length = container.readInt();
++                if(length > (buffer.byteLength - offset - 4)) break;
+ 
+-            if(length > (connection.dataBuffer.byteLength - 4)) break;
++                const extracted = new BinaryReader(buffer.slice((offset + 4), (offset + 4 + length)));
+ 
+-            const extracted = container.readBytes(length);
++                wrappers.push(new EvaWireDataWrapper(extracted.readShort(), extracted));
+ 
+-            wrappers.push(new EvaWireDataWrapper(extracted.readShort(), extracted));
++                offset += (length + 4);
++            }
++        }
+ 
+-            connection.dataBuffer = connection.dataBuffer.slice(length + 4);
++        finally
++        {
++            if(offset > 0) connection.dataBuffer = buffer.slice(offset);
+         }
+ 
+         return wrappers;
+diff --git a/src/nitro/Nitro.ts b/src/nitro/Nitro.ts
+index 1111111..2222222 100644
+--- a/src/nitro/Nitro.ts
++++ b/src/nitro/Nitro.ts
+@@ -24,9 +24,11 @@
+ settings.SCALE_MODE = (!(window.devicePixelRatio % 1)) ? SCALE_MODES.NEAREST : SCALE_MODES.LINEAR;
+ settings.ROUND_PIXELS = true;
+ // Texture-GC idle threshold is a FRAME count: 120 was ~2s at the old 60fps
+-// cap but only ~0.5s at 240Hz uncapped, churning texture re-uploads. 600
+-// keeps eviction relaxed at any refresh rate (10s @60, 2.5s @240).
+-settings.GC_MAX_IDLE = 600;
++// cap but only ~0.5s at 240Hz uncapped, churning texture re-uploads. 1800 is
++// ~30s at the client's default cap (60-75 frames a second), so walking back
++// through an arrow finds the last room's pictures still on the GPU instead of
++// uploading them all again (600 was ~10s).
++settings.GC_MAX_IDLE = 1800;
+ 
+ export class Nitro implements INitro
+ {
+@@ -93,7 +95,11 @@
+             autoDensity: false,
+             width: window.innerWidth,
+             height: window.innerHeight,
+-            resolution: window.devicePixelRatio,
++            // PixelRP: always 1. The room went through its colour filter, which
++            // draws at 1x whatever this says, so a Retina screen's 2 only made
++            // the canvas four times the pixels for the same picture. The
++            // browser scales the canvas up instead (pixelated - see App.tsx).
++            resolution: 1,
+             view: canvas
+         });
+ 
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -842,12 +842,11 @@
+ 
+     private processPendingFurniture(): void
+     {
+-        if(this._skipFurnitureCreationForNextFrame)
+-        {
+-            this._skipFurnitureCreationForNextFrame = false;
+-
+-            return;
+-        }
++        // PixelRP: a frame that used its 40ms on furniture only ends this
++        // frame's batch - the next frame carries straight on. Sitting the next
++        // frame out as well left a big room (SFPD has 762 furni) filling in at
++        // half speed, and on a slower laptop that was most of the wait.
++        this._skipFurnitureCreationForNextFrame = false;
+ 
+         const startTime = new Date().valueOf();
+         const furniturePerTick = 5;

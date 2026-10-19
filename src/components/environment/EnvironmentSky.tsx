@@ -118,8 +118,8 @@ const SkyLayers: FC<{ look: SkyLook, className?: string }> = ({ look, className 
         <div className="env-sky-horizon" style={ { background: look.horizon } } />
         { look.fog &&
             <>
-                <div className="env-sky-fog is-a" />
-                <div className="env-sky-fog is-b" />
+                <div className="env-sky-fog is-a"><div className="env-sky-fog-band" /></div>
+                <div className="env-sky-fog is-b"><div className="env-sky-fog-band" /></div>
             </> }
         { look.stars && <StarField opacity={ (1 - (look.daylight / .3)) } /> }
         <div className="env-sky-vignette" />

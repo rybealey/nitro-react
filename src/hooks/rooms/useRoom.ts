@@ -44,6 +44,11 @@ const useRoomState = () =>
         roomFilter.red = (r / 255);
         roomFilter.green = (g / 255);
         roomFilter.blue = (b / 255);
+
+        // pixelrp: the filter only does anything while a dimmer tints the
+        // room. Left on at white it drew the whole room into a spare texture
+        // and copied it back every frame for the same picture.
+        roomFilter.enabled = ((r !== 0xFF) || (g !== 0xFF) || (b !== 0xFF));
     }
 
     useUiEvent<RoomWidgetUpdateBackgroundColorPreviewEvent>(RoomWidgetUpdateBackgroundColorPreviewEvent.PREVIEW, event => updateRoomBackgroundColor(event.hue, event.saturation, event.lightness));
@@ -218,12 +223,19 @@ const useRoomState = () =>
         const height = Math.floor(window.innerHeight);
         const renderer = nitroInstance.application.renderer;
 
+        // pixelrp: resolution 1 on every screen - see the renderer's Nitro.ts.
+        // And no resize when nothing changed: setting the canvas size, even to
+        // the same numbers, throws its drawing buffer away on every room entry.
         if(renderer)
         {
             renderer.view.style.width = `${ width }px`;
             renderer.view.style.height = `${ height }px`;
-            renderer.resolution = window.devicePixelRatio;
-            renderer.resize(width, height);
+
+            if((renderer.resolution !== 1) || (renderer.screen.width !== width) || (renderer.screen.height !== height))
+            {
+                renderer.resolution = 1;
+                renderer.resize(width, height);
+            }
         }
 
         const displayObject = roomEngine.getRoomInstanceDisplay(roomId, canvasId, width, height, RoomGeometry.SCALE_ZOOMED_IN);
@@ -240,6 +252,9 @@ const useRoomState = () =>
         background.alpha = 0;
         background.width = width;
         background.height = height;
+
+        // off until a dimmer tints the room (updateRoomFilter)
+        filter.enabled = false;
 
         master.addChildAt(background, 0);
         master.filters = [ filter ];
@@ -298,7 +313,7 @@ const useRoomState = () =>
 
             renderer.view.style.width = `${ width }px`;
             renderer.view.style.height = `${ height }px`;
-            renderer.resolution = window.devicePixelRatio;
+            renderer.resolution = 1;
             renderer.resize(width, height);
 
             background.width = width;
