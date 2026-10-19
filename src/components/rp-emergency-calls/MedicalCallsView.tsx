@@ -146,8 +146,12 @@ export const MedicalCallsView: FC<{}> = props =>
     const timerTotal = Math.max(1, (activeForMe ? totals.revive : totals.claim));
     const timerLow = (secondsLeft <= (activeForMe ? ACTIVE_LOW_SECONDS : OFFER_LOW_SECONDS));
 
+    // No uniqueKey (Twist, 2026-10-19): a call always comes up in the same
+    // place - top right, under the purse row - rather than wherever the last
+    // one was dragged. It can still be dragged out of the way; the next call is
+    // back in its place.
     return (
-        <NitroCardView uniqueKey="medical-calls" className={ `nitro-emergency-calls nitro-medical-calls ${ statusClass }` } theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_RIGHT }>
+        <NitroCardView className={ `nitro-emergency-calls nitro-medical-calls ${ statusClass }` } theme="primary-slim" windowPosition={ DraggableWindowPosition.TOP_RIGHT }>
             <NitroCardHeaderView headerText="Paramedic Dispatch" classNames={ call ? [ 'emergency-titlebar', statusClass ] : [] } onCloseClick={ () => setIsDismissed(true) }>
                 { call && <span className="emergency-titlebar-icon"><CrossIcon size={ 11 } /></span> }
                 { call && !activeForMe && <span className="emergency-titlebar-ago">{ agoText(age) }</span> }
