@@ -1,6 +1,7 @@
 import { NitroLogger } from '@nitrots/nitro-renderer';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { GetLocalStorage, SetLocalStorage } from '../api';
+import { IsAccountPrefKey, OnAccountPrefsLoaded } from '../api/prefs/AccountPrefs';
 
 const useLocalStorageState = <T>(key: string, initialValue: T): [ T, Dispatch<SetStateAction<T>>] =>
 {
@@ -20,6 +21,15 @@ const useLocalStorageState = <T>(key: string, initialValue: T): [ T, Dispatch<Se
             return initialValue;
         }
     });
+
+    // pixelrp: a key the account keeps reads again once the account's copy
+    // has arrived at login (AccountPrefs).
+    useEffect(() =>
+    {
+        if(!IsAccountPrefKey(key)) return;
+
+        return OnAccountPrefsLoaded(() => setStoredValue(GetLocalStorage<T>(key) ?? initialValue));
+    }, [ key ]);
 
     const setValue = (value: T) =>
     {

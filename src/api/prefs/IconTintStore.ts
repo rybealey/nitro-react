@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from './AccountPrefs';
 
 // Settings > UI > Colours > Sidebar Icons: the tint on the left drawer icons.
 // This used to follow the Interface colour; it is now its own setting. Kept on
-// THIS device (like the HUD colours), so it does not follow the account.
+// the account (AccountPrefs), like every setting; RpSettingsView applies it
+// again when the account's copy arrives.
 //
 //   '' (default) = no tint, the icons' own grayscale art
 //   '#rrggbb'    = recolour the icons to this hue (mix-blend-mode: color, so
@@ -20,18 +22,22 @@ const IsHex = (value: unknown): value is string => ((typeof value === 'string') 
 
 let tint = DEFAULT_ICON_TINT;
 
-try
+const load = (): void =>
 {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = ReadPref(KEY);
 
-    if(IsHex(raw)) tint = raw.toLowerCase();
+    tint = (IsHex(raw) ? raw.toLowerCase() : DEFAULT_ICON_TINT);
 }
-catch(e)
-{
-    // storage blocked: the default for this session
-}
+
+load();
 
 const listeners = new Set<() => void>();
+
+OnAccountPrefsLoaded(() =>
+{
+    load();
+    listeners.forEach(listener => listener());
+});
 
 export const GetIconTint = (): string => tint;
 
@@ -43,15 +49,7 @@ export const SetIconTint = (next: string): void =>
 
     tint = value;
 
-    try
-    {
-        if(value) window.localStorage.setItem(KEY, value);
-        else window.localStorage.removeItem(KEY);
-    }
-    catch(e)
-    {
-        // per-session only, then
-    }
+    WritePref(KEY, (value || null));
 
     listeners.forEach(listener => listener());
 }

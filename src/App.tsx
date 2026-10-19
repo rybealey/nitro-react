@@ -37,6 +37,7 @@ import { RegisterRpCalendarMessages } from './api/rp-phone/RpCalendarMessages';
 import { RegisterRpNotesMessages } from './api/rp-phone/RpNotesMessages';
 import { RegisterRpWeatherMessages } from './api/rp-phone/RpWeatherMessages';
 import { RegisterRpGameClockMessages } from './api/environment/GameClock';
+import { RegisterAccountPrefs } from './api/prefs/AccountPrefs';
 import { RegisterRpNewsMessages } from './api/rp-phone/RpNewsMessages';
 import { RegisterRpSupportMessages } from './api/rp-phone/RpSupportMessages';
 import { RegisterRpSitchMessages } from './api/rp-phone/RpSitchMessages';
@@ -238,6 +239,8 @@ export const App: FC<{}> = props =>
                 RegisterRpNotesMessages();
                 RegisterRpWeatherMessages();
                 RegisterRpGameClockMessages();
+                // settings kept on the account, like the macros
+                RegisterAccountPrefs();
                 RegisterRpNewsMessages();
                 RegisterRpSupportMessages();
                 RegisterRpSitchMessages();

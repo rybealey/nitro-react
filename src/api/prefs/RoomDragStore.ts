@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from './AccountPrefs';
 
-// Settings > General: which mouse button drags (pans) the room. Per device like
-// the frame-rate cap - it describes this machine's mouse or trackpad, not the
-// player's account, so it does not follow them to another computer.
+// Settings > General: which mouse button drags (pans) the room. Kept on the
+// account (AccountPrefs), like every setting.
 //
 // It was added when a left press became a walk after 40ms held still, which
 // lost the pan on a MacBook trackpad. That early click is gone (clicks are on
@@ -27,18 +27,22 @@ const DRAG_KEY = 'pixelrp.prefs.room.drag';
 
 let chosen: RoomDragButton = 'left';
 
-try
+const load = (): void =>
 {
-    const raw = window.localStorage.getItem(DRAG_KEY);
+    const raw = ReadPref(DRAG_KEY);
 
-    if(ROOM_DRAG_BUTTONS.includes(raw as RoomDragButton)) chosen = (raw as RoomDragButton);
+    chosen = (ROOM_DRAG_BUTTONS.includes(raw as RoomDragButton) ? (raw as RoomDragButton) : 'left');
 }
-catch(e)
-{
-    // storage blocked: the default for this session
-}
+
+load();
 
 const listeners = new Set<() => void>();
+
+OnAccountPrefsLoaded(() =>
+{
+    load();
+    listeners.forEach(listener => listener());
+});
 
 export const GetRoomDragButton = (): RoomDragButton => chosen;
 
@@ -56,14 +60,7 @@ export const SetRoomDragButton = (button: RoomDragButton): void =>
 
     chosen = button;
 
-    try
-    {
-        window.localStorage.setItem(DRAG_KEY, button);
-    }
-    catch(e)
-    {
-        // per-session only, then
-    }
+    WritePref(DRAG_KEY, button);
 
     listeners.forEach(listener => listener());
 }

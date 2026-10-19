@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from './AccountPrefs';
 
 // Settings > UI > Colours > HUD: how the player HUD at the top left is drawn,
-// and the colours of its three bars. Per device like the frame-rate cap - it
-// is about this screen, not the account.
+// and the colours of its three bars. Kept on the account (AccountPrefs), like
+// every setting.
 //
 //   classic - the bars and name sit on the dark plate (the default)
 //   light   - no plate: the room shows through, and the name, bars and
@@ -31,48 +32,53 @@ let style: HudStyle = 'classic';
 let bars: Record<HudBar, string> = { ...HUD_BAR_DEFAULTS };
 let saved: string[] = [];
 
-try
+const load = (): void =>
 {
-    const raw = JSON.parse(window.localStorage.getItem(HUD_KEY) ?? '{}');
+    style = 'classic';
+    bars = { ...HUD_BAR_DEFAULTS };
+    saved = [];
 
-    if(HUD_STYLES.includes(raw?.style)) style = raw.style;
-
-    for(const bar of Object.keys(HUD_BAR_DEFAULTS) as HudBar[])
+    try
     {
-        if(IsHex(raw?.[bar])) bars[bar] = raw[bar].toLowerCase();
+        const raw = JSON.parse(ReadPref(HUD_KEY) ?? '{}');
+
+        if(HUD_STYLES.includes(raw?.style)) style = raw.style;
+
+        for(const bar of Object.keys(HUD_BAR_DEFAULTS) as HudBar[])
+        {
+            if(IsHex(raw?.[bar])) bars[bar] = raw[bar].toLowerCase();
+        }
+    }
+    catch(e)
+    {
+        // unreadable: the defaults
+    }
+
+    try
+    {
+        const raw = JSON.parse(ReadPref(SAVED_KEY) ?? '[]');
+
+        if(Array.isArray(raw)) saved = raw.filter(IsHex).map(hex => hex.toLowerCase()).slice(0, SAVED_COLOURS_MAX);
+    }
+    catch(e)
+    {
+        // as above
     }
 }
-catch(e)
-{
-    // storage blocked or unreadable: the defaults for this session
-}
 
-try
-{
-    const raw = JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? '[]');
-
-    if(Array.isArray(raw)) saved = raw.filter(IsHex).map(hex => hex.toLowerCase()).slice(0, SAVED_COLOURS_MAX);
-}
-catch(e)
-{
-    // as above
-}
+load();
 
 const listeners = new Set<() => void>();
 
 const notify = (): void => listeners.forEach(listener => listener());
 
-const persist = (key: string, value: unknown): void =>
+OnAccountPrefsLoaded(() =>
 {
-    try
-    {
-        window.localStorage.setItem(key, JSON.stringify(value));
-    }
-    catch(e)
-    {
-        // per-session only, then
-    }
-}
+    load();
+    notify();
+});
+
+const persist = (key: string, value: unknown): void => WritePref(key, JSON.stringify(value));
 
 export const SetHudStyle = (next: HudStyle): void =>
 {

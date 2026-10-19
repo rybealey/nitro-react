@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from './AccountPrefs';
 import { HotelDate } from './HotelTime';
 
-// Phone > Settings > General: how the phone writes times and temperatures.
-// Per device like the other phone preferences. Defaults: 24-hour, Celsius.
+// Settings > General: how times and temperatures are written. Kept on the
+// account (AccountPrefs), like every setting. Defaults: 24-hour, Celsius.
 // The server always sends Fahrenheit and 12-hour labels for the weather;
 // everything is converted here at the point of display.
 
@@ -12,33 +13,24 @@ const UNIT_KEY = 'pixelrp.prefs.celsius';
 let clock24 = true;
 let celsius = true;
 
-try
+const load = (): void =>
 {
-    const rawClock = window.localStorage.getItem(CLOCK_KEY);
-    const rawUnit = window.localStorage.getItem(UNIT_KEY);
+    clock24 = (ReadPref(CLOCK_KEY) !== 'false');
+    celsius = (ReadPref(UNIT_KEY) !== 'false');
+}
 
-    if(rawClock !== null) clock24 = (rawClock !== 'false');
-    if(rawUnit !== null) celsius = (rawUnit !== 'false');
-}
-catch(e)
-{
-    // storage blocked: defaults for this session
-}
+load();
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
 
-const save = (key: string, value: boolean) =>
+OnAccountPrefsLoaded(() =>
 {
-    try
-    {
-        window.localStorage.setItem(key, value ? 'true' : 'false');
-    }
-    catch(e)
-    {
-        // per-session only, then
-    }
-}
+    load();
+    notify();
+});
+
+const save = (key: string, value: boolean) => WritePref(key, value ? 'true' : 'false');
 
 export const SetClock24 = (on: boolean) =>
 {

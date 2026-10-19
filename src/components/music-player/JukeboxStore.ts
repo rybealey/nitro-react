@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from '../../api/prefs/AccountPrefs';
 
 // The state of THIS ROOM's jukebox and this player's listening preferences, shared
 // by the room panel, the phone's Music app and the one audio engine. A plain
@@ -53,20 +54,12 @@ const SONG_VOLUME_KEY = 'pixelrp.song.volume';
 const SONG_MUTED_KEY = 'pixelrp.song.muted';
 const MUSIC_VOLUME_KEY = 'pixelrp.music.volume';
 
-const read = (key: string): string =>
-{
-    try { return localStorage.getItem(key); }
-    catch(e) { return null; }
-}
+// pixelrp: kept on the account (AccountPrefs), like every setting.
+const read = (key: string): string => ReadPref(key);
 
-const write = (key: string, value: string) =>
-{
-    try { localStorage.setItem(key, value); }
-    catch(e) { }
-}
+const write = (key: string, value: string) => WritePref(key, value);
 
-let state: JukeboxState = { present: false, current: null, queue: [] };
-let prefs: JukeboxPrefs = {
+const readPrefs = (): JukeboxPrefs => ({
     roomPaused: (read(ROOM_PAUSED_KEY) === 'true'),
     volume: (() => { const stored = parseInt(read(VOLUME_KEY)); return isNaN(stored) ? 50 : Math.min(100, Math.max(0, stored)); })(),
     muted: (read(MUTED_KEY) === 'true'),
@@ -78,7 +71,10 @@ let prefs: JukeboxPrefs = {
 
         return isNaN(stored) ? 100 : Math.min(100, Math.max(0, stored));
     })()
-};
+});
+
+let state: JukeboxState = { present: false, current: null, queue: [] };
+let prefs: JukeboxPrefs = readPrefs();
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
@@ -139,6 +135,16 @@ export const SetJukeboxPresent = (present: boolean) =>
 // three days ago is a worse guess than the default.
 let lastAudibleVolume = (() => { const stored = parseInt(read(VOLUME_KEY)); return (isNaN(stored) || (stored <= 0)) ? 50 : stored; })();
 let lastAudibleSongVolume = (() => { const stored = parseInt(read(SONG_VOLUME_KEY)); return (isNaN(stored) || (stored <= 0)) ? 50 : stored; })();
+
+OnAccountPrefsLoaded(() =>
+{
+    prefs = readPrefs();
+
+    if(prefs.volume > 0) lastAudibleVolume = prefs.volume;
+    if(prefs.songVolume > 0) lastAudibleSongVolume = prefs.songVolume;
+
+    notify();
+});
 
 export const SetSongVolume = (songVolume: number) =>
 {

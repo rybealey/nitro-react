@@ -1,29 +1,32 @@
 import { useEffect, useState } from 'react';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from '../prefs/AccountPrefs';
 import { WeatherSnapshot } from '../rp-phone/RpWeatherMessages';
 
 // The hotel's weather snapshot (the same one the phone's Weather app shows),
 // held once at the app root so the sky behind rooms and the Settings preview
-// read the same reading; plus the Environment preferences, kept per device
-// like the phone's own preferences.
+// read the same reading; plus the Environment preferences, kept on the account
+// (AccountPrefs) like every setting.
 
 const WEATHER_KEY = 'pixelrp.environment.weather';
 
 let snapshot: WeatherSnapshot = null;
 let weatherOn = true;
 
-try
+const load = (): void =>
 {
-    const raw = window.localStorage.getItem(WEATHER_KEY);
+    weatherOn = (ReadPref(WEATHER_KEY) !== 'false');
+}
 
-    if(raw !== null) weatherOn = (raw !== 'false');
-}
-catch(e)
-{
-    // storage blocked: default on for this session
-}
+load();
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
+
+OnAccountPrefsLoaded(() =>
+{
+    load();
+    notify();
+});
 
 export const SetWeatherSnapshot = (next: WeatherSnapshot) =>
 {
@@ -37,14 +40,7 @@ export const SetEnvironmentWeather = (on: boolean) =>
 {
     weatherOn = on;
 
-    try
-    {
-        window.localStorage.setItem(WEATHER_KEY, on ? 'true' : 'false');
-    }
-    catch(e)
-    {
-        // per-session only, then
-    }
+    WritePref(WEATHER_KEY, on ? 'true' : 'false');
 
     notify();
 }

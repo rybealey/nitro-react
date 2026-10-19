@@ -12,6 +12,7 @@ import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
+import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
 import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
@@ -254,6 +255,15 @@ export const RpSettingsView: FC<{}> = props =>
         ApplyUiChrome(color, opacity, header);
         ApplyIconTint(GetIconTint());
     });
+
+    // Settings are kept on the account (AccountPrefs): when its copy arrives,
+    // the Sidebar Icons tint goes on the icons again and the ping slider,
+    // which holds its own state, reads the account's level.
+    useEffect(() => OnAccountPrefsLoaded(() =>
+    {
+        ApplyIconTint(GetIconTint());
+        setPingVolumeState(GetPingVolume());
+    }), []);
 
     // ---- Macros ----------------------------------------------------------
 

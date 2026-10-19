@@ -1,7 +1,7 @@
 import { FigureUpdateEvent, RoomUnitChatStyleComposer, UserInfoDataParser, UserInfoEvent, UserSettingsEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
-import { GetLocalStorage, GetSessionDataManager, OwnMotto, SendMessageComposer } from '../../api';
+import { GetSessionDataManager, OwnMotto, SendMessageComposer } from '../../api';
 import { useMessageEvent } from '../events';
 import { useLocalStorage } from '../useLocalStorage';
 
@@ -64,22 +64,9 @@ const useSessionInfoState = () =>
 
     useEffect(() =>
     {
-        const currentScreenSize = <{ width: number, height: number }>GetLocalStorage('nitro.screensize');
-
-        if(currentScreenSize && ((currentScreenSize.width !== window.innerWidth) || (currentScreenSize.height !== window.innerHeight)))
-        {
-            let i = window.localStorage.length;
-
-            while(i > 0)
-            {
-                const key = window.localStorage.key(i);
-    
-                if(key && key.startsWith('nitro.window')) window.localStorage.removeItem(key);
-    
-                i--;
-            }
-        }
-
+        // pixelrp: window positions are kept on the account now, so the check
+        // that drops them on a new screen size runs when the account's copy
+        // arrives (AccountPrefs.checkScreen), not against this browser here.
         const onResize = (event: UIEvent) => setScreenSize({ width: window.innerWidth, height: window.innerHeight });
 
         window.addEventListener('resize', onResize);

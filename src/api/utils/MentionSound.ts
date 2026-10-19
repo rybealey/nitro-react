@@ -1,4 +1,5 @@
 import MentionSoundFile from '../../assets/sounds/mention.mp3';
+import { OnAccountPrefsLoaded } from '../prefs/AccountPrefs';
 import { GetLocalStorage } from './GetLocalStorage';
 import { SetLocalStorage } from './SetLocalStorage';
 
@@ -20,15 +21,22 @@ let primed: HTMLAudioElement = null;
 let primedUnlocked = false;
 
 // How loud the ping plays, 0-100 (Settings > General > Sound > Ping sound);
-// 0 is off. Kept on this computer, like the rest of that page's local choices.
+// 0 is off. Kept on the account (AccountPrefs), like every setting.
 const PING_VOLUME_KEY = 'pixelrp.ping-volume';
 
-let pingVolume: number = (() =>
+const readPingVolume = (): number =>
 {
     const saved = GetLocalStorage<number>(PING_VOLUME_KEY);
 
     return ((typeof saved === 'number') && (saved >= 0) && (saved <= 100)) ? saved : 100;
-})();
+}
+
+let pingVolume: number = readPingVolume();
+
+OnAccountPrefsLoaded(() =>
+{
+    pingVolume = readPingVolume();
+});
 
 export const GetPingVolume = (): number => pingVolume;
 

@@ -1,10 +1,10 @@
 import { GetTicker } from '@nitrots/nitro-renderer';
 import { useEffect, useState } from 'react';
 import { GetConfiguration } from '../nitro/GetConfiguration';
+import { OnAccountPrefsLoaded, ReadPref, WritePref } from './AccountPrefs';
 
-// Phone > Settings > General: the frame-rate cap. Per device like the other
-// phone preferences - it describes this machine's screen and graphics card,
-// not the player's account, so it does not follow them to another computer.
+// Settings > General: the frame-rate cap. Kept on the account (AccountPrefs),
+// like every setting.
 //
 // WHAT THE CAP CAN AND CANNOT DO. Pixi drives its ticker from
 // requestAnimationFrame, and the browser never hands out frames faster than
@@ -27,9 +27,11 @@ const clamp = (fps: number): number => Math.min(FPS_MAX, Math.max(FPS_MIN, Math.
 // configured rather than pinning a number the operator did not pick.
 let chosen: number = null;
 
-try
+const load = (): void =>
 {
-    const raw = window.localStorage.getItem(FPS_KEY);
+    chosen = null;
+
+    const raw = ReadPref(FPS_KEY);
 
     if(raw !== null)
     {
@@ -38,10 +40,8 @@ try
         if(Number.isFinite(parsed)) chosen = clamp(parsed);
     }
 }
-catch(e)
-{
-    // storage blocked: the hotel default for this session
-}
+
+load();
 
 const listeners = new Set<() => void>();
 
@@ -79,18 +79,18 @@ export const SetMaxFps = (fps: number): void =>
 {
     chosen = clamp(fps);
 
-    try
-    {
-        window.localStorage.setItem(FPS_KEY, chosen.toString());
-    }
-    catch(e)
-    {
-        // per-session only, then
-    }
+    WritePref(FPS_KEY, chosen.toString());
 
     ApplyMaxFps();
     listeners.forEach(listener => listener());
 }
+
+OnAccountPrefsLoaded(() =>
+{
+    load();
+    ApplyMaxFps();
+    listeners.forEach(listener => listener());
+});
 
 export const useFpsPref = (): { maxFps: number } =>
 {
