@@ -163,7 +163,7 @@
 // The popover itself keeps overflow visible so its arrow still shows; the
 // rounded clip is on .emoji-picker inside it.
 .nitro-chat-emoji-selector-container {
-    width: 402px;
+    width: 352px;
     max-width: none;
     border: 1px solid #101010;
     border-radius: 8px;
@@ -189,15 +189,15 @@
 
     .emoji-picker {
         display: flex;
-        height: 354px;
+        height: 320px;
         border-radius: 7px;
         overflow: hidden;
     }
 
     .emoji-rail {
-        width: 44px;
+        width: 40px;
         flex-shrink: 0;
-        padding: 6px 0;
+        padding: 5px 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -206,8 +206,8 @@
     }
 
     .emoji-rail-item {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         flex-shrink: 0;
         padding: 0;
         display: flex;
@@ -242,8 +242,8 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        height: 30px;
-        margin: 8px 8px 6px;
+        height: 28px;
+        margin: 7px 7px 5px;
         padding: 0 8px;
         border: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 6px;
@@ -283,7 +283,7 @@
         position: sticky;
         top: 0;
         z-index: 1;
-        padding: 6px 10px 4px;
+        padding: 5px 9px 3px;
         background: var(--prp-chrome-solid);
         font-size: 11px;
         font-weight: 700;
@@ -296,17 +296,17 @@
         display: grid;
         grid-template-columns: repeat(8, minmax(0, 1fr));
         gap: 2px;
-        padding: 0 6px 6px;
+        padding: 0 5px 5px;
     }
 
     .emoji-cell {
-        height: 38px;
+        height: 34px;
         padding: 0;
         border: 0;
         border-radius: 6px;
         background: transparent;
-        font-size: 24px;
-        line-height: 38px;
+        font-size: 22px;
+        line-height: 34px;
         text-align: center;
         cursor: pointer;
 
@@ -329,7 +329,7 @@
     }
 
     .emoji-section-empty {
-        padding: 4px 10px 10px;
+        padding: 3px 9px 9px;
         font-size: 12px;
         color: rgba(255, 255, 255, 0.6);
     }
@@ -342,19 +342,19 @@
     }
 
     .emoji-preview {
-        height: 44px;
+        height: 40px;
         flex-shrink: 0;
         box-sizing: border-box;
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 0 12px;
+        gap: 8px;
+        padding: 0 10px;
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(0, 0, 0, 0.18);
     }
 
     .emoji-preview-face {
-        font-size: 26px;
+        font-size: 22px;
         line-height: 1;
     }
 
