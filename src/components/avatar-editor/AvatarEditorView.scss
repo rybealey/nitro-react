@@ -284,8 +284,16 @@
 }
 
 .nitro-avatar-editor {
+    // pixelrp: the starting size, and the smallest - the corner grip
+    // (NitroCardView resizable) writes inline width/height over these and
+    // only grows the window; the clothes and colour grids fill out with more
+    // columns and rows. Capped to the screen like the catalogue.
     width: $avatar-editor-width;
     height: $avatar-editor-height;
+    min-width: $avatar-editor-width;
+    min-height: $avatar-editor-height;
+    max-width: 96vw;
+    max-height: 92vh;
 
     // Chrome tab strip, matching the Settings window (theme selectors beat
     // the stock theme-primary/-slim $secondary tab bar).
@@ -329,9 +337,12 @@
             z-index: 4;
         }
 
+        // pixelrp: measured from the bottom, like the avatar, so the light
+        // stays over it when the window is dragged taller. -80px is where
+        // the old top: -10px put it at the starting size (215px tall).
         .avatar-spotlight {
             position: absolute;
-            top: -10px;
+            bottom: -80px;
             left: 0;
             right: 0;
             margin: 0 auto;
@@ -353,10 +364,12 @@
             z-index: 2;
         }
 
+        // The floor curve: a fixed 54px (the old 75% of the starting size)
+        // so it stays at the avatar's feet in a taller window.
         &:after {
             position: absolute;
             content: '';
-            top: 75%;
+            height: 54px;
             bottom: 0;
             left: 0;
             right: 0;

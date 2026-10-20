@@ -269,7 +269,7 @@ export const AvatarEditorView: FC<{}> = props =>
     if(!isVisible || !figureData) return null;
 
     return (
-        <NitroCardView uniqueKey="avatar-editor" className="nitro-avatar-editor">
+        <NitroCardView resizable uniqueKey="avatar-editor" className="nitro-avatar-editor">
             <NitroCardHeaderView headerText={ LocalizeText('avatareditor.title') } onCloseClick={ event => setIsVisible(false) } />
             <NitroCardTabsView>
                 { categories && (categories.size > 0) && Array.from(categories.keys()).map(category =>
