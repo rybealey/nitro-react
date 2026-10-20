@@ -2,12 +2,13 @@ import { CrackableDataType, GroupInformationComposer, GroupInformationEvent, IRo
 import { FC, RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { Base, Button, Column, Flex, HoverBubble, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
-import { useMessageEvent, useRoom, useSoundEvent } from '../../../../../hooks';
+import { useMessageEvent, useNavigator, useRoom, useSoundEvent } from '../../../../../hooks';
 import { GetRoomSession } from '../../../../../api';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
-import { CanEditBrandingOnDuty, CanUseFurniFunction } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CanEditBrandingOnDuty, CanUseFurniFunction, PIXELRP_ROOM_OWNER } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { TakesPublicRoomFurni } from '../../../../../api/rp-rights/RpRanks';
 import { CatalogLocateStatus, CatalogLocation, LocateCatalogFurniture } from '../../../../../api/rp-catalog/RpCatalogLocateMessages';
 
 interface InfoStandWidgetFurniViewProps
@@ -39,6 +40,10 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
 {
     const { avatarInfo = null, onClose = null } = props;
     const { roomSession = null } = useRoom();
+    const { navigatorData = null } = useNavigator();
+    // A public room is one the PixelRP account owns (the Room Tool's "Set as
+    // public room").
+    const isPublicRoom = (navigatorData?.enteredGuestRoom?.ownerName === PIXELRP_ROOM_OWNER);
     const [ catalogLocation, setCatalogLocation ] = useState<{ info: AvatarInfoFurni; location: CatalogLocation }>(null);
     const buyLocation = catalogLocation?.info === avatarInfo ? catalogLocation.location : null;
 
@@ -265,6 +270,12 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
 
         else if(avatarInfo.isRoomOwner || (avatarInfo.roomControllerLevel >= RoomControllerLevel.GUILD_ADMIN)) pickupMode = PICKUP_MODE_EJECT;
 
+        // pixelrp: in a public room a Builder or above with rights here picks the
+        // piece up into their own inventory - the server hands it over as theirs
+        // (PixelRpRooms.BuilderTakesFurni). Everything in a public room is
+        // PixelRP's, so without this a Builder had no Pick Up button at all.
+        if(isPublicRoom && TakesPublicRoomFurni() && isValidController) pickupMode = PICKUP_MODE_FULL;
+
         if(avatarInfo.isStickie) pickupMode = PICKUP_MODE_NONE;
 
         setPickupMode(pickupMode);
@@ -292,7 +303,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
         setSongId(furniSongId);
         
         if(avatarInfo.groupId) SendMessageComposer(new GroupInformationComposer(avatarInfo.groupId, false));
-    }, [ roomSession, avatarInfo ]);
+    }, [ roomSession, avatarInfo, isPublicRoom ]);
 
     // pixelrp: the coordinates have to keep up with the piece.
     //

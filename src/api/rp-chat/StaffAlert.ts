@@ -1,11 +1,12 @@
 import { RoomSessionChatEvent } from '@nitrots/nitro-renderer';
 import { GetSessionDataManager } from '../nitro/session/GetSessionDataManager';
+import { RP_RANK_BUILDER } from '../rp-rights/RpRanks';
 import { ParseGangAlert } from './GangAlert';
 
 // PixelRP: is this incoming chat line a staff alert (:sa)?
 //
 // StaffAlertCommand whispers "[sender]: message" in bubble 5 to every online
-// rank 5+, addressed to the RECIPIENT's own avatar - the shape of a gang alert.
+// staff member (Builder and up), addressed to the RECIPIENT's own avatar - the shape of a gang alert.
 // But 5 is a style any player can pick, so the bubble alone cannot be the test:
 // this is corporation alert's rule (see CorpAlert.ts) on a different bubble.
 // Only the server sends all of it at once - bubble 5, a whisper, one that names
@@ -19,7 +20,7 @@ export const STAFF_ALERT_BUBBLE_STYLE: number = 5;
 // The rank :sa is sent to, and the rank that sees the Staff tab. The server
 // holds the real line (StaffAlertCommand.MinimumRank); this only decides
 // whether an empty tab is worth showing.
-export const STAFF_ALERT_MIN_RANK: number = 5;
+export const STAFF_ALERT_MIN_RANK: number = RP_RANK_BUILDER;
 
 export const IsStaffAlert = (styleId: number, chatType: number, senderName: string, text: string): boolean =>
 {

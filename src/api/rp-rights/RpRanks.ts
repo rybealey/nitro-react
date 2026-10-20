@@ -15,3 +15,7 @@ export const RP_RANK_DEVELOPER: number = 6;
 // Builder up (Habbo.CanEditShop). The Function tool stays on rp_furni_function
 // (CanUseFurniFunction).
 export const CanEditShop = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
+
+// Furni picked up in a public room (one PixelRP owns) goes into the inventory of
+// a Builder or above, as theirs (emulator PixelRpRooms.BuilderTakesFurni).
+export const TakesPublicRoomFurni = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
