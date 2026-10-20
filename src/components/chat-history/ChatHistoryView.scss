@@ -1,17 +1,20 @@
-// Chat History, light theme. The header keeps the player's header scheme like
-// every other window; everything under it is a pale plate and a near-white
-// page so the chat bubbles - which are light artwork - read as they do in the
-// room. Every text colour here holds 4.5:1 on the surface it sits on.
-$ch-bg: #f6f6f7;
-// The page is see-through (Twist, 2026-10-21), so the room shows behind the
-// history. The price: Chrome only gives text ClearType on an opaque layer, so
-// on Windows the history's text is grey-smoothed, not ClearType-sharp.
-$ch-glass: rgba($ch-bg, 0.8);
-$ch-text: #1c1c20;
-$ch-muted: #5b5f68;
-$ch-divider: #dcdde1;
-$ch-input-border: #c6c9cf;
-$ch-room-bg: #eaecef;
+// Chat History on the HUD's surface (Twist, 2026-10-21): the page behind the
+// messages is the toolbar's and HUD's own see-through colour - the player's
+// scheme at their Settings > UI opacity - so the room shows through it and it
+// changes with them. The header keeps the player's header scheme like every
+// other window; the bubbles, which are light artwork, stay solid. Text here is
+// light on that dark surface. The price of see-through: Chrome only gives text
+// ClearType on an opaque layer, so on Windows the history's text is
+// grey-smoothed, not ClearType-sharp.
+$ch-surface: var(--prp-hud-surface);
+$ch-text: #ffffff;
+$ch-muted: rgba(255, 255, 255, 0.62);
+$ch-divider: rgba(255, 255, 255, 0.1);
+$ch-input-bg: rgba(0, 0, 0, 0.25);
+$ch-input-border: rgba(255, 255, 255, 0.14);
+$ch-input-border-focus: rgba(255, 255, 255, 0.32);
+$ch-room-bg: rgba($light, 0.1);
+$ch-room-hover: rgba($light, 0.17);
 $ch-count: #c95a18;
 $ch-clear: #c9453a;
 
@@ -92,7 +95,7 @@ $ch-clear: #c9453a;
         }
 
         &.is-active {
-            background: $ch-glass;
+            background: $ch-surface;
             color: $ch-text;
         }
     }
@@ -123,7 +126,7 @@ $ch-clear: #c9453a;
         min-height: 0;
         display: flex;
         flex-direction: column;
-        background: $ch-glass;
+        background: $ch-surface;
         font-family: 'Ubuntu', sans-serif;
     }
 
@@ -148,7 +151,7 @@ $ch-clear: #c9453a;
         gap: 6px;
         border-radius: 4px;
         border: 1px solid $ch-input-border;
-        background: #ffffff;
+        background: $ch-input-bg;
         color: $ch-muted;
 
         input {
@@ -167,7 +170,7 @@ $ch-clear: #c9453a;
         }
 
         &:focus-within {
-            border-color: #8f96a0;
+            border-color: $ch-input-border-focus;
         }
     }
 
@@ -178,7 +181,7 @@ $ch-clear: #c9453a;
     }
 
     // Red like the header's close button: it throws lines away.
-    // Jump to the newest line - the search field's white and edge, so it reads
+    // Jump to the newest line - the search field's fill and edge, so it reads
     // as a quiet tool beside the red bin.
     .rp-ch-latest {
         width: 28px;
@@ -187,7 +190,7 @@ $ch-clear: #c9453a;
         padding: 0;
         border-radius: 4px;
         border: 1px solid $ch-input-border;
-        background: #ffffff;
+        background: $ch-input-bg;
         color: $ch-text;
         display: flex;
         align-items: center;
@@ -195,8 +198,8 @@ $ch-clear: #c9453a;
         cursor: pointer;
 
         &:hover {
-            border-color: #8f96a0;
-            background: #f3f4f6;
+            border-color: $ch-input-border-focus;
+            background: rgba(255, 255, 255, 0.08);
         }
     }
 
@@ -269,7 +272,7 @@ $ch-clear: #c9453a;
         cursor: pointer;
 
         &:hover {
-            background: darken($ch-room-bg, 4%);
+            background: $ch-room-hover;
         }
 
         .icon {
@@ -314,9 +317,9 @@ $ch-clear: #c9453a;
 
             // Only the page is see-through, never a bubble. Bubble art leaves
             // gaps inside its box (the space behind the head, around the
-            // decorations) that the solid page used to fill; this plate in
-            // the page's old colour fills them again, so each bubble looks as
-            // it did. Inset and rounded so it never shows past a bubble's edge.
+            // decorations) the room would show through; this plate in the
+            // surface's colour at full strength fills them. Inset and rounded
+            // so it never shows past a bubble's edge.
             &::before {
                 content: '';
                 position: absolute;
@@ -325,7 +328,7 @@ $ch-clear: #c9453a;
                 bottom: 2px;
                 left: 2px;
                 border-radius: 6px;
-                background: $ch-bg;
+                background: var(--prp-chrome-solid);
                 z-index: 0;
             }
         }
@@ -335,7 +338,7 @@ $ch-clear: #c9453a;
         padding: 0 1px;
         border-radius: 2px;
         background: #ffd66b;
-        color: $ch-text;
+        color: #1c1c20;
     }
 
 }

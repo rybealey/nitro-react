@@ -165,6 +165,9 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     const a = (v: number) => Math.min(1, v * f);
 
     style.setProperty('--prp-chrome-95', hsla(h, s, l, a(0.95)));
+    // the same see-through surface, under a name windows never make solid -
+    // for a window part that should look like the HUD (Chat History's page)
+    style.setProperty('--prp-hud-surface', hsla(h, s, l, a(0.95)));
     style.setProperty('--prp-chrome-92', hsla(h, s, l, a(0.92)));
     style.setProperty('--prp-chrome-hi', hsla(h, s, (l + 2.5), a(0.6)));
     style.setProperty('--prp-chrome-lo', hsla(h, s, (l - 4), a(0.6)));
