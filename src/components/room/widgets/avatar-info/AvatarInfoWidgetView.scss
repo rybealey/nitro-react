@@ -68,6 +68,40 @@
             word-break: break-all;
         }
 
+        // pixelrp: a furni's x, y and z and, for staff, its id - two rows of
+        // two, "[icon] : value" on the left and "value : [icon]" on the right.
+        // Rows are the icon's height and 4px apart (the Column's gap-1), with
+        // 4px between icon and colon, as in the reference Twist picked.
+        .infostand-position {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 16px;
+        }
+
+        .infostand-position-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+
+            > .text-white {
+                line-height: 16px;
+            }
+        }
+
+        .infostand-position-icon {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+
+            &.is-x { background-image: url('@/assets/images/infostand/position-x.png'); }
+            &.is-y { background-image: url('@/assets/images/infostand/position-y.png'); }
+            &.is-z { background-image: url('@/assets/images/infostand/position-z.png'); }
+            &.is-id { background-image: url('@/assets/images/infostand/furni-id.png'); }
+        }
+
         // staff verified badge - sits beside the name, never underlined
         .infostand-verified {
             color: #ffffff;

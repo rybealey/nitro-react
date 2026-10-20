@@ -29,13 +29,16 @@ export const CHROME_SCHEMES: ChromeScheme[] = [
 
 export const DEFAULT_CHROME_COLOR: string = CHROME_SCHEMES[0].color;
 
-// Five opacity stops for the chrome surfaces; 95 = the original look. The
-// stored value is the SURFACE alpha in percent — every derived alpha (HUD
-// chips, bevels, hover) scales by the same factor so the bevel language
-// keeps its contrast at any opacity. The emulator's default for a player with
-// no saved settings matches DEFAULT_CHROME_OPACITY (Habbo.RpUiChromeOpacity).
-export const CHROME_OPACITY_STEPS: number[] = [ 55, 65, 75, 85, 95 ];
-export const DEFAULT_CHROME_OPACITY: number = 95;
+// Chrome surface opacity, any whole percent from 0 to 100; 95 = the original
+// look. The stored value is the SURFACE alpha in percent — every derived alpha
+// (HUD chips, bevels, hover) scales by the same factor so the bevel language
+// keeps its contrast at any opacity. The default is 90 (Twist, 2026-10-20),
+// and the :root fallbacks in _chrome.scss are drawn at it. The emulator's
+// default for a player with no saved settings matches DEFAULT_CHROME_OPACITY
+// (Habbo.RpUiChromeOpacity), and it clamps saves to the same 0-100.
+export const DEFAULT_CHROME_OPACITY: number = 90;
+
+export const ClampChromeOpacity = (value: number): number => (Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : DEFAULT_CHROME_OPACITY);
 
 // Window header colours, from the CMS pixel design system ramps. Window title
 // bars are one flat colour (`face`, with a light `hi` line along the top -
@@ -158,7 +161,7 @@ export const ApplyUiChrome = (color: string, opacity: number = DEFAULT_CHROME_OP
     const { h, s, l } = hexToHsl(base);
     const style = document.documentElement.style;
     // scale every derived alpha by the chosen surface opacity (95 = stock)
-    const f = (Math.min(100, Math.max(40, opacity)) / 95);
+    const f = (ClampChromeOpacity(opacity) / 95);
     const a = (v: number) => Math.min(1, v * f);
 
     style.setProperty('--prp-chrome-95', hsla(h, s, l, a(0.95)));

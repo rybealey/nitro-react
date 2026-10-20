@@ -1,7 +1,7 @@
 import { CrackableDataType, GroupInformationComposer, GroupInformationEvent, IRoomObjectController, NowPlayingEvent, RoomControllerLevel, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable, RoomObjectWidgetRequestEvent, RoomWidgetEnumItemExtradataParameter, RoomWidgetFurniInfoUsagePolicyEnum, SetObjectDataMessageComposer, SongInfoReceivedEvent, StringDataType } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
-import { Base, Button, Column, Flex, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
+import { Base, Button, Column, Flex, HoverBubble, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
 import { useMessageEvent, useRoom, useSoundEvent } from '../../../../../hooks';
 import { GetRoomSession } from '../../../../../api';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
@@ -92,6 +92,10 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     // payload, which carries neither.
     const [ className, setClassName ] = useState<string>('');
     const [ location, setLocation ] = useState<{ x: number; y: number; z: number }>(null);
+    // The two position rows, which the bubbles of their right-hand readings
+    // (Z, the furni id) are placed against.
+    const topPositionRowRef = useRef<HTMLDivElement>(null);
+    const bottomPositionRowRef = useRef<HTMLDivElement>(null);
     const [ isJukeBox, setIsJukeBox ] = useState<boolean>(false);
     const [ isSongDisk, setIsSongDisk ] = useState<boolean>(false);
     const [ songId, setSongId ] = useState<number>(-1);
@@ -511,6 +515,19 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
 
     if(!avatarInfo) return null;
 
+    // One reading, named in a bubble just left of the panel. On the left of
+    // its row it is "[icon] : value"; on the right (row given) it is
+    // "value : [icon]", its bubble taken from the row so it lines up with the
+    // left-hand one.
+    const positionItem = (icon: string, caption: string, value: string, row?: RefObject<HTMLDivElement>) =>
+        <HoverBubble text={ `${ caption }: ${ value }` } placement="left" offset={ [ 0, 8 ] } anchor={ row }>
+            <div className="infostand-position-item">
+                { row
+                    ? <><Text variant="white" small>{ value } :</Text><i className={ `infostand-position-icon is-${ icon }` } /></>
+                    : <><i className={ `infostand-position-icon is-${ icon }` } /><Text variant="white" small>: { value }</Text></> }
+            </div>
+        </HoverBubble>;
+
     return (
         <Column gap={ 1 } alignItems="end">
             <Column className="nitro-infostand rounded">
@@ -543,13 +560,25 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                          time. The description is the catalog's sales line -
                          "Stack them high!" - which says nothing about the piece
                          in front of you; x, y and z say exactly where it is,
-                         which is what you open an infostand on a build for. */ }
+                         which is what you open an infostand on a build for.
+                         An icon per axis, its name in the hover bubble. The
+                         bubble stands off by the panel's 8px padding, so its
+                         arrow meets the panel's edge rather than the icon.
+                         Two by two (Twist): X and Y on the left, Z and - for
+                         staff who can see it - the furni id on the right,
+                         written "value : [icon]" as in the reference he
+                         picked. */ }
                     { !!location &&
-                        <Column gap={ 0 }>
-                            <Text variant="white" small>X: { location.x }</Text>
-                            <Text variant="white" small>Y: { location.y }</Text>
-                            <Text variant="white" small>Z: { location.z.toFixed(2) }</Text>
-                            <hr className="m-0 mt-1" />
+                        <Column gap={ 1 }>
+                            <div ref={ topPositionRowRef } className="infostand-position">
+                                { positionItem('x', 'Position X', location.x.toString()) }
+                                { positionItem('z', 'Position Z', location.z.toFixed(2), topPositionRowRef) }
+                            </div>
+                            <div ref={ bottomPositionRowRef } className="infostand-position">
+                                { positionItem('y', 'Position Y', location.y.toString()) }
+                                { canSeeFurniId && positionItem('id', 'Furni ID', avatarInfo.id.toString(), bottomPositionRowRef) }
+                            </div>
+                            <hr className="m-0" />
                         </Column> }
                     <Column gap={ 1 }>
                         <Flex alignItems="center" gap={ 1 }>
@@ -603,8 +632,6 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                             </> }
                         { godMode &&
                             <>
-                                <hr className="m-0" />
-                                { canSeeFurniId && <Text small wrap variant="white">ID: { avatarInfo.id }</Text> }
                                 { (furniKeys.length > 0) &&
                                     <>
                                         <hr className="m-0"/>

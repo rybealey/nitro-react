@@ -7,7 +7,7 @@ import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardH
 import { useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
 import { SetMusicVolume, useJukeboxPrefs } from '../music-player/JukeboxStore';
 import { GetSelectableChatStyleIds } from './ChatStyles';
-import { ApplyIconTint, ApplyUiChrome, CHROME_OPACITY_STEPS, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HeaderColor, HeaderKeyForColor, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
+import { ApplyIconTint, ApplyUiChrome, ClampChromeOpacity, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HeaderColor, HeaderKeyForColor, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
@@ -232,15 +232,12 @@ export const RpSettingsView: FC<{}> = props =>
         return () => clearTimeout(timeout);
     }, [ discordPending ]);
 
-    // Snap any stored value onto the nearest of the five slider stops.
-    const snapOpacity = (value: number) => CHROME_OPACITY_STEPS.reduce((prev, curr) => ((Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev));
-
     // Persisted UI settings arrive from the server at login; apply and track.
     useMessageEvent<RpUiSettingsEvent>(RpUiSettingsEvent, event =>
     {
         const parser = event.getParser();
         const color = (IsValidChromeColor(parser.chromeColor) ? parser.chromeColor : DEFAULT_CHROME_COLOR);
-        const opacity = snapOpacity(parser.chromeOpacity);
+        const opacity = ClampChromeOpacity(parser.chromeOpacity);
         const header = (IsValidHeaderKey(parser.headerColor) ? parser.headerColor : DEFAULT_HEADER_KEY);
         const uname = (IsValidUsernameColor(parser.usernameColor) ? parser.usernameColor : DEFAULT_USERNAME_COLOR);
         const uicon = (IsValidUsernameIcon(parser.icon) ? parser.icon : DEFAULT_USERNAME_ICON);
@@ -1016,13 +1013,15 @@ export const RpSettingsView: FC<{}> = props =>
         saveSettings(color, chromeOpacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
     }
 
-    const selectOpacity = (index: number) =>
+    // Any percent 0-100: applied live as the slider moves, saved once it has
+    // been still for a moment (like the colour picker).
+    const selectOpacity = (value: number) =>
     {
-        const opacity = (CHROME_OPACITY_STEPS[index] ?? DEFAULT_CHROME_OPACITY);
+        const opacity = ClampChromeOpacity(value);
 
         setChromeOpacity(opacity);
         ApplyUiChrome(chromeColor, opacity, headerKey);
-        saveSettings(chromeColor, opacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
+        queueUiSave(chromeColor, headerKey, opacity);
     }
 
     const selectHeader = (key: string) =>
@@ -1032,12 +1031,12 @@ export const RpSettingsView: FC<{}> = props =>
         saveSettings(chromeColor, chromeOpacity, key, usernameColor, usernameIcon, usernameIconColor);
     }
 
-    // UI > Colours: the picker's live colours. Applied at once; saved once
-    // the picker has been still for a moment.
-    const queueUiSave = (color: string, header: string) =>
+    // UI > Colours: the picker's live colours and the opacity slider. Applied
+    // at once; saved once the picker or slider has been still for a moment.
+    const queueUiSave = (color: string, header: string, opacity: number = chromeOpacity) =>
     {
         clearTimeout(uiSaveTimer.current);
-        uiSaveTimer.current = setTimeout(() => saveSettings(color, chromeOpacity, header, usernameColor, usernameIcon, usernameIconColor), 500);
+        uiSaveTimer.current = setTimeout(() => saveSettings(color, opacity, header, usernameColor, usernameIcon, usernameIconColor), 500);
     }
 
     const pickHeaderColour = (colour: string) =>
@@ -1200,8 +1199,8 @@ export const RpSettingsView: FC<{}> = props =>
                                             { renderColourRow('icons') }
                                             <div className="rp-settings-row">
                                                 <label htmlFor="rp-settings-opacity" className="rp-settings-row-label is-opacity">Opacity</label>
-                                                <input id="rp-settings-opacity" type="range" min={ 0 } max={ CHROME_OPACITY_STEPS.length - 1 } step={ 1 }
-                                                    value={ CHROME_OPACITY_STEPS.indexOf(chromeOpacity) }
+                                                <input id="rp-settings-opacity" type="range" min={ 0 } max={ 100 } step={ 1 }
+                                                    value={ chromeOpacity }
                                                     onChange={ event => selectOpacity(parseInt(event.target.value)) } />
                                                 <span className="rp-settings-row-value">{ chromeOpacity }%</span>
                                             </div>
