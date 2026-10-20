@@ -19,11 +19,11 @@
 // Bold leaves barely a pixel between its letters, and the grey edge smoothing
 // (the only kind text over the room canvas gets) closed that up, so a shout
 // read as run together. Medium was tried first and was not bold enough.
-// 13.5px, the bubble's own size, like every chat text (Twist, 2026-10-21; it
-// was 13.25 from 2026-10-18); names use this too.
+// 13.35px, the bubble's own size, like every chat text (Twist, 2026-10-21; it
+// was 13.25 from 2026-10-18, then 13.5); names use this too.
 @mixin chat-bold {
     font-weight: 700;
-    font-size: 13.5px;
+    font-size: 13.35px;
     letter-spacing: 0.25px;
 }
 
@@ -80,10 +80,10 @@
         word-break: break-word;
         max-width: 350px;
         min-height: 26px;
-        // 13.5px (Twist, 2026-10-18): half a pixel up from 13 for normal and
-        // bold chat alike. Small letters still land on 7 rows; the extra
-        // half pixel goes to the widths and the gaps between letters.
-        font-size: 13.5px;
+        // 13.35px (Twist, 2026-10-21; 13.5 from 2026-10-18, 13 before) for
+        // normal and bold chat alike. Small letters still land on 7 rows; the
+        // extra over 13 goes to the widths and the gaps between letters.
+        font-size: 13.35px;
 
         border-image-slice: 17 6 6 29 fill;
         border-image-width: 17px 6px 6px 29px;
@@ -104,9 +104,9 @@
             // normal
             .message {
                 font-weight: 400;
-                // the bubble's 13.5px, the same as names and shouts
-                // (chat-bold) - all chat text is 13.5 (Twist, 2026-10-21)
-                font-size: 13.5px;
+                // the bubble's 13.35px, the same as names and shouts
+                // (chat-bold) - all chat text is 13.35 (Twist, 2026-10-21)
+                font-size: 13.35px;
             }
         }
 
@@ -116,8 +116,8 @@
                 font-weight: 400;
                 font-style: italic;
                 color: #595959;
-                // the bubble's 13.5px like normal chat (Twist, 2026-10-21)
-                font-size: 13.5px;
+                // the bubble's 13.35px like normal chat (Twist, 2026-10-21)
+                font-size: 13.35px;
             }
         }
 
