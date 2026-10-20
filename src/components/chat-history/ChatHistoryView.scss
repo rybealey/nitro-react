@@ -3,6 +3,10 @@
 // page so the chat bubbles - which are light artwork - read as they do in the
 // room. Every text colour here holds 4.5:1 on the surface it sits on.
 $ch-bg: #f6f6f7;
+// The page is see-through (Twist, 2026-10-21), so the room shows behind the
+// history. The price: Chrome only gives text ClearType on an opaque layer, so
+// on Windows the history's text is grey-smoothed, not ClearType-sharp.
+$ch-glass: rgba($ch-bg, 0.8);
 $ch-text: #1c1c20;
 $ch-muted: #5b5f68;
 $ch-divider: #dcdde1;
@@ -88,7 +92,7 @@ $ch-clear: #c9453a;
         }
 
         &.is-active {
-            background: $ch-bg;
+            background: $ch-glass;
             color: $ch-text;
         }
     }
@@ -119,7 +123,7 @@ $ch-clear: #c9453a;
         min-height: 0;
         display: flex;
         flex-direction: column;
-        background: $ch-bg;
+        background: $ch-glass;
         font-family: 'Ubuntu', sans-serif;
     }
 
@@ -222,13 +226,12 @@ $ch-clear: #c9453a;
         display: flex;
         flex-direction: column;
         padding: 2px 0 4px;
-        background: $ch-bg;
+        // The see-through page comes from .rp-ch-body; painting it again here
+        // or on the scroller (InfiniteScroll's root) would stack the two and
+        // make the list nearly solid.
+        background: transparent;
 
-        // The scroller itself (InfiniteScroll's root) is painted solid too.
-        // Chrome draws a scroll box on a layer of its own, and on Windows only
-        // gives its text ClearType when that layer is opaque - with the colour
-        // left to the box around it, every message in the history went soft.
-        > * { background: $ch-bg; }
+        > * { background: transparent; }
     }
 
     .rp-ch-empty {
@@ -308,6 +311,23 @@ $ch-clear: #c9453a;
         .bubble-container {
             min-width: 0;
             flex: 0 1 auto;
+
+            // Only the page is see-through, never a bubble. Bubble art leaves
+            // gaps inside its box (the space behind the head, around the
+            // decorations) that the solid page used to fill; this plate in
+            // the page's old colour fills them again, so each bubble looks as
+            // it did. Inset and rounded so it never shows past a bubble's edge.
+            &::before {
+                content: '';
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                bottom: 2px;
+                left: 2px;
+                border-radius: 6px;
+                background: $ch-bg;
+                z-index: 0;
+            }
         }
     }
 
