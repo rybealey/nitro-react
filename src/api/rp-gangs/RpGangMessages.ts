@@ -28,7 +28,8 @@ const RP_GANG_TRANSFER_OWNERSHIP = 4060;
 
 // One player's gang membership, keyed by user id; gangId 0 = not in a gang.
 // Colours arrive as '#rrggbb'. gangCost (credits) rides along so the Gang
-// window prices Create without a second packet.
+// window prices Create without a second packet. roleName - the member's role,
+// for the profile's gang card - comes last, and only from a server that sends it.
 export class RpUserGangParser implements IMessageParser
 {
     private _userId: number;
@@ -38,6 +39,7 @@ export class RpUserGangParser implements IMessageParser
     private _colourB: string;
     private _isOwner: boolean;
     private _gangCost: number;
+    private _roleName: string;
 
     public flush(): boolean
     {
@@ -48,6 +50,7 @@ export class RpUserGangParser implements IMessageParser
         this._colourB = '';
         this._isOwner = false;
         this._gangCost = 0;
+        this._roleName = '';
 
         return true;
     }
@@ -64,6 +67,8 @@ export class RpUserGangParser implements IMessageParser
         this._isOwner = (wrapper.readInt() === 1);
         this._gangCost = wrapper.readInt();
 
+        if(wrapper.bytesAvailable) this._roleName = wrapper.readString();
+
         return true;
     }
 
@@ -74,6 +79,7 @@ export class RpUserGangParser implements IMessageParser
     public get colourB(): string { return this._colourB; }
     public get isOwner(): boolean { return this._isOwner; }
     public get gangCost(): number { return this._gangCost; }
+    public get roleName(): string { return this._roleName; }
 }
 
 export class RpUserGangEvent extends MessageEvent implements IMessageEvent

@@ -9,6 +9,9 @@ export interface RpGang
     colourA: string;
     colourB: string;
     isOwner: boolean;
+    // the member's role ("Member", or what the owner named it); '' before a
+    // server that sends it
+    roleName?: string;
 }
 
 const gangs: Map<number, RpGang> = new Map();

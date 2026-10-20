@@ -209,7 +209,7 @@ export const PhoneWalletView: FC<PhoneWalletViewProps> = props =>
     {
         const parser = event.getParser();
 
-        SetRpGang(parser.userId, { gangId: parser.gangId, name: parser.name, colourA: parser.colourA, colourB: parser.colourB, isOwner: parser.isOwner });
+        SetRpGang(parser.userId, { gangId: parser.gangId, name: parser.name, colourA: parser.colourA, colourB: parser.colourB, isOwner: parser.isOwner, roleName: parser.roleName });
         setVersion(value => (value + 1));
     });
 

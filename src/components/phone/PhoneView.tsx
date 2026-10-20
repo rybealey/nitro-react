@@ -477,6 +477,11 @@ export const PhoneView: FC<{}> = props =>
                     case 'news':
                         show('news');
                         return;
+                    // the profile window's @ button: Sitch, on the profile
+                    // waiting in SitchOpenProfile
+                    case 'sitch':
+                        show('sitch');
+                        return;
                     // The bank, reachable from anywhere that needs to send
                     // somebody there - Messages does, when a player tries to
                     // pay somebody without an account of their own.

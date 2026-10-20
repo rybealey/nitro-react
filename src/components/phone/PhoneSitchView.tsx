@@ -1,6 +1,7 @@
 import { cloneElement, FC, useEffect, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, RpSitchTrendingEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchSuppressTag, SendSitchThread, SendSitchTrending, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt, SitchSongUrl, SitchTalkedAbout, SitchTrend } from '../../api/rp-phone/RpSitchMessages';
+import { SubscribeSitchProfile, TakeSitchProfile } from '../../api/rp-phone/SitchOpenProfile';
 import { useMessageEvent } from '../../hooks';
 import { PhoneFace } from './PhoneAvatar';
 import { PhoneIcon } from './PhoneIcon';
@@ -244,6 +245,23 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         setThread(null);
         setTab('profile');
     }
+
+    // A profile asked for from outside the phone (the profile window's @):
+    // taken on opening, or the moment it is asked while Sitch is showing.
+    useEffect(() =>
+    {
+        const take = () =>
+        {
+            const userId = TakeSitchProfile();
+
+            if(userId > 0) openProfile(userId);
+        }
+
+        take();
+
+        return SubscribeSitchProfile(take);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const openTag = (tag: string) =>
     {
