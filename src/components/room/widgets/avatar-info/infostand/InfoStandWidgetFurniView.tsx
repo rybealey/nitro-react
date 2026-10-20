@@ -7,7 +7,7 @@ import { GetRoomSession } from '../../../../../api';
 import { FurniSettingScrubberInput } from './FurniSettingScrubberInput';
 import { InfoStandWidgetFurniFunctionView } from './InfoStandWidgetFurniFunctionView';
 import { InfoStandWidgetFurniToolsView } from './InfoStandWidgetFurniToolsView';
-import { CanEditBrandingOnDuty, CanUseFurniFunction, IsRpStaffOnDuty } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CanEditBrandingOnDuty, CanUseFurniFunction } from '../../../../../api/rp-rights/RpRoomRightsMessages';
 import { CatalogLocateStatus, CatalogLocation, LocateCatalogFurniture } from '../../../../../api/rp-catalog/RpCatalogLocateMessages';
 
 interface InfoStandWidgetFurniViewProps
@@ -66,16 +66,13 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     // Cosmetic only - the server checks the rp_furni_function permission on
     // both packets, so hiding the button is a courtesy, never the gate.
     //
-    // It follows the shift with the rest of the build tools. The Function tool
-    // edits a furni DEFINITION hotel-wide rather than anything in this room,
-    // so it is not a room right - but it is still a build power, and a staff
-    // member who is not clocked in has no business reaching it by mis-click.
     // The Function tool's own two packets check the `rp_furni_function` command
     // permission, so that is what gates the button. Rank was standing in for it
     // and is a different question - a rank can be high and hold no such row,
-    // and the button then opened a panel the server refused. Duty still applies
-    // on top: the permission is the licence, the shift is when it answers.
-    const isStaff = CanUseFurniFunction() && IsRpStaffOnDuty();
+    // and the button then opened a panel the server refused. It answers on or
+    // off duty, from Builder up (Twist, 2026-10-21: "no limits", emulator
+    // migration 288) - the server never asked about the shift.
+    const canFunction = CanUseFurniFunction();
     const [ furniKeys, setFurniKeys ] = useState<string[]>([]);
     const [ furniValues, setFurniValues ] = useState<string[]>([]);
     const [ customKeys, setCustomKeys ] = useState<string[]>([]);
@@ -693,7 +690,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                     <Button variant="dark" active={ showTools } onClick={ () => setShowTools(value => !value) }>
                         { LocalizeText('infostand.button.tools') }
                     </Button> }
-                { isStaff &&
+                { canFunction &&
                     <Button variant="dark" active={ showFunction } onClick={ () => setShowFunction(value => !value) }>
                         { LocalizeText('infostand.button.function') }
                     </Button> }

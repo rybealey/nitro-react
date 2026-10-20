@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { IPurchasableOffer, Offer, SearchOffer } from '../../../../../api';
 import { AddFurniFunctionListener, SendRpCatalogRenameFurni } from '../../../../../api/rp-furni/RpFurniMessages';
-import { CanUseFurniFunction } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CanEditShop } from '../../../../../api/rp-rights/RpRanks';
 import { Base, Flex, Text } from '../../../../../common';
 import { useCatalog } from '../../../../../hooks';
 
@@ -27,10 +27,11 @@ const RenameOffer = (offer: IPurchasableOffer, name: string) =>
  * room you are standing in - so tidying up a catalogue page meant buying the
  * piece first. This is the same edit made where the name is actually wrong.
  *
- * Gated on the same rp_furni_function permission the Function tool uses, which
- * is rank 5 and up. The gate is a courtesy: RpCatalogRenameFurniEvent checks it
- * again, and resolves the offer through the catalog rather than trusting the
- * id, so a crafted packet reaches nothing a staff member could not.
+ * Open from Builder up (CanEditShop), not on the Function tool's
+ * rp_furni_function. The gate is a courtesy: RpCatalogRenameFurniEvent checks
+ * it again, and resolves the offer through the catalog rather than trusting the
+ * id - below staff only on shelves that rank can buy from - so a crafted packet
+ * reaches nothing its sender could not see.
  *
  * The rename lands hotel-wide, so the typed name is only shown while the
  * server is asked: its broadcast of the renamed furni (RpFurniFunctionComposer,
@@ -91,7 +92,7 @@ export const CatalogEditableNameView: FC<{}> = props =>
 
     if(!currentOffer) return null;
 
-    const canRename = CanUseFurniFunction();
+    const canRename = CanEditShop();
     const shownName = ((pending.current?.offer.offerId === currentOffer.offerId) ? pending.current.name : currentOffer.localizationName);
 
     const begin = () =>

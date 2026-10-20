@@ -8,6 +8,7 @@ import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useNotification } from '../../notification';
 import { useObjectSelectedEvent } from '../engine';
 import { useRoom } from '../useRoom';
+import { RP_RANK_BUILDER } from '../../../api/rp-rights/RpRanks';
 import { HasAnyRoomRights, IsRoomOwnerNow } from '../../../api/rp-rights/RpRoomRightsMessages';
 
 // Every system whisper the client raises locally uses this bubble, matching
@@ -254,8 +255,19 @@ const useChatInputWidgetState = () =>
                     return null;
                 case ':floor':
                 case ':bcfloor':
-                    if(roomSession.controllerLevel >= RoomControllerLevel.ROOM_OWNER) CreateLinkEvent('floor-editor/show');
-                    
+                    if(roomSession.controllerLevel >= RoomControllerLevel.ROOM_OWNER)
+                    {
+                        CreateLinkEvent('floor-editor/show');
+
+                        return null;
+                    }
+
+                    // pixelrp: in a room they do not own, Builder and up send
+                    // :floor on to the server's own command (FloorCommand,
+                    // command_floorplan), which opens the editor in any room.
+                    // Caught here it never left the client.
+                    if((firstPart.toLowerCase() === ':floor') && (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER)) return text;
+
                     return null;
                 case ':togglefps': {
                     // Toggle uncapped (0) <-> the cap in force. The old code

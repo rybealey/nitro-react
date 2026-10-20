@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { FaCaretDown, FaCaretRight, FaTimes } from 'react-icons/fa';
 import { CatalogType, ICatalogNode, NotificationBubbleType, SendMessageComposer } from '../../../../../api';
 import { MoveCatalogFurni } from '../../../../../api/rp-catalog/RpCatalogMoveMessages';
-import { CanUseFurniFunction } from '../../../../../api/rp-rights/RpRoomRightsMessages';
+import { CanEditShop } from '../../../../../api/rp-rights/RpRanks';
 import { useCatalog, useNotification } from '../../../../../hooks';
 import { CatalogIconView } from '../../catalog-icon/CatalogIconView';
 
@@ -32,7 +32,7 @@ const tabOf = (node: ICatalogNode, rootNode: ICatalogNode): ICatalogNode =>
  * Move opens the shop's own categories straight away, tab by tab, and the
  * category clicked is where the listing goes - no second step. The picker
  * stays open until the server answers, so a refused move says why where the
- * choice was made. Same permission as the shop rename (rp_furni_function).
+ * choice was made. Same gate as the shop rename (CanEditShop, Builder up).
  *
  * Kept out of useCatalog on purpose: that hook is shared through use-between,
  * which runs its effects inside every setter, and state added there has broken
@@ -53,7 +53,7 @@ export const CatalogMoveFurniView: FC<{}> = props =>
     const cancelRef = useRef<() => void>(null);
 
     const sourcePageId = (currentOffer?.page?.pageId ?? -1);
-    const canMove = (CanUseFurniFunction() && !!currentOffer && (sourcePageId > 0) && (currentType === CatalogType.NORMAL) &&
+    const canMove = (CanEditShop() && !!currentOffer && (sourcePageId > 0) && (currentType === CatalogType.NORMAL) &&
         (FURNI_LAYOUTS.indexOf(currentOffer.page.layoutCode) >= 0));
 
     const tabs = useMemo(() => visibleChildren(rootNode), [ rootNode ]);

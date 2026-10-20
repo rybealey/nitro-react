@@ -23,8 +23,8 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
     // Mod Tools from Trial Moderator up, below the isModerator line: every rank
     // from 3 holds the mod_tool right the tool's packets check
     const canModTools = (GetSessionDataManager().securityLevel >= RP_RANK_TRIAL_MODERATOR);
-    // Furni Shop and Inventory from Builder up - Builders build. The server opens
-    // the shop's packets at the same rank (BuilderOnly)
+    // Navigator, Furni Shop and Inventory from Builder up - Builders build. The
+    // server opens the shop's and the navigator's packets at the same rank (BuilderOnly)
     const canBuild = (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
     const showCamera = (isInRoom && (isMod || HasHabboVip()));
     // an open menu with nothing in it would leave a gap beside the emblem
@@ -94,7 +94,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                     <Flex alignItems="center" className={ 'toolbar-menu-items' + ((isMenuExpanded && hasMenuItems) ? ' expanded' : '') }>
                         <div className="toolbar-groove" />
                         <Flex alignItems="center" gap={ 2 }>
-                            { isMod &&
+                            { canBuild &&
                                 <HoverBubble text="Navigator">
                                     <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('navigator/toggle') }>
                                         <div className="icon icon-rooms" />
