@@ -11,7 +11,7 @@ const MODE_UPDATE: number = 1;
 const MODE_PEER: number = 2;
 const MODE_WRONG_GENDER: number = 4;
 
-// pixelrp: every staff rank, Trial Moderator (2) and up, may dress any
+// pixelrp: every staff rank, Builder (2) and up, may dress any
 // mannequin, on duty or off - the server's Room.MannequinStaffRank.
 const MANNEQUIN_STAFF_RANK: number = 2;
 
