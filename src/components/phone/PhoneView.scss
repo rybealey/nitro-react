@@ -8454,9 +8454,11 @@ $camera-bar-height: 84px;
         align-items: center;
         gap: 4px;
 
-        // Bare sprite head, scaled a touch smaller for the People row.
+        // Bare sprite head, scaled a touch smaller for the People row: 1.25,
+        // one screen pixel per sprite pixel under the shell's 0.8 zoom (and
+        // two on a 2x display), so it stays sharp - 1.3 was a ragged 1.04.
         .phone-avatar--unmasked .phone-avatar-crop .avatar-image {
-            transform: scale(1.3);
+            transform: scale(1.25);
         }
     }
 
@@ -9814,6 +9816,9 @@ $camera-bar-height: 84px;
             background-position: center top;
             transform: scale(0.82);
             transform-origin: center top;
+            // drawn smaller than its pixels (0.82 under the shell's 0.8
+            // zoom): smooth, not nearest-neighbour, which leaves it ragged
+            image-rendering: auto;
         }
     }
 
