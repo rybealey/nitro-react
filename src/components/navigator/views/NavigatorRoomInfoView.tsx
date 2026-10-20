@@ -1,4 +1,4 @@
-import { GetCustomRoomFilterMessageComposer, NavigatorSearchComposer, RoomMuteComposer, SecurityLevel, ToggleStaffPickMessageComposer, UpdateHomeRoomMessageComposer } from '@nitrots/nitro-renderer';
+import { GetCustomRoomFilterMessageComposer, NavigatorSearchComposer, RoomMuteComposer, ToggleStaffPickMessageComposer, UpdateHomeRoomMessageComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { FaLink } from 'react-icons/fa';
 import { CreateLinkEvent, DispatchUiEvent, GetGroupInformation, GetSessionDataManager, LocalizeText, ReportType, SendMessageComposer } from '../../../api';
@@ -6,6 +6,7 @@ import { Button, classNames, Column, Flex, LayoutBadgeImageView, LayoutRoomThumb
 import { RoomWidgetThumbnailEvent } from '../../../events';
 import { useHelp, useNavigator } from '../../../hooks';
 import { HasAnyRoomRights } from '../../../api/rp-rights/RpRoomRightsMessages';
+import { RP_RANK_DEVELOPER } from '../../../api/rp-rights/RpRanks';
 
 export class NavigatorRoomInfoViewProps
 {
@@ -27,7 +28,7 @@ export const NavigatorRoomInfoView: FC<NavigatorRoomInfoViewProps> = props =>
             case 'settings':
                 return (GetSessionDataManager().userId === navigatorData.enteredGuestRoom.ownerId || HasAnyRoomRights());
             case 'staff_pick':
-                return GetSessionDataManager().securityLevel >= SecurityLevel.COMMUNITY;
+                return GetSessionDataManager().securityLevel >= RP_RANK_DEVELOPER;
             default: return false;
         }
     }

@@ -1,6 +1,7 @@
 import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
 import { FC, useState } from 'react';
 import { CreateLinkEvent, GetSessionDataManager, HasHabboVip } from '../../api';
+import { RP_RANK_BUILDER, RP_RANK_TRIAL_MODERATOR } from '../../api/rp-rights/RpRanks';
 import { Flex, HoverBubble, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
 import { useAchievements, useInventoryUnseenTracker, useMessageEvent, useRoomEngineEvent } from '../../hooks';
 import { usePhoneAppBadges } from '../phone/usePhoneNotifications';
@@ -19,9 +20,15 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
     // itself would show, so a closed phone still says how much is waiting.
     const { total: phoneBadge } = usePhoneAppBadges();
     const isMod = GetSessionDataManager().isModerator;
+    // Mod Tools from Trial Moderator up, below the isModerator line: every rank
+    // from 3 holds the mod_tool right the tool's packets check
+    const canModTools = (GetSessionDataManager().securityLevel >= RP_RANK_TRIAL_MODERATOR);
+    // Furni Shop and Inventory from Builder up - Builders build. The server opens
+    // the shop's packets at the same rank (BuilderOnly)
+    const canBuild = (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
     const showCamera = (isInRoom && (isMod || HasHabboVip()));
     // an open menu with nothing in it would leave a gap beside the emblem
-    const hasMenuItems = (isMod || showCamera);
+    const hasMenuItems = (isMod || canModTools || canBuild || showCamera);
 
     useMessageEvent<PerkAllowancesMessageEvent>(PerkAllowancesMessageEvent, event =>
     {
@@ -93,13 +100,13 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                                         <div className="icon icon-rooms" />
                                     </div>
                                 </HoverBubble> }
-                            { isMod &&
+                            { canBuild &&
                                 <HoverBubble text="Furni Shop">
                                     <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('catalog/toggle') }>
                                         <div className="icon icon-catalog" />
                                     </div>
                                 </HoverBubble> }
-                            { isMod &&
+                            { canBuild &&
                                 <HoverBubble text="Inventory">
                                     <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('inventory/toggle') }>
                                         <div className="icon icon-inventory" />
@@ -113,7 +120,7 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                                         <div className="icon icon-camera" />
                                     </div>
                                 </HoverBubble> }
-                            { isMod &&
+                            { canModTools &&
                                 <HoverBubble text="Mod Tools">
                                     <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('mod-tools/toggle') }>
                                         <div className="icon icon-modtools" />

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useBetween } from 'use-between';
 import { CreateLinkEvent, CreateRoomSession, DoorStateType, GetConfiguration, GetSessionDataManager, GoToRoom, INavigatorData, LocalizeText, NotificationAlertType, SendMessageComposer, TryVisitRoom, VisitDesktop } from '../../api';
 import { RpNavigatorZonesEvent } from '../../api/rp-navigator/RpNavigatorMessages';
+import { RP_RANK_DEVELOPER } from '../../api/rp-rights/RpRanks';
 import { useMessageEvent } from '../events';
 import { useNotification } from '../notification';
 
@@ -68,7 +69,7 @@ const useNavigatorState = () =>
             const newValue = { ...prevValue };
 
             newValue.eventMod = (parser.securityLevel >= SecurityLevel.MODERATOR);
-            newValue.roomPicker = (parser.securityLevel >= SecurityLevel.COMMUNITY);
+            newValue.roomPicker = (parser.securityLevel >= RP_RANK_DEVELOPER);
 
             return newValue;
         });

@@ -111,7 +111,7 @@ export const NotificationCommandListView: FC<NotificationCommandListViewProps> =
     const playerGroups = useMemo(() => groups.filter(group => !group.staff), [ groups ]);
     const staffGroups = useMemo(() => groups.filter(group => group.staff), [ groups ]);
 
-    // The server only sends staff groups to staff (Trial Moderator and up),
+    // The server only sends staff groups to staff (Builder and up),
     // so a staff group in the list is the staff test.
     const isStaff = (staffGroups.length > 0);
     const query = filter.trim().toLowerCase().replace(/^:/, '');
