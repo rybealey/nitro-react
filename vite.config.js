@@ -60,7 +60,15 @@ export default defineConfig(({ command }) => ({
         }
     },
     build: {
-        assetsInlineLimit: 102400,
+        // Vite's default (4 KB). It was 100 KB, which base64-packed every
+        // stylesheet image and font into the one CSS file: 3.26 MB (~1 MB
+        // compressed), 2.45 MB of it images - all 126 chat bubbles included -
+        // re-downloaded by every player after every deploy, since any change
+        // renames the CSS. Emitted files are content-hashed (below), so an
+        // unchanged image keeps its URL across deploys and stays cached, and a
+        // bubble or icon is only fetched once something on screen uses it.
+        // Fonts are separate files too; fonts.scss sets font-display: swap.
+        assetsInlineLimit: 4096,
         rollupOptions: {
             output: {
                 // Content-hash bundled assets (CSS, fonts, images) so a changed
