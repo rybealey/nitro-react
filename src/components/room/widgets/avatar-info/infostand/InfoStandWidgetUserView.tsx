@@ -116,7 +116,8 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                 <Column gap={ 1 }>
                     <Flex gap={ 1 }>
                         <Column fullWidth className="body-image" onClick={ event => GetUserProfile(avatarInfo.webID) }>
-                            <LayoutAvatarImageView figure={ avatarInfo.figure } direction={ 2 } />
+                            { /* faces diagonally left (4), like the bot and pet infostands */ }
+                            <LayoutAvatarImageView figure={ avatarInfo.figure } direction={ 4 } />
                         </Column>
                         <Column grow alignItems="center" gap={ 0 }>
                             { /* one uniform 2x3 slot grid - even gaps both ways */ }
