@@ -1,10 +1,10 @@
-import { FurnitureFloorUpdateComposer, FurnitureStackHeightComposer, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable } from '@nitrots/nitro-renderer';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FurnitureFloorUpdateComposer, FurnitureStackHeightComposer, FurnitureStackHeightEvent, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable } from '@nitrots/nitro-renderer';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import ReactSlider from 'react-slider';
 import { AvatarInfoFurni, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
 import { ApplyFurniAlpha, RpSetFurniAlphaComposer } from '../../../../../api/rp-furni/RpFurniMessages';
 import { Button, Column, Flex, Text } from '../../../../../common';
-import { useRoom } from '../../../../../hooks';
+import { useMessageEvent, useRoom } from '../../../../../hooks';
 
 interface InfoStandWidgetFurniToolsViewProps
 {
@@ -87,6 +87,23 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
         setOpacity((alpha === undefined) || (alpha === null) ? 100 : Math.round(alpha * 100));
     }, [ getRoomObject ]);
 
+    // The server answers every height change with where the piece ended up -
+    // the only way the readout learns what Floor and On top came to. Only
+    // those answers are taken: the steps already show their own value, and
+    // their answers trail a fast run of clicks, so taking them would wind the
+    // readout back and the next click would step from the stale number.
+    const awaitingAnswer = useRef<boolean>(false);
+
+    useMessageEvent<FurnitureStackHeightEvent>(FurnitureStackHeightEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!awaitingAnswer.current || !avatarInfo || (parser.furniId !== avatarInfo.id)) return;
+
+        awaitingAnswer.current = false;
+        setHeight(parseFloat(parser.height.toFixed(2)));
+    });
+
     // Painted locally for the drag, then stored - the server's echo lands on
     // the same value, so nothing flickers back.
     const applyOpacity = (value: number) =>
@@ -127,9 +144,13 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
     }
 
     // -100 is the stack-height widget's "sit on whatever is already there"; 0
-    // is the floor. Neither is a height, so the readout waits for the server.
+    // is the floor of the tile. Neither is a height, so the readout waits for
+    // the server's answer above.
     const setStackMode = (value: number) =>
+    {
+        awaitingAnswer.current = true;
         SendMessageComposer(new FurnitureStackHeightComposer(avatarInfo.id, value));
+    }
 
     const isFloorItem = (avatarInfo && (avatarInfo.category === RoomObjectCategory.FLOOR));
 
