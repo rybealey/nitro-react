@@ -68,10 +68,10 @@
             word-break: break-all;
         }
 
-        // pixelrp: a furni's x, y and z - a 16px axis icon, then ": value" -
-        // and on the Z row, for staff, "id : [ID]" at the right. Rows are the
-        // icon's height and 4px apart (the Column's gap-1), with 4px between
-        // icon and colon, as in the reference Twist picked.
+        // pixelrp: a furni's x, y and z and, for staff, its id - two rows of
+        // two, "[icon] : value" on the left and "value : [icon]" on the right.
+        // Rows are the icon's height and 4px apart (the Column's gap-1), with
+        // 4px between icon and colon, as in the reference Twist picked.
         .infostand-position {
             display: flex;
             align-items: center;
