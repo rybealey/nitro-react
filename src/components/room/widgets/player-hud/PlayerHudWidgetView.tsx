@@ -160,11 +160,13 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         {
             const userData = roomSession.userDataManager.getUserDataByIndex(roomObject.id);
 
-            if(!userData || (userData.type !== RoomObjectType.USER)) continue;
+            // id first: getUserInfo asks the server for that user's badges every
+            // time, and this runs every 400ms for 8s after a room change.
+            if(!userData || (userData.type !== RoomObjectType.USER) || (userData.webID !== webID)) continue;
 
             const info = AvatarInfoUtilities.getUserInfo(RoomObjectCategory.UNIT, userData);
 
-            if(!info || info.isOwnUser || (info.webID !== webID)) continue;
+            if(!info || info.isOwnUser) continue;
 
             return info;
         }
@@ -293,11 +295,11 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
         const userData = roomSession?.userDataManager?.getUserDataByIndex(event.id);
 
-        if(!userData || (userData.type !== RoomObjectType.USER)) return;
+        if(!userData || (userData.type !== RoomObjectType.USER) || (userData.webID !== remembered.webID)) return;
 
         const info = AvatarInfoUtilities.getUserInfo(event.category, userData);
 
-        if(!info || info.isOwnUser || (info.webID !== remembered.webID)) return;
+        if(!info || info.isOwnUser) return;
 
         setTarget(info);
         setLocked(remembered.locked);
