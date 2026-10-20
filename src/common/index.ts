@@ -18,6 +18,7 @@ export * from './InfiniteScroll';
 export * from './layout';
 export * from './layout/limited-edition';
 export * from './Text';
+export * from './TitleBubbles';
 export * from './transitions';
 export * from './types';
 export * from './utils';

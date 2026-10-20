@@ -58,7 +58,7 @@ import { RegisterRpGangMessages } from './api/rp-gangs/RpGangMessages';
 import { RegisterRpNavigatorMessages } from './api/rp-navigator/RpNavigatorMessages';
 import { RegisterRpTurfMessages } from './api/rp-turf/RpTurfMessages';
 import { RegisterRpJukeboxOpenMessages } from './api/rp-jukebox/RpJukeboxOpenMessages';
-import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
+import { Base, TitleBubbles, TransitionAnimation, TransitionAnimationTypes } from './common';
 import { DeploymentView } from './components/deployment/DeploymentView';
 import { LoadingView } from './components/loading/LoadingView';
 import { MainView } from './components/main/MainView';
@@ -387,6 +387,7 @@ export const App: FC<{}> = props =>
             { isDeploying &&
                 <DeploymentView onFallback={ exitDeployment } /> }
             <Base id="draggable-windows-container" />
+            <TitleBubbles />
         </Base>
     );
 }

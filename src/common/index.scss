@@ -571,4 +571,23 @@
     }
 }
 
+// pixelrp: the hover caption every plain title="" becomes (TitleBubbles) -
+// HoverBubble's bubble, kept out of the mouse's way and keeping the line
+// breaks a few multi-line titles carry.
+.tooltip.prp-title-bubble {
+    pointer-events: none;
+
+    .tooltip-inner {
+        white-space: pre-line;
+    }
+}
+
+// Hover captions are plain bubbles, like the backpack's: no arrow on any of
+// them (HoverBubble, the side drawer, the toolbar, the purse, TitleBubbles).
+// The arrow's room is kept, so each bubble still sits clear of its control.
+// The doubled class beats bootstrap's own rule whatever order sheets load in.
+.tooltip .tooltip-arrow.tooltip-arrow {
+    display: none;
+}
+
 @import './card/NitroCardView';
