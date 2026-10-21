@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
 import { ApplyMaxFps } from '../../../api/prefs/FpsStore';
 import { ClickthroughState } from '../clickthroughState';
+import { AskUserPresence } from '../../../api/rp-chat/RpUserPresence';
 import { TargetState } from '../targetState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { useNotification } from '../../notification';
@@ -30,6 +31,58 @@ const useChatInputWidgetState = () =>
     const [ floodBlockedSeconds, setFloodBlockedSeconds ] = useState(0);
     const { showNitroAlert = null, showConfirm = null } = useNotification();
     const { roomSession = null } = useRoom();
+
+    // pixelrp: :t and :lt for a name not in your room - the room lookup only
+    // sees this room, so the server is asked (AskUserPresence) and a player
+    // online anywhere is targeted (TargetState.selectRemote / lockRemote); the
+    // HUD then asks for their bars by id.
+    const targetElsewhere = (requestedName: string, lock: boolean) =>
+    {
+        const whisper = (status: string, style: number = SYSTEM_WHISPER_STYLE) => GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, style));
+        const isSelf = (name: string) => (name.toLowerCase() === (GetSessionDataManager().userName ?? '').toLowerCase());
+
+        // your own name is never found as a target, and you are always online
+        if(isSelf(requestedName))
+        {
+            whisper('You cannot target yourself.');
+
+            return;
+        }
+
+        AskUserPresence(requestedName, (presence, user) =>
+        {
+            // anybody online can be targeted wherever they are, so the only
+            // refusal is that they are not online (no answer counts as that)
+            if((presence !== 'online') || !user)
+            {
+                whisper(`${ requestedName } is not online.`);
+
+                return;
+            }
+
+            if((user.userId === GetSessionDataManager().userId) || isSelf(user.name))
+            {
+                whisper('You cannot target yourself.');
+
+                return;
+            }
+
+            if(lock)
+            {
+                const targetName = TargetState.lockRemote?.(user) ?? null;
+
+                whisper(targetName ? `You have locked target on ${ targetName }.` : `${ requestedName } is not online.`, (targetName ? TARGET_LOCKED_STYLE : SYSTEM_WHISPER_STYLE));
+
+                return;
+            }
+
+            const result = TargetState.selectRemote?.(user) ?? null;
+
+            if(result?.status === 'selected') whisper(`You are now targeting ${ result.name }.`);
+            else if(result?.status === 'locked') whisper(`Unlock your target on ${ result.name } before switching targets.`);
+            else whisper(`${ requestedName } is not online.`);
+        });
+    };
 
     // The client-side half of sending a line: the ":cmd x" expansion from the
     // room selection, and the commands the client handles itself (:shake,
@@ -134,19 +187,17 @@ const useChatInputWidgetState = () =>
                     }
 
                     const result = TargetState.selectByName?.(requestedName) ?? null;
-                    // Default/failure case. The lookup only sees the current
-                    // room, so this also fires for someone online elsewhere in
-                    // the hotel - distinguishing the two needs a server lookup.
-                    let status = `${ requestedName } is not online.`;
 
-                    if(result?.status === 'selected')
+                    if((result?.status !== 'selected') && (result?.status !== 'locked'))
                     {
-                        status = `You are now targeting ${ result.name }.`;
+                        targetElsewhere(requestedName, false);
+
+                        return null;
                     }
-                    else if(result?.status === 'locked')
-                    {
-                        status = `Unlock your target on ${ result.name } before switching targets.`;
-                    }
+
+                    const status = (result.status === 'selected')
+                        ? `You are now targeting ${ result.name }.`
+                        : `Unlock your target on ${ result.name } before switching targets.`;
 
                     GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, SYSTEM_WHISPER_STYLE));
 
@@ -158,9 +209,15 @@ const useChatInputWidgetState = () =>
                     if(requestedName)
                     {
                         const targetName = TargetState.lockByName?.(requestedName) ?? null;
-                        const status = targetName ? `You have locked target on ${ targetName }.` : `${ requestedName } is not online.`;
 
-                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, status, RoomSessionChatEvent.CHAT_TYPE_WHISPER, (targetName ? TARGET_LOCKED_STYLE : SYSTEM_WHISPER_STYLE)));
+                        if(!targetName)
+                        {
+                            targetElsewhere(requestedName, true);
+
+                            return null;
+                        }
+
+                        GetRoomSessionManager().events.dispatchEvent(new RoomSessionChatEvent(RoomSessionChatEvent.CHAT_EVENT, roomSession, roomSession.ownRoomIndex, `You have locked target on ${ targetName }.`, RoomSessionChatEvent.CHAT_TYPE_WHISPER, TARGET_LOCKED_STYLE));
 
                         return null;
                     }

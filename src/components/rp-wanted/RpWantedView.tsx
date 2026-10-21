@@ -2,7 +2,8 @@ import { ILinkEventTracker, RoomSessionChatEvent } from '@nitrots/nitro-renderer
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FaRegStar, FaStar } from 'react-icons/fa';
-import { AddEventLinkTracker, GetRoomSession, GetRoomSessionManager, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, GetRoomSession, GetRoomSessionManager, GetSessionDataManager, RemoveLinkEventTracker } from '../../api';
+import { AskUserPresence } from '../../api/rp-chat/RpUserPresence';
 import { TargetState } from '../../hooks/rooms/targetState';
 import { GetRpCanPardon, GetRpWantedList, RpWantedPlayer, SendRpDropCharge, SubscribeRpWanted } from '../../api/rp-wanted/RpWantedMessages';
 import { DraggableWindowPosition, LayoutAvatarImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -62,10 +63,11 @@ const SYSTEM_WHISPER_STYLE = 1;
 // wants to do next, and it is what the HUD's own portraits do. The profile is
 // still a click away from the target plate once they are selected.
 //
-// The lookup only sees the CURRENT ROOM, which matters more here than it does
-// for ":t": a wanted list is mostly people who are not standing next to you.
-// Each outcome is answered out loud rather than left silent, or a click that
-// found nobody is indistinguishable from a broken row.
+// The room lookup only sees the CURRENT ROOM, and a wanted list is mostly
+// people who are not standing next to you - so, as with ":t", a name not found
+// here is asked about (AskUserPresence) and anybody online is targeted wherever
+// they are (TargetState.selectRemote). Each refusal is answered out loud, or a
+// click that found nobody is indistinguishable from a broken row.
 const targetFromRow = (username: string): void =>
 {
     const roomSession = GetRoomSession();
@@ -90,7 +92,37 @@ const targetFromRow = (username: string): void =>
         return;
     }
 
-    say(`${ username } is not in this room.`);
+    const isSelf = (name: string) => (name.toLowerCase() === (GetSessionDataManager().userName ?? '').toLowerCase());
+
+    if(isSelf(username))
+    {
+        say('You cannot target yourself.');
+
+        return;
+    }
+
+    AskUserPresence(username, (presence, user) =>
+    {
+        if((presence !== 'online') || !user)
+        {
+            say(`${ username } is not online.`);
+
+            return;
+        }
+
+        if((user.userId === GetSessionDataManager().userId) || isSelf(user.name))
+        {
+            say('You cannot target yourself.');
+
+            return;
+        }
+
+        const remote = TargetState.selectRemote?.(user) ?? null;
+
+        if(remote?.status === 'selected') return;
+
+        say((remote?.status === 'locked') ? `Unlock your target on ${ remote.name } before switching targets.` : `${ username } is not online.`);
+    });
 }
 
 const WantedStars: FC<{ level: number }> = ({ level }) => (

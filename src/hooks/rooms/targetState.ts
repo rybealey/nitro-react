@@ -1,3 +1,5 @@
+import { PresentUser } from '../../api/rp-chat/RpUserPresence';
+
 // The player's currently selected HUD target (see PlayerHudWidgetView), exposed
 // as a plain module singleton for non-React consumers — the chat input reads it
 // live when expanding the "@x" target-mention shorthand. Mirrors the widget's
@@ -22,5 +24,9 @@ export const TargetState = {
     lockByName: null as ((name: string) => string | null) | null,
     // ":t" - select only. Never touches the lock, and refuses outright while
     // one is held, so a mistyped name cannot quietly steal a deliberate pin.
-    selectByName: null as ((name: string) => TargetSelectResult) | null
+    selectByName: null as ((name: string) => TargetSelectResult) | null,
+    // pixelrp: the same two for a player in another room, as the server
+    // described them (RpUserPresence) - :t and :lt reach them wherever they are.
+    selectRemote: null as ((user: PresentUser) => TargetSelectResult) | null,
+    lockRemote: null as ((user: PresentUser) => string | null) | null
 };

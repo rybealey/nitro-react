@@ -5,10 +5,12 @@ import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, Ge
 import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
-import { GetRpUnitStats, SubscribeRpStats } from '../../../../api/rp-stats/RpStatsStore';
+import { GetRpUnitStats, RpUnitStats, SubscribeRpStats } from '../../../../api/rp-stats/RpStatsStore';
+import { ForgetRpUserStats, GetRpUserStats, RequestRpUserStats, SubscribeRpUserStats } from '../../../../api/rp-stats/RpUserStats';
 import { Flex, HoverBubble, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
+import { PresentUser } from '../../../../api/rp-chat/RpUserPresence';
 import { RpGetUserGangComposer, RpUserGangEvent } from '../../../../api/rp-gangs/RpGangMessages';
 import { RpSetHudTargetComposer } from '../../../../api/rp-chat/RpChatMessages';
 import { GetRpGang, SetRpGang } from '../../../../api/rp-gangs/RpGangRegistry';
@@ -58,11 +60,29 @@ const statsWithWanted = (userId: number): HudStats => ({ ...DEFAULT_STATS, wante
 // player happens to share the number (or the name).
 const IsBotTarget = (info: AvatarInfoUser): boolean => (!!info && (info.userType !== RoomObjectType.USER));
 
-// Merge the live server stats (when known) over the base values.
-const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
+// pixelrp: a player in another room as a target, from what the server sent
+// (RpUserPresence) - no unit of this room, so roomIndex -1.
+const RemoteTargetInfo = (user: PresentUser): AvatarInfoUser =>
 {
-    const live = GetRpUnitStats(roomIndex);
+    const info = new AvatarInfoUser(AvatarInfoUser.PEER);
 
+    info.name = user.name;
+    info.motto = user.motto;
+    info.webID = user.userId;
+    info.figure = user.figure;
+    info.userType = RoomObjectType.USER;
+    info.roomIndex = -1;
+
+    return info;
+};
+
+// Merge the live server stats (when known) over the base values.
+const withLiveStats = (roomIndex: number, base: HudStats): HudStats => withStats(GetRpUnitStats(roomIndex), base);
+
+// pixelrp: the same, from bars already in hand - a target in another room has
+// theirs by user id (RpUserStats), not by a unit of this room.
+const withStats = (live: RpUnitStats, base: HudStats): HudStats =>
+{
     if(!live) return base;
 
     return { ...base, hp: live.hp, hpMax: live.hpMax, energy: live.energy, energyMax: live.energyMax, aggro: live.aggro, aggressive: (live.aggro > 0), passive: live.passive };
@@ -134,7 +154,18 @@ const REACQUIRE_WINDOW_MS = 8000;
 //
 // Not persisted anywhere: a target is a thing about the session you are in, and
 // coming back tomorrow to find somebody still in your sights would be wrong.
-let rememberedTarget: { webID: number, locked: boolean } = null;
+//
+// pixelrp: the whole target, so the plate is put straight back after a room
+// change wherever they are (Twist: "her plate should survive room changes").
+let rememberedTarget: { info: AvatarInfoUser, locked: boolean } = null;
+
+// How often a target in another room has their bars asked for (RpUserStats).
+const AWAY_STATS_INTERVAL_MS = 1000;
+
+// The target's bars as last seen in your room, shown when they are in another
+// one until the first answer comes - not the default 100. Module scope for the
+// same reason as rememberedTarget.
+let lastTargetBars: { webID: number, stats: RpUnitStats } = null;
 
 // When the remembered target is allowed to re-acquire itself. Set on mount,
 // which IS the room change here, and closed as soon as it is used.
@@ -174,6 +205,26 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         return null;
     }, [ roomSession ]);
 
+    // pixelrp: where a player stands in YOUR room right now, by their id - -1
+    // when they are somewhere else. The target's plate stays through room
+    // changes, so the roomIndex they were picked up with can be another room's.
+    const roomIndexOf = (webID: number): number =>
+    {
+        if(!roomSession || !webID) return -1;
+
+        for(const roomObject of GetRoomEngine().getRoomObjects(roomSession.roomId, RoomObjectCategory.UNIT))
+        {
+            const userData = roomSession.userDataManager.getUserDataByIndex(roomObject.id);
+
+            if(userData && (userData.type === RoomObjectType.USER) && (userData.webID === webID)) return roomObject.id;
+        }
+
+        return -1;
+    };
+
+    // A player target in another room: their bars are asked for by id, below.
+    const awayUserId = ((target && !IsBotTarget(target) && (roomIndexOf(target.webID) < 0)) ? target.webID : 0);
+
 
     // Live RP stats: store by roomIndex and bump a version so the HUD re-renders.
     // Target's gang, for the crest chip beside the plate. Membership is keyed
@@ -209,13 +260,21 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     {
         if(!rememberedTarget) return;
 
+        // pixelrp: the plate is back at once, wherever they are - in another
+        // room their bars come by their id. Picked up fresh below if they are
+        // in this one.
+        const remembered = rememberedTarget;
+
+        setTarget(value => (value ?? remembered.info));
+        setLocked(remembered.locked);
+
         reacquireUntil = (Date.now() + REACQUIRE_WINDOW_MS);
 
         const attempt = (): boolean =>
         {
             if(!rememberedTarget || (Date.now() > reacquireUntil)) return true;
 
-            const info = findRoomUserById(rememberedTarget.webID);
+            const info = findRoomUserById(rememberedTarget.info.webID);
 
             if(!info) return false;
 
@@ -261,11 +320,22 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     // Deliberately NO OBJECT_DESELECTED handler: a target persists until a
     // new one is selected, the target HUD's close button is used, or the
-    // target leaves the room — clicking the floor/furni never clears it.
+    // target logs off — clicking the floor/furni never clears it.
 
     useUiEvent<RoomWidgetUpdateRoomObjectEvent>(RoomWidgetUpdateRoomObjectEvent.USER_REMOVED, event =>
     {
-        if((event.category === RoomObjectCategory.UNIT) && target && (target.roomIndex === event.id))
+        if((event.category !== RoomObjectCategory.UNIT) || !target) return;
+
+        // pixelrp: a player who walks out keeps their plate - redrawn, so their
+        // bars switch to being asked for by id. A bot stays behind.
+        if(!IsBotTarget(target))
+        {
+            setStatsVersion(value => (value + 1));
+
+            return;
+        }
+
+        if(target.roomIndex === event.id)
         {
             setTarget(null);
             setLocked(false);
@@ -279,7 +349,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         // pixelrp: a bot is not picked back up after a room change - by webID
         // it would find a player instead (IsBotTarget) - so wanting one forgets
         // any player remembered before it.
-        if(target) rememberedTarget = (IsBotTarget(target) ? null : { webID: target.webID, locked });
+        if(target) rememberedTarget = (IsBotTarget(target) ? null : { info: target, locked });
     }, [ target, locked ]);
 
     // The other half of the room change: somebody who lands after you do. The
@@ -287,15 +357,30 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // the captor and arrives into a room you are already standing in.
     useUiEvent<RoomWidgetUpdateRoomObjectEvent>(RoomWidgetUpdateRoomObjectEvent.USER_ADDED, event =>
     {
-        const remembered = rememberedTarget;
-
-        if(!remembered || target) return;
-        if(Date.now() > reacquireUntil) return;
         if(event.category !== RoomObjectCategory.UNIT) return;
 
         const userData = roomSession?.userDataManager?.getUserDataByIndex(event.id);
 
-        if(!userData || (userData.type !== RoomObjectType.USER) || (userData.webID !== remembered.webID)) return;
+        if(!userData || (userData.type !== RoomObjectType.USER)) return;
+
+        // pixelrp: a target who was in another room walking into yours is
+        // picked up fresh - their unit here, and the room's live bars.
+        if(target && !IsBotTarget(target))
+        {
+            if(userData.webID !== target.webID) return;
+
+            const fresh = AvatarInfoUtilities.getUserInfo(event.category, userData);
+
+            if(fresh && !fresh.isOwnUser) setTarget(fresh);
+
+            return;
+        }
+
+        const remembered = rememberedTarget;
+
+        if(!remembered || target) return;
+        if(Date.now() > reacquireUntil) return;
+        if(userData.webID !== remembered.info.webID) return;
 
         const info = AvatarInfoUtilities.getUserInfo(event.category, userData);
 
@@ -405,6 +490,29 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         return { status: 'selected', name: info.name };
     }, [ findRoomUserByName, locked, target ]);
 
+    // pixelrp: :t and :lt for a player in another room, as the server described
+    // them - the plate goes up at once and their bars are asked for by id.
+    const selectRemoteTarget = useCallback((user: PresentUser): TargetSelectResult =>
+    {
+        if(locked && target) return { status: 'locked', name: target.name };
+
+        const info = RemoteTargetInfo(user);
+
+        setTarget(info);
+
+        return { status: 'selected', name: info.name };
+    }, [ locked, target ]);
+
+    const lockRemoteTarget = useCallback((user: PresentUser): string | null =>
+    {
+        const info = RemoteTargetInfo(user);
+
+        setTarget(info);
+        setLocked(true);
+
+        return info.name;
+    }, []);
+
     // Tell the server who is selected, on every change: a target command typed
     // without a name (":kiss", ":charge theft") is aimed at them.
     const targetUserId = ((target && !IsBotTarget(target)) ? target.webID : 0);
@@ -413,6 +521,42 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     {
         SendMessageComposer(new RpSetHudTargetComposer(targetUserId));
     }, [ targetUserId ]);
+
+    // pixelrp: a target in another room has their bars asked for once a second
+    // - after the effect above, so the server already knows they are your
+    // target (it answers for no one else). Logged off, the plate closes.
+    useEffect(() =>
+    {
+        if(!awayUserId) return;
+
+        const unsubscribe = SubscribeRpUserStats((userId, stats) =>
+        {
+            if(userId !== awayUserId) return;
+
+            if(!stats)
+            {
+                rememberedTarget = null;
+                reacquireUntil = 0;
+                setTarget(null);
+                setLocked(false);
+
+                return;
+            }
+
+            setStatsVersion(value => (value + 1));
+        });
+
+        ForgetRpUserStats(awayUserId);
+        RequestRpUserStats(awayUserId);
+
+        const timer = window.setInterval(() => RequestRpUserStats(awayUserId), AWAY_STATS_INTERVAL_MS);
+
+        return () =>
+        {
+            window.clearInterval(timer);
+            unsubscribe();
+        };
+    }, [ awayUserId ]);
 
     // Mirror the selected target for non-React consumers — the chat input reads
     // this when expanding the "@x" target-mention shorthand into a shout.
@@ -423,6 +567,8 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         TargetState.toggleLock = toggleTargetLock;
         TargetState.lockByName = lockTargetByName;
         TargetState.selectByName = selectTargetByName;
+        TargetState.selectRemote = selectRemoteTarget;
+        TargetState.lockRemote = lockRemoteTarget;
 
         return () =>
         {
@@ -431,8 +577,10 @@ export const PlayerHudWidgetView: FC<{}> = () =>
             TargetState.toggleLock = null;
             TargetState.lockByName = null;
             TargetState.selectByName = null;
+            TargetState.selectRemote = null;
+            TargetState.lockRemote = null;
         }
-    }, [ target, toggleTargetLock, lockTargetByName, selectTargetByName ]);
+    }, [ target, toggleTargetLock, lockTargetByName, selectTargetByName, selectRemoteTarget, lockRemoteTarget ]);
 
     // A charge filed anywhere re-broadcasts the whole list, and these stars
     // have to follow it without waiting for the next room event.
@@ -444,7 +592,17 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     const selfGender = GetSessionDataManager().gender;
     const playerStats = withLiveStats(roomSession?.ownRoomIndex ?? -1, statsWithWanted(GetSessionDataManager().userId));
     const targetIsBot = IsBotTarget(target);
-    const targetStats = target ? withLiveStats(target.roomIndex, (targetIsBot ? DEFAULT_STATS : statsWithWanted(target.webID))) : null;
+    // pixelrp: in this room, the room's live bars for wherever they stand now;
+    // in another room, theirs by id (awayUserId).
+    const targetIndex = (target ? (targetIsBot ? target.roomIndex : roomIndexOf(target.webID)) : -1);
+    const targetBase = (target ? (targetIsBot ? DEFAULT_STATS : statsWithWanted(target.webID)) : null);
+    const targetHereBars = ((target && !targetIsBot && !awayUserId) ? GetRpUnitStats(targetIndex) : null);
+
+    if(targetHereBars) lastTargetBars = { webID: target.webID, stats: targetHereBars };
+
+    const targetAwayBars = (awayUserId ? (GetRpUserStats(awayUserId) ?? ((lastTargetBars?.webID === awayUserId) ? lastTargetBars.stats : null)) : null);
+    const targetStats = target ? (awayUserId ? withStats(targetAwayBars, targetBase) : withLiveStats(targetIndex, targetBase)) : null;
+    const targetStaff = (awayUserId ? (targetAwayBars?.staff === true) : IsRpStaff(targetIndex));
     const targetGang = ((target && !targetIsBot) ? GetRpGang(target.webID) : null);
     // Settings > UI > Colours > HUD: Classic or Light, and the bar colours
     const { hudStyle, hudBars } = useHudPrefs();
@@ -495,7 +653,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             { (targetStats.aggressive || targetStats.passive) &&
                                 <span className={ `hud-state ${ targetStats.aggressive ? 'aggressive' : 'passive' }` }>{ targetStats.aggressive ? 'AGGRESSIVE' : 'PASSIVE' }</span> }
                             { /* mirrored plate: the tick keeps its place beside the name, on the portrait side */ }
-                            { IsRpStaff(target.roomIndex) &&
+                            { targetStaff &&
                                 <HoverBubble text="PixelRP Staff" placement="bottom"><i className="fa-solid fa-badge-check hud-verified" aria-hidden="true" /></HoverBubble> }
                             <span className="hud-name">{ target.name }</span>
                         </div>
@@ -531,7 +689,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                             // id and would key the employment registry wrong.
                             RpProfileState.userId = target.webID;
                             RpProfileState.employment = null;
-                            RpProfileState.staff = IsRpStaff(target.roomIndex);
+                            RpProfileState.staff = targetStaff;
                             CreateLinkEvent('rp-profile/show');
                         } } />
                         <HudStars wanted={ targetStats.wanted } />
