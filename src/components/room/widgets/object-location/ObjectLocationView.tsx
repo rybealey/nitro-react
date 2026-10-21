@@ -34,10 +34,12 @@ export const ObjectLocationView: FC<ObjectLocationViewProps> = props =>
 
             if(!bounds || !elementRef.current) return;
 
-            setPos({
-                x: Math.round(((bounds.left + (bounds.width / 2)) - (elementRef.current.offsetWidth / 2))),
-                y: Math.round((bounds.top - elementRef.current.offsetHeight) + 10)
-            });
+            const x = Math.round(((bounds.left + (bounds.width / 2)) - (elementRef.current.offsetWidth / 2)));
+            const y = Math.round((bounds.top - elementRef.current.offsetHeight) + 10);
+
+            // pixelrp: every frame while following - an unchanged position no
+            // longer re-renders (see ContextMenuView).
+            setPos(prev => (((prev.x === x) && (prev.y === y)) ? prev : { x, y }));
         }
 
         if(noFollow)

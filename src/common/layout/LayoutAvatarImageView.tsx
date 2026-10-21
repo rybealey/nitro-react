@@ -3,6 +3,24 @@ import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { GetAvatarRenderManager } from '../../api';
 import { Base, BaseProps } from '../Base';
 
+// pixelrp: every mount drew its avatar afresh - a render to a texture, read
+// back from the GPU and PNG-encoded, synchronously - and the same faces are
+// drawn again and again: a clicked player's infostand, the HUD target and
+// portrait (every room change), phone contacts, city lists. A finished still
+// is kept, keyed by everything that changes the picture, and capped with the
+// oldest dropped first (a Map keeps insertion order). A placeholder (the
+// outfit still downloading) and an animated preview are never kept.
+const IMAGE_CACHE_LIMIT = 300;
+const imageCache: Map<string, string> = new Map();
+
+const rememberImage = (key: string, url: string) =>
+{
+    imageCache.delete(key);
+    imageCache.set(key, url);
+
+    while(imageCache.size > IMAGE_CACHE_LIMIT) imageCache.delete(imageCache.keys().next().value);
+}
+
 export interface LayoutAvatarImageViewProps extends BaseProps<HTMLDivElement>
 {
     figure: string;
@@ -49,6 +67,21 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
 
     useEffect(() =>
     {
+        const cacheKey = `${ figure }|${ gender }|${ direction }|${ headOnly ? 'head' : 'full' }`;
+
+        if(!animate)
+        {
+            const cached = imageCache.get(cacheKey);
+
+            if(cached)
+            {
+                rememberImage(cacheKey, cached);
+                setAvatarUrl(cached);
+
+                return;
+            }
+        }
+
         const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, gender, {
             resetFigure: figure =>
             {
@@ -74,9 +107,13 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
             const image = avatarImage.getCroppedImage(setType);
 
             if(image) setAvatarUrl(image.src);
+
+            return image;
         };
 
-        renderFrame();
+        const firstFrame = renderFrame();
+
+        if(!animate && firstFrame && !avatarImage.isPlaceholder()) rememberImage(cacheKey, firstFrame.src);
 
         // Animated figures (e.g. animated clothing) keep cycling their idle frames.
         // Advance them on a timer so the preview matches how they look in the room;

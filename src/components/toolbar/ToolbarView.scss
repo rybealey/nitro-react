@@ -55,21 +55,36 @@
 
     // The shine: a white band blended onto the P (overlay keeps its black
     // outline black) and masked to its shape, sweeping across in the first
-    // ~2 seconds of every 6.
+    // ~2 seconds of every 6. The band is a layer three logos wide slid across
+    // with a transform: sliding background-position instead repainted it on
+    // every frame, forever.
     .toolbar-logo-shine {
         position: absolute;
         inset: 0;
+        overflow: hidden;
         pointer-events: none;
-        background: linear-gradient(115deg, transparent 32%, rgba($white, 0.75) 50%, transparent 68%) no-repeat;
-        background-size: 300% 100%;
         mix-blend-mode: overlay;
         -webkit-mask: url('@/assets/images/toolbar/icons/pixelrp-logo-small.png') center / 100% 100% no-repeat;
         mask: url('@/assets/images/toolbar/icons/pixelrp-logo-small.png') center / 100% 100% no-repeat;
-        animation: toolbar-logo-shine 6s ease-in-out infinite;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 300%;
+            background: linear-gradient(115deg, transparent 32%, rgba($white, 0.75) 50%, transparent 68%);
+            will-change: transform;
+            animation: toolbar-logo-shine 6s ease-in-out infinite;
+        }
 
         @media (prefers-reduced-motion: reduce) {
-            animation: none;
             opacity: 0;
+
+            &::before {
+                animation: none;
+            }
         }
     }
 
@@ -189,9 +204,11 @@
     }
 }
 
+// From the band's right edge on the logo's right (as background-position
+// 100% was) to its left edge on the logo's left (0%).
 @keyframes toolbar-logo-shine {
-    0% { background-position: 100% 0; }
-    30%, 100% { background-position: 0% 0; }
+    0% { transform: translateX(-66.6667%); }
+    30%, 100% { transform: translateX(0); }
 }
 
 .toolbar-icon-animation {

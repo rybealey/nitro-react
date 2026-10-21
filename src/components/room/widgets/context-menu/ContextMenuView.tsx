@@ -105,7 +105,10 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
         if(y < SPACE_AROUND_EDGES) y = SPACE_AROUND_EDGES;
         else if(y > maxTop) y = maxTop;
 
-        setPos({ x, y });
+        // pixelrp: this runs every frame for every open menu and name tag. A
+        // new object each time re-rendered the menu and dirtied the layout even
+        // when it hadn't moved; now an unchanged position changes nothing.
+        setPos(prev => (((prev.x === x) && (prev.y === y)) ? prev : { x, y }));
     }, [ userType, drop ]);
 
     const getClassNames = useMemo(() =>

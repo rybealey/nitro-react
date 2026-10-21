@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, memo, useEffect, useRef, useState } from 'react';
 import { GetNitroInstance, SendMessageComposer } from '../../api';
 import { SetWeatherSnapshot, useEnvironmentPrefs, useWeatherSnapshot } from '../../api/environment/EnvironmentStore';
 import { RpGameClockEvent, SetGameClock } from '../../api/environment/GameClock';
@@ -104,14 +104,17 @@ const STARS: Star[][] = (() =>
     return groups;
 })();
 
-const StarField: FC<{ opacity: number }> = ({ opacity }) => (
-    <svg className="env-sky-stars" style={ { opacity } } viewBox={ `0 0 ${ STAR_FIELD_W } ${ STAR_FIELD_H }` } preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+// pixelrp: each twinkle group is its own <svg> layer. Fading <g> groups
+// inside one svg repainted all 260 stars on the main thread every frame; an
+// element's own opacity is left to the GPU.
+const StarField = memo(({ opacity }: { opacity: number }) => (
+    <div className="env-sky-stars" style={ { opacity } } aria-hidden="true">
         { STARS.map((group, index) =>
-            <g key={ index } className={ `env-sky-star-group is-${ index }` }>
+            <svg key={ index } className={ `env-sky-star-group is-${ index }` } viewBox={ `0 0 ${ STAR_FIELD_W } ${ STAR_FIELD_H }` } preserveAspectRatio="xMidYMid slice">
                 { group.map((star, starIndex) => <circle key={ starIndex } cx={ star.x } cy={ star.y } r={ star.r } fill="#fff" fillOpacity={ star.o } />) }
-            </g>) }
-    </svg>
-);
+            </svg>) }
+    </div>
+));
 
 const SkyLayers: FC<{ look: SkyLook, className?: string }> = ({ look, className = '' }) => (
     <div className={ `env-sky-layer${ className ? (' ' + className) : '' }` } style={ { background: look.gradient } }>

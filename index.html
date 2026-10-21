@@ -37,19 +37,26 @@
         }, true);
       })();
     </script>
-    <!-- No Ubuntu here: chat needs the bundled Habbo-modified Ubuntu (symbol
-         glyphs like | -> heart); stock Google Ubuntu would shadow its weights. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;family=Silkscreen:wght@400;700&amp;display=swap">
+    <!-- No web font links: Press Start 2P and Silkscreen (400/700) are bundled
+         (src/assets/styles/fonts.scss), and the Google Fonts stylesheet that
+         also loaded them only held the page up. No Ubuntu either: chat needs
+         the bundled Habbo-modified Ubuntu (symbol glyphs like | -> heart). -->
     <!-- PixelRP FontAwesome kit (Duotone Solid, webfont) - used for the phone
          UI app tile icons (fa-duotone fa-solid fa-...). This is the only FA
          kit on the page: a second (SVG-JS) kit would hijack every <i class=fa>
-         and break these webfont glyphs. -->
-    <script src="https://kit.fontawesome.com/c305b2c178.js" crossorigin="anonymous"></script>
+         and break these webfont glyphs. Deferred: nothing on the first screens
+         uses it, and a plain script here stopped the page until it answered. -->
+    <script src="https://kit.fontawesome.com/c305b2c178.js" crossorigin="anonymous" defer></script>
     <title>Nitro</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root" class="w-100 h-100"></div>
+    <div id="root" class="w-100 h-100">
+      <!-- pixelrp: on screen from the first byte, in the loading screen's
+           colour, until the app takes over (React clears #root as it mounts) -
+           instead of a blank page while the bundle downloads. -->
+      <div style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #444298; color: rgba(255, 255, 255, 0.75); font: 600 14px/1 system-ui, sans-serif; letter-spacing: 0.08em;">Loading…</div>
+    </div>
     <script>
       const NitroConfig = {
         "config.urls": [ './renderer-config.json', './ui-config.json' ],
