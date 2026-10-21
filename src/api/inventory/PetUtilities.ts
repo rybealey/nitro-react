@@ -4,7 +4,7 @@ import { cancelRoomObjectPlacement, getPlacingItemId } from './InventoryUtilitie
 import { IPetItem } from './IPetItem';
 import { UnseenItemCategory } from './UnseenItemCategory';
 
-export const getAllPetIds = (petItems: IPetItem[]) => petItems.map(item => item.petData.id);
+const getAllPetIds = (petItems: IPetItem[]) => petItems.map(item => item.petData.id);
 
 export const addSinglePetItem = (petData: PetData, set: IPetItem[], unseen: boolean = true) =>
 {

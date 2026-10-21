@@ -3,7 +3,7 @@
 
 const RECENT_KEY = 'pixelrp.prefs.chat.recentEmoji';
 
-export const RECENT_EMOJI_LIMIT = 20;
+const RECENT_EMOJI_LIMIT = 20;
 
 let recent: string[] = null;
 

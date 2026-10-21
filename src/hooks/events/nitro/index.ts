@@ -1,4 +1,3 @@
-export * from './useAvatarEvent';
 export * from './useCameraEvent';
 export * from './useLocalizationEvent';
 export * from './useMainEvent';

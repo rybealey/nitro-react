@@ -7,7 +7,7 @@ export interface IEmoji
     aliases: string[];
 }
 
-export interface IEmojiCategory
+interface IEmojiCategory
 {
     name: string;
     emojis: IEmoji[];

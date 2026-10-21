@@ -6,7 +6,6 @@ export * from './IBotItem';
 export * from './IFurnitureItem';
 export * from './InventoryUtilities';
 export * from './IPetItem';
-export * from './IUnseenItemTracker';
 export * from './PetUtilities';
 export * from './TradeState';
 export * from './TradeUserData';

@@ -3,7 +3,6 @@ export * from './LayoutBackgroundImage';
 export * from './LayoutBadgeImageView';
 export * from './LayoutCounterTimeView';
 export * from './LayoutCurrencyIcon';
-export * from './LayoutFurniIconImageView';
 export * from './LayoutFurniImageView';
 export * from './LayoutGiftTagView';
 export * from './LayoutGridItem';
