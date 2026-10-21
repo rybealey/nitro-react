@@ -22,18 +22,13 @@ export interface RpUnitStats
 
 const store: Map<number, RpUnitStats> = new Map();
 
-// A listener is told whose stats changed: a unit's roomIndex, or -1 when the
-// whole room's were cleared.
-const listeners = new Set<(roomIndex: number) => void>();
+const listeners = new Set<() => void>();
 
-const notify = (roomIndex: number) => listeners.forEach(listener => listener(roomIndex));
+const notify = () => listeners.forEach(listener => listener());
 
 export const GetRpUnitStats = (roomIndex: number): RpUnitStats => store.get(roomIndex);
 
-// Every roomIndex with stats held - for the pixelrpHud() DevTools check.
-export const GetRpStatsIndexes = (): number[] => [ ...store.keys() ];
-
-export const SubscribeRpStats = (listener: (roomIndex: number) => void): (() => void) =>
+export const SubscribeRpStats = (listener: () => void): (() => void) =>
 {
     listeners.add(listener);
 
@@ -46,7 +41,7 @@ const onStats = (event: RpStatsEvent) =>
 
     store.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression, passive: parser.passive, staff: parser.staff });
 
-    notify(parser.roomIndex);
+    notify();
 }
 
 // RoomReady comes before anything of the room's, its stats included, and a
@@ -56,7 +51,7 @@ const onRoomReady = () =>
 {
     store.clear();
 
-    notify(-1);
+    notify();
 }
 
 let registered = false;
