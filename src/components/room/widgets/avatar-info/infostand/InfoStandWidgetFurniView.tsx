@@ -1,6 +1,6 @@
 import { CrackableDataType, GroupInformationComposer, GroupInformationEvent, IRoomObjectController, NowPlayingEvent, RoomControllerLevel, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable, RoomObjectWidgetRequestEvent, RoomWidgetEnumItemExtradataParameter, RoomWidgetFurniInfoUsagePolicyEnum, SetObjectDataMessageComposer, SongInfoReceivedEvent, StringDataType } from '@nitrots/nitro-renderer';
 import { FC, RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
+import { AvatarInfoFurni, CreateLinkEvent, GetGroupInformation, GetNitroInstance, GetRoomEngine, LocalizeText, ProcessRoomObjectOperation, SendMessageComposer } from '../../../../../api';
 import { Base, Button, Column, Flex, HoverBubble, LayoutBadgeImageView, LayoutLimitedEditionCompactPlateView, LayoutRarityLevelView, Text, UserProfileIconView } from '../../../../../common';
 import { useMessageEvent, useNavigator, useRoom, useSoundEvent } from '../../../../../hooks';
 import { GetRoomSession } from '../../../../../api';
@@ -451,7 +451,7 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                 GetRoomEngine().processRoomObjectOperation(avatarInfo.id, avatarInfo.category, RoomObjectOperationType.OBJECT_MOVE);
                 break;
             case 'rotate':
-                GetRoomEngine().processRoomObjectOperation(avatarInfo.id, avatarInfo.category, RoomObjectOperationType.OBJECT_ROTATE_POSITIVE);
+                ProcessRoomObjectOperation(avatarInfo.id, avatarInfo.category, RoomObjectOperationType.OBJECT_ROTATE_POSITIVE);
                 break;
             case 'pickup':
                 if(pickupMode === PICKUP_MODE_FULL)

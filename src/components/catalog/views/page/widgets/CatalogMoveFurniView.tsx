@@ -29,7 +29,8 @@ const tabOf = (node: ICatalogNode, rootNode: ICatalogNode): ICatalogNode =>
 /**
  * Staff move the selected furni to another shop category.
  *
- * Move opens the shop's own categories straight away, tab by tab, and the
+ * Move opens the shop's own categories straight away, tab by tab, with a
+ * search box over them that finds a category by name in any tab; the
  * category clicked is where the listing goes - no second step. The picker
  * stays open until the server answers, so a refused move says why where the
  * choice was made. Same gate as the shop rename (CanEditShop, Builder up).
@@ -48,6 +49,7 @@ export const CatalogMoveFurniView: FC<{}> = props =>
     const [ expanded, setExpanded ] = useState<Set<ICatalogNode>>(new Set());
     const [ moving, setMoving ] = useState(false);
     const [ error, setError ] = useState<string>(null);
+    const [ query, setQuery ] = useState('');
     const chipRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const cancelRef = useRef<() => void>(null);
@@ -65,6 +67,7 @@ export const CatalogMoveFurniView: FC<{}> = props =>
         setOpen(false);
         setMoving(false);
         setError(null);
+        setQuery('');
     }
 
     // A new selection is a different furni; the picker was for the last one.
@@ -132,6 +135,7 @@ export const CatalogMoveFurniView: FC<{}> = props =>
         setTab((here && tabOf(here, rootNode)) || tabs[0] || null);
         setExpanded(path);
         setError(null);
+        setQuery('');
         setOpen(true);
     }
 
@@ -196,7 +200,6 @@ export const CatalogMoveFurniView: FC<{}> = props =>
         return (
             <div key={ index }>
                 <div className={ 'rp-catalog-move-row' + (isHere ? ' is-here' : '') + (moving ? ' is-busy' : '') } style={ indent }
-                    title={ isHere ? 'It is in this category now' : `Move to ${ node.localization }` }
                     onClick={ () => moveTo(node) }>
                     <span className="rp-catalog-move-caret" onClick={ event =>
                     {
@@ -216,22 +219,66 @@ export const CatalogMoveFurniView: FC<{}> = props =>
         );
     });
 
+    // Typing searches every category in every tab by name; each hit shows
+    // where it sits, since two shelves can share a name (Christmas ...).
+    const search = query.trim().toLowerCase();
+    const results: { node: ICatalogNode; path: string }[] = [];
+
+    const collect = (nodes: ICatalogNode[], trail: string[]) =>
+    {
+        for(const node of nodes)
+        {
+            if(results.length >= 60) return;
+            if(node.pageId < 0) continue;
+
+            if((node.localization ?? '').toLowerCase().includes(search)) results.push({ node, path: trail.join(' > ') });
+
+            collect(visibleChildren(node), [ ...trail, node.localization ]);
+        }
+    }
+
+    if(search.length) for(const each of tabs) collect(visibleChildren(each), [ each.localization ]);
+
+    const renderResults = () =>
+    {
+        if(!results.length) return <div className="rp-catalog-move-empty">No category called that.</div>;
+
+        return results.map(({ node, path }, index) =>
+        {
+            const isHere = (node.pageId === sourcePageId);
+
+            return (
+                <div key={ index } className={ 'rp-catalog-move-row is-result' + (isHere ? ' is-here' : '') + (moving ? ' is-busy' : '') }
+                    onClick={ () => moveTo(node) }>
+                    <span className="rp-catalog-move-icon"><CatalogIconView icon={ node.iconId } /></span>
+                    <span className="rp-catalog-move-caption">
+                        { node.localization }
+                        <span className="rp-catalog-move-path">{ path }</span>
+                    </span>
+                    { isHere && <span className="rp-catalog-move-here">here</span> }
+                </div>
+            );
+        });
+    }
+
     return (
         <>
             <div ref={ chipRef } className={ 'rp-catalog-move-chip' + (open ? ' is-open' : '') } title="Move to another category" onClick={ begin }>Move</div>
             { open && position && createPortal(
                 <div ref={ panelRef } className="rp-catalog-move" style={ { left: position.left, top: position.top, width: PANEL_WIDTH } }>
                     <div className="rp-catalog-move-header">
-                        <span>Move to category</span>
+                        <input type="text" className="rp-catalog-move-search" placeholder="Search categories" autoFocus
+                            value={ query } onChange={ event => setQuery(event.target.value) } />
                         <FaTimes className="rp-catalog-move-close" onClick={ close } />
                     </div>
-                    <div className="rp-catalog-move-tabs">
-                        { tabs.map((node, index) =>
-                            <div key={ index } className={ 'rp-catalog-move-tab' + ((node === tab) ? ' is-active' : '') }
-                                onClick={ () => setTab(node) }>{ node.localization }</div>) }
-                    </div>
+                    { !search.length &&
+                        <div className="rp-catalog-move-tabs">
+                            { tabs.map((node, index) =>
+                                <div key={ index } className={ 'rp-catalog-move-tab' + ((node === tab) ? ' is-active' : '') }
+                                    onClick={ () => setTab(node) }>{ node.localization }</div>) }
+                        </div> }
                     <div className="rp-catalog-move-list">
-                        { tab && renderNodes(visibleChildren(tab), 0) }
+                        { search.length ? renderResults() : (tab && renderNodes(visibleChildren(tab), 0)) }
                     </div>
                     { (moving || error) &&
                         <div className={ 'rp-catalog-move-status' + (error ? ' is-error' : '') }>{ error ?? 'Moving...' }</div> }

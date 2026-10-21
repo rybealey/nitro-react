@@ -1,7 +1,7 @@
 import { FurnitureFloorUpdateComposer, FurnitureStackHeightComposer, FurnitureStackHeightEvent, RoomObjectCategory, RoomObjectOperationType, RoomObjectVariable } from '@nitrots/nitro-renderer';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import ReactSlider from 'react-slider';
-import { AvatarInfoFurni, GetRoomEngine, LocalizeText, SendMessageComposer } from '../../../../../api';
+import { AvatarInfoFurni, GetRoomEngine, LocalizeText, ProcessRoomObjectOperation, SendMessageComposer } from '../../../../../api';
 import { ApplyFurniAlpha, RpSetFurniAlphaComposer } from '../../../../../api/rp-furni/RpFurniMessages';
 import { Button, Column, Flex, Text } from '../../../../../common';
 import { useMessageEvent, useRoom } from '../../../../../hooks';
@@ -130,7 +130,7 @@ export const InfoStandWidgetFurniToolsView: FC<InfoStandWidgetFurniToolsViewProp
     }
 
     const rotate = (positive: boolean) =>
-        GetRoomEngine().processRoomObjectOperation(avatarInfo.id, avatarInfo.category,
+        ProcessRoomObjectOperation(avatarInfo.id, avatarInfo.category,
             positive ? RoomObjectOperationType.OBJECT_ROTATE_POSITIVE : RoomObjectOperationType.OBJECT_ROTATE_NEGATIVE);
 
     const stepHeight = (delta: number) =>
