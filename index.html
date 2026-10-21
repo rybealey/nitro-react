@@ -58,6 +58,17 @@
         "forward.id": (new URLSearchParams(window.location.search).get('room') || 0),
         "friend.id": (new URLSearchParams(window.location.search).get('friend') || 0),
       };
+
+      // pixelrp: the ticket is in NitroConfig now - take it out of the address
+      // so it isn't left in history or a copied link. Spent at login anyway;
+      // a reload goes through /game, which issues a fresh one (App.tsx).
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (!params.has('sso')) return;
+        params.delete('sso');
+        var query = params.toString();
+        history.replaceState(history.state, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+      })();
     </script>
     <script type="module" src="./src/index.tsx"></script>
   </body>

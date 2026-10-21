@@ -2,11 +2,11 @@ import { GetConfiguration } from '../nitro';
 
 // PixelRP: every game file is behind the asset pass (parent repo
 // docs/asset-protection-plan.md) - cookies the CMS sets when /game loads,
-// which nginx checks on each request and which expire after a day. A client
+// which nginx checks on each request and which expire after an hour. A client
 // left open past that would start failing at its next lazy-loaded bundle (a
-// new avatar's clothes, a catalog page), so renew it every half hour, far
-// inside the TTL. A failed renewal is harmless until the pass actually runs
-// out; the next tick tries again.
+// new avatar's clothes, a catalog page), so renew it every half hour, half
+// the TTL. A failed renewal is harmless until the pass actually runs out; it
+// is tried again every five minutes until then.
 //
 // The half hour is measured on the wall clock, checked once a minute, rather
 // than by a 30-minute timer: a timer does not run while the computer sleeps,
