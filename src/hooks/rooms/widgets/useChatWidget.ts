@@ -19,6 +19,10 @@ const petImageCache: Map<string, string> = new Map();
 // and head caches are always set together, so they drop the same outfits.
 const FIGURE_CACHE_LIMIT = 300;
 
+// pixelrp: the most bubbles kept on screen; past it the oldest - the highest
+// up - goes. A busy room otherwise piled up bubbles for minutes.
+const CHAT_BUBBLE_LIMIT = 50;
+
 const setCapped = <T, >(cache: Map<string, T>, key: string, value: T) =>
 {
     cache.delete(key);
@@ -254,7 +258,7 @@ const useChatWidgetState = () =>
             usernameIcon,
             usernameIconColor);
 
-        setChatMessages(prevValue => [ ...prevValue, chatMessage ]);
+        setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]);
 
         const entry = { id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, text, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor };
 

@@ -1,5 +1,5 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer } from '@nitrots/nitro-renderer';
-import { CSSProperties, FC, useCallback, useEffect, useState } from 'react';
+import { CSSProperties, FC, useCallback, useEffect, useRef, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
@@ -190,7 +190,20 @@ export const PlayerHudWidgetView: FC<{}> = () =>
         setGangVersion(value => (value + 1));
     });
 
-    useEffect(() => SubscribeRpStats(() => setStatsVersion(value => (value + 1))), []);
+    // Two players' bars are shown - yours and your target's - but every
+    // player's stats reach the store, so a fight redrew the HUD for each of
+    // them. Only those two, or the room's being cleared, redraw it now.
+    const shownIndexes = useRef({ own: -1, target: -1 });
+
+    shownIndexes.current.own = (roomSession?.ownRoomIndex ?? -1);
+    shownIndexes.current.target = (target?.roomIndex ?? -1);
+
+    useEffect(() => SubscribeRpStats(roomIndex =>
+    {
+        const shown = shownIndexes.current;
+
+        if((roomIndex < 0) || (roomIndex === shown.own) || (roomIndex === shown.target)) setStatsVersion(value => (value + 1));
+    }), []);
 
     // Room changed. (The stats store clears itself on RoomReady; clearing it
     // here, after the room's stats have landed, would throw them away.)

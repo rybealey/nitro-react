@@ -287,7 +287,9 @@ const useAvatarInfoWidgetState = () =>
     useObjectDeselectedEvent(event =>
     {
         setAvatarInfo(null);
-        setProductBubbles([]);
+        // pixelrp: the same list when it is already empty - a new [] redrew the
+        // widget on every tile click.
+        setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));
     });
 
     useObjectRollOverEvent(event =>

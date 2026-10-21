@@ -86,14 +86,17 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
     {
         setMotto(avatarInfo.motto);
 
+        return () => setMotto(null);
+    }, [ avatarInfo ]);
+
+    // pixelrp: once per player shown, not per info object - every click on the
+    // same player, and every badge, figure or group update, makes a new one.
+    useEffect(() =>
+    {
         SendMessageComposer(new UserRelationshipsComposer(avatarInfo.webID));
 
-        return () =>
-        {
-            setMotto(null);
-            setRelationships(null);
-        }
-    }, [ avatarInfo ]);
+        return () => setRelationships(null);
+    }, [ avatarInfo.webID ]);
 
     if(!avatarInfo) return null;
 

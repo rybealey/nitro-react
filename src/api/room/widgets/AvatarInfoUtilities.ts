@@ -8,8 +8,43 @@ import { AvatarInfoRentableBot } from './AvatarInfoRentableBot';
 import { AvatarInfoUser } from './AvatarInfoUser';
 import { HasAnyRoomRights, IsRoomOwnerNow } from '../../rp-rights/RpRoomRightsMessages';
 
+// pixelrp: when each player's badges were last asked for, per room session.
+// Asking is the renderer's getUserBadges, which sends a request every call.
+type UserBadgeCache = { getUserBadges(userId: number): string[] };
+
+const BADGE_REQUEST_GAP_MS = 10000;
+const badgesAskedAt = new WeakMap<UserBadgeCache, Map<number, number>>();
+
 export class AvatarInfoUtilities
 {
+    // A click on a player builds their info twice (the infostand and the HUD),
+    // and every click on them builds it again. Their badges are asked for once
+    // in BADGE_REQUEST_GAP_MS; in between, the ones the last answer brought are
+    // used. A player who changes their badges has the new ones sent to the
+    // whole room, which updates that store and the infostand without asking.
+    private static getUserBadges(userDataManager: UserBadgeCache, webID: number): string[]
+    {
+        let askedAt = badgesAskedAt.get(userDataManager);
+
+        if(!askedAt)
+        {
+            askedAt = new Map();
+            badgesAskedAt.set(userDataManager, askedAt);
+        }
+
+        const now = Date.now();
+        const last = askedAt.get(webID);
+
+        if((last === undefined) || ((now - last) >= BADGE_REQUEST_GAP_MS))
+        {
+            askedAt.set(webID, now);
+
+            return userDataManager.getUserBadges(webID);
+        }
+
+        return ((userDataManager as unknown as { _userBadges: Map<number, string[]> })._userBadges?.get(webID) ?? []);
+    }
+
     public static getObjectName(objectId: number, category: number): AvatarInfoName
     {
         const roomSession = GetRoomSession();
@@ -262,7 +297,7 @@ export class AvatarInfoUtilities
         userInfo.groupId = userData.groupId;
         userInfo.groupBadgeId = GetSessionDataManager().getGroupBadge(userInfo.groupId);
         userInfo.groupName = userData.groupName;
-        userInfo.badges = roomSession.userDataManager.getUserBadges(userData.webID);
+        userInfo.badges = AvatarInfoUtilities.getUserBadges(roomSession.userDataManager, userData.webID);
         userInfo.figure = userData.figure;
         //var _local_8:Array = GetSessionDataManager().getUserTags(userData.webID);
         //this._Str_16287(userData.webId, _local_8);

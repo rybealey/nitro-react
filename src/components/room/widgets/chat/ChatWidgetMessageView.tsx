@@ -1,5 +1,5 @@
 import { RoomChatSettings, RoomObjectCategory } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatBubbleMessage, GetRoomEngine, HtmlToText } from '../../../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/NarratedBubble';
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
@@ -16,7 +16,10 @@ interface ChatWidgetMessageViewProps
 }
 
 
-export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
+// pixelrp: memo - every new line re-rendered every bubble on screen. A
+// bubble's props do not change once it is up, and it moves by writing its
+// own style (ChatBubbleMessage.top/left), not by re-rendering.
+export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
 {
     const { chat = null, makeRoom = null, bubbleWidth = RoomChatSettings.CHAT_BUBBLE_WIDTH_NORMAL } = props;
     const [ isVisible, setIsVisible ] = useState(false);
@@ -154,4 +157,4 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
             </div>
         </div>
     );
-}
+});

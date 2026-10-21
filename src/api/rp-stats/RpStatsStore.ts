@@ -22,13 +22,15 @@ export interface RpUnitStats
 
 const store: Map<number, RpUnitStats> = new Map();
 
-const listeners = new Set<() => void>();
+// A listener is told whose stats changed: a unit's roomIndex, or -1 when the
+// whole room's were cleared.
+const listeners = new Set<(roomIndex: number) => void>();
 
-const notify = () => listeners.forEach(listener => listener());
+const notify = (roomIndex: number) => listeners.forEach(listener => listener(roomIndex));
 
 export const GetRpUnitStats = (roomIndex: number): RpUnitStats => store.get(roomIndex);
 
-export const SubscribeRpStats = (listener: () => void): (() => void) =>
+export const SubscribeRpStats = (listener: (roomIndex: number) => void): (() => void) =>
 {
     listeners.add(listener);
 
@@ -41,7 +43,7 @@ const onStats = (event: RpStatsEvent) =>
 
     store.set(parser.roomIndex, { hp: parser.health, hpMax: parser.healthMax, energy: parser.energy, energyMax: parser.energyMax, aggro: parser.aggression, passive: parser.passive, staff: parser.staff });
 
-    notify();
+    notify(parser.roomIndex);
 }
 
 // RoomReady comes before anything of the room's, its stats included, and a
@@ -51,7 +53,7 @@ const onRoomReady = () =>
 {
     store.clear();
 
-    notify();
+    notify(-1);
 }
 
 let registered = false;
