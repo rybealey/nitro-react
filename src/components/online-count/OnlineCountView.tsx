@@ -1,10 +1,11 @@
 import { FC, useEffect, useState } from 'react';
 import { Flex, Text } from '../../common';
 
-// The count is cached server-side (30s in the CMS, 10s in nginx), so asking
-// more often only costs requests. Not while the tab is hidden; on coming back
-// it is asked for straight away.
-const POLL_INTERVAL_MS = 30000;
+// nginx answers everyone from one count for 10s (the CMS counts fresh behind
+// it), so asking every 10s keeps the HUD within about 20s of the hotel without
+// costing the server more however many play. Not while the tab is hidden; on
+// coming back it is asked for straight away.
+const POLL_INTERVAL_MS = 10000;
 
 export const OnlineCountView: FC<{}> = props =>
 {
