@@ -1,7 +1,10 @@
 import { FC, useEffect, useState } from 'react';
 import { Flex, Text } from '../../common';
 
-const POLL_INTERVAL_MS = 10000;
+// The count is cached server-side (30s in the CMS, 10s in nginx), so asking
+// more often only costs requests. Not while the tab is hidden; on coming back
+// it is asked for straight away.
+const POLL_INTERVAL_MS = 30000;
 
 export const OnlineCountView: FC<{}> = props =>
 {
@@ -16,15 +19,26 @@ export const OnlineCountView: FC<{}> = props =>
             .then(response => { if(!disposed && (typeof response?.data?.onlineCount === 'number')) setOnlineCount(response.data.onlineCount); })
             .catch(() => {});
 
+        const onVisibilityChange = () =>
+        {
+            if(document.visibilityState === 'visible') fetchCount();
+        };
+
         fetchCount();
 
-        const interval = setInterval(fetchCount, POLL_INTERVAL_MS);
+        const interval = setInterval(() =>
+        {
+            if(document.visibilityState === 'visible') fetchCount();
+        }, POLL_INTERVAL_MS);
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () =>
         {
             disposed = true;
 
             clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
         }
     }, []);
 
