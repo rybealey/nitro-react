@@ -1,6 +1,7 @@
 import { ILinkEventTracker, RoomEngineEvent, RoomId, RoomObjectCategory, RoomObjectType } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
 import { AddEventLinkTracker, CreateLinkEvent, GetRoomSession, ISelectedUser, RemoveLinkEventTracker } from '../../api';
+import { CanOpenCityPanel } from '../../api/rp-rights/RpRanks';
 import { Base, DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useModTools, useObjectSelectedEvent, useRoomEngineEvent } from '../../hooks';
 import { ModToolsChatlogView } from './views/room/ModToolsChatlogView';
@@ -132,10 +133,13 @@ export const ModToolsView: FC<{}> = props =>
                             <Base className="mt-tool-icon icon icon-user" /><span className="mt-tool-label">{ selectedUser ? selectedUser.username : 'User' }</span>
                         </button>
                         { /* Report Tool's old place: reports go through the phone's
-                             support app now, and this opens the City Panel. */ }
-                        <button type="button" className="mt-tool" onClick={ () => CreateLinkEvent('city-panel/toggle') }>
-                            <Base className="mt-tool-icon icon icon-city-panel" /><span className="mt-tool-label">City Panel</span>
-                        </button>
+                             support app now, and this opens the City Panel -
+                             Administrator and up only, so Trial Moderators and
+                             Moderators are not shown a button that does nothing. */ }
+                        { CanOpenCityPanel() &&
+                            <button type="button" className="mt-tool" onClick={ () => CreateLinkEvent('city-panel/toggle') }>
+                                <Base className="mt-tool-icon icon icon-city-panel" /><span className="mt-tool-label">City Panel</span>
+                            </button> }
                     </NitroCardContentView>
                 </NitroCardView> }
             { (openRooms.length > 0) && openRooms.map(roomId => <ModToolsRoomView key={ roomId } roomId={ roomId } onCloseClick={ () => CreateLinkEvent(`mod-tools/close-room-info/${ roomId }`) } />) }

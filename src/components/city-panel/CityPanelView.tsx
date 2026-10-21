@@ -1,7 +1,8 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
-import { AddEventLinkTracker, GetSessionDataManager, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
+import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { CityCapability, RpCityPanelEvent, RpCityPanelOpenComposer } from '../../api/rp-city/RpCityMessages';
+import { CanOpenCityPanel } from '../../api/rp-rights/RpRanks';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 import { CityPlayersView } from './views/CityPlayersView';
@@ -38,9 +39,9 @@ export const CityPanelView: FC<{}> = props =>
         const linkTracker: ILinkEventTracker = {
             linkReceived: (url: string) =>
             {
-                // Staff only: the server refuses everything for anyone else,
-                // so the window would open empty.
-                if(!GetSessionDataManager().isModerator) return;
+                // Administrator and up only: the server refuses everything for
+                // anyone else, so the window would open empty.
+                if(!CanOpenCityPanel()) return;
 
                 const parts = url.split('/');
 

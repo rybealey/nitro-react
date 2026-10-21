@@ -19,3 +19,7 @@ export const CanEditShop = (): boolean => (GetSessionDataManager().securityLevel
 // Furni picked up in a public room (one PixelRP owns) goes into the inventory of
 // a Builder or above, as theirs (emulator PixelRpRooms.BuilderTakesFurni).
 export const TakesPublicRoomFurni = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
+
+// The City Panel, Administrator and up (emulator rp_city_panel). The server
+// refuses every City Panel packet below it; this only hides the way in.
+export const CanOpenCityPanel = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_ADMINISTRATOR);
