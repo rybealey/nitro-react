@@ -30,6 +30,9 @@ const notify = (roomIndex: number) => listeners.forEach(listener => listener(roo
 
 export const GetRpUnitStats = (roomIndex: number): RpUnitStats => store.get(roomIndex);
 
+// Every roomIndex with stats held - for the pixelrpHud() DevTools check.
+export const GetRpStatsIndexes = (): number[] => [ ...store.keys() ];
+
 export const SubscribeRpStats = (listener: (roomIndex: number) => void): (() => void) =>
 {
     listeners.add(listener);

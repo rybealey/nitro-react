@@ -1,11 +1,11 @@
-import { IRoomSession, RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer } from '@nitrots/nitro-renderer';
+import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer } from '@nitrots/nitro-renderer';
 import { CSSProperties, FC, useCallback, useEffect, useRef, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
-import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
+import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetRoomSession, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
 import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
-import { GetRpUnitStats, SubscribeRpStats } from '../../../../api/rp-stats/RpStatsStore';
+import { GetRpStatsIndexes, GetRpUnitStats, SubscribeRpStats } from '../../../../api/rp-stats/RpStatsStore';
 import { Flex, HoverBubble, LayoutAvatarImageView } from '../../../../common';
 import { useMessageEvent, useRoom, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { TargetSelectResult, TargetState } from '../../../../hooks/rooms/targetState';
@@ -58,19 +58,56 @@ const statsWithWanted = (userId: number): HudStats => ({ ...DEFAULT_STATS, wante
 // player happens to share the number (or the name).
 const IsBotTarget = (info: AvatarInfoUser): boolean => (!!info && (info.userType !== RoomObjectType.USER));
 
-// pixelrp: which unit in the room is you - the room's player with your
-// account id, from the room's own list of who is in it. The session's
-// ownRoomIndex is only the fallback: your own plate read your stats by it, and
-// whenever it did not point at your avatar your bars sat at the default 100
-// and never moved, while everyone else saw them change.
-const OwnRoomIndex = (session: IRoomSession): number =>
+// pixelrp: which unit in the room is you - found among the avatars standing in
+// the room right now, as the player with your account id. The session's own
+// answers are not safe for it: ownRoomIndex did not always point at your
+// avatar, and the session's list of who is in the room is carried on from room
+// to room when a door or an arrow takes you through, so it can hold your old
+// room's entry or have lost the new one. Your bars then sat at the default 100
+// while everyone else saw them change. ownRoomIndex is only the fallback, for
+// the moment before your avatar is in the room.
+const OwnRoomIndex = (): number =>
 {
+    const session = GetRoomSession();
+
     if(!session) return -1;
 
-    const ownData = session.userDataManager?.getUserData(GetSessionDataManager().userId);
+    const userId = GetSessionDataManager().userId;
 
-    return (ownData ? ownData.roomIndex : session.ownRoomIndex);
+    for(const roomObject of GetRoomEngine().getRoomObjects(session.roomId, RoomObjectCategory.UNIT))
+    {
+        const userData = session.userDataManager?.getUserDataByIndex(roomObject.id);
+
+        if(userData && (userData.type === RoomObjectType.USER) && (userData.webID === userId)) return roomObject.id;
+    }
+
+    return session.ownRoomIndex;
 };
+
+// DevTools only: pixelrpHud() shows the unit the HUD takes to be you and the
+// bars it holds for it, beside the session's own answer. Reads, never writes.
+// Installed on the iframe and its parent, like the movement handles.
+const hudProbe = () =>
+{
+    const session = GetRoomSession();
+    const own = OwnRoomIndex();
+
+    return { roomId: (session?.roomId ?? -1), userId: GetSessionDataManager().userId, ownFromAvatars: own, sessionOwnRoomIndex: (session?.ownRoomIndex ?? -1), ownStats: (GetRpUnitStats(own) ?? null), statsHeldFor: GetRpStatsIndexes() };
+};
+
+if(typeof window !== 'undefined')
+{
+    (window as any).pixelrpHud = hudProbe;
+
+    try
+    {
+        if(window.parent && (window.parent !== window)) (window.parent as any).pixelrpHud = hudProbe;
+    }
+    catch (e)
+    {
+        // cross-origin parent - the in-frame handle still works
+    }
+}
 
 // Merge the live server stats (when known) over the base values.
 const withLiveStats = (roomIndex: number, base: HudStats): HudStats =>
@@ -209,16 +246,13 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // them. Only those two, or the room's being cleared, redraw it now. Your
     // own index is looked up when the stats arrive (OwnRoomIndex), not kept
     // from a render.
-    const shown = useRef({ session: roomSession, target: -1 });
+    const shownTarget = useRef(-1);
 
-    shown.current.session = roomSession;
-    shown.current.target = (target?.roomIndex ?? -1);
+    shownTarget.current = (target?.roomIndex ?? -1);
 
     useEffect(() => SubscribeRpStats(roomIndex =>
     {
-        const { session, target } = shown.current;
-
-        if((roomIndex < 0) || (roomIndex === target) || (roomIndex === OwnRoomIndex(session))) setStatsVersion(value => (value + 1));
+        if((roomIndex < 0) || (roomIndex === shownTarget.current) || (roomIndex === OwnRoomIndex())) setStatsVersion(value => (value + 1));
     }), []);
 
     // Room changed. (The stats store clears itself on RoomReady; clearing it
@@ -268,7 +302,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // Keep the player's own portrait current when they change clothes.
     useRoomSessionManagerEvent<RoomSessionUserFigureUpdateEvent>(RoomSessionUserFigureUpdateEvent.USER_FIGURE, event =>
     {
-        if(roomSession && (event.roomIndex === OwnRoomIndex(roomSession))) setOwnFigure(event.figure);
+        if(event.roomIndex === OwnRoomIndex()) setOwnFigure(event.figure);
     });
 
     // Target selection: clicking another user in the room.
@@ -471,7 +505,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
     const selfName = (GetSessionDataManager().userName ?? '');
     const selfGender = GetSessionDataManager().gender;
-    const ownIndex = OwnRoomIndex(roomSession);
+    const ownIndex = OwnRoomIndex();
     const playerStats = withLiveStats(ownIndex, statsWithWanted(GetSessionDataManager().userId));
     const targetIsBot = IsBotTarget(target);
     const targetStats = target ? withLiveStats(target.roomIndex, (targetIsBot ? DEFAULT_STATS : statsWithWanted(target.webID))) : null;
