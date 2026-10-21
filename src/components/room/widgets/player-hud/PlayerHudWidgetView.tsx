@@ -193,16 +193,20 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // Two players' bars are shown - yours and your target's - but every
     // player's stats reach the store, so a fight redrew the HUD for each of
     // them. Only those two, or the room's being cleared, redraw it now.
-    const shownIndexes = useRef({ own: -1, target: -1 });
+    //
+    // Your own index is read from the session when the stats arrive, not kept
+    // from a render: the session learns it after the HUD has first drawn, and
+    // nothing redraws the HUD when it does.
+    const shown = useRef({ session: roomSession, target: -1 });
 
-    shownIndexes.current.own = (roomSession?.ownRoomIndex ?? -1);
-    shownIndexes.current.target = (target?.roomIndex ?? -1);
+    shown.current.session = roomSession;
+    shown.current.target = (target?.roomIndex ?? -1);
 
     useEffect(() => SubscribeRpStats(roomIndex =>
     {
-        const shown = shownIndexes.current;
+        const { session, target } = shown.current;
 
-        if((roomIndex < 0) || (roomIndex === shown.own) || (roomIndex === shown.target)) setStatsVersion(value => (value + 1));
+        if((roomIndex < 0) || (roomIndex === (session?.ownRoomIndex ?? -1)) || (roomIndex === target)) setStatsVersion(value => (value + 1));
     }), []);
 
     // Room changed. (The stats store clears itself on RoomReady; clearing it
