@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { LocalizeText, NotificationAlertItem, NotificationAlertType, OpenUrl } from '../../../../api';
+import { LocalizeText, NotificationAlertItem, NotificationAlertType, OpenUrl, SanitizeHtml } from '../../../../api';
 import { Base, LayoutNotificationAlertView, LayoutNotificationAlertViewProps } from '../../../../common';
 import { isCommandListText, NotificationCommandListView } from './NotificationCommandListView';
 
@@ -54,7 +54,8 @@ export const NotificationDefaultAlertView: FC<NotificationDefaultAlertViewProps>
                 <div className="rp-dialog-message rp-dialog-scroll">
                     { (item.messages.length > 0) && item.messages.map((message, index) =>
                     {
-                        const htmlText = message.replace(/\r\n|\r|\n/g, '<br />');
+                        // pixelrp: cleaned like the default bubble (SanitizeHtml).
+                        const htmlText = SanitizeHtml(message.replace(/\r\n|\r|\n/g, '<br />'));
 
                         return <Base key={ index } dangerouslySetInnerHTML={ { __html: htmlText } } />;
                     }) }

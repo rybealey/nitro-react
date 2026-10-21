@@ -16,27 +16,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <base href="./">
-    <script>
-      // pixelrp: the renderer's LegacyExternalInterface calls window[method](...params)
-      // for ANY message starting with its key, from any window - so a site
-      // holding a reference to this page (one it opened, say) could run code
-      // here, in the game's origin, with the player's ticket and asset pass.
-      // Only the hotel page framing us has any reason to call in, and only the
-      // callbacks the client registers (HabboWebTools.OPENROOM). This runs
-      // before any other script and listens in the capture phase, so it sees
-      // every message first and stops the rest from reaching the renderer.
-      (function () {
-        var key = 'Nitro_LegacyExternalInterface';
-        var allowed = { openroom: true };
-        window.addEventListener('message', function (event) {
-          if (typeof event.data !== 'string' || event.data.indexOf(key) !== 0) return;
-          var method = null;
-          try { method = JSON.parse(event.data.substr(key.length)).method; } catch (e) {}
-          var fromHotel = window.parent !== window && event.source === window.parent && event.origin === window.location.origin;
-          if (!fromHotel || !Object.prototype.hasOwnProperty.call(allowed, method)) event.stopImmediatePropagation();
-        }, true);
-      })();
-    </script>
+    <!-- pixelrp: the start-up script (message guard, NitroConfig, ticket out of
+         the address) is a file, public/pixelrp-boot.js, so the page's script
+         allowlist can refuse inline script. First, and not deferred. -->
+    <script src="./pixelrp-boot.js"></script>
     <!-- No web font links: Press Start 2P and Silkscreen (400/700) are bundled
          (src/assets/styles/fonts.scss), and the Google Fonts stylesheet that
          also loaded them only held the page up. No Ubuntu either: chat needs
@@ -57,26 +40,6 @@
            instead of a blank page while the bundle downloads. -->
       <div style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #444298; color: rgba(255, 255, 255, 0.75); font: 600 14px/1 system-ui, sans-serif; letter-spacing: 0.08em;">Loading…</div>
     </div>
-    <script>
-      const NitroConfig = {
-        "config.urls": [ './renderer-config.json', './ui-config.json' ],
-        "sso.ticket": (new URLSearchParams(window.location.search).get('sso') || null),
-        "forward.type": (new URLSearchParams(window.location.search).get('room') ? 2 : -1),
-        "forward.id": (new URLSearchParams(window.location.search).get('room') || 0),
-        "friend.id": (new URLSearchParams(window.location.search).get('friend') || 0),
-      };
-
-      // pixelrp: the ticket is in NitroConfig now - take it out of the address
-      // so it isn't left in history or a copied link. Spent at login anyway;
-      // a reload goes through /game, which issues a fresh one (App.tsx).
-      (function () {
-        var params = new URLSearchParams(window.location.search);
-        if (!params.has('sso')) return;
-        params.delete('sso');
-        var query = params.toString();
-        history.replaceState(history.state, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
-      })();
-    </script>
     <script type="module" src="./src/index.tsx"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
-import { AddEventLinkTracker, ChatEntryType, GetSessionDataManager, IChatEntry, LocalizeText, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, ChatEntryType, GetSessionDataManager, HtmlToText, IChatEntry, LocalizeText, RemoveLinkEventTracker } from '../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../api/rp-chat/NarratedBubble';
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../api/rp-chat/GangAlert';
 import { CORP_ALERT_PREFIX, IsCorpAlert, ParseCorpAlert } from '../../api/rp-chat/CorpAlert';
@@ -214,7 +214,9 @@ export const ChatHistoryView: FC<{}> = props =>
         const corpAlert = (!gangAlert && IsCorpAlert(row.style, row.chatType, row.name, row.text)) ? ParseCorpAlert(message) : null;
         const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(row.style, row.chatType, row.name, row.text)) ? ParseStaffAlert(message) : null;
         const alert = (gangAlert || partnerAlert || corpAlert || staffAlert);
-        const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : partnerAlert ? PARTNER_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : row.name;
+        // pixelrp: plain text (escaped before the search highlight) - the
+        // sender is decoded from the formatted line first, as in the room.
+        const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : partnerAlert ? PARTNER_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ HtmlToText(alert.sender) }` : row.name;
         const displayText = alert ? alert.message : message;
 
         return (
@@ -231,7 +233,7 @@ export const ChatHistoryView: FC<{}> = props =>
                         <div className="chat-content">
                             { row.usernameIcon &&
                                 <b className="username mr-1"><UsernameIconGlyph iconClass={ row.usernameIcon } />{ ' ' }</b> }
-                            <b className="username mr-1">{ isActionBubble && '*' }<span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: highlight(displayName, query) } } />{ isActionBubble ? ' ' : ': ' }</b>
+                            <b className="username mr-1">{ isActionBubble && '*' }<span style={ row.usernameColor ? { color: row.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: highlight(escapeHtml(displayName), query) } } />{ isActionBubble ? ' ' : ': ' }</b>
                             <span className="message" dangerouslySetInnerHTML={ { __html: highlight(displayText, query) } } />
                         </div>
                     </div>

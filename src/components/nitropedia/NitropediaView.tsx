@@ -1,6 +1,6 @@
 import { ILinkEventTracker, NitroLogger } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useRef, useState } from 'react';
-import { AddEventLinkTracker, GetConfiguration, OpenUrl, RemoveLinkEventTracker } from '../../api';
+import { AddEventLinkTracker, GetConfiguration, OpenUrl, RemoveLinkEventTracker, SanitizeHtml } from '../../api';
 import { Base, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 
 const NEW_LINE_REGEX = /\n\r|\n|\r/mg;
@@ -18,7 +18,19 @@ export const NitropediaView: FC<{}> = props =>
         {
             try
             {
-                const response = await fetch(link);
+                // pixelrp: pages come from this site only. The configured address
+                // was a placeholder elsewhere (https://website.com), and whatever
+                // came back went onto the page as HTML.
+                const url = new URL(link, window.location.href);
+
+                if(url.origin !== window.location.origin)
+                {
+                    NitroLogger.error(`Nitropedia page not on this site: ${ link }`);
+
+                    return;
+                }
+
+                const response = await fetch(url.toString());
 
                 if(!response) return;
         
@@ -41,7 +53,9 @@ export const NitropediaView: FC<{}> = props =>
                     return null;
                 });
 
-                setContent(splitData.join(''));
+                // Cleaned like every other HTML from outside the client
+                // (SanitizeHtml), keeping the page's own styles.
+                setContent(SanitizeHtml(splitData.join(''), true));
             }
 
             catch (error)

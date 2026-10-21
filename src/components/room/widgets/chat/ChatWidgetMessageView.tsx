@@ -1,6 +1,6 @@
 import { RoomChatSettings, RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
-import { ChatBubbleMessage, GetRoomEngine } from '../../../../api';
+import { ChatBubbleMessage, GetRoomEngine, HtmlToText } from '../../../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/NarratedBubble';
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
 import { GANG_ALERT_PREFIX, IsGangAlert, ParseGangAlert } from '../../../../api/rp-chat/GangAlert';
@@ -130,7 +130,9 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
     // A staff alert (:sa) too; "[Staff] Ryan: hello".
     const staffAlert = (!gangAlert && !corpAlert && IsStaffAlert(chat.styleId, chat.type, chat.username, chat.text)) ? ParseStaffAlert(formattedText) : null;
     const alert = (gangAlert || partnerAlert || corpAlert || staffAlert);
-    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : partnerAlert ? PARTNER_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ alert.sender }` : chat.username;
+    // pixelrp: shown as text, never markup - an alert's sender is parsed out of
+    // the formatted (encoded) line, so it is decoded back to the words first.
+    const displayName = alert ? `${ gangAlert ? GANG_ALERT_PREFIX : partnerAlert ? PARTNER_ALERT_PREFIX : corpAlert ? CORP_ALERT_PREFIX : STAFF_ALERT_PREFIX } ${ HtmlToText(alert.sender) }` : chat.username;
     const displayText = alert ? alert.message : formattedText;
 
     return (
@@ -145,7 +147,7 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                 <div className="chat-content">
                     { chat.usernameIcon &&
                         <b className="username mr-1"><UsernameIconGlyph iconClass={ chat.usernameIcon } />{ ' ' }</b> }
-                    <b className="username mr-1">{ isActionBubble && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined } dangerouslySetInnerHTML={ { __html: displayName } } />{ isActionBubble ? ' ' : ': ' }</b>
+                    <b className="username mr-1">{ isActionBubble && '*' }<span style={ chat.usernameColor ? { color: chat.usernameColor } : undefined }>{ displayName }</span>{ isActionBubble ? ' ' : ': ' }</b>
                     <span className="message" dangerouslySetInnerHTML={ { __html: displayText } } />
                 </div>
                 <div className="pointer" />

@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { NotificationBubbleItem, OpenUrl } from '../../../../api';
+import { NotificationBubbleItem, OpenUrl, SanitizeHtml } from '../../../../api';
 import { Flex, LayoutNotificationBubbleView, LayoutNotificationBubbleViewProps, Text } from '../../../../common';
 
 export interface NotificationDefaultBubbleViewProps extends LayoutNotificationBubbleViewProps
@@ -23,7 +23,9 @@ export const NotificationDefaultBubbleView: FC<NotificationDefaultBubbleViewProp
     // name the way hotel.alert and the moderation bubbles had to be.
     const [ iconFailed, setIconFailed ] = useState(false);
 
-    const htmlText = item.message.replace(/\r\n|\r|\n/g, '<br />');
+    // pixelrp: cleaned (SanitizeHtml) - a notification can carry someone's
+    // own words, e.g. a Pay note, and was put on the page as HTML as it came.
+    const htmlText = SanitizeHtml(item.message.replace(/\r\n|\r|\n/g, '<br />'));
     const showIcon = !!(item.iconUrl && item.iconUrl.length) && !iconFailed;
 
     return (
