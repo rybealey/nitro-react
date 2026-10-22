@@ -1,0 +1,124 @@
+diff --git a/src/core/configuration/ConfigurationManager.ts b/src/core/configuration/ConfigurationManager.ts
+index 1111111..2222222 100644
+--- a/src/core/configuration/ConfigurationManager.ts
++++ b/src/core/configuration/ConfigurationManager.ts
+@@ -8,6 +8,7 @@
+     private _config: any;
+     private _pendingUrls: string[];
+     private _missingKeys: string[];
++    private _prefetched: Map<string, Promise<{ [index: string]: any }>>;
+ 
+     constructor()
+     {
+@@ -17,6 +18,7 @@
+         this._config = [];
+         this._pendingUrls = [];
+         this._missingKeys = [];
++        this._prefetched = new Map();
+ 
+         this.onConfigurationLoaded = this.onConfigurationLoaded.bind(this);
+     }
+@@ -27,6 +29,20 @@
+ 
+         this._pendingUrls = NitroConfiguration.getValue<string[]>('config.urls').slice();
+ 
++        // PixelRP: every file is asked for at once, and still parsed one after
++        // another in the listed order (a later file overrides an earlier one).
++        // Fetched one after another, each cost a round trip before the next.
++        for(const url of this._pendingUrls)
++        {
++            if(!url || this._prefetched.has(url)) continue;
++
++            const data = fetch(url).then(response => response.json());
++
++            data.catch(() => null);
++
++            this._prefetched.set(url, data);
++        }
++
+         this.loadNextConfiguration();
+     }
+ 
+@@ -51,8 +67,11 @@
+             return;
+         }
+ 
+-        fetch(url)
+-            .then(response => response.json())
++        const prefetched = this._prefetched.get(url);
++
++        this._prefetched.delete(url);
++
++        (prefetched || fetch(url).then(response => response.json()))
+             .then(data => this.onConfigurationLoaded(data, url))
+             .catch(err => this.onConfigurationFailed(err));
+     }
+diff --git a/src/nitro/localization/NitroLocalizationManager.ts b/src/nitro/localization/NitroLocalizationManager.ts
+index 1111111..2222222 100644
+--- a/src/nitro/localization/NitroLocalizationManager.ts
++++ b/src/nitro/localization/NitroLocalizationManager.ts
+@@ -12,6 +12,7 @@
+     private _badgePointLimits: Map<string, number>;
+     private _romanNumerals: string[];
+     private _pendingUrls: string[];
++    private _prefetched: Map<string, Promise<{ [index: string]: any }>>;
+ 
+     constructor(communication: INitroCommunicationManager)
+     {
+@@ -23,6 +24,7 @@
+         this._badgePointLimits = new Map();
+         this._romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
+         this._pendingUrls = [];
++        this._prefetched = new Map();
+     }
+ 
+     protected onInit(): void
+@@ -40,6 +42,19 @@
+ 
+         this._pendingUrls = urls;
+ 
++        // PixelRP: every file is asked for at once and still read in the listed
++        // order - one after another, each cost a round trip before the next.
++        for(const url of urls)
++        {
++            if(this._prefetched.has(url)) continue;
++
++            const data = fetch(url).then(response => response.json());
++
++            data.catch(() => null);
++
++            this._prefetched.set(url, data);
++        }
++
+         this.loadNextLocalization();
+     }
+ 
+@@ -57,8 +72,11 @@
+ 
+     public loadLocalizationFromURL(url: string): void
+     {
+-        fetch(url)
+-            .then(response => response.json())
++        const prefetched = this._prefetched.get(url);
++
++        this._prefetched.delete(url);
++
++        (prefetched || fetch(url).then(response => response.json()))
+             .then(data => this.onLocalizationLoaded(data, url))
+             .catch(err => this.onLocalizationFailed(err));
+     }
+diff --git a/src/api/asset/AssetManager.ts b/src/api/asset/AssetManager.ts
+index 1111111..2222222 100644
+--- a/src/api/asset/AssetManager.ts
++++ b/src/api/asset/AssetManager.ts
+@@ -108,7 +108,9 @@
+ 
+         try
+         {
+-            for(const url of urls) await this.downloadOne(url);
++            // PixelRP: all at once - one after another, each file cost a round
++            // trip before the next could start.
++            await Promise.all(urls.map(url => this.downloadOne(url)));
+ 
+             return Promise.resolve(true);
+         }

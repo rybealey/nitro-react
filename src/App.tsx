@@ -85,6 +85,29 @@ const ReloadGamePage = (): void =>
     }
 }
 
+// PixelRP: the gamedata the engine asks for once logged in, asked for while
+// the socket is still connecting - but only at a versioned address (?v=,
+// written at deploy by docker/nitro/version-assets.py). A versioned file is
+// kept by the browser (docker/web/nginx.conf), so the engine's own request
+// finds it there; an unversioned one would just be fetched twice.
+const PREFETCHED_GAMEDATA = [ 'furnidata.url', 'productdata.url', 'avatar.actions.url', 'avatar.figuredata.url', 'avatar.figuremap.url', 'avatar.effectmap.url' ];
+
+const PrefetchGamedata = (): void =>
+{
+    for(const key of PREFETCHED_GAMEDATA)
+    {
+        const value = GetConfiguration<string>(key);
+
+        if(!value) continue;
+
+        const url = NitroConfiguration.interpolate(value);
+
+        if(!/[?&]v=[^&]/.test(url)) continue;
+
+        fetch(url).then(response => response.arrayBuffer()).catch(() => null);
+    }
+}
+
 export const App: FC<{}> = props =>
 {
     const [ isReady, setIsReady ] = useState(false);
@@ -97,6 +120,10 @@ export const App: FC<{}> = props =>
     // a fresh `isReady`. The ref is what lets the disconnect paths below tell
     // "we never got in" from "we were in and the line dropped".
     const isReadyRef = useRef(false);
+    // pixelrp: what the engine waits for before it starts (ConfigurationEvent.LOADED).
+    const bootTexts = useRef<Promise<void>>(null);
+    const textsLoaded = useRef<() => void>(null);
+    const bootPreload = useRef<Promise<boolean>>(null);
 
     if(!GetNitroInstance())
     {
@@ -157,10 +184,45 @@ export const App: FC<{}> = props =>
     {
         switch(event.type)
         {
-            case ConfigurationEvent.LOADED:
+            case ConfigurationEvent.LOADED: {
+                // pixelrp: everything login needs starts here, side by side -
+                // the texts, the preload files, the gamedata the engine asks
+                // for after login, and the socket. They used to go one after
+                // another, the socket last, each wait a round trip; far from
+                // the server that was seconds. The engine still starts only
+                // once the texts and preload files are in (AUTHENTICATED), and
+                // the socket holds every packet until the client is ready.
+                bootTexts.current = new Promise(resolve => (textsLoaded.current = resolve));
+
                 GetNitroInstance().localization.init();
+
+                const assetUrls = GetConfiguration<string[]>('preload.assets.urls');
+                const urls: string[] = [];
+
+                if(assetUrls && assetUrls.length) for(const url of assetUrls) urls.push(NitroConfiguration.interpolate(url));
+
+                bootPreload.current = GetAssetManager().downloadAssets(urls).then(status =>
+                {
+                    if(status)
+                    {
+                        setPercent(prevValue => (prevValue + 20));
+                    }
+                    else
+                    {
+                        setIsError(true);
+                        setMessage('Assets Failed');
+                    }
+
+                    return status;
+                });
+
+                PrefetchGamedata();
+
+                GetCommunication().init();
+
                 setPercent(prevValue => (prevValue + 20));
                 return;
+            }
             case ConfigurationEvent.FAILED:
                 setIsError(true);
                 setMessage('Configuration Failed');
@@ -262,6 +324,11 @@ export const App: FC<{}> = props =>
                 RegisterRpTradeMessages();
                 RegisterRpGymMessages();
 
+                // pixelrp: the texts and preload files may still be on their
+                // way - login no longer waits for them (ConfigurationEvent.LOADED).
+                // A failed preload has already put up its error.
+                if(!(await Promise.all([ bootTexts.current, bootPreload.current ]))[1]) return;
+
                 GetNitroInstance().init();
 
                 if(LegacyExternalInterface.available) LegacyExternalInterface.call('legacyTrack', 'authentication', 'authok', []);
@@ -308,29 +375,15 @@ export const App: FC<{}> = props =>
                 // the rank that exempts staff has arrived.
                 StartDevToolsWatch();
 
+                // pixelrp: the full bar is painted once, then the hotel shows -
+                // a fixed 300ms used to sit here on every login. A hidden tab
+                // paints nothing, so it still gets in by the old 300ms.
+                requestAnimationFrame(() => requestAnimationFrame(() => setIsReady(true)));
                 setTimeout(() => setIsReady(true), 300);
                 return;
-            case NitroLocalizationEvent.LOADED: {
-                const assetUrls = GetConfiguration<string[]>('preload.assets.urls');
-                const urls: string[] = [];
-
-                if(assetUrls && assetUrls.length) for(const url of assetUrls) urls.push(NitroConfiguration.interpolate(url));
-
-                const status = await GetAssetManager().downloadAssets(urls);
-                
-                if(status)
-                {
-                    GetCommunication().init();
-
-                    setPercent(prevValue => (prevValue + 20))
-                }
-                else
-                {
-                    setIsError(true);
-                    setMessage('Assets Failed');
-                }
+            case NitroLocalizationEvent.LOADED:
+                if(textsLoaded.current) textsLoaded.current();
                 return;
-            }
         }
     }, [ checkForDeployment ]);
 
