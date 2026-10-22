@@ -39,6 +39,12 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
 
         setAvatarInfo(prevValue =>
         {
+            // pixelrp: the panel may be showing info that is already gone - it
+            // fades out on the last info after a close - or that changed to
+            // somebody else since this was drawn. Copying nothing and setting a
+            // field on it threw while React drew, and the whole game went black.
+            if(!prevValue || (prevValue.webID !== event.userId)) return prevValue;
+
             const newValue = CloneObject(prevValue);
 
             newValue.badges = event.badges;
@@ -53,6 +59,12 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
 
         setAvatarInfo(prevValue =>
         {
+            // pixelrp: as above. Your own panel, open as you take an arrow, is
+            // emptied when the old room says you left, and the new room's
+            // look-update for you can carry the same room index - every time,
+            // between two rooms without bots.
+            if(!prevValue || (prevValue.roomIndex !== event.roomIndex)) return prevValue;
+
             const newValue = CloneObject(prevValue);
 
             newValue.figure = event.figure;
@@ -69,6 +81,8 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
 
         setAvatarInfo(prevValue =>
         {
+            if(!prevValue || (prevValue.roomIndex !== event.roomIndex)) return prevValue;
+
             const newValue = CloneObject(prevValue);
             const clearGroup = ((event.status === -1) || (event.habboGroupId <= 0));
 
