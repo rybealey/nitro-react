@@ -36,6 +36,10 @@ const STUN_GUN = 'stun_gun';
 const PEPPER_SPRAY = 'pepper_spray';
 const VAPE = 'vape';
 
+// pixelrp: the Weapon frame also takes the vape, which is in the hand only
+// while it is equipped there (RpWeapons.IsEquippable; Twist, 2026-10-22).
+const isEquippable = (item: string): boolean => (isWeapon(item) || (item === VAPE));
+
 // The stun gun's shots left, as a green bar along the bottom of its slot - in
 // the Weapon frame or a carry slot, wherever the gun is. Empties shot by shot
 // and fills again at a police locker (the emulator's PoliceState.StunGunShots).
@@ -244,18 +248,18 @@ export const RpInventoryView: FC<{}> = props =>
 
         // A drop may land on any unlocked slot, or swap with an occupied
         // lapsed slot (mirrors the server's placement rule). The Weapon frame
-        // takes only a weapon, and a weapon leaving it can only swap with
-        // another weapon or an empty slot.
+        // takes only a weapon or a vape, and what leaves it can only swap with
+        // another of those or an empty slot.
         const dragged = items.get(slot)?.item;
         const isDropTarget = (over: number) =>
         {
             if(over === slot) return false;
 
-            if(over === WEAPON_SLOT) return isWeapon(dragged);
+            if(over === WEAPON_SLOT) return isEquippable(dragged);
 
             const target = items.get(over)?.item;
 
-            if((slot === WEAPON_SLOT) && target && !isWeapon(target)) return false;
+            if((slot === WEAPON_SLOT) && target && !isEquippable(target)) return false;
 
             return ((over <= unlockedSlots) || !!target);
         }
@@ -387,7 +391,8 @@ export const RpInventoryView: FC<{}> = props =>
                         {
                             // The equipped weapon sits in the frame like any
                             // slot's item: click it to put it away, drag it out,
-                            // or drop another weapon on it to swap.
+                            // or drop another weapon on it to swap. An equipped
+                            // vape is clicked for a hit instead, and stacks.
                             const equipped = items.get(WEAPON_SLOT);
                             const meta = (equipped ? resolveItem(equipped.item) : null);
 
@@ -395,13 +400,16 @@ export const RpInventoryView: FC<{}> = props =>
                             {
                                 return (
                                     <div data-rp-slot={ WEAPON_SLOT }
-                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ (equipped.item === STUN_GUN) ? ' has-charge' : '' }${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
+                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ hasCharge(equipped.item) ? ' has-charge' : '' }${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
                                         { ...bubbleProps(`${ meta.name } (equipped)`, WEAPON_SLOT, equipped.item) }
                                         onClick={ () => onItemClick(WEAPON_SLOT) }
                                         onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
                                         onPointerDown={ event => onItemDown(event, WEAPON_SLOT) }>
                                         <div className={ `rp-inventory-item ${ meta.cls }` } />
+                                        { (equipped.count > 1) &&
+                                        <span className="rp-inventory-count">{ equipped.count }</span> }
                                         { (equipped.item === STUN_GUN) && <ChargeBar charge={ stunGunCharge } label="Stun gun shots" /> }
+                                        { (equipped.item === VAPE) && <ChargeBar charge={ vapeCharge } label="Vape hits" /> }
                                     </div>);
                             }
 
