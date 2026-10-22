@@ -360,6 +360,13 @@
         background-position: center;
         overflow: hidden;
 
+        // pixelrp: the picture (RoomPreviewPainter) - placed in the middle as
+        // the background was; clicks go through to the box
+        .room-preview-canvas {
+            position: absolute;
+            pointer-events: none;
+        }
+
         &.border-0 {
             &::after {
                 content: none;

@@ -1,5 +1,6 @@
-import { ColorConverter, GetTicker, IRoomEngine, IRoomRenderingCanvas, RoomPreviewer, TextureUtils } from '@nitrots/nitro-renderer';
+import { ColorConverter, GetTicker, IRoomEngine, IRoomRenderingCanvas, RoomPreviewer } from '@nitrots/nitro-renderer';
 import { FC, MouseEvent, ReactNode, useEffect, useRef, useState } from 'react';
+import { RoomPreviewPainter } from './RoomPreviewPainter';
 
 // The RoomPreviewer state the centring reads. Private in the renderer, so it is
 // reached through a cast - as the resize fix below already does.
@@ -114,6 +115,28 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
     const { roomPreviewer = null, height = 0, children = null } = props;
     const [ renderingCanvas, setRenderingCanvas ] = useState<IRoomRenderingCanvas>(null);
     const elementRef = useRef<HTMLDivElement>();
+    const canvasRef = useRef<HTMLCanvasElement>();
+    const painterRef = useRef<RoomPreviewPainter>(null);
+
+    // pixelrp: the picture goes into a <canvas> in the box, drawn only when it
+    // changed - not a PNG screenshot as a background on every animation tick
+    // (RoomPreviewPainter).
+    const getPainter = () =>
+    {
+        if(!painterRef.current && canvasRef.current) painterRef.current = new RoomPreviewPainter(canvasRef.current);
+
+        return painterRef.current;
+    }
+
+    useEffect(() =>
+    {
+        return () =>
+        {
+            if(painterRef.current) painterRef.current.dispose();
+
+            painterRef.current = null;
+        }
+    }, []);
 
     const onClick = (event: MouseEvent<HTMLDivElement>) =>
     {
@@ -135,9 +158,9 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
         
             roomPreviewer.updatePreviewRoomView();
 
-            if(!renderingCanvas.canvasUpdated) return;
+            const painter = getPainter();
 
-            elementRef.current.style.backgroundImage = `url(${ TextureUtils.generateImageUrl(renderingCanvas.master) })`;
+            if(painter) painter.update(renderingCanvas.master, renderingCanvas.canvasUpdated, (time === -1));
         }
 
         if(!renderingCanvas)
@@ -203,6 +226,8 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
             (roomPreviewer as unknown as { _currentPreviewRectangle: unknown })._currentPreviewRectangle = null;
 
             update(-1);
+
+            getPainter()?.place();
         });
         
         resizeObserver.observe(elementRef.current);
@@ -218,7 +243,9 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
 
     return (
         <div className="room-preview-container">
-            <div ref={ elementRef } className="room-preview-image" style={ { height } } onClick={ onClick } />
+            <div ref={ elementRef } className="room-preview-image" style={ { height } } onClick={ onClick }>
+                <canvas ref={ canvasRef } className="room-preview-canvas" />
+            </div>
             { children }
         </div>
     );
