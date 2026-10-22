@@ -1,0 +1,131 @@
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -19,6 +19,20 @@ import { RoomObjectLogicFactory } from './RoomObjectLogicFactory';
+ import { RoomVariableEnum } from './RoomVariableEnum';
+ import { RoomCamera, RoomData, RoomFurnitureData, RoomInstanceData, RoomObjectBadgeImageAssetListener, SpriteDataCollector } from './utils';
+ 
++// PixelRP: when the player last moved or pressed the mouse, anywhere on the
++// page. Browsers that cannot say whether a click is waiting (Firefox, Safari)
++// place furniture in short turns while the mouse is busy - see
++// processPendingFurniture.
++let pixelrpPointerAt = -Infinity;
++
++if(typeof window !== 'undefined')
++{
++    const markPointer = () => (pixelrpPointerAt = performance.now());
++
++    window.addEventListener('pointermove', markPointer, { capture: true, passive: true });
++    window.addEventListener('pointerdown', markPointer, { capture: true, passive: true });
++}
++
+ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreator, IRoomEngineServices, IRoomManagerListener, IRoomContentListener, IUpdateReceiver, IDisposable
+ {
+     public static ROOM_OBJECT_ID: number = -1;
+@@ -840,6 +854,29 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+         }
+     }
+ 
++    // PixelRP: how long one frame may spend placing a room's furniture while
++    // it fills in, and the shorter turn for a browser that cannot tell when a
++    // click is waiting, used while the mouse has moved in the last moment.
++    private static FURNITURE_FRAME_MS: number = 40;
++    private static FURNITURE_FRAME_MS_MOUSE_BUSY: number = 8;
++    private static MOUSE_BUSY_MS: number = 400;
++    // a waiting click ends a turn only after this much of it, so a held key -
++    // which keeps input waiting nearly all the time - cannot slow the room to
++    // a crawl
++    private static FURNITURE_FRAME_MIN_MS: number = 4;
++
++    // PixelRP: the browser says a click or a key press is waiting (Chrome and
++    // Edge; not mouse movement). Null where it cannot tell.
++    private static inputPending(): (() => boolean)
++    {
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++        const scheduling = ((typeof navigator !== 'undefined') ? (navigator as any).scheduling : null);
++
++        if(!scheduling || (typeof scheduling.isInputPending !== 'function')) return null;
++
++        return () => scheduling.isInputPending();
++    }
++
+     private processPendingFurniture(): void
+     {
+         // PixelRP: a frame that used its 40ms on furniture only ends this
+@@ -848,9 +885,22 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+         // half speed, and on a slower laptop that was most of the wait.
+         this._skipFurnitureCreationForNextFrame = false;
+ 
+-        const startTime = new Date().valueOf();
+-        const furniturePerTick = 5;
+-        const hasTickLimit = true;
++        // PixelRP: the turn ends when its time is up - checked after every
++        // piece, not every fifth, so a slow few cannot run far past it - or as
++        // soon as the player clicks or presses a key: the click is handled
++        // straight after this frame's picture is drawn, not after the rest of
++        // the turn, and the next frame carries on with the furniture. Without
++        // that signal a turn is short while the mouse is busy, which fills the
++        // room in more slowly then but keeps a click from waiting long.
++        const startTime = performance.now();
++        const inputPending = RoomEngine.inputPending();
++        const frameMs = ((!inputPending && ((startTime - pixelrpPointerAt) < RoomEngine.MOUSE_BUSY_MS)) ? RoomEngine.FURNITURE_FRAME_MS_MOUSE_BUSY : RoomEngine.FURNITURE_FRAME_MS);
++        const turnOver = () =>
++        {
++            const elapsed = (performance.now() - startTime);
++
++            return ((elapsed >= frameMs) || ((inputPending !== null) && (elapsed >= RoomEngine.FURNITURE_FRAME_MIN_MS) && inputPending()));
++        };
+ 
+         for(const instanceData of this._roomInstanceDatas.values())
+         {
+@@ -864,19 +914,13 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+             {
+                 furnitureAdded = this.processPendingFurnitureFloor(instanceData.roomId, pendingData.id, pendingData);
+ 
+-                if(hasTickLimit)
+-                {
+-                    if(!(++totalFurnitureAdded % furniturePerTick))
+-                    {
+-                        const time = new Date().valueOf();
++                totalFurnitureAdded++;
+ 
+-                        if((time - startTime) >= 40)
+-                        {
+-                            this._skipFurnitureCreationForNextFrame = true;
++                if(turnOver())
++                {
++                    this._skipFurnitureCreationForNextFrame = true;
+ 
+-                            break;
+-                        }
+-                    }
++                    break;
+                 }
+             }
+ 
+@@ -884,19 +928,13 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+             {
+                 furnitureAdded = this.processPendingFurnitureWall(instanceData.roomId, pendingData.id, pendingData);
+ 
+-                if(hasTickLimit)
+-                {
+-                    if(!(++totalFurnitureAdded % furniturePerTick))
+-                    {
+-                        const time = new Date().valueOf();
++                totalFurnitureAdded++;
+ 
+-                        if((time - startTime) >= 40)
+-                        {
+-                            this._skipFurnitureCreationForNextFrame = true;
++                if(turnOver())
++                {
++                    this._skipFurnitureCreationForNextFrame = true;
+ 
+-                            break;
+-                        }
+-                    }
++                    break;
+                 }
+             }
+ 
