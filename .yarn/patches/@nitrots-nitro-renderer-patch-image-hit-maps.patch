@@ -1,0 +1,140 @@
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -220,16 +220,19 @@ export class ExtendedSprite extends Sprite
+         return (hitMap.bits[ind >>> 5] & (1 << (ind & 31))) !== 0;
+     }
+ 
+-    // Drawn at resolution 1 into a texture the frame's own size, so the
+-    // readback is just the frame and one map pixel is one texture unit.
++    // PixelRP: a frame's solid pixels come from the picture's own image when
++    // it has one in normal memory - a bundle's sheet keeps its <img> after it
++    // goes to the GPU - read through a small 2D canvas that stays on the CPU.
++    // Reading them back from the GPU made the browser wait for everything
++    // already queued there, once for every new furni picture the mouse
++    // touched: a string of small stalls over a room that had just loaded. A
++    // texture that cannot be read that way (no image, a cross-origin one, a
++    // closed bitmap) still takes the GPU readback.
+     private static generateFrameHitMap(texture: Texture): FrameHitMap
+     {
+         const width = Math.max(1, Math.ceil(texture.frame.width));
+         const height = Math.max(1, Math.ceil(texture.frame.height));
+-        const frameTexture = new Texture(texture.baseTexture, texture.frame.clone());
+-        const sprite = new Sprite(frameTexture);
+-        const renderTexture = TextureUtils.generateTexture(sprite, new Rectangle(0, 0, width, height));
+-        const pixels = TextureUtils.getPixels(renderTexture);
++        const pixels: ArrayLike<number> = (ExtendedSprite.readFramePixels(texture, width, height) || ExtendedSprite.readFramePixelsFromGpu(texture, width, height));
+         const bits = new Uint32Array(Math.ceil(width * height / 32));
+         const threshold = AlphaTolerance.MATCH_OPAQUE_PIXELS;
+ 
+@@ -238,11 +241,108 @@ export class ExtendedSprite extends Sprite
+             if(pixels[i * 4 + 3] >= threshold) bits[i >>> 5] |= (1 << (i & 31));
+         }
+ 
++        return { width, height, bits };
++    }
++
++    // PixelRP: the canvas the frames are read through, kept for the next one.
++    // A frame bigger than this on either side gets a canvas of its own, so one
++    // huge picture does not keep a huge canvas alive for the whole session.
++    private static READ_CANVAS_MAX: number = 512;
++    private static _readCanvas: HTMLCanvasElement = null;
++    private static _readContext: CanvasRenderingContext2D = null;
++
++    private static readFramePixels(texture: Texture, width: number, height: number): Uint8ClampedArray
++    {
++        const baseTexture = texture.baseTexture;
++
++        //@ts-ignore
++        if(baseTexture.imageHitMapsFailed || (typeof document === 'undefined')) return null;
++
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++        const source = ((baseTexture.resource as any)?.source as CanvasImageSource);
++
++        if(!source) return null;
++
++        if(source instanceof HTMLImageElement)
++        {
++            if(!source.complete || !source.naturalWidth) return null;
++        }
++        else if(source instanceof HTMLCanvasElement)
++        {
++            if(!source.width || !source.height) return null;
++        }
++        else if((typeof ImageBitmap !== 'undefined') && (source instanceof ImageBitmap))
++        {
++            // a closed bitmap reads as 0 x 0
++            if(!source.width || !source.height) return null;
++        }
++        else
++        {
++            return null;
++        }
++
++        try
++        {
++            const large = ((width > ExtendedSprite.READ_CANVAS_MAX) || (height > ExtendedSprite.READ_CANVAS_MAX));
++
++            let canvas = (large ? null : ExtendedSprite._readCanvas);
++            let context = (large ? null : ExtendedSprite._readContext);
++
++            if(!canvas || !context)
++            {
++                canvas = document.createElement('canvas');
++                canvas.width = (large ? width : ExtendedSprite.READ_CANVAS_MAX);
++                canvas.height = (large ? height : ExtendedSprite.READ_CANVAS_MAX);
++                context = canvas.getContext('2d', { willReadFrequently: true });
++
++                if(!context) return null;
++
++                if(!large)
++                {
++                    ExtendedSprite._readCanvas = canvas;
++                    ExtendedSprite._readContext = context;
++                }
++            }
++
++            const frame = texture.frame;
++            const resolution = (baseTexture.resolution || 1);
++
++            context.imageSmoothingEnabled = false;
++            context.globalCompositeOperation = 'source-over';
++            context.globalAlpha = 1;
++            context.clearRect(0, 0, width, height);
++            context.drawImage(source, (frame.x * resolution), (frame.y * resolution), (frame.width * resolution), (frame.height * resolution), 0, 0, frame.width, frame.height);
++
++            return context.getImageData(0, 0, width, height).data;
++        }
++        catch(error)
++        {
++            // a cross-origin picture taints the canvas for good: the next one
++            // starts clean, and this texture keeps the GPU readback
++            ExtendedSprite._readCanvas = null;
++            ExtendedSprite._readContext = null;
++
++            //@ts-ignore
++            baseTexture.imageHitMapsFailed = true;
++
++            return null;
++        }
++    }
++
++    // Drawn at resolution 1 into a texture the frame's own size, so the
++    // readback is just the frame and one map pixel is one texture unit.
++    private static readFramePixelsFromGpu(texture: Texture, width: number, height: number): Uint8Array
++    {
++        const frameTexture = new Texture(texture.baseTexture, texture.frame.clone());
++        const sprite = new Sprite(frameTexture);
++        const renderTexture = TextureUtils.generateTexture(sprite, new Rectangle(0, 0, width, height));
++        const pixels = TextureUtils.getPixels(renderTexture);
++
+         renderTexture.destroy(true);
+         sprite.destroy();
+         frameTexture.destroy();
+ 
+-        return { width, height, bits };
++        return pixels;
+     }
+ 
+     public get offsetX(): number
