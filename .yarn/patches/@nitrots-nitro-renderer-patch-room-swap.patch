@@ -1,0 +1,259 @@
+diff --git a/src/api/nitro/room/IRoomCreator.ts b/src/api/nitro/room/IRoomCreator.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/room/IRoomCreator.ts
++++ b/src/api/nitro/room/IRoomCreator.ts
+@@ -6,6 +6,7 @@
+ export interface IRoomCreator
+ {
+     destroyRoom(id: number): void;
++    pixelrpHoldRoomPicture(fromRoomId: number, toRoomId: number): void;
+     getRoomInstance(roomId: number): IRoomInstance;
+     updateRoomInstancePlaneVisibility(roomId: number, wallVisible: boolean, floorVisible?: boolean): boolean;
+     updateRoomInstancePlaneThickness(roomId: number, wallThickness: number, floorThickness: number): boolean;
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -1,10 +1,10 @@
+ import { RenderTexture, Resource, Texture } from '@pixi/core';
+ import { Container, DisplayObject } from '@pixi/display';
+ import { Matrix, Point, Rectangle } from '@pixi/math';
+-import { IConnection, IDisposable, IFurnitureStackingHeightMap, IGetImageListener, IImageResult, ILegacyWallGeometry, IMessageComposer, INitroCommunicationManager, INitroEvent, IObjectData, IPetColorResult, IPetCustomPart, IRoomContentListener, IRoomContentLoader, IRoomCreator, IRoomEngine, IRoomEngineServices, IRoomGeometry, IRoomInstance, IRoomManager, IRoomManagerListener, IRoomObject, IRoomObjectController, IRoomObjectLogicFactory, IRoomObjectVisualizationFactory, IRoomRenderer, IRoomRendererFactory, IRoomRenderingCanvas, IRoomSessionManager, ISelectedRoomObjectData, ISessionDataManager, ITileObjectMap, IUpdateReceiver, IVector3D, LegacyDataType, MouseEventType, NitroConfiguration, NitroLogger, ObjectDataFactory, RoomControllerLevel, RoomObjectCategory, RoomObjectUserType, RoomObjectVariable, ToolbarIconEnum, Vector3d } from '../../api';
++import { IConnection, IDisposable, IFurnitureStackingHeightMap, IGetImageListener, IImageResult, ILegacyWallGeometry, IMessageComposer, INitroCommunicationManager, INitroEvent, IObjectData, IPetColorResult, IPetCustomPart, IPlaneVisualization, IRoomContentListener, IRoomContentLoader, IRoomCreator, IRoomEngine, IRoomEngineServices, IRoomGeometry, IRoomInstance, IRoomManager, IRoomManagerListener, IRoomObject, IRoomObjectController, IRoomObjectLogicFactory, IRoomObjectVisualizationFactory, IRoomRenderer, IRoomRendererFactory, IRoomRenderingCanvas, IRoomSessionManager, ISelectedRoomObjectData, ISessionDataManager, ITileObjectMap, IUpdateReceiver, IVector3D, LegacyDataType, MouseEventType, NitroConfiguration, NitroLogger, ObjectDataFactory, RoomControllerLevel, RoomObjectCategory, RoomObjectUserType, RoomObjectVariable, ToolbarIconEnum, Vector3d } from '../../api';
+ import { NitroManager } from '../../core';
+ import { BadgeImageReadyEvent, NitroToolbarAnimateIconEvent, RoomBackgroundColorEvent, RoomDragEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomObjectEvent, RoomObjectFurnitureActionEvent, RoomObjectMouseEvent, RoomSessionEvent, RoomToObjectOwnAvatarMoveEvent } from '../../events';
+-import { GetTicker, GetTickerTime, NitroSprite, TextureUtils } from '../../pixi-proxy';
++import { GetTicker, GetTickerTime, NitroSprite, PixiApplicationProxy, TextureUtils } from '../../pixi-proxy';
+ import { NumberBank, RoomEnterEffect, RoomGeometry, RoomInstance, RoomObjectUpdateMessage, RoomRendererFactory } from '../../room';
+ import { PetFigureData } from '../avatar';
+ import { RenderRoomMessageComposer, RenderRoomThumbnailMessageComposer } from '../communication';
+@@ -33,6 +33,12 @@
+     window.addEventListener('pointerdown', markPointer, { capture: true, passive: true });
+ }
+ 
++// PixelRP: the old room's picture standing in for the next room - the room
++// waited for, when the wait began, that room's updates so far, whether all of
++// its furniture had been placed by the last one, and its ready updates in a
++// row (RoomEngine.pixelrpHoldRoomPicture).
++type PixelrpHeldPicture = { sprite: NitroSprite, roomId: number, startedAt: number, updates: number, placed: boolean, readyUpdates: number };
++
+ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreator, IRoomEngineServices, IRoomManagerListener, IRoomContentListener, IUpdateReceiver, IDisposable
+ {
+     public static ROOM_OBJECT_ID: number = -1;
+@@ -83,6 +89,9 @@
+     private _mouseCursorUpdate: boolean;
+     private _badgeListenerObjects: Map<string, RoomObjectBadgeImageAssetListener[]>;
+     private _logicFactory: IRoomObjectLogicFactory;
++    // PixelRP: the old room's picture, held over the next room while that one
++    // draws itself (pixelrpHoldRoomPicture).
++    private _pixelrpHeldPicture: PixelrpHeldPicture;
+ 
+     constructor(communication: INitroCommunicationManager)
+     {
+@@ -123,6 +132,7 @@
+         this._roomDraggingAlwaysCenters = false;
+         this._roomAllowsDragging = true;
+         this._badgeListenerObjects = new Map();
++        this._pixelrpHeldPicture = null;
+ 
+         this.runVisibilityUpdate = this.runVisibilityUpdate.bind(this);
+         this.processRoomObjectEvent = this.processRoomObjectEvent.bind(this);
+@@ -178,6 +188,8 @@
+             this.removeRoomInstance(key);
+         }
+ 
++        this.pixelrpReleaseRoomPicture();
++
+         document.removeEventListener('visibilitychange', this.runVisibilityUpdate);
+ 
+         GetTicker().remove(this.update, this);
+@@ -235,6 +247,136 @@
+         this.removeRoomInstance(roomId);
+     }
+ 
++    // PixelRP: the longest the old room's picture may stand in for the next
++    // room, and the updates a room that shows no floor or walls gets before
++    // it counts as drawn.
++    private static HELD_PICTURE_MAX_MS: number = 1000;
++    private static HELD_PICTURE_UPDATES: number = 3;
++
++    /**
++     * PixelRP: the server moved the player straight from one room into the
++     * next (an arrow, a booth, :follow). The old room is destroyed as the new
++     * one arrives, but the new one draws nothing at first - its floor and
++     * walls are built on its second update and its pictures reach the
++     * graphics card on the third - so every trip showed a black frame, then
++     * furniture popping in. The screen as it is now is copied (on the
++     * graphics card, nothing read back) and laid over everything until the
++     * new room is drawn with all of its furniture placed, or for a second at
++     * most (pixelrpUpdateHeldRoomPicture). Clicks are not held back: they
++     * reach the new room underneath.
++     */
++    public pixelrpHoldRoomPicture(fromRoomId: number, toRoomId: number): void
++    {
++        const stage = (PixiApplicationProxy.instance && PixiApplicationProxy.instance.stage);
++
++        if(!stage || !stage.children.length || !this.getRoomInstance(fromRoomId)) return;
++
++        // never in the way of the room change itself: anything going wrong
++        // here only means no picture, as before
++        try
++        {
++            const renderer = TextureUtils.getRenderer();
++            const texture = TextureUtils.createAndWriteRenderTexture(renderer.screen.width, renderer.screen.height, stage);
++
++            // a trip straight after another: the new copy already shows the
++            // previous one, which can go
++            this.pixelrpReleaseRoomPicture();
++
++            if(!texture) return;
++
++            const sprite = new NitroSprite(texture);
++
++            stage.addChild(sprite);
++
++            this._pixelrpHeldPicture = { sprite, roomId: toRoomId, startedAt: performance.now(), updates: 0, placed: false, readyUpdates: 0 };
++        }
++
++        catch (err)
++        {
++            NitroLogger.error('Could not hold the room picture', err);
++
++            this.pixelrpReleaseRoomPicture();
++        }
++    }
++
++    /**
++     * PixelRP: after each update while a room picture is held. The new room
++     * counts as ready on an update that drew its floor or walls (or its third
++     * update, for a room that shows neither) when all of its furniture had
++     * been placed by the update before, so the pieces placed last are drawn
++     * as well; the picture goes after two ready updates in a row, or after a
++     * second whatever the room has done. Until then it is kept on top: the
++     * new room's canvas joins the stage after it (the client's useRoom).
++     */
++    private pixelrpUpdateHeldRoomPicture(): void
++    {
++        if(!this._pixelrpHeldPicture) return;
++
++        // this runs inside the frame loop, where a throw would stop the game
++        // drawing at all: any trouble lets the new room show instead
++        try
++        {
++            this.pixelrpCheckHeldRoomPicture(this._pixelrpHeldPicture);
++        }
++
++        catch (err)
++        {
++            NitroLogger.error('Could not check the held room picture', err);
++
++            this.pixelrpReleaseRoomPicture();
++        }
++    }
++
++    private pixelrpCheckHeldRoomPicture(held: PixelrpHeldPicture): void
++    {
++        const roomObject = this.getRoomOwnObject(held.roomId);
++
++        if(roomObject) held.updates++;
++
++        const planes = (roomObject ? (roomObject.visualization as unknown as IPlaneVisualization)?.planes : null);
++        const ready = (held.placed && ((planes && (planes.length > 0)) || (held.updates >= RoomEngine.HELD_PICTURE_UPDATES)));
++
++        held.readyUpdates = (ready ? (held.readyUpdates + 1) : 0);
++
++        if((held.readyUpdates >= 2) || ((performance.now() - held.startedAt) >= RoomEngine.HELD_PICTURE_MAX_MS))
++        {
++            this.pixelrpReleaseRoomPicture();
++
++            return;
++        }
++
++        const instanceData = this._roomInstanceDatas.get(held.roomId);
++
++        held.placed = (!!roomObject && !!instanceData && !instanceData.hasPendingFurniture);
++
++        const parent = held.sprite.parent;
++
++        if(parent && (parent.children[parent.children.length - 1] !== held.sprite)) parent.addChild(held.sprite);
++    }
++
++    private pixelrpReleaseRoomPicture(): void
++    {
++        const held = this._pixelrpHeldPicture;
++
++        if(!held) return;
++
++        this._pixelrpHeldPicture = null;
++
++        // off the stage first, so the room shows even if freeing the copy
++        // goes wrong
++        if(held.sprite.parent) held.sprite.parent.removeChild(held.sprite);
++
++        try
++        {
++            held.sprite.destroy({ texture: true, baseTexture: true });
++        }
++
++        catch (err)
++        {
++            NitroLogger.error('Could not free the room picture', err);
++        }
++    }
++
+     public getRoomInstance(roomId: number): IRoomInstance
+     {
+         return (this._roomManager && this._roomManager.getRoomInstance(this.getRoomId(roomId))) || null;
+@@ -258,6 +400,10 @@
+             existing.dispose();
+         }
+ 
++        // PixelRP: the room a held picture was waiting for is gone (left for
++        // the hotel view, say)
++        if(this._pixelrpHeldPicture && (this._pixelrpHeldPicture.roomId === roomId)) this.pixelrpReleaseRoomPicture();
++
+         this.events.dispatchEvent(new RoomEngineEvent(RoomEngineEvent.DISPOSED, roomId));
+     }
+ 
+@@ -833,6 +979,8 @@
+ 
+         this.updateRoomCameras(time);
+ 
++        this.pixelrpUpdateHeldRoomPicture();
++
+         if(this._mouseCursorUpdate) this.setPointer();
+ 
+         RoomEnterEffect.turnVisualizationOff();
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -108,6 +108,11 @@
+     {
+         if(this._currentRoomId !== 0)
+         {
++            // PixelRP: straight from one room into the next (an arrow, a
++            // booth, :follow) - the old room's picture stays up until the new
++            // one has drawn itself (RoomEngine.pixelrpHoldRoomPicture).
++            if(this._roomCreator && (id !== 0) && (id !== this._currentRoomId)) this._roomCreator.pixelrpHoldRoomPicture(this._currentRoomId, id);
++
+             if(this._roomCreator) this._roomCreator.destroyRoom(this._currentRoomId);
+         }
+ 
+diff --git a/src/nitro/room/utils/RoomInstanceData.ts b/src/nitro/room/utils/RoomInstanceData.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/utils/RoomInstanceData.ts
++++ b/src/nitro/room/utils/RoomInstanceData.ts
+@@ -159,6 +159,12 @@
+         return this.getPendingFurnitureWall(keys.next().value as number);
+     }
+ 
++    // PixelRP: furniture still waiting to be placed, floor or wall.
++    public get hasPendingFurniture(): boolean
++    {
++        return ((this._floorStack.size > 0) || (this._wallStack.size > 0));
++    }
++
+     public addButtonMouseCursorOwner(k: string): boolean
+     {
+         const _local_2 = this._mouseButtonCursorOwners.indexOf(k);
