@@ -82,60 +82,84 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
             }
         }
 
-        const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, gender, {
-            resetFigure: figure =>
-            {
-                if(isDisposed.current) return;
-
-                setRandomValue(Math.random());
-            },
-            dispose: () =>
-            {},
-            disposed: false
-        }, null);
-
-        if(!avatarImage) return;
-
-        let setType = AvatarSetType.FULL;
-
-        if(headOnly) setType = AvatarSetType.HEAD;
-
-        avatarImage.setDirection(setType, direction);
-
-        const renderFrame = () =>
+        const draw = (): (() => void) =>
         {
-            const image = avatarImage.getCroppedImage(setType);
+            const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, gender, {
+                resetFigure: figure =>
+                {
+                    if(isDisposed.current) return;
 
-            if(image) setAvatarUrl(image.src);
+                    setRandomValue(Math.random());
+                },
+                dispose: () =>
+                {},
+                disposed: false
+            }, null);
 
-            return image;
+            if(!avatarImage) return null;
+
+            let setType = AvatarSetType.FULL;
+
+            if(headOnly) setType = AvatarSetType.HEAD;
+
+            avatarImage.setDirection(setType, direction);
+
+            const renderFrame = () =>
+            {
+                const image = avatarImage.getCroppedImage(setType);
+
+                if(image) setAvatarUrl(image.src);
+
+                return image;
+            };
+
+            const firstFrame = renderFrame();
+
+            if(!animate && firstFrame && !avatarImage.isPlaceholder()) rememberImage(cacheKey, firstFrame.src);
+
+            // Animated figures (e.g. animated clothing) keep cycling their idle frames.
+            // Advance them on a timer so the preview matches how they look in the room;
+            // the room runs the avatar animation at ~12fps (24fps max / 2-frame interval).
+            if(animate && avatarImage.isAnimating())
+            {
+                const intervalId = window.setInterval(() =>
+                {
+                    avatarImage.updateAnimationByFrames(1);
+
+                    renderFrame();
+                }, 80);
+
+                return () =>
+                {
+                    window.clearInterval(intervalId);
+
+                    avatarImage.dispose();
+                }
+            }
+
+            avatarImage.dispose();
+
+            return null;
         };
 
-        const firstFrame = renderFrame();
+        // pixelrp: a face not drawn before is drawn just after the next paint.
+        // A click on a new player rendered it inside the click - a GPU readback
+        // and a PNG encode before the frame showing the click could paint.
+        let stopDrawing: () => void = null;
+        let timeoutId = 0;
 
-        if(!animate && firstFrame && !avatarImage.isPlaceholder()) rememberImage(cacheKey, firstFrame.src);
-
-        // Animated figures (e.g. animated clothing) keep cycling their idle frames.
-        // Advance them on a timer so the preview matches how they look in the room;
-        // the room runs the avatar animation at ~12fps (24fps max / 2-frame interval).
-        if(animate && avatarImage.isAnimating())
+        const frameId = window.requestAnimationFrame(() =>
         {
-            const intervalId = window.setInterval(() =>
-            {
-                avatarImage.updateAnimationByFrames(1);
+            timeoutId = window.setTimeout(() => (stopDrawing = draw()), 0);
+        });
 
-                renderFrame();
-            }, 80);
+        return () =>
+        {
+            window.cancelAnimationFrame(frameId);
+            window.clearTimeout(timeoutId);
 
-            return () =>
-            {
-                window.clearInterval(intervalId);
-
-                avatarImage.dispose();
-            }
+            if(stopDrawing) stopDrawing();
         }
-
-        avatarImage.dispose();
     }, [ figure, gender, direction, headOnly, animate, randomValue ]);
 
     useEffect(() =>

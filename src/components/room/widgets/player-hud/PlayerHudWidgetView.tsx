@@ -1,7 +1,7 @@
 import { RoomObjectCategory, RoomObjectType, RoomSessionUserFigureUpdateEvent, RpPassiveCancelComposer } from '@nitrots/nitro-renderer';
 import { CSSProperties, FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
-import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer } from '../../../../api';
+import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SameFields, SendMessageComposer } from '../../../../api';
 import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
@@ -315,7 +315,9 @@ export const PlayerHudWidgetView: FC<{}> = () =>
 
         if(!info || info.isOwnUser) return;
 
-        setTarget(info);
+        // pixelrp: clicking the target again builds an equal info - keeping
+        // the one in state leaves the whole HUD undrawn for it.
+        setTarget(prevValue => (SameFields(prevValue, info) ? prevValue : info));
     });
 
     // Deliberately NO OBJECT_DESELECTED handler: a target persists until a

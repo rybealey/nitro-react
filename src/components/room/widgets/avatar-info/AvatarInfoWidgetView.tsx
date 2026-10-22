@@ -1,6 +1,6 @@
 import { RoomEngineEvent, RoomEnterEffect, RoomSessionDanceEvent, RpUserCorpEvent } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useState } from 'react';
-import { AvatarInfoFurni, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, GetConfiguration, GetSessionDataManager, RoomWidgetUpdateRentableBotChatEvent } from '../../../../api';
+import { FC, useEffect, useRef, useState } from 'react';
+import { AvatarInfoFurni, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, GetConfiguration, GetSessionDataManager, IAvatarInfo, RoomWidgetUpdateRentableBotChatEvent } from '../../../../api';
 import { Column } from '../../../../common';
 import { useAvatarInfoWidget, useMessageEvent, useRoom, useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../../../hooks';
 import { SetRpEmployment } from '../../../../api/rp-employment/RpEmploymentRegistry';
@@ -115,24 +115,29 @@ export const AvatarInfoWidgetView: FC<{}> = props =>
         setEmploymentVersion(value => (value + 1));
     });
 
-    const [ displayedInfo, setDisplayedInfo ] = useState(avatarInfo);
+    // pixelrp: the last info is held in a ref, not state - copying each new
+    // one into state drew the whole widget a second time after every click.
+    const lastInfo = useRef<IAvatarInfo>(avatarInfo);
     const [ infostandClosing, setInfostandClosing ] = useState(false);
+    const displayedInfo = (avatarInfo || lastInfo.current);
 
     useEffect(() =>
     {
         if(avatarInfo)
         {
-            setDisplayedInfo(avatarInfo);
+            lastInfo.current = avatarInfo;
             setInfostandClosing(false);
 
             return;
         }
 
+        if(!lastInfo.current) return;
+
         setInfostandClosing(true);
 
         const timeout = window.setTimeout(() =>
         {
-            setDisplayedInfo(null);
+            lastInfo.current = null;
             setInfostandClosing(false);
         }, 220);
 

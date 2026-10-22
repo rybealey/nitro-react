@@ -4,7 +4,7 @@ import { InfoStandWidgetUserRelationshipsRelationshipItemView } from './InfoStan
 
 interface InfoStandWidgetUserRelationshipsViewProps
 {
-    relationships: RelationshipStatusInfoMessageParser;
+    relationships: Pick<RelationshipStatusInfoMessageParser, 'relationshipStatusMap'>;
 }
 
 export const InfoStandWidgetUserRelationshipsView: FC<InfoStandWidgetUserRelationshipsViewProps> = props =>

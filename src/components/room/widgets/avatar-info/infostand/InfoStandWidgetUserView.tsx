@@ -16,11 +16,18 @@ interface InfoStandWidgetUserViewProps
     onClose: () => void;
 }
 
+// pixelrp: the parts of an answer the view reads. The parser itself is one
+// object the renderer fills again for every answer, so it is not kept.
+export type UserRelationships = Pick<RelationshipStatusInfoMessageParser, 'userId' | 'relationshipStatusMap'>;
+
+const RELATIONSHIPS_CACHE_MS = 60000;
+const relationshipsCache: Map<number, { at: number, relationships: UserRelationships }> = new Map();
+
 export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =>
 {
     const { avatarInfo = null, setAvatarInfo = null, onClose = null } = props;
     const [ motto, setMotto ] = useState<string>(null);
-    const [ relationships, setRelationships ] = useState<RelationshipStatusInfoMessageParser>(null);
+    const [ relationships, setRelationships ] = useState<UserRelationships>(null);
 
     useRoomSessionManagerEvent<RoomSessionUserBadgesEvent>(RoomSessionUserBadgesEvent.RSUBE_BADGES, event =>
     {
@@ -79,21 +86,29 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
 
         if(!avatarInfo || (avatarInfo.webID !== parser.userId)) return;
 
-        setRelationships(parser);
+        const snapshot = { userId: parser.userId, relationshipStatusMap: parser.relationshipStatusMap };
+
+        relationshipsCache.set(parser.userId, { at: Date.now(), relationships: snapshot });
+        setRelationships(snapshot);
     });
 
+    // pixelrp: by player and motto, with no reset on the way out - a cleared
+    // then re-set motto drew the infostand again after every click.
     useEffect(() =>
     {
         setMotto(avatarInfo.motto);
-
-        return () => setMotto(null);
-    }, [ avatarInfo ]);
+    }, [ avatarInfo.webID, avatarInfo.motto ]);
 
     // pixelrp: once per player shown, not per info object - every click on the
     // same player, and every badge, figure or group update, makes a new one.
+    // An answer is reused for RELATIONSHIPS_CACHE_MS: the infostand closes on
+    // every floor click, and each reopening asked again.
     useEffect(() =>
     {
-        SendMessageComposer(new UserRelationshipsComposer(avatarInfo.webID));
+        const cached = relationshipsCache.get(avatarInfo.webID);
+
+        if(cached && ((Date.now() - cached.at) < RELATIONSHIPS_CACHE_MS)) setRelationships(cached.relationships);
+        else SendMessageComposer(new UserRelationshipsComposer(avatarInfo.webID));
 
         return () => setRelationships(null);
     }, [ avatarInfo.webID ]);

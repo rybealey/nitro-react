@@ -1,0 +1,160 @@
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -1,12 +1,22 @@
+ import { BLEND_MODES } from '@pixi/constants';
+-import { BaseTexture, Resource, Texture } from '@pixi/core';
+-import { Point } from '@pixi/math';
++import { BaseRenderTexture, BaseTexture, Resource, Texture } from '@pixi/core';
++import { Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { AlphaTolerance } from '../../../api';
+ import { TextureUtils } from '../../../pixi-proxy';
+ 
++// PixelRP: which pixels of one frame are solid, a bit each, row by row.
++interface FrameHitMap
++{
++    width: number;
++    height: number;
++    bits: Uint32Array;
++}
++
+ export class ExtendedSprite extends Sprite
+ {
++    private static STALE_HIT_MAP_MS: number = 250;
++
+     private _offsetX: number;
+     private _offsetY: number;
+     private _tag: string;
+@@ -87,8 +97,21 @@
+ 
+         if(!sprite.getLocalBounds().contains(x, y)) return false;
+ 
++        // PixelRP: a picture cut from a bundle's sheet is tested against a map
++        // of its own frame. The whole sheet - up to 2048x2048, every direction
++        // and frame of the furni - was read back from the GPU the first time
++        // the mouse touched any one of them, a stall in the frame that first
++        // hovers or clicks each kind of furni.
++        if(ExtendedSprite.hasFrameHitMap(texture)) return ExtendedSprite.frameContainsPoint(texture, x, y);
++
++        // PixelRP: an avatar redraws its picture into the same texture about
++        // 12 times a second while it walks, dances or talks, and a redraw only
++        // marks the map stale (AvatarImage). Rebuilding it is a GPU readback -
++        // the browser waits for every draw already queued - and it ran on the
++        // next hover or click after every redraw. A map up to a quarter second
++        // old has the avatar's shape bar a few pixels at a swinging edge.
+         //@ts-ignore
+-        if(!baseTexture.hitMap)
++        if(!baseTexture.hitMap || (baseTexture.hitMapStale && ((performance.now() - baseTexture.hitMapAt) >= ExtendedSprite.STALE_HIT_MAP_MS)))
+         {
+             if(!ExtendedSprite.generateHitMap(baseTexture)) return false;
+         }
+@@ -137,6 +160,10 @@
+ 
+         //@ts-ignore
+         baseTexture.hitMap = hitmap;
++        //@ts-ignore
++        baseTexture.hitMapAt = performance.now();
++        //@ts-ignore
++        baseTexture.hitMapStale = false;
+ 
+         sprite.destroy();
+         texture.destroy();
+@@ -144,6 +171,80 @@
+         return true;
+     }
+ 
++    // PixelRP: only a still picture cut from a larger one - a render texture
++    // can be redrawn in place with nobody to tell its maps, and a rotated
++    // frame is stored sideways in its sheet; both keep the whole-texture map.
++    private static hasFrameHitMap(texture: Texture): boolean
++    {
++        const baseTexture = texture.baseTexture;
++
++        if((baseTexture instanceof BaseRenderTexture) || texture.rotate) return false;
++
++        return ((texture.frame.width < baseTexture.width) || (texture.frame.height < baseTexture.height));
++    }
++
++    private static frameContainsPoint(texture: Texture, x: number, y: number): boolean
++    {
++        const frame = texture.frame;
++        const baseTexture = texture.baseTexture;
++
++        //@ts-ignore
++        if(!baseTexture.frameHitMaps) baseTexture.frameHitMaps = new Map();
++
++        //@ts-ignore
++        const maps = (baseTexture.frameHitMaps as Map<string, FrameHitMap>);
++        const key = `${ frame.x },${ frame.y },${ frame.width },${ frame.height }`;
++
++        let hitMap = maps.get(key);
++
++        if(!hitMap)
++        {
++            hitMap = ExtendedSprite.generateFrameHitMap(texture);
++
++            maps.set(key, hitMap);
++        }
++
++        if(texture.trim)
++        {
++            x -= texture.trim.x;
++            y -= texture.trim.y;
++        }
++
++        const dx = Math.round(x);
++        const dy = Math.round(y);
++
++        if((dx < 0) || (dy < 0) || (dx >= hitMap.width) || (dy >= hitMap.height)) return false;
++
++        const ind = (dx + (dy * hitMap.width));
++
++        return (hitMap.bits[ind >>> 5] & (1 << (ind & 31))) !== 0;
++    }
++
++    // Drawn at resolution 1 into a texture the frame's own size, so the
++    // readback is just the frame and one map pixel is one texture unit.
++    private static generateFrameHitMap(texture: Texture): FrameHitMap
++    {
++        const width = Math.max(1, Math.ceil(texture.frame.width));
++        const height = Math.max(1, Math.ceil(texture.frame.height));
++        const frameTexture = new Texture(texture.baseTexture, texture.frame.clone());
++        const sprite = new Sprite(frameTexture);
++        const renderTexture = TextureUtils.generateTexture(sprite, new Rectangle(0, 0, width, height));
++        const pixels = TextureUtils.getPixels(renderTexture);
++        const bits = new Uint32Array(Math.ceil(width * height / 32));
++        const threshold = AlphaTolerance.MATCH_OPAQUE_PIXELS;
++
++        for(let i = 0; i < width * height; i++)
++        {
++            if(pixels[i * 4 + 3] >= threshold) bits[i >>> 5] |= (1 << (i & 31));
++        }
++
++        renderTexture.destroy(true);
++        sprite.destroy();
++        frameTexture.destroy();
++
++        return { width, height, bits };
++    }
++
+     public get offsetX(): number
+     {
+         return this._offsetX;
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -414,8 +414,10 @@
+                 clear: true
+             });
+ 
++            // PixelRP: the click map is kept and marked stale - ExtendedSprite
++            // rebuilds it at most every quarter second, not after every redraw.
+             //@ts-ignore
+-            this._reusableTexture.baseTexture.hitMap = null;
++            this._reusableTexture.baseTexture.hitMapStale = true;
+         }
+         else
+         {

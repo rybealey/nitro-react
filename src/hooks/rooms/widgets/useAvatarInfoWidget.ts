@@ -1,5 +1,5 @@
 import { RoomEngineObjectEvent, RoomEngineUseProductEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionPetInfoUpdateEvent, RoomSessionPetStatusUpdateEvent, RoomSessionUserDataUpdateEvent } from '@nitrots/nitro-renderer';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, UseProductItem } from '../../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
 import { useFriends } from '../../friends';
@@ -7,6 +7,8 @@ import { useWired } from '../../wired';
 import { ClickthroughState } from '../clickthroughState';
 import { useObjectDeselectedEvent, useObjectRollOutEvent, useObjectRollOverEvent, useObjectSelectedEvent } from '../engine';
 import { useRoom } from '../useRoom';
+
+const PET_INFO_GAP_MS = 2000;
 
 const useAvatarInfoWidgetState = () =>
 {
@@ -17,6 +19,7 @@ const useAvatarInfoWidgetState = () =>
     const [ confirmingProduct, setConfirmingProduct ] = useState<UseProductItem>(null);
     const [ pendingPetId, setPendingPetId ] = useState<number>(-1);
     const [ isDecorating, setIsDecorating ] = useState(false);
+    const petInfoAskedAt = useRef(0);
     const { friends = [] } = useFriends();
     const { selectObjectForWired = null } = useWired();
     const { roomSession = null } = useRoom();
@@ -76,6 +79,12 @@ const useAvatarInfoWidgetState = () =>
                 switch(userData.type)
                 {
                     case RoomObjectType.PET:
+                        // pixelrp: once in PET_INFO_GAP_MS while that pet's panel
+                        // is open - every click asked, and every answer redrew
+                        // the panel and its picture.
+                        if((avatarInfo instanceof AvatarInfoPet) && (avatarInfo.id === userData.webID) && ((Date.now() - petInfoAskedAt.current) < PET_INFO_GAP_MS)) break;
+
+                        petInfoAskedAt.current = Date.now();
                         roomSession.userDataManager.requestPetInfo(userData.webID);
                         setPendingPetId(userData.webID);
                         break;
@@ -362,16 +371,18 @@ const useAvatarInfoWidgetState = () =>
     {
         if(!avatarInfo) return;
 
+        // pixelrp: the same list when it is already empty - a new [] drew the
+        // whole widget a second time after every click on a player.
         setActiveNameBubble(null);
-        setNameBubbles([]);
-        setProductBubbles([]);
+        setNameBubbles(prevValue => (prevValue.length ? [] : prevValue));
+        setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));
     }, [ avatarInfo ]);
 
     useEffect(() =>
     {
         if(!activeNameBubble) return;
 
-        setNameBubbles([]);
+        setNameBubbles(prevValue => (prevValue.length ? [] : prevValue));
     }, [ activeNameBubble ]);
 
     useEffect(() =>
