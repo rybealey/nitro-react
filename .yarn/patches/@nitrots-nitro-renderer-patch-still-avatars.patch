@@ -1,0 +1,179 @@
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -12,6 +12,14 @@ import { AvatarStructure } from './AvatarStructure';
+ import { AvatarImageCache } from './cache';
+ import { EffectAssetDownloadManager } from './EffectAssetDownloadManager';
+ 
++// PixelRP: one body part as it went into the avatar's picture.
++interface DrawnPiece
++{
++    image: Container;
++    x: number;
++    y: number;
++}
++
+ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+ {
+     private static CHANNELS_EQUAL: string = 'CHANNELS_EQUAL';
+@@ -62,6 +70,13 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+     private _cachedBodyPartsAvatarSet: string = null;
+     private _effectManager: EffectAssetDownloadManager;
+     private _effectListener: IAvatarEffectListener;
++    private _drawnTexture: RenderTexture = null;
++    private _drawnPieces: DrawnPiece[] = null;
++    private _drawnWidth: number = 0;
++    private _drawnHeight: number = 0;
++    private _drawnSpriteData: IAvatarDataContainer = null;
++    private _drawnColorTransform: unknown = null;
++    private _drawnGrayscale: boolean = false;
+ 
+     constructor(k: AvatarStructure, _arg_2: AssetAliasCollection, _arg_3: AvatarFigureContainer, _arg_4: string, _arg_5: EffectAssetDownloadManager, _arg_6: IAvatarEffectListener = null)
+     {
+@@ -111,6 +126,10 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+         this._figure = null;
+         this._avatarSpriteData = null;
+         this._actions = null;
++        this._drawnTexture = null;
++        this._drawnPieces = null;
++        this._drawnSpriteData = null;
++        this._drawnColorTransform = null;
+ 
+         // PixelRP: the avatar's picture is _reusableTexture (_image is the
+         // same texture, or null between redraws). destroy() without true kept
+@@ -337,9 +356,18 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+ 
+         this._image = null;
+ 
+-        const container = new NitroContainer();
++        // PixelRP: the body parts are gathered first, with where each goes,
++        // and the picture is only drawn again when they differ from the last
++        // drawing. An avatar wearing an animated effect - the vape's puff,
++        // cuffs, the bot badge, the police beacon - counts as animating, so it
++        // was redrawn every animation step (about 12 times a second) although
++        // only the effect's own sprite moved and the body came out the same.
++        // Every redraw also marked the click map stale, and a click or hover
++        // near the avatar then read the picture back from the GPU (hit-maps).
++        // The same parts, from the same cache, in the same places as last
++        // time is the picture already in the texture: it is kept, map and all.
++        const pieces: DrawnPiece[] = [];
+ 
+-        let isCachable = true;
+         let partCount = (_local_6.length - 1);
+ 
+         while(partCount >= 0)
+@@ -351,16 +379,9 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+             {
+                 const partCacheContainer = part.image;
+ 
+-                if(!partCacheContainer)
+-                {
+-                    container.destroy({
+-                        children: true
+-                    });
+-
+-                    return null;
+-                }
+-
+-                isCachable = ((isCachable) && (part.isCacheable));
++                // Nothing has been put in a container yet, so there is nothing
++                // to free - the parts gathered so far stay in their cache.
++                if(!partCacheContainer) return null;
+ 
+                 const point = part.regPoint.clone();
+ 
+@@ -372,22 +393,33 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+                     point.x += avatarCanvas.regPoint.x;
+                     point.y += avatarCanvas.regPoint.y;
+ 
+-                    const partContainer = new NitroContainer();
+-
+-                    partContainer.addChild(partCacheContainer);
+-
+-                    if(partContainer)
+-                    {
+-                        partContainer.position.set(point.x, point.y);
+-
+-                        container.addChild(partContainer);
+-                    }
++                    pieces.push({ image: partCacheContainer, x: point.x, y: point.y });
+                 }
+             }
+ 
+             partCount--;
+         }
+ 
++        if(cache && this._reusableTexture && (this._reusableTexture === this._drawnTexture) && this.isSameDrawing(pieces, avatarCanvas.width, avatarCanvas.height))
++        {
++            this._image = this._reusableTexture;
++            this._changes = false;
++
++            return this._image;
++        }
++
++        const container = new NitroContainer();
++
++        for(const piece of pieces)
++        {
++            const partContainer = new NitroContainer();
++
++            partContainer.addChild(piece.image);
++            partContainer.position.set(piece.x, piece.y);
++
++            container.addChild(partContainer);
++        }
++
+         if(this._avatarSpriteData)
+         {
+             if(!container.filters) container.filters = [];
+@@ -426,6 +458,15 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+ 
+         if(!this._reusableTexture) return null;
+ 
++        // PixelRP: what this picture is made of (see isSameDrawing).
++        this._drawnTexture = this._reusableTexture;
++        this._drawnPieces = pieces;
++        this._drawnWidth = avatarCanvas.width;
++        this._drawnHeight = avatarCanvas.height;
++        this._drawnSpriteData = this._avatarSpriteData;
++        this._drawnColorTransform = (this._avatarSpriteData ? this._avatarSpriteData.colorTransform : null);
++        this._drawnGrayscale = (this._avatarSpriteData ? this._avatarSpriteData.paletteIsGrayscale : false);
++
+         /*
+         if(this._avatarSpriteData)
+         {
+@@ -442,6 +483,33 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+         return this._image;
+     }
+ 
++    // PixelRP: the same body parts (the very same cached pictures) in the same
++    // order and places, on a canvas the same size, with the same colouring.
++    private isSameDrawing(pieces: DrawnPiece[], width: number, height: number): boolean
++    {
++        const drawn = this._drawnPieces;
++
++        if(!drawn || (drawn.length !== pieces.length)) return false;
++
++        if((this._drawnWidth !== width) || (this._drawnHeight !== height)) return false;
++
++        const spriteData = this._avatarSpriteData;
++
++        if(this._drawnSpriteData !== spriteData) return false;
++
++        if(spriteData && ((this._drawnColorTransform !== spriteData.colorTransform) || (this._drawnGrayscale !== spriteData.paletteIsGrayscale))) return false;
++
++        for(let i = 0; i < pieces.length; i++)
++        {
++            const a = drawn[i];
++            const b = pieces[i];
++
++            if((a.image !== b.image) || (a.x !== b.x) || (a.y !== b.y)) return false;
++        }
++
++        return true;
++    }
++
+     public applyPalette(texture: RenderTexture, reds: number[] = [], greens: number[] = [], blues: number[] = []): RenderTexture
+     {
+         const textureCanvas = TextureUtils.generateCanvas(texture);
