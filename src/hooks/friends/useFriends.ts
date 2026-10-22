@@ -1,7 +1,7 @@
 import { AcceptFriendMessageComposer, DeclineFriendMessageComposer, FollowFriendMessageComposer, FriendListFragmentEvent, FriendListUpdateComposer, FriendListUpdateEvent, FriendParser, FriendRequestsEvent, GetFriendRequestsComposer, MessengerInitComposer, MessengerInitEvent, NewFriendRequestEvent, RequestFriendComposer } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useState } from 'react';
 import { useBetween } from 'use-between';
-import { CloneObject, GetSessionDataManager, MessengerFriend, MessengerRequest, MessengerSettings, SendMessageComposer, UpdateFriendLookup } from '../../api';
+import { CloneObject, GetSessionDataManager, MessengerFriend, MessengerRequest, MessengerSettings, NoteFriendLogin, SendMessageComposer, UpdateFriendLookup } from '../../api';
 import { useMessageEvent } from '../events';
 
 const useFriendsState = () =>
@@ -177,6 +177,9 @@ const useFriendsState = () =>
                 }
                 else
                 {
+                    // pixelrp: offline to online is a log in - see FriendLogins.
+                    if(!newValue[index].online && friend.online) NoteFriendLogin(friend.id);
+
                     newValue[index].populate(friend);
                 }
             }

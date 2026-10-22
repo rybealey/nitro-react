@@ -1,8 +1,7 @@
 import { RoomEngineObjectEvent, RoomEngineUseProductEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionPetInfoUpdateEvent, RoomSessionPetStatusUpdateEvent, RoomSessionUserDataUpdateEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useRef, useState } from 'react';
-import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, UseProductItem } from '../../../api';
+import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, TakeFriendLogin, UseProductItem } from '../../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
-import { useFriends } from '../../friends';
 import { useWired } from '../../wired';
 import { ClickthroughState } from '../clickthroughState';
 import { useObjectDeselectedEvent, useObjectRollOutEvent, useObjectRollOverEvent, useObjectSelectedEvent } from '../engine';
@@ -20,7 +19,6 @@ const useAvatarInfoWidgetState = () =>
     const [ pendingPetId, setPendingPetId ] = useState<number>(-1);
     const [ isDecorating, setIsDecorating ] = useState(false);
     const petInfoAskedAt = useRef(0);
-    const { friends = [] } = useFriends();
     const { selectObjectForWired = null } = useWired();
     const { roomSession = null } = useRoom();
 
@@ -131,7 +129,9 @@ const useAvatarInfoWidgetState = () =>
             // user id was getting the green friend tag on room load.
             if(user.type !== RoomObjectType.USER) return;
 
-            if(friends.find(friend => (friend.id === user.webID)))
+            // pixelrp: only a friend who has just logged in, and only once -
+            // not every friend each time they or you walk into a room.
+            if(TakeFriendLogin(user.webID))
             {
                 addedNameBubbles.push(new AvatarInfoName(user.roomIndex, RoomObjectCategory.UNIT, user.webID, user.name, user.type, true));
             }
