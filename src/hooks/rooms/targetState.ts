@@ -15,8 +15,8 @@ export type TargetSelectResult =
     | { status: 'missing' };
 
 export const TargetState = {
-    // A PLAYER target's name - what "x" and "@x" expand to. Null for a bot
-    // target, so the shorthands never type a bot's name into a command.
+    // The target's name - what "x" and "@x" expand to. A bot's is its shown
+    // "bot-Name", which no player can have, so a command reads it as a bot.
     name: null as string | null,
     // Any target's name, bots included - only for the :t / :lt whispers.
     label: null as string | null,

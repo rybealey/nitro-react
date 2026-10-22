@@ -53,11 +53,12 @@ SetRpStaffResolver(IsRpStaff);
 // the player had done.
 const statsWithWanted = (userId: number): HudStats => ({ ...DEFAULT_STATS, wanted: GetRpWanted(userId) });
 
-// pixelrp: a bot can be the HUD target too (":lt <bot>", ":t <bot>"), but only
-// on screen. Its webID counts bots, not players, so nothing keyed by user id
-// may see it - the server's target, the gang crest, wanted stars, the profile,
-// the room-change re-pick, and the "x" shorthand would all land on whichever
-// player happens to share the number (or the name).
+// pixelrp: a bot can be the HUD target too (":lt <bot>", ":t <bot>"). Its
+// webID counts bots, not players, so nothing keyed by user id may see it - the
+// server's target, the gang crest, wanted stars, the profile and the
+// room-change re-pick would all land on whichever player shares the number.
+// Its NAME is safe (Twist, 2026-10-22): the room shows it as "bot-Name" and no
+// player may be called that, so "x" types it into a command (:wander x).
 const IsBotTarget = (info: AvatarInfoUser): boolean => (!!info && (info.userType !== RoomObjectType.USER));
 
 // pixelrp: a player in another room as a target, from what the server sent
@@ -564,7 +565,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // this when expanding the "@x" target-mention shorthand into a shout.
     useEffect(() =>
     {
-        TargetState.name = ((target && !IsBotTarget(target)) ? target.name : null);
+        TargetState.name = (target ? target.name : null);
         TargetState.label = (target ? target.name : null);
         TargetState.toggleLock = toggleTargetLock;
         TargetState.lockByName = lockTargetByName;
