@@ -1,9 +1,10 @@
-import { IPartColor, SecurityLevel } from '@nitrots/nitro-renderer';
+import { IPartColor } from '@nitrots/nitro-renderer';
 import { GetAvatarPalette, GetAvatarRenderManager, GetAvatarSetType, GetClubMemberLevel, GetConfiguration, GetSessionDataManager } from '../nitro';
 import { AvatarEditorGridColorItem } from './AvatarEditorGridColorItem';
 import { AvatarEditorGridPartItem } from './AvatarEditorGridPartItem';
 import { CategoryBaseModel } from './CategoryBaseModel';
 import { CategoryData } from './CategoryData';
+import { WearsAnyClothing } from '../rp-rights/RpRanks';
 import { FigureData } from './FigureData';
 
 export class AvatarEditorUtilities
@@ -130,12 +131,13 @@ export class AvatarEditorUtilities
         }
 
         const usesColors = (name !== FigureData.FACE);
-        // pixelrp: staff get every face, owned or not and selectable or not.
-        // Everyone else keeps exactly the selection they had. Rank 5 is the
-        // same line the server draws (Habbo.IsStaff), which also lets a staff
-        // face through ProcessFigure - one without the other would show a face
-        // the save then takes away.
-        const allFaces = ((name === FigureData.FACE) && (GetSessionDataManager().securityLevel >= SecurityLevel.MODERATOR));
+        // pixelrp: Moderators and up wear anything - every sellable set without
+        // owning it, and every face, selectable or not. Everyone else keeps
+        // exactly the selection they had. The server draws the same line
+        // (Habbo.WearsAnyClothing lets the look through ProcessFigure) - one
+        // without the other would show a piece the save then takes away.
+        const wearsAnything = WearsAnyClothing();
+        const allFaces = ((name === FigureData.FACE) && wearsAnything);
         const partSets = setType.partSets;
         const totalPartSets = partSets.length;
 
@@ -164,7 +166,7 @@ export class AvatarEditorUtilities
             {
                 let isValid = true;
 
-                if(partSet.isSellable && !allFaces && !this.SHOW_ALL_SETS) isValid = this.hasFigureSetId(partSet.id);
+                if(partSet.isSellable && !wearsAnything && !this.SHOW_ALL_SETS) isValid = this.hasFigureSetId(partSet.id);
 
                 if(isValid) partItems.push(new AvatarEditorGridPartItem(partSet, partColors, usesColors, false, true));
             }

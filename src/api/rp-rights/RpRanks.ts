@@ -23,3 +23,8 @@ export const TakesPublicRoomFurni = (): boolean => (GetSessionDataManager().secu
 // The City Panel, Administrator and up (emulator rp_city_panel). The server
 // refuses every City Panel packet below it; this only hides the way in.
 export const CanOpenCityPanel = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_ADMINISTRATOR);
+
+// Every clothing set in Choose Your Look without buying it from the Clothing
+// Store, every face included, from Moderator up (emulator
+// Habbo.WearsAnyClothing, which lets the saved look through).
+export const WearsAnyClothing = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_MODERATOR);
