@@ -175,8 +175,13 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
         COLLAPSED = isCollapsed;
     }, [ isCollapsed ]);
 
+    // pixelrp: hidden by this menu's own state, not the shared COLLAPSED (which
+    // only seeds the next menu). COLLAPSED is set in an effect, after the
+    // render that read it, and a menu that stands still no longer re-renders
+    // every frame - so the arrow flipped the caret and left the menu open
+    // (Twist, 2026-10-24).
     return <Base innerRef={ elementRef } position={ position } classNames={ getClassNames } style={ getStyle } { ...rest }>
-        { !(collapsable && COLLAPSED) && children }
+        { !(collapsable && isCollapsed) && children }
         { collapsable && <ContextMenuCaretView onClick={ () => setIsCollapsed(!isCollapsed) } collapsed={ isCollapsed } /> }
     </Base>;
 }
