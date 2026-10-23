@@ -363,6 +363,27 @@ $mt-unsafe: #c9453a;
         }
     }
 
+    // a nitro-slider in the switches' colours and thumb (the Room tool's
+    // floor opacity)
+    .mt-slider {
+        height: 18px;
+
+        .track {
+            height: 4px;
+
+            &.track-0 { background-color: $mt-switch-on; }
+            &.track-1 { background-color: $mt-switch-off; }
+        }
+
+        .thumb {
+            width: 16px;
+            height: 16px;
+            padding: 0;
+            background: $white;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+    }
+
     .mt-dot {
         display: inline-block;
         width: 7px;

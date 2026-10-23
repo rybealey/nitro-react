@@ -28,6 +28,7 @@ import { RegisterRpMacroMessages } from './api/rp-macros/RpMacroMessages';
 import { RegisterRpInventoryMessages } from './api/rp-inventory/RpInventoryMessages';
 import { RegisterRpVapeRaise } from './api/rp-inventory/RpVapeRaise';
 import { RegisterRpJailMessages } from './api/rp-police/RpJailMessages';
+import { RegisterRpFloorOpacityMessages } from './api/rp-room/RpFloorOpacityMessages';
 import { RegisterRpJuryMessages } from './api/rp-police/RpJuryMessages';
 import { CHARACTER_RELOAD, RegisterRpCharacterMessages, SubscribeRpCharacterResult } from './api/rp-phone/RpCharacterMessages';
 import { RegisterRpPrivacyMessages } from './api/rp-phone/RpPrivacyMessages';
@@ -293,6 +294,7 @@ export const App: FC<{}> = props =>
                 RegisterRpInventoryMessages();
                 RegisterRpVapeRaise();
                 RegisterRpJailMessages();
+                RegisterRpFloorOpacityMessages();
                 RegisterRpJuryMessages();
                 RegisterRpRoomRightsMessages();
                 RegisterRpTellerMessages();

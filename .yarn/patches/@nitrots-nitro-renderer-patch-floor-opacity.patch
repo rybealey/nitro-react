@@ -1,0 +1,82 @@
+diff --git a/src/api/nitro/room/object/RoomObjectVariable.ts b/src/api/nitro/room/object/RoomObjectVariable.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/room/object/RoomObjectVariable.ts
++++ b/src/api/nitro/room/object/RoomObjectVariable.ts
+@@ -126,6 +126,8 @@
+     public static ROOM_FLOOR_THICKNESS: string = 'room_floor_thickness';
+     public static ROOM_FLOOR_HOLE_UPDATE_TIME: string = 'room_floor_hole_update_time';
+     public static ROOM_FLOOR_VISIBILITY: string = 'room_floor_visibility';
++    // pixelrp: how see-through the floor tiles are, 0 (gone) to 1 (solid) - the room's :topacity (RoomVisualization)
++    public static ROOM_FLOOR_ALPHA: string = 'room_floor_alpha';
+     public static ROOM_WALL_VISIBILITY: string = 'room_wall_visibility';
+     public static ROOM_LANDSCAPE_VISIBILITY: string = 'room_landscape_visibility';
+     public static ROOM_DOOR_X: string = 'room_door_x';
+diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
++++ b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+@@ -39,6 +39,7 @@
+     private _floorThickness: number;
+     private _wallThickness: number;
+     private _holeUpdateTime: number;
++    private _floorAlpha: number;
+     private _planes: RoomPlane[];
+     private _visiblePlanes: RoomPlane[];
+     private _visiblePlaneSpriteNumbers: number[];
+@@ -75,6 +76,7 @@
+         this._floorThickness = 1;
+         this._wallThickness = 1;
+         this._holeUpdateTime = NaN;
++        this._floorAlpha = 255;
+         this._planes = [];
+         this._visiblePlanes = [];
+         this._visiblePlaneSpriteNumbers = [];
+@@ -180,6 +182,10 @@
+ 
+         needsUpdate = this.updateMasks(objectModel);
+ 
++        // PixelRP: after updateMasks, which overwrites needsUpdate rather
++        // than adding to it.
++        if(this.updateFloorAlpha(objectModel)) needsUpdate = true;
++
+         if(((time < (this._lastUpdateTime + this._updateIntervalTime)) && (!geometryUpdate)) && (!needsUpdate)) return;
+ 
+         if(this.updatePlaneTexturesAndVisibilities(objectModel))
+@@ -218,6 +224,13 @@
+                     {
+                         sprite.color = plane.color;
+                     }
++
++                    // PixelRP: the room's floor opacity, on every floor plane -
++                    // the tiles and their edges. Only the picture fades: a
++                    // click is tested against the texture's own pixels
++                    // (ExtendedSprite.containsPoint), so a floor at 0 is
++                    // still walked on.
++                    if(plane.type === RoomPlane.TYPE_FLOOR) sprite.alpha = this._floorAlpha;
+                 }
+ 
+                 index++;
+@@ -290,6 +303,23 @@
+         }
+ 
+         return false;
++    }
++
++    // PixelRP: the room's floor opacity (ROOM_FLOOR_ALPHA, set from client
++    // source - RpFloorOpacityMessages), 0 to 1, kept as the 0-255 a sprite
++    // takes. Unset is solid.
++    private updateFloorAlpha(k: IRoomObjectModel): boolean
++    {
++        if(this.updateModelCounter === k.updateCounter) return false;
++
++        const value = k.getValue<number>(RoomObjectVariable.ROOM_FLOOR_ALPHA);
++        const floorAlpha = ((typeof value === 'number') && !isNaN(value)) ? Math.round(Math.max(0, Math.min(1, value)) * 255) : 255;
++
++        if(floorAlpha === this._floorAlpha) return false;
++
++        this._floorAlpha = floorAlpha;
++
++        return true;
+     }
+ 
+     private updateMasks(k: IRoomObjectModel): boolean

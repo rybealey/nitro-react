@@ -1,8 +1,10 @@
 import { FlatControllerAddedEvent, FlatControllerRemovedEvent, FlatControllersEvent, GetCustomRoomFilterMessageComposer, GetModeratorRoomInfoMessageComposer, ModerateRoomMessageComposer, ModeratorActionMessageComposer, ModeratorRoomInfoEvent, RemoveAllRightsMessageComposer, RoomDataParser, RoomDeleteComposer, RoomMuteComposer, RoomSettingsComposer, RoomSettingsDataEvent, RoomTakeRightsComposer, RoomUsersWithRightsComposer, RpRoomCorpEvent, RpRoomZoneEvent, RpSetEmergencyComposer, SaveRoomSettingsComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useState } from 'react';
+import ReactSlider from 'react-slider';
 import { CreateLinkEvent, DispatchUiEvent, GetMaxVisitorsList, IRoomData, LocalizeText, NotificationConfirmType, SendMessageComposer } from '../../../../api';
 import { ROOM_POLICE_JAIL, RpRoomPoliceEvent } from '../../../../api/rp-police/RpJailMessages';
 import { PIXELRP_ROOM_OWNER, RpMakePixelRpRoomComposer } from '../../../../api/rp-rights/RpRoomRightsMessages';
+import { ApplyFloorOpacity, RpRoomFloorOpacityEvent, RpSetFloorOpacityComposer } from '../../../../api/rp-room/RpFloorOpacityMessages';
 import { ROOM_ZONE_SAFE, ROOM_ZONE_UNSAFE, RpRoomTurfEvent, RpRoomZoneTypeSaveComposer } from '../../../../api/rp-turf/RpTurfMessages';
 import { DraggableWindowPosition, LayoutRoomThumbnailView, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../../../common';
 import { RoomWidgetThumbnailEvent } from '../../../../events';
@@ -69,6 +71,8 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
     const [ roomCorp, setRoomCorp ] = useState<RoomCorpState>(null);
     // The room's police tag (RpRoomPoliceEvent): it is the jail.
     const [ roomPolice, setRoomPolice ] = useState({ isJailRoom: false });
+    // How see-through the floor tiles are, 0 to 100 (RpRoomFloorOpacityEvent).
+    const [ floorOpacity, setFloorOpacity ] = useState<number>(null);
     const [ usersWithRights, setUsersWithRights ] = useState<Map<number, string>>(new Map());
     const [ kickUsers, setKickUsers ] = useState(false);
     const [ message, setMessage ] = useState('');
@@ -173,6 +177,15 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         if(!parser || (parser.roomId !== roomId)) return;
 
         setRoomPolice({ isJailRoom: parser.isJailRoom });
+    });
+
+    useMessageEvent<RpRoomFloorOpacityEvent>(RpRoomFloorOpacityEvent, event =>
+    {
+        const parser = event.getParser();
+
+        if(!parser || (parser.roomId !== roomId)) return;
+
+        setFloorOpacity(parser.opacity);
     });
 
     useMessageEvent<FlatControllersEvent>(FlatControllersEvent, event =>
@@ -360,6 +373,18 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
         SendMessageComposer(new RpRoomZoneTypeSaveComposer(safe ? ROOM_ZONE_SAFE : ROOM_ZONE_UNSAFE));
     }
 
+    // The floor fades on this screen while the slider moves - in the room the
+    // moderator is standing in - and is saved when it is let go; the server
+    // then sends it to everyone in the room.
+    const previewFloorOpacity = (value: number) =>
+    {
+        setFloorOpacity(value);
+
+        if(isCurrentRoom) ApplyFloorOpacity(roomId, value);
+    }
+
+    const saveFloorOpacity = (value: number) => SendMessageComposer(new RpSetFloorOpacityComposer(roomId, value));
+
     const toggleMute = () =>
     {
         setIsMuted(value => !value);
@@ -515,6 +540,22 @@ export const ModToolsRoomView: FC<ModToolsRoomViewProps> = props =>
                                         </select>
                                     </div>
                                 </div>
+                                { (floorOpacity !== null) &&
+                                    <div className="mt-field">
+                                        <div className="d-flex justify-content-between">
+                                            <span className="mt-label">Floor opacity</span>
+                                            <span className="mt-label">{ floorOpacity }%</span>
+                                        </div>
+                                        <ReactSlider
+                                            className="nitro-slider mt-slider"
+                                            min={ 0 }
+                                            max={ 100 }
+                                            value={ floorOpacity }
+                                            ariaLabel="Floor opacity"
+                                            onChange={ previewFloorOpacity }
+                                            onAfterChange={ saveFloorOpacity }
+                                            renderThumb={ thumbProps => <div { ...thumbProps } /> } />
+                                    </div> }
                                 <div className="mt-label mt-section-label">Pets</div>
                                 <div className="mt-card">
                                     <div className="mt-line"><span>Allow pets</span><ModSwitch on={ roomData.allowPets } label="Allow pets" onToggle={ () => update(next => (next.allowPets = !next.allowPets)) } /></div>
