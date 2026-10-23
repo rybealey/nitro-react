@@ -305,7 +305,11 @@ const useChatInputWidgetState = () =>
                     }
                     return null;
                 case ':furni':
-                    CreateLinkEvent('furni-chooser/');
+                    // pixelrp: the furni chooser lists every piece in the room
+                    // - a staff tool (Twist, 2026-10-24). Builder and up, the
+                    // same line as :floor below; for anyone else it does
+                    // nothing, as :floor does.
+                    if(GetSessionDataManager().securityLevel >= RP_RANK_BUILDER) CreateLinkEvent('furni-chooser/');
                     return null;
                 case ':chooser':
                     CreateLinkEvent('user-chooser/');
