@@ -1,0 +1,109 @@
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -5,7 +5,7 @@
+ import { NitroManager } from '../../core';
+ import { BadgeImageReadyEvent, NitroToolbarAnimateIconEvent, RoomBackgroundColorEvent, RoomDragEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomObjectEvent, RoomObjectFurnitureActionEvent, RoomObjectMouseEvent, RoomSessionEvent, RoomToObjectOwnAvatarMoveEvent } from '../../events';
+ import { GetTicker, GetTickerTime, NitroSprite, PixiApplicationProxy, TextureUtils } from '../../pixi-proxy';
+-import { NumberBank, RoomEnterEffect, RoomGeometry, RoomInstance, RoomObjectUpdateMessage, RoomRendererFactory } from '../../room';
++import { NumberBank, RoomEnterEffect, RoomGeometry, RoomId, RoomInstance, RoomObjectUpdateMessage, RoomRendererFactory } from '../../room';
+ import { PetFigureData } from '../avatar';
+ import { RenderRoomMessageComposer, RenderRoomThumbnailMessageComposer } from '../communication';
+ import { FurniId } from '../utils';
+@@ -613,6 +613,14 @@
+ 
+         if(!canvas) return null;
+ 
++        // PixelRP: a view the player dragged carries into the new room from its
++        // first frame (_pixelrpViewShift) - the camera picks it up when it starts.
++        if(this._pixelrpViewShift && !RoomId.isRoomPreviewerId(roomId))
++        {
++            canvas.screenOffsetX = this._pixelrpViewShift.x;
++            canvas.screenOffsetY = this._pixelrpViewShift.y;
++        }
++
+         const restrictedScaling = instance.model.getValue<boolean>(RoomVariableEnum.RESTRICTS_SCALING);
+ 
+         if(restrictedScaling)
+@@ -1320,8 +1328,9 @@
+             roomCamera.reset();
+ 
+             // PixelRP: a room dragged right off the screen is brought back,
+-            // drag or not.
++            // drag or not - and centred again, from here and in every room after.
+             this._pixelrpDragHold = null;
++            this._pixelrpViewShift = null;
+         }
+ 
+         if(this.pixelrpDragHolds(roomId, objectLocation, roomCamera, roomGeometry.scale, width, height)) return;
+@@ -1517,7 +1526,7 @@
+                     roomGeometry.location = _local_15;
+                     if(this.useOffsetScrolling)
+                     {
+-                        roomCamera.initializeLocation(new Vector3d(0, 0, 0));
++                        roomCamera.initializeLocation(this.pixelrpShifted(roomId, new Vector3d(0, 0, 0)));
+                     }
+                     else
+                     {
+@@ -1543,7 +1552,7 @@
+                     roomCamera.limitedLocationY = _local_35;
+                     if(this.useOffsetScrolling)
+                     {
+-                        roomCamera.target = _local_46;
++                        roomCamera.target = this.pixelrpShifted(roomId, _local_46);
+                     }
+                     else
+                     {
+@@ -2714,6 +2723,12 @@
+                     this._activeRoomDragX += offsetX;
+                     this._activeRoomDragY += offsetY;
+ 
++                    // PixelRP: and the view stays moved, in every room after.
++                    this._pixelrpViewShift = {
++                        x: ((this._pixelrpViewShift ? this._pixelrpViewShift.x : 0) + offsetX),
++                        y: ((this._pixelrpViewShift ? this._pixelrpViewShift.y : 0) + offsetY)
++                    };
++
+                     this._activeRoomWasDragged = true;
+ 
+                     this.pixelrpHoldCamera();
+@@ -3855,6 +3870,38 @@
+     // avatar stood on, and the zoom and screen size at the time (pixelrpHoldCamera).
+     private _pixelrpDragHold: { roomId: number, x: number, y: number, scale: number, width: number, height: number } = null;
+ 
++    /**
++     * PixelRP: how far the player has dragged the view, in screen pixels, for
++     * the rest of the session - null until the first drag (Twist, 2026-10-24:
++     * entering a new room should not re-centre a camera they have dragged).
++     *
++     * Every drag adds to it, and the camera aims that far off its own centre
++     * from then on (pixelrpShifted), in every room: a new room opens with the
++     * floor where the last one was left, and a step that hands a dragged room
++     * back to the camera no longer pulls it to the middle. Dragging the room
++     * right off the screen clears it, and the camera centres again.
++     */
++    private _pixelrpViewShift: { x: number, y: number } = null;
++
++    /**
++     * PixelRP: a camera location or target in offset-scrolling space (where the
++     * canvas sits at minus the camera's location), moved by the player's view
++     * shift. Room previews (the shop and the backpack) are never shifted.
++     */
++    private pixelrpShifted(roomId: number, location: IVector3D): Vector3d
++    {
++        const shifted = new Vector3d();
++
++        shifted.assign(location);
++
++        if(!this._pixelrpViewShift || RoomId.isRoomPreviewerId(roomId)) return shifted;
++
++        shifted.x -= this._pixelrpViewShift.x;
++        shifted.y -= this._pixelrpViewShift.y;
++
++        return shifted;
++    }
++
+     /**
+      * PixelRP: the player dragged the room, so the camera stops steering it.
+      * A camera move still under way is dropped, and so is the arrival aim, and
