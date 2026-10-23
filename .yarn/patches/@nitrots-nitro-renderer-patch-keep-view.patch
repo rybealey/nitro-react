@@ -26,18 +26,21 @@ index 1111111..2222222 100644
          const restrictedScaling = instance.model.getValue<boolean>(RoomVariableEnum.RESTRICTS_SCALING);
  
          if(restrictedScaling)
-@@ -1320,8 +1328,9 @@
-             roomCamera.reset();
- 
+@@ -1322,6 +1330,13 @@
              // PixelRP: a room dragged right off the screen is brought back,
--            // drag or not.
-+            // drag or not - and centred again, from here and in every room after.
+             // drag or not.
              this._pixelrpDragHold = null;
-+            this._pixelrpViewShift = null;
++
++            // And centred again, from here and in every room after - but only a
++            // room really drawn off the screen. Until a new room draws its floor
++            // its outline is an empty box at the room's origin, off the screen
++            // for most rooms, and that cleared the dragged view as every room
++            // loaded (Twist, 2026-10-24).
++            if((bounds.width > 1) && (bounds.height > 1)) this._pixelrpViewShift = null;
          }
  
          if(this.pixelrpDragHolds(roomId, objectLocation, roomCamera, roomGeometry.scale, width, height)) return;
-@@ -1517,7 +1526,7 @@
+@@ -1517,7 +1532,7 @@
                      roomGeometry.location = _local_15;
                      if(this.useOffsetScrolling)
                      {
@@ -46,7 +49,7 @@ index 1111111..2222222 100644
                      }
                      else
                      {
-@@ -1543,7 +1552,7 @@
+@@ -1543,7 +1558,7 @@
                      roomCamera.limitedLocationY = _local_35;
                      if(this.useOffsetScrolling)
                      {
@@ -55,7 +58,7 @@ index 1111111..2222222 100644
                      }
                      else
                      {
-@@ -2714,6 +2723,12 @@
+@@ -2714,6 +2729,12 @@
                      this._activeRoomDragX += offsetX;
                      this._activeRoomDragY += offsetY;
  
@@ -68,7 +71,7 @@ index 1111111..2222222 100644
                      this._activeRoomWasDragged = true;
  
                      this.pixelrpHoldCamera();
-@@ -3855,6 +3870,38 @@
+@@ -3855,6 +3876,38 @@
      // avatar stood on, and the zoom and screen size at the time (pixelrpHoldCamera).
      private _pixelrpDragHold: { roomId: number, x: number, y: number, scale: number, width: number, height: number } = null;
  
