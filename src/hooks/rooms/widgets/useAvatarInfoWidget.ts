@@ -287,8 +287,19 @@ const useAvatarInfoWidgetState = () =>
         //
         // Usable furni are unaffected: a double-click still uses them, which
         // never went through this panel.
+        //
+        // It still counts as clicking away (Twist, 2026-10-24). The renderer
+        // takes the click as selecting this furni, so no deselect follows, and
+        // whoever was clicked before kept their menu and panel open - on a
+        // floor laid with rugs or tiles there was nowhere else to click.
         if(((event.category === RoomObjectCategory.FLOOR) || (event.category === RoomObjectCategory.WALL)) &&
-            !CanManipulateFurniture(roomSession, event.id, event.category)) return;
+            !CanManipulateFurniture(roomSession, event.id, event.category))
+        {
+            setAvatarInfo(null);
+            setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));
+
+            return;
+        }
 
         getObjectInfo(event.id, event.category);
     });
