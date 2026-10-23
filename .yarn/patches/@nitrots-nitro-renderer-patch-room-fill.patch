@@ -1,0 +1,159 @@
+diff --git a/src/api/nitro/room/IRoomCreator.ts b/src/api/nitro/room/IRoomCreator.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/room/IRoomCreator.ts
++++ b/src/api/nitro/room/IRoomCreator.ts
+@@ -7,6 +7,7 @@
+ {
+     destroyRoom(id: number): void;
+     pixelrpHoldRoomPicture(fromRoomId: number, toRoomId: number): void;
++    pixelrpRoomEntryDone(roomId: number): void;
+     getRoomInstance(roomId: number): IRoomInstance;
+     updateRoomInstancePlaneVisibility(roomId: number, wallVisible: boolean, floorVisible?: boolean): boolean;
+     updateRoomInstancePlaneThickness(roomId: number, wallThickness: number, floorThickness: number): boolean;
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -35,9 +35,10 @@
+ 
+ // PixelRP: the old room's picture standing in for the next room - the room
+ // waited for, when the wait began, that room's updates so far, whether all of
+-// its furniture had been placed by the last one, and its ready updates in a
+-// row (RoomEngine.pixelrpHoldRoomPicture).
+-type PixelrpHeldPicture = { sprite: NitroSprite, roomId: number, startedAt: number, updates: number, placed: boolean, readyUpdates: number };
++// its furniture had been placed by the last one, its ready updates in a row,
++// and whether its last entry packet has arrived (pixelrpRoomEntryDone)
++// (RoomEngine.pixelrpHoldRoomPicture).
++type PixelrpHeldPicture = { sprite: NitroSprite, roomId: number, startedAt: number, updates: number, placed: boolean, readyUpdates: number, entryDone: boolean };
+ 
+ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreator, IRoomEngineServices, IRoomManagerListener, IRoomContentListener, IUpdateReceiver, IDisposable
+ {
+@@ -288,7 +289,7 @@
+ 
+             stage.addChild(sprite);
+ 
+-            this._pixelrpHeldPicture = { sprite, roomId: toRoomId, startedAt: performance.now(), updates: 0, placed: false, readyUpdates: 0 };
++            this._pixelrpHeldPicture = { sprite, roomId: toRoomId, startedAt: performance.now(), updates: 0, placed: false, readyUpdates: 0, entryDone: false };
+         }
+ 
+         catch (err)
+@@ -300,6 +301,20 @@
+     }
+ 
+     /**
++     * PixelRP: the new room's last entry packet has arrived (RoomEntryInfo),
++     * so everyone in it and all of its furni are here or queued. The server
++     * sends the room's shape as a message of its own, ahead of the rest: with
++     * no furni yet there is none pending either, and the picture would go on
++     * an empty room. It counts as placed only once this has come.
++     */
++    public pixelrpRoomEntryDone(roomId: number): void
++    {
++        const held = this._pixelrpHeldPicture;
++
++        if(held && (held.roomId === roomId)) held.entryDone = true;
++    }
++
++    /**
+      * PixelRP: after each update while a room picture is held. The new room
+      * counts as ready on an update that drew its floor or walls (or its third
+      * update, for a room that shows neither) when all of its furniture had
+@@ -347,7 +362,7 @@
+ 
+         const instanceData = this._roomInstanceDatas.get(held.roomId);
+ 
+-        held.placed = (!!roomObject && !!instanceData && !instanceData.hasPendingFurniture);
++        held.placed = (held.entryDone && !!roomObject && !!instanceData && !instanceData.hasPendingFurniture);
+ 
+         const parent = held.sprite.parent;
+ 
+@@ -2050,6 +2065,8 @@
+ 
+         instanceData.addPendingFurnitureFloor(furnitureData);
+ 
++        this.pixelrpDownloadFurniture(this.getFurnitureFloorName(typeId));
++
+         return true;
+     }
+ 
+@@ -2063,6 +2080,8 @@
+ 
+         instanceData.addPendingFurnitureFloor(furnitureData);
+ 
++        this.pixelrpDownloadFurniture(typeName);
++
+         return true;
+     }
+ 
+@@ -2080,7 +2099,29 @@
+ 
+         instanceData.addPendingFurnitureWall(furnitureData);
+ 
++        this.pixelrpDownloadFurniture(this.getFurnitureWallName(typeId, objectData.getLegacyString()));
++
+         return true;
++    }
++
++    /**
++     * PixelRP: a furni type's file is asked for as soon as a piece of it is
++     * queued for the room, not when that piece's turn to be placed comes
++     * round (RoomManager.createRoomObjectAndInitalize). A room's furni are
++     * placed 40ms a frame, so in a big room a file the browser does not have
++     * started downloading hundreds of ms after the room arrived; now they all
++     * set off with the list. The same type name the placement uses, so the
++     * same file: downloadAsset skips one that is here or on its way, and the
++     * placeholder of a piece placed before its file lands is swapped when it
++     * does, as for the city's furni (the client's RpCityFurniPreload).
++     */
++    private pixelrpDownloadFurniture(type: string): void
++    {
++        const loader = this._roomContentLoader;
++
++        if(!type || !loader || !this._roomManager || !loader.isLoaderType(type) || loader.getCollection(type)) return;
++
++        loader.downloadAsset(type, this._roomManager.events);
+     }
+ 
+     public updateRoomObjectFloor(roomId: number, objectId: number, location: IVector3D, direction: IVector3D, state: number, data: IObjectData, extra: number = null): boolean
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -1,7 +1,7 @@
+ import { PixelRPMovementAnomaly, PixelRPMovementV2 } from '../../room/renderer/PixelRPMovementV2';
+ import { AvatarGuideStatus, IConnection, IRoomCreator, IVector3D, LegacyDataType, ObjectRolling, PetType, RoomObjectType, RoomObjectUserType, RoomObjectVariable, Vector3d } from '../../api';
+ import { Disposable } from '../../core';
+-import { DiceValueMessageEvent, FloorHeightMapEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureDataEvent, FurnitureFloorAddEvent, FurnitureFloorDataParser, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateEvent, FurnitureWallAddEvent, FurnitureWallDataParser, FurnitureWallEvent, FurnitureWallRemoveEvent, FurnitureWallUpdateEvent, GetRoomEntryDataMessageComposer, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionStartedMessageEvent, IgnoreResultEvent, ItemDataUpdateMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OneWayDoorStatusMessageEvent, PetExperienceEvent, PetFigureUpdateEvent, RoomEntryTileMessageEvent, RoomEntryTileMessageParser, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomUnitChatEvent, RoomUnitChatShoutEvent, RoomUnitChatWhisperEvent, RoomUnitDanceEvent, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RpMovementV2Event, RoomUnitHandItemEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitNumberEvent, RoomUnitRemoveEvent, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomVisualizationSettingsEvent, UserInfoEvent, YouArePlayingGameEvent } from '../communication';
++import { DiceValueMessageEvent, FloorHeightMapEvent, FurnitureAliasesComposer, FurnitureAliasesEvent, FurnitureDataEvent, FurnitureFloorAddEvent, FurnitureFloorDataParser, FurnitureFloorEvent, FurnitureFloorRemoveEvent, FurnitureFloorUpdateEvent, FurnitureWallAddEvent, FurnitureWallDataParser, FurnitureWallEvent, FurnitureWallRemoveEvent, FurnitureWallUpdateEvent, GetRoomEntryDataMessageComposer, RoomEntryInfoMessageEvent, GuideSessionEndedMessageEvent, GuideSessionErrorMessageEvent, GuideSessionStartedMessageEvent, IgnoreResultEvent, ItemDataUpdateMessageEvent, ObjectsDataUpdateEvent, ObjectsRollingEvent, OneWayDoorStatusMessageEvent, PetExperienceEvent, PetFigureUpdateEvent, RoomEntryTileMessageEvent, RoomEntryTileMessageParser, RoomHeightMapEvent, RoomHeightMapUpdateEvent, RoomPaintEvent, RoomReadyMessageEvent, RoomUnitChatEvent, RoomUnitChatShoutEvent, RoomUnitChatWhisperEvent, RoomUnitDanceEvent, RoomUnitEffectEvent, RoomUnitEvent, RoomUnitExpressionEvent, RpMovementV2Event, RoomUnitHandItemEvent, RoomUnitIdleEvent, RoomUnitInfoEvent, RoomUnitNumberEvent, RoomUnitRemoveEvent, RoomUnitStatusEvent, RoomUnitTypingEvent, RoomVisualizationSettingsEvent, UserInfoEvent, YouArePlayingGameEvent } from '../communication';
+ import { RoomPlaneParser } from './object/RoomPlaneParser';
+ import { RoomVariableEnum } from './RoomVariableEnum';
+ import { FurnitureStackingHeightMap, LegacyWallGeometry } from './utils';
+@@ -102,6 +102,7 @@
+         this._connection.addMessageEvent(new GuideSessionStartedMessageEvent(this.onGuideSessionStartedMessageEvent.bind(this)));
+         this._connection.addMessageEvent(new GuideSessionEndedMessageEvent(this.onGuideSessionEndedMessageEvent.bind(this)));
+         this._connection.addMessageEvent(new GuideSessionErrorMessageEvent(this.onGuideSessionErrorMessageEvent.bind(this)));
++        this._connection.addMessageEvent(new RoomEntryInfoMessageEvent(this.onRoomEntryInfoMessageEvent.bind(this)));
+     }
+ 
+     public setRoomId(id: number): void
+@@ -158,6 +159,20 @@
+         this._initialConnection = false;
+ 
+         event.connection.send(new GetRoomEntryDataMessageComposer());
++    }
++
++    // PixelRP: the last packet of a room entry - everyone in the room and all
++    // of its furni came before it. The old room's picture may go once this has
++    // arrived (RoomEngine.pixelrpRoomEntryDone): the server sends the room's
++    // shape ahead of the rest, as a message of its own, so a room can have
++    // its floor and walls drawn before its furni are even on their way.
++    private onRoomEntryInfoMessageEvent(event: RoomEntryInfoMessageEvent): void
++    {
++        const parser = event.getParser();
++
++        if(!parser || !this._roomCreator) return;
++
++        this._roomCreator.pixelrpRoomEntryDone(parser.roomId);
+     }
+ 
+     private onRoomPaintEvent(event: RoomPaintEvent): void
