@@ -19,14 +19,14 @@
 // Bold leaves barely a pixel between its letters, and the grey edge smoothing
 // (the only kind text over the room canvas gets) closed that up, so a shout
 // read as run together. Medium was tried first and was not bold enough.
-// 13.30px (Twist, 2026-10-24; 13.25 from 2026-10-23, picked as the largest Bold
-// on the same rows as the 13.35px Regular). The hinting rounds Ubuntu Bold up a
-// whole pixel from 13.3px - x-height 8 rows, capitals 10, tall letters 12,
-// against Regular's 7 / 9 / 10 at 13.35 - so at this size Bold stands that much
-// taller than the text beside it. Names use this too.
+// 13.29px (Twist, 2026-10-24; 13.25 from 2026-10-23, then 13.30 and 13.28). The
+// hinting rounds Ubuntu Bold up a whole pixel from 13.30px - x-height 8 rows,
+// capitals 10, tall letters 12, against Regular's 7 / 9 / 10 at 13.35 - and
+// 13.29 is the largest Bold still on Regular's rows, so this is the same height
+// as the text beside it. Names use this too.
 @mixin chat-bold {
     font-weight: 700;
-    font-size: 13.30px;
+    font-size: 13.29px;
     letter-spacing: 0.25px;
 }
 
