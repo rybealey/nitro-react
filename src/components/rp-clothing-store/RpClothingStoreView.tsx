@@ -19,7 +19,9 @@ import { AvatarEditorIcon } from '../avatar-editor/views/AvatarEditorIcon';
 type StoreTab = 'head' | 'torso' | 'legs' | 'companions' | 'ltd';
 
 const TABS: { key: StoreTab, label: string, types: string[] }[] = [
-    { key: 'head', label: 'Head', types: [ FigureData.HAIR, FigureData.HAT, FigureData.HEAD_ACCESSORIES, FigureData.EYE_ACCESSORIES, FigureData.FACE_ACCESSORIES ] },
+    // pixelrp: faces too - a face row with a price is sold here like any piece
+    // (price 0 keeps the gated ones, 240's, off the shelf)
+    { key: 'head', label: 'Head', types: [ FigureData.HAIR, FigureData.FACE, FigureData.HAT, FigureData.HEAD_ACCESSORIES, FigureData.EYE_ACCESSORIES, FigureData.FACE_ACCESSORIES ] },
     { key: 'torso', label: 'Torso', types: [ FigureData.SHIRT, FigureData.CHEST_PRINTS, FigureData.JACKET, FigureData.CHEST_ACCESSORIES ] },
     { key: 'legs', label: 'Legs', types: [ FigureData.TROUSERS, FigureData.SHOES, FigureData.TROUSER_ACCESSORIES ] },
     // pixelrp: pets, where Choose Your Outfit has them too - right of Legs.
@@ -28,7 +30,11 @@ const TABS: { key: StoreTab, label: string, types: string[] }[] = [
 
 const ALL_TYPES: string[] = TABS.flatMap(tab => tab.types);
 
-const TYPE_LABELS: Record<string, string> = { hr: 'hair', ha: 'hats', he: 'head accessories', ea: 'eyewear', fa: 'face accessories', ch: 'shirts', cp: 'prints', cc: 'jackets', ca: 'chest accessories', lg: 'trousers', sh: 'shoes', wa: 'belts', pt: 'pets' };
+const TYPE_LABELS: Record<string, string> = { hr: 'hair', hd: 'faces', ha: 'hats', he: 'head accessories', ea: 'eyewear', fa: 'face accessories', ch: 'shirts', cp: 'prints', cc: 'jackets', ca: 'chest accessories', lg: 'trousers', sh: 'shoes', wa: 'belts', pt: 'pets' };
+
+// the editor's sprite sheet has no face icon - it uses the male and female
+// heads for its body tab, and so does the rail
+const RailIcon = (type: string, gender: string) => ((type === FigureData.FACE) ? ((gender === FigureData.FEMALE) ? 'female' : 'male') : type);
 
 // the shop's LTD category icon (catalogue/icon_145.png)
 const LTD_ICON = '145';
@@ -632,7 +638,7 @@ export const RpClothingStoreView: FC<{}> = props =>
                     <div className="clothing-store-rail">
                         { railTypes.map(type => (
                             <div key={ type } className={ `clothing-store-rail-item${ (railType === type) ? ' is-active' : '' }` } title={ (type === 'all') ? 'All limited editions' : TYPE_LABELS[type] } onClick={ () => { setRailType(type); setSearch(''); } }>
-                                { (type === 'all') ? <img src={ ltdIconUrl } alt="LTD" /> : <AvatarEditorIcon icon={ type } selected={ railType === type } /> }
+                                { (type === 'all') ? <img src={ ltdIconUrl } alt="LTD" /> : <AvatarEditorIcon icon={ RailIcon(type, gender) } selected={ railType === type } /> }
                             </div>)) }
                     </div>
                     <div className="clothing-store-middle">
