@@ -309,6 +309,10 @@ const useAvatarInfoWidgetState = () =>
         // to match the pass-through walk behaviour (no pointer, no menu, no name).
         if(ClickthroughState.enabled) return;
 
+        // pixelrp: no name tag on hovering yourself (Twist, 2026-10-23) - you
+        // know who you are. Clicking yourself still opens your own menu.
+        if(roomSession && (event.id === roomSession.ownRoomIndex)) return;
+
         // pixelrp: no name tag on hovering a bot (Twist, 2026-10-18). Clicking
         // one still opens its menu and infostand as before.
         const hovered = AvatarInfoUtilities.getObjectName(event.id, event.category);
