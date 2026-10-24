@@ -83,32 +83,41 @@
     opacity: 0.75;
 }
 
+// The card's words are 2px bigger than they were (Twist, 2026-10-25), in
+// every card that takes this spot - offers, proposals, trade requests and the
+// bin search - but no card is any bigger: each row is held at the height it
+// drew at the old size, 16px here and 15px for the price. A bold word sits a
+// little higher in its line than regular text does, which stretched these
+// rows by up to 2px each at the new size; its own line is kept short (the
+// row's height still sets the line) so it can't. Nothing is clipped.
 .rp-offer-line {
     margin-top: 3px;
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 13px;
+    line-height: 16px;
     // One row, never two: the card is as wide as the chat bar and a name plus
     // a quantity has to fit beside two buttons without pushing them anywhere.
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    strong { font-weight: 700; }
+    strong { font-weight: 700; line-height: 1; }
 }
 
 .rp-offer-price {
     margin-top: 2px;
-    font-size: 10px;
+    font-size: 12px;
+    line-height: 15px;
     opacity: 0.72;
 
-    strong { font-weight: 700; opacity: 1; }
+    strong { font-weight: 700; line-height: 1; opacity: 1; }
 }
 
 // Replaces the price rather than sitting under it: the reason you cannot press
 // the tick matters more than what it would have cost.
 .rp-offer-blocked {
     margin-top: 2px;
-    font-size: 10px;
+    font-size: 12px;
+    line-height: 15px;
     font-weight: 600;
     color: var(--hud-warning, #f5c542);
 }
