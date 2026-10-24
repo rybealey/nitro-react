@@ -1,8 +1,8 @@
 import { RpInventoryEvent } from '@nitrots/nitro-renderer';
 import { DragEvent, FC, useEffect, useState } from 'react';
 import { HasHabboVip, SendMessageComposer } from '../../api';
-import { ResolveRpItem } from '../../api/rp-inventory/RpItems';
-import { RpTradeActionComposer, RpTradeEvent, TradeAction, TradeOfferEntry, TradeState } from '../../api/rp-trade/RpTradeMessages';
+import { DurabilityPercent, ResolveRpItem } from '../../api/rp-inventory/RpItems';
+import { RpTradeActionComposer, RpTradeEvent, TradeAction, TradeOfferEntry, TradeState, TradeWorn } from '../../api/rp-trade/RpTradeMessages';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
 
@@ -26,7 +26,8 @@ const CARRY_OPEN = 10;
 const WEAPON_SLOT = 101;
 const OFFER_SLOTS = 10;
 const STACK = 10;
-const WEAPONS = [ 'knife', 'baseball_bat', 'axe', 'stun_gun' ];
+// Weapons and body armour: one to a slot, never a stack (the emulator's RpDurability.NeverStacks).
+const WEAPONS = [ 'knife', 'baseball_bat', 'axe', 'stun_gun', 'body_armor' ];
 // PoliceUtility.PoliceGear - never tradeable (the server refuses it anyway).
 const POLICE_GEAR = [ 'handcuffs', 'stun_gun', 'flashbang', 'pepper_spray', 'cop_medkit' ];
 // RpTrades.ConfirmDelaySeconds: Confirm waits this long once both are Ready.
@@ -38,12 +39,16 @@ interface PackEntry
     slot: number;
     item: string;
     count: number;
+    wear: number;
+    maxWear: number;
 }
 
-// An offer shown as slots: stacks of ten, weapons one each.
-const toCells = (offer: TradeOfferEntry[]) =>
+// An offer shown as slots: stacks of ten, weapons one each - each weapon and
+// suit of armour with the wear of the one the swap will hand over.
+const toCells = (offer: TradeOfferEntry[], worn: TradeWorn[]) =>
 {
     const cells: TradeOfferEntry[] = [];
+    const queue = [ ...worn ];
 
     for(const entry of offer)
     {
@@ -52,13 +57,21 @@ const toCells = (offer: TradeOfferEntry[]) =>
 
         while(left > 0)
         {
-            cells.push({ item: entry.item, count: Math.min(size, left) });
+            const index = queue.findIndex(candidate => (candidate.item === entry.item));
+            const wear = ((index >= 0) ? queue.splice(index, 1)[0] : null);
+
+            cells.push({ item: entry.item, count: Math.min(size, left), wear: (wear?.wear ?? 0), maxWear: (wear?.maxWear ?? 0) });
             left -= size;
         }
     }
 
     return cells;
 }
+
+// The backpack's durability bar (the emulator's RpDurability); hovering says
+// the percentage, as in the backpack (durability()).
+const WearBar: FC<{ wear: number, maxWear: number }> = ({ wear, maxWear }) =>
+    <span className="trade-wear" aria-hidden="true"><span className="trade-wear-fill" style={ { width: `${ Math.max(0, Math.min(1, ((maxWear - wear) / maxWear))) * 100 }%` } } /></span>;
 
 const Lock: FC<{}> = () =>
     <svg className="trade-lock" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
@@ -71,6 +84,9 @@ const ItemArt: FC<{ item: string }> = ({ item }) =>
 }
 
 const itemName = (item: string, count: number) => `${ ResolveRpItem(item)?.name ?? item }${ (count > 1) ? ` ×${ count }` : '' }`;
+
+// " · Durability 79%" for a weapon or suit of armour, as the backpack's hover says it.
+const durability = (wear: number, maxWear: number) => ((maxWear > 0) ? ` · Durability ${ DurabilityPercent(wear, maxWear) }%` : '');
 
 const Tick: FC<{}> = () =>
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
@@ -120,7 +136,7 @@ export const TradeView: FC<{}> = props =>
 
     useMessageEvent<RpInventoryEvent>(RpInventoryEvent, event =>
     {
-        setPack(event.getParser().items.map(entry => ({ slot: entry.slot, item: entry.item, count: entry.count })));
+        setPack(event.getParser().items.map(entry => ({ slot: entry.slot, item: entry.item, count: entry.count, wear: (entry.wear ?? 0), maxWear: (entry.maxWear ?? 0) })));
     });
 
     useMessageEvent<RpTradeEvent>(RpTradeEvent, event =>
@@ -169,8 +185,8 @@ export const TradeView: FC<{}> = props =>
     }
 
     const equipped = pack.find(row => (row.slot === WEAPON_SLOT)) ?? null;
-    const mineCells = toCells(trade.mine.offer);
-    const theirCells = toCells(trade.theirs.offer);
+    const mineCells = toCells(trade.mine.offer, trade.mine.worn);
+    const theirCells = toCells(trade.theirs.offer, trade.theirs.worn);
     const bothReady = (trade.mine.ready && trade.theirs.ready);
     const nothing = (!trade.mine.offer.length && !trade.theirs.offer.length);
     const fits = (trade.mineFits && trade.theirsFits);
@@ -236,16 +252,19 @@ export const TradeView: FC<{}> = props =>
 
                 if(!cell) return <div key={ index } className="trade-offer-slot is-empty" />;
 
-                const label = `${ itemName(cell.item, cell.count) }${ own ? ' - click to take one back' : '' }`;
+                const worn = (cell.maxWear > 0);
+                const label = `${ itemName(cell.item, cell.count) }${ durability(cell.wear, cell.maxWear) }${ own ? ' - click to take one back' : '' }`;
 
                 return own
-                    ? <button key={ index } type="button" className="trade-offer-slot has-item" title={ label } aria-label={ label } onClick={ () => send(TradeAction.TakeBack, 0, false, cell.item) }>
+                    ? <button key={ index } type="button" className={ `trade-offer-slot has-item${ worn ? ' has-wear' : '' }` } title={ label } aria-label={ label } onClick={ () => send(TradeAction.TakeBack, 0, false, cell.item) }>
                         <ItemArt item={ cell.item } />
                         { (cell.count > 1) && <span className="trade-count">{ cell.count }</span> }
+                        { worn && <WearBar wear={ cell.wear } maxWear={ cell.maxWear } /> }
                     </button>
-                    : <div key={ index } className="trade-offer-slot has-item" title={ label }>
+                    : <div key={ index } className={ `trade-offer-slot has-item${ worn ? ' has-wear' : '' }` } title={ label }>
                         <ItemArt item={ cell.item } />
                         { (cell.count > 1) && <span className="trade-count">{ cell.count }</span> }
+                        { worn && <WearBar wear={ cell.wear } maxWear={ cell.maxWear } /> }
                     </div>;
             }) }
         </div>;
@@ -296,16 +315,17 @@ export const TradeView: FC<{}> = props =>
                             const locked = ((slot > packOpen) && !entry);
                             const gear = (!!entry && POLICE_GEAR.includes(entry.item));
                             const label = (entry
-                                ? (gear ? `${ itemName(entry.item, entry.count) } - police equipment, cannot be traded` : `${ itemName(entry.item, entry.count) } - click to offer one, drag to offer all`)
+                                ? (gear ? `${ itemName(entry.item, entry.count) } - police equipment, cannot be traded` : `${ itemName(entry.item, entry.count) }${ durability(entry.wear, entry.maxWear) } - click to offer one, drag to offer all`)
                                 : (locked ? 'Locked - VIP' : 'Empty slot'));
 
                             return (
                                 <button key={ slot } type="button" title={ label } aria-label={ label } aria-disabled={ !entry || gear }
-                                    className={ `trade-slot${ entry ? ' has-item' : '' }${ gear ? ' is-gear' : '' }${ locked ? ' is-locked' : '' }${ (dragging === slot) ? ' is-lifted' : '' }` }
+                                    className={ `trade-slot${ entry ? ' has-item' : '' }${ (entry?.maxWear > 0) ? ' has-wear' : '' }${ gear ? ' is-gear' : '' }${ locked ? ' is-locked' : '' }${ (dragging === slot) ? ' is-lifted' : '' }` }
                                     draggable={ !!entry && !gear } onDragStart={ (entry && !gear) ? onDragStart(slot) : undefined } onDragEnd={ () => setDragging(0) }
                                     onClick={ () => entry && !gear && send(TradeAction.Offer, slot, false) }>
                                     { entry && <ItemArt item={ entry.item } /> }
                                     { (entry && (entry.count > 1)) && <span className="trade-count">{ entry.count }</span> }
+                                    { (entry?.maxWear > 0) && <WearBar wear={ entry.wear } maxWear={ entry.maxWear } /> }
                                     { gear && <span className="trade-gear"><Lock /></span> }
                                     { locked && <Lock /> }
                                 </button>

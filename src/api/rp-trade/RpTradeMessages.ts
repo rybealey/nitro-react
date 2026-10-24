@@ -17,6 +17,17 @@ export interface TradeOfferEntry
 {
     item: string;
     count: number;
+    /** A weapon or suit of armour: how worn it is and the wear it breaks at (both 0 otherwise). */
+    wear?: number;
+    maxWear?: number;
+}
+
+/** One weapon or suit of armour on offer, in the order the swap hands them over (the emulator's RpTrades.OfferWear). */
+export interface TradeWorn
+{
+    item: string;
+    wear: number;
+    maxWear: number;
 }
 
 export interface TradeSide
@@ -24,6 +35,7 @@ export interface TradeSide
     offer: TradeOfferEntry[];
     ready: boolean;
     confirmed: boolean;
+    worn: TradeWorn[];
 }
 
 export interface TradeState
@@ -80,13 +92,23 @@ export class RpTradeParser implements IMessageParser
 
             while(count-- > 0) offer.push({ item: wrapper.readString(), count: wrapper.readInt() });
 
-            return { offer, ready: wrapper.readBoolean(), confirmed: wrapper.readBoolean() };
+            return { offer, ready: wrapper.readBoolean(), confirmed: wrapper.readBoolean(), worn: [] };
         };
         const mine = readSide();
         const theirs = readSide();
 
         this._state = { id, partnerId, partnerName, mine, theirs, mineFits: wrapper.readBoolean(), theirsFits: wrapper.readBoolean() };
         this._notice = wrapper.readString();
+
+        // How worn each weapon and suit of armour on offer is, yours then theirs.
+        for(const side of [ mine, theirs ])
+        {
+            if(!wrapper.bytesAvailable) break;
+
+            let count = wrapper.readInt();
+
+            while(count-- > 0) side.worn.push({ item: wrapper.readString(), wear: wrapper.readInt(), maxWear: wrapper.readInt() });
+        }
 
         return true;
     }

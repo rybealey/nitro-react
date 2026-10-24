@@ -1,0 +1,53 @@
+diff --git a/src/nitro/communication/messages/incoming/RpInventoryEvent.ts b/src/nitro/communication/messages/incoming/RpInventoryEvent.ts
+index 1111111..2222222 100644
+--- a/src/nitro/communication/messages/incoming/RpInventoryEvent.ts
++++ b/src/nitro/communication/messages/incoming/RpInventoryEvent.ts
+@@ -2,10 +2,13 @@
+ import { MessageEvent } from '../../../../events';
+ 
+ // PixelRP: the player's RP backpack contents (carry slots), pushed at login
+-// and after every inventory change.
++// and after every inventory change. After the rows comes how worn each weapon
++// and suit of armour is (the emulator's RpDurability): a count, then slot,
++// wear and the wear it breaks at. An item with none listed does not wear
++// (wear and maxWear stay 0).
+ export class RpInventoryParser implements IMessageParser
+ {
+-    private _items: { slot: number, item: string, count: number }[];
++    private _items: { slot: number, item: string, count: number, wear: number, maxWear: number }[];
+ 
+     public flush(): boolean
+     {
+@@ -28,13 +31,30 @@
+             const item = wrapper.readString();
+             const count = wrapper.readInt();
+ 
+-            this._items.push({ slot, item, count });
++            this._items.push({ slot, item, count, wear: 0, maxWear: 0 });
++        }
++
++        if(!wrapper.bytesAvailable) return true;
++
++        const worn = wrapper.readInt();
++
++        for(let i = 0; i < worn; i++)
++        {
++            const slot = wrapper.readInt();
++            const wear = wrapper.readInt();
++            const maxWear = wrapper.readInt();
++            const entry = this._items.find(candidate => (candidate.slot === slot));
++
++            if(!entry) continue;
++
++            entry.wear = wear;
++            entry.maxWear = maxWear;
+         }
+ 
+         return true;
+     }
+ 
+-    public get items(): { slot: number, item: string, count: number }[]
++    public get items(): { slot: number, item: string, count: number, wear: number, maxWear: number }[]
+     {
+         return this._items;
+     }

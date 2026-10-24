@@ -1,6 +1,6 @@
 import { ILinkEventTracker, RpInventoryEvent, RpMoveItemComposer, RpUseItemComposer } from '@nitrots/nitro-renderer';
 import { IsClothingCatalogLoaded, ParseClothingToken, RpClothingStoreEvent, RpGetClothingStoreComposer } from '../../api/rp-clothing/RpClothingMessages';
-import { ResolveRpItem, RP_ITEMS } from '../../api/rp-inventory/RpItems';
+import { DurabilityPercent, ResolveRpItem, RP_ITEMS } from '../../api/rp-inventory/RpItems';
 import { FC, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { LuLock, LuShield, LuSwords } from 'react-icons/lu';
@@ -27,7 +27,15 @@ const UNLOCKED_SLOTS: number = 10;
 const WEAPON_SLOT: number = 101;
 const WEAPON_ITEMS: string[] = [ 'knife', 'baseball_bat', 'axe', 'stun_gun' ];
 const isWeapon = (item: string): boolean => WEAPON_ITEMS.includes(item);
+// The Armor frame: the same, for body armour only (the emulator's RpDurability.ArmorSlot).
+const ARMOR_SLOT: number = 102;
+const BODY_ARMOR = 'body_armor';
 type ItemUseMode = 'single' | 'double';
+
+// A backpack slot's contents. A weapon or suit of armour also says how worn it
+// is and the wear it breaks at (the emulator's RpDurability); both are 0 for
+// anything that does not wear.
+interface SlotEntry { item: string, count: number, wear: number, maxWear: number }
 
 // Item names and icons: RpItems (shared with the City Panel's backpack).
 const resolveItem = ResolveRpItem;
@@ -56,10 +64,27 @@ const ChargeBar: FC<{ charge: ItemCharge, label: string }> = ({ charge, label })
 
 const hasCharge = (item: string): boolean => ((item === STUN_GUN) || (item === VAPE));
 
+// Weapons and armour wear out (the emulator's RpDurability): the same bar, for
+// what is left before the item breaks, and the numbers in its hover bubble.
+const wears = (entry: SlotEntry): boolean => (entry.maxWear > 0);
+const hasBar = (entry: SlotEntry): boolean => (hasCharge(entry.item) || wears(entry));
+
+const DurabilityBar: FC<{ entry: SlotEntry }> = ({ entry }) => <ChargeBar charge={ { left: Math.max(0, (entry.maxWear - entry.wear)), max: entry.maxWear } } label="Durability" />;
+
+// "Baseball Bat (equipped) · Durability 79%" (Twist, 2026-10-25: a percentage)
+const slotBubbleText = (slot: number, entry: SlotEntry): string =>
+{
+    const name = (ResolveRpItem(entry.item)?.name ?? entry.item);
+    const where = ((slot === WEAPON_SLOT) ? ' (equipped)' : ((slot === ARMOR_SLOT) ? ' (worn)' : ''));
+    const durability = (wears(entry) ? ` · Durability ${ DurabilityPercent(entry.wear, entry.maxWear) }%` : '');
+
+    return `${ name }${ where }${ durability }`;
+}
+
 export const RpInventoryView: FC<{}> = props =>
 {
     const [ isVisible, setIsVisible ] = useState(false);
-    const [ items, setItems ] = useState<Map<number, { item: string, count: number }>>(new Map());
+    const [ items, setItems ] = useState<Map<number, SlotEntry>>(new Map());
     const [ dragFrom, setDragFrom ] = useState<number>(-1);
     // The pointer is over the bin that replaces the close button mid-drag.
     const [ overBin, setOverBin ] = useState(false);
@@ -89,9 +114,9 @@ export const RpInventoryView: FC<{}> = props =>
     // map is always a full snapshot.
     useMessageEvent<RpInventoryEvent>(RpInventoryEvent, event =>
     {
-        const next = new Map<number, { item: string, count: number }>();
+        const next = new Map<number, SlotEntry>();
 
-        for(const entry of event.getParser().items) next.set(entry.slot, { item: entry.item, count: entry.count });
+        for(const entry of event.getParser().items) next.set(entry.slot, { item: entry.item, count: entry.count, wear: (entry.wear ?? 0), maxWear: (entry.maxWear ?? 0) });
 
         // the item under the pointer was used up, moved or swapped: its name goes with it
         const bubbleFor = bubbleForRef.current;
@@ -101,6 +126,8 @@ export const RpInventoryView: FC<{}> = props =>
             bubbleForRef.current = null;
             setBubbleText(null);
         }
+        // still there, but a hit wore it: the numbers follow
+        else if(bubbleFor && wears(next.get(bubbleFor.slot))) setBubbleText(slotBubbleText(bubbleFor.slot, next.get(bubbleFor.slot)));
 
         setItems(next);
 
@@ -249,7 +276,8 @@ export const RpInventoryView: FC<{}> = props =>
         // A drop may land on any unlocked slot, or swap with an occupied
         // lapsed slot (mirrors the server's placement rule). The Weapon frame
         // takes only a weapon or a vape, and what leaves it can only swap with
-        // another of those or an empty slot.
+        // another of those or an empty slot. The Armor frame the same, for
+        // body armour.
         const dragged = items.get(slot)?.item;
         const isDropTarget = (over: number) =>
         {
@@ -257,9 +285,13 @@ export const RpInventoryView: FC<{}> = props =>
 
             if(over === WEAPON_SLOT) return isEquippable(dragged);
 
+            if(over === ARMOR_SLOT) return (dragged === BODY_ARMOR);
+
             const target = items.get(over)?.item;
 
             if((slot === WEAPON_SLOT) && target && !isEquippable(target)) return false;
+
+            if((slot === ARMOR_SLOT) && target && (target !== BODY_ARMOR)) return false;
 
             return ((over <= unlockedSlots) || !!target);
         }
@@ -400,8 +432,8 @@ export const RpInventoryView: FC<{}> = props =>
                             {
                                 return (
                                     <div data-rp-slot={ WEAPON_SLOT }
-                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ hasCharge(equipped.item) ? ' has-charge' : '' }${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
-                                        { ...bubbleProps(`${ meta.name } (equipped)`, WEAPON_SLOT, equipped.item) }
+                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ hasBar(equipped) ? ' has-charge' : '' }${ (dragFrom === WEAPON_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === WEAPON_SLOT) ? ' is-drop-target' : '' }` }
+                                        { ...bubbleProps(slotBubbleText(WEAPON_SLOT, equipped), WEAPON_SLOT, equipped.item) }
                                         onClick={ () => onItemClick(WEAPON_SLOT) }
                                         onDoubleClick={ () => onItemDoubleClick(WEAPON_SLOT) }
                                         onPointerDown={ event => onItemDown(event, WEAPON_SLOT) }>
@@ -410,6 +442,7 @@ export const RpInventoryView: FC<{}> = props =>
                                         <span className="rp-inventory-count">{ equipped.count }</span> }
                                         { (equipped.item === STUN_GUN) && <ChargeBar charge={ stunGunCharge } label="Stun gun shots" /> }
                                         { (equipped.item === VAPE) && <ChargeBar charge={ vapeCharge } label="Vape hits" /> }
+                                        { wears(equipped) && <DurabilityBar entry={ equipped } /> }
                                     </div>);
                             }
 
@@ -418,9 +451,33 @@ export const RpInventoryView: FC<{}> = props =>
                                     <LuSwords className="rp-inventory-gear-icon" />
                                 </div>);
                         })() }
-                        <div className="rp-inventory-slot rp-inventory-slot--gear" { ...bubbleProps('Armor') }>
-                            <LuShield className="rp-inventory-gear-icon" />
-                        </div>
+                        { (() =>
+                        {
+                            // Worn armour sits in its frame the same way: click
+                            // it to take it off, drag it out, or drop other
+                            // armour on it to swap.
+                            const worn = items.get(ARMOR_SLOT);
+                            const meta = (worn ? resolveItem(worn.item) : null);
+
+                            if(worn && meta)
+                            {
+                                return (
+                                    <div data-rp-slot={ ARMOR_SLOT }
+                                        className={ `rp-inventory-slot rp-inventory-slot--gear has-item${ hasBar(worn) ? ' has-charge' : '' }${ (dragFrom === ARMOR_SLOT) ? ' is-drag-source' : '' }${ (dropTarget === ARMOR_SLOT) ? ' is-drop-target' : '' }` }
+                                        { ...bubbleProps(slotBubbleText(ARMOR_SLOT, worn), ARMOR_SLOT, worn.item) }
+                                        onClick={ () => onItemClick(ARMOR_SLOT) }
+                                        onDoubleClick={ () => onItemDoubleClick(ARMOR_SLOT) }
+                                        onPointerDown={ event => onItemDown(event, ARMOR_SLOT) }>
+                                        <div className={ `rp-inventory-item ${ meta.cls }` } />
+                                        { wears(worn) && <DurabilityBar entry={ worn } /> }
+                                    </div>);
+                            }
+
+                            return (
+                                <div data-rp-slot={ ARMOR_SLOT } className={ `rp-inventory-slot rp-inventory-slot--gear${ (dropTarget === ARMOR_SLOT) ? ' is-drop-target' : '' }` } { ...bubbleProps('Armor', ARMOR_SLOT) }>
+                                    <LuShield className="rp-inventory-gear-icon" />
+                                </div>);
+                        })() }
                     </div>
                     <div className="rp-inventory-grid">
                         { CARRY_SLOTS.map(slot =>
@@ -440,8 +497,8 @@ export const RpInventoryView: FC<{}> = props =>
                             {
                                 return (
                                     <div key={ slot } data-rp-slot={ slot }
-                                        className={ `rp-inventory-slot has-item${ hasCharge(entry.item) ? ' has-charge' : '' }${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
-                                        { ...bubbleProps(meta.name, slot, entry.item) }
+                                        className={ `rp-inventory-slot has-item${ hasBar(entry) ? ' has-charge' : '' }${ (dragFrom === slot) ? ' is-drag-source' : '' }${ (dropTarget === slot) ? ' is-drop-target' : '' }` }
+                                        { ...bubbleProps(slotBubbleText(slot, entry), slot, entry.item) }
                                         onClick={ () => onItemClick(slot) }
                                         onDoubleClick={ () => onItemDoubleClick(slot) }
                                         onPointerDown={ event => onItemDown(event, slot) }>
@@ -450,6 +507,7 @@ export const RpInventoryView: FC<{}> = props =>
                                         <span className="rp-inventory-count">{ entry.count }</span> }
                                         { (entry.item === STUN_GUN) && <ChargeBar charge={ stunGunCharge } label="Stun gun shots" /> }
                                         { (entry.item === VAPE) && <ChargeBar charge={ vapeCharge } label="Vape hits" /> }
+                                        { wears(entry) && <DurabilityBar entry={ entry } /> }
                                     </div>);
                             }
 

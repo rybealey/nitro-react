@@ -20,6 +20,8 @@ export const RP_ITEMS: Record<string, { name: string, cls: string }> = {
     baseball_bat: { name: 'Baseball Bat', cls: 'rp-item-baseball-bat' },
     axe: { name: 'Axe', cls: 'rp-item-axe' },
     stun_gun: { name: 'Stun Gun', cls: 'rp-item-stun-gun' },
+    // Worn in the Armor slot: soaks a fifth of every hit, and wears out (the emulator's RpDurability).
+    body_armor: { name: 'Body Armor', cls: 'rp-item-body-armor' },
     // Carried by police: :cuff needs a pair in the backpack.
     handcuffs: { name: 'Handcuffs', cls: 'rp-item-handcuffs' },
     // Police: click to throw (or :fb) - stuns everyone around you. Spent on the throw.
@@ -29,6 +31,19 @@ export const RP_ITEMS: Record<string, { name: string, cls: string }> = {
 };
 
 export interface RpItemMeta { name: string; cls: string; iconUrl?: string }
+
+// A weapon's or suit of armour's durability (the emulator's RpDurability) as a
+// percentage of what is left - the backpack's and the trade window's hover
+// text. Rounded down, so any wear at all shows; never 0% while the item is
+// still there (it breaks on the hit that would make it 0).
+export const DurabilityPercent = (wear: number, maxWear: number): number =>
+{
+    const left = Math.max(0, (maxWear - wear));
+
+    if(left >= maxWear) return 100;
+
+    return Math.max(1, Math.floor((left / maxWear) * 100));
+}
 
 // Clothing Store tokens (clothing:<id>:<edition>) are named from the last
 // shelf received and wear the piece's own catalog icon.
