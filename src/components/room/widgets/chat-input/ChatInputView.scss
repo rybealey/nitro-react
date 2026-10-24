@@ -187,6 +187,16 @@
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
     font-family: 'Ubuntu', sans-serif;
     color: #ffffff;
+    transition: opacity 0.15s linear;
+
+    // Kept on the page while shut (EmojiPickerView), built and laid out, so
+    // opening it only shows it: hidden, and out of the pointer's way.
+    &.is-closed {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.15s linear, visibility 0s linear 0.15s;
+    }
 
     // Bootstrap draws the arrow in its light popover colour; this one points
     // out of the preview strip, so it takes that strip's shade.

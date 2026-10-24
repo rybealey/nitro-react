@@ -13,6 +13,16 @@ const START_DELAY_MS = 4000;
 const CHUNK = 24;
 
 let started = false;
+let warm = false;
+const waiting: (() => void)[] = [];
+
+// The picker (EmojiPickerView) builds itself once the emojis are drawn: built
+// before then, it would be the slow first drawing all at once.
+export const WhenEmojisWarm = (callback: () => void): void =>
+{
+    if(warm) callback();
+    else waiting.push(callback);
+}
 
 export const WarmUpEmojis = (): void =>
 {
@@ -46,6 +56,9 @@ export const WarmUpEmojis = (): void =>
         if(next >= emojis.length)
         {
             host.remove();
+
+            warm = true;
+            waiting.splice(0).forEach(callback => callback());
 
             return;
         }

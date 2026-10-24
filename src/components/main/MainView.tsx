@@ -42,6 +42,7 @@ import { RpWantedView } from '../rp-wanted/RpWantedView';
 import { RpClothingStoreView } from '../rp-clothing-store/RpClothingStoreView';
 import { RpProfileView } from '../rp-profile/RpProfileView';
 import { CustomisationView } from '../customisation/CustomisationView';
+import { EmojiPickerView } from '../room/widgets/chat-input/EmojiPickerView';
 import { RpSettingsView } from '../rp-settings/RpSettingsView';
 import { UserSettingsView } from '../user-settings/UserSettingsView';
 import { WiredView } from '../wired/WiredView';
@@ -129,6 +130,7 @@ export const MainView: FC<{}> = props =>
             <UserSettingsView />
             <RpSettingsView />
             <CustomisationView />
+            <EmojiPickerView />
             <RpInventoryView />
             <RpCorporationsView />
             <RpGangsView />
