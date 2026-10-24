@@ -32,11 +32,11 @@ index 1111111..2222222 100644
              this._pixelrpDragHold = null;
 +
 +            // And centred again, from here and in every room after - but only a
-+            // room really drawn off the screen. Until a new room draws its floor
-+            // its outline is an empty box at the room's origin, off the screen
-+            // for most rooms, and that cleared the dragged view as every room
-+            // loaded (Twist, 2026-10-24).
-+            if((bounds.width > 1) && (bounds.height > 1)) this._pixelrpViewShift = null;
++            // room the camera has placed (it has a location) drawn off the
++            // screen. A room still arriving is off it on purpose: aimed away
++            // while its floor builds, an empty outline before that. Both cleared
++            // the dragged view in every new room (Twist, 2026-10-24).
++            if(roomCamera.location && (bounds.width > 1) && (bounds.height > 1)) this._pixelrpViewShift = null;
          }
  
          if(this.pixelrpDragHolds(roomId, objectLocation, roomCamera, roomGeometry.scale, width, height)) return;
