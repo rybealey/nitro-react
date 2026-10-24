@@ -1,4 +1,4 @@
-import { IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
+import { CatalogPublishedMessageEvent, IMessageComposer, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
 import { GetCommunication, GetConnection, SendMessageComposer } from '../nitro';
 
 const RP_CATALOG_LOCATE = 4143;
@@ -6,6 +6,14 @@ const RP_CATALOG_LOCATE = 4143;
 // How long to wait before calling a reply lost. Generous: this only has to
 // beat a human wondering why the button never appeared.
 const REPLY_TIMEOUT = 10000;
+
+// pixelrp: answers are kept for a minute, by sprite and floor or wall. The
+// infostand asks on every click on a furni - a walk across a floor of tiles
+// asked once a click, and the emulator went through the whole shop for each.
+// Where a furni is sold changes only when the shop does: a reloaded catalog
+// (CatalogPublishedMessageEvent) forgets them all at once. A lost reply is
+// never kept.
+const KEEP_MS = 60000;
 
 /// Why a furni has no Buy link. The first four mirror the emulator's
 /// CatalogLocateStatus; NO_REPLY is the client's own, for an answer that never
@@ -49,7 +57,10 @@ class CatalogLocateComposer implements IMessageComposer<(number | boolean)[]>
 
 let registered = false;
 let sequence = 0;
-const callbacks = new Map<number, { handler: (location: CatalogLocation) => void; timeout: ReturnType<typeof setTimeout> }>();
+// A cancelled request keeps its place without a handler, so its reply is
+// still kept for the next click.
+const callbacks = new Map<number, { key: string; handler: (location: CatalogLocation) => void; timeout: ReturnType<typeof setTimeout> }>();
+const known = new Map<string, { location: CatalogLocation; at: number }>();
 
 const settle = (requestId: number, location: CatalogLocation) =>
 {
@@ -59,7 +70,10 @@ const settle = (requestId: number, location: CatalogLocation) =>
 
     clearTimeout(pending.timeout);
     callbacks.delete(requestId);
-    pending.handler(location);
+
+    if(location.status !== CatalogLocateStatus.NO_REPLY) known.set(pending.key, { location, at: Date.now() });
+
+    pending.handler?.(location);
 };
 
 // Each selection owns its request; cancelling it prevents an old room item's
@@ -79,22 +93,28 @@ export const LocateCatalogFurniture = (spriteId: number, wall: boolean, callback
             const parser = event.getParser();
             settle(parser.requestId, parser.location);
         }));
+        GetCommunication().registerMessageEvent(new CatalogPublishedMessageEvent(() => known.clear()));
         registered = true;
+    }
+    const key = `${ wall ? 'w' : 'f' }${ spriteId }`;
+    const kept = known.get(key);
+    if(kept && ((Date.now() - kept.at) < KEEP_MS))
+    {
+        callback(kept.location);
+        // Nothing was sent, so there is nothing to cancel.
+        return () => undefined;
     }
     const requestId = ++sequence;
     // A request that is never answered has to end somewhere. Silence used to
     // leave the Buy button hidden forever with nothing to show for it.
     const timeout = setTimeout(() => settle(requestId,
         { pageId: -1, itemId: -1, status: CatalogLocateStatus.NO_REPLY }), REPLY_TIMEOUT);
-    callbacks.set(requestId, { handler: callback, timeout });
+    callbacks.set(requestId, { key, handler: callback, timeout });
     SendMessageComposer(new CatalogLocateComposer(requestId, spriteId, wall));
     return () =>
     {
         const pending = callbacks.get(requestId);
 
-        if(!pending) return;
-
-        clearTimeout(pending.timeout);
-        callbacks.delete(requestId);
+        if(pending) pending.handler = null;
     };
 };

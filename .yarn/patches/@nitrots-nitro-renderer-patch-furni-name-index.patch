@@ -1,0 +1,87 @@
+diff --git a/src/nitro/session/SessionDataManager.ts b/src/nitro/session/SessionDataManager.ts
+index 1111111..2222222 100644
+--- a/src/nitro/session/SessionDataManager.ts
++++ b/src/nitro/session/SessionDataManager.ts
+@@ -43,6 +43,12 @@
+ 
+     private _floorItems: Map<number, IFurnitureData>;
+     private _wallItems: Map<number, IFurnitureData>;
++    // PixelRP: the same furnidata by classname, and how many entries each was
++    // made from - see getFloorItemDataByName.
++    private _floorItemsByName: Map<string, IFurnitureData>;
++    private _floorItemsIndexed: number;
++    private _wallItemsByName: Map<string, IFurnitureData>;
++    private _wallItemsIndexed: number;
+     private _products: Map<string, IProductData>;
+     private _furnitureData: FurnitureDataLoader;
+     private _productData: ProductDataLoader;
+@@ -81,6 +87,10 @@
+ 
+         this._floorItems = new Map();
+         this._wallItems = new Map();
++        this._floorItemsByName = null;
++        this._floorItemsIndexed = 0;
++        this._wallItemsByName = null;
++        this._wallItemsIndexed = 0;
+         this._products = new Map();
+         this._furnitureData = null;
+ 
+@@ -472,16 +482,37 @@
+         return existing;
+     }
+ 
++    // PixelRP: looked up in an index by classname. This walked the whole
++    // furnidata - 52,000 floor furni - and the room asks it on every click on
++    // a furni and every mouse move over one (the floor cursor), the whole walk
++    // each time for a classname the furnidata does not have. The index is
++    // made on first use and again whenever the furnidata has grown, and keeps
++    // the first entry of a classname, the one the walk found.
+     public getFloorItemDataByName(name: string): IFurnitureData
+     {
+         if(!name || !this._floorItems || !this._floorItems.size) return null;
+ 
+-        for(const item of this._floorItems.values())
++        if(!this._floorItemsByName || (this._floorItemsIndexed !== this._floorItems.size))
+         {
+-            if(!item || (item.className !== name)) continue;
++            this._floorItemsByName = SessionDataManager.indexByName(this._floorItems);
++            this._floorItemsIndexed = this._floorItems.size;
++        }
++
++        return this._floorItemsByName.get(name);
++    }
++
++    private static indexByName(items: Map<number, IFurnitureData>): Map<string, IFurnitureData>
++    {
++        const index = new Map<string, IFurnitureData>();
+ 
+-            return item;
++        for(const item of items.values())
++        {
++            if(!item || index.has(item.className)) continue;
++
++            index.set(item.className, item);
+         }
++
++        return index;
+     }
+ 
+     public getWallItemData(id: number): IFurnitureData
+@@ -497,12 +528,13 @@
+     {
+         if(!name || !this._wallItems || !this._wallItems.size) return null;
+ 
+-        for(const item of this._wallItems.values())
++        if(!this._wallItemsByName || (this._wallItemsIndexed !== this._wallItems.size))
+         {
+-            if(!item || (item.className !== name)) continue;
+-
+-            return item;
++            this._wallItemsByName = SessionDataManager.indexByName(this._wallItems);
++            this._wallItemsIndexed = this._wallItems.size;
+         }
++
++        return this._wallItemsByName.get(name);
+     }
+ 
+     public getProductData(type: string): IProductData

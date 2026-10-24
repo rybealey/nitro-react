@@ -1,4 +1,4 @@
-import { GetTickerTime, IFurnitureData, IRoomModerationSettings, IRoomPetData, IRoomUserData, ObjectDataFactory, PetFigureData, PetType, RoomControllerLevel, RoomModerationSettings, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomTradingLevelEnum, RoomWidgetEnumItemExtradataParameter, Vector3d } from '@nitrots/nitro-renderer';
+import { GetTickerTime, IFurnitureData, IRoomModerationSettings, IRoomObject, IRoomPetData, IRoomUserData, LegacyDataType, ObjectDataFactory, PetFigureData, PetType, RoomControllerLevel, RoomModerationSettings, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomTradingLevelEnum, RoomWidgetEnumItemExtradataParameter, Vector3d } from '@nitrots/nitro-renderer';
 import { GetRoomEngine, GetRoomSession, GetSessionDataManager, IsOwnerOfFurniture } from '../../nitro';
 import { LocalizeText } from '../../utils';
 import { AvatarInfoFurni } from './AvatarInfoFurni';
@@ -14,6 +14,15 @@ type UserBadgeCache = { getUserBadges(userId: number): string[] };
 
 const BADGE_REQUEST_GAP_MS = 10000;
 const badgesAskedAt = new WeakMap<UserBadgeCache, Map<number, number>>();
+
+// pixelrp: the infostand's pictures of furni, kept. Making one is a render, a
+// read back from the graphics card and a PNG encode, and it was done on every
+// click on a furni by anyone who can move furni - the floor tiles clicked to
+// walk across a room among them. A furni with plain (legacy) data is drawn
+// the same whatever its state - getRoomObjectImage passes only richer data on
+// - so its picture is one per type, colour and extras. The oldest go first.
+const FURNI_IMAGE_KEEP = 200;
+const furniImages = new Map<string, HTMLImageElement>();
 
 export class AvatarInfoUtilities
 {
@@ -105,6 +114,55 @@ export class AvatarInfoUtilities
         return new AvatarInfoName(objectId, category, id, name, userType);
     }
 
+    // The furni's picture for the infostand, kept where it can be (furniImages).
+    private static getFurniImage(roomId: number, objectId: number, category: number, roomObject: IRoomObject): HTMLImageElement
+    {
+        const model = roomObject.model;
+        const type = roomObject.type;
+        const colorIndex = type.indexOf('*');
+        // Only once the furni's own pictures are here - before that it is drawn
+        // as a placeholder. They are filed under the type without its colour.
+        const keep = (model.getValue<number>(RoomObjectVariable.FURNITURE_DATA_FORMAT) === LegacyDataType.FORMAT_KEY)
+            && !!GetRoomEngine().roomContentLoader?.getCollection((colorIndex >= 0) ? type.substring(0, colorIndex) : type);
+        const key = (keep ? `${ category }|${ type }|${ model.getValue<number>(RoomObjectVariable.FURNITURE_COLOR) }|${ model.getValue<string>(RoomObjectVariable.FURNITURE_EXTRAS) ?? '' }` : null);
+
+        if(key)
+        {
+            const kept = furniImages.get(key);
+
+            if(kept)
+            {
+                // Freshly used: to the back of the line.
+                furniImages.delete(key);
+                furniImages.set(key, kept);
+
+                return kept;
+            }
+        }
+
+        let roomObjectImage = GetRoomEngine().getRoomObjectImage(roomId, objectId, category, new Vector3d(180), 64, null);
+
+        if(!roomObjectImage.data || (roomObjectImage.data.width > 140) || (roomObjectImage.data.height > 200))
+        {
+            // pixelrp: the too-big render is never read - free it here
+            // (getImage frees the one that is).
+            if(roomObjectImage.data) roomObjectImage.data.destroy(true);
+
+            roomObjectImage = GetRoomEngine().getRoomObjectImage(roomId, objectId, category, new Vector3d(180), 1, null);
+        }
+
+        const image = roomObjectImage.getImage();
+
+        if(key && image)
+        {
+            furniImages.set(key, image);
+
+            if(furniImages.size > FURNI_IMAGE_KEEP) furniImages.delete(furniImages.keys().next().value);
+        }
+
+        return image;
+    }
+
     public static getFurniInfo(objectId: number, category: number): AvatarInfoFurni
     {
         const roomSession = GetRoomSession();
@@ -177,18 +235,7 @@ export class AvatarInfoUtilities
 
         furniInfo.expiration = ((expiryTime < 0) ? expiryTime : Math.max(0, (expiryTime - ((GetTickerTime() - expiryTimestamp) / 1000))));
 
-        let roomObjectImage = GetRoomEngine().getRoomObjectImage(roomSession.roomId, objectId, category, new Vector3d(180), 64, null);
-
-        if(!roomObjectImage.data || (roomObjectImage.data.width > 140) || (roomObjectImage.data.height > 200))
-        {
-            // pixelrp: the too-big render is never read - free it here
-            // (getImage frees the one that is).
-            if(roomObjectImage.data) roomObjectImage.data.destroy(true);
-
-            roomObjectImage = GetRoomEngine().getRoomObjectImage(roomSession.roomId, objectId, category, new Vector3d(180), 1, null);
-        }
-
-        furniInfo.image = roomObjectImage.getImage();
+        furniInfo.image = AvatarInfoUtilities.getFurniImage(roomSession.roomId, objectId, category, roomObject);
         furniInfo.isWallItem = (category === RoomObjectCategory.WALL);
         furniInfo.isRoomOwner = IsRoomOwnerNow(roomSession);
         furniInfo.roomControllerLevel = roomSession.controllerLevel;
