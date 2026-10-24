@@ -1,6 +1,6 @@
 import { FC, KeyboardEvent, MouseEvent, ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Overlay, Popover } from 'react-bootstrap';
-import { AddRecentEmoji, GetEmoji, GetEmojiCategories, GetRandomFaceEmoji, GetRecentEmojis, IEmoji, SearchEmojis } from '../../../../api';
+import { AddRecentEmoji, GetEmoji, GetEmojiCategories, GetRandomFaceEmoji, GetRecentEmojis, IEmoji, SearchEmojis, WarmUpEmojis } from '../../../../api';
 import { Base } from '../../../../common';
 
 interface ChatInputEmojiSelectorViewProps
@@ -241,6 +241,9 @@ export const ChatInputEmojiSelectorView: FC<ChatInputEmojiSelectorViewProps> = p
 
         searchRef.current?.focus({ preventScroll: true });
     }, [ selectorVisible ]);
+
+    // every emoji drawn once out of sight, so the first opening is instant (EmojiWarmUp)
+    useEffect(() => WarmUpEmojis(), []);
 
     const sectionViews = useMemo(() => sections.map(section => (
         <div key={ section.key } data-section={ section.key }>
