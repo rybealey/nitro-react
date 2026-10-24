@@ -71,15 +71,24 @@
     min-width: 0;
 }
 
+// The card's title - OFFER RECEIVED, TRADE REQUEST, PROPOSAL, BIN - in the
+// hotel's Ubuntu like the rest of the card (Twist, 2026-10-25: it was the
+// 8px Silkscreen pixel font, too small, and pixel fonts blur at any size
+// but 8, 16 or 24px). Bigger, but held to the old 10px line, so no card
+// grows: capitals have no descenders, so they fit it.
 .rp-offer-kicker {
-    font-family: 'Silkscreen', monospace;
-    font-size: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 10px;
     letter-spacing: 1px;
     color: var(--hud-orange, #e87332);
 }
 
+// "· 1 OF 3" after the title. Its own line has no height: a span inside
+// the title's short 10px line made the line 6px taller, and the card with it.
 .rp-offer-queued {
     margin-left: 4px;
+    line-height: 0;
     opacity: 0.75;
 }
 
