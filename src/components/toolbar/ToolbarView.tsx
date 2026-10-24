@@ -27,7 +27,8 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
     // server opens the shop's and the navigator's packets at the same rank (BuilderOnly)
     const canBuild = (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
     const showCamera = (isInRoom && (isMod || HasHabboVip()));
-    // Customisation is everyone's, so the menu always has something in it
+    // an open menu with nothing in it would leave a gap beside the emblem
+    const hasMenuItems = (isMod || canModTools || canBuild || showCamera);
 
     useMessageEvent<PerkAllowancesMessageEvent>(PerkAllowancesMessageEvent, event =>
     {
@@ -90,14 +91,9 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                             <span className="toolbar-logo-shine" />
                         </div>
                     </HoverBubble>
-                    <Flex alignItems="center" className={ 'toolbar-menu-items' + (isMenuExpanded ? ' expanded' : '') }>
+                    <Flex alignItems="center" className={ 'toolbar-menu-items' + ((isMenuExpanded && hasMenuItems) ? ' expanded' : '') }>
                         <div className="toolbar-groove" />
                         <Flex alignItems="center" gap={ 2 }>
-                            <HoverBubble text="Customisation">
-                                <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('customisation/toggle') }>
-                                    <div className="icon icon-customisation" />
-                                </div>
-                            </HoverBubble>
                             { canBuild &&
                                 <HoverBubble text="Navigator">
                                     <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('navigator/toggle') }>
@@ -135,6 +131,12 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
                 </Flex>
                 <Flex alignItems="center" id="toolbar-chat-input-container" />
                 <Flex alignItems="center" gap={ 2 } className="toolbar-panel is-right">
+                    { /* everyone's, beside the Diamonds Shop */ }
+                    <HoverBubble text="Customisation">
+                        <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('customisation/toggle') }>
+                            <div className="icon icon-customisation" />
+                        </div>
+                    </HoverBubble>
                     <HoverBubble text="Diamonds Shop">
                         <div className="cursor-pointer toolbar-tile" onClick={ event => CreateLinkEvent('diamonds-store/toggle') }>
                             <div className="icon-diamonds" />
