@@ -1,0 +1,168 @@
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -458,6 +458,14 @@
+ 
+         if(!this._reusableTexture) return null;
+ 
++        // PixelRP: the parts are kept on the texture too, for the click test
++        // (ExtendedSprite.partsContainPoint), which reads each part's own
++        // picture instead of this one back from the GPU. Not under a filter
++        // over the whole avatar: a colour transform could change which pixels
++        // count as solid, and only the drawn picture shows that.
++        //@ts-ignore
++        this._reusableTexture.baseTexture.pixelrpParts = ((container.filters && container.filters.length) ? null : pieces);
++
+         // PixelRP: what this picture is made of (see isSameDrawing).
+         this._drawnTexture = this._reusableTexture;
+         this._drawnPieces = pieces;
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -101,6 +101,8 @@
+     private _screenOffsetX: number;
+     private _screenOffsetY: number;
+     private _mouseLocation: Point;
++    // PixelRP: the point every sprite is tested at, one for all of them.
++    private _hitTestPoint: Point;
+     private _mouseOldX: number;
+     private _mouseOldY: number;
+     private _mouseCheckCount: number;
+@@ -164,6 +166,7 @@
+         this._screenOffsetX = 0;
+         this._screenOffsetY = 0;
+         this._mouseLocation = new Point;
++        this._hitTestPoint = new Point();
+         this._mouseOldX = 0;
+         this._mouseOldY = 0;
+         this._mouseCheckCount = 0;
+@@ -1158,7 +1161,10 @@
+         {
+             const extendedSprite = this.getExtendedSprite(spriteId);
+ 
+-            if(extendedSprite && extendedSprite.containsPoint(new Point((x - extendedSprite.x), (y - extendedSprite.y))))
++            // PixelRP: the same point, moved for each sprite - a click tested
++            // every sprite in the room three times (down, up, click) with a new
++            // point each, and a mouse move once a frame.
++            if(extendedSprite && extendedSprite.containsPoint(this._hitTestPoint.set((x - extendedSprite.x), (y - extendedSprite.y))))
+             {
+                 if(extendedSprite.clickHandling && ((type === MouseEventType.MOUSE_CLICK) || (type === MouseEventType.DOUBLE_CLICK)))
+                 {
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -1,5 +1,6 @@
+ import { BLEND_MODES } from '@pixi/constants';
+ import { BaseRenderTexture, BaseTexture, Resource, Texture } from '@pixi/core';
++import { Container } from '@pixi/display';
+ import { Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { AlphaTolerance } from '../../../api';
+@@ -13,6 +14,14 @@
+     bits: Uint32Array;
+ }
+ 
++// PixelRP: one body part as it went into an avatar's picture (AvatarImage).
++interface DrawnPart
++{
++    image: Container;
++    x: number;
++    y: number;
++}
++
+ export class ExtendedSprite extends Sprite
+ {
+     private static STALE_HIT_MAP_MS: number = 250;
+@@ -104,6 +113,23 @@
+         // hovers or clicks each kind of furni.
+         if(ExtendedSprite.hasFrameHitMap(texture)) return ExtendedSprite.frameContainsPoint(texture, x, y);
+ 
++        // PixelRP: an avatar's picture is tested against the body parts it
++        // was drawn from (AvatarImage keeps them on its texture) - each part's
++        // own frame map, read from its sheet's image like a furni's - so a
++        // hover or click on an avatar that walks, dances or talks reads
++        // nothing back from the GPU, and the shape is never a redraw behind.
++        // A part that cannot be tested that way leaves the avatar on the map
++        // below.
++        //@ts-ignore
++        const parts = (baseTexture.pixelrpParts as DrawnPart[]);
++
++        if(parts)
++        {
++            const hit = ExtendedSprite.partsContainPoint(parts, x, y);
++
++            if(hit !== null) return hit;
++        }
++
+         // PixelRP: an avatar redraws its picture into the same texture about
+         // 12 times a second while it walks, dances or talks, and a redraw only
+         // marks the map stale (AvatarImage). Rebuilding it is a GPU readback -
+@@ -171,6 +197,65 @@
+         return true;
+     }
+ 
++    // PixelRP: the pixel at (x, y) of a picture drawn from these parts, each
++    // a container placed at (x, y) holding sprites cut from sheets, flipped
++    // or not (AvatarImageCache.createUnionImage). The pixel's centre is taken
++    // back through each sprite's placing to the texel drawn there, and that
++    // texel looked up in the frame's map. Null when a part is not one that
++    // can be read this way.
++    private static _partPoint: Point = new Point();
++
++    private static partsContainPoint(parts: DrawnPart[], x: number, y: number): boolean
++    {
++        const centreX = (Math.round(x) + 0.5);
++        const centreY = (Math.round(y) + 0.5);
++        const point = ExtendedSprite._partPoint;
++
++        for(const part of parts)
++        {
++            const image = part.image;
++
++            // Anything that changes how solid a pixel comes out, beyond the
++            // parts' own pixels, is left to the drawn picture.
++            if(!image || image.destroyed || (image.alpha !== 1) || (image.filters && image.filters.length)) return null;
++
++            image.transform.updateLocalTransform();
++            point.set((centreX - part.x), (centreY - part.y));
++            image.localTransform.applyInverse(point, point);
++
++            const imageX = point.x;
++            const imageY = point.y;
++
++            for(const child of image.children)
++            {
++                if(!(child instanceof Sprite)) return null;
++
++                const texture = child.texture;
++
++                if(!child.visible || (texture === Texture.EMPTY)) continue;
++
++                // A part drawn in place, like the avatar itself, has no map
++                // that stays true.
++                if(!texture || !texture.baseTexture || !texture.baseTexture.valid || texture.rotate || (texture.baseTexture instanceof BaseRenderTexture)) return null;
++
++                if((child.alpha !== 1) || (child.blendMode !== BLEND_MODES.NORMAL) || (child.filters && child.filters.length)) return null;
++
++                child.transform.updateLocalTransform();
++                point.set(imageX, imageY);
++                child.localTransform.applyInverse(point, point);
++
++                const texelX = (Math.floor(point.x) + (child.anchor.x * texture.orig.width));
++                const texelY = (Math.floor(point.y) + (child.anchor.y * texture.orig.height));
++
++                if((texelX < 0) || (texelY < 0) || (texelX >= texture.orig.width) || (texelY >= texture.orig.height)) continue;
++
++                if(ExtendedSprite.frameContainsPoint(texture, texelX, texelY)) return true;
++            }
++        }
++
++        return false;
++    }
++
+     // PixelRP: only a still picture cut from a larger one - a render texture
+     // can be redrawn in place with nobody to tell its maps, and a rotated
+     // frame is stored sideways in its sheet; both keep the whole-texture map.
