@@ -2,8 +2,8 @@ import { HabboClubLevelEnum, RoomControllerLevel } from '@nitrots/nitro-renderer
 import { GetClubMemberLevel, GetConfiguration, GetSessionDataManager } from '../../api';
 
 // The chat bubble styles this player may pick, in ui-config's order. Shared by
-// the bubble picker beside the chat box and Settings > Personalization > Chat
-// Bubble, so the two can never offer different lists.
+// the bubble picker beside the chat box and Customisation > Chat Bubble, so
+// the two can never offer different lists.
 const ALL_STYLES_OPEN = true;
 
 export const GetSelectableChatStyleIds = (): number[] =>

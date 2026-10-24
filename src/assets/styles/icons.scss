@@ -63,6 +63,13 @@
         height: 30px;
     }
 
+    // the Customisation window's button, in the toolbar's menu
+    &.icon-customisation {
+        background-image: url('@/assets/images/toolbar/icons/customisation.png');
+        width: 39px;
+        height: 36px;
+    }
+
     // The phone button (opens phone/toggle) — the original PixelRP toolbar
     // phone art, rendered 1:1 native size.
     &.icon-phone {

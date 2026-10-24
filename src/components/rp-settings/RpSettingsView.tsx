@@ -1,12 +1,11 @@
-import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
-import { RpSaveMacrosComposer, RpSaveUiSettingsComposer } from '@nitrots/nitro-renderer';
-import { FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGetDiscordStatusComposer, RpMacrosEvent, RpUiSettingsEvent } from '@nitrots/nitro-renderer';
+import { RpSaveMacrosComposer } from '@nitrots/nitro-renderer';
+import { FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { AddEventLinkTracker, GetAvatarRenderManager, GetPingVolume, GetSessionDataManager, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
+import { AddEventLinkTracker, GetPingVolume, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
-import { useMessageEvent, UserSettingsVolume, useSessionInfo, useUserSettings } from '../../hooks';
+import { useMessageEvent, UserSettingsVolume, useUserSettings } from '../../hooks';
 import { SetMusicVolume, useJukeboxPrefs } from '../music-player/JukeboxStore';
-import { GetSelectableChatStyleIds } from './ChatStyles';
 import { ApplyIconTint, ApplyUiChrome, ClampChromeOpacity, DEFAULT_CHROME_COLOR, DEFAULT_CHROME_OPACITY, DEFAULT_HEADER_KEY, HeaderColor, HeaderKeyForColor, IsValidChromeColor, IsValidHeaderKey } from './UiChrome';
 import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
@@ -14,9 +13,9 @@ import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIcon
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
-import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor, USERNAME_COLORS } from './UsernameColors';
-import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon, USERNAME_ICONS } from './IconChoices';
-import { UsernameIconGlyph } from './UsernameIconGlyph';
+import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor } from './UsernameColors';
+import { DEFAULT_USERNAME_ICON, IsValidUsernameIcon } from './IconChoices';
+import { SaveUiAccountSettings, SetUiAccountSettings } from './UiAccountSettings';
 import { SetEnvironmentWeather, useEnvironmentPrefs, useWeatherSnapshot } from '../../api/environment/EnvironmentStore';
 import { EnvironmentSkyPreview } from '../environment/EnvironmentSky';
 import { SkyConditionLabel } from '../environment/SkyModel';
@@ -27,7 +26,10 @@ import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBi
 // PixelRP settings window, opened from the side drawer's Settings button
 // (CreateLinkEvent('rp-settings/toggle')). Every tab but Macros pairs the tab
 // strip with a left rail of that tab's pages (Settings Sidebar canvas, D/E).
-const TABS: string[] = [ 'General', 'Macros', 'Personalization', 'UI', 'Discord' ];
+// The name colour, icon and chat bubble were the Personalization tab; they are
+// the Customisation window now (CustomisationView), open to everyone from the
+// toolbar.
+const TABS: string[] = [ 'General', 'Macros', 'UI', 'Discord' ];
 
 // Macro row dragging: how far a press must move before it is a drag, and how
 // close to the list's edge the pointer must be for the list to scroll itself.
@@ -44,12 +46,6 @@ const VOLUME_ROWS: { kind: UserSettingsVolume, text: string }[] = [
 // The Macros tab is live: bindings are saved server-side (RpSaveMacrosComposer)
 // so they follow the player to any browser, and ChatInputView fires them. See
 // MacroState.ts for the document shape and the binding vocabulary.
-
-// Personalization tab sub-pages (left rail), grouped under the Username
-// eyebrow; the chat-bubble preview shows on both.
-const PERSONALIZATION_PAGES: string[] = [ 'Name Color', 'Icon' ];
-// ...and the Chat group below it: the whole bubble, not just the name.
-const CHAT_PAGES: string[] = [ 'Chat Bubble' ];
 
 // Interface tab sub-pages (left rail). Colours (Settings canvas, boards N/O)
 // replaced the Windows and Components pages' fixed swatches.
@@ -123,10 +119,6 @@ export const RpSettingsView: FC<{}> = props =>
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const { maxFps } = useFpsPref();
     const { dragButton } = useRoomDragPref();
-    // Personalization > Chat Bubble saves the same setting as the picker
-    // beside the chat box (RoomUnitChatStyleComposer), from the same list.
-    const { chatStyleId = 0, updateChatStyleId = null } = useSessionInfo();
-    const chatStyleIds = useMemo(() => (isVisible ? GetSelectableChatStyleIds() : []), [ isVisible ]);
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
     const [ headerKey, setHeaderKey ] = useState<string>(DEFAULT_HEADER_KEY);
@@ -135,7 +127,6 @@ export const RpSettingsView: FC<{}> = props =>
     const [ pingVolume, setPingVolumeState ] = useState<number>(GetPingVolume);
     // General > Sound > Music: the level over all of PixelRP's music (JukeboxStore).
     const { musicVolume } = useJukeboxPrefs();
-    const [ personalPage, setPersonalPage ] = useState<string>(PERSONALIZATION_PAGES[0]);
     // null = unknown/loading; refreshed every time the Discord page opens
     const [ discordLinked, setDiscordLinked ] = useState<boolean>(null);
     const [ discordLinkedAt, setDiscordLinkedAt ] = useState<number>(0);
@@ -143,9 +134,6 @@ export const RpSettingsView: FC<{}> = props =>
     // is in flight, null otherwise.
     const [ discordPending, setDiscordPending ] = useState<string>(null);
     const [ confirmUnlink, setConfirmUnlink ] = useState<boolean>(false);
-    const [ usernameColor, setUsernameColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
-    const [ usernameIcon, setUsernameIcon ] = useState<string>(DEFAULT_USERNAME_ICON);
-    const [ usernameIconColor, setUsernameIconColor ] = useState<string>(DEFAULT_USERNAME_COLOR);
     const [ interfacePage, setInterfacePage ] = useState<string>(INTERFACE_PAGES[0]);
     // UI > Colours: the row whose picker is open, or null.
     const [ openColour, setOpenColour ] = useState<ColourRowKey>(null);
@@ -158,43 +146,6 @@ export const RpSettingsView: FC<{}> = props =>
     const weatherSnapshot = useWeatherSnapshot();
     // General > Clock, and the weather preview's clock reads it too
     const { clock24: unitsClock24 } = useUnitsPrefs();
-    // Own avatar head + chest color for the preview bubble, built the same way
-    // the chat widget builds them (useChatWidget's setFigureImage).
-    const [ previewFigure, setPreviewFigure ] = useState<{ imageUrl: string, color: string }>(null);
-
-    useEffect(() =>
-    {
-        if(!isVisible) return;
-
-        let disposed = false;
-
-        const buildFigure = (figure: string) =>
-        {
-            const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, null, {
-                resetFigure: figure =>
-                {
-                    if(!disposed) buildFigure(figure);
-                },
-                dispose: () => {},
-                disposed: false
-            });
-
-            if(!avatarImage) return;
-
-            const image = avatarImage.getCroppedImage(AvatarSetType.HEAD);
-            const color = avatarImage.getPartColor(AvatarFigurePartType.CHEST);
-
-            setPreviewFigure({ imageUrl: image.src, color: ('#' + ((color && color.rgb) || 16777215).toString(16).padStart(6, '0')) });
-            avatarImage.dispose();
-        }
-
-        buildFigure(GetSessionDataManager().figure);
-
-        return () =>
-        {
-            disposed = true;
-        }
-    }, [ isVisible ]);
 
     useMessageEvent<RpDiscordStatusEvent>(RpDiscordStatusEvent, event =>
     {
@@ -246,9 +197,9 @@ export const RpSettingsView: FC<{}> = props =>
         setChromeColor(color);
         setChromeOpacity(opacity);
         setHeaderKey(header);
-        setUsernameColor(uname);
-        setUsernameIcon(uicon);
-        setUsernameIconColor(uiconColor);
+        // the name's colour and icon are the Customisation window's; all six
+        // are saved together, so both windows save from this one copy
+        SetUiAccountSettings({ chromeColor: color, chromeOpacity: opacity, headerKey: header, usernameColor: uname, usernameIcon: uicon, usernameIconColor: uiconColor });
         ApplyUiChrome(color, opacity, header);
         ApplyIconTint(GetIconTint());
     });
@@ -990,27 +941,21 @@ export const RpSettingsView: FC<{}> = props =>
         };
     }, [ isCapturing, captureRow ]);
 
-    const saveSettings = (color: string, opacity: number, header: string, uname: string, icon: string, iconColor: string) =>
+    const saveSettings = (color: string, opacity: number, header: string) =>
     {
         // a save now replaces any picker colour still waiting to go
         clearTimeout(uiSaveTimer.current);
         uiSaveTimer.current = null;
 
-        // '' resets the server row's color/header/username/icon to default
-        SendMessageComposer(new RpSaveUiSettingsComposer(
-            (color === DEFAULT_CHROME_COLOR) ? '' : color,
-            opacity,
-            (header === DEFAULT_HEADER_KEY) ? '' : header,
-            (uname === DEFAULT_USERNAME_COLOR) ? '' : uname,
-            icon,
-            (iconColor === DEFAULT_USERNAME_COLOR) ? '' : iconColor));
+        // with the name's colour and icon as they are now (UiAccountSettings)
+        SaveUiAccountSettings({ chromeColor: color, chromeOpacity: opacity, headerKey: header });
     }
 
     const selectChrome = (color: string) =>
     {
         setChromeColor(color);
         ApplyUiChrome(color, chromeOpacity, headerKey);
-        saveSettings(color, chromeOpacity, headerKey, usernameColor, usernameIcon, usernameIconColor);
+        saveSettings(color, chromeOpacity, headerKey);
     }
 
     // Any percent 0-100: applied live as the slider moves, saved once it has
@@ -1028,7 +973,7 @@ export const RpSettingsView: FC<{}> = props =>
     {
         setHeaderKey(key);
         ApplyUiChrome(chromeColor, chromeOpacity, key);
-        saveSettings(chromeColor, chromeOpacity, key, usernameColor, usernameIcon, usernameIconColor);
+        saveSettings(chromeColor, chromeOpacity, key);
     }
 
     // UI > Colours: the picker's live colours and the opacity slider. Applied
@@ -1036,7 +981,7 @@ export const RpSettingsView: FC<{}> = props =>
     const queueUiSave = (color: string, header: string, opacity: number = chromeOpacity) =>
     {
         clearTimeout(uiSaveTimer.current);
-        uiSaveTimer.current = setTimeout(() => saveSettings(color, opacity, header, usernameColor, usernameIcon, usernameIconColor), 500);
+        uiSaveTimer.current = setTimeout(() => saveSettings(color, opacity, header), 500);
     }
 
     const pickHeaderColour = (colour: string) =>
@@ -1092,18 +1037,6 @@ export const RpSettingsView: FC<{}> = props =>
                     onClick={ () => setOpenColour(isOpen ? null : key) } />
             </div>
         );
-    }
-
-    const selectUsernameColor = (color: string) =>
-    {
-        setUsernameColor(color);
-        saveSettings(chromeColor, chromeOpacity, headerKey, color, usernameIcon, usernameIconColor);
-    }
-
-    const selectUsernameIcon = (icon: string) =>
-    {
-        setUsernameIcon(icon);
-        saveSettings(chromeColor, chromeOpacity, headerKey, usernameColor, icon, usernameIconColor);
     }
 
     const connectDiscord = () =>
@@ -1446,106 +1379,6 @@ export const RpSettingsView: FC<{}> = props =>
                                 </div>
                             </div>, document.body) }
                     </Column> }
-                { (currentTab === 'Personalization') &&
-                    <div className="prp-subnav-layout">
-                        <div className="prp-subnav">
-                            <div className="prp-subnav-eyebrow">Username</div>
-                            { PERSONALIZATION_PAGES.map(page => (
-                                <div key={ page }
-                                    className={ `prp-subnav-item ${ (personalPage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setPersonalPage(page) }>
-                                    { page }
-                                </div>
-                            )) }
-                            <div className="prp-subnav-eyebrow">Chat</div>
-                            { CHAT_PAGES.map(page => (
-                                <div key={ page }
-                                    className={ `prp-subnav-item ${ (personalPage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setPersonalPage(page) }>
-                                    { page }
-                                </div>
-                            )) }
-                        </div>
-                        <Column gap={ 2 } className={ `prp-subnav-page ${ (personalPage === 'Chat Bubble') ? 'rp-settings-bubble-page' : '' }` }>
-                            { /* On Chat Bubble the preview is a plain centred box
-                                 over the tiles (canvas board I), no label. */ }
-                            <div className={ `rp-settings-preview ${ (personalPage === 'Chat Bubble') ? 'rp-settings-preview--centered' : '' }` }>
-                                { (personalPage !== 'Chat Bubble') &&
-                                    <Text small className="text-muted">Preview</Text> }
-                                <div className="bubble-container" style={ { position: 'relative' } }>
-                                    <div className="user-container-bg" style={ { backgroundColor: previewFigure?.color } } />
-                                    <div className={ `chat-bubble bubble-${ chatStyleId } type-0` } style={ { maxWidth: '100%' } }>
-                                        <div className="user-container">
-                                            { previewFigure?.imageUrl &&
-                                                <div className="user-image" style={ { backgroundImage: `url(${ previewFigure.imageUrl })` } } /> }
-                                        </div>
-                                        <div className="chat-content">
-                                            { usernameIcon &&
-                                                <b className="username mr-1"><UsernameIconGlyph iconClass={ usernameIcon } />{ ' ' }</b> }
-                                            <b className="username mr-1"><span style={ { color: usernameColor } }>{ GetSessionDataManager().userName }</span>{ ': ' }</b>
-                                            <span className="message">Welcome to San Francisco!</span>
-                                        </div>
-                                        <div className="pointer" />
-                                    </div>
-                                </div>
-                            </div>
-                            { (personalPage === 'Name Color') &&
-                            <div className="rp-settings-stack-section">
-                                <div className="rp-settings-stack-head">
-                                    <div className="rp-settings-stack-head-text">
-                                        <Text bold>Name Color</Text>
-                                    </div>
-                                </div>
-                                <div className="rp-settings-swatches rp-settings-swatches--wide">
-                                    { USERNAME_COLORS.map(entry => (
-                                        <div key={ entry.key } title={ entry.name }
-                                            className={ `rp-settings-swatch ${ (usernameColor === entry.color) ? 'is-selected' : '' }` }
-                                            style={ { backgroundColor: entry.color } }
-                                            onClick={ () => selectUsernameColor(entry.color) } />
-                                    )) }
-                                </div>
-                            </div> }
-                            { (personalPage === 'Icon') &&
-                            <div className="rp-settings-stack-section">
-                                <div className="rp-settings-stack-head">
-                                    <div className="rp-settings-stack-head-text">
-                                        <Text bold>Icon</Text>
-                                    </div>
-                                </div>
-                                <div className="rp-settings-swatches rp-settings-swatches--wide">
-                                    { USERNAME_ICONS.map(entry => (
-                                        <div key={ entry.key } title={ entry.name }
-                                            className={ `rp-settings-swatch rp-settings-swatch--icon ${ (usernameIcon === (entry.iconClass ?? '')) ? 'is-selected' : '' }` }
-                                            onClick={ () => selectUsernameIcon(entry.iconClass ?? '') }>
-                                            <UsernameIconGlyph iconClass={ entry.iconClass } />
-                                        </div>
-                                    )) }
-                                </div>
-                            </div> }
-                            { /* Every style, one tile each, in a panel that scrolls
-                                 on its own under the preview. No pointer in the
-                                 tiles; the preview keeps its own. */ }
-                            { (personalPage === 'Chat Bubble') &&
-                                <div className="rp-settings-bubbles" role="radiogroup" aria-label="Chat bubble">
-                                    { chatStyleIds.map(styleId => (
-                                        <button key={ styleId } type="button" role="radio" aria-checked={ (chatStyleId === styleId) }
-                                            aria-label={ `Bubble ${ styleId }` } title={ `Bubble ${ styleId }` }
-                                            className={ `rp-settings-bubble ${ (chatStyleId === styleId) ? 'is-selected' : '' }` }
-                                            onClick={ () => updateChatStyleId(styleId) }>
-                                            <div className="bubble-container" style={ { position: 'relative' } }>
-                                                <div className="user-container-bg" />
-                                                <div className={ `chat-bubble bubble-${ styleId } type-0` }>
-                                                    <div className="user-container" />
-                                                    <div className="chat-content">
-                                                        <span className="message">Hey!</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    )) }
-                                </div> }
-                        </Column>
-                    </div> }
                 { (currentTab === 'Discord') &&
                     <div className="prp-subnav-layout">
                         <div className="prp-subnav">

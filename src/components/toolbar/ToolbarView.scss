@@ -140,6 +140,7 @@
         .icon-inventory { width: 31px; height: 29px; }
         .icon-camera { width: 29px; height: 31px; }
         .icon-modtools { width: 31px; height: 31px; }
+        .icon-customisation { width: 39px; height: 37px; }
         .icon-phone { width: 41px; height: 41px; }
 
         // Diamonds shortcut (moved from the purse): the 43x40 pixel icon
@@ -168,8 +169,10 @@
             flex-shrink: 0;
         }
 
+        // room for the groove and seven tiles (16 + 7 x 45 + 6 x 8 = 379px);
+        // a staff member's full menu is six
         &.expanded {
-            max-width: 320px;
+            max-width: 400px;
             opacity: 1;
             pointer-events: all;
         }

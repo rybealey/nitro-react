@@ -41,6 +41,7 @@ import { RpInventoryView } from '../rp-inventory/RpInventoryView';
 import { RpWantedView } from '../rp-wanted/RpWantedView';
 import { RpClothingStoreView } from '../rp-clothing-store/RpClothingStoreView';
 import { RpProfileView } from '../rp-profile/RpProfileView';
+import { CustomisationView } from '../customisation/CustomisationView';
 import { RpSettingsView } from '../rp-settings/RpSettingsView';
 import { UserSettingsView } from '../user-settings/UserSettingsView';
 import { WiredView } from '../wired/WiredView';
@@ -127,6 +128,7 @@ export const MainView: FC<{}> = props =>
             <JamSync />
             <UserSettingsView />
             <RpSettingsView />
+            <CustomisationView />
             <RpInventoryView />
             <RpCorporationsView />
             <RpGangsView />
