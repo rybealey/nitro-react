@@ -367,7 +367,8 @@ $player-teal: #1E7295;
 .nitro-siri {
     position: fixed;
     left: 50%;
-    bottom: 10px;
+    // where the chat bar sits, which rides on the toolbar
+    bottom: 10px + $hud-edge-gap;
     z-index: calc(#{$chatinput-zindex} + 5);
     // same footprint as the chat bar it replaces (564px fixed)
     width: 564px;

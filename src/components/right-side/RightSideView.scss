@@ -1,10 +1,12 @@
 .nitro-right-side {
     position: absolute;
-    top: 0px;
-    right: 10px;
+    // off the top edge, and its right side in line with the toolbar's
+    // bottom right panel (App.scss $hud-edge-gap); down to the toolbar
+    top: $hud-edge-gap;
+    right: $hud-edge-gap;
     min-width: 200px;
     max-width: 200px;
-    height: calc(100% - #{$toolbar-height});
+    height: calc(100% - #{$toolbar-height} - #{2 * $hud-edge-gap});
     z-index: $rightside-zindex;
     pointer-events: none;
 }

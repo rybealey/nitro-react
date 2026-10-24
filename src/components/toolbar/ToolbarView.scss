@@ -1,33 +1,26 @@
 .nitro-toolbar {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
+    bottom: $hud-edge-gap;
+    left: $hud-edge-gap;
+    right: $hud-edge-gap;
     height: $toolbar-height;
     z-index: $toolbar-zindex;
     pointer-events: all;
     background: transparent;
 
-    // HUD Toolbar Redesign canvas, D: the icons sit on two panels docked into
-    // the screen's bottom corners - the player's HUD colour and opacity
-    // (--prp-chrome-95), a black edge only on the sides that face the room,
-    // and the faint light line along the top that the HUD plates have.
-    // 1 + 9 + 45 + 9 = 64px tall, the toolbar's height.
+    // HUD Toolbar Redesign canvas, D: the icons sit on two panels in the
+    // screen's bottom corners - the player's HUD colour and opacity
+    // (--prp-chrome-95) and the faint light line along the top that the HUD
+    // plates have. They sit $hud-edge-gap off the edges, so the black edge
+    // and the rounded corners go all the way round. 1 + 9 + 45 + 8 + 1 = 64px
+    // tall, the toolbar's height: one row less below the tiles than above,
+    // where the light line takes one, so the tiles look centred.
     .toolbar-panel {
-        padding: 9px;
+        padding: 9px 9px 8px;
         background: var(--prp-chrome-95);
-        border-top: 1px solid #0a0a0a;
+        border: 1px solid #0a0a0a;
+        border-radius: $border-radius;
         box-shadow: inset 0 1px 0 rgba($white, 0.14);
-
-        &.is-left {
-            border-right: 1px solid #0a0a0a;
-            border-top-right-radius: $border-radius;
-        }
-
-        &.is-right {
-            border-left: 1px solid #0a0a0a;
-            border-top-left-radius: $border-radius;
-        }
     }
 
     // The PixelRP P: the logo, not one of the buttons, so it has no tile. It

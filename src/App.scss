@@ -26,6 +26,10 @@ $grid-active-bg-color: #ececec;
 $grid-active-border-color: $white;
 
 $toolbar-height: 64px;
+// How far the HUD's panels sit off the edges of the screen: the toolbar's two
+// bottom panels and the top right row (Twist, 2026-10-25: "a bit of distance,
+// not much"). The side drawer on the left stays docked to its edge.
+$hud-edge-gap: 6px;
 
 $achievement-width: 375px;
 $achievement-height: 405px;

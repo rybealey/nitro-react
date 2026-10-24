@@ -87,7 +87,7 @@ export const PurseView: FC<{}> = props =>
 
     return (
         <Column alignItems="end" className="nitro-purse-container" gap={ 1 }>
-            <Flex innerRef={ purseRef } gap={ 1 } className="nitro-purse rounded-bottom">
+            <Flex innerRef={ purseRef } gap={ 1 } className="nitro-purse rounded">
                 <Column justifyContent="center" gap={ 0 } className="flex-grow-1">
                     <CurrencyView type={ -1 } amount={ purse.credits } short={ currencyDisplayNumberShort } />
                     { getCurrencyElements(0, 2) }
