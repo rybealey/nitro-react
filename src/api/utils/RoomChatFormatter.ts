@@ -39,37 +39,16 @@ const encodeHTML = (str: string) =>
 
 export const RoomChatFormatter = (content: string) =>
 {
-    let result = '';
-
     content = encodeHTML(content);
     //content = (joypixels.shortnameToUnicode(content) as string)
 
-    if(content.startsWith('@') && content.indexOf('@', 1) > -1)
-    {
-        let match = null;
+    // pixelrp: a colour tag only at the very start ("@red@hello"). Any line
+    // that began with "@" and had another "@" in it was read as a tag, and
+    // when there was none - "@twist @jeen" - the line came out blank, ping
+    // and all. A line without a colour tag now shows exactly as typed.
+    const match = /^@([a-zA-Z]+)@/.exec(content);
 
-        while((match = /@[a-zA-Z]+@/g.exec(content)) !== null)
-        {
-            const colorTag = match[0].toString();
-            const colorName = colorTag.substr(1, colorTag.length - 2);
-            const text = content.replace(colorTag, '');
+    if(!match || !allowedColours.has(match[1])) return content;
 
-            if(!allowedColours.has(colorName))
-            {
-                result = text;
-            }
-            else
-            {
-                const color = allowedColours.get(colorName);
-                result = '<span style="color: ' + color + '">' + text + '</span>';
-            }
-            break;
-        }
-    }
-    else
-    {
-        result = content;
-    }
-
-    return result;
+    return '<span style="color: ' + allowedColours.get(match[1]) + '">' + content.substring(match[0].length) + '</span>';
 }
