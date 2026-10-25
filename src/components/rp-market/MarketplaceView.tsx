@@ -115,6 +115,9 @@ export const MarketplaceView: FC<{}> = props =>
     const [ picked, setPicked ] = useState(0);
     const [ quantity, setQuantity ] = useState(1);
     const [ price, setPrice ] = useState('');
+    // An action is on its way: Buy, List and Take back wait for the answer, so
+    // one click is one action however fast it is pressed again.
+    const [ busy, setBusy ] = useState(false);
     const { getCurrencyAmount } = usePurse();
 
     // The backpack, as everywhere else - login and every change.
@@ -140,6 +143,7 @@ export const MarketplaceView: FC<{}> = props =>
             now: parser.now
         });
         setNotice(parser.notice);
+        setBusy(false);
 
         if(parser.open)
         {
@@ -158,6 +162,16 @@ export const MarketplaceView: FC<{}> = props =>
 
         return () => clearTimeout(timeout);
     }, [ notice ]);
+
+    // An answer that never comes (a dropped packet) must not lock the buttons for good.
+    useEffect(() =>
+    {
+        if(!busy) return;
+
+        const timeout = setTimeout(() => setBusy(false), 4000);
+
+        return () => clearTimeout(timeout);
+    }, [ busy ]);
 
     const packOpen = (HasHabboVip() ? CARRY_SLOTS.length : CARRY_OPEN);
     const pickedEntry = pack.find(entry => (entry.slot === picked) && (entry.slot >= 1) && (entry.slot <= CARRY_SLOTS.length)) ?? null;
@@ -199,6 +213,15 @@ export const MarketplaceView: FC<{}> = props =>
         setSortOpen(false);
     };
 
+    // One action at a time, answered before the next.
+    const act = (action: number, a: number = 0, b: number = 0, c: number = 0) =>
+    {
+        if(busy) return;
+
+        setBusy(true);
+        SendRpMarketAction(action, a, b, c);
+    };
+
     const pickTab = (next: Tab) =>
     {
         setTab(next);
@@ -227,9 +250,9 @@ export const MarketplaceView: FC<{}> = props =>
 
     const list = () =>
     {
-        if(!canList) return;
+        if(!canList || busy) return;
 
-        SendRpMarketAction(MarketAction.List, pickedEntry.slot, quantity, priceEach);
+        act(MarketAction.List, pickedEntry.slot, quantity, priceEach);
         setPicked(0);
         setPrice('');
     };
@@ -302,7 +325,7 @@ export const MarketplaceView: FC<{}> = props =>
                                         <span className="mk-price-value">{ Money(entry.price) }</span>
                                         { (entry.left > 1) && <span className="mk-each">each</span> }
                                     </span>
-                                    <button type="button" className="mk-buy" onClick={ () => SendRpMarketAction(MarketAction.Buy, entry.id) }>Buy</button>
+                                    <button type="button" className="mk-buy" onClick={ () => act(MarketAction.Buy, entry.id) }>Buy</button>
                                 </div>
                             );
                         }) }
@@ -382,7 +405,7 @@ export const MarketplaceView: FC<{}> = props =>
                             : `The most you can ask is $${ Money(market.maxPrice) } each. Your items leave your backpack while they're for sale - take them back any time from My listings.` }</span>
                     </> }
                 <div className="mk-spacer" />
-                <button type="button" className="mk-go" disabled={ !canList } onClick={ list }>
+                <button type="button" className="mk-go" disabled={ !canList || busy } onClick={ list }>
                     { pickedEntry ? `List ${ pickedName }${ (quantity > 1) ? ` ×${ quantity }` : '' } for sale` : 'List for sale' }
                 </button>
             </div>
@@ -420,7 +443,7 @@ export const MarketplaceView: FC<{}> = props =>
                                 <span className={ `mk-status${ ended ? ' is-sold' : '' }` }>{ ended ? 'Sold' : 'For sale' }</span>
                                 { ended
                                     ? <span className="mk-earned">+${ Money(entry.sold * entry.price) } to bank</span>
-                                    : <button type="button" className="mk-take" onClick={ () => SendRpMarketAction(MarketAction.TakeBack, entry.id) }>Take back</button> }
+                                    : <button type="button" className="mk-take" onClick={ () => act(MarketAction.TakeBack, entry.id) }>Take back</button> }
                             </div>
                         );
                     }) }
