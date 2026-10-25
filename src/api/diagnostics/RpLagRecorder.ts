@@ -1,4 +1,4 @@
-import { AvatarImage, IMessageComposer } from '@nitrots/nitro-renderer';
+import { AvatarImage, GetTicker, IMessageComposer } from '@nitrots/nitro-renderer';
 import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 
 // PixelRP: the lag recorder (Twist, 2026-10-26 - "when i stand still for a few
@@ -8,24 +8,40 @@ import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 // - so a stutter on somebody's own machine can be read without DevTools.
 //
 // ONE LINE PER SLOW FRAME, with:
-//   t       how long the frame took (ms)
+//   t       how long the frame took (ms), from one game step to the next
 //   in      ms since the last click or key, and idle = how long nothing had been
 //           pressed before that one - "stood still 5 min, clicked, hitched"
+//   tick    time in the game's frame step: room, avatars, furni and the draw
 //   draw    time inside the renderer's draw of the stage (ms)
 //   up      textures sent to the graphics card: count / megapixels / ms
 //   gc      texture clean-ups run / textures they let go
 //   av      avatar pictures drawn for the room: calls / ms; crop = UI pictures
 //   pk      server messages handled: count / ms, and the slowest by header
-//   heap    MB the JS heap shrank by (a garbage collection) or grew by
-//   lt      long tasks the browser saw: count / longest ms
+//   lt      long tasks the browser saw in the frame: count / longest ms
+//   loaf    the browser's own account of the frame (Chrome's long animation
+//           frame report): reports / ms, scr = ms running scripts, lay = ms
+//           working out styles and layout at the end, and top = the slowest
+//           scripts as ms:what started it@file:position(function), /fl = ms of
+//           layout the script forced. "loaf=none" = the page's code was not
+//           busy, so the frame was held up outside it (the graphics card or its
+//           driver, or the browser); "loaf=n/a" = a browser without the report.
+//
+// The browser hands its reports over a moment after the frame ends - after the
+// next frame has started - so lt and loaf are matched to a slow frame by time,
+// when its line is sent, not counted while it runs (the first version did
+// that, and its lt always read 0).
 //
 // NO OBSERVER EFFECT, as the movement traces (ProximityTrace): while playing
-// it only adds numbers into variables. Strings are built only for a slow frame,
-// and sent a couple of seconds after the last one, a few lines per message.
+// it only adds numbers into variables and keeps the browser's reports. Strings
+// are built only for a slow frame, and sent a couple of seconds after the last
+// one, a few lines per message.
 
 const HITCH_MS = 50;
 const SEND_AFTER_MS = 2500;
-const MAX_LINES = 12;
+const MAX_MESSAGE_CHARS = 3900; // the emulator keeps 4000
+const MAX_PENDING = 48;
+const MAX_REPORTS = 300;
+const TOP_SCRIPTS = 3;
 const RP_CLIENT_LAG_REPORT = 4234; // client -> server
 
 class RpClientLagReportComposer implements IMessageComposer<[ string ]>
@@ -46,12 +62,20 @@ class RpClientLagReportComposer implements IMessageComposer<[ string ]>
     { }
 }
 
+interface SlowFrame
+{
+    text: string;
+    start: number;
+    end: number;
+}
+
 // this frame's counts, reset after each frame
 let uploads = 0;
 let uploadPixels = 0;
 let uploadMs = 0;
 let gcRuns = 0;
 let gcFreed = 0;
+let tickMs = 0;
 let drawMs = 0;
 let avatarCalls = 0;
 let avatarMs = 0;
@@ -61,67 +85,185 @@ let packets = 0;
 let packetMs = 0;
 let slowestHeader = 0;
 let slowestHeaderMs = 0;
-let longTasks = 0;
-let longestTaskMs = 0;
 
 let lastFrameAt = 0;
-let lastHeap = 0;
 let lastInputAt = 0;
 let idleBeforeInput = 0;
 
-const lines: string[] = [];
+const frames: SlowFrame[] = [];
 let sendTimer = 0;
+
+// the browser's reports, kept until the frames they belong to are sent
+const longTasks: PerformanceEntry[] = [];
+const frameReports: any[] = [];
+let frameReportsSupported = false;
 
 const resetFrame = () =>
 {
     uploads = 0; uploadPixels = 0; uploadMs = 0;
     gcRuns = 0; gcFreed = 0;
-    drawMs = 0;
+    tickMs = 0; drawMs = 0;
     avatarCalls = 0; avatarMs = 0; cropCalls = 0; cropMs = 0;
     packets = 0; packetMs = 0; slowestHeader = 0; slowestHeaderMs = 0;
-    longTasks = 0; longestTaskMs = 0;
 };
 
-const heapNow = (): number => ((performance as any).memory?.usedJSHeapSize ?? 0);
+const keepReport = (list: any[], entry: any) =>
+{
+    list.push(entry);
+
+    if(list.length > MAX_REPORTS) list.splice(0, (list.length - MAX_REPORTS));
+}
+
+const overlaps = (entry: { startTime: number, duration: number }, start: number, end: number): boolean => ((entry.startTime < end) && ((entry.startTime + entry.duration) > start));
+
+// one script as ms:invoker@file:position(function)/flN - no spaces or bars, as
+// those split the fields and the lines
+const describeScript = (script: any): string =>
+{
+    const file = String(script.sourceURL || '').split(/[?#]/)[0].split('/').pop();
+
+    let text = `${ Math.round(script.duration) }:${ String(script.invoker || script.invokerType || '?').slice(0, 48) }`;
+
+    if(file) text += `@${ file }:${ script.sourceCharPosition ?? -1 }`;
+
+    if(script.sourceFunctionName) text += `(${ String(script.sourceFunctionName).slice(0, 32) })`;
+
+    if(script.forcedStyleAndLayoutDuration >= 1) text += `/fl${ Math.round(script.forcedStyleAndLayoutDuration) }`;
+
+    return text.replace(/[\s|]+/g, '_');
+}
+
+const finish = (frame: SlowFrame): string =>
+{
+    let tasks = 0;
+    let longestTask = 0;
+
+    for(const entry of longTasks)
+    {
+        if(!overlaps(entry, frame.start, frame.end)) continue;
+
+        tasks++;
+
+        if(entry.duration > longestTask) longestTask = entry.duration;
+    }
+
+    const parts = [ frame.text, `lt=${ tasks }/${ Math.round(longestTask) }` ];
+
+    if(!frameReportsSupported)
+    {
+        parts.push('loaf=n/a');
+
+        return parts.join(' ');
+    }
+
+    let reports = 0;
+    let reportMs = 0;
+    let scriptMs = 0;
+    let layoutMs = 0;
+
+    const scripts: any[] = [];
+
+    for(const entry of frameReports)
+    {
+        if(!overlaps(entry, frame.start, frame.end)) continue;
+
+        reports++;
+        reportMs += entry.duration;
+
+        if(entry.styleAndLayoutStart > 0) layoutMs += Math.max(0, ((entry.startTime + entry.duration) - entry.styleAndLayoutStart));
+
+        for(const script of (entry.scripts || []))
+        {
+            scriptMs += script.duration;
+
+            scripts.push(script);
+        }
+    }
+
+    if(!reports)
+    {
+        parts.push('loaf=none');
+
+        return parts.join(' ');
+    }
+
+    parts.push(`loaf=${ reports }/${ Math.round(reportMs) }`, `scr=${ Math.round(scriptMs) }`, `lay=${ Math.round(layoutMs) }`);
+
+    if(scripts.length)
+    {
+        scripts.sort((a, b) => (b.duration - a.duration));
+
+        parts.push(`top=${ scripts.slice(0, TOP_SCRIPTS).map(describeScript).join(',') }`);
+    }
+
+    return parts.join(' ');
+}
+
+// reports older than every frame still waiting to be sent are done with
+const pruneReports = () =>
+{
+    const before = (frames.length ? frames[0].start : (performance.now() - 5000));
+
+    for(const list of [ longTasks, frameReports ])
+    {
+        let done = 0;
+
+        while((done < list.length) && ((list[done].startTime + list[done].duration) < before)) done++;
+
+        if(done) list.splice(0, done);
+    }
+}
 
 const send = () =>
 {
     sendTimer = 0;
 
-    if(!lines.length) return;
+    if(!frames.length) return;
+
+    let message = '';
+
+    while(frames.length)
+    {
+        const line = finish(frames[0]);
+
+        if(message && ((message.length + 3 + line.length) > MAX_MESSAGE_CHARS)) break;
+
+        message = (message ? `${ message } | ${ line }` : line).slice(0, MAX_MESSAGE_CHARS);
+
+        frames.shift();
+    }
 
     try
     {
-        SendMessageComposer(new RpClientLagReportComposer(lines.splice(0, MAX_LINES).join(' | ')));
+        SendMessageComposer(new RpClientLagReportComposer(message));
     }
     catch(e)
     {}
 
+    pruneReports();
+
     // more than one message's worth: the rest after the server's 1.5 s gap
-    if(lines.length) sendTimer = window.setTimeout(send, 1600);
+    if(frames.length) sendTimer = window.setTimeout(send, 1600);
 }
 
-const record = (frameMs: number, now: number) =>
+const record = (frameMs: number, start: number, end: number) =>
 {
-    const heap = heapNow();
-    const heapMb = (lastHeap && heap) ? Math.round((heap - lastHeap) / 1048576) : 0;
     const parts = [
         `t=${ Math.round(frameMs) }`,
-        `in=${ lastInputAt ? Math.round(now - lastInputAt) : -1 }`,
+        `in=${ lastInputAt ? Math.round(end - lastInputAt) : -1 }`,
         `idle=${ Math.round(idleBeforeInput / 1000) }s`,
+        `tick=${ tickMs.toFixed(1) }`,
         `draw=${ drawMs.toFixed(1) }`,
         `up=${ uploads }/${ (uploadPixels / 1000000).toFixed(2) }/${ uploadMs.toFixed(1) }`,
         `gc=${ gcRuns }/${ gcFreed }`,
         `av=${ avatarCalls }/${ avatarMs.toFixed(1) }`,
         `crop=${ cropCalls }/${ cropMs.toFixed(1) }`,
-        `pk=${ packets }/${ packetMs.toFixed(1) }${ slowestHeader ? `(${ slowestHeader }:${ slowestHeaderMs.toFixed(1) })` : '' }`,
-        `heap=${ heapMb }`,
-        `lt=${ longTasks }/${ Math.round(longestTaskMs) }`
+        `pk=${ packets }/${ packetMs.toFixed(1) }${ slowestHeader ? `(${ slowestHeader }:${ slowestHeaderMs.toFixed(1) })` : '' }`
     ];
 
-    lines.push(parts.join(' '));
+    frames.push({ text: parts.join(' '), start, end });
 
-    if(lines.length > (MAX_LINES * 4)) lines.splice(0, (lines.length - (MAX_LINES * 4)));
+    if(frames.length > MAX_PENDING) frames.splice(0, (frames.length - MAX_PENDING));
 
     if(sendTimer) window.clearTimeout(sendTimer);
 
@@ -134,14 +276,18 @@ const onFrame = (now: number) =>
     {
         const frameMs = (now - lastFrameAt);
 
-        if(frameMs > HITCH_MS) record(frameMs, now);
+        if(frameMs > HITCH_MS) record(frameMs, lastFrameAt, now);
     }
 
     lastFrameAt = now;
-    lastHeap = heapNow();
     resetFrame();
+}
 
-    window.requestAnimationFrame(onFrame);
+const onFrameRequest = (now: number) =>
+{
+    onFrame(now);
+
+    window.requestAnimationFrame(onFrameRequest);
 }
 
 const onInput = () =>
@@ -182,6 +328,33 @@ const install = (): boolean =>
     const connection: any = GetConnection();
 
     if(!renderer || !connection) return false;
+
+    // A frame is timed from the start of one game step to the start of the
+    // next, from inside the step. The game's own frame callback always runs
+    // before one the recorder adds, so a callback of its own saw a slow step
+    // a frame late and wrote it up with the next frame's counts - the first
+    // version did, so its draw/up/av belonged to the frame after the slow one.
+    const ticker: any = GetTicker();
+    const update = ticker?.update;
+
+    if(typeof update === 'function')
+    {
+        ticker.update = function(...args: any[])
+        {
+            onFrame(performance.now());
+
+            const start = performance.now();
+
+            try
+            {
+                return update.apply(this, args);
+            }
+            finally
+            {
+                tickMs += (performance.now() - start);
+            }
+        };
+    }
 
     timeMethod(renderer.texture, 'updateTexture', (ms, args) =>
     {
@@ -247,15 +420,25 @@ const install = (): boolean =>
 
     try
     {
-        new PerformanceObserver(list =>
-        {
-            for(const entry of list.getEntries())
-            {
-                longTasks++;
+        const supported = (PerformanceObserver.supportedEntryTypes || []);
 
-                if(entry.duration > longestTaskMs) longestTaskMs = entry.duration;
-            }
-        }).observe({ type: 'longtask', buffered: false });
+        if(supported.includes('longtask'))
+        {
+            new PerformanceObserver(list =>
+            {
+                for(const entry of list.getEntries()) keepReport(longTasks, entry);
+            }).observe({ type: 'longtask', buffered: false });
+        }
+
+        if(supported.includes('long-animation-frame'))
+        {
+            new PerformanceObserver(list =>
+            {
+                for(const entry of list.getEntries()) keepReport(frameReports, entry);
+            }).observe({ type: 'long-animation-frame', buffered: false });
+
+            frameReportsSupported = true;
+        }
     }
     catch(e)
     {}
@@ -263,7 +446,8 @@ const install = (): boolean =>
     window.addEventListener('pointerdown', onInput, { capture: true, passive: true });
     window.addEventListener('keydown', onInput, { capture: true, passive: true });
 
-    window.requestAnimationFrame(onFrame);
+    // no game step to time from: frames as the browser shows them
+    if(typeof update !== 'function') window.requestAnimationFrame(onFrameRequest);
 
     return true;
 }
