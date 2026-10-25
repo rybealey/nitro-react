@@ -14,6 +14,18 @@
         @include prp-chrome-tab-strip;
     }
 
+    // The Marketplace's tabs (Twist, 2026-10-25): a whole 26px tall, padded
+    // only at the sides. Sized by its text line the chosen tab came out 24.5px,
+    // and the half pixel blurred its bottom edge. One class deeper than the
+    // theme's own tab rule so it wins whatever order the sheets load in.
+    &.nitro-card.theme-primary .nitro-card-tabs .nav-item,
+    &.nitro-card.theme-primary-slim .nitro-card-tabs .nav-item {
+        height: 26px;
+        padding: 0 12px;
+        align-items: center;
+        line-height: 1;
+    }
+
     // The page is the pale grey the Settings, Backpack and Gang windows use,
     // not the stock $light. Four classes deep so it beats the theme's own
     // content-area rule whatever order the sheets load in.
