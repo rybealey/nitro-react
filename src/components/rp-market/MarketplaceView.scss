@@ -57,6 +57,8 @@
         border: 0;
         border-radius: $border-radius;
         background: transparent;
+        // The Chat History tabs' type (and every chrome tab strip's), exactly.
+        font-family: 'Ubuntu', sans-serif;
         font-size: 12px;
         font-weight: 700;
         color: rgba($light, 0.6);
@@ -75,7 +77,7 @@
         padding: 0 4px;
         border-radius: 8px;
         background: $orange;
-        font-size: 10px;
+        font-size: 11px;
         line-height: 16px;
         text-align: center;
         color: $white;
@@ -83,7 +85,7 @@
 
     .mk-heading {
         padding: 2px 2px 3px;
-        font-size: 10.5px;
+        font-size: 11.5px;
         font-weight: 700;
         letter-spacing: 0.06em;
         color: $dim;
@@ -96,7 +98,7 @@
     }
 
     .mk-panel-sub {
-        font-size: 11px;
+        font-size: 12px;
         line-height: 1.4;
         color: $dim;
     }
@@ -104,7 +106,7 @@
     .mk-empty {
         padding: 40px 0;
         text-align: center;
-        font-size: 12px;
+        font-size: 13px;
         color: $dim;
     }
 
@@ -121,12 +123,12 @@
     }
 
     .mk-price-value {
-        font-size: 12.5px;
+        font-size: 13.5px;
         font-weight: 700;
     }
 
     .mk-each {
-        font-size: 10.5px;
+        font-size: 11.5px;
         color: $dim;
     }
 
@@ -157,7 +159,7 @@
         border-radius: 5px;
         background: $white;
         box-shadow: $card-shadow;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 500;
         color: $ink;
         text-align: left;
@@ -175,7 +177,7 @@
     }
 
     .mk-category-count {
-        font-size: 10.5px;
+        font-size: 11.5px;
         font-weight: 700;
         color: $dim;
     }
@@ -218,7 +220,7 @@
             border: 1px solid $edge;
             border-radius: 5px;
             background: $white;
-            font-size: 12px;
+            font-size: 13px;
             color: $ink;
             outline: none;
 
@@ -240,7 +242,7 @@
         border: 1px solid $edge;
         border-radius: 5px;
         background: $white;
-        font-size: 12px;
+        font-size: 13px;
         color: $ink;
 
         &:hover { border-color: #a9b3bd; }
@@ -285,7 +287,7 @@
         border: 0;
         border-radius: 4px;
         background: transparent;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 500;
         color: $ink;
         text-align: left;
@@ -313,12 +315,12 @@
     }
 
     .mk-cash-label {
-        font-size: 10.5px;
+        font-size: 11.5px;
         color: $dim;
     }
 
     .mk-cash-value {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
     }
 
@@ -371,7 +373,7 @@
         height: 15px;
         padding: 0 4px;
         border-radius: 3px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
         line-height: 15px;
     }
@@ -393,7 +395,7 @@
     }
 
     .mk-card-name {
-        font-size: 11.5px;
+        font-size: 12.5px;
         font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
@@ -423,7 +425,7 @@
 
     .mk-buy {
         height: 22px;
-        font-size: 11.5px;
+        font-size: 12.5px;
     }
 
     // ---- Sell ------------------------------------------------------------
@@ -450,7 +452,7 @@
     }
 
     .mk-panel-title {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
     }
 
@@ -498,7 +500,7 @@
         position: absolute;
         right: 3px;
         bottom: 1px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
         color: $ink;
         text-shadow: 0 0 2px $white, 0 0 2px $white;
@@ -516,7 +518,7 @@
     .mk-form-empty {
         padding: 30px 10px 0;
         text-align: center;
-        font-size: 12px;
+        font-size: 13px;
         line-height: 1.5;
         color: $dim;
     }
@@ -553,7 +555,7 @@
     }
 
     .mk-form-title {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
     }
 
@@ -566,7 +568,7 @@
 
     .mk-form-label {
         margin: 0;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
     }
 
@@ -582,7 +584,7 @@
             border: 1px solid $edge;
             border-radius: 4px;
             background: $white;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 700;
             line-height: 1;
             color: $ink;
@@ -594,6 +596,13 @@
             }
         }
 
+        // The whole stack in one click; the same box as - and +, sized to its word.
+        .mk-stepper-all {
+            width: auto;
+            padding: 0 8px;
+            font-size: 12.5px;
+        }
+
         .mk-panel-sub { margin-left: 2px; }
     }
 
@@ -603,7 +612,7 @@
         border: 1px solid $edge;
         border-radius: 4px;
         background: $white;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         line-height: 24px;
         text-align: center;
@@ -630,7 +639,7 @@
             padding: 0;
             border: 0;
             background: transparent;
-            font-size: 12.5px;
+            font-size: 13.5px;
             font-weight: 700;
             color: $ink;
             outline: none;
@@ -644,7 +653,7 @@
         padding: 8px 10px;
         background: #f3f3f5;
         border-radius: 4px;
-        font-size: 11.5px;
+        font-size: 12.5px;
     }
 
     .mk-summary-row {
@@ -668,7 +677,7 @@
     .mk-go {
         height: 30px;
         flex: none;
-        font-size: 12.5px;
+        font-size: 13.5px;
     }
 
     // ---- My listings -----------------------------------------------------
@@ -707,7 +716,7 @@
         &.is-head {
             min-height: 28px;
             flex: none;
-            font-size: 10.5px;
+            font-size: 11.5px;
             font-weight: 700;
             letter-spacing: 0.06em;
             color: $dim;
@@ -743,7 +752,7 @@
         flex-direction: column;
         gap: 1px;
 
-        .mk-card-name { font-size: 12px; }
+        .mk-card-name { font-size: 13px; }
     }
 
     .mk-status {
@@ -752,7 +761,7 @@
         padding: 0 7px;
         border-radius: 9px;
         background: $line;
-        font-size: 10.5px;
+        font-size: 11.5px;
         font-weight: 700;
         line-height: 18px;
         color: $ink-soft;
@@ -764,7 +773,7 @@
     }
 
     .mk-earned {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         color: #2f7d4f;
     }
@@ -776,7 +785,7 @@
         border: 1px solid $edge;
         border-radius: 4px;
         background: $white;
-        font-size: 11.5px;
+        font-size: 12.5px;
         font-weight: 700;
         color: $ink;
 
@@ -789,7 +798,7 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 11.5px;
+        font-size: 12.5px;
         color: $ink-soft;
 
         svg {
@@ -811,7 +820,7 @@
         border-radius: 5px;
         background: #1e2228;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-        font-size: 12px;
+        font-size: 13px;
         color: $white;
         text-align: center;
         pointer-events: none;

@@ -254,7 +254,8 @@ export const MarketplaceView: FC<{}> = props =>
     const pick = (entry: PackEntry) =>
     {
         setPicked(entry.slot);
-        setQuantity(entry.count);
+        // One to start, however many are in the slot - the + raises it.
+        setQuantity(1);
         setPrice('');
     };
 
@@ -363,7 +364,6 @@ export const MarketplaceView: FC<{}> = props =>
             <div className="mk-panel mk-pack">
                 <div className="mk-panel-head">
                     <span className="mk-panel-title">Your backpack</span>
-                    <span className="mk-panel-sub">Pick an item to sell.</span>
                 </div>
                 <div className="mk-pack-grid">
                     { CARRY_SLOTS.slice(0, packOpen).map(slot =>
@@ -383,7 +383,6 @@ export const MarketplaceView: FC<{}> = props =>
                         );
                     }) }
                 </div>
-                <span className="mk-panel-sub">{ 'Police gear can\'t be sold.' }</span>
             </div>
             <div className="mk-panel mk-form">
                 { !market.canSell &&
@@ -407,6 +406,7 @@ export const MarketplaceView: FC<{}> = props =>
                                 <button type="button" aria-label="One less" disabled={ (quantity <= 1) } onClick={ () => setQuantity(Math.max(1, (quantity - 1))) }>−</button>
                                 <span className="mk-stepper-value" aria-live="polite">{ quantity }</span>
                                 <button type="button" aria-label="One more" disabled={ (quantity >= pickedEntry.count) } onClick={ () => setQuantity(Math.min(pickedEntry.count, (quantity + 1))) }>+</button>
+                                <button type="button" className="mk-stepper-all" disabled={ (quantity >= pickedEntry.count) } onClick={ () => setQuantity(pickedEntry.count) }>All</button>
                                 <span className="mk-panel-sub">of { pickedEntry.count }</span>
                             </div>
                         </div>
@@ -422,8 +422,8 @@ export const MarketplaceView: FC<{}> = props =>
                             <div className="mk-summary-row is-total"><span>You get when it sells</span><span>${ Money(quantity * priceEach) }</span></div>
                         </div>
                         <span className="mk-panel-sub">{ full
-                            ? `You have ${ market.maxListings } listings up - the most at once. Take one back or wait for a sale.`
-                            : `The most you can ask is $${ Money(market.maxPrice) } each. Your items leave your backpack while they're for sale - take them back any time from My listings.` }</span>
+                            ? `You've reached the ${ market.maxListings } listing limit.`
+                            : `The maximum asking price for an item is $${ Money(market.maxPrice) }.` }</span>
                     </> }
                 <div className="mk-spacer" />
                 <button type="button" className="mk-go" disabled={ !canList || busy } onClick={ list }>
