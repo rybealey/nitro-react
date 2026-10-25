@@ -1,0 +1,611 @@
+diff --git a/src/api/utils/SheetMasks.ts b/src/api/utils/SheetMasks.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/SheetMasks.ts
++++ b/src/api/utils/SheetMasks.ts
+@@ -12,11 +12,18 @@
+ // GPU is unpacked again in a worker, once the room's pictures have stopped
+ // arriving and one sheet at a time, and its map handed back. A sheet with a
+ // map never needs its image read on a click again.
++//
++// Kept within limits, none of which a normal session reaches: a sheet the
++// worker does not answer counts as failed rather than holding up the rest; a
++// long wait list drops its oldest; a giant sheet is read in strips; and past
++// a memory budget the maps of sheets not on the GPU go, least recently used
++// first, to be made again when the sheet is next drawn (NitroBundle).
+ export interface SheetMask
+ {
+     width: number;
+     height: number;
+     bits: Uint32Array;
++    usedAt: number;
+ }
+ 
+ interface QueuedSheet
+@@ -25,8 +32,17 @@
+     blob: Blob;
+ }
+ 
+-// The worker: unpack the PNG, read every pixel once, keep one bit each.
++interface SheetJob
++{
++    baseTexture: BaseTexture;
++    timer: ReturnType<typeof setTimeout>;
++}
++
++// The worker: unpack the PNG, read every pixel once, keep one bit each. A big
++// sheet is read a strip at a time, so the copy it reads through never holds
++// more than STRIP_PIXELS.
+ const WORKER_SOURCE = `
++const STRIP_PIXELS = 4194304;
+ self.onmessage = async function(event)
+ {
+     const id = event.data.id;
+@@ -35,18 +51,30 @@
+         const bitmap = await createImageBitmap(event.data.blob);
+         const width = bitmap.width;
+         const height = bitmap.height;
+-        const canvas = new OffscreenCanvas(width, height);
+-        const context = canvas.getContext('2d', { willReadFrequently: true });
+-        context.drawImage(bitmap, 0, 0);
+-        bitmap.close();
+-        const data = context.getImageData(0, 0, width, height).data;
+         const threshold = event.data.threshold;
+-        const count = (width * height);
+-        const bits = new Uint32Array(Math.ceil(count / 32));
+-        for(let i = 0; i < count; i++)
++        const bits = new Uint32Array(Math.ceil((width * height) / 32));
++        const stripHeight = Math.max(1, Math.min(height, Math.floor(STRIP_PIXELS / Math.max(1, width))));
++        const canvas = new OffscreenCanvas(width, stripHeight);
++        const context = canvas.getContext('2d', { willReadFrequently: true });
++        context.imageSmoothingEnabled = false;
++        for(let top = 0; top < height; top += stripHeight)
+         {
+-            if(data[(i * 4) + 3] >= threshold) bits[i >>> 5] |= (1 << (i & 31));
++            const rows = Math.min(stripHeight, (height - top));
++            context.clearRect(0, 0, width, stripHeight);
++            context.drawImage(bitmap, 0, top, width, rows, 0, 0, width, rows);
++            const data = context.getImageData(0, 0, width, rows).data;
++            const first = (top * width);
++            const count = (width * rows);
++            for(let i = 0; i < count; i++)
++            {
++                if(data[(i * 4) + 3] >= threshold)
++                {
++                    const p = (first + i);
++                    bits[p >>> 5] |= (1 << (p & 31));
++                }
++            }
+         }
++        bitmap.close();
+         self.postMessage({ id, width, height, bits }, [ bits.buffer ]);
+     }
+     catch(error)
+@@ -66,27 +94,52 @@
+     private static REST_MS: number = 30;
+     // This many failures in a row and the browser cannot do it: stop asking.
+     private static GIVE_UP_AFTER: number = 3;
++    // A sheet not answered in this long counts as a failure, and the next one
++    // goes - one stuck sheet must not hold up every sheet after it.
++    private static JOB_TIMEOUT_MS: number = 20000;
++    // At most this many sheets wait; past it the oldest stops waiting and
++    // keeps the old click path.
++    private static MAX_QUEUED: number = 500;
++    // The maps kept, in bytes (about 4,500 average furni sheets). Past it the
++    // maps of sheets not on the GPU go, least recently used first.
++    private static BUDGET_BYTES: number = (64 * 1024 * 1024);
+ 
+     private static _worker: Worker = null;
+     private static _disabled: boolean = false;
+     private static _failures: number = 0;
+     private static _queue: QueuedSheet[] = [];
+-    private static _inFlight: Map<number, BaseTexture> = new Map();
++    private static _inFlight: Map<number, SheetJob> = new Map();
+     private static _nextId: number = 0;
+     private static _lastArrival: number = 0;
+     private static _timer: ReturnType<typeof setTimeout> = null;
++    private static _masked: Set<BaseTexture> = new Set();
++    private static _maskedBytes: number = 0;
+ 
+-    /** The sheet's map, once the worker has made it. */
++    /** The sheet's map, once the worker has made it - and counted as used. */
+     public static get(baseTexture: BaseTexture): SheetMask
+     {
++        const mask = SheetMasks.peek(baseTexture);
++
++        if(mask) mask.usedAt = performance.now();
++
++        return mask;
++    }
++
++    private static peek(baseTexture: BaseTexture): SheetMask
++    {
+         //@ts-ignore
+         return ((baseTexture && baseTexture.pixelrpSheetMask) || null);
+     }
+ 
+-    /** A bundle sheet that has just gone to the GPU: map it in the background. */
++    /**
++     * A bundle sheet that has just gone to the GPU - the first time, or again
++     * after the texture GC dropped it: map it in the background, unless it has
++     * a map already or is waiting for one.
++     */
+     public static request(baseTexture: BaseTexture, blob: Blob): void
+     {
+-        if(SheetMasks._disabled || !baseTexture || !blob) return;
++        //@ts-ignore
++        if(SheetMasks._disabled || !baseTexture || !blob || SheetMasks.peek(baseTexture) || baseTexture.pixelrpSheetMaskQueued) return;
+ 
+         if((typeof Worker === 'undefined') || (typeof OffscreenCanvas === 'undefined') || (typeof createImageBitmap === 'undefined'))
+         {
+@@ -95,7 +148,17 @@
+             return;
+         }
+ 
++        //@ts-ignore
++        baseTexture.pixelrpSheetMaskQueued = true;
++
+         SheetMasks._queue.push({ baseTexture, blob });
++
++        if(SheetMasks._queue.length > SheetMasks.MAX_QUEUED)
++        {
++            //@ts-ignore
++            SheetMasks._queue.shift().baseTexture.pixelrpSheetMaskQueued = false;
++        }
++
+         SheetMasks._lastArrival = performance.now();
+         SheetMasks.schedule(SheetMasks.SETTLE_MS);
+     }
+@@ -131,7 +194,9 @@
+         {
+             const candidate = SheetMasks._queue.shift();
+ 
+-            if(candidate.baseTexture && !candidate.baseTexture.destroyed && !SheetMasks.get(candidate.baseTexture)) sheet = candidate;
++            if(candidate.baseTexture && !candidate.baseTexture.destroyed && !SheetMasks.peek(candidate.baseTexture)) sheet = candidate;
++            //@ts-ignore
++            else if(candidate.baseTexture) candidate.baseTexture.pixelrpSheetMaskQueued = false;
+         }
+ 
+         if(!sheet) return;
+@@ -141,8 +206,9 @@
+         if(!worker) return;
+ 
+         const id = ++SheetMasks._nextId;
++        const timer = setTimeout(() => SheetMasks.onTimeout(id), SheetMasks.JOB_TIMEOUT_MS);
+ 
+-        SheetMasks._inFlight.set(id, sheet.baseTexture);
++        SheetMasks._inFlight.set(id, { baseTexture: sheet.baseTexture, timer });
+         worker.postMessage({ id, blob: sheet.blob, threshold: AlphaTolerance.MATCH_OPAQUE_PIXELS });
+     }
+ 
+@@ -168,18 +234,22 @@
+ 
+     private static onResult(data: { id: number; width?: number; height?: number; bits?: Uint32Array; error?: string }): void
+     {
+-        const baseTexture = SheetMasks._inFlight.get(data.id);
++        const job = SheetMasks._inFlight.get(data.id);
+ 
++        // Already given up on (onTimeout): the next sheet has its turn.
++        if(!job) return;
++
++        clearTimeout(job.timer);
+         SheetMasks._inFlight.delete(data.id);
+ 
++        const baseTexture = job.baseTexture;
++
++        //@ts-ignore
++        if(baseTexture) baseTexture.pixelrpSheetMaskQueued = false;
++
+         if(data.error || !data.bits)
+         {
+-            if(++SheetMasks._failures >= SheetMasks.GIVE_UP_AFTER)
+-            {
+-                SheetMasks.disable();
+-
+-                return;
+-            }
++            if(SheetMasks.failed()) return;
+         }
+         else
+         {
+@@ -187,20 +257,123 @@
+ 
+             // Only a map the same size as the sheet the GPU has: anything else
+             // is not the picture the clicks are tested against.
+-            if(baseTexture && !baseTexture.destroyed && (data.width === baseTexture.realWidth) && (data.height === baseTexture.realHeight))
++            if(baseTexture && !baseTexture.destroyed && (data.width === baseTexture.realWidth) && (data.height === baseTexture.realHeight)) SheetMasks.keep(baseTexture, { width: data.width, height: data.height, bits: data.bits, usedAt: performance.now() });
++        }
++
++        SheetMasks.schedule(SheetMasks.REST_MS);
++    }
++
++    private static onTimeout(id: number): void
++    {
++        const job = SheetMasks._inFlight.get(id);
++
++        if(!job) return;
++
++        SheetMasks._inFlight.delete(id);
++
++        //@ts-ignore
++        if(job.baseTexture) job.baseTexture.pixelrpSheetMaskQueued = false;
++
++        if(SheetMasks.failed()) return;
++
++        SheetMasks.schedule(SheetMasks.REST_MS);
++    }
++
++    // One more failure in a row; true when that was one too many.
++    private static failed(): boolean
++    {
++        if(++SheetMasks._failures < SheetMasks.GIVE_UP_AFTER) return false;
++
++        SheetMasks.disable();
++
++        return true;
++    }
++
++    private static keep(baseTexture: BaseTexture, mask: SheetMask): void
++    {
++        //@ts-ignore
++        baseTexture.pixelrpSheetMask = mask;
++        // The frame maps made before it arrived answer the same; let them go.
++        //@ts-ignore
++        baseTexture.frameHitMaps = null;
++
++        SheetMasks._masked.add(baseTexture);
++        SheetMasks._maskedBytes += mask.bits.byteLength;
++
++        // A sheet destroyed or disposed takes its map with it at once, rather
++        // than waiting in _masked for the next trim. Once per sheet: a map
++        // trimmed and made again must not add a second listener.
++        //@ts-ignore
++        if(!baseTexture.pixelrpSheetMaskWatched)
++        {
++            //@ts-ignore
++            baseTexture.pixelrpSheetMaskWatched = true;
++            baseTexture.once('dispose', () => SheetMasks.forget(baseTexture));
++        }
++
++        if(SheetMasks._maskedBytes > SheetMasks.BUDGET_BYTES) SheetMasks.trim();
++    }
++
++    // Over budget: the maps of sheets not on the GPU - not drawn for a while -
++    // go, least recently used first, until under it again. Maps of sheets on
++    // screen are never dropped, even past the budget.
++    private static trim(): void
++    {
++        const idle: BaseTexture[] = [];
++
++        for(const baseTexture of SheetMasks._masked)
++        {
++            const mask = SheetMasks.peek(baseTexture);
++
++            if(!mask || baseTexture.destroyed)
+             {
+-                //@ts-ignore
+-                baseTexture.pixelrpSheetMask = { width: data.width, height: data.height, bits: data.bits };
++                SheetMasks.forget(baseTexture);
++
++                continue;
+             }
++
++            if(!SheetMasks.onGpu(baseTexture)) idle.push(baseTexture);
+         }
+ 
+-        SheetMasks.schedule(SheetMasks.REST_MS);
++        idle.sort((a, b) => (SheetMasks.peek(a).usedAt - SheetMasks.peek(b).usedAt));
++
++        for(const baseTexture of idle)
++        {
++            if(SheetMasks._maskedBytes <= SheetMasks.BUDGET_BYTES) break;
++
++            SheetMasks.forget(baseTexture);
++        }
++    }
++
++    private static forget(baseTexture: BaseTexture): void
++    {
++        const mask = SheetMasks.peek(baseTexture);
++
++        if(mask) SheetMasks._maskedBytes -= mask.bits.byteLength;
++
++        //@ts-ignore
++        baseTexture.pixelrpSheetMask = null;
++
++        SheetMasks._masked.delete(baseTexture);
++    }
++
++    private static onGpu(baseTexture: BaseTexture): boolean
++    {
++        //@ts-ignore - one entry per WebGL context it is uploaded to
++        const uploaded = baseTexture._glTextures;
++
++        if(uploaded) for(const key in uploaded) return true;
++
++        return false;
+     }
+ 
+     private static disable(): void
+     {
+         SheetMasks._disabled = true;
+         SheetMasks._queue = [];
++
++        for(const job of SheetMasks._inFlight.values()) clearTimeout(job.timer);
++
+         SheetMasks._inFlight.clear();
+ 
+         if(SheetMasks._timer)
+diff --git a/src/api/utils/NitroBundle.ts b/src/api/utils/NitroBundle.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/NitroBundle.ts
++++ b/src/api/utils/NitroBundle.ts
+@@ -13,7 +13,9 @@
+ {
+     private _blobUrl: string;
+     // PixelRP: the PNG itself, for the click map made in the background
+-    // (SheetMasks) once the sheet is first on the GPU. Let go after that.
++    // (SheetMasks) whenever the sheet goes to the GPU without one - first, and
++    // again after a map was dropped to keep within its memory budget. Holding
++    // it costs nothing: the blob URL above keeps the same PNG alive anyway.
+     private _blob: Blob;
+ 
+     constructor(blob: Blob)
+@@ -35,12 +37,7 @@
+         // few frames, and a hit map built in those frames would stay empty.
+         if(uploaded) this.createBitmap = false;
+ 
+-        if(uploaded && this._blob)
+-        {
+-            SheetMasks.request(baseTexture, this._blob);
+-
+-            this._blob = null;
+-        }
++        if(uploaded && this._blob) SheetMasks.request(baseTexture, this._blob);
+ 
+         return uploaded;
+     }
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -1,4 +1,4 @@
+-import { RenderTexture, Texture } from '@pixi/core';
++import { BaseTexture, RenderTexture, Texture } from '@pixi/core';
+ import { Container } from '@pixi/display';
+ import { ColorMatrixFilter } from '@pixi/filter-color-matrix';
+ import { Rectangle } from '@pixi/math';
+@@ -78,8 +78,21 @@
+     private _drawnColorTransform: unknown = null;
+     private _drawnGrayscale: boolean = false;
+ 
++    // PixelRP: every avatar picture still alive, held weakly so the list
++    // never keeps a picture alive itself. The texture GC keeps the sheets
++    // their current drawings are made from (forEachWornSheet, Nitro.ts).
++    private static LIVE: Set<WeakRef<AvatarImage>> = new Set();
++    private _liveRef: WeakRef<AvatarImage> = null;
++
+     constructor(k: AvatarStructure, _arg_2: AssetAliasCollection, _arg_3: AvatarFigureContainer, _arg_4: string, _arg_5: EffectAssetDownloadManager, _arg_6: IAvatarEffectListener = null)
+     {
++        if(typeof WeakRef !== 'undefined')
++        {
++            this._liveRef = new WeakRef(this);
++
++            AvatarImage.LIVE.add(this._liveRef);
++        }
++
+         this._canvasOffsets = [];
+         this._actions = [];
+         this._cachedBodyParts = [];
+@@ -120,6 +133,13 @@
+     {
+         if(this._disposed) return;
+ 
++        if(this._liveRef)
++        {
++            AvatarImage.LIVE.delete(this._liveRef);
++
++            this._liveRef = null;
++        }
++
+         this._structure = null;
+         this._assets = null;
+         this._mainAction = null;
+@@ -138,6 +158,8 @@
+         // texture, so true adds no new risk - it only frees the memory too.
+         if(this._reusableTexture)
+         {
++            AvatarImage.forgetParts(this._reusableTexture);
++
+             this._reusableTexture.destroy(true);
+ 
+             this._reusableTexture = null;
+@@ -343,6 +365,8 @@
+         {
+             if(this._reusableTexture)
+             {
++                AvatarImage.forgetParts(this._reusableTexture);
++
+                 this._reusableTexture.destroy(true);
+ 
+                 this._reusableTexture = null;
+@@ -491,6 +515,55 @@
+         return this._image;
+     }
+ 
++    // PixelRP: a picture being destroyed lets go of the parts its click test
++    // read (pixelrpParts) - a sprite recycled by the room canvas can hold the
++    // dead texture a while, and through it every part of the old drawing.
++    private static forgetParts(texture: RenderTexture): void
++    {
++        //@ts-ignore
++        if(texture && texture.baseTexture) texture.baseTexture.pixelrpParts = null;
++    }
++
++    /**
++     * PixelRP: every sheet that a live avatar picture's current drawing is
++     * made from (a sheet several parts come from comes up for each). For the
++     * texture GC (Nitro.ts):
++     * an avatar standing still draws nothing, but the sheets are still worn.
++     */
++    public static forEachWornSheet(callback: (baseTexture: BaseTexture) => void): void
++    {
++        for(const ref of AvatarImage.LIVE)
++        {
++            const image = ref.deref();
++
++            // gone without dispose(): collected, so nothing of it is worn
++            if(!image)
++            {
++                AvatarImage.LIVE.delete(ref);
++
++                continue;
++            }
++
++            const pieces = image._drawnPieces;
++
++            if(!pieces) continue;
++
++            for(const piece of pieces)
++            {
++                const children = piece.image?.children;
++
++                if(!children) continue;
++
++                for(const child of children)
++                {
++                    const baseTexture = (child as Sprite).texture?.baseTexture;
++
++                    if(baseTexture) callback(baseTexture);
++                }
++            }
++        }
++    }
++
+     // PixelRP: the same body parts (the very same cached pictures) in the same
+     // order and places, on a canvas the same size, with the same colouring.
+     private isSameDrawing(pieces: DrawnPiece[], width: number, height: number): boolean
+diff --git a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
++++ b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+@@ -92,17 +92,19 @@
+         this.dispatchEvent(new AvatarRenderLibraryEvent(AvatarRenderLibraryEvent.DOWNLOAD_COMPLETE, this));
+     }
+ 
+-    // PixelRP: a clothing library's sheet stays on the GPU for good (see the
+-    // texture GC note in Nitro.ts). An avatar that stands still is not
+-    // redrawn - one asleep does not even blink - so its clothes went unused
+-    // for half a minute, the texture GC dropped them, and the first step
+-    // afterwards unpacked every one of them again in the middle of a frame.
++    // PixelRP: a clothing library's sheet is kept on the GPU (see the texture
++    // GC note in Nitro.ts). An avatar that stands still is not redrawn - one
++    // asleep does not even blink - so its clothes went unused for half a
++    // minute, the texture GC dropped them, and the first step afterwards
++    // unpacked every one of them again in the middle of a frame. The base
++    // libraries (hh_*) - the big sheets nearly everybody wears - are kept for
++    // good; custom clothing is kept within a budget.
+     private keepOnGpu(): void
+     {
+         const baseTexture = this._assets?.getCollection(this._libraryName)?.baseTexture;
+ 
+         //@ts-ignore
+-        if(baseTexture) baseTexture.pixelrpKeepOnGpu = true;
++        if(baseTexture) baseTexture.pixelrpKeepOnGpu = (this._libraryName.startsWith('hh_') ? 'base' : 'custom');
+     }
+ 
+     public get libraryName(): string
+diff --git a/src/nitro/Nitro.ts b/src/nitro/Nitro.ts
+index 1111111..2222222 100644
+--- a/src/nitro/Nitro.ts
++++ b/src/nitro/Nitro.ts
+@@ -7,7 +7,7 @@
+ import { NitroEvent, RoomEngineEvent } from '../events';
+ import { GetTicker, PixiApplicationProxy } from '../pixi-proxy';
+ import { RoomManager } from '../room';
+-import { AvatarRenderManager } from './avatar';
++import { AvatarImage, AvatarRenderManager } from './avatar';
+ import { RoomCameraWidgetManager } from './camera';
+ import { NitroCommunicationManager } from './communication';
+ import { LegacyExternalInterface } from './externalInterface';
+@@ -31,26 +31,73 @@
+ // uploading them all again (600 was ~10s).
+ settings.GC_MAX_IDLE = 1800;
+ 
+-// PixelRP: a sheet marked pixelrpKeepOnGpu - an avatar clothing library
+-// (AvatarAssetDownloadLibrary) - counts as just used at every sweep, so the
+-// texture GC never drops it. Clothes are only drawn when an avatar changes,
+-// and an avatar standing still (asleep, it does not even blink) left them
+-// unused long enough to be dropped; its first step then put every one back
+-// on the GPU at once, unpacking each PNG again in that frame. The same few
+-// libraries dress almost everybody, so keeping them costs little memory.
++// PixelRP: clothing stays on the GPU. Clothes are only drawn when an avatar
++// changes, and an avatar standing still (asleep, it does not even blink) left
++// them unused long enough for the texture GC to drop them; its first step then
++// put every one back at once, unpacking each PNG again in that frame. Before
++// each sweep, these count as just used:
++// - every sheet a live avatar picture is drawn from right now (AvatarImage),
++//   whatever library it comes from;
++// - the base clothing libraries (hh_*, pixelrpKeepOnGpu 'base'), always -
++//   the big sheets nearly everybody wears;
++// - custom clothing (pixelrpKeepOnGpu 'custom') up to CUSTOM_CLOTHING_BYTES.
++//   Past that, the custom sheets nobody is wearing now are left to the GC,
++//   the longest unworn first, until the rest fit again.
++const CUSTOM_CLOTHING_BYTES = (64 * 1024 * 1024);
+ const runTextureGC = TextureGCSystem.prototype.run;
+ 
+ TextureGCSystem.prototype.run = function(this: TextureGCSystem): void
+ {
++    const count = this.count;
++
++    AvatarImage.forEachWornSheet(baseTexture =>
++    {
++        baseTexture.touched = count;
++        //@ts-ignore
++        baseTexture.pixelrpWornAt = count;
++    });
++
+     //@ts-ignore - the renderer is private in the typings
+     const managed = (this.renderer?.texture?.managedTextures as BaseTexture[]);
+ 
+     if(managed)
+     {
++        const custom: BaseTexture[] = [];
++
++        let customBytes = 0;
++
+         for(const texture of managed)
+         {
+             //@ts-ignore
+-            if(texture && texture.pixelrpKeepOnGpu) texture.touched = this.count;
++            const keep = (texture && texture.pixelrpKeepOnGpu);
++
++            if(!keep) continue;
++
++            if(keep !== 'custom')
++            {
++                texture.touched = count;
++
++                continue;
++            }
++
++            custom.push(texture);
++            customBytes += (texture.realWidth * texture.realHeight * 4);
++        }
++
++        //@ts-ignore
++        if(customBytes > CUSTOM_CLOTHING_BYTES) custom.sort((a, b) => ((a.pixelrpWornAt || 0) - (b.pixelrpWornAt || 0)));
++
++        for(const texture of custom)
++        {
++            //@ts-ignore
++            if((customBytes > CUSTOM_CLOTHING_BYTES) && (texture.pixelrpWornAt !== count))
++            {
++                customBytes -= (texture.realWidth * texture.realHeight * 4);
++
++                continue;
++            }
++
++            texture.touched = count;
+         }
+     }
+ 
