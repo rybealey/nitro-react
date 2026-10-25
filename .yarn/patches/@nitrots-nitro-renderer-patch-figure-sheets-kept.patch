@@ -1,0 +1,96 @@
+diff --git a/src/nitro/Nitro.ts b/src/nitro/Nitro.ts
+index 1111111..2222222 100644
+--- a/src/nitro/Nitro.ts
++++ b/src/nitro/Nitro.ts
+@@ -1,5 +1,6 @@
+ import { Application, IApplicationOptions } from '@pixi/app';
+ import { SCALE_MODES } from '@pixi/constants';
++import { BaseTexture, TextureGCSystem } from '@pixi/core';
+ import { settings } from '@pixi/settings';
+ import { IAvatarRenderManager, IEventDispatcher, ILinkEventTracker, INitroCommunicationManager, INitroCore, INitroLocalizationManager, IRoomCameraWidgetManager, IRoomEngine, IRoomManager, IRoomSessionManager, ISessionDataManager, ISoundManager, NitroConfiguration, NitroLogger } from '../api';
+ import { ConfigurationEvent, EventDispatcher, NitroCore } from '../core';
+@@ -30,6 +31,32 @@
+ // uploading them all again (600 was ~10s).
+ settings.GC_MAX_IDLE = 1800;
+ 
++// PixelRP: a sheet marked pixelrpKeepOnGpu - an avatar clothing library
++// (AvatarAssetDownloadLibrary) - counts as just used at every sweep, so the
++// texture GC never drops it. Clothes are only drawn when an avatar changes,
++// and an avatar standing still (asleep, it does not even blink) left them
++// unused long enough to be dropped; its first step then put every one back
++// on the GPU at once, unpacking each PNG again in that frame. The same few
++// libraries dress almost everybody, so keeping them costs little memory.
++const runTextureGC = TextureGCSystem.prototype.run;
++
++TextureGCSystem.prototype.run = function(this: TextureGCSystem): void
++{
++    //@ts-ignore - the renderer is private in the typings
++    const managed = (this.renderer?.texture?.managedTextures as BaseTexture[]);
++
++    if(managed)
++    {
++        for(const texture of managed)
++        {
++            //@ts-ignore
++            if(texture && texture.pixelrpKeepOnGpu) texture.touched = this.count;
++        }
++    }
++
++    runTextureGC.call(this);
++};
++
+ export class Nitro implements INitro
+ {
+     public static WEBGL_CONTEXT_LOST: string = 'NE_WEBGL_CONTEXT_LOST';
+diff --git a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
++++ b/src/nitro/avatar/AvatarAssetDownloadLibrary.ts
+@@ -35,7 +35,12 @@
+ 
+         const asset = this._assets.getCollection(this._libraryName);
+ 
+-        if(asset) this._state = AvatarAssetDownloadLibrary.LOADED;
++        if(asset)
++        {
++            this._state = AvatarAssetDownloadLibrary.LOADED;
++
++            this.keepOnGpu();
++        }
+     }
+ 
+     public async downloadAsset(): Promise<void>
+@@ -48,6 +53,8 @@
+         {
+             this._state = AvatarAssetDownloadLibrary.LOADED;
+ 
++            this.keepOnGpu();
++
+             this.dispatchEvent(new AvatarRenderLibraryEvent(AvatarRenderLibraryEvent.DOWNLOAD_COMPLETE, this));
+ 
+             return;
+@@ -80,9 +87,24 @@
+ 
+         this._state = AvatarAssetDownloadLibrary.LOADED;
+ 
++        this.keepOnGpu();
++
+         this.dispatchEvent(new AvatarRenderLibraryEvent(AvatarRenderLibraryEvent.DOWNLOAD_COMPLETE, this));
+     }
+ 
++    // PixelRP: a clothing library's sheet stays on the GPU for good (see the
++    // texture GC note in Nitro.ts). An avatar that stands still is not
++    // redrawn - one asleep does not even blink - so its clothes went unused
++    // for half a minute, the texture GC dropped them, and the first step
++    // afterwards unpacked every one of them again in the middle of a frame.
++    private keepOnGpu(): void
++    {
++        const baseTexture = this._assets?.getCollection(this._libraryName)?.baseTexture;
++
++        //@ts-ignore
++        if(baseTexture) baseTexture.pixelrpKeepOnGpu = true;
++    }
++
+     public get libraryName(): string
+     {
+         return this._libraryName;

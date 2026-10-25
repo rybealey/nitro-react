@@ -1,0 +1,337 @@
+diff --git a/src/api/utils/NitroBundle.ts b/src/api/utils/NitroBundle.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/NitroBundle.ts
++++ b/src/api/utils/NitroBundle.ts
+@@ -1,6 +1,7 @@
+ import { BaseTexture, GLTexture, ImageResource, Renderer } from '@pixi/core';
+ import { Data, inflate } from 'pako';
+ import { BinaryReader } from './BinaryReader';
++import { SheetMasks } from './SheetMasks';
+ 
+ // PixelRP: a bundle's sheet, decoded off the main thread for its first upload.
+ // The PNG used to be turned into a base64 data: URL one character at a time,
+@@ -11,12 +12,18 @@
+ class BundleImageResource extends ImageResource
+ {
+     private _blobUrl: string;
++    // PixelRP: the PNG itself, for the click map made in the background
++    // (SheetMasks) once the sheet is first on the GPU. Let go after that.
++    private _blob: Blob;
+ 
+-    constructor(blobUrl: string)
++    constructor(blob: Blob)
+     {
++        const blobUrl = URL.createObjectURL(blob);
++
+         super(blobUrl, { autoLoad: false, createBitmap: true, crossorigin: false });
+ 
+         this._blobUrl = blobUrl;
++        this._blob = blob;
+     }
+ 
+     public upload(renderer: Renderer, baseTexture: BaseTexture, glTexture: GLTexture): boolean
+@@ -28,6 +35,13 @@
+         // few frames, and a hit map built in those frames would stay empty.
+         if(uploaded) this.createBitmap = false;
+ 
++        if(uploaded && this._blob)
++        {
++            SheetMasks.request(baseTexture, this._blob);
++
++            this._blob = null;
++        }
++
+         return uploaded;
+     }
+ 
+@@ -36,6 +50,8 @@
+         super.destroy();
+ 
+         URL.revokeObjectURL(this._blobUrl);
++
++        this._blob = null;
+     }
+ }
+ 
+@@ -89,7 +105,7 @@
+     // image, which is what every sheet used before.
+     private static createBaseTexture(png: Uint8Array): BaseTexture
+     {
+-        const resource = new BundleImageResource(URL.createObjectURL(new Blob([ png ], { type: 'image/png' })));
++        const resource = new BundleImageResource(new Blob([ png ], { type: 'image/png' }));
+         const baseTexture = new BaseTexture(resource);
+         const image = (resource.source as HTMLImageElement);
+         const ready = () => resource.load().catch(() => null);
+diff --git a/src/api/utils/SheetMasks.ts b/src/api/utils/SheetMasks.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/api/utils/SheetMasks.ts
+@@ -0,0 +1,218 @@
++import { BaseTexture } from '@pixi/core';
++import { AlphaTolerance } from '../room/object/enum/AlphaTolerance';
++
++// PixelRP: which pixels of a whole bundle sheet are solid, a bit each, row by
++// row, made off the main thread.
++//
++// A click or hover tests furni and avatar parts against their own pixels
++// (ExtendedSprite), read from the sheet's image the first time each frame is
++// touched. The first read of a sheet makes the browser unpack the whole PNG
++// right there, in the middle of the click: about 3 to 15 ms a sheet (Twist's
++// outfit: 35-40 ms over its eight sheets). Here every sheet that reaches the
++// GPU is unpacked again in a worker, once the room's pictures have stopped
++// arriving and one sheet at a time, and its map handed back. A sheet with a
++// map never needs its image read on a click again.
++export interface SheetMask
++{
++    width: number;
++    height: number;
++    bits: Uint32Array;
++}
++
++interface QueuedSheet
++{
++    baseTexture: BaseTexture;
++    blob: Blob;
++}
++
++// The worker: unpack the PNG, read every pixel once, keep one bit each.
++const WORKER_SOURCE = `
++self.onmessage = async function(event)
++{
++    const id = event.data.id;
++    try
++    {
++        const bitmap = await createImageBitmap(event.data.blob);
++        const width = bitmap.width;
++        const height = bitmap.height;
++        const canvas = new OffscreenCanvas(width, height);
++        const context = canvas.getContext('2d', { willReadFrequently: true });
++        context.drawImage(bitmap, 0, 0);
++        bitmap.close();
++        const data = context.getImageData(0, 0, width, height).data;
++        const threshold = event.data.threshold;
++        const count = (width * height);
++        const bits = new Uint32Array(Math.ceil(count / 32));
++        for(let i = 0; i < count; i++)
++        {
++            if(data[(i * 4) + 3] >= threshold) bits[i >>> 5] |= (1 << (i & 31));
++        }
++        self.postMessage({ id, width, height, bits }, [ bits.buffer ]);
++    }
++    catch(error)
++    {
++        self.postMessage({ id, error: String(error) });
++    }
++};
++`;
++
++export class SheetMasks
++{
++    // Nothing starts until no new sheet has arrived for this long - a room
++    // still loading keeps pushing it back, so the room loads as fast as before.
++    private static SETTLE_MS: number = 1000;
++    // A rest between sheets, so the worker never takes a weak computer's
++    // processor away from the game for long.
++    private static REST_MS: number = 30;
++    // This many failures in a row and the browser cannot do it: stop asking.
++    private static GIVE_UP_AFTER: number = 3;
++
++    private static _worker: Worker = null;
++    private static _disabled: boolean = false;
++    private static _failures: number = 0;
++    private static _queue: QueuedSheet[] = [];
++    private static _inFlight: Map<number, BaseTexture> = new Map();
++    private static _nextId: number = 0;
++    private static _lastArrival: number = 0;
++    private static _timer: ReturnType<typeof setTimeout> = null;
++
++    /** The sheet's map, once the worker has made it. */
++    public static get(baseTexture: BaseTexture): SheetMask
++    {
++        //@ts-ignore
++        return ((baseTexture && baseTexture.pixelrpSheetMask) || null);
++    }
++
++    /** A bundle sheet that has just gone to the GPU: map it in the background. */
++    public static request(baseTexture: BaseTexture, blob: Blob): void
++    {
++        if(SheetMasks._disabled || !baseTexture || !blob) return;
++
++        if((typeof Worker === 'undefined') || (typeof OffscreenCanvas === 'undefined') || (typeof createImageBitmap === 'undefined'))
++        {
++            SheetMasks._disabled = true;
++
++            return;
++        }
++
++        SheetMasks._queue.push({ baseTexture, blob });
++        SheetMasks._lastArrival = performance.now();
++        SheetMasks.schedule(SheetMasks.SETTLE_MS);
++    }
++
++    private static schedule(delay: number): void
++    {
++        if(SheetMasks._timer || SheetMasks._inFlight.size) return;
++
++        SheetMasks._timer = setTimeout(() =>
++        {
++            SheetMasks._timer = null;
++            SheetMasks.next();
++        }, delay);
++    }
++
++    private static next(): void
++    {
++        if(SheetMasks._disabled || SheetMasks._inFlight.size) return;
++
++        const waited = (performance.now() - SheetMasks._lastArrival);
++
++        if(waited < SheetMasks.SETTLE_MS)
++        {
++            SheetMasks.schedule(SheetMasks.SETTLE_MS - waited);
++
++            return;
++        }
++
++        let sheet: QueuedSheet = null;
++
++        // Sheets thrown away before their turn (a room left) are skipped.
++        while(SheetMasks._queue.length && !sheet)
++        {
++            const candidate = SheetMasks._queue.shift();
++
++            if(candidate.baseTexture && !candidate.baseTexture.destroyed && !SheetMasks.get(candidate.baseTexture)) sheet = candidate;
++        }
++
++        if(!sheet) return;
++
++        const worker = SheetMasks.getWorker();
++
++        if(!worker) return;
++
++        const id = ++SheetMasks._nextId;
++
++        SheetMasks._inFlight.set(id, sheet.baseTexture);
++        worker.postMessage({ id, blob: sheet.blob, threshold: AlphaTolerance.MATCH_OPAQUE_PIXELS });
++    }
++
++    private static getWorker(): Worker
++    {
++        if(SheetMasks._worker) return SheetMasks._worker;
++
++        try
++        {
++            const url = URL.createObjectURL(new Blob([ WORKER_SOURCE ], { type: 'text/javascript' }));
++
++            SheetMasks._worker = new Worker(url);
++            SheetMasks._worker.onmessage = (event: MessageEvent) => SheetMasks.onResult(event.data);
++            SheetMasks._worker.onerror = () => SheetMasks.disable();
++        }
++        catch(error)
++        {
++            SheetMasks.disable();
++        }
++
++        return SheetMasks._worker;
++    }
++
++    private static onResult(data: { id: number; width?: number; height?: number; bits?: Uint32Array; error?: string }): void
++    {
++        const baseTexture = SheetMasks._inFlight.get(data.id);
++
++        SheetMasks._inFlight.delete(data.id);
++
++        if(data.error || !data.bits)
++        {
++            if(++SheetMasks._failures >= SheetMasks.GIVE_UP_AFTER)
++            {
++                SheetMasks.disable();
++
++                return;
++            }
++        }
++        else
++        {
++            SheetMasks._failures = 0;
++
++            // Only a map the same size as the sheet the GPU has: anything else
++            // is not the picture the clicks are tested against.
++            if(baseTexture && !baseTexture.destroyed && (data.width === baseTexture.realWidth) && (data.height === baseTexture.realHeight))
++            {
++                //@ts-ignore
++                baseTexture.pixelrpSheetMask = { width: data.width, height: data.height, bits: data.bits };
++            }
++        }
++
++        SheetMasks.schedule(SheetMasks.REST_MS);
++    }
++
++    private static disable(): void
++    {
++        SheetMasks._disabled = true;
++        SheetMasks._queue = [];
++        SheetMasks._inFlight.clear();
++
++        if(SheetMasks._timer)
++        {
++            clearTimeout(SheetMasks._timer);
++            SheetMasks._timer = null;
++        }
++
++        if(SheetMasks._worker)
++        {
++            SheetMasks._worker.terminate();
++            SheetMasks._worker = null;
++        }
++    }
++}
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -4,6 +4,7 @@
+ import { Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { AlphaTolerance } from '../../../api';
++import { SheetMasks } from '../../../api/utils/SheetMasks';
+ import { TextureUtils } from '../../../pixi-proxy';
+ 
+ // PixelRP: which pixels of one frame are solid, a bit each, row by row.
+@@ -273,6 +274,36 @@
+         const frame = texture.frame;
+         const baseTexture = texture.baseTexture;
+ 
++        // PixelRP: the whole sheet's map, made in the background (SheetMasks),
++        // once it is there: the frame's pixels are the same ones, so nothing
++        // is read from the sheet's image on a click any more. Only for a sheet
++        // drawn one to one, with the frame on whole pixels, as bundles are.
++        const sheetMask = SheetMasks.get(baseTexture);
++
++        if(sheetMask && (baseTexture.resolution === 1) && Number.isInteger(frame.x) && Number.isInteger(frame.y))
++        {
++            const width = Math.max(1, Math.ceil(frame.width));
++            const height = Math.max(1, Math.ceil(frame.height));
++
++            if(((frame.x + width) <= sheetMask.width) && ((frame.y + height) <= sheetMask.height))
++            {
++                if(texture.trim)
++                {
++                    x -= texture.trim.x;
++                    y -= texture.trim.y;
++                }
++
++                const sx = Math.round(x);
++                const sy = Math.round(y);
++
++                if((sx < 0) || (sy < 0) || (sx >= width) || (sy >= height)) return false;
++
++                const index = ((frame.x + sx) + ((frame.y + sy) * sheetMask.width));
++
++                return (sheetMask.bits[index >>> 5] & (1 << (index & 31))) !== 0;
++            }
++        }
++
+         //@ts-ignore
+         if(!baseTexture.frameHitMaps) baseTexture.frameHitMaps = new Map();
+ 
