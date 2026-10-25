@@ -21,6 +21,42 @@ const rememberImage = (key: string, url: string) =>
     while(imageCache.size > IMAGE_CACHE_LIMIT) imageCache.delete(imageCache.keys().next().value);
 }
 
+// pixelrp: a still is only kept once it has something in it. One drawn while
+// the clothes were briefly unavailable came out empty - and, kept, the profile
+// and HUD showed an empty picture until the page was reloaded (Twist,
+// 2026-10-25). An empty or failed draw is drawn again shortly instead, a few
+// times, each wait longer than the last.
+const RETRY_DELAYS_MS = [ 250, 500, 1000, 2000, 4000, 8000 ];
+
+const hasPixels = (image: HTMLImageElement): boolean =>
+{
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
+
+    if(!width || !height) return false;
+
+    const canvas = document.createElement('canvas');
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+
+    // nothing to check it with: trust it, as before
+    if(!context) return true;
+
+    context.drawImage(image, 0, 0);
+
+    const pixels = context.getImageData(0, 0, width, height).data;
+
+    for(let index = 3; index < pixels.length; index += 4)
+    {
+        if(pixels[index]) return true;
+    }
+
+    return false;
+}
+
 export interface LayoutAvatarImageViewProps extends BaseProps<HTMLDivElement>
 {
     figure: string;
@@ -37,6 +73,8 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
     const [ avatarUrl, setAvatarUrl ] = useState<string>(null);
     const [ randomValue, setRandomValue ] = useState(-1);
     const isDisposed = useRef(false);
+    // empty draws retried for the picture now shown (its cache key)
+    const retries = useRef({ key: '', count: 0 });
 
     const getClassNames = useMemo(() =>
     {
@@ -68,6 +106,23 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
     useEffect(() =>
     {
         const cacheKey = `${ figure }|${ gender }|${ direction }|${ headOnly ? 'head' : 'full' }`;
+
+        if(retries.current.key !== cacheKey) retries.current = { key: cacheKey, count: 0 };
+
+        let cancelled = false;
+        let retryTimeoutId = 0;
+
+        const retryLater = () =>
+        {
+            if(cancelled || isDisposed.current || (retries.current.count >= RETRY_DELAYS_MS.length)) return;
+
+            const delay = RETRY_DELAYS_MS[retries.current.count++];
+
+            retryTimeoutId = window.setTimeout(() =>
+            {
+                if(!isDisposed.current) setRandomValue(Math.random());
+            }, delay);
+        };
 
         if(!animate)
         {
@@ -115,7 +170,22 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
 
             const firstFrame = renderFrame();
 
-            if(!animate && firstFrame && !avatarImage.isPlaceholder()) rememberImage(cacheKey, firstFrame.src);
+            // A placeholder is redrawn when its clothes arrive (resetFigure);
+            // anything else is kept only if it is not empty.
+            if(!animate && !avatarImage.isPlaceholder())
+            {
+                const keepOrRetry = () =>
+                {
+                    if(cancelled) return;
+
+                    if(hasPixels(firstFrame)) rememberImage(cacheKey, firstFrame.src);
+                    else retryLater();
+                };
+
+                if(!firstFrame) retryLater();
+                else if(firstFrame.complete && firstFrame.naturalWidth) keepOrRetry();
+                else firstFrame.decode().then(keepOrRetry, retryLater);
+            }
 
             // Animated figures (e.g. animated clothing) keep cycling their idle frames.
             // Advance them on a timer so the preview matches how they look in the room;
@@ -155,8 +225,11 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
 
         return () =>
         {
+            cancelled = true;
+
             window.cancelAnimationFrame(frameId);
             window.clearTimeout(timeoutId);
+            window.clearTimeout(retryTimeoutId);
 
             if(stopDrawing) stopDrawing();
         }
