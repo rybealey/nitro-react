@@ -72,6 +72,8 @@ export const FurnitureAtmView: FC<{}> = props =>
 
     useEffect(() => SubscribeRpAtm(next =>
     {
+        // null is the server closing the screen: the player walked away from
+        // the machine.
         setState(next);
         // Every successful transaction pushes a fresh state, so this lands
         // after one too. Clearing the amount is the answer: the figures above

@@ -19,6 +19,9 @@ const RP_BANK_ACCOUNTS = 4112;
 const RP_BANK_RESULT = 4113;
 const RP_ATM_OPEN = 4114;
 const RP_BANK_LEDGER = 4115;
+// The player walked away from the machine: the screen closes, the way
+// stepping off the deposit box closes that.
+const RP_ATM_CLOSE = 4231;
 
 // client -> server
 const RP_GET_BANK_ACCOUNTS = 4114;
@@ -237,6 +240,27 @@ export class RpAtmOpenEvent extends MessageEvent implements IMessageEvent
     }
 }
 
+export class RpAtmCloseParser implements IMessageParser
+{
+    public flush(): boolean
+    {
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        return !!wrapper;
+    }
+}
+
+export class RpAtmCloseEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpAtmCloseParser);
+    }
+}
+
 export class RpBankLedgerParser implements IMessageParser
 {
     private _entries: RpBankEntry[] = [];
@@ -397,7 +421,7 @@ export const SubscribeRpBankResult = (listener: (outcome: number, message: strin
     return () => resultListeners.delete(listener);
 }
 
-/** Fires when the server opens an ATM, and again after every transaction. */
+/** Fires when the server opens an ATM, again after every transaction, and with null when it closes it. */
 export const SubscribeRpAtm = (listener: (state: RpAtmState) => void): (() => void) =>
 {
     atmListeners.add(listener);
@@ -458,6 +482,8 @@ const onAtm = (event: RpAtmOpenEvent) =>
     atmListeners.forEach(listener => listener(parser.state));
 }
 
+const onAtmClose = (event: RpAtmCloseEvent) => atmListeners.forEach(listener => listener(null));
+
 let registered = false;
 
 export const RegisterRpBankMessages = () =>
@@ -473,7 +499,8 @@ export const RegisterRpBankMessages = () =>
             [ RP_BANK_ACCOUNTS, RpBankAccountsEvent ],
             [ RP_BANK_RESULT, RpBankResultEvent ],
             [ RP_ATM_OPEN, RpAtmOpenEvent ],
-            [ RP_BANK_LEDGER, RpBankLedgerEvent ]
+            [ RP_BANK_LEDGER, RpBankLedgerEvent ],
+            [ RP_ATM_CLOSE, RpAtmCloseEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_GET_BANK_ACCOUNTS, RpGetBankAccountsComposer ],
@@ -488,6 +515,7 @@ export const RegisterRpBankMessages = () =>
     GetCommunication().registerMessageEvent(new RpBankResultEvent(onResult));
     GetCommunication().registerMessageEvent(new RpAtmOpenEvent(onAtm));
     GetCommunication().registerMessageEvent(new RpBankLedgerEvent(onLedger));
+    GetCommunication().registerMessageEvent(new RpAtmCloseEvent(onAtmClose));
 
     registered = true;
 }
