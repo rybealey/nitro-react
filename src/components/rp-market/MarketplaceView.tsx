@@ -1,6 +1,6 @@
-import { RpInventoryEvent } from '@nitrots/nitro-renderer';
+import { ILinkEventTracker, RpInventoryEvent } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
-import { HasHabboVip } from '../../api';
+import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker } from '../../api';
 import { DurabilityPercent, ResolveRpItem } from '../../api/rp-inventory/RpItems';
 import { MarketAction, MarketListing, MarketOwnListing, RpMarketEvent, SendRpMarketAction } from '../../api/rp-market/RpMarketMessages';
 import { LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
@@ -12,8 +12,10 @@ import { useMessageEvent, usePurse } from '../../hooks';
 // the cash in hand; Sell from the backpack at a price each; My listings shows
 // what is up and what sold, and takes back what has not.
 //
-// SERVER-OPENED by :mp, and every action is answered with the whole market
-// again (emulator RpMarket), so this only ever shows it. Anonymous on
+// SERVER-OPENED by :mp or by stepping onto a Marketplace point (which closes
+// it again with "marketplace/hide" on the step off), and every action is
+// answered with the whole market again (emulator RpMarket), so this only ever
+// shows it. Anonymous on
 // purpose: no listing names its seller, and nothing you sold names its buyer.
 // No fee - a sale's whole price goes into the seller's bank account.
 
@@ -130,7 +132,7 @@ export const MarketplaceView: FC<{}> = props =>
     {
         const parser = event.getParser();
 
-        // Only :mp opens the window; a sale or a refresh lands only while it is up.
+        // Only :mp or a Marketplace point opens the window; a sale or a refresh lands only while it is up.
         if(!parser.open && !isOpen) return;
 
         setMarket({
@@ -152,6 +154,25 @@ export const MarketplaceView: FC<{}> = props =>
             setSortOpen(false);
         }
     });
+
+    // Stepping off a Marketplace point closes the window (RpMarket.Close).
+    useEffect(() =>
+    {
+        const linkTracker: ILinkEventTracker = {
+            linkReceived: (url: string) =>
+            {
+                if(url.split('/')[1] !== 'hide') return;
+
+                setIsOpen(false);
+                setSortOpen(false);
+            },
+            eventUrlPrefix: 'marketplace/'
+        };
+
+        AddEventLinkTracker(linkTracker);
+
+        return () => RemoveLinkEventTracker(linkTracker);
+    }, []);
 
     // A notice says its piece and goes.
     useEffect(() =>
