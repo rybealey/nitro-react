@@ -52,6 +52,7 @@ import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpCityMessages } from './api/rp-city/RpCityMessages';
 import { RegisterRpDepositBoxMessages } from './api/rp-bank/RpDepositBoxMessages';
+import { RegisterRpMarketMessages } from './api/rp-market/RpMarketMessages';
 import { RegisterRpEmergencyCallsMessages } from './api/rp-police/RpEmergencyCallsMessages';
 import { RegisterRpMedicalCallsMessages } from './api/rp-hospital/RpMedicalCallsMessages';
 import { RegisterRpTradeMessages } from './api/rp-trade/RpTradeMessages';
@@ -321,6 +322,7 @@ export const App: FC<{}> = props =>
                 RegisterRpClothingMessages();
                 RegisterRpCityMessages();
                 RegisterRpDepositBoxMessages();
+                RegisterRpMarketMessages();
                 RegisterRpEmergencyCallsMessages();
                 RegisterRpMedicalCallsMessages();
                 RegisterRpBrowserGuardMessages();

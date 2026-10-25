@@ -23,6 +23,7 @@ import { DepositBoxView } from '../rp-deposit-box/DepositBoxView';
 import { EmergencyCallsView } from '../rp-emergency-calls/EmergencyCallsView';
 import { MedicalCallsView } from '../rp-emergency-calls/MedicalCallsView';
 import { TradeView } from '../rp-trade/TradeView';
+import { MarketplaceView } from '../rp-market/MarketplaceView';
 import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
 import { PhoneView } from '../phone/PhoneView';
@@ -112,6 +113,7 @@ export const MainView: FC<{}> = props =>
             <EmergencyCallsView />
             <MedicalCallsView />
             <TradeView />
+            <MarketplaceView />
             <RoomView />
             <ChatHistoryView />
             <WiredView />

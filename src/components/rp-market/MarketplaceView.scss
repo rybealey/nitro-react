@@ -1,0 +1,819 @@
+// ---- PixelRP: the Marketplace (:mp) ------------------------------------------
+// Board A of the "Marketplace" canvas (Twist, 2026-10-25): the light window -
+// the #f3f3f5 page the current windows use, white panels and cards, the dark
+// chrome tab strip with its tabs centred, and the shop's orange for Buy, the
+// chosen category and the go button. Dropdowns are drawn, not the browser's.
+
+// The furni shop's list scrollbar: thin, a rounded grey thumb, no track.
+@mixin mk-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #b6bec5 transparent;
+
+    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: #b6bec5; border-radius: 4px; }
+}
+
+.nitro-marketplace {
+    width: 600px;
+    height: 450px;
+
+    $ink: #1e2228;
+    $ink-soft: #4a5563;
+    $dim: #5f6773;
+    $edge: #c9ced4;
+    $line: #eceef1;
+    $orange: #e87332;
+    $orange-edge: #c9601f;
+    $orange-ink: #b35400;
+    $card-shadow: 0 1px 2px rgba(16, 24, 40, 0.08), 0 0 0 1px rgba(16, 24, 40, 0.06);
+
+    // Four classes deep so it beats the slim theme's own content-area rule.
+    &.theme-primary-slim .content-area {
+        position: relative;
+        padding: 8px;
+        background: #f3f3f5;
+        color: $ink;
+    }
+
+    // The chrome tab strip (prp-chrome-tab-strip's values), tabs in the middle.
+    .mk-tabs {
+        flex: none;
+        height: 38px;
+        padding: 6px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        background: var(--prp-chrome-plate);
+    }
+
+    .mk-tab {
+        height: 26px;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 0;
+        border-radius: $border-radius;
+        background: transparent;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba($light, 0.6);
+
+        &:hover { color: $white; }
+
+        &.is-on {
+            background: rgba($light, 0.1);
+            color: $white;
+        }
+    }
+
+    .mk-tab-count {
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 8px;
+        background: $orange;
+        font-size: 10px;
+        line-height: 16px;
+        text-align: center;
+        color: $white;
+    }
+
+    .mk-heading {
+        padding: 2px 2px 3px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: $dim;
+    }
+
+    .mk-panel {
+        background: $white;
+        border-radius: 5px;
+        box-shadow: $card-shadow;
+    }
+
+    .mk-panel-sub {
+        font-size: 11px;
+        line-height: 1.4;
+        color: $dim;
+    }
+
+    .mk-empty {
+        padding: 40px 0;
+        text-align: center;
+        font-size: 12px;
+        color: $dim;
+    }
+
+    .mk-art-small { transform: scale(0.8); }
+
+    .mk-price {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        min-width: 0;
+        white-space: nowrap;
+
+        .nitro-currency-icon { width: 15px; height: 15px; flex: none; align-self: center; }
+    }
+
+    .mk-price-value {
+        font-size: 12.5px;
+        font-weight: 700;
+    }
+
+    .mk-each {
+        font-size: 10.5px;
+        color: $dim;
+    }
+
+    // ---- Browse ----------------------------------------------------------
+
+    .mk-browse {
+        height: 100%;
+        display: flex;
+        gap: 8px;
+    }
+
+    .mk-rail {
+        width: 128px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .mk-category {
+        height: 28px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        border: 0;
+        border-radius: 5px;
+        background: $white;
+        box-shadow: $card-shadow;
+        font-size: 12px;
+        font-weight: 500;
+        color: $ink;
+        text-align: left;
+
+        &:hover { background: #fbfbfc; }
+
+        &.is-on {
+            background: $orange;
+            box-shadow: 0 1px 0 $orange-edge;
+            font-weight: 700;
+            color: $white;
+
+            .mk-category-count { color: rgba($white, 0.9); }
+        }
+    }
+
+    .mk-category-count {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: $dim;
+    }
+
+    .mk-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mk-toolbar {
+        height: 28px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .mk-search {
+        flex: 1;
+        min-width: 0;
+        height: 28px;
+        margin: 0;
+        position: relative;
+        display: flex;
+        align-items: center;
+        color: $dim;
+
+        svg {
+            position: absolute;
+            left: 8px;
+        }
+
+        input {
+            width: 100%;
+            height: 28px;
+            padding: 0 8px 0 27px;
+            border: 1px solid $edge;
+            border-radius: 5px;
+            background: $white;
+            font-size: 12px;
+            color: $ink;
+            outline: none;
+
+            &:focus { border-color: $orange; }
+        }
+    }
+
+    .mk-dropdown {
+        position: relative;
+        height: 28px;
+    }
+
+    .mk-dropdown-button {
+        height: 28px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid $edge;
+        border-radius: 5px;
+        background: $white;
+        font-size: 12px;
+        color: $ink;
+
+        &:hover { border-color: #a9b3bd; }
+
+        &.is-open { border-color: $orange; }
+    }
+
+    .mk-dropdown-label { color: $dim; }
+
+    .mk-dropdown-value { font-weight: 700; }
+
+    .mk-chevron {
+        margin-left: 2px;
+        color: $dim;
+        transition: transform 0.1s ease;
+
+        &.is-open { transform: rotate(180deg); }
+    }
+
+    .mk-dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 32px;
+        z-index: 5;
+        width: 150px;
+        padding: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: $white;
+        border-radius: 5px;
+        box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.12), 0 6px 16px rgba(16, 24, 40, 0.18);
+    }
+
+    .mk-option {
+        height: 26px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        font-size: 12px;
+        font-weight: 500;
+        color: $ink;
+        text-align: left;
+
+        &:hover { background: #f3f3f5; }
+
+        &.is-on {
+            background: #fff1e6;
+            font-weight: 700;
+            color: $orange-ink;
+        }
+    }
+
+    .mk-cash {
+        height: 28px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid $edge;
+        border-radius: 5px;
+        background: $white;
+
+        .nitro-currency-icon { width: 15px; height: 15px; flex: none; }
+    }
+
+    .mk-cash-label {
+        font-size: 10.5px;
+        color: $dim;
+    }
+
+    .mk-cash-value {
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .mk-grid-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 2px;
+        @include mk-scrollbar;
+    }
+
+    .mk-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        align-content: start;
+        padding: 1px;
+    }
+
+    .mk-card {
+        min-width: 0;
+        padding: 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        background: $white;
+        border-radius: 5px;
+        box-shadow: $card-shadow;
+    }
+
+    .mk-card-art {
+        position: relative;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f3f5;
+        border-radius: 4px;
+
+        .rp-inventory-item {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+    .mk-badge,
+    .mk-condition {
+        position: absolute;
+        top: 4px;
+        height: 15px;
+        padding: 0 4px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 15px;
+    }
+
+    .mk-badge {
+        left: 4px;
+        background: $dim;
+        color: $white;
+    }
+
+    .mk-condition {
+        right: 4px;
+        background: $white;
+        box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.1);
+
+        &.is-good { color: #2f7d4f; }
+        &.is-worn { color: #9a5b00; }
+        &.is-poor { color: #b3261e; }
+    }
+
+    .mk-card-name {
+        font-size: 11.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mk-buy,
+    .mk-go {
+        width: 100%;
+        padding: 0;
+        border: 1px solid $orange-edge;
+        border-radius: 4px;
+        background: $orange;
+        font-weight: 700;
+        color: $white;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+
+        &:hover:not(:disabled) { background: #d9672a; }
+
+        &:disabled {
+            border-color: #d3d8de;
+            background: #e9ebee;
+            color: #a3abb5;
+            text-shadow: none;
+        }
+    }
+
+    .mk-buy {
+        height: 22px;
+        font-size: 11.5px;
+    }
+
+    // ---- Sell ------------------------------------------------------------
+
+    .mk-sell {
+        height: 100%;
+        display: flex;
+        gap: 8px;
+    }
+
+    .mk-pack {
+        width: 274px;
+        flex: none;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mk-panel-head {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .mk-panel-title {
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .mk-pack-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .mk-slot {
+        position: relative;
+        height: 46px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #d3d8de;
+        border-radius: 4px;
+        background: #f3f3f5;
+
+        &:hover:not(:disabled) { border-color: #a9b3bd; }
+
+        &.is-empty {
+            border-style: dashed;
+            background: transparent;
+        }
+
+        &.is-picked {
+            border: 2px solid $orange;
+            background: #fff1e6;
+        }
+
+        &.is-locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .rp-inventory-item {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+    .mk-slot-count {
+        position: absolute;
+        right: 3px;
+        bottom: 1px;
+        font-size: 10px;
+        font-weight: 700;
+        color: $ink;
+        text-shadow: 0 0 2px $white, 0 0 2px $white;
+    }
+
+    .mk-form {
+        flex: 1;
+        min-width: 0;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .mk-form-empty {
+        padding: 30px 10px 0;
+        text-align: center;
+        font-size: 12px;
+        line-height: 1.5;
+        color: $dim;
+    }
+
+    .mk-form-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid $line;
+    }
+
+    .mk-form-art {
+        width: 48px;
+        height: 48px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f3f5;
+        border-radius: 4px;
+
+        .rp-inventory-item {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+    .mk-form-name {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+    }
+
+    .mk-form-title {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .mk-form-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .mk-form-label {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .mk-stepper {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        button {
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid $edge;
+            border-radius: 4px;
+            background: $white;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1;
+            color: $ink;
+
+            &:disabled {
+                border-color: #d3d8de;
+                background: #f3f3f5;
+                color: #a3abb5;
+            }
+        }
+
+        .mk-panel-sub { margin-left: 2px; }
+    }
+
+    .mk-stepper-value {
+        width: 36px;
+        height: 26px;
+        border: 1px solid $edge;
+        border-radius: 4px;
+        background: $white;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 24px;
+        text-align: center;
+    }
+
+    .mk-price-field {
+        width: 120px;
+        height: 28px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid $edge;
+        border-radius: 5px;
+        background: $white;
+
+        &:focus-within { border-color: $orange; }
+
+        .nitro-currency-icon { width: 15px; height: 15px; flex: none; }
+
+        input {
+            flex: 1;
+            min-width: 0;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: $ink;
+            outline: none;
+        }
+    }
+
+    .mk-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 10px;
+        background: #f3f3f5;
+        border-radius: 4px;
+        font-size: 11.5px;
+    }
+
+    .mk-summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+
+        &.is-total {
+            margin-top: 3px;
+            padding-top: 5px;
+            border-top: 1px solid #dfe2e6;
+            font-weight: 700;
+            color: $orange-ink;
+        }
+    }
+
+    .mk-summary-dim { color: $dim; }
+
+    .mk-spacer { flex: 1; }
+
+    .mk-go {
+        height: 30px;
+        flex: none;
+        font-size: 12.5px;
+    }
+
+    // ---- My listings -----------------------------------------------------
+
+    .mk-mine {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mk-table {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .mk-table-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        @include mk-scrollbar;
+    }
+
+    .mk-table-row {
+        min-height: 52px;
+        padding: 0 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 96px 80px 110px;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid $line;
+
+        &.is-head {
+            min-height: 28px;
+            flex: none;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: $dim;
+        }
+    }
+
+    .mk-table-item {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mk-table-art {
+        width: 44px;
+        height: 44px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f3f5;
+        border-radius: 4px;
+
+        .rp-inventory-item {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+    .mk-table-name {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+
+        .mk-card-name { font-size: 12px; }
+    }
+
+    .mk-status {
+        justify-self: start;
+        height: 18px;
+        padding: 0 7px;
+        border-radius: 9px;
+        background: $line;
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 18px;
+        color: $ink-soft;
+
+        &.is-sold {
+            background: #e3f2e8;
+            color: #2f7d4f;
+        }
+    }
+
+    .mk-earned {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2f7d4f;
+    }
+
+    .mk-take {
+        justify-self: start;
+        height: 22px;
+        padding: 0 8px;
+        border: 1px solid $edge;
+        border-radius: 4px;
+        background: $white;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: $ink;
+
+        &:hover { border-color: #a9b3bd; }
+    }
+
+    .mk-bank-note {
+        flex: none;
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11.5px;
+        color: $ink-soft;
+
+        svg {
+            flex: none;
+            color: $dim;
+        }
+    }
+
+    // ---- The note on the last action -------------------------------------
+
+    .mk-notice {
+        position: absolute;
+        left: 50%;
+        bottom: 12px;
+        z-index: 6;
+        max-width: 420px;
+        transform: translateX(-50%);
+        padding: 6px 12px;
+        border-radius: 5px;
+        background: #1e2228;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        font-size: 12px;
+        color: $white;
+        text-align: center;
+        pointer-events: none;
+    }
+}
