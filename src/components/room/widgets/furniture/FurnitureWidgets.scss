@@ -533,165 +533,355 @@
 }
 
 // ---- PixelRP: the ATM ------------------------------------------------------
-// A hotel window, not a machine. It used to paint its own dark screen because
-// "a machine in a room is the same object whatever the client's appearance
-// setting says" - but the hotel's windows are light, and that made the one
-// piece of banking you meet on the floor the only thing that did not look like
-// the client it sits in.
+// A machine in a hotel window: the "ATM redesign" canvas, board B1 in PixelRP
+// orange (Twist, 2026-10-25). A near-black screen in a thin dark bezel holds
+// everything the machine TELLS you - bank name, balances, the amount keyed in,
+// the fee - and everything you PRESS sits under it on the card's own grey:
+// white keys with a 2px lip, an orange go button, the card strip.
 //
-// Almost everything it needs now comes from the card and the button kit. What
-// is left here is the balances panel and the quick-add chips.
-//
-// Both used to be a #cdd3d9 fill inside a white hairline, borrowed from
-// .layout-grid-item. That vocabulary is for an inset sitting on the CARD's
-// chrome; the content area is $light (#DFDFDF), and #cdd3d9 on #DFDFDF is a
-// contrast ratio of about 1.1:1 - the panel and every chip dissolved into the
-// background, and the dimmed chips past the balance vanished outright.
-//
-// So they read the other way now: WHITE is the surface you read a number off
-// or press, on the grey the card already paints, separated by a hairline dark
-// enough to survive on both. That is the same relationship the amount field
-// below already has with the panel above it, so the window ends up with one
-// rule instead of two.
+// Flat on purpose. No gradients or LCD tints (those read as dated); one accent
+// colour, the orange, used for the four things that say what the machine is
+// doing - the mode tag, the cursor, the chosen side of the switch and the go
+// button - so it never has to compete with itself.
 .nitro-widget-atm {
     width: 300px;
 
-    .atm-balances {
-        background: $white;
-        border: 1px solid #a9b3bd;
-        border-radius: $border-radius-sm;
-        padding: 8px 10px;
+    $screen: #121212;
+    $screen-line: #2a2a2a;
+    $screen-text: #d6d6d6;
+    $screen-dim: #8a8a8a;
+    $orange: #ff8a2a;
+    $orange-dark: #c9620f;
+    $orange-text: #ff9d4d;
+    $on-orange: #1f1000;
+    $ink: #12161c;
+    $ink-soft: #4a5563;
+    $key-edge: #d3d8de;
+    $key-lip: #bcc3cb;
+    $key-off: #e9ebee;
+    $key-off-text: #a3abb5;
+
+    .atm-bezel {
+        padding: 4px;
+        background: #16181c;
+        border: 1px solid #0a0a0a;
+        border-radius: 7px;
+    }
+
+    .atm-screen {
+        border-radius: 4px;
+        overflow: hidden;
+        background: $screen;
+        color: $screen-text;
+    }
+
+    .atm-screen-top {
+        height: 26px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid $screen-line;
+    }
+
+    .atm-bank {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: $white;
+    }
+
+    .atm-tag {
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: $orange;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: $on-orange;
+    }
+
+    .atm-screen-body {
+        padding: 8px 10px 10px;
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 8px;
+    }
+
+    .atm-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        color: $screen-dim;
+    }
+
+    // The bank balance takes the room, the cash in hand sits narrow beside it
+    // on the same bottom line.
+    .atm-balances {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
     }
 
     .atm-balance {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
+        flex-direction: column;
+        gap: 2px;
 
-    // Colour stated, not inherited. .content-area sets a background and no
-    // colour, so everything in here is living off whatever the card root
-    // happens to carry - which is white. The labels get away with it by using
-    // .text-black; the figures were relying on the old grey panel to be dark
-    // enough to hide the difference. On a white panel that is a blank row.
-    .atm-balance .text-black,
-    .atm-figure {
-        color: $black;
+        &.is-bank {
+            padding-right: 12px;
+            border-right: 1px solid $screen-line;
+
+            .atm-figure {
+                gap: 6px;
+                font-size: 22px;
+                line-height: 26px;
+            }
+        }
+
+        &.is-cash {
+            padding-left: 12px;
+            padding-bottom: 3px;
+        }
     }
 
     .atm-figure {
         display: flex;
         align-items: center;
         gap: 5px;
+        font-size: 13px;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
+        color: $white;
 
         .nitro-currency-icon { width: 15px; height: 15px; flex: none; }
     }
 
-    // The unpicked side of the pair, and Max. btn-light is a fill with no edge,
-    // which against the card's own grey reads as a label rather than as the
-    // other half of a choice - the solid primary opposite it does all the
-    // shouting. The same hairline the panel and the chips use gives it a shape
-    // without making it compete.
-    .btn-light {
-        border: 1px solid #a9b3bd;
-    }
-
-    // Tabular so the digits do not shuffle under the cursor as they are typed.
+    // The figure is drawn; the real field lies invisibly over the whole block,
+    // so a click anywhere on it is a click in the field.
     .atm-amount {
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .atm-chips {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 5px;
-    }
-
-    .atm-chip {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 24px;
-        border-radius: $border-radius-sm;
-        border: 1px solid #a9b3bd;
-        background: $white;
-        color: $cello-light;
-        font-size: 11.5px;
-        font-weight: 700;
-        cursor: pointer;
-        user-select: none;
-        pointer-events: all;
-
-        &:hover {
-            background: #e6eff6;
-            border-color: $primary;
-        }
-
-        // Dim, not gone - a chip that vanishes when it stops fitting makes the
-        // row reflow under the cursor and reads as a bug. Drawn as a real
-        // disabled state rather than opacity: at .4 on this grey the label was
-        // gone entirely, which is the same failure as removing it.
-        &.is-off {
-            background: #e4e7ea;
-            border-color: #c6ccd3;
-            color: #8d97a1;
-            cursor: default;
-        }
-
-        &.is-off:hover {
-            background: #e4e7ea;
-            border-color: #c6ccd3;
-        }
-    }
-
-    .atm-helper { color: $cello-light; }
-
-    // The fee notice. A tinted strip rather than one more grey line, because
-    // it is the only thing on this screen that costs the player something and
-    // it has to survive being skimmed. Amber, not red: this is a price, not an
-    // error, and the refusal messages directly above it are already red.
-    .atm-fee {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 1px;
-        padding: 5px 8px;
-        border-radius: 4px;
-        border: 1px solid rgba(180, 122, 0, 0.35);
-        background: rgba(255, 196, 61, 0.14);
+        margin: 0;
+        cursor: text;
+    }
 
-        .atm-fee-rate {
-            color: #8a5d00;
-            margin-bottom: 2px;
-        }
+    .atm-amount-figure {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 30px;
+        font-variant-numeric: tabular-nums;
+        color: $white;
 
-        // Below the floor. Still inside the amber strip rather than promoted to
-        // a red error, because nothing has gone wrong yet - the player is being
-        // told a price before they act on it, which is what this whole box is.
-        .atm-fee-under { color: #8a3a00; }
+        .is-empty { color: $screen-dim; }
+    }
 
-        // The figures earn the darker ink: the rate explains the charge, these
-        // two are the charge.
-        .atm-fee-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 8px;
-            color: #7a5200;
+    .atm-cursor {
+        width: 8px;
+        height: 20px;
+        flex: none;
+        background: $orange;
+    }
 
-            &.is-net {
-                color: #4a3100;
-                border-top: 1px solid rgba(180, 122, 0, 0.3);
-                padding-top: 2px;
-                margin-top: 1px;
-            }
+    .atm-amount:focus-within .atm-cursor {
+        animation: atm-cursor-blink 1s steps(1) infinite;
+    }
+
+    .atm-amount-input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        opacity: 0;
+        font-size: 26px;
+        cursor: text;
+    }
+
+    .atm-fee {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding-top: 7px;
+        border-top: 1px dashed $screen-line;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .atm-fee-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        color: $screen-dim;
+
+        .atm-fee-figure { color: $screen-text; }
+
+        &.is-net {
+            font-weight: 700;
+            color: $orange-text;
         }
     }
+
+    .atm-switch {
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        background: $white;
+        border: 1px solid $key-edge;
+        border-radius: 6px;
+    }
+
+    .atm-switch-option {
+        flex: 1;
+        height: 26px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: $ink-soft;
+
+        &.is-on {
+            background: $orange;
+            color: $on-orange;
+        }
+    }
+
+    .atm-keys {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        padding-bottom: 2px;
+    }
+
+    .atm-key,
+    .atm-eject {
+        border: 1px solid $key-edge;
+        border-radius: 5px;
+        background: $white;
+        box-shadow: 0 2px 0 $key-lip;
+        font-weight: 700;
+        color: $ink;
+
+        &:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 1px 0 $key-lip;
+        }
+    }
+
+    .atm-key {
+        height: 28px;
+        padding: 0;
+        font-size: 12px;
+
+        // Dim, not gone - a key that vanishes when it stops fitting makes the
+        // row reflow under the cursor and reads as a bug.
+        &:disabled {
+            background: $key-off;
+            box-shadow: none;
+            color: $key-off-text;
+        }
+    }
+
+    .atm-helper {
+        font-size: 11.5px;
+        color: $ink-soft;
+
+        &.is-error { color: $danger; }
+    }
+
+    .atm-go {
+        width: 100%;
+        height: 34px;
+        margin-bottom: 2px;
+        padding: 0;
+        border: 1px solid $orange-dark;
+        border-radius: 6px;
+        background: $orange;
+        box-shadow: 0 2px 0 $orange-dark;
+        font-size: 13px;
+        font-weight: 700;
+        color: $on-orange;
+
+        &:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 1px 0 $orange-dark;
+        }
+
+        &:disabled {
+            border-color: $key-edge;
+            background: $key-off;
+            box-shadow: none;
+            color: $key-off-text;
+        }
+    }
+
+    .atm-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #c6ccd3;
+    }
+
+    // A bank card, drawn: dark with a gold chip.
+    .atm-card-icon {
+        position: relative;
+        width: 26px;
+        height: 16px;
+        flex: none;
+        box-sizing: border-box;
+        background: #16181c;
+        border: 1px solid #0a0a0a;
+        border-radius: 3px;
+
+        &::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 4px;
+            width: 6px;
+            height: 5px;
+            background: #f0c24a;
+        }
+    }
+
+    .atm-card-state {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: $ink;
+    }
+
+    .atm-card-light {
+        width: 6px;
+        height: 6px;
+        flex: none;
+        background: #19c37d;
+    }
+
+    .atm-eject {
+        height: 24px;
+        padding: 0 10px;
+        box-shadow: 0 1px 0 $key-lip;
+        font-size: 11px;
+    }
+}
+
+@keyframes atm-cursor-blink {
+    50% { opacity: 0; }
 }
