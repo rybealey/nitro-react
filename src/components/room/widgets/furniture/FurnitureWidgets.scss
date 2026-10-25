@@ -546,6 +546,15 @@
 .nitro-widget-atm {
     width: 300px;
 
+    // The page is the pale grey the current windows use (the Deposit Box,
+    // Trade, Gangs, Corporations, the dialogs), not the stock $light, which
+    // read as too dark (Twist). The screen itself stays dark - it is the
+    // machine. Four classes deep so it beats the slim theme's own
+    // content-area rule whatever the order.
+    &.theme-primary-slim .content-area {
+        background: #f3f3f5;
+    }
+
     $screen: #121212;
     $screen-line: #2a2a2a;
     $screen-text: #d6d6d6;
