@@ -227,8 +227,8 @@ export const FurnitureAtmView: FC<{}> = props =>
                 { !note &&
                     <div className={ `atm-helper${ empty ? ' is-error' : '' }` }>
                         { empty
-                            ? (withdrawing ? 'There is nothing in your account to take out.' : 'You are not carrying any cash to pay in.')
-                            : (withdrawing ? `You can take out up to $${ FormatCredits(available) }.` : `You are carrying $${ FormatCredits(available) }.`) }
+                            ? (withdrawing ? 'Your bank account is empty.' : 'You have no cash to deposit.')
+                            : (withdrawing ? `You can take out up to $${ FormatCredits(available) }.` : `You have $${ FormatCredits(available) } in hand.`) }
                     </div> }
                 { !!note && <div className="atm-helper is-error">{ note }</div> }
                 <button type="button" className="atm-go" disabled={ !amount || tooSmall } onClick={ commit }>
