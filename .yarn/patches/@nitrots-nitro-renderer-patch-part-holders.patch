@@ -1,0 +1,127 @@
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -77,6 +77,8 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+     private _drawnSpriteData: IAvatarDataContainer = null;
+     private _drawnColorTransform: unknown = null;
+     private _drawnGrayscale: boolean = false;
++    private _drawRoot: NitroContainer = null;
++    private _drawHolders: NitroContainer[] = [];
+ 
+     // PixelRP: every avatar picture still alive, held weakly so the list
+     // never keeps a picture alive itself. The texture GC keeps the sheets
+@@ -172,6 +174,8 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+             this._image = null;
+         }
+ 
++        this.releaseDrawParts();
++
+         if(this._cache)
+         {
+             this._cache.dispose();
+@@ -407,7 +411,8 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+                 // to free - the parts gathered so far stay in their cache.
+                 if(!partCacheContainer) return null;
+ 
+-                const point = part.regPoint.clone();
++                // regPoint is already a copy of its own.
++                const point = part.regPoint;
+ 
+                 if(point)
+                 {
+@@ -432,17 +437,7 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+             return this._image;
+         }
+ 
+-        const container = new NitroContainer();
+-
+-        for(const piece of pieces)
+-        {
+-            const partContainer = new NitroContainer();
+-
+-            partContainer.addChild(piece.image);
+-            partContainer.position.set(piece.x, piece.y);
+-
+-            container.addChild(partContainer);
+-        }
++        const container = this.drawParts(pieces);
+ 
+         if(this._avatarSpriteData)
+         {
+@@ -515,6 +510,75 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+         return this._image;
+     }
+ 
++    // PixelRP: the containers a picture is drawn from are kept and reused - one
++    // for the whole drawing and one per body part, set where the part goes. A
++    // walking avatar is redrawn about 12 times a second, and every redraw used
++    // to build all of them new (a dozen or more, each with its own transform,
++    // points and bounds) and drop them at the next one: in a busy room, a
++    // steady stream of garbage for the browser to stop and clear away. The
++    // parts belong to the avatar's cache; a holder only lends one a place, and
++    // lets go of it when the drawing has fewer parts or the avatar goes.
++    private drawParts(pieces: DrawnPiece[]): NitroContainer
++    {
++        if(!this._drawRoot) this._drawRoot = new NitroContainer();
++
++        const root = this._drawRoot;
++        const holders = this._drawHolders;
++
++        root.filters = null;
++
++        for(let i = 0; i < pieces.length; i++)
++        {
++            const piece = pieces[i];
++
++            let holder = holders[i];
++
++            if(!holder)
++            {
++                holder = new NitroContainer();
++
++                holders.push(holder);
++            }
++
++            // A part can be moved between redraws - to another holder when the
++            // avatar turns and its parts change order, or into the container
++            // of a UI picture (getCroppedImage) - so where it is gets checked.
++            if((piece.image.parent !== holder) || (holder.children.length !== 1))
++            {
++                holder.removeChildren();
++                holder.addChild(piece.image);
++            }
++
++            holder.position.set(piece.x, piece.y);
++
++            if(root.children[i] !== holder) root.addChildAt(holder, i);
++        }
++
++        if(root.children.length > pieces.length) root.removeChildren(pieces.length);
++
++        for(let i = pieces.length; i < holders.length; i++)
++        {
++            if(holders[i].children.length) holders[i].removeChildren();
++        }
++
++        return root;
++    }
++
++    // destroy() without children: the parts are let go, not destroyed.
++    private releaseDrawParts(): void
++    {
++        for(const holder of this._drawHolders) holder.destroy();
++
++        this._drawHolders = [];
++
++        if(this._drawRoot)
++        {
++            this._drawRoot.destroy();
++
++            this._drawRoot = null;
++        }
++    }
++
+     // PixelRP: a picture being destroyed lets go of the parts its click test
+     // read (pixelrpParts) - a sprite recycled by the room canvas can hold the
+     // dead texture a while, and through it every part of the old drawing.
