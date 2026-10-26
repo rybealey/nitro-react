@@ -142,50 +142,95 @@
     }
 }
 
-// The player menus, compact (Player Info Panel canvas): no light outline, the
-// pointer in the menu's own colour, and everything smaller - 114px wide, 23px
-// name, 22px rows, 12.4px text - with the fold caret trimmed to the glyph.
+// The player menus in the light window look (Player Menu canvas, A): the name
+// on a window title bar (the player's header colour, Settings > Interface),
+// #f3f3f5 rows split by hairlines, a hover tinted from the same header colour,
+// the windows' 1px #0a0a0a edge, and pixel arrows (ContextMenuPixelArrowView)
+// with a stepped pointer. 112px wide, 24px name, 22px rows, 12px Medium text.
+// Solid like the windows, so the UI opacity setting does not reach it.
 .nitro-context-menu.avatar-menu {
-    border: 0;
-    border-radius: 3px;
-    font-size: 12.4px;
+    padding: 0;
+    background: #f3f3f5;
+    border: 1px solid #0a0a0a;
+    border-radius: 4px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.3);
+    color: #1c1c20;
+    font-size: 12px;
+    font-weight: 500;
 
-    &:not(.name-only):not(.menu-hidden) { min-width: 114px; }
+    &:not(.name-only):not(.menu-hidden) { min-width: 112px; }
 
+    // Its top row sits over the menu's bottom edge, so the edge carries on
+    // down the pointer's two stepped sides.
     &:not(.name-only):after {
-        bottom: -4.2px;
-        width: 9.2px;
-        height: 9.2px;
-        border-width: 4.6px;
-        border-color: transparent var(--prp-chrome-95) var(--prp-chrome-95) transparent;
+        bottom: -6px;
+        width: 12px;
+        height: 6px;
+        border: 0;
+        transform: none;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' shape-rendering='crispEdges'%3E%3Cpath fill='%230a0a0a' d='M0 0h1v1H0zM11 0h1v1h-1zM1 1h1v1H1zM10 1h1v1h-1zM2 2h1v1H2zM9 2h1v1H9zM3 3h1v1H3zM8 3h1v1H8zM4 4h1v1H4zM7 4h1v1H7zM5 5h2v1H5z'/%3E%3Cpath fill='%23f3f3f5' d='M1 0h10v1H1zM2 1h8v1H2zM3 2h6v1H3zM4 3h4v1H4zM5 4h2v1H5z'/%3E%3C/svg%3E") no-repeat;
     }
 
     .menu-header {
-        min-width: 107px;
-        height: 23px;
-        max-height: 23px;
-        padding: 3px !important;
-        font-size: 15.8px;
+        min-width: 0;
+        height: 24px;
+        max-height: 24px;
+        margin-bottom: 0;
+        padding: 0 8px !important;
+        border-radius: 3px 3px 0 0;
+        background: var(--prp-header-face);
+        box-shadow: inset 0 1px 0 var(--prp-header-hi);
+        font-size: 13px;
+        font-weight: 700;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+        white-space: nowrap;
     }
 
-    .menu-item.list-item {
-        height: 22px;
-        max-height: 22px;
-        padding: 2px;
+    .menu-item {
+        margin-bottom: 0;
 
-        .fa-icon { right: 7px; font-size: 9.2px; &.left { left: 7px; } }
+        &.disabled {
+            filter: none;
+            opacity: 0.45;
+        }
+
+        // nowrap so a long label widens the menu instead of wrapping out of
+        // its 22px row.
+        &.list-item {
+            height: 22px;
+            max-height: 22px;
+            padding: 0 14px;
+            background: transparent;
+            white-space: nowrap;
+
+            & + .list-item { border-top: 1px solid #e3e3e8; }
+
+            &:not(.disabled):hover {
+                background: color-mix(in srgb, var(--prp-header-face) 22%, #ffffff);
+            }
+
+            // A set top, not centring: the first row has no hairline above it,
+            // and centring would put its arrow on a half pixel.
+            .fa-icon {
+                top: 7px;
+                right: 8px;
+                color: #7a7f88;
+
+                &.left { left: 8px; right: auto; }
+            }
+        }
     }
 
-    // The caret glyph fills only the middle of its 1em box; the negative
-    // margins take the empty top and bottom back out.
     .menu-footer {
-        min-width: 23px;
-        padding: 2px 0 1px;
-        font-size: 14.4px;
-        line-height: 0;
-
-        .fa-icon { display: block; margin: -4.8px 0 -4.2px; }
+        min-width: 24px;
+        height: 13px;
+        padding: 0;
+        border-top: 1px solid #e3e3e8;
+        color: #7a7f88;
     }
 
-    &.menu-hidden .menu-footer { padding: 2px 0 0; }
+    &.menu-hidden .menu-footer {
+        height: 12px;
+        border-top: 0;
+    }
 }

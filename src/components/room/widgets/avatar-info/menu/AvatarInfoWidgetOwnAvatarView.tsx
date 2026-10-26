@@ -1,6 +1,5 @@
 import { AvatarAction, AvatarExpressionEnum, RoomControllerLevel, RoomObjectCategory } from '@nitrots/nitro-renderer';
 import { Dispatch, FC, SetStateAction, useState } from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { AvatarInfoUser, DispatchUiEvent, GetCanStandUp, GetCanUseExpression, GetOwnPosture, GetSessionDataManager, GetUserProfile, HasHabboClub, HasHabboVip, IsRidingHorse, LocalizeText, PostureTypeEnum, SendMessageComposer } from '../../../../../api';
 import { DanceNow } from '../../../../../api/rp-room/DanceNow';
 import { Flex, LayoutCurrencyIcon } from '../../../../../common';
@@ -8,6 +7,7 @@ import { HelpNameChangeEvent } from '../../../../../events';
 import { useRoom } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
+import { ContextMenuPixelArrowView } from '../../context-menu/ContextMenuPixelArrowView';
 import { AVATAR_MENU_CLASSES, ContextMenuView } from '../../context-menu/ContextMenuView';
 
 interface AvatarInfoWidgetOwnAvatarViewProps
@@ -113,7 +113,7 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
                         </ContextMenuListItemView> }
                     { (HasHabboClub() && !isRidingHorse) &&
                         <ContextMenuListItemView onClick={ event => processAction('dance_menu') }>
-                            <FaChevronRight className="right fa-icon" />
+                            <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                             { LocalizeText('widget.memenu.dance') }
                         </ContextMenuListItemView> }
                     { (!isDancing && !HasHabboClub() && !isRidingHorse) &&
@@ -125,7 +125,7 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
                             { LocalizeText('widget.memenu.dance.stop') }
                         </ContextMenuListItemView> }
                     <ContextMenuListItemView onClick={ event => processAction('expressions') }>
-                        <FaChevronRight className="right fa-icon" />
+                        <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                         { LocalizeText('infostand.link.expressions') }
                     </ContextMenuListItemView>
                 </> }
@@ -148,7 +148,7 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
                         { LocalizeText('widget.memenu.dance4') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }
@@ -180,7 +180,7 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
                         { LocalizeText('widget.memenu.idle') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }

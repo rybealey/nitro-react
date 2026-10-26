@@ -1,6 +1,5 @@
 import { RoomControllerLevel, RoomObjectCategory, RoomObjectVariable, RoomUnitGiveHandItemComposer, TradingOpenComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetOwnRoomObject, GetSessionDataManager, GetUserProfile, LocalizeText, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
 import { RpGangInviteComposer, RpUserGangEvent } from '../../../../../api/rp-gangs/RpGangMessages';
 import { GetJailSentence, IsRoomPrisoner, SubscribeJailSentence } from '../../../../../api/rp-police/RpJailMessages';
@@ -8,6 +7,7 @@ import { GetRpGang, SetRpGang } from '../../../../../api/rp-gangs/RpGangRegistry
 import { useFriends, useHelp, useMessageEvent, useRoom, useSessionInfo } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
+import { ContextMenuPixelArrowView } from '../../context-menu/ContextMenuPixelArrowView';
 import { AVATAR_MENU_CLASSES, ContextMenuView } from '../../context-menu/ContextMenuView';
 
 interface AvatarInfoWidgetAvatarViewProps
@@ -267,12 +267,12 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                     </ContextMenuListItemView>
                     { moderateMenuHasContent &&
                         <ContextMenuListItemView onClick={ event => processAction('moderate') }>
-                            <FaChevronRight className="right fa-icon" />
+                            <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                             { LocalizeText('infostand.link.moderate') }
                         </ContextMenuListItemView> }
                     { avatarInfo.isAmbassador &&
                         <ContextMenuListItemView onClick={ event => processAction('ambassador') }>
-                            <FaChevronRight className="right fa-icon" />
+                            <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                             { LocalizeText('infostand.link.ambassador') }
                         </ContextMenuListItemView> }
                     { canGiveHandItem && <ContextMenuListItemView onClick={ event => processAction('pass_hand_item') }>
@@ -285,11 +285,11 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         { LocalizeText('infostand.button.kick') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('mute') }>
-                        <FaChevronRight className="right fa-icon" />
+                        <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                         { LocalizeText('infostand.button.mute') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('ban') }>
-                        <FaChevronRight className="right fa-icon" />
+                        <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                         { LocalizeText('infostand.button.ban') }
                     </ContextMenuListItemView>
                     { isShowGiveRights &&
@@ -301,7 +301,7 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                             { LocalizeText('infostand.button.removerights') }
                         </ContextMenuListItemView> }
                     <ContextMenuListItemView onClick={ event => processAction('back') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }
@@ -317,7 +317,7 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         { LocalizeText('infostand.button.perm_ban') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back_moderate') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }
@@ -333,7 +333,7 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         { LocalizeText('infostand.button.mute_10min') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back_moderate') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }
@@ -347,10 +347,10 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('ambassador_mute') }>
                         { LocalizeText('infostand.button.mute') }
-                        <FaChevronRight className="right fa-icon" />
+                        <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }
@@ -369,7 +369,7 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                         { LocalizeText('infostand.button.mute_18hour') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back_ambassador') }>
-                        <FaChevronLeft className="left fa-icon" />
+                        <ContextMenuPixelArrowView direction="left" className="left fa-icon" />
                         { LocalizeText('generic.back') }
                     </ContextMenuListItemView>
                 </> }

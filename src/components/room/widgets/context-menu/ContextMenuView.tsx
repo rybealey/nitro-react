@@ -5,8 +5,9 @@ import { Base, BaseProps } from '../../../../common';
 import { ContextMenuCaretView } from './ContextMenuCaretView';
 
 // The player menus (another player and your own avatar) take this class for
-// their compact look (ContextMenu.scss); furni, pet and bot menus do not.
-// One shared array, so the class list memo is not rebuilt every render.
+// their light window look and pixel arrows (ContextMenu.scss); furni, pet and
+// bot menus do not. One shared array, so the class list memo is not rebuilt
+// every render.
 export const AVATAR_MENU_CLASSES = [ 'avatar-menu' ];
 
 interface ContextMenuViewProps extends BaseProps<HTMLDivElement>
@@ -182,6 +183,6 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
     // (Twist, 2026-10-24).
     return <Base innerRef={ elementRef } position={ position } classNames={ getClassNames } style={ getStyle } { ...rest }>
         { !(collapsable && isCollapsed) && children }
-        { collapsable && <ContextMenuCaretView onClick={ () => setIsCollapsed(!isCollapsed) } collapsed={ isCollapsed } /> }
+        { collapsable && <ContextMenuCaretView onClick={ () => setIsCollapsed(!isCollapsed) } collapsed={ isCollapsed } pixel={ classNames.includes(AVATAR_MENU_CLASSES[0]) } /> }
     </Base>;
 }
