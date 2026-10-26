@@ -11,7 +11,7 @@
 // !importants beat the bootstrap utility classes baked into
 // NitroCardTabsItemView (rounded-top, border, pt-1).
 //
-// NO backdrop-filter, unlike the HUD plates. A frosted strip is drawn on a
+// NO backdrop-filter (the HUD plates have none either since 2026-10-26). A frosted strip is drawn on a
 // layer of its own, and Chrome on Windows cannot give text on a see-through
 // layer ClearType: every tab label went soft, next to sharp text in the rest
 // of the window. The plate is 95% opaque, so the frost barely showed anyway.

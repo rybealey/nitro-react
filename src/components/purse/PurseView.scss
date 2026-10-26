@@ -4,8 +4,6 @@
 
     .nitro-purse {
         background: var(--prp-chrome-plate);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
         // No minimum width: the purse hugs its currency values and the VIP
         // tile, growing leftward as values lengthen. It used to be held at the
         // right-side column's 200px, which left the money column mostly empty.
@@ -62,7 +60,5 @@
 
     .nitro-purse-seasonal-currency {
         background: var(--prp-chrome-plate);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
     }
 }

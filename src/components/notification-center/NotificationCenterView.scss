@@ -435,8 +435,6 @@ $cmds-rule: rgba(0, 0, 0, 0.14);
     pointer-events: all;
     padding: 10px 12px;
     background: var(--prp-chrome-plate);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     font-size: $font-size-sm;
 
     .bubble-image-container {

@@ -9,13 +9,11 @@ import { useLocalStorage } from '../../../../hooks';
 // across sessions. Buttons without an onClick are placeholders — behaviour
 // comes later.
 //
-// The toggle is a SIBLING of .nitro-side-drawer (the tray), not a child: the
-// tray has backdrop-filter, and a backdrop-filtered ancestor becomes the
-// backdrop root for its children — a child's own backdrop-filter then samples
-// nothing and the tab renders flat and unblurred. As a sibling it's anchored
-// absolutely to the container's right edge (same geometry: the container's
-// width IS the tray's width), stays out of the icon column's flex flow, and
-// its blur actually reaches the room behind it.
+// The toggle is a SIBLING of .nitro-side-drawer (the tray), not a child -
+// once so its frosted glass reached the room behind it (the HUD has none now,
+// 2026-10-26). As a sibling it's anchored absolutely to the container's right
+// edge (same geometry: the container's width IS the tray's width) and stays
+// out of the icon column's flex flow.
 const DRAWER_BUTTONS: { key: string; title: string; onClick?: () => void }[] = [
     // key stays 'inventory' - it names the icon file and the CSS class; only
     // the tooltip is player-facing, and the panel itself is called Backpack.

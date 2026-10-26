@@ -39,8 +39,6 @@
         width: 39px;
         height: 39px;
         background: var(--prp-chrome-plate);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
         border-radius: $border-radius;
         transition: all .2s ease;
     }

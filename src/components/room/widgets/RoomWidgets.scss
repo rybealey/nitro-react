@@ -27,8 +27,6 @@
             linear-gradient(#0a0a0a, #0a0a0a) right top / 1px calc(50% - 22.5px) no-repeat,
             linear-gradient(#0a0a0a, #0a0a0a) right bottom / 1px calc(50% - 22.5px) no-repeat,
             var(--prp-chrome-95);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
         border-top: 1px solid #0a0a0a;
         border-bottom: 1px solid #0a0a0a;
         border-top-right-radius: $border-radius;
@@ -130,14 +128,13 @@
 
     // Collapse/expand notch: a half-pill tab budding off the tray's OUTER
     // edge, vertically centered. Absolute at left:100% of the CONTAINER (the
-    // toggle is the tray's sibling, not its child — the tray's own
-    // backdrop-filter would otherwise become the tab's backdrop root and eat
-    // its blur; see SideDrawerWidgetView). The container's width is the
+    // toggle is the tray's sibling, not its child; see SideDrawerWidgetView).
+    // The container's width is the
     // tray's width, so the tab still rides outward as the tray widens,
     // reading as the tray sliding out from under it. Narrow (15px) so it
     // reads as a tab, not a sixth button. A tile's height, and odd like the
     // tray's (277px), so it centres on whole pixels.
-    // Painted with the tray's own plate surface + blur, edge and top line so
+    // Painted with the tray's own plate surface, edge and top line so
     // the two read as one piece of chrome, both following the player's colour
     // scheme. Collapsed, the tray has zero width, so the notch sits flush
     // against the screen edge and becomes the pull-tab.
@@ -153,8 +150,6 @@
         height: 45px;
         box-sizing: border-box;
         background: var(--prp-chrome-95);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
         border: 1px solid #0a0a0a;
         border-left: 0;
         border-radius: 0 $border-radius $border-radius 0;
@@ -180,8 +175,6 @@
     transform: translateX(-50%);
     font-size: large;
     background: var(--prp-chrome-plate);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     border-radius: $border-radius;
     transition: all 0.2s ease;
     z-index: $quiz-zindex;

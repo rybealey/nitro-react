@@ -115,8 +115,6 @@
         z-index: $infostand-zindex;
         pointer-events: auto;
         background: var(--prp-chrome-plate);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
 
         // ---- build tools (the Tools button) -------------------------------
         // Collapsed to nothing and clipped, so the panel keeps its 190px shape
