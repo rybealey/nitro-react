@@ -9,7 +9,7 @@ import { WeatherSnapshot } from '../../api/rp-phone/RpWeatherMessages';
 
 export type SkyKind = 'clear' | 'partly' | 'cloud' | 'fog' | 'wet' | 'snow';
 
-type Rgb = [ number, number, number ];
+export type Rgb = [ number, number, number ];
 
 export interface SkyStops
 {
@@ -27,6 +27,10 @@ export interface SkyLook
     daylight: number;
     stars: boolean;
     fog: boolean;
+    // the same look as numbers, for the sky drawn in the room canvas (SkyPainter)
+    stops: SkyStops;
+    horizonRgb: Rgb;
+    glow: number;
 }
 
 const hex = (value: string): Rgb => [ parseInt(value.slice(1, 3), 16), parseInt(value.slice(3, 5), 16), parseInt(value.slice(5, 7), 16) ];
@@ -130,7 +134,10 @@ export const ComputeSky = (snapshot: WeatherSnapshot, now: number): SkyLook =>
         horizon: `radial-gradient(ellipse 60% 50% at 50% 50%, ${ cssA(horizon, glow) } 0%, ${ cssA(horizon, glow * .45) } 45%, rgba(0, 0, 0, 0) 100%)`,
         daylight,
         stars: (((kind === 'clear') || (kind === 'partly')) && (daylight < .3)),
-        fog: ((kind === 'fog') || (kind === 'cloud') || (kind === 'snow'))
+        fog: ((kind === 'fog') || (kind === 'cloud') || (kind === 'snow')),
+        stops,
+        horizonRgb: horizon,
+        glow
     };
 }
 

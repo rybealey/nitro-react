@@ -5,35 +5,23 @@ import { RpGameClockEvent, SetGameClock } from '../../api/environment/GameClock'
 import { RpGetWeatherComposer, RpWeatherEvent } from '../../api/rp-phone/RpWeatherMessages';
 import { useMessageEvent } from '../../hooks';
 import { ComputeSky, SkyLook } from './SkyModel';
+import { SkyHost, SkyPainter } from './SkyPainter';
 
-// The space behind rooms. Mounted once at the app root, under everything:
-// it paints the city's sky (time of day from the in-game clock, GameClock;
-// conditions from the Weather app's real San Francisco snapshot) where the room canvas used to be black. The
-// room canvas is made transparent so the sky shows through; with the
-// Environment > Weather switch off this paints plain black instead, so the
-// classic look is exactly what it was.
+// The space behind rooms. Mounted once at the app root: it keeps the city's
+// sky (time of day from the in-game clock, GameClock; conditions from the
+// Weather app's real San Francisco snapshot) where the room canvas used to be
+// black. With the Environment > Weather switch off it is plain black instead,
+// so the classic look is exactly what it was.
+//
+// The sky is drawn inside the room canvas, under the room (SkyPainter, Twist
+// 2026-10-26), and the canvas is solid. It used to be this page's own layers
+// under a see-through canvas, which Chrome blended the game over every frame.
+// What stays here is a black backdrop for the moments no room is showing.
 
 // Every 5 s: an in-game hour is under 4 real minutes, so a dusk passes in a
 // few minutes and a once-a-minute repaint would step through it.
 const TICK_MS = 5000;
 const CROSSFADE_MS = 2000;
-
-const setCanvasAlpha = (alpha: number) =>
-{
-    try
-    {
-        const renderer = GetNitroInstance()?.application?.renderer as unknown as { background?: { alpha: number }, backgroundAlpha?: number };
-
-        if(!renderer) return;
-
-        if(renderer.background) renderer.background.alpha = alpha;
-        else if('backgroundAlpha' in renderer) renderer.backgroundAlpha = alpha;
-    }
-    catch(e)
-    {
-        // no renderer yet; the next mount tries again
-    }
-}
 
 // The night sky's stars. Scattered at random once and then kept: this is the
 // draw staff picked out of a side-by-side of random skies ("sample 2"), so
@@ -103,6 +91,8 @@ const STARS: Star[][] = (() =>
 
     return groups;
 })();
+
+const SKY_PAINTER = new SkyPainter(STARS);
 
 // pixelrp: each twinkle group is its own <svg> layer. Fading <g> groups
 // inside one svg repainted all 260 stars on the main thread every frame; an
@@ -175,23 +165,47 @@ export const useSkyLooks = (): { look: SkyLook, previous: SkyLook } =>
 export const EnvironmentSky: FC<{}> = props =>
 {
     const { weatherOn } = useEnvironmentPrefs();
-    const { look, previous } = useSkyLooks();
+    const { look } = useSkyLooks();
+    const [ attached, setAttached ] = useState(false);
 
-    // the sky is only useful if the room canvas lets it through
+    // the room canvas's sky, once the canvas is up
     useEffect(() =>
     {
-        setCanvasAlpha(0);
+        const attach = () => SKY_PAINTER.attach(GetNitroInstance()?.application as unknown as SkyHost);
 
-        const retry = window.setTimeout(() => setCanvasAlpha(0), 1500);
+        let retry = 0;
+
+        if(attach())
+        {
+            setAttached(true);
+        }
+        else
+        {
+            retry = window.setInterval(() =>
+            {
+                if(!attach()) return;
+
+                window.clearInterval(retry);
+                setAttached(true);
+            }, 500);
+        }
 
         SendMessageComposer(new RpGetWeatherComposer());
 
         return () =>
         {
-            window.clearTimeout(retry);
-            setCanvasAlpha(1);
+            window.clearInterval(retry);
+            SKY_PAINTER.dispose();
         }
     }, []);
+
+    useEffect(() =>
+    {
+        if(!attached) return;
+
+        if(weatherOn) SKY_PAINTER.show(look);
+        else SKY_PAINTER.hide();
+    }, [ attached, weatherOn, look ]);
 
     // one root listener feeds the store; the phone's Weather app reads the same packet
     useMessageEvent<RpWeatherEvent>(RpWeatherEvent, event =>
@@ -209,14 +223,7 @@ export const EnvironmentSky: FC<{}> = props =>
         SetGameClock(parser.cycleOffsetMs, parser.cycleMs, parser.pinnedMinutes);
     });
 
-    if(!weatherOn) return <div className="env-sky is-off" />;
-
-    return (
-        <div className="env-sky">
-            { previous && <SkyLayers key={ `prev-${ previous.kind }` } look={ previous } className="is-fading" /> }
-            <SkyLayers key={ look.kind } look={ look } className="is-current" />
-        </div>
-    );
+    return <div className="env-sky is-off" />;
 }
 
 // The Settings page's thumbnail of the sky right now.
