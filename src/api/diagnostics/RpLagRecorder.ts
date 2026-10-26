@@ -1,5 +1,6 @@
 import { AvatarImage, GetTicker, IMessageComposer } from '@nitrots/nitro-renderer';
 import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
+import { IsHudBlurOff } from '../prefs/HudBlurStore';
 
 // PixelRP: the lag recorder (Twist, 2026-10-26 - "when i stand still for a few
 // minutes, then click again, theres a burst of lag"). Staff only. A frame that
@@ -17,7 +18,12 @@ import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 //   gc      texture clean-ups run / textures they let go
 //   av      avatar pictures drawn for the room: calls / ms; crop = UI pictures
 //   pk      server messages handled: count / ms, and the slowest by header
-//   lt      long tasks the browser saw in the frame: count / longest ms
+//   lt      long tasks the browser saw in the frame: count / longest ms - the
+//           game's and the website page's around it, which share one thread
+//   ev      the slowest click or key in the frame, as name:wait/run/show - ms
+//           it waited for the thread, ms its handlers ran, and ms from then
+//           until the screen showed the result. A big show with a small wait
+//           and run is the drawing to the screen held up, not the game
 //   loaf    the browser's own account of the frame (Chrome's long animation
 //           frame report): reports / ms, scr = ms running scripts, lay = ms
 //           working out styles and layout at the end, and top = the slowest
@@ -27,9 +33,17 @@ import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 //           driver, or the browser); "loaf=n/a" = a browser without the report.
 //
 // The browser hands its reports over a moment after the frame ends - after the
-// next frame has started - so lt and loaf are matched to a slow frame by time,
-// when its line is sent, not counted while it runs (the first version did
-// that, and its lt always read 0).
+// next frame has started - so lt, ev and loaf are matched to a slow frame by
+// time, when its line is sent, not counted while it runs (the first version
+// did that, and its lt always read 0).
+//
+// Chrome gives the long animation frame report to the top page only, and the
+// game runs in an iframe of the website page (same site), so it is watched
+// from there, its clock moved onto the game's. Watched from inside the game it
+// read "none" even for a frame the game itself held up (2026-10-26).
+//
+// A gap the page spent hidden - minimised, another tab - is not a stutter and
+// is not written up.
 //
 // NO OBSERVER EFFECT, as the movement traces (ProximityTrace): while playing
 // it only adds numbers into variables and keeps the browser's reports. Strings
@@ -89,12 +103,14 @@ let slowestHeaderMs = 0;
 let lastFrameAt = 0;
 let lastInputAt = 0;
 let idleBeforeInput = 0;
+let wasHidden = false;
 
 const frames: SlowFrame[] = [];
 let sendTimer = 0;
 
 // the browser's reports, kept until the frames they belong to are sent
 const longTasks: PerformanceEntry[] = [];
+const inputReports: any[] = [];
 const frameReports: any[] = [];
 let frameReportsSupported = false;
 
@@ -148,6 +164,38 @@ const finish = (frame: SlowFrame): string =>
     }
 
     const parts = [ frame.text, `lt=${ tasks }/${ Math.round(longestTask) }` ];
+
+    // The slowest input in the frame. The events one screen update showed (the
+    // same end, to the browser's 8 ms rounding) - a click's pointerover,
+    // pointerdown, mousedown, click - count as one, named by the one that ran
+    // longest: wait from the first, run added up, show after the last ran.
+    const inputs = inputReports.filter(entry => overlaps(entry, frame.start, frame.end));
+
+    if(inputs.length)
+    {
+        const shownAt = Math.max(...inputs.map(entry => (entry.startTime + entry.duration)));
+        const together = inputs.filter(entry => ((shownAt - (entry.startTime + entry.duration)) <= 8));
+
+        let first = together[0];
+        let longest = together[0];
+        let run = 0;
+        let ranUntil = 0;
+
+        for(const entry of together)
+        {
+            if(entry.startTime < first.startTime) first = entry;
+
+            if((entry.processingEnd - entry.processingStart) > (longest.processingEnd - longest.processingStart)) longest = entry;
+
+            run += (entry.processingEnd - entry.processingStart);
+            ranUntil = Math.max(ranUntil, entry.processingEnd);
+        }
+
+        const wait = (first.processingStart - first.startTime);
+        const show = (shownAt - ranUntil);
+
+        parts.push(`ev=${ longest.name }:${ Math.round(wait) }/${ Math.round(run) }/${ Math.max(0, Math.round(show)) }`);
+    }
 
     if(!frameReportsSupported)
     {
@@ -204,7 +252,7 @@ const pruneReports = () =>
 {
     const before = (frames.length ? frames[0].start : (performance.now() - 5000));
 
-    for(const list of [ longTasks, frameReports ])
+    for(const list of [ longTasks, inputReports, frameReports ])
     {
         let done = 0;
 
@@ -261,6 +309,9 @@ const record = (frameMs: number, start: number, end: number) =>
         `pk=${ packets }/${ packetMs.toFixed(1) }${ slowestHeader ? `(${ slowestHeader }:${ slowestHeaderMs.toFixed(1) })` : '' }`
     ];
 
+    // the HUD's frosted glass switched off on this computer (HudBlurStore)
+    if(IsHudBlurOff()) parts.push('blur=off');
+
     frames.push({ text: parts.join(' '), start, end });
 
     if(frames.length > MAX_PENDING) frames.splice(0, (frames.length - MAX_PENDING));
@@ -272,12 +323,16 @@ const record = (frameMs: number, start: number, end: number) =>
 
 const onFrame = (now: number) =>
 {
-    if(lastFrameAt && (document.visibilityState === 'visible'))
+    const visible = (document.visibilityState === 'visible');
+
+    if(lastFrameAt && visible && !wasHidden)
     {
         const frameMs = (now - lastFrameAt);
 
         if(frameMs > HITCH_MS) record(frameMs, lastFrameAt, now);
     }
+
+    if(visible) wasHidden = false;
 
     lastFrameAt = now;
     resetFrame();
@@ -320,6 +375,52 @@ const timeMethod = (target: any, name: string, add: (ms: number, args: any[], se
             add((performance.now() - start), args, this, snapshot);
         }
     };
+}
+
+// The long animation frame report, from the top page when it is on this site
+// (see the top of the file), else this one. Entries are copied with their
+// times moved onto this page's clock.
+const watchFrameReports = (): boolean =>
+{
+    try
+    {
+        let host: any = window;
+
+        try
+        {
+            if(window.top && (window.top !== window) && (window.top as any).PerformanceObserver) host = window.top;
+        }
+        catch(e)
+        {} // another site's page cannot be read: this one, then
+
+        if(!(host.PerformanceObserver.supportedEntryTypes || []).includes('long-animation-frame')) return false;
+
+        const shift = ((host === window) ? 0 : (host.performance.timeOrigin - performance.timeOrigin));
+
+        const observer = new host.PerformanceObserver((list: any) =>
+        {
+            for(const entry of list.getEntries())
+            {
+                keepReport(frameReports, {
+                    startTime: (entry.startTime + shift),
+                    duration: entry.duration,
+                    styleAndLayoutStart: (entry.styleAndLayoutStart ? (entry.styleAndLayoutStart + shift) : 0),
+                    scripts: entry.scripts
+                });
+            }
+        });
+
+        observer.observe({ type: 'long-animation-frame', buffered: false });
+
+        // it lives in the top page, so it goes when the game does (a reload)
+        if(host !== window) window.addEventListener('pagehide', () => observer.disconnect());
+
+        return true;
+    }
+    catch(e)
+    {
+        return false;
+    }
 }
 
 const install = (): boolean =>
@@ -430,21 +531,26 @@ const install = (): boolean =>
             }).observe({ type: 'longtask', buffered: false });
         }
 
-        if(supported.includes('long-animation-frame'))
+        if(supported.includes('event'))
         {
             new PerformanceObserver(list =>
             {
-                for(const entry of list.getEntries()) keepReport(frameReports, entry);
-            }).observe({ type: 'long-animation-frame', buffered: false });
-
-            frameReportsSupported = true;
+                for(const entry of list.getEntries()) keepReport(inputReports, entry);
+            }).observe({ type: 'event', durationThreshold: 16, buffered: false } as PerformanceObserverInit);
         }
     }
     catch(e)
     {}
 
+    frameReportsSupported = watchFrameReports();
+
     window.addEventListener('pointerdown', onInput, { capture: true, passive: true });
     window.addEventListener('keydown', onInput, { capture: true, passive: true });
+
+    document.addEventListener('visibilitychange', () =>
+    {
+        if(document.visibilityState !== 'visible') wasHidden = true;
+    });
 
     // no game step to time from: frames as the browser shows them
     if(typeof update !== 'function') window.requestAnimationFrame(onFrameRequest);
