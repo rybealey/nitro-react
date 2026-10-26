@@ -379,6 +379,23 @@ export const App: FC<{}> = props =>
                 // exists or it would only take effect on the next change.
                 ApplyMaxFps();
 
+                // pixelrp (Twist, 2026-10-27 - a Chrome recording): Pixi's own
+                // pointer tracker ran on every frame for nothing - it asked the
+                // browser where the canvas is (a layout when anything had moved)
+                // and walked the whole stage for interactive sprites. The room's
+                // mouse is the room engine's (DispatchMouseEvent); only the
+                // floorplan editor uses Pixi's, on its own renderer. The
+                // per-frame check goes; its pointer events stay.
+                try
+                {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const interaction = (GetNitroInstance().application.renderer as any).plugins?.interaction;
+
+                    if(interaction) interaction.useSystemTicker = false;
+                }
+                catch(error)
+                {}
+
                 // DevTools that are already open, checked from here on - by now
                 // the rank that exempts staff has arrived.
                 StartDevToolsWatch();
