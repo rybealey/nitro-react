@@ -55,7 +55,8 @@
 .bubble-container {
     position: absolute;
     width: fit-content;
-    transition: top 0.2s ease 0s;
+    // pixelrp: the glide slides a transform, not top (ChatBubbleMessage.top)
+    transition: transform 0.2s ease 0s;
     user-select: none;
     pointer-events: all;
 

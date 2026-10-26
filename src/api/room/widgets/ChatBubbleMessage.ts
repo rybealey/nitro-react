@@ -47,7 +47,43 @@ export class ChatBubbleMessage
     {
         this._top = value;
 
-        if(this.elementRef) this.elementRef.style.top = (Math.round(this._top) + 'px');
+        this.drawTop();
+    }
+
+    // pixelrp (Twist, 2026-10-27): a bubble is drawn at its top once, and
+    // every move after that - the chat drifting up, a new line pushing it - is
+    // a transform from there, which the bubble's glide (.bubble-container,
+    // ChatWidgetView.scss) slides. Gliding its top instead had Chrome lay out
+    // and repaint the bubbles on every frame of every glide, for every bubble
+    // at once; a transform Chrome slides by itself. (While one moves, Chrome
+    // draws it on a layer of its own, and its text is drawn a little softer
+    // until it stops - Twist chose the glide that way.) The first top is set
+    // plainly, so a new bubble shows in place instead of gliding in.
+    private _drawnTop: number = null;
+    private _drawnOn: HTMLDivElement = null;
+
+    private drawTop(): void
+    {
+        const element = this.elementRef;
+
+        if(!element) return;
+
+        const top = Math.round(this._top);
+
+        if(this._drawnOn !== element)
+        {
+            this._drawnOn = element;
+            this._drawnTop = top;
+
+            element.style.top = (top + 'px');
+            element.style.transform = '';
+
+            return;
+        }
+
+        const by = (top - this._drawnTop);
+
+        element.style.transform = (by ? `translateY(${ by }px)` : '');
     }
 
     public get left(): number
