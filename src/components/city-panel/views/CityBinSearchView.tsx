@@ -32,7 +32,14 @@ export const CityBinSearchView: FC<{ context: CityPanelContext }> = props =>
     const [ adding, setAdding ] = useState('');
     const [ notice, setNotice ] = useState('');
 
-    useEffect(() => SendMessageComposer(new RpCityBinRewardsComposer()), []);
+    // A block, not `() => SendMessageComposer(...)`: that hands React the send's
+    // `true` as this effect's cleanup, and React calling `true()` when the view
+    // closed took the whole client down - leaving Bin Search for any other
+    // Economy view turned the game black.
+    useEffect(() =>
+    {
+        SendMessageComposer(new RpCityBinRewardsComposer());
+    }, []);
 
     useMessageEvent<RpCityBinRewardsEvent>(RpCityBinRewardsEvent, event =>
     {
