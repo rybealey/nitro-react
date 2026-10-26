@@ -1,0 +1,249 @@
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -1,5 +1,5 @@
+ import { BLEND_MODES } from '@pixi/constants';
+-import { BaseRenderTexture, BaseTexture, Resource, Texture } from '@pixi/core';
++import { BaseRenderTexture, BaseTexture, RenderTexture, Resource, Texture } from '@pixi/core';
+ import { Container } from '@pixi/display';
+ import { Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+@@ -405,8 +405,9 @@ export class ExtendedSprite extends Sprite
+ 
+         let built = 0;
+ 
+-        // one at least, then more while the idle time lasts
+-        while(later.size && (!built || (deadline.timeRemaining() > 4)))
++        // one at least, then more while the idle time lasts - and while there
++        // is room for another copy on its way back from the GPU (readLater)
++        while(later.size && (!built || (deadline.timeRemaining() > 4)) && (ExtendedSprite._reading.size < ExtendedSprite.READING_MAX))
+         {
+             const item = later.values().next().value;
+ 
+@@ -432,7 +433,7 @@ export class ExtendedSprite extends Sprite
+         }
+     }
+ 
+-    // true when it made one
++    // true when it made one, or started one on its way back from the GPU
+     private static buildMissing(item: Texture | BaseTexture): boolean
+     {
+         if(item instanceof BaseTexture)
+@@ -440,7 +441,27 @@ export class ExtendedSprite extends Sprite
+             //@ts-ignore
+             if(item.destroyed || !item.valid || item.hitMap) return false;
+ 
+-            return ExtendedSprite.generateHitMap(item);
++            const id = `${ item.uid }`;
++
++            if(ExtendedSprite._reading.has(id)) return false;
++
++            const whole = new Texture(item);
++            const started = ExtendedSprite.readLater(id, whole, item.width, item.height, pixels =>
++            {
++                //@ts-ignore
++                if(!pixels || item.destroyed || !item.valid || item.hitMap) return;
++
++                //@ts-ignore
++                item.hitMap = ExtendedSprite.solidBits(pixels, (item.width * item.height));
++                //@ts-ignore
++                item.hitMapAt = performance.now();
++                //@ts-ignore
++                item.hitMapStale = false;
++            });
++
++            whole.destroy();
++
++            return (started || ExtendedSprite.generateHitMap(item));
+         }
+ 
+         const baseTexture = item.baseTexture;
+@@ -458,7 +479,186 @@ export class ExtendedSprite extends Sprite
+ 
+         if(maps.has(key)) return false;
+ 
+-        maps.set(key, ExtendedSprite.generateFrameHitMap(item));
++        const id = `${ baseTexture.uid }|${ key }`;
++
++        if(ExtendedSprite._reading.has(id)) return false;
++
++        const width = Math.max(1, Math.ceil(frame.width));
++        const height = Math.max(1, Math.ceil(frame.height));
++
++        // the frame from the sheet's own image, as a click reads it; failing
++        // that, from the GPU without waiting, and only failing that waiting
++        const fromImage = ExtendedSprite.readFramePixels(item, width, height);
++
++        if(fromImage)
++        {
++            maps.set(key, { width, height, bits: ExtendedSprite.solidBits(fromImage, (width * height)) });
++
++            return true;
++        }
++
++        const frameTexture = new Texture(baseTexture, frame.clone());
++        const started = ExtendedSprite.readLater(id, frameTexture, width, height, pixels =>
++        {
++            //@ts-ignore
++            if(!pixels || baseTexture.destroyed || !baseTexture.valid || maps.has(key)) return;
++
++            maps.set(key, { width, height, bits: ExtendedSprite.solidBits(pixels, (width * height)) });
++        });
++
++        frameTexture.destroy();
++
++        if(!started) maps.set(key, ExtendedSprite.generateFrameHitMap(item));
++
++        return true;
++    }
++
++    // one bit a pixel, set where it is solid (MATCH_OPAQUE_PIXELS), row by row
++    private static solidBits(pixels: ArrayLike<number>, count: number): Uint32Array
++    {
++        const bits = new Uint32Array(Math.ceil(count / 32));
++        const threshold = AlphaTolerance.MATCH_OPAQUE_PIXELS;
++
++        for(let i = 0; i < count; i++)
++        {
++            if(pixels[i * 4 + 3] >= threshold) bits[i >>> 5] |= (1 << (i & 31));
++        }
++
++        return bits;
++    }
++
++    // PixelRP: a picture's pixels read back from the GPU WITHOUT waiting for
++    // it, for the maps made at a quiet moment (buildLater) - read straight away
++    // (getPixels), the browser first waits for everything already queued for
++    // the graphics card, and the lag recorder had those quiet-moment builds at
++    // 50-66 ms (Twist, 2026-10-26). The picture is drawn into a texture of its
++    // own, as getPixels does, copied into a buffer behind a fence (WebGL2) and
++    // collected on a later timer, when the fence says it has landed; one not
++    // back after READ_GIVE_UP_MS is read then, waiting. At most READING_MAX at
++    // once. False when it cannot start - WebGL1, a lost context - and the
++    // caller reads it the old way.
++    private static READING_MAX: number = 4;
++    private static READ_POLL_MS: number = 16;
++    private static READ_GIVE_UP_MS: number = 250;
++    private static _reading: Set<string> = new Set();
++
++    private static readLater(id: string, source: Texture, width: number, height: number, done: (pixels: Uint8Array) => void): boolean
++    {
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++        const renderer = (TextureUtils.getRenderer() as any);
++        const gl = (renderer?.gl as WebGL2RenderingContext);
++
++        if(!gl || (typeof WebGL2RenderingContext === 'undefined') || !(gl instanceof WebGL2RenderingContext) || gl.isContextLost()) return false;
++
++        let renderTexture: RenderTexture = null;
++        let buffer: WebGLBuffer = null;
++        let sync: WebGLSync = null;
++
++        const forget = () =>
++        {
++            try
++            {
++                if(!gl.isContextLost())
++                {
++                    if(sync) gl.deleteSync(sync);
++                    if(buffer) gl.deleteBuffer(buffer);
++                }
++            }
++            catch(error)
++            {
++                // the context is gone with them
++            }
++
++            if(renderTexture) renderTexture.destroy(true);
++
++            sync = null;
++            buffer = null;
++            renderTexture = null;
++
++            ExtendedSprite._reading.delete(id);
++        };
++
++        try
++        {
++            const sprite = new Sprite(source);
++
++            renderTexture = TextureUtils.generateTexture(sprite, new Rectangle(0, 0, width, height));
++
++            sprite.destroy();
++
++            renderer.renderTexture.bind(renderTexture);
++
++            buffer = gl.createBuffer();
++
++            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
++            gl.bufferData(gl.PIXEL_PACK_BUFFER, (width * height * 4), gl.STREAM_READ);
++            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, 0);
++            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
++
++            sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
++
++            gl.flush();
++
++            // back to the screen: the copy's texture goes when the copy lands
++            renderer.renderTexture.bind(null);
++
++            if(!sync) throw new Error('no fence');
++        }
++        catch(error)
++        {
++            forget();
++
++            return false;
++        }
++
++        ExtendedSprite._reading.add(id);
++
++        const startedAt = performance.now();
++
++        const collect = () =>
++        {
++            try
++            {
++                if(gl.isContextLost())
++                {
++                    forget();
++                    done(null);
++
++                    return;
++                }
++
++                if((gl.getSyncParameter(sync, gl.SYNC_STATUS) !== gl.SIGNALED) && ((performance.now() - startedAt) < ExtendedSprite.READ_GIVE_UP_MS))
++                {
++                    setTimeout(collect, ExtendedSprite.READ_POLL_MS);
++
++                    return;
++                }
++
++                const pixels = new Uint8Array(width * height * 4);
++
++                gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
++                gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, pixels);
++                gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
++
++                forget();
++                done(pixels);
++            }
++            catch(error)
++            {
++                forget();
++                done(null);
++            }
++
++            // more waiting while this one was on its way
++            if(ExtendedSprite._later.size && !ExtendedSprite._laterScheduled)
++            {
++                ExtendedSprite._laterScheduled = true;
++
++                ExtendedSprite.whenIdle(ExtendedSprite.buildWaiting);
++            }
++        };
++
++        setTimeout(collect, ExtendedSprite.READ_POLL_MS);
+ 
+         return true;
+     }
