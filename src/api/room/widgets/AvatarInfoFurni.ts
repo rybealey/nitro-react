@@ -10,6 +10,8 @@ export class AvatarInfoFurni implements IAvatarInfo
     public name: string = '';
     public description: string = '';
     public image: HTMLImageElement = null;
+    /** pixelrp: the picture still being read back - set instead of image (AvatarInfoUtilities.getFurniImage). */
+    public imageLater: Promise<HTMLImageElement> = null;
     public isWallItem: boolean = false;
     public isStickie: boolean = false;
     public isRoomOwner: boolean = false;

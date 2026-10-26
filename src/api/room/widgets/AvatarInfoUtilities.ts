@@ -7,6 +7,7 @@ import { AvatarInfoPet } from './AvatarInfoPet';
 import { AvatarInfoRentableBot } from './AvatarInfoRentableBot';
 import { AvatarInfoUser } from './AvatarInfoUser';
 import { HasAnyRoomRights, IsRoomOwnerNow } from '../../rp-rights/RpRoomRightsMessages';
+import { ReadTextureImageAsync } from '../../utils/ReadTextureImageAsync';
 
 // pixelrp: when each player's badges were last asked for, per room session.
 // Asking is the renderer's getUserBadges, which sends a request every call.
@@ -23,6 +24,11 @@ const badgesAskedAt = new WeakMap<UserBadgeCache, Map<number, number>>();
 // - so its picture is one per type, colour and extras. The oldest go first.
 const FURNI_IMAGE_KEEP = 200;
 const furniImages = new Map<string, HTMLImageElement>();
+
+// pixelrp: furni types whose picture at 64 was too big for the infostand
+// (over 140 x 200), so the next one is drawn at the small size straight away.
+const FURNI_TOO_BIG_KEEP = 500;
+const furniTooBig = new Set<string>();
 
 export class AvatarInfoUtilities
 {
@@ -115,7 +121,12 @@ export class AvatarInfoUtilities
     }
 
     // The furni's picture for the infostand, kept where it can be (furniImages).
-    private static getFurniImage(roomId: number, objectId: number, category: number, roomObject: IRoomObject): HTMLImageElement
+    // pixelrp (Twist, 2026-10-26): a picture not kept is drawn once and read
+    // back from the graphics card without waiting (ReadTextureImageAsync), so
+    // the click is not held up for it - the lag recorder had furni clicks at
+    // 25-75 ms. That one comes back as a promise and the infostand shows it a
+    // frame or two later (AvatarInfoFurni.imageLater).
+    private static getFurniImage(roomId: number, objectId: number, category: number, roomObject: IRoomObject): HTMLImageElement | Promise<HTMLImageElement>
     {
         const model = roomObject.model;
         const type = roomObject.type;
@@ -140,27 +151,51 @@ export class AvatarInfoUtilities
             }
         }
 
-        let roomObjectImage = GetRoomEngine().getRoomObjectImage(roomId, objectId, category, new Vector3d(180), 64, null);
+        // A type already found too big at 64 is drawn small straight away; it
+        // was drawn big, thrown away and drawn again on every click.
+        const sizeKey = `${ category }|${ type }`;
 
-        if(!roomObjectImage.data || (roomObjectImage.data.width > 140) || (roomObjectImage.data.height > 200))
+        let roomObjectImage = (furniTooBig.has(sizeKey) ? null : GetRoomEngine().getRoomObjectImage(roomId, objectId, category, new Vector3d(180), 64, null));
+
+        if(roomObjectImage?.data && ((roomObjectImage.data.width > 140) || (roomObjectImage.data.height > 200)))
         {
-            // pixelrp: the too-big render is never read - free it here
-            // (getImage frees the one that is).
-            if(roomObjectImage.data) roomObjectImage.data.destroy(true);
+            furniTooBig.add(sizeKey);
+
+            if(furniTooBig.size > FURNI_TOO_BIG_KEEP) furniTooBig.delete(furniTooBig.values().next().value);
+        }
+
+        if(!roomObjectImage?.data || furniTooBig.has(sizeKey))
+        {
+            // pixelrp: the too-big render is never read - free it here.
+            if(roomObjectImage?.data) roomObjectImage.data.destroy(true);
 
             roomObjectImage = GetRoomEngine().getRoomObjectImage(roomId, objectId, category, new Vector3d(180), 1, null);
         }
 
-        const image = roomObjectImage.getImage();
+        const texture = roomObjectImage?.data;
 
-        if(key && image)
+        if(!texture) return null;
+
+        return ReadTextureImageAsync(texture).then(url =>
         {
-            furniImages.set(key, image);
+            if(!url) return null;
 
-            if(furniImages.size > FURNI_IMAGE_KEEP) furniImages.delete(furniImages.keys().next().value);
-        }
+            const image = new Image();
 
-        return image;
+            image.src = url;
+
+            if(key) AvatarInfoUtilities.keepFurniImage(key, image);
+
+            return image;
+        }).finally(() => texture.destroy(true));
+    }
+
+    private static keepFurniImage(key: string, image: HTMLImageElement): void
+    {
+        furniImages.delete(key);
+        furniImages.set(key, image);
+
+        if(furniImages.size > FURNI_IMAGE_KEEP) furniImages.delete(furniImages.keys().next().value);
     }
 
     public static getFurniInfo(objectId: number, category: number): AvatarInfoFurni
@@ -235,7 +270,10 @@ export class AvatarInfoUtilities
 
         furniInfo.expiration = ((expiryTime < 0) ? expiryTime : Math.max(0, (expiryTime - ((GetTickerTime() - expiryTimestamp) / 1000))));
 
-        furniInfo.image = AvatarInfoUtilities.getFurniImage(roomSession.roomId, objectId, category, roomObject);
+        const picture = AvatarInfoUtilities.getFurniImage(roomSession.roomId, objectId, category, roomObject);
+
+        if(picture instanceof Promise) furniInfo.imageLater = picture;
+        else furniInfo.image = picture;
         furniInfo.isWallItem = (category === RoomObjectCategory.WALL);
         furniInfo.isRoomOwner = IsRoomOwnerNow(roomSession);
         furniInfo.roomControllerLevel = roomSession.controllerLevel;

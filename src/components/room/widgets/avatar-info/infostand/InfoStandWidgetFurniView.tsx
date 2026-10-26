@@ -47,6 +47,28 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
     const [ catalogLocation, setCatalogLocation ] = useState<{ info: AvatarInfoFurni; location: CatalogLocation }>(null);
     const buyLocation = catalogLocation?.info === avatarInfo ? catalogLocation.location : null;
 
+    // pixelrp: the furni's picture - kept and ready, or still being read back
+    // from the graphics card (AvatarInfoFurni.imageLater), shown when it lands.
+    const [ picture, setPicture ] = useState<{ info: AvatarInfoFurni; src: string }>(null);
+    const pictureSrc = (avatarInfo?.image?.src || ((picture?.info === avatarInfo) ? picture.src : null));
+
+    useEffect(() =>
+    {
+        if(!avatarInfo?.imageLater) return;
+
+        let gone = false;
+
+        avatarInfo.imageLater.then(image =>
+        {
+            if(!gone && image?.src) setPicture({ info: avatarInfo, src: image.src });
+        });
+
+        return () =>
+        {
+            gone = true;
+        };
+    }, [ avatarInfo ]);
+
     useEffect(() =>
     {
         setCatalogLocation(null);
@@ -559,8 +581,8 @@ export const InfoStandWidgetFurniView: FC<InfoStandWidgetFurniViewProps> = props
                                 <div className="position-absolute end-0">
                                     <LayoutRarityLevelView level={ avatarInfo.stuffData.rarityLevel } />
                                 </div> }
-                            { avatarInfo.image && avatarInfo.image.src.length && 
-                                <img className="d-block mx-auto" src={ avatarInfo.image.src } alt="" /> }
+                            { pictureSrc &&
+                                <img className="d-block mx-auto" src={ pictureSrc } alt="" /> }
                         </Flex>
                         <hr className="m-0" />
                     </Column>
