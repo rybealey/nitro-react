@@ -654,6 +654,38 @@ $furni-function-on: #2e9e4f;
         }
     }
 
+    // How high a sitter sits, beside the way back to the stack height.
+    .rp-furni-function-sit-height {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 9px;
+
+        > span {
+            flex: 1;
+            font-size: 10px;
+            color: rgba($white, .65);
+
+            i {
+                font-style: normal;
+                color: rgba($white, .42);
+            }
+        }
+
+        input {
+            width: 72px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: $white;
+            background: rgba(0, 0, 0, .28);
+            border: 1px solid rgba(0, 0, 0, .45);
+            outline: none;
+
+            &:focus { border-color: var(--prp-chrome-hover); }
+        }
+    }
+
     .rp-furni-function-warning {
         margin-top: 11px;
         padding: 7px 9px;

@@ -179,7 +179,12 @@ export interface RpFurniFunction
     layAcross: boolean;
     /** Turn added to the furni's rotation for a sitter: 0, 2, 4 or 6, a quarter-turn right per 2. */
     sitRotation: number;
+    /** How high a sitter sits above the furni's base, in tiles, or -1 for the stack height. */
+    sitHeight: number;
 }
+
+// Hundredths on the wire; anything below 0 is "the stack height".
+const sitHeightFromWire = (value: number): number => ((value < 0) ? -1 : (value / 100));
 
 export class RpFurniFunctionParser implements IMessageParser
 {
@@ -221,7 +226,8 @@ export class RpFurniFunctionParser implements IMessageParser
             roomCount: wrapper.readInt(),
             // last on the wire - see RpFurniFunctionComposer
             layAcross: wrapper.readBoolean(),
-            sitRotation: wrapper.readInt()
+            sitRotation: wrapper.readInt(),
+            sitHeight: sitHeightFromWire(wrapper.readInt())
         };
 
         return true;
@@ -339,15 +345,16 @@ export class RpSetFurniFunctionComposer implements IMessageComposer<(number | st
         seat: boolean, stackable: boolean, stackHeight: number, adjustableHeights: string,
         heightMarker: boolean, interactionType: string, modes: number, effectId: number,
         behaviourData: number, vendingIds: string, scopeItemId: number = 0, layAcross: boolean = false,
-        width: number = 0, length: number = 0, sitRotation: number = 0)
+        width: number = 0, length: number = 0, sitRotation: number = 0, sitHeight: number = -1)
     {
         // layAcross rides LAST, after scopeItemId, so the emulator can tell a
-        // client that never sent it from one that sent false. The size and
-        // Sit facing follow it for the same reason; a size of 0 keeps the size
-        // the furni has.
+        // client that never sent it from one that sent false. The size, Sit
+        // facing and Sit height follow it for the same reason; a size of 0
+        // keeps the size the furni has, a sit height of -1 is the stack height.
         this._data = [ definitionId, publicName, walkable, walkMask, seat, stackable,
             Math.round(stackHeight * 100), adjustableHeights, heightMarker, interactionType, modes,
-            effectId, behaviourData, vendingIds, scopeItemId, layAcross, width, length, sitRotation ];
+            effectId, behaviourData, vendingIds, scopeItemId, layAcross, width, length, sitRotation,
+            ((sitHeight < 0) ? -1 : Math.round(sitHeight * 100)) ];
     }
 
     public getMessageArray() 

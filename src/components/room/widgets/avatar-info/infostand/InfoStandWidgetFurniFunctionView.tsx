@@ -135,16 +135,16 @@ const SIT_FACINGS: [ number, string ][] = [ [ 0, 'Normal' ], [ 2, 'Right' ], [ 4
 
 const LABELS: { [key: string]: string } = {
     publicName: 'Name', width: 'Width', length: 'Length', walkable: 'Walkable', walkMask: 'Open tiles', seat: 'Sittable', sitRotation: 'Sit facing',
-    stackable: 'Stackable', stackHeight: 'Stack height', layAcross: 'Lie across',
+    sitHeight: 'Sit height', stackable: 'Stackable', stackHeight: 'Stack height', layAcross: 'Lie across',
     adjustableHeights: 'Adjustable', interactionType: 'Behaviour', modes: 'Click states',
     effectId: 'Walk effect', behaviourData: 'Behaviour data', vendingIds: 'Handitems'
 };
 
-type Draft = Pick<RpFurniFunction, 'publicName' | 'width' | 'length' | 'walkable' | 'walkMask' | 'seat' | 'sitRotation' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'layAcross' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
+type Draft = Pick<RpFurniFunction, 'publicName' | 'width' | 'length' | 'walkable' | 'walkMask' | 'seat' | 'sitRotation' | 'sitHeight' | 'stackable' | 'stackHeight' | 'adjustableHeights' | 'heightMarker' | 'layAcross' | 'interactionType' | 'modes' | 'effectId' | 'behaviourData' | 'vendingIds'>;
 
 const toDraft = (data: RpFurniFunction): Draft => ({
     publicName: data.publicName, width: data.width, length: data.length,
-    walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, sitRotation: data.sitRotation, stackable: data.stackable,
+    walkable: data.walkable, walkMask: data.walkMask, seat: data.seat, sitRotation: data.sitRotation, sitHeight: data.sitHeight, stackable: data.stackable,
     stackHeight: data.stackHeight, adjustableHeights: data.adjustableHeights, heightMarker: data.heightMarker, layAcross: data.layAcross,
     interactionType: data.interactionType, modes: data.modes, effectId: data.effectId,
     behaviourData: data.behaviourData, vendingIds: data.vendingIds
@@ -166,6 +166,8 @@ const describe = (key: string, value: boolean | number | string): string =>
     if(key === 'interactionType') return behaviourLabel(String(value));
 
     if(key === 'sitRotation') return (SIT_FACINGS.find(entry => (entry[0] === value))?.[1] ?? String(value)).toLowerCase();
+
+    if(key === 'sitHeight') return ((Number(value) < 0) ? 'stack height' : show(value));
 
     if(key === 'walkMask')
     {
@@ -522,7 +524,8 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
         SendMessageComposer(new RpSetFurniFunctionComposer(saved.definitionId, draft.publicName, draft.walkable,
             draft.walkMask, draft.seat, draft.stackable, draft.stackHeight, draft.adjustableHeights,
             draft.heightMarker, draft.interactionType, draft.modes, draft.effectId, draft.behaviourData,
-            draft.vendingIds, (scoped ? avatarInfo.id : 0), draft.layAcross, draft.width, draft.length, draft.sitRotation));
+            draft.vendingIds, (scoped ? avatarInfo.id : 0), draft.layAcross, draft.width, draft.length, draft.sitRotation,
+            draft.sitHeight));
 
         // Closing is the confirmation: the change is hotel-wide and the
         // window has nothing left to say about it. Staying open would invite a
@@ -640,7 +643,7 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
 
     const toggles: [ string, string, boolean, () => void ][] = [
         [ 'Walkable', 'Avatars can walk over it', draft.walkable, () => update({ walkable: !draft.walkable }) ],
-        [ 'Sittable', 'Avatars sit at stack height', draft.seat, () => update({ seat: !draft.seat }) ],
+        [ 'Sittable', 'Avatars can sit on it', draft.seat, () => update({ seat: !draft.seat }) ],
         [ 'Layable', 'Sets Behaviour to Bed - laying has no field of its own', layable, () => update({ interactionType: layable ? 'default' : 'bed' }) ],
         [ 'Stackable', 'Other furni can go on top', draft.stackable, () => update({ stackable: !draft.stackable }) ]
     ];
@@ -706,6 +709,18 @@ export const InfoStandWidgetFurniFunctionView: FC<InfoStandWidgetFurniFunctionVi
                                     <div key={ turn } className={ 'rp-furni-function-btn rp-furni-function-btn--sm' + ((draft.sitRotation === turn) ? ' rp-furni-function-btn--go' : '') }
                                         onClick={ () => update({ sitRotation: turn }) }>{ label }</div>) }
                             </div>
+                        </div> }
+                    { /* How high a sitter sits above the furni's base. Until one
+                         is set it is the stack height, and the box shows that. */ }
+                    { draft.seat &&
+                        <div className="rp-furni-function-sit-height">
+                            <span>Sit height{ (draft.sitHeight < 0) && <i> - same as stack height</i> }</span>
+                            <input type="number" step="0.05" min="0" max="40" aria-label="Sit height"
+                                { ...numberField('sitHeight', raw => Math.max(0, parseFloat(raw))) }
+                                value={ rawNumbers.sitHeight ?? String((draft.sitHeight >= 0) ? draft.sitHeight : draft.stackHeight) } />
+                            { (draft.sitHeight >= 0) &&
+                                <div className="rp-furni-function-btn rp-furni-function-btn--sm"
+                                    onClick={ () => update({ sitHeight: -1 }) }>Match stack</div> }
                         </div> }
                     { sizeMismatch &&
                         <div className="rp-furni-function-warning has-action">
