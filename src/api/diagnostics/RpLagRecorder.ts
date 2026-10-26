@@ -1,6 +1,5 @@
 import { AvatarImage, GetTicker, IMessageComposer } from '@nitrots/nitro-renderer';
 import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
-import { IsHudBlurOff } from '../prefs/HudBlurStore';
 
 // PixelRP: the lag recorder (Twist, 2026-10-26 - "when i stand still for a few
 // minutes, then click again, theres a burst of lag"). Staff only. A frame that
@@ -308,9 +307,6 @@ const record = (frameMs: number, start: number, end: number) =>
         `crop=${ cropCalls }/${ cropMs.toFixed(1) }`,
         `pk=${ packets }/${ packetMs.toFixed(1) }${ slowestHeader ? `(${ slowestHeader }:${ slowestHeaderMs.toFixed(1) })` : '' }`
     ];
-
-    // the HUD's frosted glass switched off on this computer (HudBlurStore)
-    if(IsHudBlurOff()) parts.push('blur=off');
 
     frames.push({ text: parts.join(' '), start, end });
 

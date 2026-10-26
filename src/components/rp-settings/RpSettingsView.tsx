@@ -2,7 +2,7 @@ import { ILinkEventTracker, RpDiscordStatusEvent, RpDiscordUnlinkComposer, RpGet
 import { RpSaveMacrosComposer } from '@nitrots/nitro-renderer';
 import { FC, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { AddEventLinkTracker, GetPingVolume, GetSessionDataManager, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
+import { AddEventLinkTracker, GetPingVolume, LocalizeText, RemoveLinkEventTracker, SendMessageComposer, SetPingVolume } from '../../api';
 import { Column, DraggableWindowPosition, Flex, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView, Text } from '../../common';
 import { useMessageEvent, UserSettingsVolume, useUserSettings } from '../../hooks';
 import { SetMusicVolume, useJukeboxPrefs } from '../music-player/JukeboxStore';
@@ -11,7 +11,6 @@ import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
-import { SetHudBlurOff, useHudBlurOff } from '../../api/prefs/HudBlurStore';
 import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
 import { DEFAULT_USERNAME_COLOR, IsValidUsernameColor } from './UsernameColors';
@@ -119,7 +118,6 @@ export const RpSettingsView: FC<{}> = props =>
     const exportTextRef = useRef<HTMLTextAreaElement>(null);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const { maxFps } = useFpsPref();
-    const hudBlurOff = useHudBlurOff();
     const { dragButton } = useRoomDragPref();
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
@@ -1450,15 +1448,6 @@ export const RpSettingsView: FC<{}> = props =>
                                             className={ `rp-settings-env-switch${ userSettings?.cameraFollow ? ' is-on' : '' }` }
                                             onClick={ () => setCameraFollow(!userSettings.cameraFollow) }><span /></button>
                                     </div>
-                                    { /* pixelrp: staff test - does the HUD's frosted glass make
-                                         the screen stall? On this computer only (HudBlurStore). */ }
-                                    { GetSessionDataManager().isModerator &&
-                                        <div className="rp-settings-row">
-                                            <span className="rp-settings-row-label">Glass blur (staff test)</span>
-                                            <button type="button" role="switch" aria-checked={ !hudBlurOff } aria-label="Glass blur (staff test)"
-                                                className={ `rp-settings-env-switch${ !hudBlurOff ? ' is-on' : '' }` }
-                                                onClick={ () => SetHudBlurOff(!hudBlurOff) }><span /></button>
-                                        </div> }
                                 </div>
                             </section>
                             <section className="rp-settings-group" aria-labelledby="rp-settings-h-drag">

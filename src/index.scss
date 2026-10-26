@@ -23,13 +23,4 @@ img {
     object-fit: none;
 }
 
-// pixelrp: the frosted glass behind the HUD switched off - a staff test,
-// Settings > General > Display (HudBlurStore).
-.prp-no-blur *,
-.prp-no-blur *::before,
-.prp-no-blur *::after {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-
 @import './App';
