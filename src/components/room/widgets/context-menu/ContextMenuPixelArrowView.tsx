@@ -1,8 +1,8 @@
 import { FC, SVGProps } from 'react';
 
-// The player menus' arrows (Player Menu canvas, A), drawn one pixel at a time
-// at the size they are seen, in place of the Font Awesome glyphs the furni,
-// pet and bot menus still use. They paint in currentColor.
+// The player and bot menus' arrows (Player Menu canvas, A), drawn one pixel at
+// a time at the size they are seen, in place of the Font Awesome glyphs the
+// furni and pet menus still use. They paint in currentColor.
 const ARROWS = {
     right: { width: 4, height: 7, path: 'M0 0h1v1H0zM1 1h1v1H1zM2 2h1v1H2zM3 3h1v1H3zM2 4h1v1H2zM1 5h1v1H1zM0 6h1v1H0z' },
     left: { width: 4, height: 7, path: 'M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h1v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z' },

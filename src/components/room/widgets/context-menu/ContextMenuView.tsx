@@ -4,10 +4,10 @@ import { GetNitroInstance, GetRoomObjectBounds, GetRoomObjectScreenLocation, Get
 import { Base, BaseProps } from '../../../../common';
 import { ContextMenuCaretView } from './ContextMenuCaretView';
 
-// The player menus (another player and your own avatar) take this class for
-// their light window look and pixel arrows (ContextMenu.scss); furni, pet and
-// bot menus do not. One shared array, so the class list memo is not rebuilt
-// every render.
+// The player and bot menus (another player, your own avatar, a bot) take this
+// class for their dark window look and pixel arrows (ContextMenu.scss); furni
+// and pet menus do not. One shared array, so the class list memo is not
+// rebuilt every render.
 export const AVATAR_MENU_CLASSES = [ 'avatar-menu' ];
 
 interface ContextMenuViewProps extends BaseProps<HTMLDivElement>

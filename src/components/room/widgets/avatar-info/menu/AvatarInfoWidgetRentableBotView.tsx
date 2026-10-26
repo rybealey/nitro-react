@@ -8,7 +8,7 @@ import { Button, Column, Flex, Text } from '../../../../../common';
 import { useMessageEvent } from '../../../../../hooks';
 import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
 import { ContextMenuListItemView } from '../../context-menu/ContextMenuListItemView';
-import { ContextMenuView } from '../../context-menu/ContextMenuView';
+import { AVATAR_MENU_CLASSES, ContextMenuView } from '../../context-menu/ContextMenuView';
 
 interface AvatarInfoWidgetRentableBotViewProps
 {
@@ -213,7 +213,7 @@ export const AvatarInfoWidgetRentableBotView: FC<AvatarInfoWidgetRentableBotView
     }
 
     return (
-        <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ RoomObjectType.RENTABLE_BOT } onClose={ onClose } collapsable={ true }>
+        <ContextMenuView objectId={ avatarInfo.roomIndex } category={ RoomObjectCategory.UNIT } userType={ RoomObjectType.RENTABLE_BOT } onClose={ onClose } collapsable={ true } classNames={ AVATAR_MENU_CLASSES }>
             <ContextMenuHeaderView>
                 { avatarInfo.name }
             </ContextMenuHeaderView>

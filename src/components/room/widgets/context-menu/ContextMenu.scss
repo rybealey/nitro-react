@@ -142,33 +142,56 @@
     }
 }
 
-// The player menus in the light window look (Player Menu canvas, A): the name
-// on a window title bar (the player's header colour, Settings > Interface),
-// #f3f3f5 rows split by hairlines, a hover tinted from the same header colour,
-// the windows' 1px #0a0a0a edge, and pixel arrows (ContextMenuPixelArrowView)
-// with a stepped pointer. 112px wide, 24px name, 22px rows, 12px Medium text.
-// Solid like the windows, so the UI opacity setting does not reach it.
+// The player and bot menus in the dark window look (Player Menu canvas, A
+// dark): the name on a title bar in the UI colour with the windows' faint
+// light top line, rows a step lighter split by hairlines, a lighter step
+// again on hover, the windows' 1px #0a0a0a edge, and pixel arrows
+// (ContextMenuPixelArrowView) with a stepped pointer. Every shade is mixed
+// from --prp-chrome-solid, so it follows the UI colour (Settings > Interface)
+// at full strength like the windows - the opacity setting does not reach it.
+// 112px wide, 24px name, 22px rows, 12px Medium text.
 .nitro-context-menu.avatar-menu {
+    --prp-avatar-menu-body: color-mix(in srgb, var(--prp-chrome-solid) 94%, #ffffff);
+
     padding: 0;
-    background: #f3f3f5;
+    background: var(--prp-avatar-menu-body);
     border: 1px solid #0a0a0a;
     border-radius: 4px;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.3);
-    color: #1c1c20;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.4);
+    color: #ececf0;
     font-size: 12px;
     font-weight: 500;
 
     &:not(.name-only):not(.menu-hidden) { min-width: 112px; }
 
-    // Its top row sits over the menu's bottom edge, so the edge carries on
-    // down the pointer's two stepped sides.
-    &:not(.name-only):after {
+    // The stepped pointer, in two masked layers - the #0a0a0a staircase, then
+    // the body colour inside it - so it can take the UI colour, which an SVG
+    // picture could not. Its top row sits over the menu's bottom edge, so the
+    // edge carries on down its two sides.
+    &:not(.name-only)::before,
+    &:not(.name-only)::after {
+        content: '';
+        position: absolute;
         bottom: -6px;
+        left: 0;
+        right: 0;
+        margin: auto;
         width: 12px;
         height: 6px;
         border: 0;
         transform: none;
-        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' shape-rendering='crispEdges'%3E%3Cpath fill='%230a0a0a' d='M0 0h1v1H0zM11 0h1v1h-1zM1 1h1v1H1zM10 1h1v1h-1zM2 2h1v1H2zM9 2h1v1H9zM3 3h1v1H3zM8 3h1v1H8zM4 4h1v1H4zM7 4h1v1H7zM5 5h2v1H5z'/%3E%3Cpath fill='%23f3f3f5' d='M1 0h10v1H1zM2 1h8v1H2zM3 2h6v1H3zM4 3h4v1H4zM5 4h2v1H5z'/%3E%3C/svg%3E") no-repeat;
+    }
+
+    &:not(.name-only)::before {
+        background: #0a0a0a;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h12v1H0zM1 1h10v1H1zM2 2h8v1H2zM3 3h6v1H3zM4 4h4v1H4zM5 5h2v1H5z'/%3E%3C/svg%3E") no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h12v1H0zM1 1h10v1H1zM2 2h8v1H2zM3 3h6v1H3zM4 4h4v1H4zM5 5h2v1H5z'/%3E%3C/svg%3E") no-repeat;
+    }
+
+    &:not(.name-only)::after {
+        background: var(--prp-avatar-menu-body);
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h10v1H1zM2 1h8v1H2zM3 2h6v1H3zM4 3h4v1H4zM5 4h2v1H5z'/%3E%3C/svg%3E") no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h10v1H1zM2 1h8v1H2zM3 2h6v1H3zM4 3h4v1H4zM5 4h2v1H5z'/%3E%3C/svg%3E") no-repeat;
     }
 
     .menu-header {
@@ -178,11 +201,10 @@
         margin-bottom: 0;
         padding: 0 8px !important;
         border-radius: 3px 3px 0 0;
-        background: var(--prp-header-face);
-        box-shadow: inset 0 1px 0 var(--prp-header-hi);
+        background: var(--prp-chrome-solid);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
         font-size: 13px;
         font-weight: 700;
-        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
         white-space: nowrap;
     }
 
@@ -203,10 +225,14 @@
             background: transparent;
             white-space: nowrap;
 
-            & + .list-item { border-top: 1px solid #e3e3e8; }
+            & + .list-item { border-top: 1px solid rgba(255, 255, 255, 0.07); }
+
+            // Back (the row with the left arrow) reads quieter than the rest.
+            &:has(> .fa-icon.left) { color: #a9a9b2; }
 
             &:not(.disabled):hover {
-                background: color-mix(in srgb, var(--prp-header-face) 22%, #ffffff);
+                background: color-mix(in srgb, var(--prp-chrome-solid) 88%, #ffffff);
+                color: $white;
             }
 
             // A set top, not centring: the first row has no hairline above it,
@@ -214,7 +240,7 @@
             .fa-icon {
                 top: 7px;
                 right: 8px;
-                color: #7a7f88;
+                color: rgba(255, 255, 255, 0.45);
 
                 &.left { left: 8px; right: auto; }
             }
@@ -225,8 +251,8 @@
         min-width: 24px;
         height: 13px;
         padding: 0;
-        border-top: 1px solid #e3e3e8;
-        color: #7a7f88;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        color: rgba(255, 255, 255, 0.45);
     }
 
     &.menu-hidden .menu-footer {
