@@ -6,6 +6,8 @@ import { IsMentionOfMe } from '../../../api/rp-chat/Mention';
 import { IsGangAlert } from '../../../api/rp-chat/GangAlert';
 import { IsCorpAlert } from '../../../api/rp-chat/CorpAlert';
 import { IsStaffAlert } from '../../../api/rp-chat/StaffAlert';
+import { IsNarratedBubble } from '../../../api/rp-chat/NarratedBubble';
+import { GetOwnChatPreview, LearnOwnChatBubble, LooksLikeFilteredLine, NormalizeOwnChatLine, OWN_CHAT_PREVIEW_TIMEOUT_MS, TakeUnpreviewedLine } from '../../../api/rp-chat/OwnChatPreview';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
 
@@ -31,6 +33,19 @@ const setCapped = <T, >(cache: Map<string, T>, key: string, value: T) =>
     while(cache.size > FIGURE_CACHE_LIMIT) cache.delete(cache.keys().next().value);
 }
 
+// pixelrp: one of your own lines on screen ahead of the server's copy
+// (OwnChatPreview), oldest first.
+interface WaitingPreview
+{
+    bubble: ChatBubbleMessage;
+    chatType: number;
+    text: string;
+    chosenStyle: number;
+    timer: ReturnType<typeof setTimeout>;
+    /** Answered word for word, not as a word-filtered line. */
+    exact?: boolean;
+}
+
 const useChatWidgetState = () =>
 {
     const [ chatMessages, setChatMessages ] = useState<ChatBubbleMessage[]>([]);
@@ -44,6 +59,51 @@ const useChatWidgetState = () =>
     const { roomSession = null } = useRoom();
     const { addChatEntry, addMention, addGangEntry, addCorpEntry, addStaffEntry } = useChatHistory();
     const isDisposed = useRef(false);
+    const waitingPreviews = useRef<WaitingPreview[]>([]);
+
+    const dropPreview = (preview: WaitingPreview) =>
+    {
+        clearTimeout(preview.timer);
+
+        setChatMessages(prevValue => prevValue.filter(chat => (chat.id !== preview.bubble.id)));
+    }
+
+    // The preview a line of your own from the server answers, if any. The
+    // server answers in the order lines were sent, so a preview sent before
+    // the one matched that is still waiting never will be answered - a
+    // mute, flood control, a wired trigger that kept it - and goes.
+    const takePreview = (event: RoomSessionChatEvent): WaitingPreview =>
+    {
+        const waiting = waitingPreviews.current;
+        const line = NormalizeOwnChatLine(event.message);
+
+        // a line sent with no preview (":D", a macro's), or nothing at all
+        if(!line.trim().length || TakeUnpreviewedLine(line)) return null;
+
+        let index = waiting.findIndex(preview => ((preview.chatType === event.chatType) && (preview.text === line)));
+        const exact = (index >= 0);
+
+        if(index > 0)
+        {
+            waiting.splice(0, index).forEach(dropPreview);
+
+            index = 0;
+        }
+
+        // Not word for word: a line the word filter changed. Never a line the
+        // server narrates for you ("*swings at ...*") - those are its own.
+        if((index < 0) && !IsNarratedBubble(event.style, line)) index = waiting.findIndex(preview => ((preview.chatType === event.chatType) && LooksLikeFilteredLine(preview.text, line)));
+
+        if(index < 0) return null;
+
+        const [ preview ] = waiting.splice(index, 1);
+
+        clearTimeout(preview.timer);
+
+        preview.exact = exact;
+
+        return preview;
+    }
 
     const getScrollSpeed = useMemo(() =>
     {
@@ -258,7 +318,66 @@ const useChatWidgetState = () =>
             usernameIcon,
             usernameIconColor);
 
-        setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]);
+        // pixelrp: your own line, up the moment it was sent (OwnChatPreview).
+        // It waits for the server's copy, and only that copy goes in the chat
+        // history - a line the server kept never shows there.
+        const ownPreview = GetOwnChatPreview(event);
+
+        if(ownPreview)
+        {
+            const preview: WaitingPreview = { bubble: chatMessage, chatType, text, chosenStyle: ownPreview.chosenStyle, timer: null };
+
+            preview.timer = setTimeout(() =>
+            {
+                waitingPreviews.current = waitingPreviews.current.filter(waiting => (waiting !== preview));
+
+                dropPreview(preview);
+            }, OWN_CHAT_PREVIEW_TIMEOUT_MS);
+
+            waitingPreviews.current.push(preview);
+
+            setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]);
+
+            return;
+        }
+
+        const answered = ((event.objectId === roomSession.ownRoomIndex) && waitingPreviews.current.length) ? takePreview(event) : null;
+
+        if(answered)
+        {
+            // learnt only from a line that is surely the one previewed
+            if(answered.exact) LearnOwnChatBubble(answered.chosenStyle, styleId);
+
+            const previewed = answered.bubble;
+            const unchanged = ((answered.text === NormalizeOwnChatLine(text)) && (previewed.styleId === chatMessage.styleId) && (previewed.usernameColor === chatMessage.usernameColor) && (previewed.usernameIcon === chatMessage.usernameIcon) && (previewed.usernameIconColor === chatMessage.usernameIconColor));
+
+            // Put right where it stands: the same bubble (its id), kept in its
+            // place and size until ChatWidgetMessageView measures it again.
+            if(!unchanged) setChatMessages(prevValue =>
+            {
+                const index = prevValue.findIndex(chat => (chat.id === previewed.id));
+
+                if(index < 0) return prevValue;
+
+                const current = prevValue[index];
+
+                chatMessage.id = current.id;
+                chatMessage.width = current.width;
+                chatMessage.height = current.height;
+                chatMessage.left = current.left;
+                chatMessage.top = current.top;
+
+                const next = [ ...prevValue ];
+
+                next[index] = chatMessage;
+
+                return next;
+            });
+        }
+        else
+        {
+            setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]);
+        }
 
         const entry = { id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, text, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor };
 
@@ -277,6 +396,28 @@ const useChatWidgetState = () =>
         // Bubble, whisper and speaker together, like corp - see api/rp-chat/StaffAlert.ts.
         if(IsStaffAlert(styleId, chatType, username, text)) addStaffEntry({ ...entry });
     });
+
+    // pixelrp: flood control refused the line that set it off and every line
+    // after it, so no preview still waiting will be answered.
+    useRoomSessionManagerEvent<RoomSessionChatEvent>(RoomSessionChatEvent.FLOOD_EVENT, () =>
+    {
+        const waiting = waitingPreviews.current;
+
+        waitingPreviews.current = [];
+
+        waiting.forEach(dropPreview);
+    });
+
+    // pixelrp: a new room answers nothing sent in the last one.
+    useEffect(() =>
+    {
+        return () =>
+        {
+            waitingPreviews.current.forEach(preview => clearTimeout(preview.timer));
+
+            waitingPreviews.current = [];
+        }
+    }, [ roomSession ]);
 
     useRoomEngineEvent<RoomDragEvent>(RoomDragEvent.ROOM_DRAG, event =>
     {

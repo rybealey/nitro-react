@@ -1,4 +1,5 @@
 import { RpRetainChatPrefixEvent } from '../../../../api/rp-chat/RpChatMessages';
+import { ExpectUnpreviewedLine } from '../../../../api/rp-chat/OwnChatPreview';
 import { SendRpFireMacro } from '../../../../api/rp-macros/RpMacroMessages';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -228,6 +229,9 @@ export const ChatInputView: FC<{}> = props =>
 
             if(prepared !== null) outgoing.push(prepared);
         }
+
+        // pixelrp: their copies, if any come back as chat, are not previews' (OwnChatPreview)
+        outgoing.forEach(line => ExpectUnpreviewedLine(line));
 
         SendRpFireMacro(chatStyleId, outgoing);
     }, [ sendChat, prepareChatText, chatStyleId ]);

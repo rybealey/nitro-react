@@ -41,7 +41,12 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
 
     useEffect(() =>
     {
-        setIsVisible(false);
+        const placedWidth = chat.width;
+        const placedHeight = chat.height;
+        // pixelrp: a bubble put right in place stays shown while it is measured again
+        const correction = !!(placedWidth && placedHeight);
+
+        if(!correction) setIsVisible(false);
         
         const element = elementRef.current;
 
@@ -53,7 +58,7 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
         chat.width = width;
         chat.height = height;
         chat.elementRef = element;
-        
+
         let left = chat.left;
         let top = chat.top;
 
@@ -61,9 +66,20 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
         {
             left = (chat.location.x - (width / 2));
             top = (element.parentElement.offsetHeight - height);
-            
+
             chat.left = left;
             chat.top = top;
+        }
+        // pixelrp: a preview of your own line put right by the server's copy
+        // (useChatWidget) comes already placed, with its old size - it stays
+        // put, centred on its new size with its bottom where it was.
+        else if(correction)
+        {
+            chat.left -= ((width - placedWidth) / 2);
+            chat.top -= (height - placedHeight);
+
+            // still shown, so the effect below makes no room for it: done here
+            if(makeRoom) makeRoom(chat);
         }
 
         setIsReady(true);
@@ -74,7 +90,7 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
 
             setIsReady(false);
         }
-    }, [ chat ]);
+    }, [ chat, makeRoom ]);
 
     useEffect(() =>
     {

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetCommunication, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
 import { ApplyMaxFps } from '../../../api/prefs/FpsStore';
 import { ClickthroughState } from '../clickthroughState';
+import { ShowOwnChatNow } from '../../../api/rp-chat/OwnChatPreview';
 import { AskUserPresence } from '../../../api/rp-chat/RpUserPresence';
 import { TargetState } from '../targetState';
 import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
@@ -378,6 +379,10 @@ const useChatInputWidgetState = () =>
                 roomSession.sendWhisperMessage(recipientName, text, styleId);
                 break;
         }
+
+        // pixelrp: a talk or shout shows over your head now, not a round trip
+        // later (OwnChatPreview).
+        ShowOwnChatNow(roomSession, text, chatType, styleId);
     }
 
     useRoomSessionManagerEvent<RoomSessionChatEvent>(RoomSessionChatEvent.FLOOD_EVENT, event =>
