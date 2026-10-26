@@ -408,6 +408,31 @@ export class FloorplanEditor extends PixiApplicationProxy
         return this._actionSettings;
     }
 
+    // pixelrp (Twist, 2026-10-27 - a Chrome recording): drawn only while the
+    // editor is open. As a Pixi Application on the shared ticker it drew its
+    // 2068 x 1124 antialiased canvas every frame from the first time it was
+    // opened until the tab closed, open or not - a third frame loop beside the
+    // room's. Its draw comes off the ticker when the editor closes (and a
+    // ticker with nothing on it stops asking for frames), and goes back on
+    // when it opens, where Pixi's Application puts it (UPDATE_PRIORITY.LOW).
+    private _drawing: boolean = true;
+
+    public startDrawing(): void
+    {
+        if(this._drawing) return;
+
+        this._drawing = true;
+        this.ticker.add(this.render, this, -25);
+    }
+
+    public stopDrawing(): void
+    {
+        if(!this._drawing) return;
+
+        this._drawing = false;
+        this.ticker.remove(this.render, this);
+    }
+
     public static get instance(): FloorplanEditor
     {
         if(!FloorplanEditor._INSTANCE)

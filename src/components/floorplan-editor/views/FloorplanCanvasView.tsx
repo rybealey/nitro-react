@@ -118,9 +118,12 @@ export const FloorplanCanvasView: FC<ColumnProps> = props =>
 
         FloorplanEditor.instance.tilemapRenderer.interactive = true;
 
-        if(!elementRef.current) return;
+        // pixelrp: drawn only while it is open (FloorplanEditor.stopDrawing)
+        FloorplanEditor.instance.startDrawing();
 
-        elementRef.current.appendChild(FloorplanEditor.instance.renderer.view);
+        if(elementRef.current) elementRef.current.appendChild(FloorplanEditor.instance.renderer.view);
+
+        return () => FloorplanEditor.instance.stopDrawing();
     }, []);
 
     return (
