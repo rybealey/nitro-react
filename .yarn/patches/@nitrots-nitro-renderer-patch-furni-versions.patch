@@ -1,0 +1,136 @@
+diff --git a/src/api/nitro/session/IFurnitureData.ts b/src/api/nitro/session/IFurnitureData.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/session/IFurnitureData.ts
++++ b/src/api/nitro/session/IFurnitureData.ts
+@@ -30,4 +30,6 @@ export interface IFurnitureData
+     furniLine: string;
+     environment: string;
+     rare: boolean;
++    // PixelRP: <epoch>.<version> of the furni's bundle, or null (FurnitureDataLoader)
++    bundleVersion: string;
+ }
+diff --git a/src/nitro/room/RoomContentLoader.ts b/src/nitro/room/RoomContentLoader.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomContentLoader.ts
++++ b/src/nitro/room/RoomContentLoader.ts
+@@ -35,6 +35,8 @@ export class RoomContentLoader implements IFurnitureDataListener, IRoomContentLo
+     private _wallItemTypes: Map<number, string>;
+     private _wallItemTypeIds: Map<string, number>;
+     private _furniRevisions: Map<string, number>;
++    // PixelRP: each furni bundle's version by bundle name, for furni.asset.url's ?v=
++    private _furniBundleVersions: Map<string, string>;
+     private _pets: { [index: string]: number };
+     private _petColors: Map<number, Map<number, IPetColorResult>>;
+     private _objectAliases: Map<string, string>;
+@@ -62,6 +64,7 @@ export class RoomContentLoader implements IFurnitureDataListener, IRoomContentLo
+         this._wallItemTypes = new Map();
+         this._wallItemTypeIds = new Map();
+         this._furniRevisions = new Map();
++        this._furniBundleVersions = new Map();
+         this._pets = {};
+         this._petColors = new Map();
+         this._objectAliases = new Map();
+@@ -171,6 +174,10 @@ export class RoomContentLoader implements IFurnitureDataListener, IRoomContentLo
+                 if(!this._wallItems[name]) this._wallItems[name] = 1;
+             }
+ 
++            // PixelRP: by the name the bundle is asked for under (getAssetUrls'
++            // type: the class name, renamed as above, less its colour index).
++            if(furniture.bundleVersion) this._furniBundleVersions.set(this.removeColorIndex(className), furniture.bundleVersion);
++
+             const existingRevision = this._furniRevisions.get(name);
+ 
+             if(revision > existingRevision)
+@@ -666,7 +673,11 @@ export class RoomContentLoader implements IFurnitureDataListener, IRoomContentLo
+ 
+     public getAssetUrlWithFurniBase(assetName: string): string
+     {
+-        return (NitroConfiguration.getValue<string>('furni.asset.url').replace(/%libname%/gi, assetName));
++        // PixelRP: %revision% is the bundle's version, so a bundle is only
++        // fetched again once it has changed (nginx keeps a versioned furni file
++        // a month). A bundle with no version - a poster, or FurnitureData that
++        // was not versioned - gets an empty ?v=, which nginx keeps the week.
++        return (NitroConfiguration.getValue<string>('furni.asset.url').replace(/%libname%/gi, assetName).replace(/%revision%/gi, (this._furniBundleVersions.get(assetName) ?? '')));
+     }
+ 
+     public getAssetUrlWithFurniIconBase(assetName: string): string
+diff --git a/src/nitro/session/furniture/FurnitureData.ts b/src/nitro/session/furniture/FurnitureData.ts
+index 1111111..2222222 100644
+--- a/src/nitro/session/furniture/FurnitureData.ts
++++ b/src/nitro/session/furniture/FurnitureData.ts
+@@ -219,4 +219,19 @@ export class FurnitureData implements IFurnitureData
+     {
+         return this._rare;
+     }
++
++    // PixelRP: the version of the bundle this furni is drawn from, which
++    // furni.asset.url carries as ?v= (RoomContentLoader) - null when the
++    // FurnitureData was not versioned (docker/nitro/version-assets.py).
++    private _bundleVersion: string = null;
++
++    public get bundleVersion(): string
++    {
++        return this._bundleVersion;
++    }
++
++    public set bundleVersion(version: string)
++    {
++        this._bundleVersion = version;
++    }
+ }
+diff --git a/src/nitro/session/furniture/FurnitureDataLoader.ts b/src/nitro/session/furniture/FurnitureDataLoader.ts
+index 1111111..2222222 100644
+--- a/src/nitro/session/furniture/FurnitureDataLoader.ts
++++ b/src/nitro/session/furniture/FurnitureDataLoader.ts
+@@ -11,6 +11,8 @@ export class FurnitureDataLoader extends EventDispatcher
+     private _floorItems: Map<number, IFurnitureData>;
+     private _wallItems: Map<number, IFurnitureData>;
+     private _localization: INitroLocalizationManager;
++    // PixelRP: FurnitureData's bundleepoch, set by docker/nitro/version-assets.py
++    private _bundleEpoch: string = null;
+ 
+     constructor(floorItems: Map<number, IFurnitureData>, wallItems: Map<number, IFurnitureData>, localization: INitroLocalizationManager)
+     {
+@@ -37,6 +39,8 @@ export class FurnitureDataLoader extends EventDispatcher
+ 
+         if((typeof data.roomitemtypes == 'undefined') || (typeof data.wallitemtypes == 'undefined')) NitroLogger.warn('Could not find `roomitemtypes` or `wallitemtypes` in furnidata.');
+ 
++        this._bundleEpoch = ((typeof data.bundleepoch === 'string') && data.bundleepoch.length) ? data.bundleepoch : null;
++
+         if(data.roomitemtypes) this.parseFloorItems(data.roomitemtypes);
+ 
+         if(data.wallitemtypes) this.parseWallItems(data.wallitemtypes);
+@@ -89,12 +93,24 @@ export class FurnitureDataLoader extends EventDispatcher
+ 
+             const furnitureData = new FurnitureData(FurnitureType.FLOOR, furniture.id, furniture.classname, className, furniture.category, furniture.name, furniture.description, furniture.revision, furniture.xdim, furniture.ydim, 0, colors, hasColorIndex, colorIndex, furniture.adurl, furniture.offerid, furniture.buyout, furniture.rentofferid, furniture.rentbuyout, furniture.bc, furniture.customparams, furniture.specialtype, furniture.canstandon, furniture.cansiton, furniture.canlayon, furniture.excludeddynamic, furniture.furniline, furniture.environment, furniture.rare);
+ 
++            furnitureData.bundleVersion = this.bundleVersion(furniture);
++
+             this._floorItems.set(furnitureData.id, furnitureData);
+ 
+             this.updateLocalizations(furnitureData);
+         }
+     }
+ 
++    // PixelRP: a bundle's version is 1 until its content first changes, and
++    // only the versions past 1 are written out; the epoch goes in front of
++    // every one, so a new epoch changes them all (version-assets.py).
++    private bundleVersion(furniture: any): string
++    {
++        if(!this._bundleEpoch) return null;
++
++        return `${ this._bundleEpoch }.${ ((typeof furniture.bundleversion === 'number') && (furniture.bundleversion > 1)) ? furniture.bundleversion : 1 }`;
++    }
++
+     private parseWallItems(data: any): void
+     {
+         if(!data || !data.furnitype) return;
+@@ -105,6 +121,8 @@ export class FurnitureDataLoader extends EventDispatcher
+ 
+             const furnitureData = new FurnitureData(FurnitureType.WALL, furniture.id, furniture.classname, furniture.classname, furniture.category, furniture.name, furniture.description, furniture.revision, 0, 0, 0, null, false, 0, furniture.adurl, furniture.offerid, furniture.buyout, furniture.rentofferid, furniture.rentbuyout, furniture.bc, null, furniture.specialtype, false, false, false, furniture.excludeddynamic, furniture.furniline, furniture.environment, furniture.rare);
+ 
++            furnitureData.bundleVersion = this.bundleVersion(furniture);
++
+             this._wallItems.set(furnitureData.id, furnitureData);
+ 
+             this.updateLocalizations(furnitureData);

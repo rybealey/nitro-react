@@ -1,0 +1,320 @@
+diff --git a/src/nitro/room/object/visualization/room/RoomPlane.ts b/src/nitro/room/object/visualization/room/RoomPlane.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomPlane.ts
++++ b/src/nitro/room/object/visualization/room/RoomPlane.ts
+@@ -1,8 +1,9 @@
+-import { Renderer, RenderTexture, Resource, Texture } from '@pixi/core';
++import { RenderTexture, Resource, Texture } from '@pixi/core';
++import { Container } from '@pixi/display';
+ import { Matrix, Point } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { IRoomGeometry, IRoomPlane, IVector3D, Vector3d } from '../../../../../api';
+-import { PixiApplicationProxy, PlaneTextureCache } from '../../../../../pixi-proxy';
++import { PlaneTextureCache } from '../../../../../pixi-proxy';
+ import { ColorConverter } from '../../../../../room';
+ import { PlaneMaskManager } from './mask';
+ import { PlaneDrawingData } from './PlaneDrawingData';
+@@ -51,7 +52,8 @@ export class RoomPlane implements IRoomPlane
+     private _rectangleMasks: RoomPlaneRectangleMask[];
+     private _maskChanged: boolean;
+     private _maskBitmapData: RenderTexture;
+-    private _maskPixels: Uint8Array;
++    // PixelRP: the picture with its holes cut (combineTextureMask)
++    private _maskedBitmapData: RenderTexture;
+     private _bitmapMasksOld: RoomPlaneBitmapMask[];
+     private _rectangleMasksOld: RoomPlaneRectangleMask[];
+     private _cornerA: Vector3d;
+@@ -260,14 +262,12 @@ export class RoomPlane implements IRoomPlane
+         this._cornerD = null;
+         this._bitmapMasks = null;
+         this._rectangleMasks = null;
+-        this._maskPixels = null;
++        // PixelRP: both this plane's own now (updateMask), so freed with it.
++        this._textureCache.disposeRenderTexture(this._maskBitmapData);
++        this._textureCache.disposeRenderTexture(this._maskedBitmapData);
+ 
+-        if(this._maskBitmapData)
+-        {
+-            this._maskBitmapData.destroy(true);
+-
+-            this._maskBitmapData = null;
+-        }
++        this._maskBitmapData = null;
++        this._maskedBitmapData = null;
+ 
+         this._disposed = true;
+     }
+@@ -324,7 +324,9 @@ export class RoomPlane implements IRoomPlane
+ 
+             if(bitmapData)
+             {
+-                this.updateMask(bitmapData.texture, geometry);
++                const masked = this.updateMask(bitmapData.texture, geometry);
++
++                if(masked) bitmapData = new PlaneBitmapData(masked, bitmapData.timeStamp);
+             }
+         }
+         else
+@@ -777,11 +779,13 @@ export class RoomPlane implements IRoomPlane
+         if(maskChanged) this._maskChanged = false;
+     }
+ 
+-    private updateMask(canvas: RenderTexture, geometry: IRoomGeometry): void
++    // PixelRP: returns the picture with its holes cut, or null when the plane
++    // has no holes and the picture is used as it is.
++    private updateMask(canvas: RenderTexture, geometry: IRoomGeometry): RenderTexture
+     {
+-        if(!canvas || !geometry) return;
++        if(!canvas || !geometry) return null;
+ 
+-        if(!this._useMask || ((!this._bitmapMasks.length && !this._rectangleMasks.length) && !this._maskChanged) || !this._maskManager) return;
++        if(!this._useMask || ((!this._bitmapMasks.length && !this._rectangleMasks.length) && !this._maskChanged) || !this._maskManager) return null;
+ 
+         const width = canvas.width;
+         const height = canvas.height;
+@@ -790,7 +794,13 @@ export class RoomPlane implements IRoomPlane
+ 
+         if(!this._maskBitmapData || (this._maskBitmapData.width !== width) || (this._maskBitmapData.height !== height))
+         {
+-            this._maskBitmapData = this._textureCache.createAndFillRenderTexture(width, height, 'mask');
++            // PixelRP: this plane's own mask. It was pooled by size, shared by
++            // every plane that size - which worked while each plane read its
++            // mask straight back out into memory, and would not now that the
++            // mask stays on the graphics card to be used again.
++            this._textureCache.disposeRenderTexture(this._maskBitmapData);
++
++            this._maskBitmapData = this._textureCache.createAndFillRenderTexture(width, height);
+             this._maskChanged = true;
+         }
+ 
+@@ -856,37 +866,40 @@ export class RoomPlane implements IRoomPlane
+                 i++;
+             }
+ 
+-            this._maskPixels = this._textureCache.getPixels(this._maskBitmapData);
+-
+             this._maskChanged = false;
+         }
+ 
+-        this.combineTextureMask(canvas, this._maskPixels);
++        return this.combineTextureMask(canvas);
+     }
+ 
+-    private combineTextureMask(canvas: RenderTexture, maskPixels: Uint8Array): void
++    /**
++     * PixelRP: cuts the plane's holes - a window, the door - on the graphics
++     * card. The mask is white where the wall stays and black where a hole is,
++     * and the picture is drawn through it as a sprite mask, which keeps each
++     * pixel in proportion to the mask's red. It was read back out of the
++     * graphics card (stalling it), every pixel tested in a loop and the whole
++     * picture uploaded again - on every redraw of a plane with a hole, which
++     * for the landscape behind a window is every half second.
++     */
++    private combineTextureMask(canvas: RenderTexture): RenderTexture
+     {
+-        if(!canvas || !maskPixels) return;
+-
+-        const canvasPixels = this._textureCache.getPixels(canvas);
+-
+-        for(let i = 0; i < canvasPixels.length; i += 4)
++        if(!this._maskedBitmapData || (this._maskedBitmapData.width !== canvas.width) || (this._maskedBitmapData.height !== canvas.height))
+         {
+-            const maskRed = maskPixels[i];
+-            const maskGreen = maskPixels[i + 1];
+-            const maskBlue = maskPixels[i + 2];
+-            const maskAlpha = maskPixels[i + 3];
++            this._textureCache.disposeRenderTexture(this._maskedBitmapData);
+ 
+-            if(!maskRed && !maskGreen && !maskBlue) canvasPixels[i + 3] = 0;
++            this._maskedBitmapData = this._textureCache.createRenderTexture(canvas.width, canvas.height);
+         }
+ 
+-        const canvaGLTexture = canvas.baseTexture._glTextures['1']?.texture;
+-        const gl = (PixiApplicationProxy.instance.renderer as Renderer)?.gl;
++        const picture = new Sprite(canvas);
++        const mask = new Sprite(this._maskBitmapData);
++        const container = new Container();
++
++        container.addChild(mask, picture);
++
++        picture.mask = mask;
+ 
+-        if(!canvaGLTexture || !gl) return;
++        this._textureCache.writeToRenderTexture(container, this._maskedBitmapData, true);
+ 
+-        gl.bindTexture(gl.TEXTURE_2D, canvaGLTexture);
+-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvasPixels);
+-        gl.bindTexture(gl.TEXTURE_2D, null);
++        return this._maskedBitmapData;
+     }
+ }
+diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
++++ b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+@@ -391,13 +391,12 @@ export class RoomVisualization extends RoomObjectSpriteVisualization implements
+     {
+         if(this._planes)
+         {
+-            while(this._planes.length)
++            // PixelRP: every plane, not the first one over and over - the rest
++            // were never disposed, and each plane with a hole now holds two
++            // textures of its own (RoomPlane.updateMask) until it is.
++            for(const plane of this._planes)
+             {
+-                const plane = this._planes[0];
+-
+                 if(plane) plane.dispose();
+-
+-                this._planes.pop();
+             }
+ 
+             this._planes = [];
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/animated/LandscapeRasterizer.ts b/src/nitro/room/object/visualization/room/rasterizer/animated/LandscapeRasterizer.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/animated/LandscapeRasterizer.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/animated/LandscapeRasterizer.ts
+@@ -198,7 +198,7 @@ export class LandscapeRasterizer extends PlaneRasterizer
+ 
+         if(graphic && (graphic !== canvas))
+         {
+-            graphic = new RenderTexture(graphic.baseTexture);
++            graphic = PlaneBitmapData.wrap(graphic);
+ 
+             if(!graphic) return null;
+         }
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/animated/PlaneVisualizationAnimationLayer.ts b/src/nitro/room/object/visualization/room/rasterizer/animated/PlaneVisualizationAnimationLayer.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/animated/PlaneVisualizationAnimationLayer.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/animated/PlaneVisualizationAnimationLayer.ts
+@@ -1,4 +1,5 @@
+ ﻿import { RenderTexture } from '@pixi/core';
++import { Container } from '@pixi/display';
+ import { Sprite } from '@pixi/sprite';
+ import { IDisposable, IGraphicAssetCollection, IVector3D } from '../../../../../../../api';
+ import { PlaneTextureCache } from '../../../../../../../pixi-proxy';
+@@ -59,6 +60,11 @@ export class PlaneVisualizationAnimationLayer implements IDisposable
+     {
+         if(((maxX > 0) && (maxY > 0)))
+         {
++            // PixelRP: every cloud is drawn in one pass at the end, not one
++            // pass each - up to four a cloud (it wraps round the edges), so a
++            // sky of fifteen made sixty, every half second.
++            const clouds = new Container();
++
+             let index = 0;
+ 
+             while(index < this._items.length)
+@@ -80,7 +86,7 @@ export class PlaneVisualizationAnimationLayer implements IDisposable
+ 
+                             sprite.position.set(point.x, point.y);
+ 
+-                            textureCache.writeToRenderTexture(sprite, canvas, false);
++                            clouds.addChild(sprite);
+                         }
+ 
+                         if(((point.x - maxX) > -(item.bitmapData.width)) && ((point.x - maxX) < canvas.width) && (point.y > -(item.bitmapData.height)) && (point.y < canvas.height))
+@@ -89,7 +95,7 @@ export class PlaneVisualizationAnimationLayer implements IDisposable
+ 
+                             sprite.position.set((point.x - maxX), point.y);
+ 
+-                            textureCache.writeToRenderTexture(sprite, canvas, false);
++                            clouds.addChild(sprite);
+                         }
+ 
+                         if((point.x > -(item.bitmapData.width)) && (point.x < canvas.width) && ((point.y - maxY) > -(item.bitmapData.height)) && ((point.y - maxY) < canvas.height))
+@@ -98,7 +104,7 @@ export class PlaneVisualizationAnimationLayer implements IDisposable
+ 
+                             sprite.position.set(point.x, (point.y - maxY));
+ 
+-                            textureCache.writeToRenderTexture(sprite, canvas, false);
++                            clouds.addChild(sprite);
+                         }
+ 
+                         if(((point.x - maxX) > -(item.bitmapData.width)) && ((point.x - maxX) < canvas.width) && ((point.y - maxY) > -(item.bitmapData.height)) && ((point.y - maxY) < canvas.height))
+@@ -107,13 +113,15 @@ export class PlaneVisualizationAnimationLayer implements IDisposable
+ 
+                             sprite.position.set((point.x - maxX), (point.y - maxY));
+ 
+-                            textureCache.writeToRenderTexture(sprite, canvas, false);
++                            clouds.addChild(sprite);
+                         }
+                     }
+                 }
+ 
+                 index++;
+             }
++
++            if(clouds.children.length) textureCache.writeToRenderTexture(clouds, canvas, false);
+         }
+ 
+         return canvas;
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/basic/FloorRasterizer.ts b/src/nitro/room/object/visualization/room/rasterizer/basic/FloorRasterizer.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/basic/FloorRasterizer.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/basic/FloorRasterizer.ts
+@@ -50,7 +50,7 @@ export class FloorRasterizer extends PlaneRasterizer
+ 
+         if(graphic && (graphic !== canvas))
+         {
+-            graphic = new RenderTexture(graphic.baseTexture);
++            graphic = PlaneBitmapData.wrap(graphic);
+ 
+             if(!graphic) return null;
+         }
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/basic/WallRasterizer.ts b/src/nitro/room/object/visualization/room/rasterizer/basic/WallRasterizer.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/basic/WallRasterizer.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/basic/WallRasterizer.ts
+@@ -50,7 +50,7 @@ export class WallRasterizer extends PlaneRasterizer
+ 
+         if(graphic && (graphic !== canvas))
+         {
+-            graphic = new RenderTexture(graphic.baseTexture);
++            graphic = PlaneBitmapData.wrap(graphic);
+ 
+             if(!graphic) return null;
+         }
+diff --git a/src/nitro/room/object/visualization/room/utils/PlaneBitmapData.ts b/src/nitro/room/object/visualization/room/utils/PlaneBitmapData.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/utils/PlaneBitmapData.ts
++++ b/src/nitro/room/object/visualization/room/utils/PlaneBitmapData.ts
+@@ -1,4 +1,7 @@
+-﻿import { RenderTexture } from '@pixi/core';
++﻿import { BaseTexture, RenderTexture } from '@pixi/core';
++
++// PixelRP: see PlaneBitmapData.wrap.
++const WRAPPERS: WeakMap<BaseTexture, RenderTexture> = new WeakMap();
+ 
+ export class PlaneBitmapData
+ {
+@@ -16,6 +19,29 @@ export class PlaneBitmapData
+         this._texture = null;
+     }
+ 
++    /**
++     * PixelRP: the rasterizers hand a plane its picture in a texture of its
++     * own over the pooled one, so a plane letting go of it never frees the
++     * pool's. They made a new one on every redraw and never freed it - and
++     * each one stays hooked to the pooled picture's update event, so an
++     * animated landscape, redrawn every half second, gathered thousands an
++     * hour. One per pooled picture is all that is needed.
++     */
++    public static wrap(graphic: RenderTexture): RenderTexture
++    {
++        const base = graphic.baseTexture;
++        let wrapper = WRAPPERS.get(base);
++
++        if(!wrapper || (wrapper.baseTexture !== base))
++        {
++            wrapper = new RenderTexture(graphic.baseTexture);
++
++            WRAPPERS.set(base, wrapper);
++        }
++
++        return wrapper;
++    }
++
+     public get texture(): RenderTexture
+     {
+         return this._texture;

@@ -1,0 +1,21 @@
+diff --git a/src/nitro/room/object/visualization/room/mask/PlaneMaskManager.ts b/src/nitro/room/object/visualization/room/mask/PlaneMaskManager.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/mask/PlaneMaskManager.ts
++++ b/src/nitro/room/object/visualization/room/mask/PlaneMaskManager.ts
+@@ -73,7 +73,15 @@ export class PlaneMaskManager
+                     const id = mask.id;
+                     const existing = this._masks.get(id);
+ 
+-                    if(existing) continue;
++                    // PixelRP: on to the next mask - a bare continue skipped the
++                    // index++ below and spun on this one for ever, freezing the
++                    // game on any mask id room.nitro listed twice.
++                    if(existing)
++                    {
++                        index++;
++
++                        continue;
++                    }
+ 
+                     const newMask = new PlaneMask();
+ 

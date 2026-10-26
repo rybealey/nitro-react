@@ -1,0 +1,27 @@
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts
+@@ -21,6 +21,9 @@ export class PlaneMaterialCellColumn
+     private _cachedBitmapDataOffsetY: number;
+     private _isCached: boolean;
+     private _isStatic: boolean;
++    // PixelRP: this column's own picture in the plane's texture pool (render)
++    private static _columnIdCounter: number = 0;
++    private _columnId: number = ++PlaneMaterialCellColumn._columnIdCounter;
+ 
+     constructor(width: number, cells: PlaneMaterialCell[], repeatMode: number = 1)
+     {
+@@ -143,7 +146,11 @@ export class PlaneMaterialCellColumn
+ 
+         if(!this._cachedBitmapData)
+         {
+-            this._cachedBitmapData = textureCache.createRenderTexture(this._width, height, `${ planeId }:column`);
++            // PixelRP: a pool key of its own. Pooled by plane and size alone,
++            // two columns of one material the same size (a landscape's random
++            // pair of 194s) drew into one texture, the second over the first,
++            // before either was laid down - so both showed the second.
++            this._cachedBitmapData = textureCache.createRenderTexture(this._width, height, `${ planeId }:column:${ this._columnId }`);
+         }
+ 
+         this._cachedBitmapNormal.assign(normal);
