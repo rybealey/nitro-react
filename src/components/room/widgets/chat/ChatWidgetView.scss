@@ -52,6 +52,12 @@
     image-rendering: pixelated;
 }
 
+// pixelrp: busy chat - several lines at once - jumps instead of gliding
+// (ChatWidgetView, BUSY_LINES)
+.nitro-chat-widget.is-busy .bubble-container {
+    transition: none;
+}
+
 .bubble-container {
     position: absolute;
     width: fit-content;
