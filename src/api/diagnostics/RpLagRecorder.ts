@@ -1,5 +1,6 @@
-import { AvatarImage, GetTicker, IMessageComposer, SocketConnection } from '@nitrots/nitro-renderer';
+import { AvatarImage, ExtendedSprite, GetTicker, IMessageComposer, MouseEventType, RoomSpriteCanvas, SocketConnection, TextureUtils } from '@nitrots/nitro-renderer';
 import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
+import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 
 // PixelRP: the lag recorder (Twist, 2026-10-26 - "when i stand still for a few
 // minutes, then click again, theres a burst of lag"). Staff only. A frame that
@@ -17,6 +18,12 @@ import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 //   gc      texture clean-ups run / textures they let go
 //   av      avatar pictures drawn for the room: calls / ms; crop = UI pictures
 //   pk      server messages handled: count / ms, and the slowest by header
+//   hit, map, rb, pic - what a click spent its time on, each only when it
+//           happened (Twist, 2026-10-26): hit = the room's tests of what is
+//           under a click (not a mouse move), map = click shapes made on the
+//           spot, rb = pictures read back from the graphics card while it
+//           waits (a map can include one), pic = the info box's furni picture;
+//           each count / ms
 //   lt      long tasks the browser saw in the frame: count / longest ms - the
 //           game's and the website page's around it, which share one thread
 //   ev      the slowest click or key in the frame, as name:wait/run/show - ms
@@ -98,6 +105,14 @@ let packets = 0;
 let packetMs = 0;
 let slowestHeader = 0;
 let slowestHeaderMs = 0;
+let hitTests = 0;
+let hitMs = 0;
+let mapsMade = 0;
+let mapMs = 0;
+let readbacks = 0;
+let readbackMs = 0;
+let furniPictures = 0;
+let furniPictureMs = 0;
 
 let lastFrameAt = 0;
 let lastInputAt = 0;
@@ -120,6 +135,7 @@ const resetFrame = () =>
     tickMs = 0; drawMs = 0;
     avatarCalls = 0; avatarMs = 0; cropCalls = 0; cropMs = 0;
     packets = 0; packetMs = 0; slowestHeader = 0; slowestHeaderMs = 0;
+    hitTests = 0; hitMs = 0; mapsMade = 0; mapMs = 0; readbacks = 0; readbackMs = 0; furniPictures = 0; furniPictureMs = 0;
 };
 
 const keepReport = (list: any[], entry: any) =>
@@ -308,6 +324,11 @@ const record = (frameMs: number, start: number, end: number) =>
         `pk=${ packets }/${ packetMs.toFixed(1) }${ slowestHeader ? `(${ slowestHeader }:${ slowestHeaderMs.toFixed(1) })` : '' }`
     ];
 
+    if(hitTests) parts.push(`hit=${ hitTests }/${ hitMs.toFixed(1) }`);
+    if(mapsMade) parts.push(`map=${ mapsMade }/${ mapMs.toFixed(1) }`);
+    if(readbacks) parts.push(`rb=${ readbacks }/${ readbackMs.toFixed(1) }`);
+    if(furniPictures) parts.push(`pic=${ furniPictures }/${ furniPictureMs.toFixed(1) }`);
+
     frames.push({ text: parts.join(' '), start, end });
 
     if(frames.length > MAX_PENDING) frames.splice(0, (frames.length - MAX_PENDING));
@@ -481,6 +502,39 @@ const install = (): boolean =>
     {
         cropCalls++;
         cropMs += ms;
+    });
+
+    // what a click spends its time on (hit, map, rb, pic)
+    timeMethod(RoomSpriteCanvas.prototype, 'checkMouseHits', (ms, args) =>
+    {
+        if(args[2] === MouseEventType.MOUSE_MOVE) return;
+
+        hitTests++;
+        hitMs += ms;
+    });
+
+    for(const name of [ 'generateHitMap', 'generateFrameHitMap' ])
+    {
+        timeMethod(ExtendedSprite, name, ms =>
+        {
+            mapsMade++;
+            mapMs += ms;
+        });
+    }
+
+    for(const name of [ 'getPixels', 'generateImage', 'generateImageUrl' ])
+    {
+        timeMethod(TextureUtils, name, ms =>
+        {
+            readbacks++;
+            readbackMs += ms;
+        });
+    }
+
+    timeMethod(AvatarInfoUtilities, 'getFurniImage', ms =>
+    {
+        furniPictures++;
+        furniPictureMs += ms;
     });
 
     // one call per server message, so each is timed on its own
