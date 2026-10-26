@@ -1,4 +1,4 @@
-import { AvatarImage, GetTicker, IMessageComposer } from '@nitrots/nitro-renderer';
+import { AvatarImage, GetTicker, IMessageComposer, SocketConnection } from '@nitrots/nitro-renderer';
 import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 
 // PixelRP: the lag recorder (Twist, 2026-10-26 - "when i stand still for a few
@@ -578,6 +578,32 @@ export const ReportClientCrash = (text: string) =>
     window.setTimeout(send, 4500);
 }
 
+// A server message the client could not read, or whose handler threw. The
+// renderer (patch packet-guard) now handles each message on its own, so the
+// rest of a room entry still lands, and tells us here: written to the log like
+// a crash, "crash: message <header> | <error> | <stack>". Once per kind of
+// failure and a few a session at most - a handler throwing on every movement
+// packet must not turn into a flood the server cuts the connection for.
+const MAX_MESSAGE_FAILURE_REPORTS = 5;
+
+const reportedMessageFailures = new Set<string>();
+
+const onMessageFailure = (header: number, error: unknown) =>
+{
+    const what = ((error instanceof Error) ? `${ error.name }: ${ error.message }` : String(error));
+    const key = `${ header } ${ what }`;
+
+    if(reportedMessageFailures.has(key) || (reportedMessageFailures.size >= MAX_MESSAGE_FAILURE_REPORTS)) return;
+
+    reportedMessageFailures.add(key);
+
+    if(!GetNitroInstance()?.sessionDataManager?.isModerator) return;
+
+    const stack = (((error instanceof Error) && error.stack) ? error.stack.replace(/\s+/g, ' ') : '');
+
+    ReportClientCrash(`message ${ header } | ${ what } | ${ stack }`);
+}
+
 let registered = false;
 
 // Staff only: the rank arrives a moment after login, so it is asked again
@@ -589,6 +615,9 @@ export const RegisterRpLagRecorder = () =>
     registered = true;
 
     GetConnection()?.registerMessages({ events: new Map(), composers: new Map<number, Function>([ [ RP_CLIENT_LAG_REPORT, RpClientLagReportComposer ] ]) });
+
+    // from login, for everyone - only staff send it on (onMessageFailure)
+    SocketConnection.pixelrpOnFailure = onMessageFailure;
 
     let tries = 0;
 

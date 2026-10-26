@@ -1,0 +1,78 @@
+diff --git a/src/core/communication/SocketConnection.ts b/src/core/communication/SocketConnection.ts
+index 1111111..2222222 100644
+--- a/src/core/communication/SocketConnection.ts
++++ b/src/core/communication/SocketConnection.ts
+@@ -19,6 +19,11 @@
+ 
+     private _isAuthenticated: boolean;
+ 
++    // PixelRP: told about a server message that could not be read or whose
++    // handler threw - its header and the error. The client sets it, to report
++    // it to staff (pixelrpReportFailure).
++    public static pixelrpOnFailure: (header: number, error: unknown) => void = null;
++
+     constructor(communicationManager: ICommunicationManager, stateListener: IConnectionStateListener)
+     {
+         super();
+@@ -266,7 +271,7 @@
+ 
+             NitroLogger.packets('IncomingMessage', wrapper.header, messages[0].constructor.name, messages[0].parser);
+ 
+-            this.handleMessages(...messages);
++            this.handleMessages(wrapper.header, ...messages);
+         }
+     }
+ 
+@@ -314,13 +319,15 @@
+         {
+             NitroLogger.error('Error parsing message', e, events[0].constructor.name);
+ 
++            SocketConnection.pixelrpReportFailure(wrapper.header, e);
++
+             return null;
+         }
+ 
+         return events;
+     }
+ 
+-    private handleMessages(...messages: IMessageEvent[]): void
++    private handleMessages(header: number, ...messages: IMessageEvent[]): void
+     {
+         messages = [...messages];
+ 
+@@ -330,7 +337,34 @@
+ 
+             message.connection = this;
+ 
+-            if(message.callBack) message.callBack(message);
++            // PixelRP: a handler that throws loses its own packet, not every
++            // packet after it. A room entry arrives as ONE message, so one
++            // bad handler used to drop the floor, the avatars and the furni
++            // behind it - a black room until a reload, and nothing said.
++            try
++            {
++                if(message.callBack) message.callBack(message);
++            }
++
++            catch (err)
++            {
++                SocketConnection.pixelrpReportFailure(header, err);
++            }
++        }
++    }
++
++    private static pixelrpReportFailure(header: number, error: unknown): void
++    {
++        console.error('[Nitro] Server message failed', header, error);
++
++        try
++        {
++            if(SocketConnection.pixelrpOnFailure) SocketConnection.pixelrpOnFailure(header, error);
++        }
++
++        catch (err)
++        {
++            // reporting a failure must never be the next one
+         }
+     }
+ 
