@@ -95,6 +95,14 @@ export const RpInventoryView: FC<{}> = props =>
     const [ itemUseMode, setItemUseMode ] = useLocalStorage<ItemUseMode>('pixelrp.backpack.item-use-mode', 'single');
     const [ isUseModeOpen, setIsUseModeOpen ] = useState(false);
     const movedRef = useRef(false);
+    // pixelrp: a drag shows its swap the moment it is dropped. The backpack the
+    // server last sent is kept, and put back if no answer comes for the move -
+    // the server answers every move it is sent, refused or not, with the whole
+    // backpack (RpMoveItemEvent), unless the packet limit dropped it.
+    const serverItemsRef = useRef<Map<number, SlotEntry>>(new Map());
+    const moveTimerRef = useRef<number>(0);
+
+    useEffect(() => () => window.clearTimeout(moveTimerRef.current), []);
     // The slot hover bubble follows the mouse. Only its text is state; its
     // position is written straight to the element, so moving the mouse never
     // re-renders the backpack.
@@ -128,6 +136,9 @@ export const RpInventoryView: FC<{}> = props =>
         }
         // still there, but a hit wore it: the numbers follow
         else if(bubbleFor && wears(next.get(bubbleFor.slot))) setBubbleText(slotBubbleText(bubbleFor.slot, next.get(bubbleFor.slot)));
+
+        serverItemsRef.current = next;
+        window.clearTimeout(moveTimerRef.current);
 
         setItems(next);
 
@@ -259,6 +270,32 @@ export const RpInventoryView: FC<{}> = props =>
     const binUnderPointer = (clientX: number, clientY: number): boolean => !!document.elementFromPoint(clientX, clientY)?.closest('[data-rp-bin]');
 
     // Window-level drag: pointerdown arms listeners on window, so the drop
+    // The server's move is a plain swap of the two slots (RpInventoryStore.Move),
+    // wear and all, so it is shown as one now; the backpack it sends back is
+    // what stays.
+    const moveItem = (from: number, to: number) =>
+    {
+        SendMessageComposer(new RpMoveItemComposer(from, to));
+
+        setItems(prevValue =>
+        {
+            const next = new Map(prevValue);
+            const moving = prevValue.get(from);
+            const displaced = prevValue.get(to);
+
+            if(moving) next.set(to, moving);
+            else next.delete(to);
+
+            if(displaced) next.set(from, displaced);
+            else next.delete(from);
+
+            return next;
+        });
+
+        window.clearTimeout(moveTimerRef.current);
+        moveTimerRef.current = window.setTimeout(() => setItems(new Map(serverItemsRef.current)), 3000);
+    }
+
     // always lands and state always resets no matter where the pointer ends
     // up (the old per-element pointer-capture version could strand the
     // highlight and drop nothing). The drop slot is computed from the
@@ -328,7 +365,7 @@ export const RpInventoryView: FC<{}> = props =>
 
                 // Dropped on the bin: ask first, and how many.
                 if(binUnderPointer(upEvent.clientX, upEvent.clientY)) setDiscardSlot(slot);
-                else if((over >= 0) && isDropTarget(over)) SendMessageComposer(new RpMoveItemComposer(slot, over));
+                else if((over >= 0) && isDropTarget(over)) moveItem(slot, over);
             }
 
             setDragFrom(-1);

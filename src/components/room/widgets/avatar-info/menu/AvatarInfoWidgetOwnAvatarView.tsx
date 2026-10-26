@@ -2,6 +2,7 @@ import { AvatarAction, AvatarExpressionEnum, RoomControllerLevel, RoomObjectCate
 import { Dispatch, FC, SetStateAction, useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { AvatarInfoUser, DispatchUiEvent, GetCanStandUp, GetCanUseExpression, GetOwnPosture, GetSessionDataManager, GetUserProfile, HasHabboClub, HasHabboVip, IsRidingHorse, LocalizeText, PostureTypeEnum, SendMessageComposer } from '../../../../../api';
+import { DanceNow } from '../../../../../api/rp-room/DanceNow';
 import { Flex, LayoutCurrencyIcon } from '../../../../../common';
 import { HelpNameChangeEvent } from '../../../../../events';
 import { useRoom } from '../../../../../hooks';
@@ -69,16 +70,16 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
                     setMode(MODE_CLUB_DANCES);
                     break;
                 case 'dance':
-                    roomSession.sendDanceMessage(1);
+                    DanceNow(roomSession, 1);
                     break;
                 case 'dance_stop':
-                    roomSession.sendDanceMessage(0);
+                    DanceNow(roomSession, 0);
                     break;
                 case 'dance_1':
                 case 'dance_2':
                 case 'dance_3':
                 case 'dance_4':
-                    roomSession.sendDanceMessage(parseInt(name.charAt((name.length - 1))));
+                    DanceNow(roomSession, parseInt(name.charAt((name.length - 1))));
                     break;
                 case 'back':
                     hideMenu = false;

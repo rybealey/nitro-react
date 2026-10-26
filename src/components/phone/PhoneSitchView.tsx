@@ -1,4 +1,4 @@
-import { cloneElement, FC, useEffect, useState } from 'react';
+import { cloneElement, FC, useEffect, useRef, useState } from 'react';
 import { GetSessionDataManager } from '../../api';
 import { RpSitchActivityEvent, RpSitchFeedEvent, RpSitchProfileEvent, RpSitchSearchEvent, RpSitchThreadEvent, RpSitchTrendingEvent, SendSitchActivity, SendSitchBio, SendSitchDelete, SendSitchFeed, SendSitchFollow, SendSitchLike, SendSitchPost, SendSitchProfile, SendSitchProfileByName, SendSitchRepost, SendSitchSearch, SendSitchSong, SendSitchSuppressTag, SendSitchThread, SendSitchTrending, SITCH_MAX_BODY, SitchActivity, SitchPerson, SitchPost, SitchProfile, SitchSongArt, SitchSongUrl, SitchTalkedAbout, SitchTrend } from '../../api/rp-phone/RpSitchMessages';
 import { SubscribeSitchProfile, TakeSitchProfile } from '../../api/rp-phone/SitchOpenProfile';
@@ -15,9 +15,11 @@ import { usePhoneNotifications } from './usePhoneNotifications';
 // Navigation is LOCAL, the way News does it - Sitch is one app with several
 // screens, not several entries in PhoneView's screen union.
 //
-// Nothing here is optimistic. Every action sends and then renders whatever the
-// server sends back, so a like that the server refused never appears to have
-// worked. That costs a round trip and buys a screen that is never lying.
+// Nothing here is optimistic but the like. Every other action sends and then
+// renders whatever the server sends back. A like shows at once - a heart that
+// waited a round trip to light felt broken far from the server - and the
+// server's answer then puts the real count and state on it, other people's
+// likes included. A like that never gets an answer is taken back.
 
 interface PhoneSitchViewProps
 {
@@ -201,11 +203,62 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         setLoaded(true);
     });
 
+    // Likes sent and not yet answered, per post: the state last asked for, and
+    // the post as it was before the first of them. The like's own answer is
+    // the copy of the post that shows that state; an answer to anything sent
+    // before the like (a repost, a refresh) still shows the old one, and
+    // leaves the heart alone. With no such answer in a few seconds - the
+    // packet limit dropped the like, or the post was deleted - the heart
+    // goes back to how it was.
+    const likesInFlight = useRef(new Map<number, { wanted: boolean, before: { liked: boolean, likes: number }, timer: number }>());
+
+    // The thread on screen, and the only post whose answer may replace it. A
+    // like or repost on a reply answers with that reply's thread, and took
+    // the view there.
+    const openThreadId = useRef(0);
+
+    // A post can be on screen in several lists at once - the feed, a profile,
+    // search results, an open thread - so it is put right in all of them.
+    const patchPost = (postId: number, change: (post: SitchPost) => SitchPost) =>
+    {
+        const patch = (list: SitchPost[]) => ((list && list.some(post => (post.id === postId))) ? list.map(post => ((post.id === postId) ? change(post) : post)) : list);
+
+        setPosts(patch);
+        setProfilePosts(patch);
+        setFound(patch);
+        setThread(patch);
+    }
+
+    useEffect(() =>
+    {
+        const inFlight = likesInFlight.current;
+
+        return () => inFlight.forEach(like => window.clearTimeout(like.timer));
+    }, []);
+
     useMessageEvent<RpSitchThreadEvent>(RpSitchThreadEvent, event =>
     {
-        // Only follow a thread answer while a thread is open - a like sent
-        // from the feed answers with one too, and it must not hijack the view.
-        setThread(current => (current ? event.getParser().posts : current));
+        const parser = event.getParser();
+        const fresh = parser.posts.find(post => (post.id === parser.postId));
+        const like = likesInFlight.current.get(parser.postId);
+
+        if(like && fresh && (fresh.liked === like.wanted))
+        {
+            window.clearTimeout(like.timer);
+            likesInFlight.current.delete(parser.postId);
+        }
+
+        // The post's numbers, wherever it is shown - its heart left as it is
+        // while a like on it still waits. Only the numbers: a profile's copy
+        // carries who reposted it there, which a thread's does not.
+        if(fresh)
+        {
+            const waiting = likesInFlight.current.has(parser.postId);
+
+            patchPost(parser.postId, post => ({ ...post, replies: fresh.replies, reposts: fresh.reposts, reposted: fresh.reposted, likes: (waiting ? post.likes : fresh.likes), liked: (waiting ? post.liked : fresh.liked) }));
+        }
+
+        setThread(current => ((current && (parser.postId === openThreadId.current)) ? parser.posts : current));
     });
 
     useMessageEvent<RpSitchProfileEvent>(RpSitchProfileEvent, event =>
@@ -235,6 +288,7 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
 
     const openThread = (postId: number) =>
     {
+        openThreadId.current = postId;
         setThread([]);
         SendSitchThread(postId);
     }
@@ -318,6 +372,10 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
         if(!body.length && !draftPhoto && !song.length) return;
 
         SendSitchPost(body, replyTo, draftPhoto, song);
+
+        // A reply answers with the thread it went into, and the view follows
+        // it there, as it always has.
+        if(thread && replyTo) openThreadId.current = replyTo;
         setSheet(null);
         setDraft('');
         setDraftPhoto(0);
@@ -332,9 +390,24 @@ export const PhoneSitchView: FC<PhoneSitchViewProps> = props =>
 
     const like = (post: SitchPost) =>
     {
-        SendSitchLike(post.id, !post.liked);
-        // The like answers with a thread; ask for the view we are actually on.
-        if(!thread) window.setTimeout(refresh, 60);
+        const on = !post.liked;
+        const inFlight = likesInFlight.current;
+        const waiting = inFlight.get(post.id);
+
+        SendSitchLike(post.id, on);
+
+        if(waiting) window.clearTimeout(waiting.timer);
+
+        const before = waiting?.before ?? { liked: post.liked, likes: post.likes };
+
+        inFlight.set(post.id, { wanted: on, before, timer: window.setTimeout(() =>
+        {
+            inFlight.delete(post.id);
+            patchPost(post.id, current => ({ ...current, liked: before.liked, likes: before.likes }));
+        }, 5000) });
+
+        // Shown now; the answer (above) sets the real numbers.
+        patchPost(post.id, current => ({ ...current, liked: on, likes: Math.max(0, (current.likes + (on ? 1 : -1))) }));
     }
 
     const repost = (post: SitchPost) =>
