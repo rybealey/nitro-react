@@ -558,6 +558,30 @@ const install = (): boolean =>
     return true;
 }
 
+// A crash a window caught (common/ErrorBoundary), written to the emulator's
+// log on the lag report's line, so it reads "[lag] <name> ... crash: ...". The
+// server keeps one report per staff member every 1.5 s and a crash usually
+// brings a slow frame's report with it, so this goes after that gap and once
+// more in case a lag report still took the slot. Staff clients only, as the
+// server logs nobody else.
+export const ReportClientCrash = (text: string) =>
+{
+    const message = `crash: ${ text }`.slice(0, MAX_MESSAGE_CHARS);
+
+    const send = () =>
+    {
+        try
+        {
+            SendMessageComposer(new RpClientLagReportComposer(message));
+        }
+        catch(e)
+        {}
+    };
+
+    window.setTimeout(send, 1600);
+    window.setTimeout(send, 4500);
+}
+
 let registered = false;
 
 // Staff only: the rank arrives a moment after login, so it is asked again

@@ -5,6 +5,7 @@ import { CityCapability, RpCityPanelEvent, RpCityPanelOpenComposer } from '../..
 import { CanOpenCityPanel } from '../../api/rp-rights/RpRanks';
 import { DraggableWindowPosition, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
+import { CityPanelBoundary } from './CityPanelBoundary';
 import { CityPlayersView } from './views/CityPlayersView';
 import { CityUniformsView } from './views/CityUniformsView';
 import { CityEconomyView } from './views/CityEconomyView';
@@ -95,10 +96,12 @@ export const CityPanelView: FC<{}> = props =>
                     </NitroCardTabsItemView>) }
             </NitroCardTabsView>
             <NitroCardContentView className="mt-page" overflow="hidden">
-                { (tab === 'City') && <CityWorldView context={ context } /> }
-                { (tab === 'Players') && <CityPlayersView context={ context } openPlayerId={ openPlayerId } onOpened={ () => setOpenPlayerId(0) } /> }
-                { (tab === 'Uniforms') && <CityUniformsView /> }
-                { (tab === 'Economy') && <CityEconomyView context={ context } /> }
+                <CityPanelBoundary where={ tab }>
+                    { (tab === 'City') && <CityWorldView context={ context } /> }
+                    { (tab === 'Players') && <CityPlayersView context={ context } openPlayerId={ openPlayerId } onOpened={ () => setOpenPlayerId(0) } /> }
+                    { (tab === 'Uniforms') && <CityUniformsView /> }
+                    { (tab === 'Economy') && <CityEconomyView context={ context } /> }
+                </CityPanelBoundary>
             </NitroCardContentView>
         </NitroCardView>
     );

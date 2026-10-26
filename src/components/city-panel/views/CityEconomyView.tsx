@@ -1,5 +1,6 @@
 import { FC, useState } from 'react';
 import { CityCapability } from '../../../api/rp-city/RpCityMessages';
+import { CityPanelBoundary } from '../CityPanelBoundary';
 import { CityPanelContext } from '../CityPanelView';
 import { CityBinSearchView } from './CityBinSearchView';
 import { CityCorporationsView } from './CityCorporationsView';
@@ -52,10 +53,12 @@ export const CityEconomyView: FC<{ context: CityPanelContext }> = props =>
                     </button>) }
             </div>
             <div className="city-economy-body">
-                { (current === 'ledger') && <CityLedgerView /> }
-                { (current === 'trades') && <CityTradesView /> }
-                { (current === 'corporations') && <CityCorporationsView context={ context } /> }
-                { (current === 'bins') && <CityBinSearchView context={ context } /> }
+                <CityPanelBoundary where={ VIEWS.find(entry => (entry.key === current))?.label ?? current }>
+                    { (current === 'ledger') && <CityLedgerView /> }
+                    { (current === 'trades') && <CityTradesView /> }
+                    { (current === 'corporations') && <CityCorporationsView context={ context } /> }
+                    { (current === 'bins') && <CityBinSearchView context={ context } /> }
+                </CityPanelBoundary>
             </div>
         </div>
     );

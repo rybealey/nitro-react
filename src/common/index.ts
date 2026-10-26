@@ -7,6 +7,7 @@ export * from './card/tabs';
 export * from './classNames';
 export * from './Column';
 export * from './draggable-window';
+export * from './ErrorBoundary';
 export * from './Flex';
 export * from './FormGroup';
 export * from './Grid';
