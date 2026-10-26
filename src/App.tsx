@@ -9,6 +9,7 @@ import { InstallJitterTrace } from './api/diagnostics/JitterTrace';
 import { InstallFinalStepStance } from './api/nitro/room/FinalStepStance';
 import { InstallTurnTrace } from './api/diagnostics/TurnTrace';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
+import { ApplyHudBlur } from './api/prefs/HudBlurStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
 import { RegisterRpFurniMessages } from './api/rp-furni/RpFurniMessages';
@@ -325,6 +326,7 @@ export const App: FC<{}> = props =>
                 RegisterRpDepositBoxMessages();
                 RegisterRpMarketMessages();
                 RegisterRpLagRecorder();
+                ApplyHudBlur();
                 RegisterRpEmergencyCallsMessages();
                 RegisterRpMedicalCallsMessages();
                 RegisterRpBrowserGuardMessages();
