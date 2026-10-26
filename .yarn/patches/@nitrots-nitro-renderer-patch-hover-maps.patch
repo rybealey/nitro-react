@@ -1,0 +1,257 @@
+diff --git a/src/api/nitro/avatar/IAvatarImage.ts b/src/api/nitro/avatar/IAvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/avatar/IAvatarImage.ts
++++ b/src/api/nitro/avatar/IAvatarImage.ts
+@@ -18,6 +18,7 @@ export interface IAvatarImage extends IDisposable
+     getImage(setType: string, hightlight: boolean, scale?: number, cache?: boolean): RenderTexture;
+     getImageAsSprite(setType: string, scale?: number): Sprite;
+     getCroppedImage(setType: string, scale?: number): HTMLImageElement;
++    getCroppedTexture(setType: string, scale?: number): RenderTexture;
+     getAsset(_arg_1: string): IGraphicAsset;
+     getDirection(): number;
+     getFigure(): IAvatarFigureContainer;
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -772,6 +772,33 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+     }
+ 
+     public getCroppedImage(setType: string, scale: number = 1): HTMLImageElement
++    {
++        const texture = this.getCroppedTexture(setType, scale);
++
++        if(!texture) return null;
++
++        const image = TextureUtils.generateImage(texture);
++
++        // PixelRP: generateImage() copies the pixels into a self-contained
++        // HTMLImageElement, so the render texture is no longer needed. Destroy it
++        // to avoid leaking one GPU texture per call — important now that the
++        // avatar-editor preview re-crops on every animation frame.
++        texture.destroy(true);
++
++        if(!image) return null;
++
++        return image;
++    }
++
++    /**
++     * PixelRP: the picture getCroppedImage reads back, still on the GPU - the
++     * caller reads it and destroys it. Read straight away, the browser first
++     * waits for everything already queued for the graphics card (about 50 ms
++     * for a chat head on a busy machine, 2026-10-26), so a caller that can
++     * wait a frame reads it without that wait (the client's
++     * ReadTextureImageAsync).
++     */
++    public getCroppedTexture(setType: string, scale: number = 1): RenderTexture
+     {
+         if(!this._mainAction) return null;
+ 
+@@ -830,19 +857,7 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+             partCount--;
+         }
+ 
+-        const texture = TextureUtils.generateTexture(container, new Rectangle(0, 0, avatarCanvas.width, avatarCanvas.height));
+-
+-        const image = TextureUtils.generateImage(texture);
+-
+-        // PixelRP: generateImage() copies the pixels into a self-contained
+-        // HTMLImageElement, so the render texture is no longer needed. Destroy it
+-        // to avoid leaking one GPU texture per call — important now that the
+-        // avatar-editor preview re-crops on every animation frame.
+-        texture.destroy(true);
+-
+-        if(!image) return null;
+-
+-        return image;
++        return TextureUtils.generateTexture(container, new Rectangle(0, 0, avatarCanvas.width, avatarCanvas.height));
+     }
+ 
+     protected getFullImage(k: string): RenderTexture
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -1157,6 +1157,11 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+         let mouseEvent: IRoomSpriteMouseEvent = null;
+         let spriteId = (this._activeSpriteCount - 1);
+ 
++        // PixelRP: a mouse move tests with the click maps there already are,
++        // and leaves a missing one to be made later (ExtendedSprite.hovering).
++        // It is the only test there is, and set again by every call.
++        ExtendedSprite.hovering = (type === MouseEventType.MOUSE_MOVE);
++
+         while(spriteId >= 0)
+         {
+             const extendedSprite = this.getExtendedSprite(spriteId);
+@@ -1227,6 +1232,8 @@ export class RoomSpriteCanvas implements IRoomRenderingCanvas
+             spriteId--;
+         }
+ 
++        ExtendedSprite.hovering = false;
++
+         const keys: string[] = [];
+ 
+         for(const key of this._mouseActiveObjects.keys()) key && keys.push(key);
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -27,6 +27,23 @@ export class ExtendedSprite extends Sprite
+ {
+     private static STALE_HIT_MAP_MS: number = 250;
+ 
++    // PixelRP: a mouse MOVE only uses click maps that already exist (Twist,
++    // 2026-10-26 - the lag recorder caught the room's mousemove taking 40 to
++    // 90 ms). A move tests EVERY sprite under the pointer, not just the top
++    // one, and the first test of each picture builds its map: a furni sheet
++    // unpacked on the spot until SheetMasks has it, or a whole picture read
++    // back from the GPU (the floor and walls after every room load or zoom).
++    // Over a pile of furni in a room that has just loaded, that was several at
++    // once. Now a move counts a picture with no map yet as not under the
++    // pointer, and its map is made at the next quiet moment (buildLater); the
++    // hover catches up a moment later. A click still builds what it needs, so
++    // what a click hits is exactly as before. Set by RoomSpriteCanvas.
++    public static hovering: boolean = false;
++
++    private static LATER_MAX: number = 256;
++    private static _later: Set<Texture | BaseTexture> = new Set();
++    private static _laterScheduled: boolean = false;
++
+     private _offsetX: number;
+     private _offsetY: number;
+     private _tag: string;
+@@ -140,7 +157,18 @@ export class ExtendedSprite extends Sprite
+         //@ts-ignore
+         if(!baseTexture.hitMap || (baseTexture.hitMapStale && ((performance.now() - baseTexture.hitMapAt) >= ExtendedSprite.STALE_HIT_MAP_MS)))
+         {
+-            if(!ExtendedSprite.generateHitMap(baseTexture)) return false;
++            // a move makes do with a stale map, and leaves a missing one for later
++            if(ExtendedSprite.hovering)
++            {
++                //@ts-ignore
++                if(!baseTexture.hitMap)
++                {
++                    ExtendedSprite.buildLater(baseTexture);
++
++                    return false;
++                }
++            }
++            else if(!ExtendedSprite.generateHitMap(baseTexture)) return false;
+         }
+ 
+         //@ts-ignore
+@@ -315,6 +343,13 @@ export class ExtendedSprite extends Sprite
+ 
+         if(!hitMap)
+         {
++            if(ExtendedSprite.hovering)
++            {
++                ExtendedSprite.buildLater(texture);
++
++                return false;
++            }
++
+             hitMap = ExtendedSprite.generateFrameHitMap(texture);
+ 
+             maps.set(key, hitMap);
+@@ -336,6 +371,98 @@ export class ExtendedSprite extends Sprite
+         return (hitMap.bits[ind >>> 5] & (1 << (ind & 31))) !== 0;
+     }
+ 
++    // PixelRP: the maps a mouse move left for later (see hovering), made one at
++    // a time while the browser is idle. Only what is still missing is made:
++    // the sheet's own map (SheetMasks) may have arrived in the meantime, or a
++    // click made it, or the picture is gone.
++    private static buildLater(item: Texture | BaseTexture): void
++    {
++        const later = ExtendedSprite._later;
++
++        if(!later.has(item))
++        {
++            if(later.size >= ExtendedSprite.LATER_MAX) later.delete(later.values().next().value);
++
++            later.add(item);
++        }
++
++        if(ExtendedSprite._laterScheduled) return;
++
++        ExtendedSprite._laterScheduled = true;
++
++        ExtendedSprite.whenIdle(ExtendedSprite.buildWaiting);
++    }
++
++    private static whenIdle(callback: (deadline: { didTimeout: boolean, timeRemaining: () => number }) => void): void
++    {
++        if(typeof requestIdleCallback === 'function') requestIdleCallback(callback, { timeout: 500 });
++        else setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 0 }), 50);
++    }
++
++    private static buildWaiting = (deadline: { didTimeout: boolean, timeRemaining: () => number }): void =>
++    {
++        const later = ExtendedSprite._later;
++
++        let built = 0;
++
++        // one at least, then more while the idle time lasts
++        while(later.size && (!built || (deadline.timeRemaining() > 4)))
++        {
++            const item = later.values().next().value;
++
++            later.delete(item);
++
++            try
++            {
++                if(ExtendedSprite.buildMissing(item)) built++;
++            }
++            catch(error)
++            {
++                // a picture that cannot be read is tested on the next click
++            }
++        }
++
++        ExtendedSprite._laterScheduled = false;
++
++        if(later.size)
++        {
++            ExtendedSprite._laterScheduled = true;
++
++            ExtendedSprite.whenIdle(ExtendedSprite.buildWaiting);
++        }
++    }
++
++    // true when it made one
++    private static buildMissing(item: Texture | BaseTexture): boolean
++    {
++        if(item instanceof BaseTexture)
++        {
++            //@ts-ignore
++            if(item.destroyed || !item.valid || item.hitMap) return false;
++
++            return ExtendedSprite.generateHitMap(item);
++        }
++
++        const baseTexture = item.baseTexture;
++
++        //@ts-ignore
++        if(!baseTexture || baseTexture.destroyed || !baseTexture.valid || SheetMasks.get(baseTexture)) return false;
++
++        //@ts-ignore
++        if(!baseTexture.frameHitMaps) baseTexture.frameHitMaps = new Map();
++
++        //@ts-ignore
++        const maps = (baseTexture.frameHitMaps as Map<string, FrameHitMap>);
++        const frame = item.frame;
++        const key = `${ frame.x },${ frame.y },${ frame.width },${ frame.height }`;
++
++        if(maps.has(key)) return false;
++
++        maps.set(key, ExtendedSprite.generateFrameHitMap(item));
++
++        return true;
++    }
++
+     // PixelRP: a frame's solid pixels come from the picture's own image when
+     // it has one in normal memory - a bundle's sheet keeps its <img> after it
+     // goes to the GPU - read through a small 2D canvas that stays on the CPU.

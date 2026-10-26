@@ -7,6 +7,7 @@ import { IsGangAlert } from '../../../api/rp-chat/GangAlert';
 import { IsCorpAlert } from '../../../api/rp-chat/CorpAlert';
 import { IsStaffAlert } from '../../../api/rp-chat/StaffAlert';
 import { IsNarratedBubble } from '../../../api/rp-chat/NarratedBubble';
+import { ReadTextureImageAsync } from '../../../api/utils/ReadTextureImageAsync';
 import { GetOwnChatPreview, LearnOwnChatBubble, LooksLikeFilteredLine, NormalizeOwnChatLine, OWN_CHAT_PREVIEW_TIMEOUT_MS, TakeUnpreviewedLine } from '../../../api/rp-chat/OwnChatPreview';
 import { useRoom } from '../useRoom';
 import { useChatHistory } from './../../chat-history';
@@ -20,6 +21,11 @@ const petImageCache: Map<string, string> = new Map();
 // capped, the oldest dropped first (a Map keeps insertion order). The colour
 // and head caches are always set together, so they drop the same outfits.
 const FIGURE_CACHE_LIMIT = 300;
+
+// pixelrp: chat heads made ahead (see useChatWidgetState): one every this many
+// ms, and an outfit whose clothes will not load is given up after this many.
+const HEAD_AHEAD_EVERY_MS = 400;
+const HEAD_AHEAD_TRIES = 3;
 
 // pixelrp: the most bubbles kept on screen; past it the oldest - the highest
 // up - goes. A busy room otherwise piled up bubbles for minutes.
@@ -156,6 +162,98 @@ const useChatWidgetState = () =>
 
         return existing;
     }
+
+    // pixelrp: chat heads made ahead (Twist, 2026-10-26). Made in the message,
+    // a head is cropped and read back from the graphics card on the spot, and
+    // the browser first waits for everything queued there - the lag recorder
+    // caught somebody's first line costing about 50 ms. While in a room, the
+    // head of each player here who has none yet is made in the background, one
+    // at a time, and read back without that wait (ReadTextureImageAsync), so a
+    // first line finds it ready. One not ready yet is made in the message, as
+    // before; an outfit whose clothes have not loaded is tried again later.
+    useEffect(() =>
+    {
+        if(!roomSession) return;
+
+        const tries = new Map<string, number>();
+
+        let stopped = false;
+        let busy = false;
+
+        const nextFigure = (): string =>
+        {
+            for(const object of (GetRoomEngine().getRoomObjects(roomSession.roomId, RoomObjectCategory.UNIT) || []))
+            {
+                const userData = roomSession.userDataManager.getUserDataByIndex(object.id);
+
+                if(!userData || (userData.type !== RoomObjectType.USER) || !userData.figure) continue;
+
+                if(avatarImageCache.has(userData.figure) || ((tries.get(userData.figure) ?? 0) >= HEAD_AHEAD_TRIES)) continue;
+
+                return userData.figure;
+            }
+
+            return null;
+        };
+
+        const makeHead = async (figure: string) =>
+        {
+            tries.set(figure, ((tries.get(figure) ?? 0) + 1));
+
+            const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, null, null);
+
+            if(!avatarImage) return;
+
+            if(avatarImage.isPlaceholder())
+            {
+                avatarImage.dispose();
+
+                return;
+            }
+
+            const texture = avatarImage.getCroppedTexture(AvatarSetType.HEAD);
+            const color = avatarImage.getPartColor(AvatarFigurePartType.CHEST);
+
+            avatarImage.dispose();
+
+            if(!texture) return;
+
+            try
+            {
+                const url = await ReadTextureImageAsync(texture);
+
+                // the message got there first, or the room has gone
+                if(!url || stopped || avatarImageCache.has(figure)) return;
+
+                setCapped(avatarColorCache, figure, ((color && color.rgb) || 16777215));
+                setCapped(avatarImageCache, figure, url);
+            }
+            finally
+            {
+                texture.destroy(true);
+            }
+        };
+
+        const timer = window.setInterval(() =>
+        {
+            if(busy || stopped || document.hidden) return;
+
+            const figure = nextFigure();
+
+            if(!figure) return;
+
+            busy = true;
+
+            makeHead(figure).catch(() => null).finally(() => (busy = false));
+        }, HEAD_AHEAD_EVERY_MS);
+
+        return () =>
+        {
+            stopped = true;
+
+            window.clearInterval(timer);
+        };
+    }, [ roomSession ]);
 
     const getPetImage = (figure: string, direction: number, _arg_3: boolean, scale: number = 64, posture: string = null) =>
     {
