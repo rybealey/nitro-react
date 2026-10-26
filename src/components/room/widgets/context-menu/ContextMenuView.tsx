@@ -33,8 +33,9 @@ let COLLAPSED = false;
 export const ContextMenuView: FC<ContextMenuViewProps> = props =>
 {
     const { objectId = -1, category = -1, userType = -1, fades = false, onClose = null, position = 'absolute', classNames = [], style = {}, children = null, collapsable = false, drop = 0, ...rest } = props;
-    const [ pos, setPos ] = useState<{ x: number, y: number }>({ x: null, y: null });
-    const [ opacity, setOpacity ] = useState(1);
+    // pixelrp: whether it has a place yet (visible / invisible). The place itself
+    // is not React state - see placeAt.
+    const [ placed, setPlaced ] = useState(false);
     const [ isFading, setIsFading ] = useState(false);
     const [ isCollapsed, setIsCollapsed ] = useState(COLLAPSED);
     const elementRef = useRef<HTMLDivElement>();
@@ -48,6 +49,58 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
     const fadeTimeRef = useRef<number>(1);
 
     if(!stackRef.current) stackRef.current = new FixedSizeStack(LOCATION_STACK_SIZE);
+
+    // pixelrp (Twist, 2026-10-27 - a Chrome recording in the Courthouse): every
+    // open menu and name tag follows its avatar on every game frame. It moved
+    // by its left and top, which made Chrome lay out and repaint the whole
+    // page each frame, re-rendered the menu through React, and read its size
+    // each frame, which forced a layout whenever anything else had moved. Now
+    // the place goes straight onto the element as a transform, only when it
+    // changes - no layout and no React render - and the size is kept by a
+    // ResizeObserver. Not on a layer of its own (no will-change): Chrome on
+    // Windows would draw the text on a see-through layer without ClearType.
+    const placeRef = useRef<{ x: number, y: number }>({ x: null, y: null });
+    const sizeRef = useRef<{ width: number, height: number }>(null);
+
+    const sizeOf = (element: HTMLDivElement) => (sizeRef.current ?? { width: element.offsetWidth, height: element.offsetHeight });
+
+    useEffect(() =>
+    {
+        const element = elementRef.current;
+
+        if(!element || (typeof ResizeObserver === 'undefined')) return;
+
+        const measure = () =>
+        {
+            sizeRef.current = { width: element.offsetWidth, height: element.offsetHeight };
+        };
+
+        measure();
+
+        const observer = new ResizeObserver(measure);
+
+        observer.observe(element);
+
+        return () =>
+        {
+            observer.disconnect();
+            sizeRef.current = null;
+        };
+    }, []);
+
+    const placeAt = useCallback((x: number, y: number) =>
+    {
+        const element = elementRef.current;
+        const place = placeRef.current;
+
+        if(!element || ((place.x === x) && (place.y === y))) return;
+
+        place.x = x;
+        place.y = y;
+        element.style.transform = `translate(${ x }px, ${ y }px)`;
+
+        if(!placed) setPlaced(true);
+    }, [ placed ]);
 
     const updateFade = useCallback((time: number) =>
     {
@@ -64,14 +117,16 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
             return false;
         }
 
-        setOpacity(newOpacity);
+        if(elementRef.current) elementRef.current.style.opacity = String(newOpacity);
     }, [ isFading, onClose ]);
 
     const updatePosition = useCallback((bounds: NitroRectangle, location: NitroPoint) =>
     {
         if(!bounds || !location) return;
 
-        let offset = -(elementRef.current.offsetHeight);
+        const size = sizeOf(elementRef.current);
+
+        let offset = -(size.height);
 
         if((userType > -1) && ((userType === RoomObjectType.USER) || (userType === RoomObjectType.BOT) || (userType === RoomObjectType.RENTABLE_BOT)))
         {
@@ -94,11 +149,11 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
 
         const deltaY = (location.y - maxStack);
 
-        let x = ~~(location.x - (elementRef.current.offsetWidth / 2));
+        let x = ~~(location.x - (size.width / 2));
         let y = ~~(deltaY + offset);
 
-        const maxLeft = ((GetNitroInstance().width - elementRef.current.offsetWidth) - SPACE_AROUND_EDGES);
-        const maxTop = ((GetNitroInstance().height - elementRef.current.offsetHeight) - SPACE_AROUND_EDGES);
+        const maxLeft = ((GetNitroInstance().width - size.width) - SPACE_AROUND_EDGES);
+        const maxTop = ((GetNitroInstance().height - size.height) - SPACE_AROUND_EDGES);
 
         if(x < SPACE_AROUND_EDGES) x = SPACE_AROUND_EDGES;
         else if(x > maxLeft) x = maxLeft;
@@ -106,37 +161,31 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
         if(y < SPACE_AROUND_EDGES) y = SPACE_AROUND_EDGES;
         else if(y > maxTop) y = maxTop;
 
-        // pixelrp: this runs every frame for every open menu and name tag. A
-        // new object each time re-rendered the menu and dirtied the layout even
-        // when it hadn't moved; now an unchanged position changes nothing.
-        setPos(prev => (((prev.x === x) && (prev.y === y)) ? prev : { x, y }));
-    }, [ userType, drop ]);
+        placeAt(x, y);
+    }, [ userType, drop, placeAt ]);
 
     const getClassNames = useMemo(() =>
     {
         const newClassNames: string[] = [ 'nitro-context-menu' ];
-        
+
         if (isCollapsed) newClassNames.push('menu-hidden');
 
-        newClassNames.push((pos.x !== null) ? 'visible' : 'invisible');
+        newClassNames.push(placed ? 'visible' : 'invisible');
 
         if(classNames.length) newClassNames.push(...classNames);
 
         return newClassNames;
-    }, [ pos, classNames, isCollapsed ]);
+    }, [ placed, classNames, isCollapsed ]);
 
+    // at 0, 0 - the place is the transform placeAt sets
     const getStyle = useMemo(() =>
     {
-        let newStyle: CSSProperties = {};
-
-        newStyle.left = (pos.x || 0);
-        newStyle.top = (pos.y || 0);
-        newStyle.opacity = opacity;
+        let newStyle: CSSProperties = { left: 0, top: 0 };
 
         if(Object.keys(style).length) newStyle = { ...newStyle, ...style };
 
         return newStyle;
-    }, [ pos, opacity, style ]);
+    }, [ style ]);
 
     useEffect(() =>
     {
