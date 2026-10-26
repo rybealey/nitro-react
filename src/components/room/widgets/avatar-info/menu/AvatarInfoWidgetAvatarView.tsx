@@ -1,6 +1,6 @@
-import { RoomControllerLevel, RoomObjectCategory, RoomObjectVariable, RoomUnitGiveHandItemComposer, TradingOpenComposer } from '@nitrots/nitro-renderer';
+import { RoomControllerLevel, RoomObjectCategory, TradingOpenComposer } from '@nitrots/nitro-renderer';
 import { FC, useEffect, useMemo, useState } from 'react';
-import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetOwnRoomObject, GetSessionDataManager, GetUserProfile, LocalizeText, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
+import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetSessionDataManager, GetUserProfile, LocalizeText, ReportType, RoomWidgetUpdateChatInputContentEvent, SendMessageComposer } from '../../../../../api';
 import { RpGangInviteComposer, RpUserGangEvent } from '../../../../../api/rp-gangs/RpGangMessages';
 import { GetJailSentence, IsRoomPrisoner, SubscribeJailSentence } from '../../../../../api/rp-police/RpJailMessages';
 import { GetRpGang, SetRpGang } from '../../../../../api/rp-gangs/RpGangRegistry';
@@ -89,22 +89,6 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
     {
         return (avatarInfo.canBeKicked || avatarInfo.canBeBanned || avatarInfo.canBeMuted || isShowGiveRights || isShowRemoveRights);
     }, [ isShowGiveRights, isShowRemoveRights, avatarInfo ]);
-
-    const canGiveHandItem = useMemo(() =>
-    {
-        let flag = false;
-
-        const roomObject = GetOwnRoomObject();
-
-        if(roomObject)
-        {
-            const carryId = roomObject.model.getValue<number>(RoomObjectVariable.FIGURE_CARRY_OBJECT);
-
-            if((carryId > 0) && (carryId < 999999)) flag = true;
-        }
-
-        return flag;
-    }, []);
 
     const processAction = (name: string) =>
     {
@@ -197,9 +181,6 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                 case 'report':
                     report(ReportType.BULLY, { reportedUserId: avatarInfo.webID });
                     break;
-                case 'pass_hand_item':
-                    SendMessageComposer(new RoomUnitGiveHandItemComposer(avatarInfo.webID));
-                    break;
                 case 'ambassador_alert':
                     roomSession.sendAmbassadorAlertMessage(avatarInfo.webID);
                     break;
@@ -275,9 +256,9 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                             <ContextMenuPixelArrowView direction="right" className="right fa-icon" />
                             { LocalizeText('infostand.link.ambassador') }
                         </ContextMenuListItemView> }
-                    { canGiveHandItem && <ContextMenuListItemView onClick={ event => processAction('pass_hand_item') }>
-                        { LocalizeText('avatar.widget.pass_hand_item') }
-                    </ContextMenuListItemView> }
+                    { /* pixelrp: no Give hand item. Hand items do not pass
+                         between players (Twist, 2026-10-27); the server no
+                         longer handles the packet this used to send. */ }
                 </> }
             { (mode === MODE_MODERATE) &&
                 <>
