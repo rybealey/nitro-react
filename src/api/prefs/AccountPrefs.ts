@@ -31,6 +31,7 @@ const ACCOUNT_KEYS = new Set<string>([
     'pixelrp.prefs.celsius',
     'pixelrp.ping-volume',
     'pixelrp.music.volume',
+    'pixelrp.prefs.phone.hold',
     // Settings > UI
     'pixelrp.prefs.hud',
     'pixelrp.prefs.colours.saved',

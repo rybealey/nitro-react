@@ -20,6 +20,7 @@ import { SetEnvironmentWeather, useEnvironmentPrefs, useWeatherSnapshot } from '
 import { EnvironmentSkyPreview } from '../environment/EnvironmentSky';
 import { SkyConditionLabel } from '../environment/SkyModel';
 import { FormatMinutes, FormatTemp, SetClock24, useUnitsPrefs } from '../../api/prefs/UnitsStore';
+import { SetHoldPhone, useHoldPhonePref } from '../../api/prefs/PhoneHoldStore';
 import { GameMinutes } from '../../api/environment/GameClock';
 import { ApplyMacroState, EmptyMacroDocument, IsBindingAllowed, IsModifierOnlyBinding, IsMouseBinding, MACRO_MAX_COMMAND_LENGTH, MACRO_MAX_NAME_LENGTH, MACRO_MAX_PER_KEY, MACRO_MAX_PER_PRESET, MACRO_MAX_PRESETS, MacroBinding, MacroDocument, NormalizeKeyBinding, NormalizeMouseBinding, ParseExportedPreset, ParseMacroDocument, SerializeMacroDocument, SerializePresetForExport, UniquePresetName } from './MacroState';
 
@@ -146,6 +147,8 @@ export const RpSettingsView: FC<{}> = props =>
     const weatherSnapshot = useWeatherSnapshot();
     // General > Clock, and the weather preview's clock reads it too
     const { clock24: unitsClock24 } = useUnitsPrefs();
+    // General > Phone
+    const { holdPhone } = useHoldPhonePref();
 
     useMessageEvent<RpDiscordStatusEvent>(RpDiscordStatusEvent, event =>
     {
@@ -1518,6 +1521,19 @@ export const RpSettingsView: FC<{}> = props =>
                                                 SetPingVolume(volume);
                                             } } />
                                         <span className="rp-settings-row-value">{ (pingVolume > 0) ? `${ pingVolume }%` : 'Off' }</span>
+                                    </div>
+                                </div>
+                            </section>
+                            { /* pixelrp: whether your avatar holds the phone while it is
+                                 open (PhoneHoldStore). */ }
+                            <section className="rp-settings-group" aria-labelledby="rp-settings-h-phone">
+                                <div id="rp-settings-h-phone" className="rp-settings-group-head">Phone</div>
+                                <div className="rp-settings-panel">
+                                    <div className="rp-settings-row">
+                                        <span className="rp-settings-row-label">Hold phone in hand</span>
+                                        <button type="button" role="switch" aria-checked={ holdPhone } aria-label="Hold phone in hand"
+                                            className={ `rp-settings-env-switch${ holdPhone ? ' is-on' : '' }` }
+                                            onClick={ () => SetHoldPhone(!holdPhone) }><span /></button>
                                     </div>
                                 </div>
                             </section>

@@ -3,6 +3,7 @@ import { toPng } from 'html-to-image';
 import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, GetLocalStorage, PlaySound, RemoveLinkEventTracker, SetLocalStorage, SoundNames, WindowSaveOptions } from '../../api';
 import { SendRpPhoneVisible } from '../../api/rp-phone/RpPhoneStateMessages';
+import { useHoldPhonePref } from '../../api/prefs/PhoneHoldStore';
 import { DraggableWindow, DraggableWindowPosition } from '../../common';
 import { useFriends, useMessenger } from '../../hooks';
 import { PhoneAppStoreView } from './PhoneAppStoreView';
@@ -422,15 +423,20 @@ export const PhoneView: FC<{}> = props =>
     // Driven off isVisible rather than from show()/hide() so that every way
     // the phone can close - the toolbar toggle, the home bar, this component
     // unmounting on disconnect - puts the hand down too.
+    // Settings > General > "Hold phone in hand" off: the server is only ever
+    // told the phone is closed, so the hand keeps whatever it had.
+    const { holdPhone } = useHoldPhonePref();
+    const inHand = (isVisible && holdPhone);
+
     useEffect(() =>
     {
-        SendRpPhoneVisible(isVisible);
+        SendRpPhoneVisible(inHand);
 
         return () =>
         {
-            if(isVisible) SendRpPhoneVisible(false);
+            if(inHand) SendRpPhoneVisible(false);
         };
-    }, [ isVisible ]);
+    }, [ inHand ]);
 
     useEffect(() =>
     {
