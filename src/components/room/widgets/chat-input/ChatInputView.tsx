@@ -219,8 +219,8 @@ export const ChatInputView: FC<{}> = props =>
 
         // Several: each is prepared exactly as typed chat is (client-side
         // commands run here), and whatever is left goes to the server as ONE
-        // press, which it counts against flood control once rather than once a
-        // line - so a key with three commands cannot mute its owner.
+        // press. Flood control counts none of its commands (no command counts,
+        // only what is said), so a key with three commands cannot mute its owner.
         const outgoing: string[] = [];
 
         for(const line of lines)

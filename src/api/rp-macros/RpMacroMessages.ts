@@ -6,9 +6,10 @@ import { GetConnection, SendMessageComposer } from '../nitro';
 const RP_FIRE_MACRO = 4054; // client -> server: one key press, several lines
 
 // One macro key press that runs several lines, in order (the emulator's
-// RpFireMacroEvent). The server counts the press against flood control ONCE for
-// its commands, so a key bound to three commands cannot mute its owner for
-// pressing it twice. Shape: the chat style, the line count, then each line.
+// RpFireMacroEvent). The server counts none of its commands against flood
+// control - no command counts, only what is said - so a key bound to three
+// commands cannot mute its owner. Shape: the chat style, the line count, then
+// each line.
 class RpFireMacroComposer implements IMessageComposer<(string | number)[]>
 {
     private _data: (string | number)[];
