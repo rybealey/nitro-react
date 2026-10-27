@@ -31,7 +31,7 @@ export interface MarketOwnListing extends MarketListing
 {
     listed: number;
     sold: number;
-    /** unix seconds; 0 while it is up. */
+    /** unix seconds; 0 while it is up - for sale, or expired and waiting to be taken back. */
     endedAt: number;
 }
 
@@ -46,6 +46,7 @@ export class RpMarketParser implements IMessageParser
     private _notice = '';
     private _unsellable: string[] = [];
     private _now = 0;
+    private _listingSeconds = 0;
 
     public flush(): boolean
     {
@@ -58,6 +59,7 @@ export class RpMarketParser implements IMessageParser
         this._notice = '';
         this._unsellable = [];
         this._now = 0;
+        this._listingSeconds = 0;
 
         return true;
     }
@@ -100,6 +102,7 @@ export class RpMarketParser implements IMessageParser
         while(count-- > 0) this._unsellable.push(wrapper.readString());
 
         this._now = wrapper.readInt();
+        this._listingSeconds = wrapper.readInt();
 
         return true;
     }
@@ -154,6 +157,12 @@ export class RpMarketParser implements IMessageParser
     public get now(): number
     {
         return this._now;
+    }
+
+    /** How long a listing is for sale, in seconds; unsold by then it has expired. */
+    public get listingSeconds(): number
+    {
+        return this._listingSeconds;
     }
 }
 

@@ -770,6 +770,12 @@
             background: #e3f2e8;
             color: #2f7d4f;
         }
+
+        // Unsold after five days - the seller has to take it back.
+        &.is-expired {
+            background: #fdeee3;
+            color: #a04b00;
+        }
     }
 
     .mk-earned {

@@ -10,7 +10,9 @@ import { useMessageEvent, usePurse } from '../../hooks';
 // 2026-10-25). Players sell backpack items to each other: Browse everybody
 // else's listings by category, search and sort, and buy one at a time with
 // the cash in hand; Sell from the backpack at a price each; My listings shows
-// what is up and what sold, and takes back what has not.
+// what is up and what sold, and takes back what has not. A listing is for sale
+// for five days (RpMarket.ListingSeconds); unsold by then it is Expired - gone
+// from Browse, it waits on My listings until its seller takes it back.
 //
 // SERVER-OPENED by :mp or by stepping onto a Marketplace point (which closes
 // it again with "marketplace/hide" on the step off), and every action is
@@ -30,6 +32,7 @@ interface MarketState
     mine: MarketOwnListing[];
     unsellable: Set<string>;
     now: number;
+    listingSeconds: number;
 }
 
 interface PackEntry
@@ -97,6 +100,18 @@ const Ago = (now: number, then: number) =>
     return (days === 1) ? 'yesterday' : `${ days } days ago`;
 }
 
+// "in 3 days", "in 5 hours" or "within the hour" - rounded down, so never more time than is left.
+const EndsIn = (now: number, until: number) =>
+{
+    const hours = Math.max(0, Math.floor((until - now) / 3600));
+
+    if(hours >= 48) return `in ${ Math.floor(hours / 24) } days`;
+
+    if(hours >= 1) return (hours === 1) ? 'in 1 hour' : `in ${ hours } hours`;
+
+    return 'within the hour';
+}
+
 const Chevron: FC<{ open: boolean }> = ({ open }) =>
     <svg className={ `mk-chevron${ open ? ' is-open' : '' }` } width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
@@ -142,7 +157,8 @@ export const MarketplaceView: FC<{}> = props =>
             browse: parser.browse,
             mine: parser.mine,
             unsellable: new Set(parser.unsellable),
-            now: parser.now
+            now: parser.now,
+            listingSeconds: parser.listingSeconds
         });
         setNotice(parser.notice);
         setBusy(false);
@@ -423,7 +439,7 @@ export const MarketplaceView: FC<{}> = props =>
                         </div>
                         <span className="mk-panel-sub">{ full
                             ? `You've reached the ${ market.maxListings } listing limit.`
-                            : `The maximum asking price for an item is $${ Money(market.maxPrice) }.` }</span>
+                            : `It stays up for ${ Math.round(market.listingSeconds / 86400) } days. The maximum asking price for an item is $${ Money(market.maxPrice) }.` }</span>
                     </> }
                 <div className="mk-spacer" />
                 <button type="button" className="mk-go" disabled={ !canList || busy } onClick={ list }>
@@ -443,9 +459,14 @@ export const MarketplaceView: FC<{}> = props =>
                     { market.mine.map(entry =>
                     {
                         const ended = (entry.endedAt > 0);
-                        const sub = ended
-                            ? `Sold ${ Ago(market.now, entry.endedAt) }${ (entry.listed > 1) ? ` · ${ entry.sold } of ${ entry.listed }` : '' }`
-                            : ((entry.sold > 0) ? `${ entry.sold } sold · ${ entry.left } left` : `Listed ${ Ago(market.now, entry.listedAt) }${ (entry.left > 1) ? ` · ${ entry.left } for sale` : '' }`);
+                        const endsAt = (entry.listedAt + market.listingSeconds);
+                        // Still up but past its five days: off Browse, waiting to be taken back.
+                        const expired = (!ended && (market.now >= endsAt));
+                        let sub = '';
+
+                        if(ended) sub = `Sold ${ Ago(market.now, entry.endedAt) }${ (entry.listed > 1) ? ` · ${ entry.sold } of ${ entry.listed }` : '' }`;
+                        else if(expired) sub = `Expired ${ Ago(market.now, endsAt) }${ (entry.sold > 0) ? ` · ${ entry.sold } of ${ entry.listed } sold` : ((entry.left > 1) ? ` · ${ entry.left } unsold` : '') }`;
+                        else sub = (entry.sold > 0) ? `${ entry.sold } sold · ${ entry.left } left · ends ${ EndsIn(market.now, endsAt) }` : `Ends ${ EndsIn(market.now, endsAt) }${ (entry.left > 1) ? ` · ${ entry.left } for sale` : '' }`;
 
                         return (
                             <div key={ entry.id } className="mk-table-row">
@@ -461,7 +482,7 @@ export const MarketplaceView: FC<{}> = props =>
                                     <span className="mk-price-value">{ Money(entry.price) }</span>
                                     { (entry.listed > 1) && <span className="mk-each">each</span> }
                                 </span>
-                                <span className={ `mk-status${ ended ? ' is-sold' : '' }` }>{ ended ? 'Sold' : 'For sale' }</span>
+                                <span className={ `mk-status${ ended ? ' is-sold' : (expired ? ' is-expired' : '') }` }>{ ended ? 'Sold' : (expired ? 'Expired' : 'For sale') }</span>
                                 { ended
                                     ? <span className="mk-earned">+${ Money(entry.sold * entry.price) } to bank</span>
                                     : <button type="button" className="mk-take" onClick={ () => act(MarketAction.TakeBack, entry.id) }>Take back</button> }
