@@ -10,7 +10,8 @@ import { ApplyIconTint, ApplyUiChrome, ClampChromeOpacity, DEFAULT_CHROME_COLOR,
 import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
-import { CURSOR_STYLES, CursorStyle, DEFAULT_CURSOR_COLOUR, SetCursorColour, SetCursorStyle, useCursorPrefs } from '../../api/prefs/CursorStore';
+import { CURSOR_STYLES, CursorStyle, DEFAULT_CURSOR_COLOUR, DEFAULT_CURSOR_STYLE, SetCursorColour, SetCursorStyle, useCursorPrefs } from '../../api/prefs/CursorStore';
+import { CursorPreview } from './CursorPreview';
 import { SetSlowComputerMode, useAutoFrameRate } from '../../api/prefs/AutoFrameRate';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
@@ -67,8 +68,11 @@ type ColourRowKey = 'headers' | 'interface' | 'icons' | 'cursor' | HudBar;
 
 const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', icons: 'Sidebar Icons', cursor: 'Colour', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
 
-// UI > Cursor > Style: the label on each choice, in CursorStore's order.
-const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = { modern: 'Modern', classic: 'Classic' };
+// UI > Cursor > Style: the name under each tile, in CursorStore's order.
+const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = {
+    frosted: 'Frosted', corners: 'Corners', pad: 'Pad', glow: 'Glow', shade: 'Shade',
+    bold: 'Bold', double: 'Double', rounded: 'Rounded', dashed: 'Dashed', points: 'Points', classic: 'Classic'
+};
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.
 const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
@@ -1189,19 +1193,21 @@ export const RpSettingsView: FC<{}> = props =>
                                     <section className="rp-settings-group" aria-labelledby="rp-settings-h-cursor">
                                         <div id="rp-settings-h-cursor" className="rp-settings-group-head">Cursor</div>
                                         <div className="rp-settings-panel">
-                                            <div className="rp-settings-row">
-                                                <span id="rp-settings-h-cursor-style" className="rp-settings-row-label is-colour">Style</span>
-                                                <div className="rp-settings-choice" role="radiogroup" aria-labelledby="rp-settings-h-cursor-style">
-                                                    { CURSOR_STYLES.map(style => (
-                                                        <div key={ style } role="radio" aria-checked={ cursorStyle === style }
-                                                            className={ `rp-settings-choice-option ${ (cursorStyle === style) ? 'is-selected' : '' }` }
-                                                            onClick={ () => SetCursorStyle(style) }>
-                                                            { CURSOR_STYLE_LABELS[style] }
-                                                        </div>
-                                                    )) }
-                                                </div>
-                                            </div>
                                             { renderColourRow('cursor') }
+                                        </div>
+                                    </section>
+                                    <section className="rp-settings-group" aria-labelledby="rp-settings-h-cursor-style">
+                                        <div id="rp-settings-h-cursor-style" className="rp-settings-group-head">Style</div>
+                                        <div className="rp-settings-cursors" role="radiogroup" aria-labelledby="rp-settings-h-cursor-style">
+                                            { CURSOR_STYLES.map(style => (
+                                                <button key={ style } type="button" role="radio" aria-checked={ cursorStyle === style }
+                                                    className={ `rp-settings-cursor ${ (cursorStyle === style) ? 'is-selected' : '' }` }
+                                                    title={ (style === DEFAULT_CURSOR_STYLE) ? `${ CURSOR_STYLE_LABELS[style] } (default)` : CURSOR_STYLE_LABELS[style] }
+                                                    onClick={ () => SetCursorStyle(style) }>
+                                                    <CursorPreview cursorStyle={ style } colour={ cursorColour } />
+                                                    <span className="rp-settings-cursor-name">{ CURSOR_STYLE_LABELS[style] }</span>
+                                                </button>
+                                            )) }
                                         </div>
                                     </section>
                                     { (openColour === 'cursor') &&

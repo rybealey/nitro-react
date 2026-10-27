@@ -1093,6 +1093,61 @@ $mx-font: Ubuntu, sans-serif;
         gap: 10px;
     }
 
+    // UI > Cursor > Style: every cursor on a patch of floor (CursorPreview),
+    // in tiles like Customisation's chat bubbles - fixed 80px, rows from the
+    // left, the chosen one in the same accent.
+    .rp-settings-cursors {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 80px);
+        grid-auto-rows: 62px;
+        justify-content: start;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: $border-radius;
+        background: #fafafb;
+    }
+
+    .rp-settings-cursor {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 0;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 4px;
+        background: $white;
+        box-shadow: inset 0 -2px rgba(0, 0, 0, 0.06);
+        cursor: pointer;
+        transition: transform .1s ease;
+
+        &:hover {
+            transform: translateY(-1px);
+            border-color: rgba(0, 0, 0, 0.28);
+        }
+
+        &.is-selected {
+            background: $mx-accent-tint;
+            border-color: $mx-accent;
+            box-shadow: $mx-focus;
+        }
+    }
+
+    .rp-settings-cursor-preview {
+        display: block;
+        border-radius: 2px;
+        image-rendering: pixelated;
+    }
+
+    .rp-settings-cursor-name {
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 12px;
+        color: $mx-ink;
+    }
+
     .rp-settings-reset {
         width: 22px;
         height: 20px;

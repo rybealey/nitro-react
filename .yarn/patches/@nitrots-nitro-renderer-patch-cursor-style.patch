@@ -6,7 +6,7 @@ index 1111111..2222222 100644
      public static OBJECT_ROOM_ID: string = 'object_room_id';
      public static OBJECT_ACCURATE_Z_VALUE: string = 'object_accurate_z_value';
      public static TILE_CURSOR_HEIGHT: string = 'tile_cursor_height';
-+    // pixelrp: the player's cursor look ('classic' or '' for the default) and colour (0xRRGGBB, -1 none) - Settings > UI > Cursor (TileCursorVisualization)
++    // pixelrp: the player's cursor style (its frame's name in tile_cursor.nitro, '' for the default) and colour (0xRRGGBB, -1 none) - Settings > UI > Cursor (TileCursorVisualization)
 +    public static TILE_CURSOR_STYLE: string = 'pixelrp_tile_cursor_style';
 +    public static TILE_CURSOR_COLOR: string = 'pixelrp_tile_cursor_color';
      public static FIGURE: string = 'figure';
@@ -23,7 +23,7 @@ index 1111111..2222222 100644
 +    // PixelRP: tile_cursor.nitro's version, as docker/nitro/make-tile-cursor.py
 +    // prints it. Generic bundles carry no ?v= of their own; this one's address
 +    // changes with its art, and nginx keeps a ?v= address a month.
-+    private static TILE_CURSOR_VERSION: string = '373a0d48';
++    private static TILE_CURSOR_VERSION: string = '28baec87';
      private static SELECTION_ARROW: string = 'selection_arrow';
  
      public static LOADER_READY: string = 'RCL_LOADER_READY';
@@ -49,10 +49,10 @@ index 1111111..2222222 100644
      // PixelRP: TileCursorLogic's raised "height" state - over a furni you can
      // stand, sit or lie on whose top is above 0.8.
      private static HEIGHT_STATE: number = 6;
-+    // PixelRP: the player's cursor look, Settings > UI > Cursor (client
-+    // CursorStore). The classic - Habbo's raised frame - is layer 0's frame
-+    // under the letter c in tile_cursor.nitro; the default is the a frame.
-+    public static STYLE_CLASSIC: string = 'classic';
++    // PixelRP: the player's cursor style, Settings > UI > Cursor (client
++    // CursorStore). Each is layer 0's frame under the style's name in
++    // tile_cursor.nitro (tile_cursor_64_<style>_0_0); the default is the a frame.
++    private static STYLE_NAME: RegExp = /^[a-z]{1,16}$/;
  
      private _tileHeight: number;
 +    private _style: string;
@@ -76,27 +76,28 @@ index 1111111..2222222 100644
 +        const style = this.object.model.getValue<string>(RoomObjectVariable.TILE_CURSOR_STYLE);
 +        const color = this.object.model.getValue<number>(RoomObjectVariable.TILE_CURSOR_COLOR);
 +
-+        this._style = (style || '');
++        this._style = (((typeof style === 'string') && TileCursorVisualization.STYLE_NAME.test(style)) ? style : '');
 +        this._color = (((typeof color === 'number') && (color >= 0)) ? (color & 0xFFFFFF) : -1);
 +
 +        return true;
      }
  
      protected getLayerYOffset(scale: number, direction: number, layerId: number): number
-@@ -36,6 +59,25 @@
+@@ -36,6 +59,26 @@
      {
          if((layerId === 1) && this.object && (this.object.getState(0) === TileCursorVisualization.HEIGHT_STATE)) return '';
  
 -        return super.getSpriteAssetName(scale, layerId);
 +        const name = super.getSpriteAssetName(scale, layerId);
 +
-+        // PixelRP: the classic look. A bundle cached from before it existed
-+        // has no c frame, and keeps showing the a frame instead of nothing.
-+        if((layerId === 0) && name && (this._style === TileCursorVisualization.STYLE_CLASSIC))
++        // PixelRP: the player's style. A bundle cached from before a style
++        // existed has no frame for it, and keeps showing the default instead
++        // of nothing.
++        if((layerId === 0) && name && this._style)
 +        {
-+            const classic = name.replace('_a_', '_c_');
++            const styled = name.replace('_a_', ('_' + this._style + '_'));
 +
-+            if(this.getAsset(classic)) return classic;
++            if(this.getAsset(styled)) return styled;
 +        }
 +
 +        return name;
