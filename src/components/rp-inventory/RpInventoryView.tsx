@@ -37,6 +37,27 @@ type ItemUseMode = 'single' | 'double';
 // anything that does not wear.
 interface SlotEntry { item: string, count: number, wear: number, maxWear: number }
 
+// A drag dropped and not answered yet, with the item that left `from` and the
+// one that was in `to` (null for an empty slot).
+interface WaitingMove { from: number, to: number, moving: string, displaced: string }
+
+// The server's move: a plain swap of the two slots (RpInventoryStore.Move).
+const SwapSlots = (slots: Map<number, SlotEntry>, from: number, to: number): void =>
+{
+    const moving = slots.get(from);
+    const displaced = slots.get(to);
+
+    if(moving) slots.set(to, moving);
+    else slots.delete(to);
+
+    if(displaced) slots.set(from, displaced);
+    else slots.delete(from);
+}
+
+// Whether these slots already show the move made.
+const ShowsMove = (slots: Map<number, SlotEntry>, move: WaitingMove): boolean =>
+    ((slots.get(move.to)?.item ?? null) === move.moving) && ((slots.get(move.from)?.item ?? null) === move.displaced);
+
 // Item names and icons: RpItems (shared with the City Panel's backpack).
 const resolveItem = ResolveRpItem;
 
@@ -101,6 +122,16 @@ export const RpInventoryView: FC<{}> = props =>
     // backpack (RpMoveItemEvent), unless the packet limit dropped it.
     const serverItemsRef = useRef<Map<number, SlotEntry>>(new Map());
     const moveTimerRef = useRef<number>(0);
+    // pixelrp (Twist, 2026-10-27): moves dropped and not answered yet, oldest
+    // first, with what was in their two slots. A second drag dropped before
+    // the first one's answer was undone by that answer for a moment, until its
+    // own came. Each copy from the server now answers the oldest move, and the
+    // moves still waiting are shown over it - but never one it already shows
+    // (an answer that went missing), so nothing is swapped twice.
+    const waitingMovesRef = useRef<WaitingMove[]>([]);
+    const shownItemsRef = useRef(items);
+
+    shownItemsRef.current = items;
 
     useEffect(() => () => window.clearTimeout(moveTimerRef.current), []);
     // The slot hover bubble follows the mouse. Only its text is state; its
@@ -126,21 +157,30 @@ export const RpInventoryView: FC<{}> = props =>
 
         for(const entry of event.getParser().items) next.set(entry.slot, { item: entry.item, count: entry.count, wear: (entry.wear ?? 0), maxWear: (entry.maxWear ?? 0) });
 
+        serverItemsRef.current = next;
+        waitingMovesRef.current.shift();
+
+        const shown = new Map(next);
+
+        for(const move of waitingMovesRef.current)
+        {
+            if(!ShowsMove(shown, move)) SwapSlots(shown, move.from, move.to);
+        }
+
+        if(!waitingMovesRef.current.length) window.clearTimeout(moveTimerRef.current);
+
         // the item under the pointer was used up, moved or swapped: its name goes with it
         const bubbleFor = bubbleForRef.current;
 
-        if(bubbleFor && ((next.get(bubbleFor.slot)?.item ?? null) !== bubbleFor.item))
+        if(bubbleFor && ((shown.get(bubbleFor.slot)?.item ?? null) !== bubbleFor.item))
         {
             bubbleForRef.current = null;
             setBubbleText(null);
         }
         // still there, but a hit wore it: the numbers follow
-        else if(bubbleFor && wears(next.get(bubbleFor.slot))) setBubbleText(slotBubbleText(bubbleFor.slot, next.get(bubbleFor.slot)));
+        else if(bubbleFor && wears(shown.get(bubbleFor.slot))) setBubbleText(slotBubbleText(bubbleFor.slot, shown.get(bubbleFor.slot)));
 
-        serverItemsRef.current = next;
-        window.clearTimeout(moveTimerRef.current);
-
-        setItems(next);
+        setItems(shown);
 
         // a clothing token needs the shelf to be named; fetch it once
         if(!IsClothingCatalogLoaded() && event.getParser().items.some(entry => !!ParseClothingToken(entry.item))) SendMessageComposer(new RpGetClothingStoreComposer());
@@ -277,23 +317,25 @@ export const RpInventoryView: FC<{}> = props =>
     {
         SendMessageComposer(new RpMoveItemComposer(from, to));
 
+        const shown = shownItemsRef.current;
+
+        waitingMovesRef.current.push({ from, to, moving: (shown.get(from)?.item ?? null), displaced: (shown.get(to)?.item ?? null) });
+
         setItems(prevValue =>
         {
             const next = new Map(prevValue);
-            const moving = prevValue.get(from);
-            const displaced = prevValue.get(to);
 
-            if(moving) next.set(to, moving);
-            else next.delete(to);
-
-            if(displaced) next.set(from, displaced);
-            else next.delete(from);
+            SwapSlots(next, from, to);
 
             return next;
         });
 
         window.clearTimeout(moveTimerRef.current);
-        moveTimerRef.current = window.setTimeout(() => setItems(new Map(serverItemsRef.current)), 3000);
+        moveTimerRef.current = window.setTimeout(() =>
+        {
+            waitingMovesRef.current = [];
+            setItems(new Map(serverItemsRef.current));
+        }, 3000);
     }
 
     // always lands and state always resets no matter where the pointer ends
