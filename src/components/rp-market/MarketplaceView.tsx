@@ -1,5 +1,5 @@
 import { ILinkEventTracker, RpInventoryEvent } from '@nitrots/nitro-renderer';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { AddEventLinkTracker, HasHabboVip, RemoveLinkEventTracker } from '../../api';
 import { DurabilityPercent, ResolveRpItem } from '../../api/rp-inventory/RpItems';
 import { MarketAction, MarketListing, MarketOwnListing, RpMarketEvent, SendRpMarketAction } from '../../api/rp-market/RpMarketMessages';
@@ -76,6 +76,9 @@ const SORTS: { id: string, label: string }[] = [
 const CARRY_SLOTS = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
 const CARRY_OPEN = 10;
 
+// how long a listing's answer is waited for before the form stops waiting on it
+const LISTING_WAIT_MS = 5000;
+
 const ItemName = (item: string) => (ResolveRpItem(item)?.name ?? item);
 
 const Money = (value: number) => Math.max(0, value || 0).toLocaleString('en-US');
@@ -135,6 +138,11 @@ export const MarketplaceView: FC<{}> = props =>
     // An action is on its way: Buy, List and Take back wait for the answer, so
     // one click is one action however fast it is pressed again.
     const [ busy, setBusy ] = useState(false);
+    // pixelrp (Twist, 2026-10-27): a listing on its way - the item, the
+    // listings there were before it, and when. The pick and price stay until
+    // a new listing of that item comes back, so a refused one (the backpack
+    // changed, cuffed, out cold...) keeps the form for another go.
+    const listingRef = useRef<{ item: string, before: Set<number>, at: number }>(null);
     const { getCurrencyAmount } = usePurse();
 
     // The backpack, as everywhere else - login and every change.
@@ -160,8 +168,20 @@ export const MarketplaceView: FC<{}> = props =>
             now: parser.now,
             listingSeconds: parser.listingSeconds
         });
-        setNotice(parser.notice);
+        // An answer with nothing to say (a refresh, a sale landing) leaves the
+        // last notice up for its 5 seconds instead of wiping it.
+        if(parser.notice) setNotice(parser.notice);
         setBusy(false);
+
+        const listing = listingRef.current;
+
+        if(listing && ((Date.now() - listing.at) > LISTING_WAIT_MS)) listingRef.current = null;
+        else if(listing && parser.mine.some(entry => !listing.before.has(entry.id) && (entry.item === listing.item)))
+        {
+            listingRef.current = null;
+            setPicked(0);
+            setPrice('');
+        }
 
         if(parser.open)
         {
@@ -290,9 +310,8 @@ export const MarketplaceView: FC<{}> = props =>
     {
         if(!canList || busy) return;
 
+        listingRef.current = { item: pickedEntry.item, before: new Set(market.mine.map(entry => entry.id)), at: Date.now() };
         act(MarketAction.List, pickedEntry.slot, quantity, priceEach);
-        setPicked(0);
-        setPrice('');
     };
 
     const browseView =
