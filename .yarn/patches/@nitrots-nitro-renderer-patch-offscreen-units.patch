@@ -1,0 +1,59 @@
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -18,6 +18,10 @@
+     // order instead of flickering. Plain strings to avoid importing the nitro
+     // layer into this engine-level class.
+     private static UNIT_TYPE_KEYS: string[] = [ 'user', 'pet', 'bot', 'rentable_bot', 'monsterplant' ];
++
++    // PixelRP: how far outside the view, in tiles, a unit is still drawn
++    // (pixelrpUnitOffScreen) - past its own height and its biggest effect.
++    private static PIXELRP_OFFSCREEN_TILES: number = 6;
+ 
+     // PixelRP: the cheap pre-filter. Room units, where a tile is 1. It only
+     // rejects units that are obviously nowhere near; PIXELRP_DEPTH_TIE below is
+@@ -615,6 +619,16 @@
+             return 0;
+         }
+ 
++        // PixelRP: a unit well outside the view is not drawn again - its
++        // sprites would all fail isSpriteVisible below anyway, and a walking,
++        // talking or blinking avatar redraws itself up to 12 times a second.
++        // Asked each frame before anything is drawn, so one that comes into
++        // view (walking in, the room dragged, the window resized) is drawn in
++        // that same frame, never shown stale. Its model changes wait and are
++        // read in one go then (AvatarVisualization.updateModel); its logic -
++        // movement, timers - runs elsewhere and is untouched.
++        if(updateVisuals && this.pixelrpUnitOffScreen(object, vector)) updateVisuals = false;
++
+         if(updateVisuals) visualization.update(this._geometry, time, (!sortableCache.isEmpty || update), (this._skipObjectUpdate && this._runningSlow));
+ 
+         if(locationCache.locationChanged) update = true;
+@@ -1113,6 +1127,26 @@
+     private getCacheItem(id: string): RoomObjectCacheItem
+     {
+         return this._objectCache.getObjectCache(id);
++    }
++
++    /**
++     * PixelRP: true when a unit stands more than PIXELRP_OFFSCREEN_TILES tiles
++     * outside this canvas - its location, mapped to the screen the way
++     * isSpriteVisible maps a sprite. Never for anything but a unit, nor while
++     * every sprite is drawn regardless (skipSpriteVisibilityChecking: the
++     * camera, thumbnails) or exclusion rectangles are in use.
++     */
++    private pixelrpUnitOffScreen(object: IRoomObject, vector: { x: number, y: number }): boolean
++    {
++        if(this._noSpriteVisibilityChecking || this._usesExclusionRectangles) return false;
++
++        if(RoomSpriteCanvas.UNIT_TYPE_KEYS.indexOf(object.type) < 0) return false;
++
++        const margin = ((this._geometry ? this._geometry.scale : 64) * RoomSpriteCanvas.PIXELRP_OFFSCREEN_TILES * this._scale);
++        const x = (((vector.x + Math.trunc(this._width / 2)) * this._scale) + this._screenOffsetX);
++        const y = (((vector.y + Math.trunc(this._height / 2)) * this._scale) + this._screenOffsetY);
++
++        return (((x + margin) < 0) || ((x - margin) >= this._width) || ((y + margin) < 0) || ((y - margin) >= this._height));
+     }
+ 
+     private isSpriteVisible(x: number, y: number, width: number, height: number): boolean
