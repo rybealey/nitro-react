@@ -69,7 +69,10 @@ export class RpCityFurniEvent extends MessageEvent implements IMessageEvent
 
 let started = false;
 
-const download = async (types: string[]) =>
+// pixelrp (Twist, 2026-10-28): shared with the room behind an arrow
+// (RpRoomFurniAhead) - downloads these furni types in the background,
+// atOnce at a time, skipping any already here or on their way.
+export const DownloadFurniTypes = async (types: string[], atOnce: number = AT_ONCE) =>
 {
     const roomEngine = GetRoomEngine();
     const loader = roomEngine?.roomContentLoader;
@@ -101,39 +104,50 @@ const download = async (types: string[]) =>
         }
     }
 
-    await Promise.all(Array.from({ length: AT_ONCE }, next));
+    await Promise.all(Array.from({ length: atOnce }, next));
 }
 
-const onCityFurni = (event: RpCityFurniEvent) =>
+// Sprite ids (floor, wall) as the furni names the content loader downloads by,
+// leaving out any it does not download. Empty without a loader yet.
+export const FurniTypesFor = (floorSpriteIds: number[], wallSpriteIds: number[]): string[] =>
 {
-    if(started) return;
-
     const loader = GetRoomEngine()?.roomContentLoader;
 
-    if(!loader) return;
+    if(!loader) return [];
 
-    started = true;
-
-    const parser = event.getParser();
     const types = new Set<string>();
 
-    for(const spriteId of parser.floorSpriteIds)
+    for(const spriteId of floorSpriteIds)
     {
         const type = loader.getFurnitureFloorNameForTypeId(spriteId);
 
         if(type && loader.isLoaderType(type)) types.add(type);
     }
 
-    for(const spriteId of parser.wallSpriteIds)
+    for(const spriteId of wallSpriteIds)
     {
         const type = loader.getFurnitureWallNameForTypeId(spriteId);
 
         if(type && loader.isLoaderType(type)) types.add(type);
     }
 
-    if(!types.size) return;
+    return Array.from(types);
+}
 
-    setTimeout(() => download(Array.from(types)), START_DELAY_MS);
+const onCityFurni = (event: RpCityFurniEvent) =>
+{
+    if(started) return;
+
+    if(!GetRoomEngine()?.roomContentLoader) return;
+
+    started = true;
+
+    const parser = event.getParser();
+    const types = FurniTypesFor(parser.floorSpriteIds, parser.wallSpriteIds);
+
+    if(!types.length) return;
+
+    setTimeout(() => DownloadFurniTypes(types), START_DELAY_MS);
 }
 
 let registered = false;
