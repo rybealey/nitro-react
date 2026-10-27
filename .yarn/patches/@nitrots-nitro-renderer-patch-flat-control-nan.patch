@@ -1,0 +1,37 @@
+diff --git a/src/nitro/room/RoomMessageHandler.ts b/src/nitro/room/RoomMessageHandler.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomMessageHandler.ts
++++ b/src/nitro/room/RoomMessageHandler.ts
+@@ -971,7 +971,11 @@
+             if(status.didMove) goal = new Vector3d(status.targetX, status.targetY, status.targetZ);
+ 
+             this._roomCreator.updateRoomObjectUserLocation(this._currentRoomId, status.id, location, goal, status.canStandUp, height, direction, status.headDirection);
+-            this._roomCreator.updateRoomObjectUserFlatControl(this._currentRoomId, status.id, null);
++
++            // PixelRP: reset only when the status carries no flatctrl - one
++            // that does sets it straight below, and the reset in between made
++            // a player with rights change twice on every status update.
++            if(!status.actions || !status.actions.some(action => (action && (action.action === 'flatctrl')))) this._roomCreator.updateRoomObjectUserFlatControl(this._currentRoomId, status.id, null);
+ 
+             let isPosture = true;
+             let postureUpdate = false;
+diff --git a/src/room/object/RoomObjectModel.ts b/src/room/object/RoomObjectModel.ts
+index 1111111..2222222 100644
+--- a/src/room/object/RoomObjectModel.ts
++++ b/src/room/object/RoomObjectModel.ts
+@@ -29,7 +29,14 @@
+     {
+         if(this._map.has(key))
+         {
+-            if(this._map.get(key) === value) return;
++            const existing = this._map.get(key);
++
++            // PixelRP: NaN over NaN is no change either. === never holds for
++            // NaN, so a NaN written again counted as a change every time - the
++            // flat control of everyone without rights is NaN, written on every
++            // status update, so every avatar re-read its whole model twice a
++            // second for nothing.
++            if((existing === value) || ((existing !== existing) && (value !== value))) return;
+         }
+ 
+         this._map.set(key, (value as T));
