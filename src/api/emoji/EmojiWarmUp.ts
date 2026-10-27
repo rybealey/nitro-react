@@ -9,8 +9,14 @@ import { GetEmojiCategories } from './EmojiData';
 // moments soon after the chat bar first appears - by the time the button is
 // clicked, the picker opens straight away with every emoji in it.
 const START_DELAY_MS = 4000;
-// a few rows at a time, so no one moment holds the game up
-const CHUNK = 24;
+// pixelrp (Twist, 2026-10-27, from the lag reports): a few at a time, as many
+// as a quiet moment has room for. It drew 24 in every quiet moment whatever
+// was left of it, and on a laptop's graphics that was ~50 ms each time - some
+// 80 small stutters after every login. Now a group of GROUP, and more groups
+// only while the moment still has SPARE_MS to spare; a moment the browser ran
+// out of waiting for (the 1 s timeout) gets one group.
+const GROUP = 6;
+const SPARE_MS = 4;
 
 let started = false;
 let warm = false;
@@ -45,13 +51,34 @@ export const WarmUpEmojis = (): void =>
 
     let next = 0;
 
-    const schedule = (step: () => void) =>
+    const schedule = (step: (deadline?: IdleDeadline) => void) =>
     {
-        if(typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => step(), { timeout: 1000 });
-        else window.setTimeout(step, 50);
+        if(typeof window.requestIdleCallback === 'function') window.requestIdleCallback(deadline => step(deadline), { timeout: 1000 });
+        else window.setTimeout(() => step(), 50);
     }
 
-    const step = () =>
+    const drawGroup = () =>
+    {
+        grid.textContent = '';
+
+        for(const emoji of emojis.slice(next, (next + GROUP)))
+        {
+            const cell = document.createElement('button');
+
+            cell.type = 'button';
+            cell.tabIndex = -1;
+            cell.className = 'emoji-cell';
+            cell.textContent = emoji;
+            grid.appendChild(cell);
+        }
+
+        next += GROUP;
+
+        // laid out now, in this quiet moment, rather than in the next frame
+        void grid.offsetHeight;
+    }
+
+    const step = (deadline?: IdleDeadline) =>
     {
         if(next >= emojis.length)
         {
@@ -65,23 +92,10 @@ export const WarmUpEmojis = (): void =>
 
         if(!host.isConnected) document.body.appendChild(host);
 
-        grid.textContent = '';
-
-        for(const emoji of emojis.slice(next, (next + CHUNK)))
-        {
-            const cell = document.createElement('button');
-
-            cell.type = 'button';
-            cell.tabIndex = -1;
-            cell.className = 'emoji-cell';
-            cell.textContent = emoji;
-            grid.appendChild(cell);
-        }
-
-        next += CHUNK;
-
-        // laid out now, in this quiet moment, rather than in the next frame
-        void grid.offsetHeight;
+        // one group always, so it finishes however busy the game is; more
+        // while the quiet moment lasts
+        do drawGroup();
+        while((next < emojis.length) && deadline && !deadline.didTimeout && (deadline.timeRemaining() > SPARE_MS));
 
         schedule(step);
     }
