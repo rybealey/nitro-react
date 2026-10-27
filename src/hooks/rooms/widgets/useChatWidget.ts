@@ -462,6 +462,7 @@ const useChatWidgetState = () =>
                 chatMessage.id = current.id;
                 chatMessage.width = current.width;
                 chatMessage.height = current.height;
+                chatMessage.takePlaceOf(current);
                 chatMessage.left = current.left;
                 chatMessage.top = current.top;
 

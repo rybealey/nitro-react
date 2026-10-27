@@ -86,6 +86,18 @@ export class ChatBubbleMessage
         element.style.transform = (by ? `translateY(${ by }px)` : '');
     }
 
+    // pixelrp (Twist, 2026-10-27): this bubble takes the place of one already
+    // on screen - your own line's preview, put right by the server's copy
+    // (useChatWidget) - so it goes on from where that one is drawn: the same
+    // element, the same top to slide from. Starting afresh, it set its top
+    // plainly and dropped the slide, so it jumped by however far the preview
+    // had moved and glided back.
+    public takePlaceOf(bubble: ChatBubbleMessage): void
+    {
+        this._drawnOn = bubble._drawnOn;
+        this._drawnTop = bubble._drawnTop;
+    }
+
     public get left(): number
     {
         return this._left;
