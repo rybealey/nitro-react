@@ -10,6 +10,7 @@ import { ApplyIconTint, ApplyUiChrome, ClampChromeOpacity, DEFAULT_CHROME_COLOR,
 import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
+import { CURSOR_STYLES, CursorStyle, DEFAULT_CURSOR_COLOUR, SetCursorColour, SetCursorStyle, useCursorPrefs } from '../../api/prefs/CursorStore';
 import { SetSlowComputerMode, useAutoFrameRate } from '../../api/prefs/AutoFrameRate';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
@@ -50,8 +51,9 @@ const VOLUME_ROWS: { kind: UserSettingsVolume, text: string }[] = [
 // MacroState.ts for the document shape and the binding vocabulary.
 
 // Interface tab sub-pages (left rail). Colours (Settings canvas, boards N/O)
-// replaced the Windows and Components pages' fixed swatches.
-const INTERFACE_PAGES: string[] = [ 'Colours' ];
+// replaced the Windows and Components pages' fixed swatches. Cursor is the
+// square under the mouse on the room floor (CursorStore).
+const INTERFACE_PAGES: string[] = [ 'Colours', 'Cursor' ];
 // Environment pages, same rail under their own eyebrow: the sky behind rooms.
 const ENVIRONMENT_PAGES: string[] = [ 'Weather' ];
 
@@ -60,10 +62,13 @@ const HUD_STYLE_LABELS: Record<HudStyle, string> = { classic: 'Classic', light: 
 
 // UI > Colours: the account's colours first (saved on the server), then the
 // HUD's (this device). Each row is a reset button and a chip that opens the
-// colour picker.
-type ColourRowKey = 'headers' | 'interface' | 'icons' | HudBar;
+// colour picker. UI > Cursor's colour is one of these rows too.
+type ColourRowKey = 'headers' | 'interface' | 'icons' | 'cursor' | HudBar;
 
-const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', icons: 'Sidebar Icons', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
+const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', icons: 'Sidebar Icons', cursor: 'Colour', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
+
+// UI > Cursor > Style: the label on each choice, in CursorStore's order.
+const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = { modern: 'Modern', classic: 'Classic' };
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.
 const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
@@ -142,6 +147,7 @@ export const RpSettingsView: FC<{}> = props =>
     const [ openColour, setOpenColour ] = useState<ColourRowKey>(null);
     const { hudStyle, hudBars } = useHudPrefs();
     const { iconTint } = useIconTint();
+    const { style: cursorStyle, colour: cursorColour } = useCursorPrefs();
     // A drag in the picker changes the colour on every move; the server only
     // hears the colour it settles on.
     const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -1014,10 +1020,18 @@ export const RpSettingsView: FC<{}> = props =>
 
     const closeColourPicker = useCallback(() => setOpenColour(null), []);
 
+    // UI tab rail: a picker left open on one page does not follow to the next.
+    const selectInterfacePage = (page: string) =>
+    {
+        setInterfacePage(page);
+        setOpenColour(null);
+    }
+
     const colourRows: Record<ColourRowKey, { colour: string, isDefault: boolean, pick: (colour: string) => void, reset: () => void }> = {
         headers: { colour: HeaderColor(headerKey), isDefault: (headerKey === DEFAULT_HEADER_KEY), pick: pickHeaderColour, reset: () => selectHeader(DEFAULT_HEADER_KEY) },
         interface: { colour: chromeColor.toLowerCase(), isDefault: (chromeColor.toLowerCase() === DEFAULT_CHROME_COLOR), pick: pickInterfaceColour, reset: () => selectChrome(DEFAULT_CHROME_COLOR) },
         icons: { colour: (iconTint || ICON_TINT_NEUTRAL), isDefault: (iconTint === DEFAULT_ICON_TINT), pick: selectIconColour, reset: () => selectIconColour(DEFAULT_ICON_TINT) },
+        cursor: { colour: cursorColour, isDefault: (cursorColour === DEFAULT_CURSOR_COLOUR), pick: SetCursorColour, reset: () => SetCursorColour(DEFAULT_CURSOR_COLOUR) },
         hp: { colour: hudBars.hp, isDefault: (hudBars.hp === HUD_BAR_DEFAULTS.hp), pick: colour => SetHudBarColour('hp', colour), reset: () => SetHudBarColour('hp', HUD_BAR_DEFAULTS.hp) },
         energy: { colour: hudBars.energy, isDefault: (hudBars.energy === HUD_BAR_DEFAULTS.energy), pick: colour => SetHudBarColour('energy', colour), reset: () => SetHudBarColour('energy', HUD_BAR_DEFAULTS.energy) },
         aggro: { colour: hudBars.aggro, isDefault: (hudBars.aggro === HUD_BAR_DEFAULTS.aggro), pick: colour => SetHudBarColour('aggro', colour), reset: () => SetHudBarColour('aggro', HUD_BAR_DEFAULTS.aggro) }
@@ -1113,7 +1127,7 @@ export const RpSettingsView: FC<{}> = props =>
                             { INTERFACE_PAGES.map(page => (
                                 <div key={ page }
                                     className={ `prp-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setInterfacePage(page) }>
+                                    onClick={ () => selectInterfacePage(page) }>
                                     { page }
                                 </div>
                             )) }
@@ -1121,7 +1135,7 @@ export const RpSettingsView: FC<{}> = props =>
                             { ENVIRONMENT_PAGES.map(page => (
                                 <div key={ page }
                                     className={ `prp-subnav-item ${ (interfacePage === page) ? 'is-active' : '' }` }
-                                    onClick={ () => setInterfacePage(page) }>
+                                    onClick={ () => selectInterfacePage(page) }>
                                     { page }
                                 </div>
                             )) }
@@ -1168,6 +1182,32 @@ export const RpSettingsView: FC<{}> = props =>
                                         <ColourPicker key={ openColour } label={ COLOUR_LABELS[openColour] }
                                             colour={ colourRows[openColour].colour }
                                             onChange={ colourRows[openColour].pick }
+                                            onClose={ closeColourPicker } /> }
+                                </div> }
+                            { (interfacePage === 'Cursor') &&
+                                <div className="rp-settings-colours">
+                                    <section className="rp-settings-group" aria-labelledby="rp-settings-h-cursor">
+                                        <div id="rp-settings-h-cursor" className="rp-settings-group-head">Cursor</div>
+                                        <div className="rp-settings-panel">
+                                            <div className="rp-settings-row">
+                                                <span id="rp-settings-h-cursor-style" className="rp-settings-row-label is-colour">Style</span>
+                                                <div className="rp-settings-choice" role="radiogroup" aria-labelledby="rp-settings-h-cursor-style">
+                                                    { CURSOR_STYLES.map(style => (
+                                                        <div key={ style } role="radio" aria-checked={ cursorStyle === style }
+                                                            className={ `rp-settings-choice-option ${ (cursorStyle === style) ? 'is-selected' : '' }` }
+                                                            onClick={ () => SetCursorStyle(style) }>
+                                                            { CURSOR_STYLE_LABELS[style] }
+                                                        </div>
+                                                    )) }
+                                                </div>
+                                            </div>
+                                            { renderColourRow('cursor') }
+                                        </div>
+                                    </section>
+                                    { (openColour === 'cursor') &&
+                                        <ColourPicker key="cursor" label="Cursor"
+                                            colour={ colourRows.cursor.colour }
+                                            onChange={ colourRows.cursor.pick }
                                             onClose={ closeColourPicker } /> }
                                 </div> }
                             { (interfacePage === 'Weather') &&
@@ -1545,9 +1585,10 @@ export const RpSettingsView: FC<{}> = props =>
                                 <div id="rp-settings-h-phone" className="rp-settings-group-head">Phone</div>
                                 <div className="rp-settings-panel">
                                     <div className="rp-settings-row">
-                                        <span className="rp-settings-row-label">Hold phone in hand</span>
-                                        <button type="button" role="switch" aria-checked={ holdPhone } aria-label="Hold phone in hand"
-                                            className={ `rp-settings-env-switch${ holdPhone ? ' is-on' : '' }` }
+                                        { /* On = the phone is hidden, so the switch is the store's holdPhone flipped. */ }
+                                        <span className="rp-settings-row-label">Hide phone</span>
+                                        <button type="button" role="switch" aria-checked={ !holdPhone } aria-label="Hide phone"
+                                            className={ `rp-settings-env-switch${ !holdPhone ? ' is-on' : '' }` }
                                             onClick={ () => SetHoldPhone(!holdPhone) }><span /></button>
                                     </div>
                                 </div>

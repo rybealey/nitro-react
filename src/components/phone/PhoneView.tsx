@@ -423,7 +423,7 @@ export const PhoneView: FC<{}> = props =>
     // Driven off isVisible rather than from show()/hide() so that every way
     // the phone can close - the toolbar toggle, the home bar, this component
     // unmounting on disconnect - puts the hand down too.
-    // Settings > General > "Hold phone in hand" off: the server is only ever
+    // Settings > General > "Hide phone" on: the server is only ever
     // told the phone is closed, so the hand keeps whatever it had.
     const { holdPhone } = useHoldPhonePref();
     const inHand = (isVisible && holdPhone);

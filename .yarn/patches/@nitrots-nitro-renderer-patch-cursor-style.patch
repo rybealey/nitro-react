@@ -1,0 +1,112 @@
+diff --git a/src/api/nitro/room/object/RoomObjectVariable.ts b/src/api/nitro/room/object/RoomObjectVariable.ts
+index 1111111..2222222 100644
+--- a/src/api/nitro/room/object/RoomObjectVariable.ts
++++ b/src/api/nitro/room/object/RoomObjectVariable.ts
+@@ -3,6 +3,9 @@
+     public static OBJECT_ROOM_ID: string = 'object_room_id';
+     public static OBJECT_ACCURATE_Z_VALUE: string = 'object_accurate_z_value';
+     public static TILE_CURSOR_HEIGHT: string = 'tile_cursor_height';
++    // pixelrp: the player's cursor look ('classic' or '' for the default) and colour (0xRRGGBB, -1 none) - Settings > UI > Cursor (TileCursorVisualization)
++    public static TILE_CURSOR_STYLE: string = 'pixelrp_tile_cursor_style';
++    public static TILE_CURSOR_COLOR: string = 'pixelrp_tile_cursor_color';
+     public static FIGURE: string = 'figure';
+     public static GENDER: string = 'gender';
+     public static OWN_USER: string = 'own_user';
+diff --git a/src/nitro/room/RoomContentLoader.ts b/src/nitro/room/RoomContentLoader.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomContentLoader.ts
++++ b/src/nitro/room/RoomContentLoader.ts
+@@ -14,6 +14,10 @@
+     private static PLACE_HOLDER_DEFAULT: string = RoomContentLoader.PLACE_HOLDER;
+     private static ROOM: string = 'room';
+     private static TILE_CURSOR: string = 'tile_cursor';
++    // PixelRP: tile_cursor.nitro's version, as docker/nitro/make-tile-cursor.py
++    // prints it. Generic bundles carry no ?v= of their own; this one's address
++    // changes with its art, and nginx keeps a ?v= address a month.
++    private static TILE_CURSOR_VERSION: string = '373a0d48';
+     private static SELECTION_ARROW: string = 'selection_arrow';
+ 
+     public static LOADER_READY: string = 'RCL_LOADER_READY';
+@@ -611,8 +615,11 @@
+                 return [this.getAssetUrlWithGenericBase(RoomContentLoader.PLACE_HOLDER_PET)];
+             case RoomContentLoader.ROOM:
+                 return [this.getAssetUrlWithGenericBase('room')];
+-            case RoomContentLoader.TILE_CURSOR:
+-                return [this.getAssetUrlWithGenericBase(RoomContentLoader.TILE_CURSOR)];
++            case RoomContentLoader.TILE_CURSOR: {
++                const url = this.getAssetUrlWithGenericBase(RoomContentLoader.TILE_CURSOR);
++
++                return [(url + ((url.indexOf('?') === -1) ? '?v=' : '&v=') + RoomContentLoader.TILE_CURSOR_VERSION)];
++            }
+             case RoomContentLoader.SELECTION_ARROW:
+                 return [this.getAssetUrlWithGenericBase(RoomContentLoader.SELECTION_ARROW)];
+             default: {
+diff --git a/src/nitro/room/object/visualization/room/TileCursorVisualization.ts b/src/nitro/room/object/visualization/room/TileCursorVisualization.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/TileCursorVisualization.ts
++++ b/src/nitro/room/object/visualization/room/TileCursorVisualization.ts
+@@ -6,14 +6,37 @@
+     // PixelRP: TileCursorLogic's raised "height" state - over a furni you can
+     // stand, sit or lie on whose top is above 0.8.
+     private static HEIGHT_STATE: number = 6;
++    // PixelRP: the player's cursor look, Settings > UI > Cursor (client
++    // CursorStore). The classic - Habbo's raised frame - is layer 0's frame
++    // under the letter c in tile_cursor.nitro; the default is the a frame.
++    public static STYLE_CLASSIC: string = 'classic';
+ 
+     private _tileHeight: number;
++    private _style: string;
++    private _color: number;
+ 
+     constructor()
+     {
+         super();
+ 
+         this._tileHeight = 0;
++        this._style = '';
++        this._color = -1;
++    }
++
++    // PixelRP: the client sets the look and the colour on the cursor's model
++    // when a room is built and whenever the player changes them.
++    protected updateModel(scale: number): boolean
++    {
++        if(!super.updateModel(scale)) return false;
++
++        const style = this.object.model.getValue<string>(RoomObjectVariable.TILE_CURSOR_STYLE);
++        const color = this.object.model.getValue<number>(RoomObjectVariable.TILE_CURSOR_COLOR);
++
++        this._style = (style || '');
++        this._color = (((typeof color === 'number') && (color >= 0)) ? (color & 0xFFFFFF) : -1);
++
++        return true;
+     }
+ 
+     protected getLayerYOffset(scale: number, direction: number, layerId: number): number
+@@ -36,6 +59,25 @@
+     {
+         if((layerId === 1) && this.object && (this.object.getState(0) === TileCursorVisualization.HEIGHT_STATE)) return '';
+ 
+-        return super.getSpriteAssetName(scale, layerId);
++        const name = super.getSpriteAssetName(scale, layerId);
++
++        // PixelRP: the classic look. A bundle cached from before it existed
++        // has no c frame, and keeps showing the a frame instead of nothing.
++        if((layerId === 0) && name && (this._style === TileCursorVisualization.STYLE_CLASSIC))
++        {
++            const classic = name.replace('_a_', '_c_');
++
++            if(this.getAsset(classic)) return classic;
++        }
++
++        return name;
++    }
++
++    // PixelRP: the player's cursor colour, multiplied over the white art.
++    protected getLayerColor(scale: number, layerId: number, colorId: number): number
++    {
++        if(this._color >= 0) return this._color;
++
++        return super.getLayerColor(scale, layerId, colorId);
+     }
+ }

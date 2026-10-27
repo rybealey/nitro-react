@@ -9,6 +9,7 @@ import { InstallJitterTrace } from './api/diagnostics/JitterTrace';
 import { InstallFinalStepStance } from './api/nitro/room/FinalStepStance';
 import { InstallTurnTrace } from './api/diagnostics/TurnTrace';
 import { StartAutoFrameRate } from './api/prefs/AutoFrameRate';
+import { StartCursorPrefs } from './api/prefs/CursorStore';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
@@ -404,6 +405,10 @@ export const App: FC<{}> = props =>
                 // pixelrp: a computer that keeps falling behind draws on every
                 // other screen refresh until it can keep up (AutoFrameRate).
                 StartAutoFrameRate();
+
+                // pixelrp: the player's cursor look and colour on every room
+                // from here on (CursorStore).
+                StartCursorPrefs();
 
                 // DevTools that are already open, checked from here on - by now
                 // the rank that exempts staff has arrived.
