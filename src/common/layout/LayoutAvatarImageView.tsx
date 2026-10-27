@@ -1,6 +1,7 @@
 import { AvatarScaleType, AvatarSetType } from '@nitrots/nitro-renderer';
 import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { GetAvatarRenderManager } from '../../api';
+import { ReadTextureImageAsync } from '../../api/utils/ReadTextureImageAsync';
 import { Base, BaseProps } from '../Base';
 
 // pixelrp: every mount drew its avatar afresh - a render to a texture, read
@@ -20,6 +21,14 @@ const rememberImage = (key: string, url: string) =>
 
     while(imageCache.size > IMAGE_CACHE_LIMIT) imageCache.delete(imageCache.keys().next().value);
 }
+
+// pixelrp (Twist, 2026-10-27): a still being read, by its cache key - settled
+// with the picture once it is kept, or null when it was not (a placeholder, an
+// empty draw, a read that failed, a view gone first). A click on a player has
+// the HUD target and the infostand ask for the same picture together; the
+// second waits for the first instead of reading it again, and draws it itself
+// only on a null.
+const reading: Map<string, Promise<string>> = new Map();
 
 // pixelrp: a still is only kept once it has something in it. One drawn while
 // the clothes were briefly unavailable came out empty - and, kept, the profile
@@ -212,20 +221,200 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
             return null;
         };
 
+        let stopDrawing: () => void = null;
+        let frameId = 0;
+        let timeoutId = 0;
+
         // pixelrp: a face not drawn before is drawn just after the next paint.
         // A click on a new player rendered it inside the click - a GPU readback
         // and a PNG encode before the frame showing the click could paint.
-        let stopDrawing: () => void = null;
-        let timeoutId = 0;
-
-        const frameId = window.requestAnimationFrame(() =>
+        const afterNextPaint = (work: () => void) =>
         {
-            timeoutId = window.setTimeout(() => (stopDrawing = draw()), 0);
-        });
+            frameId = window.requestAnimationFrame(() =>
+            {
+                timeoutId = window.setTimeout(work, 0);
+            });
+        };
+
+        // Our share of `reading`, while this view is the one reading the picture.
+        let settleShared: (url: string) => void = null;
+
+        const share = (url: string) =>
+        {
+            if(!settleShared) return;
+
+            settleShared(url);
+            settleShared = null;
+        };
+
+        // pixelrp (Twist, 2026-10-27): a still read back from the graphics card
+        // without waiting for it (ReadTextureImageAsync, as the chat heads are).
+        // Read straight away, as draw() does, the browser first waits for every
+        // draw already queued for the graphics card - about 50 ms on a busy
+        // machine, the first time each player is clicked. The same picture,
+        // shown a frame or two later. Kept or retried exactly as draw() does,
+        // and a read that fails falls back to draw() itself.
+        const drawWithoutWaiting = () =>
+        {
+            const avatarImage = GetAvatarRenderManager().createAvatarImage(figure, AvatarScaleType.LARGE, gender, {
+                resetFigure: figure =>
+                {
+                    if(isDisposed.current) return;
+
+                    setRandomValue(Math.random());
+                },
+                dispose: () =>
+                {},
+                disposed: false
+            }, null);
+
+            if(!avatarImage)
+            {
+                share(null);
+
+                return;
+            }
+
+            const setType = (headOnly ? AvatarSetType.HEAD : AvatarSetType.FULL);
+
+            avatarImage.setDirection(setType, direction);
+
+            // A placeholder is shown and redrawn when its clothes arrive
+            // (resetFigure), never kept.
+            const placeholder = avatarImage.isPlaceholder();
+            const texture = avatarImage.getCroppedTexture(setType);
+
+            avatarImage.dispose();
+
+            if(!texture)
+            {
+                share(null);
+
+                if(!placeholder) retryLater();
+
+                return;
+            }
+
+            let read: Promise<string> = null;
+
+            try
+            {
+                read = ReadTextureImageAsync(texture);
+            }
+            catch(error)
+            {
+                read = Promise.resolve(null);
+            }
+
+            read.catch(() => null).then(url =>
+            {
+                texture.destroy(true);
+
+                if(cancelled) return;
+
+                if(!url)
+                {
+                    share(null);
+
+                    stopDrawing = draw();
+
+                    return;
+                }
+
+                setAvatarUrl(url);
+
+                if(placeholder)
+                {
+                    share(null);
+
+                    return;
+                }
+
+                const image = new Image();
+
+                const keepOrRetry = () =>
+                {
+                    if(cancelled) return;
+
+                    if(hasPixels(image))
+                    {
+                        rememberImage(cacheKey, url);
+                        share(url);
+                    }
+                    else
+                    {
+                        share(null);
+                        retryLater();
+                    }
+                };
+
+                image.src = url;
+                image.decode().then(keepOrRetry, () =>
+                {
+                    if(cancelled) return;
+
+                    share(null);
+                    retryLater();
+                });
+            });
+        };
+
+        // and whatever goes wrong drawing it, a view waiting on this one is let go
+        const drawShared = () =>
+        {
+            try
+            {
+                drawWithoutWaiting();
+            }
+            catch(error)
+            {
+                share(null);
+
+                throw error;
+            }
+        };
+
+        if(animate)
+        {
+            afterNextPaint(() => (stopDrawing = draw()));
+        }
+        else
+        {
+            const pending = reading.get(cacheKey);
+
+            if(pending)
+            {
+                // Another view is reading this picture: wait for it, and draw
+                // it here only if it comes to nothing.
+                pending.then(url =>
+                {
+                    if(cancelled) return;
+
+                    if(url) setAvatarUrl(url);
+                    else afterNextPaint(drawShared);
+                });
+            }
+            else
+            {
+                const shared = new Promise<string>(resolve => (settleShared = resolve));
+
+                reading.set(cacheKey, shared);
+
+                shared.then(() =>
+                {
+                    if(reading.get(cacheKey) === shared) reading.delete(cacheKey);
+                });
+
+                afterNextPaint(drawShared);
+            }
+        }
 
         return () =>
         {
             cancelled = true;
+
+            // a view waiting on this one draws the picture itself
+            share(null);
 
             window.cancelAnimationFrame(frameId);
             window.clearTimeout(timeoutId);
