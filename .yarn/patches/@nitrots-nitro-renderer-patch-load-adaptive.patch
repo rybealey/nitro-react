@@ -1,0 +1,306 @@
+diff --git a/src/api/utils/LoadBudget.ts b/src/api/utils/LoadBudget.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/api/utils/LoadBudget.ts
+@@ -0,0 +1,88 @@
++// PixelRP: how much loading this computer takes per frame (Twist, 2026-10-28 -
++// "I want big rooms to load as fast as possible").
++//
++// A room arriving is three kinds of work, each spread over frames so a laptop
++// does not freeze: unpacking downloaded files (UnpackQueue, a turn at a time),
++// setting up the furni types they hold (RoomManager, a share a frame), and
++// sending their pictures to the graphics card (UploadGate, a share a frame).
++// Each share used to be fixed, sized for a laptop, so a fast PC sat filling a
++// big room in for half a second it did not need. Now all three are one SCALE,
++// learnt from what the frames do: at the start of each frame drawn to the
++// screen, if any of that work ran since the last one, the frame between is
++// judged. Its draw over SLOW_DRAW_MS, or the frame itself over SLOW_GAP_MS
++// long, halves the scale; twice those drops it to 1 at once (a computer that
++// slowed down, or a room far heavier than the last). A draw under FAST_DRAW_MS
++// and a frame under FAST_GAP_MS (on time at 60 Hz, where a missed refresh is
++// 33 ms) grows it by GROW - but only when some of the work had more to do than
++// its share let it; a few last pieces finishing quickly say nothing about how
++// much more the computer could take. A gap of HIDDEN_GAP_MS or more is the
++// page put away, and judges nothing. The scale is kept from room to room: a
++// fast PC learns once and takes the next room in a few frames, a laptop stays
++// at the share it can carry. Each kind of work takes the scale within its own
++// floor and ceiling (LoadScale).
++//
++// LoadStats is what a room's load did, for the staff lag recorder's room line.
++const LEAST_SCALE = 0.5;
++const MOST_SCALE = 16;
++const GROW = 1.5;
++const FAST_DRAW_MS = 10;
++const SLOW_DRAW_MS = 20;
++const FAST_GAP_MS = 25;
++const SLOW_GAP_MS = 60;
++const HIDDEN_GAP_MS = 1000;
++
++let scale = 1;
++let workSinceFrame = false;
++let limitedSinceFrame = false;
++let frameStartedAt = 0;
++let lastDrawMs = 0;
++
++export const LoadStats = {
++    // files unpacked (UnpackQueue jobs) and their time, since the page opened
++    unpackJobs: 0,
++    unpackMs: 0,
++    // jobs waiting to be unpacked now
++    unpackQueued: 0,
++    // furni types loaded and waiting to be set up (RoomManager), now
++    pendingTypes: 0,
++    // sheets the upload gate held back in the last frame drawn to the screen
++    heldBack: 0
++};
++
++/** This kind of work's share: the learnt scale, kept within least and most. */
++export const LoadScale = (least: number, most: number): number => Math.min(most, Math.max(least, scale));
++
++/** Some loading work ran - the next frame start judges what it did. Limited: it had more to do than its share. */
++export const NoteLoadWork = (limited: boolean = false): void =>
++{
++    workSinceFrame = true;
++
++    if(limited) limitedSinceFrame = true;
++}
++
++/** A frame drawn to the screen starts (UploadGate, the renderer's prerender). */
++export const LoadFrameStarted = (now: number): void =>
++{
++    if(workSinceFrame && frameStartedAt)
++    {
++        const gap = (now - frameStartedAt);
++
++        if(gap < HIDDEN_GAP_MS)
++        {
++            if((lastDrawMs > (SLOW_DRAW_MS * 2)) || (gap > (SLOW_GAP_MS * 2))) scale = Math.max(LEAST_SCALE, Math.min(1, (scale / 2)));
++            else if((lastDrawMs > SLOW_DRAW_MS) || (gap > SLOW_GAP_MS)) scale = Math.max(LEAST_SCALE, (scale / 2));
++            else if(limitedSinceFrame && (lastDrawMs < FAST_DRAW_MS) && (gap < FAST_GAP_MS)) scale = Math.min(MOST_SCALE, (scale * GROW));
++        }
++    }
++
++    workSinceFrame = false;
++    limitedSinceFrame = false;
++    frameStartedAt = now;
++    lastDrawMs = 0;
++}
++
++/** That frame's draw is done (the renderer's postrender): how long it took. */
++export const LoadFrameDrawn = (now: number): void =>
++{
++    if(frameStartedAt) lastDrawMs = (now - frameStartedAt);
++}
+diff --git a/src/api/utils/UnpackQueue.ts b/src/api/utils/UnpackQueue.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/UnpackQueue.ts
++++ b/src/api/utils/UnpackQueue.ts
+@@ -1,3 +1,5 @@
++import { LoadScale, LoadStats, NoteLoadWork } from './LoadBudget';
++
+ // PixelRP: downloaded files are unpacked a few at a time (Twist, 2026-10-27).
+ //
+ // A crowd in new clothes, or a room of furni nobody had loaded yet, finishes
+@@ -14,7 +16,12 @@
+ // 91 ms of this work, scheduler tasks 14 in 92 ms - the browser draws between
+ // them, and the work takes no longer - and a timer is held to 4 ms apart once
+ // it has nested a few deep.
++//
++// pixelrp (Twist, 2026-10-28): a turn is TURN_MS at the computer's learnt
++// loading scale (LoadBudget), from once to TURN_MOST times - a fast PC unpacks
++// a big room in a few turns, a laptop still TURN_MS at a time.
+ const TURN_MS = 6;
++const TURN_MOST = 4;
+ 
+ const jobs: (() => void)[] = [];
+ 
+@@ -25,9 +32,21 @@ const runTurn = (): void =>
+     scheduled = false;
+ 
+     const start = performance.now();
++    const turnMs = (TURN_MS * LoadScale(1, TURN_MOST));
++    let done = 0;
+ 
+-    do jobs.shift()();
+-    while(jobs.length && ((performance.now() - start) < TURN_MS));
++    do
++    {
++        jobs.shift()();
++        done++;
++    }
++    while(jobs.length && ((performance.now() - start) < turnMs));
++
++    LoadStats.unpackJobs += done;
++    LoadStats.unpackMs += (performance.now() - start);
++    LoadStats.unpackQueued = jobs.length;
++
++    NoteLoadWork(jobs.length > 0);
+ 
+     if(jobs.length) schedule();
+ }
+@@ -64,5 +83,7 @@ export const UnpackSoon = <T>(work: () => T): Promise<T> => new Promise<T>((reso
+         }
+     });
+ 
++    LoadStats.unpackQueued = jobs.length;
++
+     schedule();
+ });
+diff --git a/src/api/utils/index.ts b/src/api/utils/index.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/index.ts
++++ b/src/api/utils/index.ts
+@@ -6,4 +6,5 @@ export * from './Dict';
+ export * from './IAdvancedMap';
+ export * from './IBinaryReader';
+ export * from './IBinaryWriter';
++export * from './LoadBudget';
+ export * from './NitroBundle';
+diff --git a/src/room/RoomManager.ts b/src/room/RoomManager.ts
+index 1111111..2222222 100644
+--- a/src/room/RoomManager.ts
++++ b/src/room/RoomManager.ts
+@@ -1,4 +1,4 @@
+-import { IGraphicAssetCollection, IRoomContentLoader, IRoomInstance, IRoomInstanceContainer, IRoomManager, IRoomManagerListener, IRoomObject, IRoomObjectController, IRoomObjectLogicFactory, IRoomObjectManager, IRoomObjectVisualizationFactory, NitroLogger } from '../api';
++import { IGraphicAssetCollection, IRoomContentLoader, IRoomInstance, IRoomInstanceContainer, IRoomManager, IRoomManagerListener, IRoomObject, IRoomObjectController, IRoomObjectLogicFactory, IRoomObjectManager, IRoomObjectVisualizationFactory, LoadScale, LoadStats, NitroLogger, NoteLoadWork } from '../api';
+ import { NitroManager } from '../core';
+ import { RoomContentLoadedEvent } from '../events';
+ import { RoomContentLoader } from '../nitro/room/RoomContentLoader';
+@@ -23,8 +23,11 @@ export class RoomManager extends NitroManager implements IRoomManager, IRoomInst
+     private _visualizationFactory: IRoomObjectVisualizationFactory;
+     private _logicFactory: IRoomObjectLogicFactory;
+ 
+-    // PixelRP: how much of a frame newly loaded furni types may take (ms)
++    // PixelRP: how much of a frame newly loaded furni types may take (ms), at
++    // the computer's learnt loading scale (LoadBudget) from once to
++    // PENDING_TYPES_MOST times (Twist, 2026-10-28)
+     private static PENDING_TYPES_MS: number = 8;
++    private static PENDING_TYPES_MOST: number = 4;
+ 
+     private _initialLoadList: string[];
+     private _pendingContentTypes: string[];
+@@ -319,10 +322,13 @@ export class RoomManager extends NitroManager implements IRoomManager, IRoomInst
+         // frame, each going through every object in every room, and all their
+         // pictures then went to the graphics card in the same draw.
+         const start = performance.now();
++        const turnMs = (RoomManager.PENDING_TYPES_MS * LoadScale(1, RoomManager.PENDING_TYPES_MOST));
++
++        const hadPending = (this._pendingContentTypes.length > 0);
+ 
+         while(this._pendingContentTypes.length)
+         {
+-            if((performance.now() - start) >= RoomManager.PENDING_TYPES_MS) break;
++            if((performance.now() - start) >= turnMs) break;
+ 
+             const type = this._pendingContentTypes.shift();
+ 
+@@ -346,6 +352,10 @@ export class RoomManager extends NitroManager implements IRoomManager, IRoomInst
+ 
+             if(this._initialLoadList.length > 0) this.removeFromInitialLoad(type);
+         }
++
++        LoadStats.pendingTypes = this._pendingContentTypes.length;
++
++        if(hadPending) NoteLoadWork(this._pendingContentTypes.length > 0);
+     }
+ 
+     private removeFromInitialLoad(type: string): void
+diff --git a/src/room/renderer/utils/UploadGate.ts b/src/room/renderer/utils/UploadGate.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/UploadGate.ts
++++ b/src/room/renderer/utils/UploadGate.ts
+@@ -1,4 +1,5 @@
+ import { BaseTexture, ImageResource, Renderer } from '@pixi/core';
++import { LoadFrameDrawn, LoadFrameStarted, LoadScale, LoadStats, NoteLoadWork } from '../../../api/utils/LoadBudget';
+ 
+ // PixelRP: pictures go to the graphics card a share per frame (Twist,
+ // 2026-10-27).
+@@ -15,14 +16,26 @@ import { BaseTexture, ImageResource, Renderer } from '@pixi/core';
+ // drawn by the game itself (the floor and walls, avatars, render textures) is
+ // never held back, and neither is anything drawn into a texture rather than to
+ // the screen - avatar pictures, room previews, camera photos.
++//
++// THE SHARE FITS THE COMPUTER (Twist, 2026-10-28 - a fast PC saw a big room
++// fill in over half a second, where it used to show at once). FRAME_UPLOADS
++// and FRAME_PIXELS are the share at scale 1; the scale is learnt from what the
++// frames do and shared with the rest of a room's loading (LoadBudget), from
++// LEAST_SCALE to MOST_SCALE times. The cost of a sheet often lands in the draw
++// or after it rather than in the upload call itself, so the frames are what is
++// measured. Each draw to the screen is where LoadBudget judges the frame.
+ const FRAME_UPLOADS = 12;
+ const FRAME_PIXELS = 1000000;
++const LEAST_SCALE = 0.5;
++const MOST_SCALE = 16;
+ 
+ interface GateState
+ {
+     admitted: Set<BaseTexture>;
+     uploads: number;
+     pixels: number;
++    // sheets held back this frame
++    held: number;
+ }
+ 
+ const states: WeakMap<Renderer, GateState> = new WeakMap();
+@@ -33,23 +46,34 @@ const stateOf = (renderer: Renderer): GateState =>
+ 
+     if(state) return state;
+ 
+-    state = { admitted: new Set(), uploads: 0, pixels: 0 };
++    state = { admitted: new Set(), uploads: 0, pixels: 0, held: 0 };
+ 
+     states.set(renderer, state);
+ 
+     // A new share for each draw to the screen, once a frame. Pictures drawn
+-    // into textures in between run the same runner, and do not reset it.
++    // into textures in between run the same runners, and are not counted.
+     renderer.runners.prerender.add({
+         prerender: () =>
+         {
+             if(!renderer.renderingToScreen) return;
+ 
++            LoadFrameStarted(performance.now());
++
++            LoadStats.heldBack = state.held;
++            state.held = 0;
+             state.admitted.clear();
+             state.uploads = 0;
+             state.pixels = 0;
+         }
+     });
+ 
++    renderer.runners.postrender.add({
++        postrender: () =>
++        {
++            if(renderer.renderingToScreen) LoadFrameDrawn(performance.now());
++        }
++    });
++
+     return state;
+ }
+ 
+@@ -71,12 +95,22 @@ export const MayDraw = (renderer: Renderer, baseTexture: BaseTexture): boolean =
+     if(state.admitted.has(baseTexture)) return true;
+ 
+     const pixels = ((baseTexture.realWidth || 0) * (baseTexture.realHeight || 0));
++    const share = LoadScale(LEAST_SCALE, MOST_SCALE);
++
++    if(state.uploads && (((state.uploads + 1) > (FRAME_UPLOADS * share)) || ((state.pixels + pixels) > (FRAME_PIXELS * share))))
++    {
++        state.held++;
+ 
+-    if(state.uploads && (((state.uploads + 1) > FRAME_UPLOADS) || ((state.pixels + pixels) > FRAME_PIXELS))) return false;
++        NoteLoadWork(true);
++
++        return false;
++    }
+ 
+     state.admitted.add(baseTexture);
+     state.uploads++;
+     state.pixels += pixels;
+ 
++    NoteLoadWork();
++
+     return true;
+ }
