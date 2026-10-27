@@ -1,5 +1,5 @@
-import { AvatarImage, ExtendedSprite, GetTicker, IMessageComposer, MouseEventType, RoomSpriteCanvas, SocketConnection, TextureUtils } from '@nitrots/nitro-renderer';
-import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
+import { AvatarImage, ExtendedSprite, FurnitureFloorEvent, GetTicker, IMessageComposer, LoadScale, LoadStats, MouseEventType, RoomEngineEvent, RoomReadyMessageEvent, RoomSpriteCanvas, SocketConnection, TextureUtils } from '@nitrots/nitro-renderer';
+import { GetCommunication, GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
 import { GetAutoFrameRate, OnAutoFrameRateChange } from '../prefs/AutoFrameRate';
 import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 
@@ -62,6 +62,22 @@ import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 // it only adds numbers into variables and keeps the browser's reports. Strings
 // are built only for a slow frame, and sent a couple of seconds after the last
 // one, a few lines per message.
+//
+// ONE LINE PER ROOM ENTERED (Twist, 2026-10-28 - "I want big rooms to load as
+// fast as possible"), timed from the room change starting (RoomReady), ms:
+//   floor   the new room's floor on screen (the old room's held picture let go)
+//   objects the room's furni list arrived (message #2); furni / types = how many
+//   placed  every furni in it put in the room (no furni pending)
+//   drawn   nothing left to come: no furni type downloading, unpacking or
+//           waiting to be set up, and no picture held back by the upload gate
+//           (two frames running)
+//   dl      furni and figure files fetched meanwhile: count / KB / ms from the
+//           first request to the last answer's headers (KB = what the server
+//           said each was; ? when it did not)
+//   unpack  files unpacked meanwhile (UnpackQueue): count / ms of work
+//   up      pictures sent to the graphics card meanwhile: count / megapixels
+//   scale   the loading scale this computer has learnt (LoadBudget)
+// A room still loading after ROOM_CAP_MS is written as far as it got, "cap".
 
 const HITCH_MS = 50;
 const SEND_AFTER_MS = 2500;
@@ -407,8 +423,143 @@ const addNote = (text: string) =>
     sendTimer = window.setTimeout(send, SEND_AFTER_MS);
 }
 
+// the room being timed (one at a time), and what its line needs
+const ROOM_CAP_MS = 15000;
+
+interface RoomLoad
+{
+    roomId: number;
+    startedAt: number;
+    initialisedAt: number;
+    floorAt: number;
+    objectsAt: number;
+    placedAt: number;
+    furni: number;
+    types: number;
+    dlFiles: number;
+    dlBytes: number;
+    dlUnknown: number;
+    dlFirstAt: number;
+    dlLastAt: number;
+    unpackJobs: number;
+    unpackMs: number;
+    upSheets: number;
+    upPixels: number;
+    // frames running with nothing left to come
+    settledFrames: number;
+    settledAt: number;
+}
+
+let roomLoad: RoomLoad = null;
+
+const since = (load: RoomLoad, at: number): string => (at ? Math.round(at - load.startedAt).toString() : '-');
+
+// the line, once the room has nothing left to come (or the cap)
+const finishRoomLoad = (load: RoomLoad, drawnAt: number, capped: boolean) =>
+{
+    if(roomLoad === load) roomLoad = null;
+
+    const kb = (load.dlUnknown ? '?' : Math.round(load.dlBytes / 1024).toString());
+    const dlMs = ((load.dlFirstAt && load.dlLastAt) ? Math.round(load.dlLastAt - load.dlFirstAt) : 0);
+
+    addNote(`room=${ load.roomId } floor=${ since(load, load.floorAt) } objects=${ since(load, load.objectsAt) } placed=${ since(load, load.placedAt) } drawn=${ since(load, drawnAt) } ` +
+        `furni=${ load.furni } types=${ load.types } dl=${ load.dlFiles }/${ kb }/${ dlMs } ` +
+        `unpack=${ LoadStats.unpackJobs - load.unpackJobs }/${ Math.round(LoadStats.unpackMs - load.unpackMs) } ` +
+        `up=${ load.upSheets }/${ (load.upPixels / 1000000).toFixed(2) } scale=${ LoadScale(0, Number.MAX_VALUE).toFixed(2) }${ capped ? ' cap' : '' }`);
+}
+
+// each frame while a room is being timed: which of its moments have come
+const checkRoomLoad = (now: number) =>
+{
+    const load = roomLoad;
+
+    if(!load) return;
+
+    if((now - load.startedAt) > ROOM_CAP_MS)
+    {
+        finishRoomLoad(load, 0, true);
+
+        return;
+    }
+
+    const engine: any = GetNitroInstance()?.roomEngine;
+
+    if(!engine) return;
+
+    // the floor: the room is made, and the old room's picture let go
+    if(!load.floorAt && load.initialisedAt && !engine._pixelrpHeldPicture) load.floorAt = now;
+
+    if(!load.objectsAt) return;
+
+    if(!load.placedAt)
+    {
+        const instanceData = engine.getRoomInstanceData?.(load.roomId);
+
+        if(instanceData && !instanceData.hasPendingFurniture) load.placedAt = now;
+        else return;
+    }
+
+    const downloading = (engine._roomContentLoader?._pendingContentTypes?.length || 0);
+    const settled = (!downloading && !LoadStats.pendingTypes && !LoadStats.unpackQueued && !LoadStats.heldBack);
+
+    if(!settled)
+    {
+        load.settledFrames = 0;
+
+        return;
+    }
+
+    if(!load.settledFrames) load.settledAt = now;
+
+    load.settledFrames++;
+
+    if(load.settledFrames >= 2) finishRoomLoad(load, load.settledAt, false);
+}
+
+const onRoomReady = (event: RoomReadyMessageEvent) =>
+{
+    const now = performance.now();
+
+    // a room left before it finished: written as far as it got
+    if(roomLoad) finishRoomLoad(roomLoad, 0, false);
+
+    roomLoad = {
+        roomId: (event.getParser()?.roomId || 0), startedAt: now, initialisedAt: 0, floorAt: 0, objectsAt: 0, placedAt: 0, furni: 0, types: 0,
+        dlFiles: 0, dlBytes: 0, dlUnknown: 0, dlFirstAt: 0, dlLastAt: 0, unpackJobs: LoadStats.unpackJobs, unpackMs: LoadStats.unpackMs,
+        upSheets: 0, upPixels: 0, settledFrames: 0, settledAt: 0
+    };
+}
+
+const onRoomInitialised = (event: RoomEngineEvent) =>
+{
+    if(roomLoad && (event.roomId === roomLoad.roomId) && !roomLoad.initialisedAt) roomLoad.initialisedAt = performance.now();
+}
+
+const onFloorItems = (event: FurnitureFloorEvent) =>
+{
+    const load = roomLoad;
+
+    if(!load || load.objectsAt) return;
+
+    const items = (event.getParser()?.items || []);
+
+    load.objectsAt = performance.now();
+    load.furni = items.length;
+    load.types = new Set(items.map(item => (item.spriteId || item.spriteName))).size;
+}
+
+// a furni or figure file fetched while a room is being timed
+const isBundle = (input: any): boolean =>
+{
+    const url = ((typeof input === 'string') ? input : (input?.url || ''));
+
+    return /\.nitro(\?|#|$)/.test(url);
+}
+
 const onFrame = (now: number) =>
 {
+    checkRoomLoad(now);
+
     const visible = (document.visibilityState === 'visible');
 
     if(lastFrameAt && visible && !wasHidden)
@@ -613,9 +764,58 @@ const install = (): boolean =>
         uploadMs += ms;
 
         const texture = args[0];
+        const pixels = (texture ? ((texture.realWidth || 0) * (texture.realHeight || 0)) : 0);
 
-        if(texture) uploadPixels += ((texture.realWidth || 0) * (texture.realHeight || 0));
+        uploadPixels += pixels;
+
+        if(roomLoad)
+        {
+            roomLoad.upSheets++;
+            roomLoad.upPixels += pixels;
+        }
     });
+
+    // the room-load timer's moments (checkRoomLoad does the rest each frame)
+    try
+    {
+        GetCommunication().registerMessageEvent(new RoomReadyMessageEvent(onRoomReady));
+        GetCommunication().registerMessageEvent(new FurnitureFloorEvent(onFloorItems));
+        GetNitroInstance().roomEngine?.events?.addEventListener(RoomEngineEvent.INITIALIZED, onRoomInitialised);
+    }
+    catch(e)
+    {}
+
+    // and the files fetched for it: only while one is being timed, and only
+    // furni and figure files; everything else goes straight through
+    const fetchBefore = window.fetch;
+
+    if(typeof fetchBefore === 'function')
+    {
+        window.fetch = function(input: any, init?: any)
+        {
+            const load = roomLoad;
+
+            if(!load || !isBundle(input)) return fetchBefore.call(this, input, init);
+
+            const start = performance.now();
+
+            if(!load.dlFirstAt) load.dlFirstAt = start;
+
+            load.dlFiles++;
+
+            return fetchBefore.call(this, input, init).then((response: Response) =>
+            {
+                const length = Number(response?.headers?.get('content-length'));
+
+                if(length > 0) load.dlBytes += length;
+                else load.dlUnknown++;
+
+                load.dlLastAt = performance.now();
+
+                return response;
+            });
+        } as typeof window.fetch;
+    }
 
     timeMethod(renderer.textureGC, 'run', (ms, args, self, before) =>
     {
