@@ -1,4 +1,4 @@
-import { FC, SyntheticEvent, useEffect, useState } from 'react';
+import { FC, SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { ATM_DEPOSIT, ATM_WITHDRAW, RpAtmState, SendRpAtmTransaction, SendRpCloseAtm, SubscribeRpAtm, SubscribeRpBankResult } from '../../../../api/rp-phone/RpBankMessages';
 import { LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../../../common';
 
@@ -59,6 +59,12 @@ const MIN_DEPOSIT = ((): number =>
     return 100000;
 })();
 
+// The machine is busy from a press of the go button until the server answers
+// it - a fresh state, or a refusal - so a double-click is one transaction, not
+// two: the server takes every press on its own. A press that gets no answer at
+// all frees the button again after this long.
+const SEND_TIMEOUT_MS = 4000;
+
 const FormatCredits = (value: number): string => Math.max(0, value || 0).toLocaleString('en-US');
 
 const FormatRate = (bps: number): string => String(bps / 100).replace(/\.0$/, '');
@@ -69,6 +75,10 @@ export const FurnitureAtmView: FC<{}> = props =>
     const [ withdrawing, setWithdrawing ] = useState(true);
     const [ amount, setAmount ] = useState(0);
     const [ note, setNote ] = useState('');
+    const [ sending, setSending ] = useState(false);
+    // also the guard itself: a second click can arrive before the disabled
+    // button is drawn
+    const sendTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
     useEffect(() => SubscribeRpAtm(next =>
     {
@@ -80,9 +90,20 @@ export const FurnitureAtmView: FC<{}> = props =>
         // it are what changed.
         setAmount(0);
         setNote('');
+        clearTimeout(sendTimer.current);
+        sendTimer.current = null;
+        setSending(false);
     }), []);
 
-    useEffect(() => SubscribeRpBankResult((outcome, message) => setNote(message)), []);
+    useEffect(() => SubscribeRpBankResult((outcome, message) =>
+    {
+        setNote(message);
+        clearTimeout(sendTimer.current);
+        sendTimer.current = null;
+        setSending(false);
+    }), []);
+
+    useEffect(() => () => clearTimeout(sendTimer.current), []);
 
     if(!state) return null;
 
@@ -119,7 +140,14 @@ export const FurnitureAtmView: FC<{}> = props =>
 
     const commit = () =>
     {
-        if(!amount || tooSmall) return;
+        if(!amount || tooSmall || sendTimer.current) return;
+
+        setSending(true);
+        sendTimer.current = setTimeout(() =>
+        {
+            sendTimer.current = null;
+            setSending(false);
+        }, SEND_TIMEOUT_MS);
 
         SendRpAtmTransaction(withdrawing ? ATM_WITHDRAW : ATM_DEPOSIT, amount);
     };
@@ -231,7 +259,7 @@ export const FurnitureAtmView: FC<{}> = props =>
                             : (withdrawing ? `You can take out up to $${ FormatCredits(available) }.` : `You have $${ FormatCredits(available) } in hand.`) }
                     </div> }
                 { !!note && <div className="atm-helper is-error">{ note }</div> }
-                <button type="button" className="atm-go" disabled={ !amount || tooSmall } onClick={ commit }>
+                <button type="button" className="atm-go" disabled={ !amount || tooSmall || sending } onClick={ commit }>
                     { amount ? `${ word } $${ FormatCredits(amount) }` : word }
                 </button>
                 <div className="atm-card">
