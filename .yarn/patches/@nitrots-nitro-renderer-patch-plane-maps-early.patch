@@ -1,0 +1,110 @@
+diff --git a/src/nitro/room/object/visualization/room/RoomPlane.ts b/src/nitro/room/object/visualization/room/RoomPlane.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomPlane.ts
++++ b/src/nitro/room/object/visualization/room/RoomPlane.ts
+@@ -4,7 +4,7 @@
+ import { Sprite } from '@pixi/sprite';
+ import { IRoomGeometry, IRoomPlane, IVector3D, Vector3d } from '../../../../../api';
+ import { PlaneTextureCache } from '../../../../../pixi-proxy';
+-import { ColorConverter } from '../../../../../room';
++import { ColorConverter, ExtendedSprite } from '../../../../../room';
+ import { PlaneMaskManager } from './mask';
+ import { PlaneDrawingData } from './PlaneDrawingData';
+ import { IPlaneRasterizer } from './rasterizer';
+@@ -157,6 +157,16 @@
+         return this._bitmapData;
+     }
+ 
++    // PixelRP: a floor, or a wall with width both ways - what RoomVisualization
++    // lets a click test (a wall edge with no width matches nothing). The
++    // window view behind the walls, often animated, is left to the click.
++    private get isClickable(): boolean
++    {
++        if(this._type === RoomPlane.TYPE_FLOOR) return true;
++
++        return ((this._type === RoomPlane.TYPE_WALL) && (this._leftSide.length >= 1) && (this._rightSide.length >= 1));
++    }
++
+     public get maskBitmapData(): RenderTexture
+     {
+         if(!this.visible || !this._maskBitmapData) return null;
+@@ -526,6 +536,11 @@
+ 
+         if(geometryChanged || this.needsNewTexture(geometry, timeSinceStartMs))
+         {
++            // PixelRP: whether this drawing can change where the plane is
++            // solid - its first, a zoom or move, a hole cut or filled - rather
++            // than being an animated texture's next frame (ExtendedSprite.redrawn)
++            const shapeMayChange = (geometryChanged || this._maskChanged || !this._activeTexture || (this._activeTexture.timeStamp < 0));
++
+             if(!this._bitmapData || (this._width !== this._bitmapData.width) || (this._height !== this._bitmapData.height))
+             {
+                 if(this._bitmapData)
+@@ -577,6 +592,11 @@
+             if(texture)
+             {
+                 this.renderTexture(geometry, texture);
++
++                // PixelRP: a floor's or wall's click map is made at the next
++                // quiet moment, before the first click on it, not in that
++                // click (Twist, 2026-10-27).
++                if(shapeMayChange && this.isClickable) ExtendedSprite.redrawn(this._bitmapData.baseTexture);
+             }
+             else
+             {
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -382,6 +382,27 @@
+         return (hitMap.bits[ind >>> 5] & (1 << (ind & 31))) !== 0;
+     }
+ 
++    // PixelRP: a picture drawn anew - a floor or wall plane when the room
++    // shows, after a zoom or when its shape changes (RoomPlane) - has its click
++    // map made at the next quiet moment (buildLater), before anybody clicks
++    // it (Twist, 2026-10-27). The first click in a room read each plane under
++    // it back from the GPU on the spot (10-100 ms), and hovering only got
++    // there first if the pointer had passed over that plane. Its old map is
++    // dropped, since it no longer matches; until the new one is made a click
++    // makes it as before. The version stops a copy on its way back from the
++    // GPU (readLater) when the picture was drawn again meanwhile.
++    public static redrawn(baseTexture: BaseTexture): void
++    {
++        if(!baseTexture) return;
++
++        //@ts-ignore
++        baseTexture.hitMap = null;
++        //@ts-ignore
++        baseTexture.pixelrpDrawVersion = ((baseTexture.pixelrpDrawVersion || 0) + 1);
++
++        ExtendedSprite.buildLater(baseTexture);
++    }
++
+     // PixelRP: the maps a mouse move left for later (see hovering), made one at
+     // a time while the browser is idle. Only what is still missing is made:
+     // the sheet's own map (SheetMasks) may have arrived in the meantime, or a
+@@ -456,11 +477,23 @@
+ 
+             if(ExtendedSprite._reading.has(id)) return false;
+ 
++            //@ts-ignore - see redrawn
++            const version = item.pixelrpDrawVersion;
+             const whole = new Texture(item);
+             const started = ExtendedSprite.readLater(id, whole, item.width, item.height, pixels =>
+             {
+                 //@ts-ignore
+                 if(!pixels || item.destroyed || !item.valid || item.hitMap) return;
++
++                // drawn again while this copy was on its way: not the picture
++                // any more, so made again from the new one
++                //@ts-ignore
++                if(item.pixelrpDrawVersion !== version)
++                {
++                    ExtendedSprite.buildLater(item);
++
++                    return;
++                }
+ 
+                 //@ts-ignore
+                 item.hitMap = ExtendedSprite.solidBits(pixels, (item.width * item.height));
