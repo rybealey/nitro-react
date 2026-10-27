@@ -1,5 +1,6 @@
 import { AvatarImage, ExtendedSprite, GetTicker, IMessageComposer, MouseEventType, RoomSpriteCanvas, SocketConnection, TextureUtils } from '@nitrots/nitro-renderer';
 import { GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
+import { GetAutoFrameRate, OnAutoFrameRateChange } from '../prefs/AutoFrameRate';
 import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 
 // PixelRP: the lag recorder (Twist, 2026-10-26 - "when i stand still for a few
@@ -96,6 +97,9 @@ interface SlowFrame
     text: string;
     start: number;
     end: number;
+    // a line of its own (the automatic frame rate), sent as it is - not a
+    // frame the browser's reports are matched to
+    note?: boolean;
 }
 
 // this frame's counts, reset after each frame
@@ -206,6 +210,8 @@ const describeScript = (script: any): string =>
 
 const finish = (frame: SlowFrame): string =>
 {
+    if(frame.note) return frame.text;
+
     let tasks = 0;
     let longestTask = 0;
 
@@ -376,8 +382,23 @@ const record = (frameMs: number, start: number, end: number) =>
     if(otherTickerMs) otherTickers.push(`other:${ otherTickerMs.toFixed(1) }`);
     if(otherTickers.length) parts.push(`xt=${ otherTickers.join(',') }`);
     if(slowListenerMs >= LISTENER_NOTE_MS) parts.push(`ls=${ slowListenerMs.toFixed(1) }:${ slowListenerTicker }:${ describeListener(slowListenerFn) }`);
+    if(GetAutoFrameRate().lowered) parts.push('af=half');
 
     frames.push({ text: parts.join(' '), start, end });
+
+    if(frames.length > MAX_PENDING) frames.splice(0, (frames.length - MAX_PENDING));
+
+    if(sendTimer) window.clearTimeout(sendTimer);
+
+    sendTimer = window.setTimeout(send, SEND_AFTER_MS);
+}
+
+// a line of its own (SlowFrame.note), sent with the next message
+const addNote = (text: string) =>
+{
+    const now = performance.now();
+
+    frames.push({ text, start: now, end: now, note: true });
 
     if(frames.length > MAX_PENDING) frames.splice(0, (frames.length - MAX_PENDING));
 
@@ -716,6 +737,23 @@ const install = (): boolean =>
 
     // no game step to time from: frames as the browser shows them
     if(typeof update !== 'function') window.requestAnimationFrame(onFrameRequest);
+
+    // the automatic frame rate (Twist, 2026-10-27): a line when it steps down
+    // to half rate or back up, and once a minute while the tab shows, the
+    // screen's refresh and the share of slightly late frames - what decides
+    // whether it steps down, so the thresholds can be judged from real play
+    OnAutoFrameRateChange(state => addNote(state.lowered
+        ? `af=half:${ state.fps }fps late=${ Math.round(state.lateShare * 100) }%`
+        : (state.enabled ? 'af=full' : 'af=off')));
+
+    window.setInterval(() =>
+    {
+        if(document.visibilityState !== 'visible') return;
+
+        const state = GetAutoFrameRate();
+
+        addNote(`fr=${ state.refreshHz }Hz late=${ (state.recentLateShare * 100).toFixed(1) }% af=${ !state.enabled ? 'off' : (state.lowered ? 'half' : 'full') }`);
+    }, 60000);
 
     return true;
 }

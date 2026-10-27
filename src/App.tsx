@@ -8,6 +8,7 @@ import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
 import { InstallJitterTrace } from './api/diagnostics/JitterTrace';
 import { InstallFinalStepStance } from './api/nitro/room/FinalStepStance';
 import { InstallTurnTrace } from './api/diagnostics/TurnTrace';
+import { StartAutoFrameRate } from './api/prefs/AutoFrameRate';
 import { ApplyMaxFps } from './api/prefs/FpsStore';
 import { RegisterRpCorpMessages } from './api/rp-corps/RpCorpDetailMessages';
 import { RegisterRpChatMessages } from './api/rp-chat/RpChatMessages';
@@ -399,6 +400,10 @@ export const App: FC<{}> = props =>
                 // pixelrp: pictures unused for 30 s leave the graphics card
                 // after 30 s at any frame rate (TextureGCClock).
                 TimeTextureGC(GetNitroInstance().application.renderer);
+
+                // pixelrp: a computer that keeps falling behind draws on every
+                // other screen refresh until it can keep up (AutoFrameRate).
+                StartAutoFrameRate();
 
                 // DevTools that are already open, checked from here on - by now
                 // the rank that exempts staff has arrived.

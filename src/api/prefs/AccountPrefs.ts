@@ -26,6 +26,7 @@ const SAVE_DELAY_MS = 1000;
 const ACCOUNT_KEYS = new Set<string>([
     // Settings > General
     'pixelrp.prefs.fps.max',
+    'pixelrp.prefs.fps.slow',
     'pixelrp.prefs.room.drag',
     'pixelrp.prefs.clock24',
     'pixelrp.prefs.celsius',

@@ -10,6 +10,7 @@ import { ApplyIconTint, ApplyUiChrome, ClampChromeOpacity, DEFAULT_CHROME_COLOR,
 import { ColourPicker } from './ColourPicker';
 import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHudStyle, useHudPrefs } from '../../api/prefs/HudPrefsStore';
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
+import { SetSlowComputerMode, useAutoFrameRate } from '../../api/prefs/AutoFrameRate';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
 import { ROOM_DRAG_BUTTONS, RoomDragButton, SetRoomDragButton, useRoomDragPref } from '../../api/prefs/RoomDragStore';
@@ -119,6 +120,7 @@ export const RpSettingsView: FC<{}> = props =>
     const exportTextRef = useRef<HTMLTextAreaElement>(null);
     const [ currentTab, setCurrentTab ] = useState<string>(TABS[0]);
     const { maxFps } = useFpsPref();
+    const autoFrameRate = useAutoFrameRate();
     const { dragButton } = useRoomDragPref();
     const [ chromeColor, setChromeColor ] = useState<string>(DEFAULT_CHROME_COLOR);
     const [ chromeOpacity, setChromeOpacity ] = useState<number>(DEFAULT_CHROME_OPACITY);
@@ -1445,6 +1447,19 @@ export const RpSettingsView: FC<{}> = props =>
                                             onChange={ event => SetMaxFps(parseInt(event.target.value)) } />
                                         <span className="rp-settings-row-value">{ maxFps }</span>
                                     </div>
+                                    { /* pixelrp: Slow computer mode (AutoFrameRate) - off by
+                                         default; on, while this computer cannot keep up the
+                                         game draws at half the screen's rate, and says so. */ }
+                                    <div className="rp-settings-row">
+                                        <span className="rp-settings-row-label" title="When the game keeps falling behind, it draws at half your screen's rate - 30 FPS on most laptops - until it can keep up again.">Slow computer mode</span>
+                                        <button type="button" role="switch" aria-checked={ autoFrameRate.enabled } aria-label="Slow computer mode"
+                                            className={ `rp-settings-env-switch${ autoFrameRate.enabled ? ' is-on' : '' }` }
+                                            onClick={ () => SetSlowComputerMode(!autoFrameRate.enabled) }><span /></button>
+                                    </div>
+                                    { autoFrameRate.lowered &&
+                                        <div className="rp-settings-row">
+                                            <Text small className="text-muted">{ `Running at ${ autoFrameRate.fps } FPS for now - your computer was falling behind. It goes back up on its own.` }</Text>
+                                        </div> }
                                     <div className="rp-settings-row">
                                         <span className="rp-settings-row-label">{ LocalizeText('memenu.settings.other.disable.room.camera.follow') }</span>
                                         <button type="button" role="switch" aria-checked={ !!userSettings?.cameraFollow } aria-label={ LocalizeText('memenu.settings.other.disable.room.camera.follow') } disabled={ !userSettings }
