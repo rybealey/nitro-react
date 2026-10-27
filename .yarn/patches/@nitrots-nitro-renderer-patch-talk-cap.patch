@@ -1,0 +1,26 @@
+diff --git a/src/nitro/room/object/logic/avatar/AvatarLogic.ts b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/logic/avatar/AvatarLogic.ts
++++ b/src/nitro/room/object/logic/avatar/AvatarLogic.ts
+@@ -9,6 +9,8 @@
+ export class AvatarLogic extends MovingObjectLogic
+ {
+     private static MAX_HAND_ID: number = 999999999;
++    // PixelRP: the longest a chat line keeps an avatar's mouth moving.
++    private static PIXELRP_TALK_MAX_MS: number = 3000;
+     private static MAX_HAND_USE_ID: number = 999;
+     // pixelrp: handitems that are CARRIED and never raised.
+     //
+@@ -278,7 +280,11 @@
+         {
+             model.setValue(RoomObjectVariable.FIGURE_TALK, 1);
+ 
+-            this._talkingEndTimestamp = (this.time + (message.numberOfWords * 1000));
++            // PixelRP (Twist, 2026-10-27): the mouth moves for at most three
++            // seconds. It was a second per ten characters, so a long RP line
++            // kept an avatar talking - redrawn several times a second - for
++            // fifteen seconds, and in a busy room many at once.
++            this._talkingEndTimestamp = (this.time + Math.min((message.numberOfWords * 1000), AvatarLogic.PIXELRP_TALK_MAX_MS));
+ 
+             return;
+         }
