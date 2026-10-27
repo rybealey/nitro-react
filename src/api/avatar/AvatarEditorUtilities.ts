@@ -131,7 +131,7 @@ export class AvatarEditorUtilities
         }
 
         const usesColors = (name !== FigureData.FACE);
-        // pixelrp: Moderators and up wear anything - every sellable set without
+        // pixelrp: every staff rank wears anything - every sellable set without
         // owning it, and every face, selectable or not. Everyone else keeps
         // exactly the selection they had. The server draws the same line
         // (Habbo.WearsAnyClothing lets the look through ProcessFigure) - one

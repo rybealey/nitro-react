@@ -25,6 +25,6 @@ export const TakesPublicRoomFurni = (): boolean => (GetSessionDataManager().secu
 export const CanOpenCityPanel = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_ADMINISTRATOR);
 
 // Every clothing set in Choose Your Look without buying it from the Clothing
-// Store, every face included, from Moderator up (emulator
+// Store, every face included, for every staff rank - Builder up (emulator
 // Habbo.WearsAnyClothing, which lets the saved look through).
-export const WearsAnyClothing = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_MODERATOR);
+export const WearsAnyClothing = (): boolean => (GetSessionDataManager().securityLevel >= RP_RANK_BUILDER);
