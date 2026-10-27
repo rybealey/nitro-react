@@ -1,5 +1,6 @@
 import { AvatarFigurePartType, AvatarScaleType, AvatarSetType, GetGuestRoomResultEvent, NitroPoint, PetFigureData, RoomChatSettings, RoomChatSettingsEvent, RoomDragEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionChatEvent, RoomUserData, SystemChatStyleEnum, TextureUtils, Vector3d } from '@nitrots/nitro-renderer';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { ChatBubbleMessage, ChatEntryType, ChatHistoryCurrentDate, GetAvatarRenderManager, GetConfiguration, GetRoomEngine, GetRoomObjectScreenLocation, IRoomChatSettings, LocalizeText, PlayMentionSound, PlaySound, RoomChatFormatter } from '../../../api';
 import { useMessageEvent, useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
 import { IsMentionOfMe } from '../../../api/rp-chat/Mention';
@@ -475,7 +476,12 @@ const useChatWidgetState = () =>
         }
         else
         {
-            setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]);
+            // pixelrp: drawn now, in the message that brought it. Left to
+            // React, a line from the server (a fight line, someone else's
+            // chat) was drawn in a turn of its own after the message, and the
+            // game's next frame usually went out first - the bubble a frame
+            // late, more while the room is busy drawing.
+            flushSync(() => setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]));
         }
 
         const entry = { id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, text, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor };
