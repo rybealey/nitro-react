@@ -24,6 +24,12 @@ import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 //           spot, rb = pictures read back from the graphics card while it
 //           waits (a map can include one), pic = the info box's furni picture;
 //           each count / ms
+//   xt, ls  the frame loops besides the game's own (Twist, 2026-10-27 - a
+//           0.63 s stall in the crowd test ran in one, with tick=0): xt = ms
+//           each other Pixi ticker spent, as shared/system/other:ms, only when
+//           one ran; ls = the slowest single job on any ticker, the game's
+//           included, from LISTENER_NOTE_MS, as ms:ticker:name:the start of
+//           its code - enough to find it in the bundle
 //   lt      long tasks the browser saw in the frame: count / longest ms - the
 //           game's and the website page's around it, which share one thread
 //   ev      the slowest click or key in the frame, as name:wait/run/show - ms
@@ -62,6 +68,9 @@ const MAX_MESSAGE_CHARS = 3900; // the emulator keeps 4000
 const MAX_PENDING = 48;
 const MAX_REPORTS = 300;
 const TOP_SCRIPTS = 3;
+// a ticker job is named on the line from this long
+const LISTENER_NOTE_MS = 8;
+const LISTENER_CODE_CHARS = 56;
 const RP_CLIENT_LAG_REPORT = 4234; // client -> server
 
 class RpClientLagReportComposer implements IMessageComposer<[ string ]>
@@ -113,6 +122,16 @@ let readbacks = 0;
 let readbackMs = 0;
 let furniPictures = 0;
 let furniPictureMs = 0;
+// the other tickers (xt), and the slowest job on any ticker (ls): which
+// ticker is running now, and the job's function, kept as is until a slow
+// frame needs it written out
+let sharedTickerMs = 0;
+let systemTickerMs = 0;
+let otherTickerMs = 0;
+let runningTicker = 'main';
+let slowListenerMs = 0;
+let slowListenerTicker = '';
+let slowListenerFn: Function = null;
 
 let lastFrameAt = 0;
 let lastInputAt = 0;
@@ -136,7 +155,28 @@ const resetFrame = () =>
     avatarCalls = 0; avatarMs = 0; cropCalls = 0; cropMs = 0;
     packets = 0; packetMs = 0; slowestHeader = 0; slowestHeaderMs = 0;
     hitTests = 0; hitMs = 0; mapsMade = 0; mapMs = 0; readbacks = 0; readbackMs = 0; furniPictures = 0; furniPictureMs = 0;
+    sharedTickerMs = 0; systemTickerMs = 0; otherTickerMs = 0;
+    slowListenerMs = 0; slowListenerTicker = ''; slowListenerFn = null;
 };
+
+// a ticker job as name:the start of its code - no spaces or bars, as those
+// split the fields and the lines. A bound function's code reads "[native
+// code]", so its name ("bound render") is what tells it apart.
+const describeListener = (fn: Function): string =>
+{
+    if(!fn) return '?';
+
+    let code = '';
+
+    try
+    {
+        code = String(fn).slice(0, (LISTENER_CODE_CHARS * 2)).replace(/\s+/g, '').slice(0, LISTENER_CODE_CHARS);
+    }
+    catch(e)
+    {}
+
+    return `${ (fn.name || 'anon').slice(0, 24) }:${ code }`.replace(/[\s|]+/g, '_');
+}
 
 const keepReport = (list: any[], entry: any) =>
 {
@@ -329,6 +369,14 @@ const record = (frameMs: number, start: number, end: number) =>
     if(readbacks) parts.push(`rb=${ readbacks }/${ readbackMs.toFixed(1) }`);
     if(furniPictures) parts.push(`pic=${ furniPictures }/${ furniPictureMs.toFixed(1) }`);
 
+    const otherTickers: string[] = [];
+
+    if(sharedTickerMs) otherTickers.push(`shared:${ sharedTickerMs.toFixed(1) }`);
+    if(systemTickerMs) otherTickers.push(`system:${ systemTickerMs.toFixed(1) }`);
+    if(otherTickerMs) otherTickers.push(`other:${ otherTickerMs.toFixed(1) }`);
+    if(otherTickers.length) parts.push(`xt=${ otherTickers.join(',') }`);
+    if(slowListenerMs >= LISTENER_NOTE_MS) parts.push(`ls=${ slowListenerMs.toFixed(1) }:${ slowListenerTicker }:${ describeListener(slowListenerFn) }`);
+
     frames.push({ text: parts.join(' '), start, end });
 
     if(frames.length > MAX_PENDING) frames.splice(0, (frames.length - MAX_PENDING));
@@ -470,6 +518,70 @@ const install = (): boolean =>
             finally
             {
                 tickMs += (performance.now() - start);
+            }
+        };
+    }
+
+    // The other tickers (xt), each time one runs. The game's keeps its own
+    // update, wrapped above round Pixi's; every other ticker uses Pixi's,
+    // wrapped here on the class. Ticker._shared and _system are read as they
+    // are: the shared and system getters would make one that is not there.
+    const TickerClass: any = ticker?.constructor;
+    const tickerUpdate = TickerClass?.prototype?.update;
+
+    if(typeof tickerUpdate === 'function')
+    {
+        TickerClass.prototype.update = function(...args: any[])
+        {
+            const name = ((this === TickerClass._shared) ? 'shared' : ((this === TickerClass._system) ? 'system' : 'other'));
+            const outer = runningTicker;
+            const start = performance.now();
+
+            runningTicker = name;
+
+            try
+            {
+                return tickerUpdate.apply(this, args);
+            }
+            finally
+            {
+                const ms = (performance.now() - start);
+
+                runningTicker = outer;
+
+                if(name === 'shared') sharedTickerMs += ms;
+                else if(name === 'system') systemTickerMs += ms;
+                else otherTickerMs += ms;
+            }
+        };
+    }
+
+    // Every job on every ticker (ls), one at a time: the slowest of the frame
+    // is kept, with the ticker it ran on.
+    const TickerListener: any = ticker?._head?.constructor;
+    const emit = TickerListener?.prototype?.emit;
+
+    if(typeof emit === 'function')
+    {
+        TickerListener.prototype.emit = function(...args: any[])
+        {
+            const fn = this.fn;
+            const start = performance.now();
+
+            try
+            {
+                return emit.apply(this, args);
+            }
+            finally
+            {
+                const ms = (performance.now() - start);
+
+                if(ms > slowListenerMs)
+                {
+                    slowListenerMs = ms;
+                    slowListenerTicker = runningTicker;
+                    slowListenerFn = fn;
+                }
             }
         };
     }
