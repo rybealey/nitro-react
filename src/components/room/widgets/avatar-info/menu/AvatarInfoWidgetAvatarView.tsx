@@ -346,7 +346,7 @@ export const AvatarInfoWidgetAvatarView: FC<AvatarInfoWidgetAvatarViewProps> = p
                     <ContextMenuListItemView onClick={ event => processAction('ambassador_mute_60min') }>
                         { LocalizeText('infostand.button.mute_60min') }
                     </ContextMenuListItemView>
-                    <ContextMenuListItemView onClick={ event => processAction('ambassador_mute_18hr') }>
+                    <ContextMenuListItemView onClick={ event => processAction('ambassador_mute_18hour') }>
                         { LocalizeText('infostand.button.mute_18hour') }
                     </ContextMenuListItemView>
                     <ContextMenuListItemView onClick={ event => processAction('back_ambassador') }>
