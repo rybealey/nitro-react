@@ -1,5 +1,4 @@
-import { FC, useEffect, useState } from 'react';
-import { Overlay, Tooltip } from 'react-bootstrap';
+import { FC, useEffect } from 'react';
 
 // pixelrp: restyles the browser's own title="" tooltip as our hover caption -
 // HoverBubble's black bubble - and does nothing else. It shows only where the
@@ -13,6 +12,20 @@ import { Overlay, Tooltip } from 'react-bootstrap';
 // further up - and given back when the mouse leaves. Every change the app makes
 // to the title meanwhile is followed (removed, blanked, new text), so what is
 // given back, and what the caption says, is always the app's current title.
+//
+// pixelrp (Twist, 2026-10-27, from the lag reports): the bubble is ONE element,
+// made once and placed by hand - above its element, centred, below it when
+// there is no room above, kept on the screen - with the same classes
+// react-bootstrap's Tooltip gave it, so it looks the same and still fades in.
+// A new Overlay was mounted for every hover, and its positioning library
+// measured the page each time: 100-200 ms before a bubble showed on a laptop.
+
+// how long bootstrap's .fade takes to fade a bubble out, before it is put away
+const FADE_MS = 150;
+// where the Overlay put it: this far clear of its element, and this far in
+// from the edges of the screen
+const GAP = 6;
+const EDGE = 5;
 
 // The element whose title the browser would show for this node. SVG elements'
 // title attributes are not tooltips, and nothing in a frame belongs to us.
@@ -30,10 +43,6 @@ const TitledOf = (node: EventTarget): HTMLElement =>
 
 export const TitleBubbles: FC<{}> = props =>
 {
-    const [ target, setTarget ] = useState<HTMLElement>(null);
-    const [ text, setText ] = useState('');
-    const [ version, setVersion ] = useState(0);
-
     useEffect(() =>
     {
         // the hovered element, and its title as the app has it while it is
@@ -46,13 +55,60 @@ export const TitleBubbles: FC<{}> = props =>
         // put away by a click, key, wheel or scroll until the mouse moves on
         let dismissed = false;
 
+        // the bubble: react-bootstrap's Tooltip markup, made once
+        const bubble = document.createElement('div');
+        const arrow = document.createElement('div');
+        const inner = document.createElement('div');
+        let putAway: ReturnType<typeof setTimeout> = null;
+
+        bubble.id = 'prp-title-bubble';
+        bubble.setAttribute('role', 'tooltip');
+        bubble.className = 'tooltip prp-title-bubble bs-tooltip-top fade';
+        bubble.style.cssText = 'position: fixed; left: 0; top: 0; display: none;';
+        arrow.className = 'tooltip-arrow';
+        inner.className = 'tooltip-inner';
+        bubble.append(arrow, inner);
+        document.body.appendChild(bubble);
+
+        // The text on it, then where it goes: one look at the element's place
+        // and one at the bubble's size, each time it is shown or its text
+        // changes. A new element fades in from nothing, as each Overlay did.
+        const showBubble = (title: string, fadeIn: boolean) =>
+        {
+            clearTimeout(putAway);
+            putAway = null;
+
+            if(fadeIn) bubble.classList.remove('show');
+
+            inner.textContent = title;
+            bubble.style.display = '';
+
+            const place = current.getBoundingClientRect();
+            const { width, height } = bubble.getBoundingClientRect();
+            const above = ((place.top - GAP - height) >= 0) || ((place.bottom + GAP + height) > window.innerHeight);
+            const left = Math.max(EDGE, Math.min((place.left + ((place.width - width) / 2)), (window.innerWidth - width - EDGE)));
+            const top = (above ? (place.top - GAP - height) : (place.bottom + GAP));
+
+            bubble.classList.toggle('bs-tooltip-top', above);
+            bubble.classList.toggle('bs-tooltip-bottom', !above);
+            bubble.style.transform = `translate(${ Math.round(left) }px, ${ Math.round(top) }px)`;
+            bubble.classList.add('show');
+        }
+
         const hideBubble = () =>
         {
             if(!shown) return;
 
             shown = false;
-            setTarget(null);
-            setText('');
+            bubble.classList.remove('show');
+
+            clearTimeout(putAway);
+            putAway = setTimeout(() =>
+            {
+                putAway = null;
+
+                if(!shown) bubble.style.display = 'none';
+            }, FADE_MS);
         }
 
         const release = () =>
@@ -103,15 +159,13 @@ export const TitleBubbles: FC<{}> = props =>
 
             if(shown)
             {
-                setText(title);
+                showBubble(title, false);
 
                 return;
             }
 
             shown = true;
-            setTarget(current);
-            setText(title);
-            setVersion(value => (value + 1));
+            showBubble(title, true);
         }
 
         const hold = (element: HTMLElement) =>
@@ -204,12 +258,11 @@ export const TitleBubbles: FC<{}> = props =>
             document.removeEventListener('keydown', onDismiss, true);
             document.removeEventListener('wheel', onDismiss, true);
             document.removeEventListener('scroll', onScroll, true);
+
+            clearTimeout(putAway);
+            bubble.remove();
         }
     }, []);
 
-    return (
-        <Overlay key={ version } target={ target } show={ !!target && !!text } placement="top" flip>
-            <Tooltip id="prp-title-bubble" className="prp-title-bubble">{ text }</Tooltip>
-        </Overlay>
-    );
+    return null;
 }
