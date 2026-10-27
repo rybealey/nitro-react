@@ -168,18 +168,24 @@ const localAccountKeys = (): string[] =>
     return keys;
 }
 
+// A save waiting on its timer, sent now.
+const saveNow = (): void =>
+{
+    if(!saveTimer) return;
+
+    clearTimeout(saveTimer);
+    saveTimer = null;
+
+    SendMessageComposer(new RpSavePrefsComposer(JSON.stringify(account)));
+}
+
 const scheduleSave = (): void =>
 {
     if(!account) return;
 
     if(saveTimer) clearTimeout(saveTimer);
 
-    saveTimer = setTimeout(() =>
-    {
-        saveTimer = null;
-
-        SendMessageComposer(new RpSavePrefsComposer(JSON.stringify(account)));
-    }, SAVE_DELAY_MS);
+    saveTimer = setTimeout(saveNow, SAVE_DELAY_MS);
 }
 
 /** A setting's stored string, as localStorage.getItem gives it - the account's once it has arrived. */
@@ -347,6 +353,16 @@ export const RegisterAccountPrefs = () =>
     });
 
     GetCommunication().registerMessageEvent(new RpPrefsEvent(onPrefs));
+
+    // pixelrp (Twist, 2026-10-27): a change made in the second before the page
+    // goes - a reload, the tab closed or put away - is sent there and then. It
+    // waited on the timer, and the next login put the account's older copy
+    // back over it.
+    window.addEventListener('pagehide', saveNow);
+    document.addEventListener('visibilitychange', () =>
+    {
+        if(document.visibilityState === 'hidden') saveNow();
+    });
 
     registered = true;
 }
