@@ -14,7 +14,17 @@ import { SetLocalStorage } from './SetLocalStorage';
 // stay unlocked - a reload wipes it, and the browser can park the context later
 // (an output device changing, the machine waking from sleep) where only another
 // gesture may wake it. Once everything is running this is a few checks and out.
+//
+// pixelrp (Twist, 2026-10-27): the context is MADE when the tab is put away,
+// never in a click. Making one opens the computer's sound output, and the page
+// waits for it - 451 ms on one player's first click after loading, 72 ms on
+// another's. It is only needed for a ping in a background tab anyway: the
+// primed element sounds one while the game is in front. A click or key wakes
+// a context that is already there, which costs nothing. Made after the
+// player's first click or key, the browser lets it start without one of its
+// own.
 let context: AudioContext = null;
+let gestured = false;
 let buffer: AudioBuffer = null;
 let decoding = false;
 let primed: HTMLAudioElement = null;
@@ -114,7 +124,21 @@ const unlockElement = () =>
         .finally(() => (primed.muted = false));
 }
 
-const unlockContext = () =>
+// A click or key: wake the context if it is there and parked. Nothing is made.
+const wakeContext = () =>
+{
+    try
+    {
+        // suspended (parked by the browser), or Safari's interrupted
+        if(context && (context.state !== 'closed') && (context.state !== 'running')) context.resume().catch(() => {});
+    }
+    catch(e)
+    { }
+}
+
+// The tab put away, after a click or key: make the context, and decode the
+// ping into it, ready for a mention while the game is out of sight.
+const prepareContext = () =>
 {
     try
     {
@@ -129,7 +153,6 @@ const unlockContext = () =>
             context = new Ctx();
         }
 
-        // suspended (never started, or parked by the browser), or Safari's interrupted
         if(context.state !== 'running') context.resume().catch(() => {});
     }
     catch(e)
@@ -153,13 +176,20 @@ const unlockContext = () =>
 
 const unlock = () =>
 {
+    gestured = true;
+
     unlockElement();
-    unlockContext();
+    wakeContext();
 }
 
 // capture phase so a gesture counts whatever handled it
 window.addEventListener('pointerdown', unlock, { capture: true });
 window.addEventListener('keydown', unlock, { capture: true });
+
+document.addEventListener('visibilitychange', () =>
+{
+    if((document.visibilityState === 'hidden') && gestured) prepareContext();
+});
 
 const playFallback = () =>
 {
