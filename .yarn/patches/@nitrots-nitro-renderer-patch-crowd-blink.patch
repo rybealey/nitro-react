@@ -1,0 +1,79 @@
+diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
++++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
+@@ -1,7 +1,8 @@
+ import { BLEND_MODES } from '@pixi/constants';
+ import { Resource, Texture } from '@pixi/core';
+-import { AdvancedMap, AlphaTolerance, AvatarAction, AvatarGuideStatus, AvatarSetType, IAdvancedMap, IAvatarEffectListener, IAvatarImage, IAvatarImageListener, IGraphicAsset, IObjectVisualizationData, IRoomGeometry, IRoomObject, IRoomObjectModel, RoomObjectSpriteType, RoomObjectVariable } from '../../../../../api';
++import { AdvancedMap, AlphaTolerance, AvatarAction, AvatarGuideStatus, AvatarSetType, IAdvancedMap, IAvatarEffectListener, IAvatarImage, IAvatarImageListener, IGraphicAsset, IObjectVisualizationData, IRoomGeometry, IRoomObject, IRoomObjectModel, RoomObjectCategory, RoomObjectSpriteType, RoomObjectVariable } from '../../../../../api';
+ import { RoomObjectSpriteVisualization } from '../../../../../room';
++import { Nitro } from '../../../../Nitro';
+ import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, MutedBubbleAddition, NumberBubbleAddition, SocialEffectAddition, TypingBubbleAddition } from './additions';
+ import { AvatarVisualizationData } from './AvatarVisualizationData';
+ 
+@@ -18,6 +19,12 @@
+     // pixelrp: one addition per sprite of a :kiss or :hug's effect (SocialEffectAddition) - Love has three.
+     private static RP_SOCIAL_EFFECT_IDS: number[] = [ 8, 9, 10 ];
+     private static OWN_USER_ID: number = 4;
++    // PixelRP: from this many players in the room, other avatars stop
++    // blinking (pixelrpQuietBlink), and the count is taken at most this often.
++    private static PIXELRP_CROWD: number = 25;
++    private static PIXELRP_CROWD_CHECK_MS: number = 1000;
++    private static _pixelrpCrowdCheckedAt: number = 0;
++    private static _pixelrpCrowded: boolean = false;
+     private static UPDATE_TIME_INCREASER: number = 41;
+     private static AVATAR_LAYER_ID: number = 0;
+     private static SHADOW_LAYER_ID: number = 1;
+@@ -614,7 +621,9 @@
+             needsUpdate = true;
+         }
+ 
+-        const blink = (model.getValue<number>(RoomObjectVariable.FIGURE_BLINK) > 0);
++        // PixelRP: a blink nobody would see is no change - read here, before
++        // it sets off a rebuild, not undone after one (updateScale).
++        const blink = ((model.getValue<number>(RoomObjectVariable.FIGURE_BLINK) > 0) && !this.pixelrpQuietBlink(model, scale));
+ 
+         if(blink !== this._blink)
+         {
+@@ -933,6 +942,40 @@
+         this._needsUpdate = true;
+     }
+ 
++    /**
++     * PixelRP (Twist, 2026-10-27): whether this avatar's blink goes unshown.
++     * Every avatar blinks every five seconds or so, and each blink rebuilt it
++     * twice (eyes shut, eyes open) - about 20 rebuilds a second in a room of 50
++     * with nobody moving. Never your own avatar. Every other one zoomed out,
++     * where a blink is too small to see (updateScale already hid it, but only
++     * after the rebuild), and in a crowd: PIXELRP_CROWD players or more in the
++     * room, counted from the room's own units, so the count cannot drift.
++     */
++    private pixelrpQuietBlink(model: IRoomObjectModel, scale: number): boolean
++    {
++        if(model.getValue<number>(RoomObjectVariable.OWN_USER) > 0) return false;
++
++        if(scale < 48) return true;
++
++        const now = Date.now();
++
++        if((now - AvatarVisualization._pixelrpCrowdCheckedAt) >= AvatarVisualization.PIXELRP_CROWD_CHECK_MS)
++        {
++            AvatarVisualization._pixelrpCrowdCheckedAt = now;
++
++            const roomEngine = Nitro.instance?.roomEngine;
++            const units = (roomEngine ? roomEngine.getRoomObjects(roomEngine.activeRoomId, RoomObjectCategory.UNIT) : null);
++
++            let players = 0;
++
++            if(units) for(const unit of units) if(unit && (unit.type === 'user')) players++;
++
++            AvatarVisualization._pixelrpCrowded = (players >= AvatarVisualization.PIXELRP_CROWD);
++        }
++
++        return AvatarVisualization._pixelrpCrowded;
++    }
++
+     private updateScale(scale: number): void
+     {
+         if(scale < 48) this._blink = false;
