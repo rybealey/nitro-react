@@ -8,12 +8,6 @@ import { ChatWidgetMessageView } from './ChatWidgetMessageView';
 // How long after a bubble lands the scroll step waits, so it is not nudged up as it appears.
 const SETTLE_HOLD_MS = 1000;
 
-// pixelrp: busy chat - this many new lines within this long - jumps instead of
-// gliding, checked again every CALM_CHECK_MS until it is calm (ChatWidgetView).
-const BUSY_LINES = 3;
-const BUSY_WINDOW_MS = 2000;
-const CALM_CHECK_MS = 500;
-
 // pixelrp: no two bubbles left on top of each other. Newest to oldest, every
 // older bubble a newer one overlaps goes up above it - older chat always sits
 // higher - and again until nothing moves, so a bubble pushed into a third
@@ -72,60 +66,6 @@ export const ChatWidgetView: FC<{}> = props =>
     // after one lands, so a new bubble is not nudged up as it appears.
     const lastPlacedRef = useRef<number>(0);
 
-    // pixelrp (Twist, 2026-10-27): the bubbles glide only while chat is calm.
-    // Every new line and every drift step slides every bubble on screen, and
-    // in a busy room - several people talking at once - that is near-constant
-    // movement: drawing work for nothing, and messy to read. From BUSY_LINES
-    // new lines within BUSY_WINDOW_MS the chat counts as busy and its bubbles
-    // jump (.nitro-chat-widget.is-busy, ChatWidgetView.scss); once fewer have
-    // come in that long, they glide again. The class goes straight onto the
-    // element, so a change of mode re-renders nothing.
-    const arrivalsRef = useRef<number[]>([]);
-    const calmCheckRef = useRef<number>(0);
-
-    const setBusy = useCallback((busy: boolean) =>
-    {
-        if(elementRef.current) elementRef.current.classList.toggle('is-busy', busy);
-
-        if(!busy && calmCheckRef.current)
-        {
-            window.clearInterval(calmCheckRef.current);
-            calmCheckRef.current = 0;
-        }
-    }, []);
-
-    const recentArrivals = () =>
-    {
-        const since = (Date.now() - BUSY_WINDOW_MS);
-        const arrivals = arrivalsRef.current;
-
-        while(arrivals.length && (arrivals[0] < since)) arrivals.shift();
-
-        return arrivals.length;
-    };
-
-    const noteArrival = useCallback(() =>
-    {
-        arrivalsRef.current.push(Date.now());
-
-        if(recentArrivals() < BUSY_LINES) return;
-
-        setBusy(true);
-
-        if(!calmCheckRef.current)
-        {
-            calmCheckRef.current = window.setInterval(() =>
-            {
-                if(recentArrivals() < BUSY_LINES) setBusy(false);
-            }, CALM_CHECK_MS);
-        }
-    }, [ setBusy ]);
-
-    useEffect(() => () =>
-    {
-        if(calmCheckRef.current) window.clearInterval(calmCheckRef.current);
-    }, []);
-
     // pixelrp: chat is always free flow - a new bubble pushes up only the
     // bubbles it overlaps (SettleChats). Line by line (every bubble up a line
     // for each new one) is gone: its setting was taken out of the Room tool,
@@ -133,8 +73,6 @@ export const ChatWidgetView: FC<{}> = props =>
     const makeRoom = useCallback((chat: ChatBubbleMessage) =>
     {
         lastPlacedRef.current = Date.now();
-
-        noteArrival();
 
         setChatMessages(prevValue =>
         {
@@ -144,7 +82,7 @@ export const ChatWidgetView: FC<{}> = props =>
         });
 
         removeHiddenChats();
-    }, [ noteArrival, removeHiddenChats, setChatMessages ]);
+    }, [ removeHiddenChats, setChatMessages ]);
 
     useEffect(() =>
     {

@@ -52,12 +52,6 @@
     image-rendering: pixelated;
 }
 
-// pixelrp: busy chat - several lines at once - jumps instead of gliding
-// (ChatWidgetView, BUSY_LINES)
-.nitro-chat-widget.is-busy .bubble-container {
-    transition: none;
-}
-
 // pixelrp (Twist, 2026-10-27): every bubble over the room keeps a layer of its
 // own, so a glide - the drift, a push from a new line - only slides that layer.
 // Lifted onto one just for the glide, Chrome drew the bubble (art, text, head)
