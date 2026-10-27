@@ -1,5 +1,5 @@
 import { DiamondsStoreEvent, DiamondsStoreListing, DiamondsStorePurchaseResultEvent, GetDiamondsStoreComposer, ILinkEventTracker, PurchaseDiamondsStoreItemComposer } from '@nitrots/nitro-renderer';
-import { ChangeEvent, FC, useEffect, useState } from 'react';
+import { ChangeEvent, FC, useEffect, useRef, useState } from 'react';
 import { FaCoins, FaCreditCard } from 'react-icons/fa';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { Button, Flex, LayoutCurrencyIcon, NitroCardContentView, NitroCardHeaderView, NitroCardTabsItemView, NitroCardTabsView, NitroCardView } from '../../common';
@@ -62,12 +62,21 @@ export const DiamondsStoreView: FC<{}> = props =>
         setListings(event.getParser().items);
     });
 
+    // pixelrp (Twist, 2026-10-27): read by the purchase result below - a
+    // result that lands after the store was closed is not put on screen, or
+    // reopening the store showed its Purchased or error screen over the list.
+    const visibleRef = useRef(isVisible);
+
+    visibleRef.current = isVisible;
+
     useMessageEvent<DiamondsStorePurchaseResultEvent>(DiamondsStorePurchaseResultEvent, event =>
     {
         const parser = event.getParser();
 
         setPurchasePending(false);
         setConfirmingKey(null);
+
+        if(!visibleRef.current) return;
 
         if(parser.status === 0)
         {
