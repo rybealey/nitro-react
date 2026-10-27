@@ -23,7 +23,7 @@ index 1111111..2222222 100644
 +    // PixelRP: tile_cursor.nitro's version, as docker/nitro/make-tile-cursor.py
 +    // prints it. Generic bundles carry no ?v= of their own; this one's address
 +    // changes with its art, and nginx keeps a ?v= address a month.
-+    private static TILE_CURSOR_VERSION: string = '28baec87';
++    private static TILE_CURSOR_VERSION: string = '431af53a';
      private static SELECTION_ARROW: string = 'selection_arrow';
  
      public static LOADER_READY: string = 'RCL_LOADER_READY';

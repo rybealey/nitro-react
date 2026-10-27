@@ -70,8 +70,8 @@ const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interf
 
 // UI > Cursor > Style: the name under each tile, in CursorStore's order.
 const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = {
-    frosted: 'Frosted', corners: 'Corners', pad: 'Pad', glow: 'Glow', shade: 'Shade',
-    bold: 'Bold', double: 'Double', rounded: 'Rounded', dashed: 'Dashed', points: 'Points', classic: 'Classic'
+    light: 'Light', frosted: 'Frosted', corners: 'Corners', pad: 'Pad', glow: 'Glow', shade: 'Shade',
+    double: 'Double', rounded: 'Rounded', dashed: 'Dashed', points: 'Points', target: 'Target', classic: 'Classic'
 };
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.

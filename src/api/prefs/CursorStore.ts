@@ -5,20 +5,21 @@ import { OnAccountPrefsLoaded, ReadPref, WritePref } from './AccountPrefs';
 
 // Settings > UI > Cursor: the square under the mouse on the room floor. The
 // boards of the "Tile cursor redesign" canvas, B to K, are the styles - their
-// lines drawn 2 px, as 1 px read too thin - plus Classic, Habbo's raised frame
-// with its shadow. (A, one thin line, is G at 2 px, so it is not a style.)
-// Bold (G, a 2 px line lying exactly on the tile) is the default. Any style is
-// drawn in the player's colour, white by default. Kept on the account
-// (AccountPrefs), like every setting. The renderer draws it (renderer patch
-// cursor-style; the art is docker/nitro/make-tile-cursor.py) - this puts both
-// on the room's cursor when a room is built and when the player changes them.
+// lines drawn 2 px, as 1 px read too thin - plus Target, a bullseye, and
+// Classic, Habbo's raised frame with its shadow. (A, one thin line, is G at
+// 2 px, so it is not a style.) Light (the canvas's G "Bold", a 2 px line lying
+// exactly on the tile) is the default and comes first. Any style is drawn in
+// the player's colour, white by default. Kept on the account (AccountPrefs),
+// like every setting. The renderer draws it (renderer patch cursor-style; the
+// art is docker/nitro/make-tile-cursor.py) - this puts both on the room's
+// cursor when a room is built and when the player changes them.
 
-// In the canvas's order, B to K, then Classic. Each id names its frame in
-// tile_cursor.nitro.
-export const CURSOR_STYLES = [ 'frosted', 'corners', 'pad', 'glow', 'shade', 'bold', 'double', 'rounded', 'dashed', 'points', 'classic' ] as const;
+// Light first, then the canvas's order, B to K, then Target and Classic. Each
+// id names its frame in tile_cursor.nitro.
+export const CURSOR_STYLES = [ 'light', 'frosted', 'corners', 'pad', 'glow', 'shade', 'double', 'rounded', 'dashed', 'points', 'target', 'classic' ] as const;
 export type CursorStyle = typeof CURSOR_STYLES[number];
 
-export const DEFAULT_CURSOR_STYLE: CursorStyle = 'bold';
+export const DEFAULT_CURSOR_STYLE: CursorStyle = 'light';
 export const DEFAULT_CURSOR_COLOUR = '#ffffff';
 
 const STYLE_KEY = 'pixelrp.prefs.cursor.style';
@@ -34,7 +35,8 @@ let colour = DEFAULT_CURSOR_COLOUR;
 
 const load = (): void =>
 {
-    // 'modern' was the default's name while there were only two styles.
+    // 'modern' and then 'bold' were the default's names before it was Light,
+    // so either reads as the default.
     const saved = ReadPref(STYLE_KEY) as CursorStyle;
 
     style = (CURSOR_STYLES.includes(saved) ? saved : DEFAULT_CURSOR_STYLE);
