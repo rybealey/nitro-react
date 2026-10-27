@@ -127,6 +127,11 @@ export const ComputeSky = (snapshot: WeatherSnapshot, now: number): SkyLook =>
         glow = (glow * .8);
     }
 
+    // To the hundredth, as the colours are to the whole number: the sky is
+    // repainted (SkyPainter) only when its gradients change, and an unrounded
+    // glow changed them on every 5 s tick for a difference nobody could see.
+    glow = (Math.round(glow * 100) / 100);
+
     return {
         kind,
         gradient: `linear-gradient(180deg, ${ css(stops.top) } 0%, ${ css(stops.mid) } 52%, ${ css(stops.bottom) } 100%)`,
