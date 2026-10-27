@@ -1,5 +1,5 @@
 import { RoomChatSettings, RoomObjectCategory } from '@nitrots/nitro-renderer';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef } from 'react';
 import { ChatBubbleMessage, GetRoomEngine, HtmlToText } from '../../../../api';
 import { IsNarratedBubble, NarratedBubbleText } from '../../../../api/rp-chat/NarratedBubble';
 import { UsernameIconGlyph } from '../../../rp-settings/UsernameIconGlyph';
@@ -22,8 +22,6 @@ interface ChatWidgetMessageViewProps
 export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
 {
     const { chat = null, makeRoom = null, bubbleWidth = RoomChatSettings.CHAT_BUBBLE_WIDTH_NORMAL } = props;
-    const [ isVisible, setIsVisible ] = useState(false);
-    const [ isReady, setIsReady ] = useState<boolean>(false);
     const elementRef = useRef<HTMLDivElement>();
 
     const getBubbleWidth = useMemo(() =>
@@ -39,19 +37,19 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
         }
     }, [ bubbleWidth ]);
 
-    useEffect(() =>
+    // pixelrp (Twist, 2026-10-27): measured, placed and made room for before
+    // the browser draws, so a new bubble is up in its place on the first frame.
+    // It used to be drawn hidden first, measured once that frame was out, and
+    // rendered twice more to show it - three renders and a frame late, for
+    // every line.
+    useLayoutEffect(() =>
     {
-        const placedWidth = chat.width;
-        const placedHeight = chat.height;
-        // pixelrp: a bubble put right in place stays shown while it is measured again
-        const correction = !!(placedWidth && placedHeight);
-
-        if(!correction) setIsVisible(false);
-        
         const element = elementRef.current;
 
         if(!element) return;
 
+        const placedWidth = chat.width;
+        const placedHeight = chat.height;
         const width = element.offsetWidth;
         const height = element.offsetHeight;
 
@@ -59,59 +57,28 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
         chat.height = height;
         chat.elementRef = element;
 
-        let left = chat.left;
-        let top = chat.top;
-
-        if(!left && !top)
+        if(!chat.left && !chat.top)
         {
-            left = (chat.location.x - (width / 2));
-            top = (element.parentElement.offsetHeight - height);
-
-            chat.left = left;
-            chat.top = top;
+            chat.left = (chat.location.x - (width / 2));
+            chat.top = (element.parentElement.offsetHeight - height);
         }
         // pixelrp: a preview of your own line put right by the server's copy
         // (useChatWidget) comes already placed, with its old size - it stays
         // put, centred on its new size with its bottom where it was.
-        else if(correction)
+        else if(placedWidth && placedHeight)
         {
             chat.left -= ((width - placedWidth) / 2);
             chat.top -= (height - placedHeight);
-
-            // still shown, so the effect below makes no room for it: done here
-            if(makeRoom) makeRoom(chat);
         }
 
-        setIsReady(true);
-
-        return () =>
-        {
-            chat.elementRef = null;
-
-            setIsReady(false);
-        }
-    }, [ chat, makeRoom ]);
-
-    useEffect(() =>
-    {
-        if(!isReady || !chat || isVisible) return;
-        
         if(makeRoom) makeRoom(chat);
 
-        setIsVisible(true);
-    }, [ chat, isReady, isVisible, makeRoom ]);
-
-    // pixelrp: a bubble measured before its font had loaded (the italic of a
-    // system whisper, the first time one shows) grows afterwards, past the room
-    // made for it. Keep its size true - still centred on its avatar, its bottom
-    // where it was - and settle the bubbles around it again.
-    useEffect(() =>
-    {
-        const element = elementRef.current;
-
-        if(!isReady || !element || (typeof ResizeObserver === 'undefined')) return;
-
-        const observer = new ResizeObserver(() =>
+        // pixelrp: a bubble measured before its font had loaded (the italic of
+        // a system whisper, the first time one shows) grows afterwards, past
+        // the room made for it. Keep its size true - still centred on its
+        // avatar, its bottom where it was - and settle the bubbles around it
+        // again.
+        const observer = (typeof ResizeObserver === 'undefined') ? null : new ResizeObserver(() =>
         {
             const width = element.offsetWidth;
             const height = element.offsetHeight;
@@ -126,10 +93,15 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
             if(makeRoom) makeRoom(chat);
         });
 
-        observer.observe(element);
+        if(observer) observer.observe(element);
 
-        return () => observer.disconnect();
-    }, [ chat, isReady, makeRoom ]);
+        return () =>
+        {
+            if(observer) observer.disconnect();
+
+            chat.elementRef = null;
+        }
+    }, [ chat, makeRoom ]);
 
     // Narrated bubbles arrive as *action text*. Move that opening marker
     // ahead of the username so the whole line reads *Username action text*,
@@ -155,7 +127,7 @@ export const ChatWidgetMessageView = memo<ChatWidgetMessageViewProps>(props =>
     const displayText = alert ? alert.message : formattedText;
 
     return (
-        <div ref={ elementRef } className={ `bubble-container ${ isVisible ? 'visible' : 'invisible' }` } onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>
+        <div ref={ elementRef } className="bubble-container" onClick={ event => GetRoomEngine().selectRoomObject(chat.roomId, chat.senderId, RoomObjectCategory.UNIT) }>
             { (chat.styleId === 0) &&
                 <div className="user-container-bg" style={ { backgroundColor: chat.color } } /> }
             <div className={ `chat-bubble bubble-${ chat.styleId } type-${ chat.type }${ isActionBubble ? ' is-action' : '' }` } style={ { maxWidth: getBubbleWidth } }>

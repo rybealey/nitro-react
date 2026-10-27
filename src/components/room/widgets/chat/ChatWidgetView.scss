@@ -58,6 +58,15 @@
     transition: none;
 }
 
+// pixelrp (Twist, 2026-10-27): every bubble over the room keeps a layer of its
+// own, so a glide - the drift, a push from a new line - only slides that layer.
+// Lifted onto one just for the glide, Chrome drew the bubble (art, text, head)
+// as it went up and again as it came down, and the drift moves every bubble on
+// screen at once. Not the chat style picker's bubbles, which share the class.
+.nitro-chat-widget .bubble-container {
+    will-change: transform;
+}
+
 .bubble-container {
     position: absolute;
     width: fit-content;
