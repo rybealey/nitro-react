@@ -1,0 +1,331 @@
+diff --git a/src/api/asset/AssetManager.ts b/src/api/asset/AssetManager.ts
+index 1111111..2222222 100644
+--- a/src/api/asset/AssetManager.ts
++++ b/src/api/asset/AssetManager.ts
+@@ -2,6 +2,7 @@
+ import { Spritesheet } from '@pixi/spritesheet';
+ import { NitroLogger } from '../common';
+ import { ArrayBufferToBase64, NitroBundle } from '../utils';
++import { UnpackSoon } from '../utils/UnpackQueue';
+ import { GraphicAssetCollection } from './GraphicAssetCollection';
+ import { IAssetData } from './IAssetData';
+ import { IAssetManager } from './IAssetManager';
+@@ -142,7 +143,8 @@
+         {
+             case 'application/octet-stream': {
+                 const buffer = await response.arrayBuffer();
+-                const nitroBundle = new NitroBundle(buffer);
++                // PixelRP: unpacked in its turn (UnpackQueue)
++                const nitroBundle = await UnpackSoon(() => new NitroBundle(buffer));
+ 
+                 await this.processAsset(
+                     nitroBundle.baseTexture,
+@@ -154,10 +156,10 @@
+             case 'image/jpeg':
+             case 'image/gif': {
+                 const buffer = await response.arrayBuffer();
+-                const base64 = ArrayBufferToBase64(buffer);
+-                const baseTexture = BaseTexture.from(
+-                    `data:${ contentType };base64,${ base64 }`
+-                );
++                // PixelRP: written out as text in its turn (UnpackQueue)
++                const baseTexture = await UnpackSoon(() => BaseTexture.from(
++                    `data:${ contentType };base64,${ ArrayBufferToBase64(buffer) }`
++                ));
+ 
+                 const createAsset = async () =>
+                 {
+@@ -192,9 +194,10 @@
+     {
+         const spritesheetData = data.spritesheet;
+ 
++        // PixelRP: the collection made in its turn (UnpackQueue)
+         if(!baseTexture || !spritesheetData || !Object.keys(spritesheetData).length)
+         {
+-            this.createCollection(data, null);
++            await UnpackSoon(() => this.createCollection(data, null));
+ 
+             return;
+         }
+@@ -205,7 +208,7 @@
+ 
+             await spritesheet.parse();
+ 
+-            this.createCollection(data, spritesheet);
++            await UnpackSoon(() => this.createCollection(data, spritesheet));
+         };
+ 
+         if(baseTexture.valid)
+diff --git a/src/api/utils/UnpackQueue.ts b/src/api/utils/UnpackQueue.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/api/utils/UnpackQueue.ts
+@@ -0,0 +1,68 @@
++// PixelRP: downloaded files are unpacked a few at a time (Twist, 2026-10-27).
++//
++// A crowd in new clothes, or a room of furni nobody had loaded yet, finishes
++// downloading together, and every file's unpacking - inflating it, reading its
++// JSON, making its picture and its asset collection - then ran back to back
++// in one task: 142 ms on a laptop in the crowd test, the screen held for all
++// of it. Now each piece of work waits its turn here, and one turn does
++// TURN_MS of them at most (always one), the rest in the turns after. Each
++// caller still gets exactly its own result, in the order it asked; only when
++// the work runs changes.
++//
++// The next turn is a scheduler task where the browser has them (Chrome), else
++// a timer. Measured in Chrome: chained message-channel tasks drew 1 frame in
++// 91 ms of this work, scheduler tasks 14 in 92 ms - the browser draws between
++// them, and the work takes no longer - and a timer is held to 4 ms apart once
++// it has nested a few deep.
++const TURN_MS = 6;
++
++const jobs: (() => void)[] = [];
++
++let scheduled = false;
++
++const runTurn = (): void =>
++{
++    scheduled = false;
++
++    const start = performance.now();
++
++    do jobs.shift()();
++    while(jobs.length && ((performance.now() - start) < TURN_MS));
++
++    if(jobs.length) schedule();
++}
++
++const schedule = (): void =>
++{
++    if(scheduled) return;
++
++    scheduled = true;
++
++    const scheduler = (globalThis as any).scheduler;
++
++    if(scheduler && (typeof scheduler.postTask === 'function'))
++    {
++        scheduler.postTask(runTurn, { priority: 'user-visible' });
++
++        return;
++    }
++
++    setTimeout(runTurn, 0);
++}
++
++export const UnpackSoon = <T>(work: () => T): Promise<T> => new Promise<T>((resolve, reject) =>
++{
++    jobs.push(() =>
++    {
++        try
++        {
++            resolve(work());
++        }
++        catch (error)
++        {
++            reject(error);
++        }
++    });
++
++    schedule();
++});
+diff --git a/src/nitro/room/RoomContentLoader.ts b/src/nitro/room/RoomContentLoader.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomContentLoader.ts
++++ b/src/nitro/room/RoomContentLoader.ts
+@@ -1,6 +1,7 @@
+ import { BaseTexture, Resource, Texture } from '@pixi/core';
+ import { Spritesheet } from '@pixi/spritesheet';
+ import { FurnitureType, GetAssetManager, GraphicAssetCollection, GraphicAssetGifCollection, IAssetData, IEventDispatcher, IFurnitureData, IFurnitureDataListener, IGraphicAssetCollection, IGraphicAssetGifCollection, IPetColorResult, IRoomContentListener, IRoomContentLoader, IRoomObject, ISessionDataManager, NitroBundle, NitroConfiguration, NitroLogger, RoomObjectCategory, RoomObjectUserType, RoomObjectVariable, RoomObjectVisualizationType } from '../../api';
++import { UnpackSoon } from '../../api/utils/UnpackQueue';
+ import { NitroEvent } from '../../events';
+ import { RoomContentLoadedEvent } from '../../events/room/RoomContentLoadedEvent';
+ import { PetColorResult } from './PetColorResult';
+@@ -511,7 +512,9 @@
+             switch(contentType)
+             {
+                 case 'application/octet-stream': {
+-                    const nitroBundle = new NitroBundle(await response.arrayBuffer());
++                    const buffer = await response.arrayBuffer();
++                    // PixelRP: unpacked in its turn (UnpackQueue)
++                    const nitroBundle = await UnpackSoon(() => new NitroBundle(buffer));
+ 
+                     await this.processAsset(nitroBundle.baseTexture, (nitroBundle.jsonFile as IAssetData));
+ 
+@@ -537,9 +540,10 @@
+     {
+         const spritesheetData = data.spritesheet;
+ 
++        // PixelRP: the collection made in its turn (UnpackQueue)
+         if(!baseTexture || !spritesheetData || !Object.keys(spritesheetData).length)
+         {
+-            this.createCollection(data, null);
++            await UnpackSoon(() => this.createCollection(data, null));
+ 
+             return;
+         }
+@@ -550,7 +554,7 @@
+ 
+             await spritesheet.parse();
+ 
+-            this.createCollection(data, spritesheet);
++            await UnpackSoon(() => this.createCollection(data, spritesheet));
+         };
+ 
+         if(baseTexture.valid)
+diff --git a/src/room/RoomManager.ts b/src/room/RoomManager.ts
+index 1111111..2222222 100644
+--- a/src/room/RoomManager.ts
++++ b/src/room/RoomManager.ts
+@@ -23,6 +23,9 @@
+     private _visualizationFactory: IRoomObjectVisualizationFactory;
+     private _logicFactory: IRoomObjectLogicFactory;
+ 
++    // PixelRP: how much of a frame newly loaded furni types may take (ms)
++    private static PENDING_TYPES_MS: number = 8;
++
+     private _initialLoadList: string[];
+     private _pendingContentTypes: string[];
+     private _skipContentProcessing: boolean;
+@@ -310,8 +313,17 @@
+             return;
+         }
+ 
++        // PixelRP (Twist, 2026-10-27): a share of each frame, the rest in the
++        // frames after - always one type a frame, so every one gets there.
++        // Every furni type that had just finished loading was set up in ONE
++        // frame, each going through every object in every room, and all their
++        // pictures then went to the graphics card in the same draw.
++        const start = performance.now();
++
+         while(this._pendingContentTypes.length)
+         {
++            if((performance.now() - start) >= RoomManager.PENDING_TYPES_MS) break;
++
+             const type = this._pendingContentTypes.shift();
+ 
+             const collection = this._contentLoader.getCollection(type);
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -1,11 +1,12 @@
+ import { BLEND_MODES } from '@pixi/constants';
+-import { BaseRenderTexture, BaseTexture, RenderTexture, Resource, Texture } from '@pixi/core';
++import { BaseRenderTexture, BaseTexture, Renderer, RenderTexture, Resource, Texture } from '@pixi/core';
+ import { Container } from '@pixi/display';
+ import { Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { AlphaTolerance } from '../../../api';
+ import { SheetMasks } from '../../../api/utils/SheetMasks';
+ import { TextureUtils } from '../../../pixi-proxy';
++import { MayDraw } from './UploadGate';
+ 
+ // PixelRP: which pixels of one frame are solid, a bit each, row by row.
+ interface FrameHitMap
+@@ -84,6 +85,16 @@
+         if(!this.texture.orig) return;
+ 
+         super.calculateVertices();
++    }
++
++    // PixelRP: a sprite whose sheet has not had its turn to go to the
++    // graphics card this frame is left out of it, and drawn a frame or so
++    // later (UploadGate).
++    protected _render(renderer: Renderer): void
++    {
++        if(!MayDraw(renderer, this._texture?.baseTexture)) return;
++
++        super._render(renderer);
+     }
+ 
+     public setTexture(texture: Texture<Resource>): void
+diff --git a/src/room/renderer/utils/UploadGate.ts b/src/room/renderer/utils/UploadGate.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/room/renderer/utils/UploadGate.ts
+@@ -0,0 +1,82 @@
++import { BaseTexture, ImageResource, Renderer } from '@pixi/core';
++
++// PixelRP: pictures go to the graphics card a share per frame (Twist,
++// 2026-10-27).
++//
++// Pixi sends a sheet to the graphics card the first time something drawn uses
++// it. Walking into a room full of furni, or a crowd arriving, put hundreds of
++// new sheets into ONE frame - 387 sheets, 5.5 megapixels, a 310 ms draw on a
++// laptop in the crowd test - and on Chrome the card can take that in after
++// the page has finished, so the frame shows late with the page idle. Now a
++// frame drawn to the screen takes in FRAME_UPLOADS new sheets and FRAME_PIXELS
++// pixels at most (always one); a room sprite whose sheet has not had its turn
++// is left out of that frame (ExtendedSprite) and drawn a frame or so later, as
++// the room already fills in when it loads. Only sheets from images: a picture
++// drawn by the game itself (the floor and walls, avatars, render textures) is
++// never held back, and neither is anything drawn into a texture rather than to
++// the screen - avatar pictures, room previews, camera photos.
++const FRAME_UPLOADS = 12;
++const FRAME_PIXELS = 1000000;
++
++interface GateState
++{
++    admitted: Set<BaseTexture>;
++    uploads: number;
++    pixels: number;
++}
++
++const states: WeakMap<Renderer, GateState> = new WeakMap();
++
++const stateOf = (renderer: Renderer): GateState =>
++{
++    let state = states.get(renderer);
++
++    if(state) return state;
++
++    state = { admitted: new Set(), uploads: 0, pixels: 0 };
++
++    states.set(renderer, state);
++
++    // A new share for each draw to the screen, once a frame. Pictures drawn
++    // into textures in between run the same runner, and do not reset it.
++    renderer.runners.prerender.add({
++        prerender: () =>
++        {
++            if(!renderer.renderingToScreen) return;
++
++            state.admitted.clear();
++            state.uploads = 0;
++            state.pixels = 0;
++        }
++    });
++
++    return state;
++}
++
++// Whether a sprite on this sheet may be drawn this frame.
++export const MayDraw = (renderer: Renderer, baseTexture: BaseTexture): boolean =>
++{
++    if(!renderer || !baseTexture || !renderer.renderingToScreen || !baseTexture.valid) return true;
++
++    if(!(baseTexture.resource instanceof ImageResource)) return true;
++
++    //@ts-ignore - private in the typings
++    const glTexture = baseTexture._glTextures?.[renderer.CONTEXT_UID];
++
++    // already on the card, and up to date
++    if(glTexture && (glTexture.dirtyId === baseTexture.dirtyId)) return true;
++
++    const state = stateOf(renderer);
++
++    if(state.admitted.has(baseTexture)) return true;
++
++    const pixels = ((baseTexture.realWidth || 0) * (baseTexture.realHeight || 0));
++
++    if(state.uploads && (((state.uploads + 1) > FRAME_UPLOADS) || ((state.pixels + pixels) > FRAME_PIXELS))) return false;
++
++    state.admitted.add(baseTexture);
++    state.uploads++;
++    state.pixels += pixels;
++
++    return true;
++}
