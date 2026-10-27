@@ -1,7 +1,7 @@
 import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
 import { skipHello } from '@pixi/utils';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
-import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion } from './api';
+import { GetCommunication, GetConfiguration, GetDeployStatus, GetNitroInstance, GetUIVersion, TimeTextureGC } from './api';
 import { InstallAssetPassRefresh } from './api/assets/AssetPassRefresh';
 import { ExtendAvatarStructure } from './api/avatar/ExtendAvatarStructure';
 import { InstallProximityTrace } from './api/diagnostics/ProximityTrace';
@@ -395,6 +395,10 @@ export const App: FC<{}> = props =>
                 }
                 catch(error)
                 {}
+
+                // pixelrp: pictures unused for 30 s leave the graphics card
+                // after 30 s at any frame rate (TextureGCClock).
+                TimeTextureGC(GetNitroInstance().application.renderer);
 
                 // DevTools that are already open, checked from here on - by now
                 // the rank that exempts staff has arrived.
