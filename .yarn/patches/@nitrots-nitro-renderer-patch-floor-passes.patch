@@ -1,0 +1,295 @@
+diff --git a/src/nitro/room/object/visualization/room/RoomPlane.ts b/src/nitro/room/object/visualization/room/RoomPlane.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomPlane.ts
++++ b/src/nitro/room/object/visualization/room/RoomPlane.ts
+@@ -329,8 +329,15 @@ export class RoomPlane implements IRoomPlane
+             const width = this._leftSide.length * geometry.scale;
+             const height = this._rightSide.length * geometry.scale;
+             const normal = geometry.getCoordinatePosition(this._normal);
++            // PixelRP (Twist, 2026-10-28): the floor's pieces share the
++            // in-between pictures of their texture by size, where each piece
++            // had a set of its own - Equinox Gym's stepped corner is 135 floor
++            // pieces, ~4 new pictures each. Each one is only read while its
++            // own piece is drawn, straight below (renderTexture), before the
++            // next piece draws into it; the piece keeps its own _bitmapData.
++            const poolId = ((this._type === RoomPlane.TYPE_FLOOR) ? 'floor' : this._uniqueId.toString());
+ 
+-            bitmapData = this._rasterizer.render(this._uniqueId.toString(), this._textureCache, null, this._id, width, height, geometry.scale, normal, this._hasTexture, this._textureOffsetX, this._textureOffsetY, this._textureMaxX, this._textureMaxY, timeSinceStartMs);
++            bitmapData = this._rasterizer.render(poolId, this._textureCache, null, this._id, width, height, geometry.scale, normal, this._hasTexture, this._textureOffsetX, this._textureOffsetY, this._textureMaxX, this._textureMaxY, timeSinceStartMs);
+ 
+             if(bitmapData)
+             {
+@@ -541,6 +548,10 @@ export class RoomPlane implements IRoomPlane
+             // than being an animated texture's next frame (ExtendedSprite.redrawn)
+             const shapeMayChange = (geometryChanged || this._maskChanged || !this._activeTexture || (this._activeTexture.timeStamp < 0));
+ 
++            // PixelRP (Twist, 2026-10-28): the picture is no longer filled
++            // white first - draw() clears it as it lays the texture down, so
++            // the fill was a pass of its own wiped straight after, once for
++            // every plane (89 in Equinox Gym).
+             if(!this._bitmapData || (this._width !== this._bitmapData.width) || (this._height !== this._bitmapData.height))
+             {
+                 if(this._bitmapData)
+@@ -555,7 +566,7 @@ export class RoomPlane implements IRoomPlane
+ 
+                         if((this._width < 1) || (this._height < 1)) return true;
+ 
+-                        this._bitmapData = this._textureCache.createAndFillRenderTexture(this._width, this._height);
++                        this._bitmapData = this._textureCache.createRenderTexture(this._width, this._height);
+                     }
+                     else
+                     {
+@@ -567,23 +578,17 @@ export class RoomPlane implements IRoomPlane
+ 
+                             return true;
+                         }
+-
+-                        this._textureCache.clearAndFillRenderTexture(this._bitmapData);
+                     }
+                 }
+                 else
+                 {
+                     if((this._width < 1) || (this._height < 1)) return false;
+ 
+-                    this._bitmapData = this._textureCache.createAndFillRenderTexture(this._width, this._height);
++                    this._bitmapData = this._textureCache.createRenderTexture(this._width, this._height);
+                 }
+ 
+                 if(!this._bitmapData) return false;
+             }
+-            else
+-            {
+-                this._textureCache.clearAndFillRenderTexture(this._bitmapData);
+-            }
+ 
+             Randomizer.setSeed(this._randomSeed);
+ 
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellColumn.ts
+@@ -1,4 +1,5 @@
+ import { RenderTexture } from '@pixi/core';
++import { Container } from '@pixi/display';
+ import { IVector3D, Vector3d } from '../../../../../../../api';
+ import { PlaneTextureCache, TextureUtils } from '../../../../../../../pixi-proxy';
+ import { PlaneMaterialCell } from './PlaneMaterialCell';
+@@ -24,6 +25,8 @@ export class PlaneMaterialCellColumn
+     // PixelRP: this column's own picture in the plane's texture pool (render)
+     private static _columnIdCounter: number = 0;
+     private _columnId: number = ++PlaneMaterialCellColumn._columnIdCounter;
++    // PixelRP: the cells of the render under way, laid down together at its end
++    private _pixelrpBatch: Container = null;
+ 
+     constructor(width: number, cells: PlaneMaterialCell[], repeatMode: number = 1)
+     {
+@@ -159,26 +162,49 @@ export class PlaneMaterialCellColumn
+ 
+         if(!this._cells.length) return this._cachedBitmapData;
+ 
+-        switch(this._repeatMode)
++        // PixelRP: the cells go down in one pass at the end (renderCells),
++        // the same cells in the same places and order, where each was a pass
++        // of its own - a strip of a big floor was one per tile (Twist,
++        // 2026-10-28 - a pass has a fixed cost on a Mac's graphics chip, and
++        // Equinox Gym's floor was ~800 of them as it showed).
++        this._pixelrpBatch = new Container();
++
++        try
++        {
++            switch(this._repeatMode)
++            {
++                case PlaneMaterialCellColumn.REPEAT_MODE_NONE:
++                    this.renderRepeatNone(normal);
++                    break;
++                case PlaneMaterialCellColumn.REPEAT_MODE_BORDERS:
++                    this.renderRepeatBorders(normal);
++                    break;
++                case PlaneMaterialCellColumn.REPEAT_MODE_CENTER:
++                    this.renderRepeatCenter(normal);
++                    break;
++                case PlaneMaterialCellColumn.REPEAT_MODE_FIRST:
++                    this.renderRepeatFirst(normal);
++                    break;
++                case PlaneMaterialCellColumn.REPEAT_MODE_LAST:
++                    this.renderRepeatLast(normal);
++                    break;
++                default:
++                    this.renderRepeatAll(normal, offsetX, offsetY);
++                    break;
++            }
++        }
++        finally
+         {
+-            case PlaneMaterialCellColumn.REPEAT_MODE_NONE:
+-                this.renderRepeatNone(normal);
+-                break;
+-            case PlaneMaterialCellColumn.REPEAT_MODE_BORDERS:
+-                this.renderRepeatBorders(normal);
+-                break;
+-            case PlaneMaterialCellColumn.REPEAT_MODE_CENTER:
+-                this.renderRepeatCenter(normal);
+-                break;
+-            case PlaneMaterialCellColumn.REPEAT_MODE_FIRST:
+-                this.renderRepeatFirst(normal);
+-                break;
+-            case PlaneMaterialCellColumn.REPEAT_MODE_LAST:
+-                this.renderRepeatLast(normal);
+-                break;
+-            default:
+-                this.renderRepeatAll(normal, offsetX, offsetY);
+-                break;
++            const batch = this._pixelrpBatch;
++
++            this._pixelrpBatch = null;
++
++            // cleared as it is drawn: the picture may be another floor
++            // piece's of the same size (RoomPlane), and a cell with clear
++            // pixels would show that piece through it
++            if(batch.children.length) TextureUtils.writeToRenderTexture(batch, this._cachedBitmapData, true);
++
++            batch.destroy({ children: true });
+         }
+ 
+         return this._cachedBitmapData;
+@@ -232,7 +258,8 @@ export class PlaneMaterialCellColumn
+ 
+                     graphic.y = index;
+ 
+-                    TextureUtils.writeToRenderTexture(graphic, this._cachedBitmapData, false);
++                    if(this._pixelrpBatch) this._pixelrpBatch.addChild(graphic);
++                    else TextureUtils.writeToRenderTexture(graphic, this._cachedBitmapData, false);
+ 
+                     if(flag) index = (index + graphic.height);
+ 
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts
+@@ -1,4 +1,5 @@
+ ﻿import { RenderTexture } from '@pixi/core';
++import { Container } from '@pixi/display';
+ import { Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { IVector3D, NitroLogger, Vector3d } from '../../../../../../../api';
+@@ -30,6 +31,8 @@ export class PlaneMaterialCellMatrix
+     private _cachedBitmapHeight: number = 0;
+     private _isCached: boolean = false;
+     private _isStatic: boolean = true;
++    // PixelRP: the columns of the render under way, laid down together at its end
++    private _pixelrpBatch: Container = null;
+     private _normalMinX: number = -1;
+     private _normalMaxX: number = 1;
+     private _normalMinY: number = -1;
+@@ -194,13 +197,16 @@ export class PlaneMaterialCellMatrix
+             return this._cachedBitmapData;
+         }
+ 
++        // PixelRP: cleared in the columns' pass below, not in a pass of its own
++        let needsClear = false;
++
+         if(!this._cachedBitmapData)
+         {
+             this._cachedBitmapHeight = height;
+ 
+             this._cachedBitmapData = textureCache.createRenderTexture(width, height, `${ planeId }:matrix`);
+ 
+-            textureCache.clearRenderTexture(this._cachedBitmapData);
++            needsClear = true;
+         }
+ 
+         const columns: RenderTexture[] = [];
+@@ -223,6 +229,8 @@ export class PlaneMaterialCellMatrix
+ 
+         if(!columns.length)
+         {
++            if(needsClear) textureCache.clearRenderTexture(this._cachedBitmapData);
++
+             if(canvas) return canvas;
+ 
+             return this._cachedBitmapData;
+@@ -230,30 +238,51 @@ export class PlaneMaterialCellMatrix
+ 
+         let maxColumnHeight = 0;
+ 
+-        switch(this._repeatMode)
++        // PixelRP: the columns go down in one pass at the end (renderColumns),
++        // the same pictures in the same places and order, where each copy
++        // across the plane was a pass of its own - see PlaneMaterialCellColumn.
++        // Each column has its own picture (column-textures), so none is drawn
++        // over before the pass reads it.
++        this._pixelrpBatch = new Container();
++
++        try
++        {
++            switch(this._repeatMode)
++            {
++                case PlaneMaterialCellMatrix.REPEAT_MODE_BORDERS:
++                    NitroLogger.log('REPEAT_MODE_BORDERS');
++                    //     maxColumnHeight = this.renderRepeatBorders(this._cachedBitmapData, columns);
++                    break;
++                case PlaneMaterialCellMatrix.REPEAT_MODE_CENTER:
++                    NitroLogger.log('REPEAT_MODE_CENTER');
++                    //     maxColumnHeight = this.renderRepeatCenter(this._cachedBitmapData, columns);
++                    break;
++                case PlaneMaterialCellMatrix.REPEAT_MODE_FIRST:
++                    NitroLogger.log('REPEAT_MODE_FIRST');
++                    //     maxColumnHeight = this.renderRepeatFirst(this._cachedBitmapData, columns);
++                    break;
++                case PlaneMaterialCellMatrix.REPEAT_MODE_LAST:
++                    NitroLogger.log('REPEAT_MODE_LAST');
++                    //     maxColumnHeight = this.renderRepeatLast(this._cachedBitmapData, columns);
++                    break;
++                case PlaneMaterialCellMatrix.REPEAT_MODE_RANDOM:
++                    maxColumnHeight = this.renderRepeatRandom(this._cachedBitmapData, columns);
++                    break;
++                default:
++                    maxColumnHeight = this.renderRepeatAll(this._cachedBitmapData, columns);
++                    break;
++            }
++        }
++        finally
+         {
+-            case PlaneMaterialCellMatrix.REPEAT_MODE_BORDERS:
+-                NitroLogger.log('REPEAT_MODE_BORDERS');
+-                //     maxColumnHeight = this.renderRepeatBorders(this._cachedBitmapData, columns);
+-                break;
+-            case PlaneMaterialCellMatrix.REPEAT_MODE_CENTER:
+-                NitroLogger.log('REPEAT_MODE_CENTER');
+-                //     maxColumnHeight = this.renderRepeatCenter(this._cachedBitmapData, columns);
+-                break;
+-            case PlaneMaterialCellMatrix.REPEAT_MODE_FIRST:
+-                NitroLogger.log('REPEAT_MODE_FIRST');
+-                //     maxColumnHeight = this.renderRepeatFirst(this._cachedBitmapData, columns);
+-                break;
+-            case PlaneMaterialCellMatrix.REPEAT_MODE_LAST:
+-                NitroLogger.log('REPEAT_MODE_LAST');
+-                //     maxColumnHeight = this.renderRepeatLast(this._cachedBitmapData, columns);
+-                break;
+-            case PlaneMaterialCellMatrix.REPEAT_MODE_RANDOM:
+-                maxColumnHeight = this.renderRepeatRandom(this._cachedBitmapData, columns);
+-                break;
+-            default:
+-                maxColumnHeight = this.renderRepeatAll(this._cachedBitmapData, columns);
+-                break;
++            const batch = this._pixelrpBatch;
++
++            this._pixelrpBatch = null;
++
++            if(batch.children.length) TextureUtils.writeToRenderTexture(batch, this._cachedBitmapData, needsClear);
++            else if(needsClear) textureCache.clearRenderTexture(this._cachedBitmapData);
++
++            batch.destroy({ children: true });
+         }
+ 
+         this._cachedBitmapHeight = maxColumnHeight;
+@@ -332,7 +361,8 @@ export class PlaneMaterialCellMatrix
+ 
+                 sprite.position.set(x, y);
+ 
+-                TextureUtils.writeToRenderTexture(sprite, canvas, false);
++                if(this._pixelrpBatch && (canvas === this._cachedBitmapData)) this._pixelrpBatch.addChild(sprite);
++                else TextureUtils.writeToRenderTexture(sprite, canvas, false);
+ 
+                 if(column.height > height) height = column.height;
+ 
