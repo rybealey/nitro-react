@@ -103,6 +103,33 @@ const KeepOneBackground = (canvas: IRoomRenderingCanvas): PlainSprite =>
     return background;
 }
 
+/**
+ * pixelrp (Twist, 2026-10-28): how many boxes show each previewer. The engine
+ * updates and draws every room it holds on every frame, and the backpack's and
+ * the shop's previews are made once and kept all session - so they were
+ * updated and drawn the whole time, open or shut. The last box to close pauses
+ * its preview; the first to open runs it again.
+ */
+const previewViews = new WeakMap<RoomPreviewer, number>();
+
+const ShowPreview = (roomPreviewer: RoomPreviewer) =>
+{
+    const views = ((previewViews.get(roomPreviewer) || 0) + 1);
+
+    previewViews.set(roomPreviewer, views);
+
+    if(views === 1) roomPreviewer.pixelrpPaused = false;
+}
+
+const HidePreview = (roomPreviewer: RoomPreviewer) =>
+{
+    const views = Math.max(0, ((previewViews.get(roomPreviewer) || 0) - 1));
+
+    previewViews.set(roomPreviewer, views);
+
+    if(views === 0) roomPreviewer.pixelrpPaused = true;
+}
+
 export interface LayoutRoomPreviewerViewProps
 {
     roomPreviewer: RoomPreviewer;
@@ -137,6 +164,15 @@ export const LayoutRoomPreviewerView: FC<LayoutRoomPreviewerViewProps> = props =
             painterRef.current = null;
         }
     }, []);
+
+    useEffect(() =>
+    {
+        if(!roomPreviewer) return;
+
+        ShowPreview(roomPreviewer);
+
+        return () => HidePreview(roomPreviewer);
+    }, [ roomPreviewer ]);
 
     const onClick = (event: MouseEvent<HTMLDivElement>) =>
     {

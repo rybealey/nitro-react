@@ -1,0 +1,245 @@
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -80,6 +80,12 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+     private _drawRoot: NitroContainer = null;
+     private _drawHolders: NitroContainer[] = [];
+ 
++    // PixelRP: how often a redraw lets go of actions not drawn for a while,
++    // and how long "a while" is (AvatarImageCache.pixelrpDisposeIdle)
++    private static PIXELRP_SWEEP_MS: number = 30000;
++    private static PIXELRP_IDLE_MS: number = 60000;
++    private _pixelrpSweptAt: number = 0;
++
+     // PixelRP: every avatar picture still alive, held weakly so the list
+     // never keeps a picture alive itself. The texture GC keeps the sheets
+     // their current drawings are made from (forEachWornSheet, Nitro.ts).
+@@ -380,6 +386,25 @@ export class AvatarImage implements IAvatarImage, IAvatarEffectListener
+             this._isCachedImage = false;
+         }
+ 
++        // PixelRP (Twist, 2026-10-28): every half minute of redraws, the
++        // pictures of actions this avatar has not drawn for a minute are let
++        // go. Kept for good, the cache of an avatar walking, turning, sitting
++        // and dancing only grew while it stayed in the room - in a busy room,
++        // tens of megabytes. The drawing on screen is kept whatever its age:
++        // its click test still reads those parts.
++        const sweepTime = GetTickerTime();
++
++        if((sweepTime - this._pixelrpSweptAt) >= AvatarImage.PIXELRP_SWEEP_MS)
++        {
++            this._pixelrpSweptAt = sweepTime;
++
++            const inUse = new Set<unknown>();
++
++            if(this._drawnPieces) for(const piece of this._drawnPieces) inUse.add(piece.image);
++
++            this._cache.pixelrpDisposeIdle(AvatarImage.PIXELRP_IDLE_MS, inUse);
++        }
++
+         const _local_6 = this.getBodyParts(setType, this._mainAction.definition.geometryType, this._mainDirection);
+ 
+         this._image = null;
+diff --git a/src/nitro/avatar/AvatarImageBodyPartContainer.ts b/src/nitro/avatar/AvatarImageBodyPartContainer.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImageBodyPartContainer.ts
++++ b/src/nitro/avatar/AvatarImageBodyPartContainer.ts
+@@ -82,6 +82,14 @@ export class AvatarImageBodyPartContainer
+         this.cleanPoints();
+     }
+ 
++    // PixelRP: the offset set in place - AvatarImageCache sets it on every
++    // call, and a new point each time was garbage (regPoint reads a copy)
++    public pixelrpSetOffset(x: number, y: number): void
++    {
++        if(!this._offset) this._offset = new Point(x, y);
++        else this._offset.set(x, y);
++    }
++
+     public get isCacheable(): boolean
+     {
+         return this._isCacheable;
+diff --git a/src/nitro/avatar/cache/AvatarImageActionCache.ts b/src/nitro/avatar/cache/AvatarImageActionCache.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/cache/AvatarImageActionCache.ts
++++ b/src/nitro/avatar/cache/AvatarImageActionCache.ts
+@@ -46,6 +46,19 @@ export class AvatarImageActionCache
+         this._lastAccessTime = k;
+     }
+ 
++    // PixelRP: whether any picture of this action is one of these
++    public pixelrpHoldsAny(images: Set<unknown>): boolean
++    {
++        if(!this._cache) return false;
++
++        for(const direction of this._cache.values())
++        {
++            if(direction && direction.pixelrpHoldsAny(images)) return true;
++        }
++
++        return false;
++    }
++
+     public getLastAccessTime(): number
+     {
+         return this._lastAccessTime;
+diff --git a/src/nitro/avatar/cache/AvatarImageBodyPartCache.ts b/src/nitro/avatar/cache/AvatarImageBodyPartCache.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/cache/AvatarImageBodyPartCache.ts
++++ b/src/nitro/avatar/cache/AvatarImageBodyPartCache.ts
+@@ -58,6 +58,29 @@ export class AvatarImageBodyPartCache
+         }
+     }
+ 
++    // PixelRP: drop the pictures of every action not drawn for maxIdleMs -
++    // never the action this part is in now, nor one holding a picture of the
++    // drawing still on screen (its click test reads them).
++    public pixelrpDisposeIdle(maxIdleMs: number, time: number, inUse: Set<unknown>): void
++    {
++        if(!this._cache || this._disposed) return;
++
++        const current = this._currentAction ? (this._currentAction.overridingAction || this._currentAction.id) : null;
++
++        for(const [key, cache] of this._cache.entries())
++        {
++            if(!cache || (key === current)) continue;
++
++            if((time - cache.getLastAccessTime()) < maxIdleMs) continue;
++
++            if(cache.pixelrpHoldsAny(inUse)) continue;
++
++            cache.dispose();
++
++            this._cache.delete(key);
++        }
++    }
++
+     public getAction(): IActiveActionData
+     {
+         return this._currentAction;
+diff --git a/src/nitro/avatar/cache/AvatarImageCache.ts b/src/nitro/avatar/cache/AvatarImageCache.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/cache/AvatarImageCache.ts
++++ b/src/nitro/avatar/cache/AvatarImageCache.ts
+@@ -97,6 +97,28 @@ export class AvatarImageCache
+         }
+     }
+ 
++    // PixelRP (Twist, 2026-10-28): drop the pictures of actions this avatar has
++    // not drawn for maxIdleMs. disposeInactiveActions above is only ever called
++    // with 0 (an effect or posture change drops everything), so every action,
++    // direction and frame an avatar had ever been drawn in stayed in memory
++    // until it left the room - each turn, walk, sit, wave and dance. Only an
++    // action's own last-drawn time counts here (getImageContainer stamps it);
++    // the action each part is in now, and anything in the drawing still on
++    // screen (inUse), are never dropped.
++    public pixelrpDisposeIdle(maxIdleMs: number, inUse: Set<unknown>): void
++    {
++        if(!this._cache) return;
++
++        const time = GetTickerTime();
++
++        for(const cache of this._cache.values())
++        {
++            if(!cache) continue;
++
++            cache.pixelrpDisposeIdle(maxIdleMs, time, inUse);
++        }
++    }
++
+     public resetBodyPartCache(k: IActiveActionData): void
+     {
+         if(this._cache)
+@@ -175,9 +197,15 @@ export class AvatarImageCache
+         if(_local_7.definition.startFromFrameZero) frameCount -= _local_7.startFrame;
+ 
+         let _local_8 = _local_7;
+-        let _local_9: string[] = [];
+-        let _local_10: Map<string, string> = new Map();
+-        const _local_11 = new Point();
++        // PixelRP: the removes and items are made only when the parts are
++        // looked up (a cache miss, below), and the offset is two numbers set on
++        // the container in place - a new array, map and point on every call,
++        // for every body part of every redraw, was a steady stream of garbage
++        // from each avatar in an animated effect (about 12 redraws a second).
++        let _local_9: string[] = null;
++        let _local_10: Map<string, string> = null;
++        let offsetX = 0;
++        let offsetY = 0;
+ 
+         if(!((!(_local_7)) || (!(_local_7.definition))))
+         {
+@@ -215,13 +243,13 @@ export class AvatarImageCache
+ 
+                         if(this._scale === AvatarScaleType.LARGE)
+                         {
+-                            _local_11.x = _local_18.dx;
+-                            _local_11.y = _local_18.dy;
++                            offsetX = _local_18.dx;
++                            offsetY = _local_18.dy;
+                         }
+                         else
+                         {
+-                            _local_11.x = (_local_18.dx / 2);
+-                            _local_11.y = (_local_18.dy / 2);
++                            offsetX = (_local_18.dx / 2);
++                            offsetY = (_local_18.dy / 2);
+                         }
+ 
+                         frameCount = _local_18.animationFrame;
+@@ -258,13 +286,16 @@ export class AvatarImageCache
+             _local_4.updateActionCache(_local_8, _local_12);
+         }
+ 
++        // PixelRP: drawn now - what pixelrpDisposeIdle goes by
++        _local_12.setLastAccessTime(GetTickerTime());
++
+         let _local_13 = _local_12.getDirectionCache(_local_5);
+ 
+         if(!_local_13 || _arg_3)
+         {
+             if(_arg_3) this._animatedFigure = false;
+ 
+-            const _local_19 = this._structure.getParts(k, this._avatar.getFigure(), _local_8, this._geometryType, _local_5, _local_9, this._avatar, _local_10);
++            const _local_19 = this._structure.getParts(k, this._avatar.getFigure(), _local_8, this._geometryType, _local_5, (_local_9 || []), this._avatar, (_local_10 || new Map()));
+ 
+             const assetPartDefinition = (_local_8 && _local_8.definition) ? _local_8.definition.assetPartDefinition : null;
+ 
+@@ -310,10 +341,7 @@ export class AvatarImageCache
+ 
+         const offset = this._structure.getFrameBodyPartOffset(_local_8, _local_5, frameCount, k);
+ 
+-        _local_11.x += offset.x;
+-        _local_11.y += offset.y;
+-
+-        _local_14.offset = _local_11;
++        _local_14.pixelrpSetOffset((offsetX + offset.x), (offsetY + offset.y));
+ 
+         return _local_14;
+     }
+diff --git a/src/nitro/avatar/cache/AvatarImageDirectionCache.ts b/src/nitro/avatar/cache/AvatarImageDirectionCache.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/cache/AvatarImageDirectionCache.ts
++++ b/src/nitro/avatar/cache/AvatarImageDirectionCache.ts
+@@ -24,6 +24,20 @@ export class AvatarImageDirectionCache
+         return this._partList;
+     }
+ 
++    // PixelRP: whether any picture here is one of these - the parts of a
++    // drawing still on screen (AvatarImageCache.pixelrpDisposeIdle)
++    public pixelrpHoldsAny(images: Set<unknown>): boolean
++    {
++        if(!this._images) return false;
++
++        for(const image of this._images.values())
++        {
++            if(image && image.image && images.has(image.image)) return true;
++        }
++
++        return false;
++    }
++
+     public getImageContainer(k: number): AvatarImageBodyPartContainer
+     {
+         const existing = this._images.get(this.getCacheKey(k));

@@ -1,0 +1,67 @@
+diff --git a/src/nitro/room/preview/RoomPreviewer.ts b/src/nitro/room/preview/RoomPreviewer.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/preview/RoomPreviewer.ts
++++ b/src/nitro/room/preview/RoomPreviewer.ts
+@@ -43,6 +43,28 @@ export class RoomPreviewer
+     private _backgroundColor: number = 305148561;
+     private _backgroundSprite: Sprite = null;
+     private _disableUpdate: boolean = false;
++    private _pixelrpPaused: boolean = false;
++
++    // PixelRP (Twist, 2026-10-28): a preview that is not on screen is not
++    // updated or drawn. The engine updates every room it holds on every frame,
++    // and the backpack's and the shop's previews - made once, kept all
++    // session - were updated and drawn the whole time, open or shut. The
++    // client's LayoutRoomPreviewerView pauses one when its last view closes.
++    public set pixelrpPaused(paused: boolean)
++    {
++        this._pixelrpPaused = paused;
++
++        this.pixelrpApplyPause();
++    }
++
++    private pixelrpApplyPause(): void
++    {
++        if(!this.isRoomEngineReady) return;
++
++        const instance = (this._roomEngine as unknown as { getRoomInstance(roomId: number): { pixelrpPaused: boolean } }).getRoomInstance(this._previewRoomId);
++
++        if(instance) instance.pixelrpPaused = this._pixelrpPaused;
++    }
+ 
+     constructor(roomEngine: IRoomEngine, roomId: number = 1)
+     {
+@@ -120,6 +142,9 @@ export class RoomPreviewer
+ 
+             this._roomEngine.createRoomInstance(this._previewRoomId, planeParser.getMapData());
+ 
++            // PixelRP: paused before its room was made - the room starts paused
++            this.pixelrpApplyPause();
++
+             planeParser.dispose();
+         }
+     }
+diff --git a/src/room/RoomInstance.ts b/src/room/RoomInstance.ts
+index 1111111..2222222 100644
+--- a/src/room/RoomInstance.ts
++++ b/src/room/RoomInstance.ts
+@@ -11,6 +11,10 @@ export class RoomInstance extends Disposable implements IRoomInstance
+     private _updateCategories: number[];
+     private _model: IRoomObjectModel;
+ 
++    // PixelRP: a room nobody is looking at - a shut preview (RoomPreviewer) -
++    // is not updated or drawn until it is shown again
++    public pixelrpPaused: boolean = false;
++
+     constructor(id: string, container: IRoomInstanceContainer)
+     {
+         super();
+@@ -227,6 +231,8 @@ export class RoomInstance extends Disposable implements IRoomInstance
+ 
+     public update(time: number, update: boolean = false): void
+     {
++        if(this.pixelrpPaused) return;
++
+         for(const category of this._updateCategories)
+         {
+             const manager = this.getManager(category);

@@ -97,7 +97,12 @@ export const InventoryView: FC<{}> = props =>
 
     useEffect(() =>
     {
-        setRoomPreviewer(new RoomPreviewer(GetRoomEngine(), ++RoomPreviewer.PREVIEW_COUNTER));
+        const previewer = new RoomPreviewer(GetRoomEngine(), ++RoomPreviewer.PREVIEW_COUNTER);
+
+        // pixelrp: paused until a preview box shows it (LayoutRoomPreviewerView)
+        previewer.pixelrpPaused = true;
+
+        setRoomPreviewer(previewer);
 
         return () =>
         {
