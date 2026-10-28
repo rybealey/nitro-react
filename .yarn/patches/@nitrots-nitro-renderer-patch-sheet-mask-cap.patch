@@ -1,0 +1,53 @@
+diff --git a/src/api/utils/SheetMasks.ts b/src/api/utils/SheetMasks.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/SheetMasks.ts
++++ b/src/api/utils/SheetMasks.ts
+@@ -30,6 +30,7 @@
+ {
+     baseTexture: BaseTexture;
+     blob: Blob;
++    queuedAt: number;
+ }
+ 
+ interface SheetJob
+@@ -89,6 +90,14 @@
+     // Nothing starts until no new sheet has arrived for this long - a room
+     // still loading keeps pushing it back, so the room loads as fast as before.
+     private static SETTLE_MS: number = 1000;
++    // PixelRP (Twist, 2026-10-28): but a sheet that has waited this long goes
++    // anyway. The quiet second was asked for before every sheet, and a busy
++    // room never gives one - people arriving, changing clothes, an effect on
++    // or off - so the list could wait for good, and a press on someone new
++    // unpacked their sheets on the spot, in the click. A room loading is
++    // still left alone for its first seconds, and the worker is off the main
++    // thread either way.
++    private static MAX_SETTLE_MS: number = 3000;
+     // A rest between sheets, so the worker never takes a weak computer's
+     // processor away from the game for long.
+     private static REST_MS: number = 30;
+@@ -151,7 +160,7 @@
+         //@ts-ignore
+         baseTexture.pixelrpSheetMaskQueued = true;
+ 
+-        SheetMasks._queue.push({ baseTexture, blob });
++        SheetMasks._queue.push({ baseTexture, blob, queuedAt: performance.now() });
+ 
+         if(SheetMasks._queue.length > SheetMasks.MAX_QUEUED)
+         {
+@@ -178,11 +187,13 @@
+     {
+         if(SheetMasks._disabled || SheetMasks._inFlight.size) return;
+ 
+-        const waited = (performance.now() - SheetMasks._lastArrival);
++        const now = performance.now();
++        const waited = (now - SheetMasks._lastArrival);
++        const oldest = (SheetMasks._queue.length ? (now - SheetMasks._queue[0].queuedAt) : 0);
+ 
+-        if(waited < SheetMasks.SETTLE_MS)
++        if((waited < SheetMasks.SETTLE_MS) && (oldest < SheetMasks.MAX_SETTLE_MS))
+         {
+-            SheetMasks.schedule(SheetMasks.SETTLE_MS - waited);
++            SheetMasks.schedule(Math.min((SheetMasks.SETTLE_MS - waited), (SheetMasks.MAX_SETTLE_MS - oldest)));
+ 
+             return;
+         }
