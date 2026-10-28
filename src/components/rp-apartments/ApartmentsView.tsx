@@ -274,9 +274,11 @@ export const ApartmentsView: FC<{}> = props =>
     // Short of cash for `cost`: one line above the button says how much more (Twist: no cash box).
     const shortLine = (cost: number) => ((cash < cost) ? <span className="ap-short">You need { Money(cost - cash) } more cash in hand.</span> : null);
 
-    let hint = 'The orange lot is for sale. Once you own it, you can add the grey lots next to it.';
+    // The plan speaks for itself - the lit lots, the arrow or the badges, the panel beside it (Twist).
+    let hint = '';
 
-    if(apartment.owns) hint = poked ? 'Pick a lot next to your apartment.' : (penthouse ? 'Your penthouse takes up every lot.' : ((count === 1) ? 'Your apartment is on the centre lot.' : 'Your apartment covers the orange lots.'));
+    // Owned: only a lot that can't be bought, clicked, says anything (Twist).
+    if(apartment.owns && poked) hint = 'Pick a lot next to your apartment.';
 
     const bought = apartment.boughtAt ? new Date(apartment.boughtAt * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
 
@@ -298,8 +300,8 @@ export const ApartmentsView: FC<{}> = props =>
             <NitroCardContentView overflow="hidden" classNames={ [ 'ap-body' ] }>
                 <div className="ap-layout">
                     <div className="ap-panel ap-plan">
-                        <span className="ap-title">Lots in this building</span>
-                        <span className={ `ap-sub${ poked ? ' is-poked' : '' }` }>{ hint }</span>
+                        <span className="ap-title">{ apartment.owns ? 'Your lots' : 'Choose your lot' }</span>
+                        { !!hint && <span className={ `ap-sub${ poked ? ' is-poked' : '' }` }>{ hint }</span> }
                         <div className="ap-plan-art">
                             <ApartmentFloorPlan
                                 grid={ apartment.grid }
