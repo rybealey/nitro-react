@@ -1,0 +1,176 @@
+diff --git a/src/api/utils/LoadBudget.ts b/src/api/utils/LoadBudget.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/LoadBudget.ts
++++ b/src/api/utils/LoadBudget.ts
+@@ -21,6 +21,26 @@
+ // at the share it can carry. Each kind of work takes the scale within its own
+ // floor and ceiling (LoadScale).
+ //
++// A FRAME IS JUDGED FOR WHAT THE LOADING ADDED TO IT (Twist, 2026-10-28 - "the
++// gym loads slower than the other rooms on my laptop"). The limits above were
++// for a room that draws in a few ms at 60 Hz, and every frame was held to them
++// whatever made it slow - so a big room on a laptop, slow to draw by itself,
++// and the furniture being placed (RoomEngine's 40 ms turns, which the scale
++// does not size) kept the scale at its floor, and the room's pictures came in
++// a few a frame for as long as it took. Now:
++//   - the placing turn is set aside: left out of the frame (NoteLoadAside)
++//   - the draw limits move up by how much longer than LIGHT_DRAW_MS the room
++//     takes to draw by itself: the draw less the time in its uploads
++//     (NoteLoadUpload), followed every frame, so it keeps up with a room while
++//     it fills in
++//   - the frame limits move up by how much longer than LIGHT_GAP_MS the room's
++//     frames run, learnt only from frames with no loading at all, so a frame
++//     the graphics card holds back while it takes pictures in is never put
++//     down to the room
++// A room that draws within LIGHT_DRAW_MS at 60 Hz is judged exactly as before.
++// Each step toward a frame is ROOM_FOLLOW of the way and at most doubles, so
++// one hitch is not taken for the room.
++//
+ // LoadStats is what a room's load did, for the staff lag recorder's room line.
+ const LEAST_SCALE = 0.5;
+ const MOST_SCALE = 16;
+@@ -30,6 +50,9 @@ const SLOW_DRAW_MS = 20;
+ const FAST_GAP_MS = 25;
+ const SLOW_GAP_MS = 60;
+ const HIDDEN_GAP_MS = 1000;
++const LIGHT_DRAW_MS = 5;
++const LIGHT_GAP_MS = 17;
++const ROOM_FOLLOW = 0.1;
+ 
+ let scale = 1;
+ let workSinceFrame = false;
+@@ -37,6 +60,19 @@ let limitedSinceFrame = false;
+ let frameStartedAt = 0;
+ let lastDrawMs = 0;
+ 
++// the room's own draw and frame (ms), without the loading
++let roomDrawMs = LIGHT_DRAW_MS;
++let roomGapMs = LIGHT_GAP_MS;
++
++// since the last frame start: ms set aside (placing), ms of uploads drawn to
++// the screen, and whether any picture went to the graphics card at all
++let asideMs = 0;
++let drawUploadMs = 0;
++let uploadedSinceFrame = false;
++
++const follow = (current: number, sample: number, light: number): number =>
++    (current + ((Math.min(Math.max(0, sample), ((current * 2) + light)) - current) * ROOM_FOLLOW));
++
+ export const LoadStats = {
+     // files unpacked (UnpackQueue jobs) and their time, since the page opened
+     unpackJobs: 0,
+@@ -60,25 +96,53 @@ export const NoteLoadWork = (limited: boolean = false): void =>
+     if(limited) limitedSinceFrame = true;
+ }
+ 
++/** Work that ran but that the scale does not size (RoomEngine's furniture placing turn): left out of the frame. */
++export const NoteLoadAside = (ms: number): void =>
++{
++    asideMs += ms;
++}
++
++/** A picture went to the graphics card (NitroBundle): how long that took, and whether it was in a draw to the screen. */
++export const NoteLoadUpload = (ms: number, toScreen: boolean): void =>
++{
++    uploadedSinceFrame = true;
++
++    if(toScreen) drawUploadMs += ms;
++}
++
+ /** A frame drawn to the screen starts (UploadGate, the renderer's prerender). */
+ export const LoadFrameStarted = (now: number): void =>
+ {
+-    if(workSinceFrame && frameStartedAt)
++    const gap = (now - frameStartedAt);
++
++    if(frameStartedAt && (gap < HIDDEN_GAP_MS))
+     {
+-        const gap = (now - frameStartedAt);
++        const frame = (gap - asideMs);
+ 
+-        if(gap < HIDDEN_GAP_MS)
++        if(workSinceFrame)
+         {
+-            if((lastDrawMs > (SLOW_DRAW_MS * 2)) || (gap > (SLOW_GAP_MS * 2))) scale = Math.max(LEAST_SCALE, Math.min(1, (scale / 2)));
+-            else if((lastDrawMs > SLOW_DRAW_MS) || (gap > SLOW_GAP_MS)) scale = Math.max(LEAST_SCALE, (scale / 2));
+-            else if(limitedSinceFrame && (lastDrawMs < FAST_DRAW_MS) && (gap < FAST_GAP_MS)) scale = Math.min(MOST_SCALE, (scale * GROW));
++            const drawn = (lastDrawMs - Math.max(0, (roomDrawMs - LIGHT_DRAW_MS)));
++            const late = (frame - Math.max(0, (roomGapMs - LIGHT_GAP_MS)));
++
++            if((drawn > (SLOW_DRAW_MS * 2)) || (late > (SLOW_GAP_MS * 2))) scale = Math.max(LEAST_SCALE, Math.min(1, (scale / 2)));
++            else if((drawn > SLOW_DRAW_MS) || (late > SLOW_GAP_MS)) scale = Math.max(LEAST_SCALE, (scale / 2));
++            else if(limitedSinceFrame && (drawn < FAST_DRAW_MS) && (late < FAST_GAP_MS)) scale = Math.min(MOST_SCALE, (scale * GROW));
++        }
++        else if(!uploadedSinceFrame)
++        {
++            roomGapMs = follow(roomGapMs, frame, LIGHT_GAP_MS);
+         }
++
++        if(lastDrawMs) roomDrawMs = follow(roomDrawMs, (lastDrawMs - drawUploadMs), LIGHT_DRAW_MS);
+     }
+ 
+     workSinceFrame = false;
+     limitedSinceFrame = false;
+     frameStartedAt = now;
+     lastDrawMs = 0;
++    asideMs = 0;
++    drawUploadMs = 0;
++    uploadedSinceFrame = false;
+ }
+ 
+ /** That frame's draw is done (the renderer's postrender): how long it took. */
+diff --git a/src/api/utils/NitroBundle.ts b/src/api/utils/NitroBundle.ts
+index 1111111..2222222 100644
+--- a/src/api/utils/NitroBundle.ts
++++ b/src/api/utils/NitroBundle.ts
+@@ -1,6 +1,7 @@
+ import { BaseTexture, GLTexture, ImageResource, Renderer } from '@pixi/core';
+ import { Data, inflate } from 'pako';
+ import { BinaryReader } from './BinaryReader';
++import { NoteLoadUpload } from './LoadBudget';
+ import { SheetMasks } from './SheetMasks';
+ 
+ // PixelRP: a bundle's sheet, decoded off the main thread for its first upload.
+@@ -30,8 +31,13 @@ class BundleImageResource extends ImageResource
+ 
+     public upload(renderer: Renderer, baseTexture: BaseTexture, glTexture: GLTexture): boolean
+     {
++        // PixelRP (Twist, 2026-10-28): timed, so the load budget can tell the
++        // room's own drawing from the pictures it is taking in (LoadBudget)
++        const startedAt = performance.now();
+         const uploaded = super.upload(renderer, baseTexture, glTexture);
+ 
++        NoteLoadUpload((performance.now() - startedAt), renderer.renderingToScreen);
++
+         // If the texture GC later drops the GPU copy, upload from the image
+         // itself, as before - a fresh bitmap would leave the sheet blank for a
+         // few frames, and a hit map built in those frames would stay empty.
+diff --git a/src/nitro/room/RoomEngine.ts b/src/nitro/room/RoomEngine.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/RoomEngine.ts
++++ b/src/nitro/room/RoomEngine.ts
+@@ -1,7 +1,7 @@
+ import { RenderTexture, Resource, Texture } from '@pixi/core';
+ import { Container, DisplayObject } from '@pixi/display';
+ import { Matrix, Point, Rectangle } from '@pixi/math';
+-import { IConnection, IDisposable, IFurnitureStackingHeightMap, IGetImageListener, IImageResult, ILegacyWallGeometry, IMessageComposer, INitroCommunicationManager, INitroEvent, IObjectData, IPetColorResult, IPetCustomPart, IPlaneVisualization, IRoomContentListener, IRoomContentLoader, IRoomCreator, IRoomEngine, IRoomEngineServices, IRoomGeometry, IRoomInstance, IRoomManager, IRoomManagerListener, IRoomObject, IRoomObjectController, IRoomObjectLogicFactory, IRoomObjectVisualizationFactory, IRoomRenderer, IRoomRendererFactory, IRoomRenderingCanvas, IRoomSessionManager, ISelectedRoomObjectData, ISessionDataManager, ITileObjectMap, IUpdateReceiver, IVector3D, LegacyDataType, MouseEventType, NitroConfiguration, NitroLogger, ObjectDataFactory, RoomControllerLevel, RoomObjectCategory, RoomObjectUserType, RoomObjectVariable, ToolbarIconEnum, Vector3d } from '../../api';
++import { IConnection, IDisposable, IFurnitureStackingHeightMap, IGetImageListener, IImageResult, ILegacyWallGeometry, IMessageComposer, INitroCommunicationManager, INitroEvent, IObjectData, IPetColorResult, IPetCustomPart, IPlaneVisualization, IRoomContentListener, IRoomContentLoader, IRoomCreator, IRoomEngine, IRoomEngineServices, IRoomGeometry, IRoomInstance, IRoomManager, IRoomManagerListener, IRoomObject, IRoomObjectController, IRoomObjectLogicFactory, IRoomObjectVisualizationFactory, IRoomRenderer, IRoomRendererFactory, IRoomRenderingCanvas, IRoomSessionManager, ISelectedRoomObjectData, ISessionDataManager, ITileObjectMap, IUpdateReceiver, IVector3D, LegacyDataType, MouseEventType, NitroConfiguration, NitroLogger, NoteLoadAside, ObjectDataFactory, RoomControllerLevel, RoomObjectCategory, RoomObjectUserType, RoomObjectVariable, ToolbarIconEnum, Vector3d } from '../../api';
+ import { NitroManager } from '../../core';
+ import { BadgeImageReadyEvent, NitroToolbarAnimateIconEvent, RoomBackgroundColorEvent, RoomDragEvent, RoomEngineEvent, RoomEngineObjectEvent, RoomObjectEvent, RoomObjectFurnitureActionEvent, RoomObjectMouseEvent, RoomSessionEvent, RoomToObjectOwnAvatarMoveEvent } from '../../events';
+ import { GetTicker, GetTickerTime, NitroSprite, PixiApplicationProxy, TextureUtils } from '../../pixi-proxy';
+@@ -981,8 +981,15 @@ export class RoomEngine extends NitroManager implements IRoomEngine, IRoomCreato
+ 
+         RoomEnterEffect.turnVisualizationOn();
+ 
++        // PixelRP (Twist, 2026-10-28): the placing turn is its own fixed
++        // share, not the load budget's, so the budget leaves it out of the
++        // frame it judges (LoadBudget)
++        const placingFrom = performance.now();
++
+         this.processPendingFurniture();
+ 
++        NoteLoadAside(performance.now() - placingFrom);
++
+         this._roomManager.update(time, update);
+ 
+         this.updateRoomCameras(time);
