@@ -1,0 +1,171 @@
+diff --git a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts
++++ b/src/nitro/room/object/visualization/room/rasterizer/basic/PlaneMaterialCellMatrix.ts
+@@ -33,6 +33,9 @@ export class PlaneMaterialCellMatrix
+     private _isStatic: boolean = true;
+     // PixelRP: the columns of the render under way, laid down together at its end
+     private _pixelrpBatch: Container = null;
++    // PixelRP: the last render laid straight onto its canvas (pixelrpLayStraight)
++    // - in place of _cachedBitmapData, which it then leaves empty
++    private _pixelrpStraight: { width: number, height: number, columns: RenderTexture[] } = null;
+     private _normalMinX: number = -1;
+     private _normalMaxX: number = 1;
+     private _normalMinY: number = -1;
+@@ -155,6 +158,23 @@ export class PlaneMaterialCellMatrix
+ 
+         if(this.isStatic)
+         {
++            // PixelRP: the same size again after a render laid straight onto
++            // its canvas - laid again from the columns it used, as the cached
++            // picture below would have been copied (pixelrpLayStraight)
++            const straight = this._pixelrpStraight;
++
++            if(straight)
++            {
++                if(canvas && (canvas.width === width) && (canvas.height === height) && (straight.width === width) && (straight.height === height) && Vector3d.isEqual(this._cachedBitmapNormal, normal) && straight.columns.every(column => !!column.baseTexture))
++                {
++                    this.pixelrpLayStraight(canvas, straight.columns, width, height, offsetY, topAlign);
++
++                    return canvas;
++                }
++
++                this._pixelrpStraight = null;
++            }
++
+             if(this._cachedBitmapData)
+             {
+                 if(this._cachedBitmapData.baseTexture && (this._cachedBitmapData.width === width) && (this._cachedBitmapData.height === height) && Vector3d.isEqual(this._cachedBitmapNormal, normal))
+@@ -175,6 +195,7 @@ export class PlaneMaterialCellMatrix
+         else
+         {
+             this._cachedBitmapData = null;
++            this._pixelrpStraight = null;
+         }
+ 
+         this._isCached = true;
+@@ -197,18 +218,6 @@ export class PlaneMaterialCellMatrix
+             return this._cachedBitmapData;
+         }
+ 
+-        // PixelRP: cleared in the columns' pass below, not in a pass of its own
+-        let needsClear = false;
+-
+-        if(!this._cachedBitmapData)
+-        {
+-            this._cachedBitmapHeight = height;
+-
+-            this._cachedBitmapData = textureCache.createRenderTexture(width, height, `${ planeId }:matrix`);
+-
+-            needsClear = true;
+-        }
+-
+         const columns: RenderTexture[] = [];
+ 
+         let columnIndex = 0;
+@@ -227,6 +236,30 @@ export class PlaneMaterialCellMatrix
+             columnIndex++;
+         }
+ 
++        // PixelRP (Twist, 2026-10-28): the columns laid straight onto the
++        // canvas, without the picture of the whole texture in between - see
++        // pixelrpLayStraight. Anything else is made as before.
++        if(this.pixelrpCanLayStraight(canvas, columns, width, height))
++        {
++            this.pixelrpLayStraight(canvas, columns, width, height, offsetY, topAlign);
++
++            this._pixelrpStraight = { width, height, columns };
++
++            return canvas;
++        }
++
++        // PixelRP: cleared in the columns' pass below, not in a pass of its own
++        let needsClear = false;
++
++        if(!this._cachedBitmapData)
++        {
++            this._cachedBitmapHeight = height;
++
++            this._cachedBitmapData = textureCache.createRenderTexture(width, height, `${ planeId }:matrix`);
++
++            needsClear = true;
++        }
++
+         if(!columns.length)
+         {
+             if(needsClear) textureCache.clearRenderTexture(this._cachedBitmapData);
+@@ -297,6 +330,74 @@ export class PlaneMaterialCellMatrix
+         return this._cachedBitmapData;
+     }
+ 
++    // PixelRP: whether this render's picture of the whole texture would be
++    // nothing but its columns side by side, each as tall as the picture, and
++    // copied whole onto a canvas its own size - a plain repeated pattern,
++    // which every floor is. Then the columns can go straight onto the canvas.
++    private pixelrpCanLayStraight(canvas: RenderTexture, columns: RenderTexture[], width: number, height: number): boolean
++    {
++        if(!canvas || (canvas.width !== width) || (canvas.height !== height) || !columns.length) return false;
++
++        switch(this._repeatMode)
++        {
++            case PlaneMaterialCellMatrix.REPEAT_MODE_BORDERS:
++            case PlaneMaterialCellMatrix.REPEAT_MODE_CENTER:
++            case PlaneMaterialCellMatrix.REPEAT_MODE_FIRST:
++            case PlaneMaterialCellMatrix.REPEAT_MODE_LAST:
++            case PlaneMaterialCellMatrix.REPEAT_MODE_RANDOM:
++                return false;
++        }
++
++        for(const column of columns)
++        {
++            if(!column || (column.height !== height) || (column.width < 1)) return false;
++        }
++
++        return true;
++    }
++
++    /**
++     * PixelRP (Twist, 2026-10-28 - "make floors cheaper to draw"): the columns
++     * go onto the canvas side by side where renderRepeatAll put them in the
++     * picture of the whole texture, moved down as copyCachedBitmapOnCanvas
++     * then moved that picture - the same pixels in the same places, in one
++     * pass, and without the picture: a floor piece was a column, the whole
++     * texture, a copy of it and the piece, and is now a column and the piece.
++     * Each column is as tall as the canvas, so it covers what the picture did
++     * and the canvas's edges cut it where the picture's did.
++     */
++    private pixelrpLayStraight(canvas: RenderTexture, columns: RenderTexture[], width: number, height: number, offsetY: number, topAlign: boolean): void
++    {
++        const y = (topAlign ? offsetY : ((canvas.height - height) - offsetY));
++        const batch = new Container();
++
++        let x = 0;
++
++        while(x < width)
++        {
++            const startX = x;
++
++            for(const column of columns)
++            {
++                const sprite = new Sprite(column);
++
++                sprite.position.set(x, y);
++
++                batch.addChild(sprite);
++
++                x += column.width;
++
++                if(x >= width) break;
++            }
++
++            if(x === startX) break;
++        }
++
++        TextureUtils.writeToRenderTexture(batch, canvas, false);
++
++        batch.destroy({ children: true });
++    }
++
+     private copyCachedBitmapOnCanvas(canvas: RenderTexture, height: number, offsetY: number, topAlign: boolean): void
+     {
+         if(!canvas || !this._cachedBitmapData || (canvas === this._cachedBitmapData)) return;
