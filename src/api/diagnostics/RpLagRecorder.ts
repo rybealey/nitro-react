@@ -1,5 +1,5 @@
-import { AvatarImage, ExtendedSprite, FurnitureFloorEvent, GetTicker, IMessageComposer, LoadScale, LoadStats, MouseEventType, RoomEngineEvent, RoomReadyMessageEvent, RoomSpriteCanvas, SocketConnection, TextureUtils } from '@nitrots/nitro-renderer';
-import { GetCommunication, GetConnection, GetNitroInstance, SendMessageComposer } from '../nitro';
+import { AvatarImage, ExtendedSprite, FurnitureFloorEvent, GetTicker, IMessageComposer, LoadScale, LoadStats, MouseEventType, RoomEngineEvent, RoomObjectCategory, RoomReadyMessageEvent, RoomSpriteCanvas, SocketConnection, TextureUtils } from '@nitrots/nitro-renderer';
+import { GetCommunication, GetConnection, GetNitroInstance, GetRoomSession, SendMessageComposer } from '../nitro';
 import { GetAutoFrameRate, OnAutoFrameRateChange } from '../prefs/AutoFrameRate';
 import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 
@@ -66,6 +66,8 @@ import { AvatarInfoUtilities } from '../room/widgets/AvatarInfoUtilities';
 // ONE LINE PER ROOM ENTERED (Twist, 2026-10-28 - "I want big rooms to load as
 // fast as possible"), timed from the room change starting (RoomReady), ms:
 //   floor   the new room's floor on screen (the old room's held picture let go)
+//   me      your own avatar in it, its picture made (Twist, 2026-10-28 - "the
+//           room loads first, then my avatar appears")
 //   objects the room's furni list arrived (message #2); furni / types = how many
 //   placed  every furni in it put in the room (no furni pending)
 //   drawn   nothing left to come: no furni type downloading, unpacking or
@@ -432,6 +434,7 @@ interface RoomLoad
     startedAt: number;
     initialisedAt: number;
     floorAt: number;
+    meAt: number;
     objectsAt: number;
     placedAt: number;
     furni: number;
@@ -462,10 +465,31 @@ const finishRoomLoad = (load: RoomLoad, drawnAt: number, capped: boolean) =>
     const kb = (load.dlUnknown ? '?' : Math.round(load.dlBytes / 1024).toString());
     const dlMs = ((load.dlFirstAt && load.dlLastAt) ? Math.round(load.dlLastAt - load.dlFirstAt) : 0);
 
-    addNote(`room=${ load.roomId } floor=${ since(load, load.floorAt) } objects=${ since(load, load.objectsAt) } placed=${ since(load, load.placedAt) } drawn=${ since(load, drawnAt) } ` +
+    addNote(`room=${ load.roomId } floor=${ since(load, load.floorAt) } me=${ since(load, load.meAt) } objects=${ since(load, load.objectsAt) } placed=${ since(load, load.placedAt) } drawn=${ since(load, drawnAt) } ` +
         `furni=${ load.furni } types=${ load.types } dl=${ load.dlFiles }/${ kb }/${ dlMs } ` +
         `unpack=${ LoadStats.unpackJobs - load.unpackJobs }/${ Math.round(LoadStats.unpackMs - load.unpackMs) } ` +
         `up=${ load.upSheets }/${ (load.upPixels / 1000000).toFixed(2) } scale=${ LoadScale(0, Number.MAX_VALUE).toFixed(2) }${ capped ? ' cap' : '' }`);
+}
+
+// your own avatar in the room with a picture on it - a sprite bigger than the
+// 1x1 empty one
+const ownAvatarShown = (engine: any, roomId: number): boolean =>
+{
+    const session = GetRoomSession();
+
+    if(!session || (session.roomId !== roomId) || (session.ownRoomIndex < 0)) return false;
+
+    const visualization: any = engine.getRoomObject?.(roomId, session.ownRoomIndex, RoomObjectCategory.UNIT)?.visualization;
+    const count = (visualization?.spriteCount || 0);
+
+    for(let i = 0; i < count; i++)
+    {
+        const sprite = visualization.getSprite(i);
+
+        if(sprite && sprite.visible && (sprite.width > 1) && (sprite.height > 1)) return true;
+    }
+
+    return false;
 }
 
 // each frame while a room is being timed: which of its moments have come
@@ -488,6 +512,8 @@ const checkRoomLoad = (now: number) =>
 
     // the floor: the room is made, and the old room's picture let go
     if(!load.floorAt && load.initialisedAt && !engine._pixelrpHeldPicture) load.floorAt = now;
+
+    if(!load.meAt && ownAvatarShown(engine, load.roomId)) load.meAt = now;
 
     if(!load.objectsAt) return;
 
@@ -524,7 +550,7 @@ const onRoomReady = (event: RoomReadyMessageEvent) =>
     if(roomLoad) finishRoomLoad(roomLoad, 0, false);
 
     roomLoad = {
-        roomId: (event.getParser()?.roomId || 0), startedAt: now, initialisedAt: 0, floorAt: 0, objectsAt: 0, placedAt: 0, furni: 0, types: 0,
+        roomId: (event.getParser()?.roomId || 0), startedAt: now, initialisedAt: 0, floorAt: 0, meAt: 0, objectsAt: 0, placedAt: 0, furni: 0, types: 0,
         dlFiles: 0, dlBytes: 0, dlUnknown: 0, dlFirstAt: 0, dlLastAt: 0, unpackJobs: LoadStats.unpackJobs, unpackMs: LoadStats.unpackMs,
         upSheets: 0, upPixels: 0, settledFrames: 0, settledAt: 0
     };

@@ -1,0 +1,21 @@
+diff --git a/src/nitro/room/object/visualization/room/RoomVisualization.ts b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomVisualization.ts
++++ b/src/nitro/room/object/visualization/room/RoomVisualization.ts
+@@ -779,7 +779,15 @@ export class RoomVisualization extends RoomObjectSpriteVisualization implements
+                 {
+                     sprite.id = plane.uniqueId;
+ 
+-                    if(plane.update(geometry, timeSinceStartMs))
++                    // PixelRP: a kind of plane that is hidden - the walls,
++                    // turned off in the room's settings - is not drawn at all
++                    // (Twist, 2026-10-28). Only its sprite was hidden, so every
++                    // wall was still drawn on entry and, its click map being
++                    // made ahead (ExtendedSprite.redrawn), read back from the
++                    // GPU too: Equinox Gym's hidden walls held a Mac about half
++                    // a second as it showed. Shown again, a plane is drawn then
++                    // if anything changed while it was hidden.
++                    if(this._typeVisibility[plane.type] && plane.update(geometry, timeSinceStartMs))
+                     {
+                         if(plane.visible)
+                         {
