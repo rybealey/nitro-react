@@ -1,5 +1,5 @@
 import { GetGuestRoomResultEvent, NewConsoleMessageEvent, RoomInviteEvent, RoomSessionEvent } from '@nitrots/nitro-renderer';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useBetween } from 'use-between';
 import { ChatEntryType, ChatHistoryCurrentDate, IChatEntry, IRoomHistoryEntry, MessengerHistoryCurrentDate } from '../../api';
 import { useMessageEvent, useRoomSessionManagerEvent } from '../events';
@@ -25,6 +25,40 @@ let GANG_CHAT_COUNTER: number = 0;
 let CORP_CHAT_COUNTER: number = 0;
 let STAFF_CHAT_COUNTER: number = 0;
 let MESSENGER_HISTORY_COUNTER: number = 0;
+
+interface IChatHistoryWriters
+{
+    addChatEntry(entry: IChatEntry): void;
+    addMention(entry: IChatEntry): void;
+    addGangEntry(entry: IChatEntry): void;
+    addCorpEntry(entry: IChatEntry): void;
+    addStaffEntry(entry: IChatEntry): void;
+}
+
+// pixelrp (Twist, 2026-10-28): the history's writers, for the chat bubbles
+// (useChatWidget). Taking them from useChatHistory subscribed the bubbles to
+// every list here - use-between re-renders every user of the state on any
+// change - so each line drew the chat view twice, once for its bubble and
+// once for the history. Lines written before the state exists wait for it.
+let historyWriters: IChatHistoryWriters = null;
+const waitingWrites: ((writers: IChatHistoryWriters) => void)[] = [];
+
+const WriteHistory = (write: (writers: IChatHistoryWriters) => void) =>
+{
+    if(historyWriters) return write(historyWriters);
+
+    waitingWrites.push(write);
+
+    if(waitingWrites.length > CHAT_HISTORY_MAX) waitingWrites.shift();
+}
+
+export const ChatHistoryWriters: IChatHistoryWriters = {
+    addChatEntry: entry => WriteHistory(writers => writers.addChatEntry(entry)),
+    addMention: entry => WriteHistory(writers => writers.addMention(entry)),
+    addGangEntry: entry => WriteHistory(writers => writers.addGangEntry(entry)),
+    addCorpEntry: entry => WriteHistory(writers => writers.addCorpEntry(entry)),
+    addStaffEntry: entry => WriteHistory(writers => writers.addStaffEntry(entry))
+};
 
 const useChatHistoryState = () =>
 {
@@ -170,6 +204,15 @@ const useChatHistoryState = () =>
             return newValue;
         });
     }
+
+    // Every one of these only calls a state setter, so whichever render's
+    // copy the bubbles reach writes the same.
+    historyWriters = { addChatEntry, addMention, addGangEntry, addCorpEntry, addStaffEntry };
+
+    useEffect(() =>
+    {
+        while(waitingWrites.length) waitingWrites.shift()(historyWriters);
+    }, []);
 
     useRoomSessionManagerEvent<RoomSessionEvent>(RoomSessionEvent.STARTED, event => setNeedsRoomInsert(true));
 

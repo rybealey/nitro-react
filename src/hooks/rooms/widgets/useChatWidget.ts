@@ -11,7 +11,7 @@ import { IsNarratedBubble } from '../../../api/rp-chat/NarratedBubble';
 import { ReadTextureImageAsync } from '../../../api/utils/ReadTextureImageAsync';
 import { GetOwnChatPreview, LearnOwnChatBubble, LooksLikeFilteredLine, NormalizeOwnChatLine, OWN_CHAT_PREVIEW_TIMEOUT_MS, TakeUnpreviewedLine } from '../../../api/rp-chat/OwnChatPreview';
 import { useRoom } from '../useRoom';
-import { useChatHistory } from './../../chat-history';
+import { ChatHistoryWriters } from './../../chat-history';
 
 const avatarColorCache: Map<string, number> = new Map();
 const avatarImageCache: Map<string, string> = new Map();
@@ -64,7 +64,8 @@ const useChatWidgetState = () =>
         protection: RoomChatSettings.FLOOD_FILTER_NORMAL
     });
     const { roomSession = null } = useRoom();
-    const { addChatEntry, addMention, addGangEntry, addCorpEntry, addStaffEntry } = useChatHistory();
+    // pixelrp: written to, not subscribed to - see ChatHistoryWriters
+    const { addChatEntry, addMention, addGangEntry, addCorpEntry, addStaffEntry } = ChatHistoryWriters;
     const isDisposed = useRef(false);
     const waitingPreviews = useRef<WaitingPreview[]>([]);
 

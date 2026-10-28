@@ -38,6 +38,10 @@ const CLEAR_LABEL: { [tab in HistoryTab]: string } = {
     staff: 'Clear staff chat'
 };
 
+// pixelrp (Twist, 2026-10-28): what a shut window lists - every line said
+// otherwise ran the filters below over the whole history, out of sight.
+const NO_ROWS: IChatEntry[] = [];
+
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // Marks the search term inside a line's formatted HTML. Only text between tags
@@ -76,12 +80,14 @@ export const ChatHistoryView: FC<{}> = props =>
 
     const rows = useMemo(() =>
     {
+        if(!isVisible) return NO_ROWS;
+
         const source = ((tab === 'mentions') ? mentions : (tab === 'gang') ? gangChat : (tab === 'corp') ? corpChat : (tab === 'staff') ? staffChat : chatHistory);
 
         if(!query.length) return source;
 
         return source.filter(entry => (((entry.text || entry.message) && (entry.text || entry.message).toLowerCase().includes(query)) || (entry.name && entry.name.toLowerCase().includes(query))));
-    }, [ chatHistory, mentions, gangChat, corpChat, staffChat, query, tab ]);
+    }, [ isVisible, chatHistory, mentions, gangChat, corpChat, staffChat, query, tab ]);
 
     // The list holds still while you read: a new line lands below and nothing
     // moves. It goes to the newest line only when you open the window, change
