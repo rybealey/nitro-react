@@ -9,7 +9,7 @@ import { IsCorpAlert } from '../../../api/rp-chat/CorpAlert';
 import { IsStaffAlert } from '../../../api/rp-chat/StaffAlert';
 import { IsNarratedBubble } from '../../../api/rp-chat/NarratedBubble';
 import { ReadTextureImageAsync } from '../../../api/utils/ReadTextureImageAsync';
-import { GetOwnChatPreview, LearnOwnChatBubble, LooksLikeFilteredLine, NormalizeOwnChatLine, OWN_CHAT_PREVIEW_TIMEOUT_MS, TakeUnpreviewedLine } from '../../../api/rp-chat/OwnChatPreview';
+import { GetOwnChatPreview, LearnOwnChatBubble, LooksLikeFilteredLine, NormalizeOwnChatLine, OWN_CHAT_PREVIEW_TIMEOUT_MS, RememberTimedOutLine, TakeTimedOutLine, TakeUnpreviewedLine } from '../../../api/rp-chat/OwnChatPreview';
 import { useRoom } from '../useRoom';
 import { ChatHistoryWriters } from './../../chat-history';
 
@@ -53,6 +53,10 @@ interface WaitingPreview
     exact?: boolean;
 }
 
+// pixelrp: what takePreview finds for the copy of a line whose preview already
+// gave up waiting (TakeTimedOutLine).
+const LATE_COPY = 'late';
+
 const useChatWidgetState = () =>
 {
     const [ chatMessages, setChatMessages ] = useState<ChatBubbleMessage[]>([]);
@@ -76,11 +80,26 @@ const useChatWidgetState = () =>
         setChatMessages(prevValue => prevValue.filter(chat => (chat.id !== preview.bubble.id)));
     }
 
+    // Every preview still waiting, refused all at once - flood control, a mute.
+    const dropAllPreviews = () =>
+    {
+        const waiting = waitingPreviews.current;
+
+        waitingPreviews.current = [];
+
+        waiting.forEach(dropPreview);
+    }
+
     // The preview a line of your own from the server answers, if any. The
     // server answers in the order lines were sent, so a preview sent before
     // the one matched that is still waiting never will be answered - a
     // mute, flood control, a wired trigger that kept it - and goes.
-    const takePreview = (event: RoomSessionChatEvent): WaitingPreview =>
+    //
+    // pixelrp (Twist, 2026-10-28): or LATE_COPY - the very words of a line
+    // whose preview already gave up waiting (TakeTimedOutLine), its copy held
+    // up on the way. Looked for after a waiting preview's very words and before
+    // the word-filter guess, which could take it for a newer line's.
+    const takePreview = (event: RoomSessionChatEvent): WaitingPreview | typeof LATE_COPY =>
     {
         const waiting = waitingPreviews.current;
         const line = NormalizeOwnChatLine(event.message);
@@ -97,6 +116,8 @@ const useChatWidgetState = () =>
 
             index = 0;
         }
+
+        if((index < 0) && TakeTimedOutLine(event)) return LATE_COPY;
 
         // Not word for word: a line the word filter changed. Never a line the
         // server narrates for you ("*swings at ...*") - those are its own.
@@ -432,6 +453,10 @@ const useChatWidgetState = () =>
                 waitingPreviews.current = waitingPreviews.current.filter(waiting => (waiting !== preview));
 
                 dropPreview(preview);
+
+                // pixelrp (Twist, 2026-10-28): its copy may come yet, held up
+                // on the way - it is not shown a second time (TakeTimedOutLine)
+                RememberTimedOutLine(preview.chatType, preview.text);
             }, OWN_CHAT_PREVIEW_TIMEOUT_MS);
 
             waitingPreviews.current.push(preview);
@@ -441,7 +466,18 @@ const useChatWidgetState = () =>
             return;
         }
 
-        const answered = ((event.objectId === roomSession.ownRoomIndex) && waitingPreviews.current.length) ? takePreview(event) : null;
+        // pixelrp (Twist, 2026-10-28): a mute answers a line with this instead
+        // of saying it, so no preview still waiting will be said.
+        if(chatType === RoomSessionChatEvent.CHAT_TYPE_MUTE_REMAINING) dropAllPreviews();
+
+        const taken = (event.objectId === roomSession.ownRoomIndex) ? takePreview(event) : null;
+
+        // pixelrp (Twist, 2026-10-28): the copy of your own line whose preview
+        // gave up waiting - a VPN or a proxy held it back. It was up over your
+        // head already, so it is not drawn again as a new bubble at the front;
+        // it still goes in the chat history.
+        const late = (taken === LATE_COPY);
+        const answered = ((taken === LATE_COPY) ? null : taken);
 
         if(answered)
         {
@@ -475,7 +511,7 @@ const useChatWidgetState = () =>
                 return next;
             });
         }
-        else
+        else if(!late)
         {
             // pixelrp: drawn now, in the message that brought it. Left to
             // React, a line from the server (a fight line, someone else's
@@ -505,14 +541,7 @@ const useChatWidgetState = () =>
 
     // pixelrp: flood control refused the line that set it off and every line
     // after it, so no preview still waiting will be answered.
-    useRoomSessionManagerEvent<RoomSessionChatEvent>(RoomSessionChatEvent.FLOOD_EVENT, () =>
-    {
-        const waiting = waitingPreviews.current;
-
-        waitingPreviews.current = [];
-
-        waiting.forEach(dropPreview);
-    });
+    useRoomSessionManagerEvent<RoomSessionChatEvent>(RoomSessionChatEvent.FLOOD_EVENT, () => dropAllPreviews());
 
     // pixelrp: a new room answers nothing sent in the last one.
     useEffect(() =>

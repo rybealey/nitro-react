@@ -21,8 +21,15 @@ import { IsNarratedBubble } from './NarratedBubble';
 // down after a few seconds. Commands (":...") never preview: most of them
 // never come back as chat.
 
-/** How long a preview waits for the server's copy before it is taken down. */
-export const OWN_CHAT_PREVIEW_TIMEOUT_MS: number = 3000;
+/**
+ * How long a preview waits for the server's copy before it is taken down.
+ * Ten seconds, not three (Twist, 2026-10-28): some players' connections - a
+ * VPN, a proxy - hold a message back until the next one goes (Jeen, 10-28),
+ * and three seconds took a line down while it was still on its way, then its
+ * copy came back as a new bubble at the front. A line refused for flood
+ * control or a mute is taken down as soon as that answer comes, not on this.
+ */
+export const OWN_CHAT_PREVIEW_TIMEOUT_MS: number = 10000;
 
 export interface OwnChatPreview
 {
@@ -75,6 +82,43 @@ export const TakeUnpreviewedLine = (line: string): boolean =>
     if(index < 0) return false;
 
     unpreviewed.splice(index, 1);
+
+    return true;
+}
+
+// Lines whose preview gave up waiting, so the copy that comes after all - a
+// connection holding it back for longer still - is not drawn a second time.
+const TIMED_OUT_KEEP_MS: number = 60000;
+const timedOut: { chatType: number, text: string, at: number }[] = [];
+
+/** A preview was taken down unanswered - see TakeTimedOutLine. */
+export const RememberTimedOutLine = (chatType: number, text: string): void =>
+{
+    timedOut.push({ chatType, text, at: Date.now() });
+
+    while(timedOut.length > 20) timedOut.shift();
+}
+
+/**
+ * True, and forgotten, when the server's copy of your own line is word for word
+ * one whose preview was already up and gave up waiting: it was shown, so it is
+ * not shown again. Word for word only - the word-filter guess is left to the
+ * previews still waiting (useChatWidget's takePreview), where it is safe.
+ */
+export const TakeTimedOutLine = (event: RoomSessionChatEvent): boolean =>
+{
+    const now = Date.now();
+
+    while(timedOut.length && ((now - timedOut[0].at) > TIMED_OUT_KEEP_MS)) timedOut.shift();
+
+    if(!timedOut.length) return false;
+
+    const line = NormalizeOwnChatLine(event.message);
+    const index = timedOut.findIndex(entry => ((entry.chatType === event.chatType) && (entry.text === line)));
+
+    if(index < 0) return false;
+
+    timedOut.splice(index, 1);
 
     return true;
 }
