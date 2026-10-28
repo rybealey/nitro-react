@@ -1,0 +1,74 @@
+diff --git a/src/nitro/avatar/AvatarImage.ts b/src/nitro/avatar/AvatarImage.ts
+index 1111111..2222222 100644
+--- a/src/nitro/avatar/AvatarImage.ts
++++ b/src/nitro/avatar/AvatarImage.ts
+@@ -4,7 +4,7 @@
+ import { Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+ import { AdvancedMap, AvatarAction, AvatarDirectionAngle, AvatarScaleType, AvatarSetType, IActionDefinition, IActiveActionData, IAdvancedMap, IAnimationLayerData, IAvatarDataContainer, IAvatarEffectListener, IAvatarFigureContainer, IAvatarImage, IGraphicAsset, IPartColor, ISpriteDataContainer } from '../../api';
+-import { GetTickerTime, NitroContainer, NitroSprite, PaletteMapFilter, PixiApplicationProxy, TextureUtils } from '../../pixi-proxy';
++import { AdjustmentFilter, GetTickerTime, NitroContainer, NitroSprite, PaletteMapFilter, PixiApplicationProxy, TextureUtils } from '../../pixi-proxy';
+ import { ActiveActionData } from './actions';
+ import { AssetAliasCollection } from './alias';
+ import { AvatarFigureContainer } from './AvatarFigureContainer';
+@@ -482,8 +482,15 @@
+         // picture instead of this one back from the GPU. Not under a filter
+         // over the whole avatar: a colour transform could change which pixels
+         // count as solid, and only the drawn picture shows that.
++        //
++        // PixelRP (Twist, 2026-10-28): unless every filter leaves how solid a
++        // pixel is alone (pixelrpKeepsSolid). An effect that tints the avatar
++        // puts a colour filter here, which used to send that avatar to the
++        // drawn picture - read
++        // back from the GPU on a press whenever it had redrawn - although a
++        // tint changes no pixel's alpha, so the parts answer exactly the same.
+         //@ts-ignore
+-        this._reusableTexture.baseTexture.pixelrpParts = ((container.filters && container.filters.length) ? null : pieces);
++        this._reusableTexture.baseTexture.pixelrpParts = (AvatarImage.pixelrpKeepsSolid(container.filters) ? pieces : null);
+ 
+         // PixelRP: what this picture is made of (see isSameDrawing).
+         this._drawnTexture = this._reusableTexture;
+@@ -1259,6 +1266,43 @@
+     public get avatarSpriteData(): IAvatarDataContainer
+     {
+         return this._avatarSpriteData;
++    }
++
++    // PixelRP (Twist, 2026-10-28): true when none of these filters changes a
++    // pixel's alpha, so the click test can still read the parts (pixelrpParts
++    // in getImage). The palette map writes the colour and keeps the
++    // alpha; an AdjustmentFilter multiplies the alpha by its own (an effect's
++    // ink 37 is 0.5, and that one still goes to the drawn picture); a colour
++    // matrix keeps it when its alpha row is 0 0 0 1 0, as the grey one is.
++    // Anything else is left to the drawn picture, as before.
++    private static pixelrpKeepsSolid(filters: unknown[]): boolean
++    {
++        if(!filters || !filters.length) return true;
++
++        for(const filter of filters)
++        {
++            if(filter instanceof PaletteMapFilter) continue;
++
++            if(filter instanceof AdjustmentFilter)
++            {
++                if(filter.alpha === 1) continue;
++
++                return false;
++            }
++
++            if(filter instanceof ColorMatrixFilter)
++            {
++                const matrix = filter.matrix;
++
++                if(matrix && (matrix[15] === 0) && (matrix[16] === 0) && (matrix[17] === 0) && (matrix[18] === 1) && (matrix[19] === 0)) continue;
++
++                return false;
++            }
++
++            return false;
++        }
++
++        return true;
+     }
+ 
+     private convertToGrayscale(container: Container, channel: string = 'CHANNELS_EQUAL'): Container
