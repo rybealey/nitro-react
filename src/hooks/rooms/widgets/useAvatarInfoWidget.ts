@@ -102,7 +102,14 @@ const useAvatarInfoWidgetState = () =>
 
         if(!info) return;
 
+        // pixelrp (Twist, 2026-10-28): the hover tag and bubbles go in this
+        // same render. The effect below took them down a render later, in a
+        // task of its own, so the first render still showed the hover tag and
+        // the menu came up a frame or more after the click.
         setAvatarInfo(info);
+        setActiveNameBubble(null);
+        setNameBubbles(prevValue => (prevValue.length ? [] : prevValue));
+        setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));
     }
 
     const processUsableRoomObject = (objectId: number) =>
@@ -387,10 +394,14 @@ const useAvatarInfoWidgetState = () =>
         if(!avatarInfo) return;
 
         // pixelrp: the same list when it is already empty - a new [] drew the
-        // whole widget a second time after every click on a player.
-        setActiveNameBubble(null);
-        setNameBubbles(prevValue => (prevValue.length ? [] : prevValue));
-        setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));
+        // whole widget a second time after every click on a player. Only what
+        // is still up (Twist, 2026-10-28): a click has taken them down already
+        // (getObjectInfo), and a set to what is there could still cost a render.
+        if(activeNameBubble) setActiveNameBubble(null);
+        if(nameBubbles.length) setNameBubbles(prevValue => (prevValue.length ? [] : prevValue));
+        if(productBubbles.length) setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));
+    // only when the info changes, as before: the bubbles are read, not watched
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ avatarInfo ]);
 
     useEffect(() =>

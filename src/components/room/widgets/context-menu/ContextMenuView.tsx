@@ -1,5 +1,5 @@
 import { FixedSizeStack, GetTicker, NitroPoint, NitroRectangle, RoomObjectType } from '@nitrots/nitro-renderer';
-import { CSSProperties, FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { GetNitroInstance, GetRoomObjectBounds, GetRoomObjectScreenLocation, GetRoomSession } from '../../../../api';
 import { Base, BaseProps } from '../../../../common';
 import { ContextMenuCaretView } from './ContextMenuCaretView';
@@ -187,10 +187,24 @@ export const ContextMenuView: FC<ContextMenuViewProps> = props =>
         return newStyle;
     }, [ style ]);
 
+    // pixelrp (Twist, 2026-10-28): the first place, and the place for a new
+    // object, are set before the browser paints. Only the game frame's ticker
+    // (below) set them, so a menu was mounted hidden and shown a frame later,
+    // and a menu moved to another player showed their name at the last one's
+    // place for a frame.
+    useLayoutEffect(() =>
+    {
+        if(!elementRef.current) return;
+
+        const roomId = GetRoomSession().roomId;
+
+        updatePosition(GetRoomObjectBounds(roomId, objectId, category), GetRoomObjectScreenLocation(roomId, objectId, category));
+    }, [ objectId, category, updatePosition ]);
+
     useEffect(() =>
     {
         if(!elementRef.current) return;
-        
+
         const update = (time: number) =>
         {
             if(!elementRef.current) return;
