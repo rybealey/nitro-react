@@ -1,5 +1,5 @@
 import { RelationshipStatusInfoEvent, RelationshipStatusInfoMessageParser, RoomSessionFavoriteGroupUpdateEvent, RoomSessionUserBadgesEvent, RoomSessionUserFigureUpdateEvent, UserRelationshipsComposer } from '@nitrots/nitro-renderer';
-import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, FC, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { LuBriefcase } from 'react-icons/lu';
 import { IsRpStaff } from '../../player-hud/PlayerHudWidgetView';
 import { DEFAULT_CORP_BADGE, GetRpEmployment, RpRankTitle } from '../../../../../api/rp-employment/RpEmploymentRegistry';
@@ -26,8 +26,24 @@ const relationshipsCache: Map<number, { at: number, relationships: UserRelations
 export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =>
 {
     const { avatarInfo = null, setAvatarInfo = null, onClose = null } = props;
-    const [ motto, setMotto ] = useState<string>(null);
-    const [ relationships, setRelationships ] = useState<UserRelationships>(null);
+    const [ answeredRelationships, setAnsweredRelationships ] = useState<UserRelationships>(null);
+
+    // pixelrp (Twist, 2026-10-28): read from the info in the render that shows
+    // the player. The motto was copied into state by an effect, so a click on
+    // somebody else showed their name over the last player's motto for a
+    // render, and a cached answer arrived a render after the panel. An answer
+    // held for another player is never shown.
+    const motto = (avatarInfo ? avatarInfo.motto : null);
+    const webID = (avatarInfo ? avatarInfo.webID : -1);
+
+    const cachedRelationships = useMemo(() =>
+    {
+        const cached = relationshipsCache.get(webID);
+
+        return ((cached && ((Date.now() - cached.at) < RELATIONSHIPS_CACHE_MS)) ? cached.relationships : null);
+    }, [ webID ]);
+
+    const relationships = ((answeredRelationships && (answeredRelationships.userId === webID)) ? answeredRelationships : cachedRelationships);
 
     useRoomSessionManagerEvent<RoomSessionUserBadgesEvent>(RoomSessionUserBadgesEvent.RSUBE_BADGES, event =>
     {
@@ -103,15 +119,8 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
         const snapshot = { userId: parser.userId, relationshipStatusMap: parser.relationshipStatusMap };
 
         relationshipsCache.set(parser.userId, { at: Date.now(), relationships: snapshot });
-        setRelationships(snapshot);
+        setAnsweredRelationships(snapshot);
     });
-
-    // pixelrp: by player and motto, with no reset on the way out - a cleared
-    // then re-set motto drew the infostand again after every click.
-    useEffect(() =>
-    {
-        setMotto(avatarInfo.motto);
-    }, [ avatarInfo.webID, avatarInfo.motto ]);
 
     // pixelrp: once per player shown, not per info object - every click on the
     // same player, and every badge, figure or group update, makes a new one.
@@ -119,13 +128,10 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
     // every floor click, and each reopening asked again.
     useEffect(() =>
     {
-        const cached = relationshipsCache.get(avatarInfo.webID);
+        if((webID === -1) || cachedRelationships) return;
 
-        if(cached && ((Date.now() - cached.at) < RELATIONSHIPS_CACHE_MS)) setRelationships(cached.relationships);
-        else SendMessageComposer(new UserRelationshipsComposer(avatarInfo.webID));
-
-        return () => setRelationships(null);
-    }, [ avatarInfo.webID ]);
+        SendMessageComposer(new UserRelationshipsComposer(webID));
+    }, [ webID, cachedRelationships ]);
 
     if(!avatarInfo) return null;
 
@@ -149,7 +155,7 @@ export const InfoStandWidgetUserView: FC<InfoStandWidgetUserViewProps> = props =
                     <Flex gap={ 1 }>
                         <Column fullWidth className="body-image" onClick={ event => GetUserProfile(avatarInfo.webID) }>
                             { /* faces diagonally left (4), like the bot and pet infostands */ }
-                            <LayoutAvatarImageView figure={ avatarInfo.figure } direction={ 4 } />
+                            <LayoutAvatarImageView key={ `${ avatarInfo.userType }-${ avatarInfo.webID }` } figure={ avatarInfo.figure } direction={ 4 } />
                         </Column>
                         <Column grow alignItems="center" gap={ 0 }>
                             { /* one uniform 2x3 slot grid - even gaps both ways */ }

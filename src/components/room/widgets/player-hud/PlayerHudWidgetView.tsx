@@ -682,7 +682,7 @@ export const PlayerHudWidgetView: FC<{}> = () =>
                                     <GangCrest primary={ targetGang.colourA } secondary={ targetGang.colourB } size={ 56 } />
                                 </span>
                             </HoverBubble> }
-                        <HudAvatar figure={ target.figure } variant="target" direction={ 4 } onClick={ targetIsBot ? null : () =>
+                        <HudAvatar key={ `${ target.userType }-${ target.webID }` } figure={ target.figure } variant="target" direction={ 4 } onClick={ targetIsBot ? null : () =>
                         {
                             RpProfileState.name = target.name;
                             RpProfileState.figure = target.figure;

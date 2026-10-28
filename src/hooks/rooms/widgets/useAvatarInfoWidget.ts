@@ -1,6 +1,6 @@
 import { RoomEngineObjectEvent, RoomEngineUseProductEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionPetInfoUpdateEvent, RoomSessionPetStatusUpdateEvent, RoomSessionUserDataUpdateEvent } from '@nitrots/nitro-renderer';
 import { useEffect, useRef, useState } from 'react';
-import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, TakeFriendLogin, UseProductItem } from '../../../api';
+import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, SameFields, TakeFriendLogin, UseProductItem } from '../../../api';
 import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
 import { useWired } from '../../wired';
 import { ClickthroughState } from '../clickthroughState';
@@ -106,7 +106,12 @@ const useAvatarInfoWidgetState = () =>
         // same render. The effect below took them down a render later, in a
         // task of its own, so the first render still showed the hover tag and
         // the menu came up a frame or more after the click.
-        setAvatarInfo(info);
+        //
+        // And the same object when the click built an equal one (Twist,
+        // 2026-10-28): clicking the player whose menu is open, again and again
+        // in a fight, redrew the menu, the panel and everything under them on
+        // every click.
+        setAvatarInfo(prevValue => (SameFields(prevValue, info) ? prevValue : info));
         setActiveNameBubble(null);
         setNameBubbles(prevValue => (prevValue.length ? [] : prevValue));
         setProductBubbles(prevValue => (prevValue.length ? [] : prevValue));

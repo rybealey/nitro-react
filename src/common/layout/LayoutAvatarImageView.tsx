@@ -94,11 +94,21 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
         return newClassNames;
     }, [ classNames ]);
 
+    const cacheKey = `${ figure }|${ gender }|${ direction }|${ headOnly ? 'head' : 'full' }`;
+
+    // pixelrp (Twist, 2026-10-28): a picture already kept is shown in this very
+    // render. The effect below put it in state, which drew it a render later,
+    // in a task of its own - the HUD target and the infostand showed a known
+    // face a frame or more after the click. A view that shows a different
+    // player is given a key of its own by its caller, so it starts empty
+    // rather than with the last player's face.
+    const shownUrl = ((!animate && imageCache.get(cacheKey)) || avatarUrl);
+
     const getStyle = useMemo(() =>
     {
         let newStyle: CSSProperties = {};
 
-        if(avatarUrl && avatarUrl.length) newStyle.backgroundImage = `url('${ avatarUrl }')`;
+        if(shownUrl && shownUrl.length) newStyle.backgroundImage = `url('${ shownUrl }')`;
 
         if(scale !== 1)
         {
@@ -110,12 +120,10 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
         if(Object.keys(style).length) newStyle = { ...newStyle, ...style };
 
         return newStyle;
-    }, [ avatarUrl, scale, style ]);
+    }, [ shownUrl, scale, style ]);
 
     useEffect(() =>
     {
-        const cacheKey = `${ figure }|${ gender }|${ direction }|${ headOnly ? 'head' : 'full' }`;
-
         if(retries.current.key !== cacheKey) retries.current = { key: cacheKey, count: 0 };
 
         let cancelled = false;
@@ -422,7 +430,7 @@ export const LayoutAvatarImageView: FC<LayoutAvatarImageViewProps> = props =>
 
             if(stopDrawing) stopDrawing();
         }
-    }, [ figure, gender, direction, headOnly, animate, randomValue ]);
+    }, [ cacheKey, figure, gender, direction, headOnly, animate, randomValue ]);
 
     useEffect(() =>
     {

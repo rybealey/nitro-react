@@ -46,7 +46,10 @@ export const ModToolsView: FC<{}> = props =>
 
         if(!userData || userData.type !== RoomObjectType.USER) return;
 
-        setSelectedUser({ userId: userData.webID, username: userData.name });
+        // pixelrp (Twist, 2026-10-28): the same object for the same player -
+        // this view is mounted for everyone, and a new one on every click on a
+        // player redrew it each time.
+        setSelectedUser(prevValue => ((prevValue && (prevValue.userId === userData.webID) && (prevValue.username === userData.name)) ? prevValue : { userId: userData.webID, username: userData.name }));
     });
 
     useEffect(() =>
