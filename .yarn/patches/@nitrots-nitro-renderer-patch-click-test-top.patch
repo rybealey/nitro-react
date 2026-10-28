@@ -1,0 +1,143 @@
+diff --git a/src/room/renderer/RoomSpriteCanvas.ts b/src/room/renderer/RoomSpriteCanvas.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/RoomSpriteCanvas.ts
++++ b/src/room/renderer/RoomSpriteCanvas.ts
+@@ -3,7 +3,7 @@
+ import { Graphics } from '@pixi/graphics';
+ import { Matrix, Point, Rectangle } from '@pixi/math';
+ import { Sprite } from '@pixi/sprite';
+-import { IRoomCanvasMouseListener, IRoomGeometry, IRoomObject, IRoomObjectSprite, IRoomObjectSpriteVisualization, IRoomRenderingCanvas, IRoomSpriteCanvasContainer, IRoomSpriteMouseEvent, MouseEventType, RoomObjectSpriteData, RoomObjectSpriteType, Vector3d } from '../../api';
++import { IRoomCanvasMouseListener, IRoomEngineServices, IRoomGeometry, IRoomObject, IRoomObjectSprite, IRoomObjectSpriteVisualization, IRoomRenderingCanvas, IRoomSpriteCanvasContainer, IRoomSpriteMouseEvent, MouseEventType, RoomObjectSpriteData, RoomObjectSpriteType, Vector3d } from '../../api';
+ import { RoomSpriteMouseEvent } from '../../events';
+ import { Nitro } from '../../nitro/Nitro';
+ import { GetTicker, NitroContainer, NitroSprite, PixiApplicationProxy } from '../../pixi-proxy';
+@@ -22,6 +22,10 @@
+     // PixelRP: how far outside the view, in tiles, a unit is still drawn
+     // (pixelrpUnitOffScreen) - past its own height and its biggest effect.
+     private static PIXELRP_OFFSCREEN_TILES: number = 6;
++
++    // PixelRP: the room object's type (RoomEngine.ROOM_OBJECT_TYPE), whose
++    // sprites are the floor and walls (pixelrpTopOnlyRoomName).
++    private static PIXELRP_ROOM_TYPE: string = 'room';
+ 
+     // PixelRP: the cheap pre-filter. Room units, where a tile is 1. It only
+     // rejects units that are obviously nowhere near; PIXELRP_DEPTH_TIE below is
+@@ -140,6 +144,7 @@
+     private _objectCache: RoomObjectCache;
+ 
+     private _mouseListener: IRoomCanvasMouseListener;
++    private _pixelrpRoomName: string = null;
+ 
+     constructor(container: IRoomSpriteCanvasContainer, id: number, width: number, height: number, scale: number)
+     {
+@@ -898,6 +903,42 @@
+         if(!sprite) return '';
+ 
+         return sprite.name;
++    }
++
++    // PixelRP (Twist, 2026-10-28): the room object's sprite name, when the
++    // mouse test may stop at the top object (checkMouseHits); null when it
++    // tests everything as before - no event handler to pick the first, a
++    // game being played, or no room object found.
++    private pixelrpTopOnlyRoomName(): string
++    {
++        if(!this._mouseListener || !this._container) return null;
++
++        const engine = (Nitro.instance && (Nitro.instance.roomEngine as unknown as IRoomEngineServices));
++
++        if(!engine || engine.isPlayingGame()) return null;
++
++        const known = this._pixelrpRoomName;
++
++        if(known !== null)
++        {
++            const object = this._container.getRoomObject(parseInt(known));
++
++            if(object && (object.type === RoomSpriteCanvas.PIXELRP_ROOM_TYPE)) return known;
++
++            this._pixelrpRoomName = null;
++        }
++
++        for(const [ instanceId, object ] of this._container.objects)
++        {
++            if(object && (object.type === RoomSpriteCanvas.PIXELRP_ROOM_TYPE))
++            {
++                this._pixelrpRoomName = instanceId.toString();
++
++                break;
++            }
++        }
++
++        return this._pixelrpRoomName;
+     }
+ 
+     private renderSprite(index: number, sprite: SortableSprite): boolean
+@@ -1176,6 +1217,13 @@
+ 
+         if((this._mouseCheckCount > 0) && (type == MouseEventType.MOUSE_MOVE)) return this._mouseSpriteWasHit;
+ 
++        // PixelRP (Twist, 2026-10-28): a release is not tested. No object
++        // logic and no event handler does anything with a release (the room
++        // drag ends in RoomEngine before this), and the browser sends it just
++        // before the click, so its test of every sprite under the mouse ran
++        // right in front of the walk or the select.
++        if(type === MouseEventType.MOUSE_UP) return this._mouseSpriteWasHit;
++
+         this._mouseSpriteWasHit = this.checkMouseHits(Math.trunc(x / this._scale), Math.trunc(y / this._scale), type, altKey, ctrlKey, shiftKey, buttonDown);
+ 
+         this._mouseCheckCount++;
+@@ -1196,10 +1244,37 @@
+         // It is the only test there is, and set again by every call.
+         ExtendedSprite.hovering = (type === MouseEventType.MOUSE_MOVE);
+ 
++        // PixelRP (Twist, 2026-10-28): the test stops at the topmost thing the
++        // mouse is on, and the room under it. The event handler only ever
++        // passes a click, press or move to the first object that takes it and
++        // to the room (RoomObjectEventHandler.processRoomCanvasMouseEvent), so
++        // every sprite below the top one was tested - its click map made, if
++        // it had none - for an event it then threw away. A hover now goes to
++        // the top one only too: a stack of players named the bottom one while
++        // a click picked the top. Not while a game is played, where players
++        // take their events apart from the furni.
++        const roomName = this.pixelrpTopOnlyRoomName();
++
++        let topTaken = false;
++        let roomTaken = false;
++
+         while(spriteId >= 0)
+         {
+             const extendedSprite = this.getExtendedSprite(spriteId);
+ 
++            if(topTaken && (roomName !== null))
++            {
++                if(roomTaken) break;
++
++                // only the room's own sprites are still looked for
++                if(extendedSprite && (extendedSprite.name !== roomName))
++                {
++                    spriteId--;
++
++                    continue;
++                }
++            }
++
+             // PixelRP: the same point, moved for each sprite - a click tested
+             // every sprite in the room three times (down, up, click) with a new
+             // point each, and a mouse move once a frame.
+@@ -1260,6 +1335,15 @@
+                     }
+ 
+                     didHitSprite = true;
++
++                    if(roomName !== null)
++                    {
++                        if(identifier === roomName) roomTaken = true;
++
++                        // as processMouseEvents, which passes over a sprite
++                        // whose object has gone
++                        else if(this._container.getRoomObject(parseInt(identifier))) topTaken = true;
++                    }
+                 }
+             }
+ 
