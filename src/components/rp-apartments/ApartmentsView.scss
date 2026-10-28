@@ -1,0 +1,473 @@
+// ---- PixelRP: Apartments -------------------------------------------------------
+// "Apartments · final design" on the "Apartments" canvas (Twist, 2026-10-28):
+// B's dark tab strip over C's floor plan. The light window - the #f3f3f5 page
+// the current windows use, white panels in a hairline - the shop's orange for
+// buying, the close button's red for selling back.
+
+.nitro-apartments {
+    width: 600px;
+    height: 450px;
+
+    $ink: #12161c;
+    $dim: #5f6773;
+    $edge: #a9b3bd;
+    $line: #eceef1;
+    $soft-edge: #c9ced4;
+    $orange: #e87332;
+    $orange-edge: #c9601f;
+    $orange-face: #f59436;
+    $orange-ink: #b35400;
+    $red: #c9453a;
+    $red-edge: #a8372e;
+
+    // Four classes deep so it beats the slim theme's own content-area rule.
+    &.theme-primary-slim .content-area {
+        position: relative;
+        padding: 8px;
+        background: #f3f3f5;
+        color: $ink;
+    }
+
+    // The chrome tab strip (prp-chrome-tab-strip's values), tabs in the middle -
+    // as the Marketplace has it.
+    .ap-tabs {
+        flex: none;
+        height: 38px;
+        padding: 6px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        background: var(--prp-chrome-plate);
+    }
+
+    .ap-tab {
+        height: 26px;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 0;
+        border-radius: $border-radius;
+        background: transparent;
+        font-family: 'Ubuntu', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba($light, 0.6);
+
+        &:hover:not(:disabled) { color: $white; }
+
+        &.is-on {
+            background: rgba($light, 0.1);
+            color: $white;
+        }
+
+        &.is-locked { color: rgba($light, 0.35); }
+    }
+
+    // The two panels. Their own row: the content area is a column.
+    .ap-layout {
+        height: 100%;
+        display: flex;
+        gap: 8px;
+    }
+
+    .ap-panel {
+        display: flex;
+        flex-direction: column;
+        background: $white;
+        border: 1px solid $edge;
+        border-radius: 4px;
+    }
+
+    .ap-title {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .ap-sub {
+        margin-top: 3px;
+        font-size: 11.5px;
+        line-height: 16px;
+        color: $dim;
+
+        &.is-poked { color: $orange-ink; }
+    }
+
+    .ap-dim { color: $dim; }
+
+    // ---- The floor plan ------------------------------------------------------
+
+    .ap-plan {
+        width: 344px;
+        flex: none;
+        padding: 10px 12px 12px;
+    }
+
+    .ap-plan-art {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ap-floor {
+        position: relative;
+
+        svg { display: block; }
+    }
+
+    // One lot's click area: a diamond the lot's own shape, with its pin badge.
+    .ap-lot-hit {
+        position: absolute;
+        width: 60px;
+        height: 30px;
+        pointer-events: none;
+    }
+
+    .ap-lot-area {
+        position: absolute;
+        inset: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+        pointer-events: auto;
+        cursor: pointer;
+    }
+
+    .ap-pin {
+        position: absolute;
+        left: 23px;
+        top: -12px;
+        width: 14px;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        pointer-events: auto;
+        cursor: pointer;
+
+        svg { display: block; }
+    }
+
+    .ap-click-line {
+        margin-bottom: 6px;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: $orange-ink;
+    }
+
+    .ap-legend {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 11px;
+        color: $dim;
+
+        > span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    }
+
+    .ap-key {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+
+        &.is-yours { background: $orange-face; }
+    }
+
+    // ---- The right panel -------------------------------------------------------
+
+    .ap-side {
+        flex: 1;
+        min-width: 0;
+        padding: 12px;
+    }
+
+    .ap-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: $dim;
+    }
+
+    .ap-heading {
+        margin-top: 2px;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .ap-side .ap-sub { margin-top: 4px; }
+
+    .ap-rows {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ap-row {
+        padding: 6px 0;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        border-top: 1px solid $line;
+        font-size: 12px;
+
+        > span { color: $dim; }
+
+        &.is-last { border-bottom: 1px solid $line; }
+    }
+
+    .ap-picture {
+        width: 100%;
+        height: 152px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f3f5;
+        border-radius: 4px;
+    }
+
+    .ap-name { margin-top: 10px; }
+
+    .ap-picture ~ .ap-rows {
+        margin-top: 8px;
+
+        .ap-row { padding: 5px 0; }
+    }
+
+    .ap-fill { flex: 1; }
+
+    // Short of cash: one red line just above the button.
+    .ap-short {
+        flex: none;
+        font-size: 11.5px;
+        line-height: 16px;
+        color: #b3261e;
+    }
+
+    // ---- Buttons ---------------------------------------------------------------
+
+    .ap-button {
+        height: 30px;
+        padding: 0;
+        border-radius: 4px;
+        font-size: 12.5px;
+        font-weight: 700;
+
+        &:disabled {
+            border-color: #d3d8de !important;
+            background: #e4e7ea !important;
+            color: #8a929c !important;
+            text-shadow: none !important;
+        }
+
+        &.is-orange {
+            border: 1px solid $orange-edge;
+            background: $orange;
+            color: $white;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+
+            &:hover:not(:disabled) { background: #d9672a; }
+        }
+
+        &.is-red {
+            border: 1px solid $red-edge;
+            background: $red;
+            color: $white;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+
+            &:hover:not(:disabled) { background: #b23c32; }
+        }
+
+        &.is-white {
+            border: 1px solid $soft-edge;
+            background: $white;
+            color: $ink;
+
+            &:hover:not(:disabled) { background: #f7f7f9; }
+        }
+    }
+
+    .ap-wide {
+        width: 100%;
+        flex: none;
+        margin-top: 8px;
+    }
+
+    .ap-go { margin-top: 12px; }
+
+    .ap-button-row {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+
+        .ap-button { flex: 1; min-width: 0; }
+
+        .ap-cancel { width: 84px; flex: none; }
+    }
+
+    // ---- Sell ------------------------------------------------------------------
+
+    .ap-sellback {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .ap-sellback-value {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .ap-note {
+        margin-top: 6px;
+        padding: 6px 8px;
+        background: #f3f3f5;
+        border-radius: 4px;
+        font-size: 11px;
+        line-height: 15px;
+        color: $dim;
+
+        &.is-warning {
+            background: #fdecea;
+            color: $red-edge;
+        }
+    }
+
+    // The Sell tab's buttons sit a little lower than the others.
+    .ap-sellback ~ .ap-button,
+    .ap-small ~ .ap-button { height: 28px; font-size: 12px; }
+
+    .ap-link {
+        margin: 6px auto 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font-size: 12px;
+        font-weight: 700;
+        color: $ink;
+        text-decoration: underline;
+    }
+
+    .ap-divider {
+        margin: 12px 0;
+        border-top: 1px solid $line;
+    }
+
+    .ap-small {
+        margin-top: 3px;
+        font-size: 11px;
+        line-height: 15px;
+        color: $dim;
+    }
+
+    .ap-price {
+        position: relative;
+        margin: 6px 0 0;
+        height: 28px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid $soft-edge;
+        border-radius: 4px;
+        background: $white;
+
+        input {
+            flex: 1;
+            min-width: 0;
+            padding: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: $ink;
+        }
+
+        &:focus-within { border-color: $orange; }
+    }
+
+    .ap-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    .ap-fee {
+        margin-top: 6px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 11.5px;
+        color: $dim;
+    }
+
+    .ap-earn {
+        margin-top: 3px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: $orange-ink;
+    }
+
+    .ap-listed {
+        margin-top: 6px;
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff1e6;
+        border: 1px solid #ffd2ad;
+        border-radius: 4px;
+
+        svg { flex: none; }
+    }
+
+    .ap-listed-text {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        font-size: 11.5px;
+        color: #4a5563;
+
+        strong {
+            font-size: 15px;
+            color: $orange-ink;
+        }
+    }
+
+    .ap-listed ~ .ap-small { margin-top: 8px; }
+
+    // The Marketplace's notice: says its piece and goes - over the empty sky
+    // above the building, never over a button.
+    .ap-notice {
+        position: absolute;
+        left: 24px;
+        top: 58px;
+        z-index: 6;
+        width: 312px;
+        padding: 6px 12px;
+        border-radius: 5px;
+        background: #1e2228;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        font-size: 12.5px;
+        color: $white;
+        text-align: center;
+        pointer-events: none;
+    }
+}

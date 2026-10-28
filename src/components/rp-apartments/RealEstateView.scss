@@ -1,0 +1,332 @@
+// ---- PixelRP: the real estate board ------------------------------------------
+// The "Real Estate board" boards of the "Apartments" canvas (Twist,
+// 2026-10-28): the Apartments window's light look - #f3f3f5 page, white
+// panels in a hairline - with the listings on the left and the picked one,
+// its picture of the inside on a dark ground, on the right.
+
+.nitro-real-estate {
+    width: 600px;
+    height: 450px;
+
+    $ink: #12161c;
+    $dim: #5f6773;
+    $edge: #a9b3bd;
+    $line: #eceef1;
+    $soft-edge: #c9ced4;
+    $orange: #e87332;
+    $orange-edge: #c9601f;
+    $orange-ink: #b35400;
+
+    // Four classes deep so it beats the slim theme's own content-area rule.
+    &.theme-primary-slim .content-area {
+        position: relative;
+        padding: 8px;
+        background: #f3f3f5;
+        color: $ink;
+    }
+
+    .re-layout {
+        height: 100%;
+        display: flex;
+        gap: 8px;
+    }
+
+    .re-panel {
+        display: flex;
+        flex-direction: column;
+        background: $white;
+        border: 1px solid $edge;
+        border-radius: 4px;
+    }
+
+    .re-dim { color: $dim; }
+
+    // ---- Nothing for sale --------------------------------------------------------
+
+    .re-empty {
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 11.5px;
+    }
+
+    .re-empty-title {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    // ---- The listings ------------------------------------------------------------
+
+    .re-list {
+        width: 300px;
+        flex: none;
+        padding: 10px 12px 12px;
+        gap: 8px;
+    }
+
+    .re-list-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .re-title {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .re-count {
+        min-width: 18px;
+        height: 16px;
+        padding: 0 5px;
+        border-radius: 8px;
+        background: $orange;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 16px;
+        color: $white;
+        text-align: center;
+    }
+
+    .re-rows {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        scrollbar-width: thin;
+        scrollbar-color: #b6bec5 transparent;
+    }
+
+    .re-listing {
+        flex: none;
+        width: 100%;
+        padding: 6px 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #dfe2e6;
+        border-radius: 4px;
+        background: $white;
+        color: $ink;
+        text-align: left;
+
+        &:hover:not(.is-on) { background: #f7f7f9; }
+
+        &.is-on {
+            border-color: $orange;
+            background: #fff1e6;
+        }
+    }
+
+    .re-thumb {
+        flex: none;
+        padding: 3px;
+        display: flex;
+        background: #f3f3f5;
+        border-radius: 3px;
+
+        svg { display: block; }
+    }
+
+    .re-listing-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .re-listing-name {
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .re-listing-sub {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .re-listing-price {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    // ---- The one picked ----------------------------------------------------------
+
+    .re-detail {
+        flex: 1;
+        min-width: 0;
+        padding: 12px;
+    }
+
+    .re-picture {
+        width: 250px;
+        height: 166px;
+        flex: none;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #1d2026;
+        border-radius: 4px;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+
+    .re-no-picture {
+        font-size: 11.5px;
+        color: #8a929c;
+    }
+
+    .re-name-row {
+        margin-top: 8px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .re-name {
+        flex: 0 1 auto;
+        min-width: 0;
+        font-size: 15px;
+        line-height: 18px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .re-tag {
+        flex: none;
+        height: 18px;
+        padding: 0 7px;
+        border: 1px solid #dfe2e6;
+        border-radius: 9px;
+        background: #f3f3f5;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 16px;
+        color: $dim;
+
+        &.is-furnished {
+            border-color: #ffd2ad;
+            background: #fff1e6;
+            color: $orange-ink;
+        }
+    }
+
+    .re-rows-info {
+        margin-top: 6px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .re-row {
+        padding: 5px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        border-top: 1px solid $line;
+        font-size: 12px;
+
+        > span { color: $dim; }
+
+        &.is-last { border-bottom: 1px solid $line; }
+    }
+
+    .re-size {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        svg { flex: none; display: block; }
+    }
+
+    .re-fill { flex: 1; }
+
+    .re-reason {
+        flex: none;
+        margin-bottom: 8px;
+        font-size: 11.5px;
+        line-height: 16px;
+        color: #b3261e;
+    }
+
+    .re-buttons {
+        display: flex;
+        gap: 6px;
+    }
+
+    .re-button {
+        height: 30px;
+        padding: 0;
+        border-radius: 4px;
+        font-size: 12.5px;
+        font-weight: 700;
+
+        &.is-white {
+            width: 84px;
+            flex: none;
+            border: 1px solid $soft-edge;
+            background: $white;
+            color: $ink;
+
+            &:hover:not(:disabled) { background: #f7f7f9; }
+        }
+
+        &.is-orange {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid $orange-edge;
+            background: $orange;
+            color: $white;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+
+            &:hover:not(:disabled) { background: #d9672a; }
+        }
+
+        &:disabled {
+            border-color: #d3d8de;
+            background: #e4e7ea;
+            color: #8a929c;
+            text-shadow: none;
+        }
+    }
+
+    // The Marketplace's notice: says its piece over the picture and goes.
+    .re-notice {
+        position: absolute;
+        left: 328px;
+        top: 24px;
+        z-index: 6;
+        width: 250px;
+        padding: 6px 12px;
+        border-radius: 5px;
+        background: #1e2228;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        font-size: 12.5px;
+        color: $white;
+        text-align: center;
+        pointer-events: none;
+    }
+}
