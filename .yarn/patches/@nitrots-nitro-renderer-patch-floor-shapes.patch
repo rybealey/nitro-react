@@ -1,0 +1,191 @@
+diff --git a/src/nitro/room/object/visualization/room/RoomPlane.ts b/src/nitro/room/object/visualization/room/RoomPlane.ts
+index 1111111..2222222 100644
+--- a/src/nitro/room/object/visualization/room/RoomPlane.ts
++++ b/src/nitro/room/object/visualization/room/RoomPlane.ts
+@@ -595,8 +595,14 @@ export class RoomPlane implements IRoomPlane
+ 
+                 // PixelRP: a floor's or wall's click map is made at the next
+                 // quiet moment, before the first click on it, not in that
+-                // click (Twist, 2026-10-27).
+-                if(shapeMayChange && this.isClickable) ExtendedSprite.redrawn(this._bitmapData.baseTexture);
++                // click (Twist, 2026-10-27). A floor with no holes is clicked
++                // by its outline instead, which needs nothing from the GPU
++                // (Twist, 2026-10-28 - see ExtendedSprite.shaped).
++                if(shapeMayChange && this.isClickable)
++                {
++                    if((this._type === RoomPlane.TYPE_FLOOR) && !this._bitmapMasks.length && !this._rectangleMasks.length) ExtendedSprite.shaped(this._bitmapData.baseTexture, this._cornerC, this._cornerB, this._cornerD);
++                    else ExtendedSprite.redrawn(this._bitmapData.baseTexture);
++                }
+             }
+             else
+             {
+diff --git a/src/room/renderer/utils/ExtendedSprite.ts b/src/room/renderer/utils/ExtendedSprite.ts
+index 1111111..2222222 100644
+--- a/src/room/renderer/utils/ExtendedSprite.ts
++++ b/src/room/renderer/utils/ExtendedSprite.ts
+@@ -16,6 +16,19 @@ interface FrameHitMap
+     bits: Uint32Array;
+ }
+ 
++// PixelRP: a floor plane's outline in its picture - from corner (x, y) along
++// (ax, ay) and (bx, by) - with det the two sides' cross product (see shaped).
++interface PlaneShape
++{
++    x: number;
++    y: number;
++    ax: number;
++    ay: number;
++    bx: number;
++    by: number;
++    det: number;
++}
++
+ // PixelRP: one body part as it went into an avatar's picture (AvatarImage).
+ interface DrawnPart
+ {
+@@ -159,6 +172,13 @@ export class ExtendedSprite extends Sprite
+             if(hit !== null) return hit;
+         }
+ 
++        // PixelRP: a floor with no holes is tested against its outline
++        // (RoomPlane, shaped) - nothing to build, nothing read from the GPU.
++        //@ts-ignore
++        const shape = (baseTexture.pixelrpShape as PlaneShape);
++
++        if(shape) return ExtendedSprite.shapeContainsPoint(shape, x, y);
++
+         // PixelRP: an avatar redraws its picture into the same texture about
+         // 12 times a second while it walks, dances or talks, and a redraw only
+         // marks the map stale (AvatarImage). Rebuilding it is a GPU readback -
+@@ -398,11 +418,49 @@ export class ExtendedSprite extends Sprite
+         //@ts-ignore
+         baseTexture.hitMap = null;
+         //@ts-ignore
++        baseTexture.pixelrpShape = null;
++        //@ts-ignore
+         baseTexture.pixelrpDrawVersion = ((baseTexture.pixelrpDrawVersion || 0) + 1);
+ 
+         ExtendedSprite.buildLater(baseTexture);
+     }
+ 
++    // PixelRP: a floor plane with no holes, drawn anew. Its picture is the
++    // parallelogram from corner c along c->b and c->d (RoomPlane's
++    // getMatrixForDimensions) filled, clear outside it, so a click is tested
++    // against that outline and nothing is made at the quiet moment (Twist,
++    // 2026-10-28 - "loading into equinox gym had a delay" on a Mac: its
++    // stepped corner is 135 floor planes, each read back from the GPU after
++    // the room showed, and one read held the page 711 ms). Drawn again with a
++    // hole in it, the plane goes back to its picture (redrawn).
++    public static shaped(baseTexture: BaseTexture, c: { x: number, y: number }, b: { x: number, y: number }, d: { x: number, y: number }): void
++    {
++        if(!baseTexture || !c || !b || !d) return;
++
++        const ax = (b.x - c.x);
++        const ay = (b.y - c.y);
++        const bx = (d.x - c.x);
++        const by = (d.y - c.y);
++
++        //@ts-ignore
++        baseTexture.pixelrpShape = { x: c.x, y: c.y, ax, ay, bx, by, det: ((ax * by) - (ay * bx)) };
++        //@ts-ignore
++        baseTexture.hitMap = null;
++    }
++
++    // the pixel a map would have looked at, by its centre, inside the outline
++    private static shapeContainsPoint(shape: PlaneShape, x: number, y: number): boolean
++    {
++        if(!shape.det) return false;
++
++        const px = ((Math.round(x) + 0.5) - shape.x);
++        const py = ((Math.round(y) + 0.5) - shape.y);
++        const s = (((px * shape.by) - (py * shape.bx)) / shape.det);
++        const t = (((shape.ax * py) - (shape.ay * px)) / shape.det);
++
++        return ((s >= 0) && (s <= 1) && (t >= 0) && (t <= 1));
++    }
++
+     // PixelRP: the maps a mouse move left for later (see hovering), made one at
+     // a time while the browser is idle. Only what is still missing is made:
+     // the sheet's own map (SheetMasks) may have arrived in the meantime, or a
+@@ -471,7 +529,7 @@ export class ExtendedSprite extends Sprite
+         if(item instanceof BaseTexture)
+         {
+             //@ts-ignore
+-            if(item.destroyed || !item.valid || item.hitMap) return false;
++            if(item.destroyed || !item.valid || item.hitMap || item.pixelrpShape) return false;
+ 
+             const id = `${ item.uid }`;
+ 
+@@ -483,7 +541,7 @@ export class ExtendedSprite extends Sprite
+             const started = ExtendedSprite.readLater(id, whole, item.width, item.height, pixels =>
+             {
+                 //@ts-ignore
+-                if(!pixels || item.destroyed || !item.valid || item.hitMap) return;
++                if(!pixels || item.destroyed || !item.valid || item.hitMap || item.pixelrpShape) return;
+ 
+                 // drawn again while this copy was on its way: not the picture
+                 // any more, so made again from the new one
+@@ -577,13 +635,19 @@ export class ExtendedSprite extends Sprite
+     // the graphics card, and the lag recorder had those quiet-moment builds at
+     // 50-66 ms (Twist, 2026-10-26). The picture is drawn into a texture of its
+     // own, as getPixels does, copied into a buffer behind a fence (WebGL2) and
+-    // collected on a later timer, when the fence says it has landed; one not
+-    // back after READ_GIVE_UP_MS is read then, waiting. At most READING_MAX at
+-    // once. False when it cannot start - WebGL1, a lost context - and the
+-    // caller reads it the old way.
++    // collected on a later timer, when the fence says it has landed. At most
++    // READING_MAX at once. False when it cannot start - WebGL1, a lost context
++    // - and the caller reads it the old way.
++    //
++    // NEVER READ BEFORE IT HAS LANDED (Twist, 2026-10-28). One not back after
++    // a quarter second used to be read then, and reading made the page wait
++    // for the GPU - 160 to 711 ms at a time on a Mac (Apple M4) walking into
++    // Equinox Gym. Now one not back after READ_GIVE_UP_MS is let go unread:
++    // the picture gets no map at the quiet moment, and a click makes it as it
++    // did before these were built ahead.
+     private static READING_MAX: number = 4;
+     private static READ_POLL_MS: number = 16;
+-    private static READ_GIVE_UP_MS: number = 250;
++    private static READ_GIVE_UP_MS: number = 3000;
+     private static _reading: Set<string> = new Set();
+ 
+     private static readLater(id: string, source: Texture, width: number, height: number, done: (pixels: Uint8Array) => void): boolean
+@@ -671,21 +735,31 @@ export class ExtendedSprite extends Sprite
+                     return;
+                 }
+ 
+-                if((gl.getSyncParameter(sync, gl.SYNC_STATUS) !== gl.SIGNALED) && ((performance.now() - startedAt) < ExtendedSprite.READ_GIVE_UP_MS))
++                const landed = (gl.getSyncParameter(sync, gl.SYNC_STATUS) === gl.SIGNALED);
++
++                if(!landed && ((performance.now() - startedAt) < ExtendedSprite.READ_GIVE_UP_MS))
+                 {
+                     setTimeout(collect, ExtendedSprite.READ_POLL_MS);
+ 
+                     return;
+                 }
+ 
+-                const pixels = new Uint8Array(width * height * 4);
++                if(!landed)
++                {
++                    forget();
++                    done(null);
++                }
++                else
++                {
++                    const pixels = new Uint8Array(width * height * 4);
+ 
+-                gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
+-                gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, pixels);
+-                gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
++                    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
++                    gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, pixels);
++                    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+ 
+-                forget();
+-                done(pixels);
++                    forget();
++                    done(pixels);
++                }
+             }
+             catch(error)
+             {
