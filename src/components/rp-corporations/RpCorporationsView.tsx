@@ -229,7 +229,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                     value={ search } onChange={ event => setSearch(event.target.value) }
                                                     onKeyDown={ event => (event.key === 'Escape') && setSearch('') } />
                                                 { !!search &&
-                                                    <span className="rp-corps-search-clear" title="Clear" onClick={ () => setSearch('') }>&times;</span> }
+                                                    <span className="rp-corps-search-clear" onClick={ () => setSearch('') }>&times;</span> }
                                             </div>
                                         </div>
                                         <div className="rp-corps-panel-card">
@@ -264,8 +264,6 @@ export const RpCorporationsView: FC<{}> = props =>
                                                         { rank.employees.map(employee =>
                                                         {
                                                             const tierLabel = ((rank.tiers > 0) ? TIER_NUMERALS[Math.min(Math.max(employee.tier, 1), rank.tiers) - 1] : null);
-                                                            const rankLabel = (tierLabel ? `${ rank.name } ${ tierLabel }` : rank.name);
-                                                            const statusWord = (employee.onDuty ? 'On duty' : (employee.online ? 'Online' : 'Offline'));
                                                             // seconds accrued on the current shift since the detail
                                                             // packet arrived - 0 unless this employee is on duty
                                                             const liveExtra = (employee.onDuty ? Math.max(0, Math.floor((tickNow - shownDetail.receivedAt) / 1000)) : 0);
@@ -274,7 +272,7 @@ export const RpCorporationsView: FC<{}> = props =>
                                                             const lastSeenLabel = (employee.online ? 'Now' : FormatLastOnline(employee.lastOnline, tickNow));
 
                                                             return (
-                                                                <div key={ employee.username } className={ `rp-corps-employee${ (employee.online || employee.onDuty) ? '' : ' is-offline' }` } title={ `${ rankLabel } - ${ statusWord }` }
+                                                                <div key={ employee.username } className={ `rp-corps-employee${ (employee.online || employee.onDuty) ? '' : ' is-offline' }` }
                                                                     onClick={ () =>
                                                                     {
                                                                         RpProfileState.name = employee.username;
