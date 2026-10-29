@@ -1,16 +1,16 @@
 import { FC } from 'react';
-import { CreateLinkEvent, LocalizeText } from '../../../../../api';
 import { Base } from '../../../../../common/Base';
-import { Button } from '../../../../../common/Button';
 import { Column } from '../../../../../common/Column';
 import { Grid } from '../../../../../common/Grid';
 import { LayoutImage } from '../../../../../common/layout/LayoutImage';
 import { CatalogLayoutProps } from './CatalogLayout.types';
 
+// pixelrp: no Buy group button - groups are not sold in the furni shop
+// (Twist, 2026-10-29). It was the only way into the group creator.
 export const CatalogLayouGuildFrontpageView: FC<CatalogLayoutProps> = props =>
 {
     const { page = null } = props;
-    
+
     return (
         <Grid>
             <Column size={ 7 } overflow="hidden" className="bg-muted rounded p-2 text-black">
@@ -20,9 +20,6 @@ export const CatalogLayouGuildFrontpageView: FC<CatalogLayoutProps> = props =>
             </Column>
             <Column center size={ 5 } overflow="hidden">
                 <LayoutImage imageUrl={ page.localization.getImage(1) } />
-                <Button onClick={ () => CreateLinkEvent('groups/create') }>
-                    { LocalizeText('catalog.start.guild.purchase.button') }
-                </Button>
             </Column>
         </Grid>
     );
