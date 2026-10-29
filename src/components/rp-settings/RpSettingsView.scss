@@ -1135,6 +1135,42 @@ $mx-font: Ubuntu, sans-serif;
         }
     }
 
+    // UI > Target select: the cursor tiles, tall enough for a standing avatar.
+    .rp-settings-cursors.is-targets {
+        grid-auto-rows: auto;
+
+        .rp-settings-cursor {
+            padding-bottom: 3px;
+        }
+    }
+
+    // Your own avatar on a patch of floor (TargetHighlightPreview): the picture
+    // stands with its feet on the middle tile, and the floor runs out of the box.
+    .rp-settings-target-preview {
+        position: relative;
+        width: 78px;
+        height: 112px;
+        overflow: hidden;
+        border-radius: 3px 3px 2px 2px;
+        background: #999966;
+
+        svg {
+            position: absolute;
+            left: -1px;
+            top: 0;
+        }
+
+        .avatar-image {
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 90px;
+            height: 104px;
+            background-position: center bottom;
+            image-rendering: pixelated;
+        }
+    }
+
     .rp-settings-cursor-preview {
         display: block;
         border-radius: 2px;

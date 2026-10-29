@@ -3,6 +3,7 @@ import { CSSProperties, FC, useCallback, useEffect, useState } from 'react';
 import { FaBolt, FaHeart, FaLock, FaLockOpen, FaRegStar, FaStar, FaTimes } from 'react-icons/fa';
 import { AvatarInfoUser, AvatarInfoUtilities, CreateLinkEvent, GetRoomEngine, GetSessionDataManager, OwnMotto, RoomWidgetUpdateRoomObjectEvent, SameFields, SendMessageComposer } from '../../../../api';
 import { useHudPrefs } from '../../../../api/prefs/HudPrefsStore';
+import { HighlightTarget } from '../../../../api/prefs/TargetHighlightStore';
 import { SetRpStaffResolver } from '../../../../api/user/RpStaffFlag';
 import { GetRpWanted, SubscribeRpWanted } from '../../../../api/rp-wanted/RpWantedMessages';
 import { GetRpUnitStats, RpUnitStats, SubscribeRpStats } from '../../../../api/rp-stats/RpStatsStore';
@@ -598,6 +599,18 @@ export const PlayerHudWidgetView: FC<{}> = () =>
     // pixelrp: in this room, the room's live bars for wherever they stand now;
     // in another room, theirs by id (awayUserId).
     const targetIndex = (target ? (targetIsBot ? target.roomIndex : roomIndexOf(target.webID)) : -1);
+    // pixelrp: your locked target marked out in the room while they are in it -
+    // a red line round them or a ring at their feet (Settings > UI > Target
+    // select, TargetHighlightStore).
+    const highlightRoomId = (roomSession?.roomId ?? -1);
+    const highlightIndex = ((locked && (targetIndex >= 0)) ? targetIndex : -1);
+
+    useEffect(() =>
+    {
+        HighlightTarget(highlightRoomId, highlightIndex);
+
+        return () => HighlightTarget(-1, -1);
+    }, [ highlightRoomId, highlightIndex ]);
     const targetBase = (target ? (targetIsBot ? DEFAULT_STATS : statsWithWanted(target.webID)) : null);
     const targetHereBars = ((target && !targetIsBot && !awayUserId) ? GetRpUnitStats(targetIndex) : null);
 

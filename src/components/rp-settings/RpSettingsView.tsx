@@ -12,6 +12,8 @@ import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHud
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
 import { CURSOR_STYLES, CursorStyle, DEFAULT_CURSOR_COLOUR, DEFAULT_CURSOR_STYLE, SetCursorColour, SetCursorStyle, useCursorPrefs } from '../../api/prefs/CursorStore';
 import { CursorPreview } from './CursorPreview';
+import { DEFAULT_TARGET_HIGHLIGHT, SetTargetHighlight, TARGET_HIGHLIGHT_STYLES, TargetHighlightStyle, useTargetHighlight } from '../../api/prefs/TargetHighlightStore';
+import { TargetHighlightPreview } from './TargetHighlightPreview';
 import { SetSlowComputerMode, useAutoFrameRate } from '../../api/prefs/AutoFrameRate';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
 import { OnAccountPrefsLoaded } from '../../api/prefs/AccountPrefs';
@@ -53,8 +55,9 @@ const VOLUME_ROWS: { kind: UserSettingsVolume, text: string }[] = [
 
 // Interface tab sub-pages (left rail). Colours (Settings canvas, boards N/O)
 // replaced the Windows and Components pages' fixed swatches. Cursor is the
-// square under the mouse on the room floor (CursorStore).
-const INTERFACE_PAGES: string[] = [ 'Colours', 'Cursor' ];
+// square under the mouse on the room floor (CursorStore). Target select is how
+// your locked target is marked out in the room (TargetHighlightStore).
+const INTERFACE_PAGES: string[] = [ 'Colours', 'Cursor', 'Target select' ];
 // Environment pages, same rail under their own eyebrow: the sky behind rooms.
 const ENVIRONMENT_PAGES: string[] = [ 'Weather' ];
 
@@ -73,6 +76,10 @@ const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = {
     light: 'Light', frosted: 'Frosted', corners: 'Corners', pad: 'Pad', glow: 'Glow', shade: 'Shade',
     double: 'Double', rounded: 'Rounded', dashed: 'Dashed', points: 'Points', target: 'Target', classic: 'Classic'
 };
+
+// UI > Target select: the name under each tile, in TargetHighlightStore's order
+// (boards A to D of the "Target Lock Highlight" canvas, then none).
+const TARGET_HIGHLIGHT_LABELS: Record<TargetHighlightStyle, string> = { thin: 'Thin line', thick: 'Thick line', glow: 'Line and glow', ring: 'Ring', off: 'Off' };
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.
 const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
@@ -152,6 +159,7 @@ export const RpSettingsView: FC<{}> = props =>
     const { hudStyle, hudBars } = useHudPrefs();
     const { iconTint } = useIconTint();
     const { style: cursorStyle, colour: cursorColour } = useCursorPrefs();
+    const targetHighlight = useTargetHighlight();
     // A drag in the picker changes the colour on every move; the server only
     // hears the colour it settles on.
     const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -1215,6 +1223,23 @@ export const RpSettingsView: FC<{}> = props =>
                                             colour={ colourRows.cursor.colour }
                                             onChange={ colourRows.cursor.pick }
                                             onClose={ closeColourPicker } /> }
+                                </div> }
+                            { (interfacePage === 'Target select') &&
+                                <div className="rp-settings-colours">
+                                    <section className="rp-settings-group" aria-labelledby="rp-settings-h-target">
+                                        <div id="rp-settings-h-target" className="rp-settings-group-head">Locked target</div>
+                                        <div className="rp-settings-cursors is-targets" role="radiogroup" aria-labelledby="rp-settings-h-target">
+                                            { TARGET_HIGHLIGHT_STYLES.map(highlight => (
+                                                <button key={ highlight } type="button" role="radio" aria-checked={ targetHighlight === highlight }
+                                                    className={ `rp-settings-cursor ${ (targetHighlight === highlight) ? 'is-selected' : '' }` }
+                                                    title={ (highlight === DEFAULT_TARGET_HIGHLIGHT) ? `${ TARGET_HIGHLIGHT_LABELS[highlight] } (default)` : TARGET_HIGHLIGHT_LABELS[highlight] }
+                                                    onClick={ () => SetTargetHighlight(highlight) }>
+                                                    <TargetHighlightPreview highlight={ highlight } />
+                                                    <span className="rp-settings-cursor-name">{ TARGET_HIGHLIGHT_LABELS[highlight] }</span>
+                                                </button>
+                                            )) }
+                                        </div>
+                                    </section>
                                 </div> }
                             { (interfacePage === 'Weather') &&
                                 <>
