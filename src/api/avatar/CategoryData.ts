@@ -1,6 +1,7 @@
 import { IPartColor } from '@nitrots/nitro-renderer';
 import { AvatarEditorGridColorItem } from './AvatarEditorGridColorItem';
 import { AvatarEditorGridPartItem } from './AvatarEditorGridPartItem';
+import { CustomPartColor, IsCustomColorId } from './CustomColors';
 
 export class CategoryData
 {
@@ -9,6 +10,9 @@ export class CategoryData
     private _palettes: AvatarEditorGridColorItem[][];
     private _selectedPartIndex: number = -1;
     private _paletteIndexes: number[];
+    // pixelrp: per palette, the custom color worn instead of a swatch (0 for
+    // none). While one is set no swatch of that palette is selected.
+    private _customColorIds: number[] = [];
 
     constructor(name: string, partItems: AvatarEditorGridPartItem[], colorItems: AvatarEditorGridColorItem[][])
     {
@@ -67,6 +71,7 @@ export class CategoryData
 
         this._selectedPartIndex = -1;
         this._paletteIndexes = null;
+        this._customColorIds = [];
     }
 
     public selectPartId(partId: number): void
@@ -116,6 +121,9 @@ export class CategoryData
 
                     if(colorItem && colorItem.partColor) colorId = colorItem.partColor.id;
                 }
+
+                // A custom color matches no swatch, so the loop below leaves them all unselected.
+                this._customColorIds[i] = (IsCustomColorId(colorId) ? colorId : 0);
 
                 let j = 0;
 
@@ -183,6 +191,7 @@ export class CategoryData
         this.deselectColorIndex(this._paletteIndexes[paletteId], paletteId);
 
         this._paletteIndexes[paletteId] = colorIndex;
+        this._customColorIds[paletteId] = 0;
 
         const colorItem = palette[colorIndex];
 
@@ -193,6 +202,24 @@ export class CategoryData
         this.updatePartColors();
 
         return colorItem;
+    }
+
+    // pixelrp: wear a custom color (a CustomColorIdFromHex id) on this palette.
+    public selectCustomColor(colorId: number, paletteId: number): void
+    {
+        if(!this.getPalette(paletteId) || !IsCustomColorId(colorId)) return;
+
+        this.deselectColorIndex(this._paletteIndexes[paletteId], paletteId);
+
+        this._paletteIndexes[paletteId] = -1;
+        this._customColorIds[paletteId] = colorId;
+
+        this.updatePartColors();
+    }
+
+    public getCustomColorId(paletteId: number): number
+    {
+        return (this._customColorIds[paletteId] || 0);
     }
 
     public getCurrentColorIndex(k: number): number
@@ -238,7 +265,11 @@ export class CategoryData
         {
             const paletteSet = this._palettes[i];
 
-            if(!((!(paletteSet)) || (paletteSet.length <= i)))
+            if(this._customColorIds[i])
+            {
+                colorIds.push(this._customColorIds[i]);
+            }
+            else if(!((!(paletteSet)) || (paletteSet.length <= i)))
             {
                 if(paletteSet.length > this._paletteIndexes[i])
                 {
@@ -279,7 +310,11 @@ export class CategoryData
         {
             const colorItem = this.getSelectedColor(i);
 
-            if(colorItem)
+            if(this._customColorIds[i])
+            {
+                partColors.push(CustomPartColor(this._customColorIds[i]));
+            }
+            else if(colorItem)
             {
                 partColors.push(colorItem.partColor);
             }

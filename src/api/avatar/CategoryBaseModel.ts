@@ -210,6 +210,18 @@ export class CategoryBaseModel implements IAvatarEditorCategoryModel
         AvatarEditorUtilities.CURRENT_FIGURE.savePartSetColourId(category, categoryData.getSelectedColorIds(), true);
     }
 
+    // pixelrp: wear a custom color on one of the category's palettes.
+    public selectCustomColor(category: string, colorId: number, paletteId: number): void
+    {
+        const categoryData = this._categories.get(category);
+
+        if(!categoryData) return;
+
+        categoryData.selectCustomColor(colorId, paletteId);
+
+        AvatarEditorUtilities.CURRENT_FIGURE.savePartSetColourId(category, categoryData.getSelectedColorIds(), true);
+    }
+
     public getCategoryData(category: string): CategoryData
     {
         if(!this._isInitalized) this.init();

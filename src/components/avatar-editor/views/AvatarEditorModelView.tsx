@@ -1,8 +1,9 @@
-import { Dispatch, FC, SetStateAction, useCallback, useEffect, useState } from 'react';
-import { CategoryData, FigureData, IAvatarEditorCategoryModel } from '../../../api';
+import { Dispatch, FC, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import { CanUseCustomColor, CategoryData, FigureData, IAvatarEditorCategoryModel } from '../../../api';
 import { Column, Flex, Grid } from '../../../common';
 import { AvatarEditorIcon } from './AvatarEditorIcon';
 import { AvatarEditorFigureSetView } from './figure-set/AvatarEditorFigureSetView';
+import { AvatarEditorCustomColorView } from './palette-set/AvatarEditorCustomColorView';
 import { AvatarEditorPaletteSetView } from './palette-set/AvatarEditorPaletteSetView';
 export interface AvatarEditorModelViewProps
 {
@@ -16,6 +17,12 @@ export const AvatarEditorModelView: FC<AvatarEditorModelViewProps> = props =>
     const { model = null, gender = null, setGender = null } = props;
     const [ activeCategory, setActiveCategory ] = useState<CategoryData>(null);
     const [ maxPaletteCount, setMaxPaletteCount ] = useState(1);
+    // pixelrp: the custom color picker - which palette it is open on, and the
+    // Custom tile of each palette it opens beside.
+    const [ customPaletteIndex, setCustomPaletteIndex ] = useState(-1);
+    const [ customVersion, setCustomVersion ] = useState(0);
+    const customTiles = useRef<HTMLElement[]>([]);
+    const customClosedAt = useRef<{ paletteIndex: number, time: number }>({ paletteIndex: -1, time: 0 });
 
     const selectCategory = useCallback((name: string) =>
     {
@@ -49,7 +56,35 @@ export const AvatarEditorModelView: FC<AvatarEditorModelViewProps> = props =>
         }
     }, [ model, selectCategory ]);
 
+    useEffect(() => setCustomPaletteIndex(-1), [ model, activeCategory ]);
+
+    const registerCustomTile = useCallback((paletteIndex: number, element: HTMLElement) => (customTiles.current[paletteIndex] = element), []);
+
+    const openCustomColor = useCallback((paletteIndex: number) =>
+    {
+        // The press that closed the picker on this tile is not a press to open it again.
+        const closed = customClosedAt.current;
+
+        if((closed.paletteIndex === paletteIndex) && ((performance.now() - closed.time) < 400)) return;
+
+        setCustomPaletteIndex(paletteIndex);
+    }, []);
+
+    const closeCustomColor = useCallback(() =>
+    {
+        setCustomPaletteIndex(prevValue =>
+        {
+            customClosedAt.current = { paletteIndex: prevValue, time: performance.now() };
+
+            return -1;
+        });
+    }, []);
+
+    const onCustomChange = useCallback(() => setCustomVersion(prevValue => (prevValue + 1)), []);
+
     if(!model || !activeCategory) return null;
+
+    const customEnabled = CanUseCustomColor(activeCategory.name);
 
     return (
         <Grid>
@@ -79,9 +114,14 @@ export const AvatarEditorModelView: FC<AvatarEditorModelViewProps> = props =>
             </Column>
             <Column size={ 5 } overflow="hidden">
                 { (maxPaletteCount >= 1) &&
-                    <AvatarEditorPaletteSetView model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(0) } paletteIndex={ 0 } /> }
+                    <AvatarEditorPaletteSetView model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(0) } paletteIndex={ 0 }
+                        customEnabled={ customEnabled } customOpen={ (customPaletteIndex === 0) } customVersion={ customVersion } onCustomClick={ openCustomColor } registerCustomTile={ registerCustomTile } /> }
                 { (maxPaletteCount === 2) &&
-                    <AvatarEditorPaletteSetView model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(1) } paletteIndex={ 1 } /> }
+                    <AvatarEditorPaletteSetView model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(1) } paletteIndex={ 1 }
+                        customEnabled={ customEnabled } customOpen={ (customPaletteIndex === 1) } customVersion={ customVersion } onCustomClick={ openCustomColor } registerCustomTile={ registerCustomTile } /> }
+                { customEnabled && (customPaletteIndex >= 0) && (customPaletteIndex < maxPaletteCount) && customTiles.current[customPaletteIndex] &&
+                    <AvatarEditorCustomColorView key={ activeCategory.name } model={ model } category={ activeCategory } paletteIndex={ customPaletteIndex } paletteCount={ maxPaletteCount }
+                        anchor={ customTiles.current[customPaletteIndex] } setPaletteIndex={ setCustomPaletteIndex } onChange={ onCustomChange } onClose={ closeCustomColor } /> }
             </Column>
         </Grid>
     );

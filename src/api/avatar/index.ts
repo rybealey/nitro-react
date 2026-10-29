@@ -6,6 +6,7 @@ export * from './BodyModel';
 export * from './CategoryBaseModel';
 export * from './CategoryData';
 export * from './CompanionsModel';
+export * from './CustomColors';
 export * from './FigureData';
 export * from './FigureGenerator';
 export * from './HeadModel';
