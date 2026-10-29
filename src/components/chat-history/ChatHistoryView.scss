@@ -17,6 +17,8 @@ $ch-room-bg: rgba($light, 0.1);
 $ch-room-hover: rgba($light, 0.17);
 $ch-count: #c95a18;
 $ch-clear: #c9453a;
+// Pixel orange, the P logo's (the window title bars' default face).
+$ch-scroll: #f59436;
 
 .nitro-chat-history {
     // starting size; the corner grip writes inline width/height over these
@@ -235,6 +237,17 @@ $ch-clear: #c9453a;
         background: transparent;
 
         > * { background: transparent; }
+
+        // The scrollbar in pixel orange (Twist, 2026-10-29): the global line in
+        // the player's dark chrome colour (assets/styles/scrollbars.scss) all
+        // but vanished on this dark see-through page. Same thin line, brighter
+        // under the mouse and while dragged.
+        ::-webkit-scrollbar-thumb:not(:horizontal) {
+            border-right-color: $ch-scroll;
+
+            &:hover { border-right-color: lighten($ch-scroll, 6%); }
+            &:active { border-right-color: lighten($ch-scroll, 12%); }
+        }
     }
 
     .rp-ch-empty {

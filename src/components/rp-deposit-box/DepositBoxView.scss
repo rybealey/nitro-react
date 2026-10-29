@@ -1,9 +1,11 @@
 // PixelRP bank deposit box (DepositBoxView; design: the "Bank Deposit Box"
 // canvas). The backpack's light restyle - pale page, white raised slots, black
-// count badges - beside a dark steel lockbox.
+// count badges - on both sides: the box is the backpack's look, not a steel
+// lockbox (Twist, 2026-10-29).
 
 .nitro-card.nitro-deposit-box {
-    width: 452px;
+    // Narrow enough that the box's slots are the backpack's own size.
+    width: 396px;
 
     .content-area.deposit-body {
         display: flex;
@@ -21,9 +23,11 @@
         align-items: stretch;
     }
 
-    .deposit-pack {
-        width: 120px;
-        flex-shrink: 0;
+    // Both sides: no plate of their own, just the slots on the page. The
+    // padding is taken back by the margin, so the dashed drop outline has room
+    // around the slots without moving them.
+    .deposit-pack,
+    .deposit-box {
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -39,23 +43,14 @@
         }
     }
 
+    .deposit-pack {
+        width: 120px;
+        flex-shrink: 0;
+    }
+
     .deposit-box {
         flex-grow: 1;
         min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 8px;
-        border-radius: 6px;
-        // A lighter steel than the first cut - the system grey of the chrome's
-        // secondary buttons, not a near-black vault.
-        background: linear-gradient(#7a838f, #6b7480);
-        border: 1px solid #5d6570;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.15);
-        outline: 2px dashed transparent;
-        outline-offset: 2px;
-
-        &.is-drop-zone { outline-color: #e87332; }
     }
 
     .deposit-side-head {
@@ -81,10 +76,7 @@
 
         // The box side has no label, only its count - kept at the right edge,
         // where the backpack's count sits.
-        &--box {
-            margin-left: auto;
-            color: rgba(255, 255, 255, 0.85);
-        }
+        &--box { margin-left: auto; }
     }
 
     .deposit-grid {
@@ -136,37 +128,56 @@
             }
         }
 
+        // A box lock that can be bought: click it and the next slot asks.
+        &.is-buyable {
+            cursor: pointer;
+
+            &:hover { border-color: rgba(0, 0, 0, 0.28); }
+        }
+
+        // The next slot, asking to be bought - in the header's orange.
+        &.is-asking {
+            cursor: pointer;
+            border-color: #e87332;
+            box-shadow: inset 0 0 0 1px #e87332;
+        }
+
         &.is-lifted { opacity: 0.35; }
 
         .deposit-lock { color: rgba(0, 0, 0, 0.3); }
     }
 
-    // The box's own slots: no tile behind the art - an item sits on the steel
-    // in a solid outline, an empty slot is a dashed one.
-    .deposit-box .deposit-slot {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px dashed rgba(255, 255, 255, 0.35);
-        box-shadow: none;
+    // "Buy" over the price, covering the slot (an item stored there before
+    // slots were sold too).
+    .deposit-buy {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        border-radius: inherit;
+        background: #ffffff;
+        color: #1c1c20;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.1;
+        pointer-events: none;
 
-        &.has-item {
-            border-style: solid;
-            border-color: rgba(255, 255, 255, 0.5);
-
-            &:hover { border-color: #ffffff; }
+        b {
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #e87332;
         }
+    }
 
-        &.is-locked {
-            background: rgba(0, 0, 0, 0.12);
-            border: 1px solid rgba(0, 0, 0, 0.18);
-        }
-
-        // Where a rearrange will land.
-        &.is-drop-target {
-            border: 2px solid #ffffff;
-            background: rgba(255, 255, 255, 0.22);
-        }
-
-        .deposit-lock { color: rgba(255, 255, 255, 0.55); }
+    // Where a rearrange inside the box will land - the backpack's own drop
+    // target (RpInventoryView.scss).
+    .deposit-box .deposit-slot.is-drop-target {
+        border-color: var(--prp-chrome-solid);
+        background: color-mix(in srgb, var(--prp-chrome-solid) 12%, #ffffff);
     }
 
     // The backpack's item art, filling the slot.
@@ -215,7 +226,7 @@
 
     .deposit-box-hint {
         font-size: 10px;
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(0, 0, 0, 0.58);
     }
 
     .deposit-notice {

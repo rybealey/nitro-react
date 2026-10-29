@@ -43,6 +43,8 @@ const KINDS: { [key: string]: { title: string; tone: 'in' | 'out' | 'flat'; mark
     withdraw: { title: 'Cash Withdrawal', tone: 'out', mark: 'arrow-up-from-line' },
     transfer_in: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
     transfer_out: { title: 'Transfer', tone: 'flat', mark: 'right-left' },
+    // Something bought straight out of checking - a deposit box slot.
+    purchase: { title: 'Purchase', tone: 'out', mark: 'lock' },
     open: { title: 'Account Opened', tone: 'flat', mark: 'circle-plus' }
 };
 

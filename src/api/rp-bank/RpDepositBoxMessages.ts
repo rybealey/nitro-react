@@ -7,8 +7,8 @@ import { GetConnection } from '../nitro';
 const RP_DEPOSIT_BOX = 4184; // server -> client: open with contents, or closed
 const RP_DEPOSIT_MOVE = 4185; // client -> server: one move
 
-/** DepositBox.Store / Withdraw / Rearrange */
-export const DepositDirection = { Store: 0, Withdraw: 1, Rearrange: 2 };
+/** DepositBox.Store / Withdraw / Rearrange / Buy (the next slot) */
+export const DepositDirection = { Store: 0, Withdraw: 1, Rearrange: 2, Buy: 3 };
 
 export interface DepositBoxEntry
 {
@@ -24,6 +24,7 @@ export class RpDepositBoxParser implements IMessageParser
     private _items: DepositBoxEntry[] = [];
     private _notice = '';
     private _unstorable: string[] = [];
+    private _slotPrice = 0;
 
     public flush(): boolean
     {
@@ -32,6 +33,7 @@ export class RpDepositBoxParser implements IMessageParser
         this._items = [];
         this._notice = '';
         this._unstorable = [];
+        this._slotPrice = 0;
 
         return true;
     }
@@ -58,6 +60,9 @@ export class RpDepositBoxParser implements IMessageParser
             while(unstorable-- > 0) this._unstorable.push(wrapper.readString());
         }
 
+        // Last, what one more slot costs (DepositBox.SlotPrice).
+        if(wrapper.bytesAvailable) this._slotPrice = wrapper.readInt();
+
         return true;
     }
 
@@ -66,10 +71,16 @@ export class RpDepositBoxParser implements IMessageParser
         return this._open;
     }
 
-    /** Slots the player may use: 16, or 20 with VIP. */
+    /** Slots the player may use: the first four and every one they bought. */
     public get openSlots(): number
     {
         return this._openSlots;
+    }
+
+    /** What one more slot costs; 0 from an emulator that does not sell them. */
+    public get slotPrice(): number
+    {
+        return this._slotPrice;
     }
 
     public get items(): DepositBoxEntry[]
