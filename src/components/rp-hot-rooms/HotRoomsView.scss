@@ -1,0 +1,91 @@
+// ---- PixelRP: the :hotrooms window ---------------------------------------------
+// Design A of the "Hot Rooms" canvas (Twist, 2026-10-29): the light window
+// look - #f3f3f5 page, one white panel in a hairline - with a row per room.
+
+.nitro-hot-rooms {
+    width: 280px;
+
+    $ink: #12161c;
+    $dim: #5f6773;
+    $edge: #a9b3bd;
+    $line: #e4e7ea;
+
+    // Four classes deep so it beats the slim theme's own content-area rule.
+    &.theme-primary-slim .content-area {
+        padding: 8px;
+        background: #f3f3f5;
+        color: $ink;
+        font-family: 'Ubuntu', sans-serif;
+    }
+
+    .hr-list {
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        border: 1px solid $edge;
+        border-radius: 4px;
+    }
+
+    .hr-row {
+        height: 30px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+
+        & + .hr-row { border-top: 1px solid $line; }
+    }
+
+    .hr-rank {
+        width: 10px;
+        flex-shrink: 0;
+        font-size: 11px;
+        font-weight: 700;
+        color: $dim;
+        text-align: right;
+    }
+
+    // The navigator's badge: green, yellow from half full, red when full.
+    .hr-count {
+        flex-shrink: 0;
+        min-width: 34px;
+        height: 18px;
+        padding: 0 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        border-radius: 4px;
+        background: #00800b;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 700;
+
+        &.is-busy { background: #ffc107; color: $ink; }
+        &.is-full { background: #a81a12; }
+
+        svg { display: block; }
+    }
+
+    .hr-name {
+        flex-grow: 1;
+        min-width: 0;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hr-id {
+        flex-shrink: 0;
+        font-size: 10.5px;
+        color: $dim;
+    }
+
+    .hr-empty {
+        padding: 10px 8px;
+        font-size: 12px;
+        color: $dim;
+        text-align: center;
+    }
+}

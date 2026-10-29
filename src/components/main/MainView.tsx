@@ -26,6 +26,7 @@ import { TradeView } from '../rp-trade/TradeView';
 import { MarketplaceView } from '../rp-market/MarketplaceView';
 import { ApartmentsView } from '../rp-apartments/ApartmentsView';
 import { RealEstateView } from '../rp-apartments/RealEstateView';
+import { HotRoomsView } from '../rp-hot-rooms/HotRoomsView';
 import { NavigatorView } from '../navigator/NavigatorView';
 import { NitropediaView } from '../nitropedia/NitropediaView';
 import { PhoneView } from '../phone/PhoneView';
@@ -118,6 +119,7 @@ export const MainView: FC<{}> = props =>
             <MarketplaceView />
             <ApartmentsView />
             <RealEstateView />
+            <HotRoomsView />
             <RoomView />
             <ChatHistoryView />
             <WiredView />
