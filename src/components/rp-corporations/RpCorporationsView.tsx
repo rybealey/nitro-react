@@ -281,10 +281,11 @@ export const RpCorporationsView: FC<{}> = props =>
                                                                         RpProfileState.figure = employee.figure;
                                                                         RpProfileState.motto = '';
                                                                         RpProfileState.online = employee.online;
-                                                                        // The roster carries no user id, but we are
-                                                                        // looking at this player's employment right
-                                                                        // now - hand it over rather than look it up.
-                                                                        RpProfileState.userId = 0;
+                                                                        // The id drives the profile's partner, gang,
+                                                                        // birthday and region; the employment we are
+                                                                        // looking at right now is handed over below
+                                                                        // rather than looked up.
+                                                                        RpProfileState.userId = employee.userId;
                                                                         // the roster carries no rank, so no verified mark
                                                                         RpProfileState.staff = false;
                                                                         RpProfileState.employment = {

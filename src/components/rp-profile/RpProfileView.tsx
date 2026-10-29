@@ -240,7 +240,7 @@ export const RpProfileView: FC<{}> = props =>
                 { /* Head-to-waist crop: the sprite is drawn at its native size
                      and clipped - never scaled, which would resample the
                      pixel art. */ }
-                <div className="rp-profile-avatar">
+                <div className={ `rp-profile-avatar${ RpProfileState.online ? '' : ' is-offline' }` }>
                     <LayoutAvatarImageView figure={ RpProfileState.figure } direction={ 2 } />
                 </div>
             </div>

@@ -20,6 +20,8 @@ const RP_CORP_DETAIL = 3947; // server -> client
 
 export interface RpCorpEmployee
 {
+    // what their profile is looked up by; 0 from an emulator that does not send it
+    userId: number;
     username: string;
     figure: string;
     tier: number;
@@ -102,7 +104,7 @@ export class RpCorpDetailParser implements IMessageParser
                 const shiftSecondsWeek = wrapper.readInt();
                 const lastOnline = wrapper.readInt();
 
-                employees.push({ username, figure, tier, online, onDuty, shiftSeconds, shiftSecondsWeek, lastOnline });
+                employees.push({ userId: 0, username, figure, tier, online, onDuty, shiftSeconds, shiftSecondsWeek, lastOnline });
 
                 employeeCount--;
             }
@@ -110,6 +112,15 @@ export class RpCorpDetailParser implements IMessageParser
             this._ranks.push({ id, order, name, pay, tiers, employees });
 
             rankCount--;
+        }
+
+        // Appended last: every employee's user id, in the order listed above.
+        if(wrapper.bytesAvailable)
+        {
+            for(const rank of this._ranks)
+            {
+                for(const employee of rank.employees) employee.userId = wrapper.readInt();
+            }
         }
 
         return true;
