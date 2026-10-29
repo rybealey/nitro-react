@@ -40,6 +40,7 @@ const ACCOUNT_KEYS = new Set<string>([
     'pixelrp.prefs.cursor.style',
     'pixelrp.prefs.cursor.colour',
     'pixelrp.prefs.target.highlight',
+    'pixelrp.prefs.target.colour',
     'pixelrp.environment.weather',
     // the music player and your profile song
     'pixelrp.jukebox.volume',

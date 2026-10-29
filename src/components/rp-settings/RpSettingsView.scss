@@ -1145,7 +1145,8 @@ $mx-font: Ubuntu, sans-serif;
     }
 
     // Your own avatar on a patch of floor (TargetHighlightPreview): the picture
-    // stands with its feet on the middle tile, and the floor runs out of the box.
+    // stands with its feet on the middle tile (its position is set from where
+    // the figure's soles are), and the floor runs out of the box.
     .rp-settings-target-preview {
         position: relative;
         width: 78px;
@@ -1160,14 +1161,21 @@ $mx-font: Ubuntu, sans-serif;
             top: 0;
         }
 
-        .avatar-image {
+        .avatar-image,
+        .rp-settings-target-tint {
             position: absolute;
             left: -6px;
             top: 0;
             width: 90px;
-            height: 104px;
+            height: 112px;
             background-position: center bottom;
             image-rendering: pixelated;
+        }
+
+        // the arrow over the head, centred like the figure (x 39)
+        .rp-settings-target-arrow {
+            position: absolute;
+            left: 34px;
         }
     }
 

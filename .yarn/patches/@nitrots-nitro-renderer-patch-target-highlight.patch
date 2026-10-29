@@ -1,18 +1,19 @@
 diff --git a/src/api/nitro/room/object/RoomObjectVariable.ts b/src/api/nitro/room/object/RoomObjectVariable.ts
-index 8295ac3..c676603 100644
+index 8295ac3..f85b049 100644
 --- a/src/api/nitro/room/object/RoomObjectVariable.ts
 +++ b/src/api/nitro/room/object/RoomObjectVariable.ts
-@@ -38,6 +38,8 @@ export class RoomObjectVariable
+@@ -38,6 +38,9 @@ export class RoomObjectVariable
      public static FIGURE_EXPRESSION: string = 'figure_expression';
      // pixelrp: the effect a :kiss or :hug floats over this avatar, 0 for none (AvatarLogic sets and clears it)
      public static FIGURE_RP_SOCIAL_EFFECT: string = 'figure_rp_social_effect';
-+    // pixelrp: how your locked target is marked out - 'thin', 'thick' or 'glow' (a line round the avatar), 'ring' (a ring on the floor), '' for none (Settings > UI > Target select)
++    // pixelrp: how your locked target is marked out - 'thin', 'thick' or 'glow' (a line round the avatar), 'ring' (a ring on the floor), 'linering' (both), 'arrow' (over the head), 'tint', '' for none - and in what colour (0xRRGGBB) (Settings > UI > Target select)
 +    public static FIGURE_TARGET_HIGHLIGHT: string = 'pixelrp_figure_target_highlight';
++    public static FIGURE_TARGET_HIGHLIGHT_COLOR: string = 'pixelrp_figure_target_highlight_color';
      public static HEAD_DIRECTION: string = 'head_direction';
      public static FURNITURE_CUSTOM_VARIABLES: string = 'furniture_custom_variables';
      public static FURNITURE_AUTOMATIC_STATE_INDEX: string = 'furniture_automatic_state_index';
 diff --git a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
-index ea9930c..1d75926 100644
+index ea9930c..784bd2a 100644
 --- a/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 +++ b/src/nitro/room/object/visualization/avatar/AvatarVisualization.ts
 @@ -3,8 +3,9 @@ import { Resource, Texture } from '@pixi/core';
@@ -20,62 +21,72 @@ index ea9930c..1d75926 100644
  import { RoomObjectSpriteVisualization } from '../../../../../room';
  import { Nitro } from '../../../../Nitro';
 -import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, MutedBubbleAddition, NumberBubbleAddition, SocialEffectAddition, TypingBubbleAddition } from './additions';
-+import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, MutedBubbleAddition, NumberBubbleAddition, SocialEffectAddition, TargetRingAddition, TypingBubbleAddition } from './additions';
++import { ExpressionAdditionFactory, FloatingIdleZAddition, GameClickTargetAddition, GuideStatusBubbleAddition, IAvatarAddition, MutedBubbleAddition, NumberBubbleAddition, SocialEffectAddition, TargetArrowAddition, TargetRingAddition, TypingBubbleAddition } from './additions';
  import { AvatarVisualizationData } from './AvatarVisualizationData';
-+import { TargetOutlineFilter } from './TargetOutlineFilter';
++import { TARGET_DEFAULT_COLOUR, TargetOutlineFilter } from './TargetOutlineFilter';
  
  export class AvatarVisualization extends RoomObjectSpriteVisualization implements IAvatarImageListener, IAvatarEffectListener
  {
-@@ -18,6 +19,8 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -18,6 +19,9 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
      private static GUIDE_BUBBLE_ID: number = 7;
      // pixelrp: one addition per sprite of a :kiss or :hug's effect (SocialEffectAddition) - Love has three.
      private static RP_SOCIAL_EFFECT_IDS: number[] = [ 8, 9, 10 ];
-+    // pixelrp: the ring under your locked target (TargetRingAddition).
++    // pixelrp: the ring under your locked target and the arrow over them (TargetRingAddition, TargetArrowAddition).
 +    private static TARGET_RING_ID: number = 11;
++    private static TARGET_ARROW_ID: number = 12;
      private static OWN_USER_ID: number = 4;
      // PixelRP: from this many players in the room, other avatars stop
      // blinking (pixelrpQuietBlink), and the count is taken at most this often.
-@@ -62,6 +65,7 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -62,6 +66,8 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
      private _talk: boolean;
      private _expression: number;
      private _rpSocialEffect: number;
 +    private _targetHighlight: string;
++    private _targetHighlightColour: number;
      private _sleep: boolean;
      private _blink: boolean;
      private _gesture: number;
-@@ -114,6 +118,7 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -114,6 +120,8 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
          this._talk = false;
          this._expression = 0;
          this._rpSocialEffect = 0;
 +        this._targetHighlight = '';
++        this._targetHighlightColour = TARGET_DEFAULT_COLOUR;
          this._sleep = false;
          this._blink = false;
          this._gesture = 0;
-@@ -336,7 +341,8 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -336,7 +344,8 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
                      }
                      else
                      {
 -                        sprite.filters = [];
 +                        // pixelrp: the line round your locked target, if this is them.
-+                        sprite.filters = TargetOutlineFilter.filtersFor(this._targetHighlight);
++                        sprite.filters = TargetOutlineFilter.filtersFor(this._targetHighlight, this._targetHighlightColour);
                      }
                  }
  
-@@ -874,6 +880,21 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -874,6 +883,28 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
              needsUpdate = true;
          }
  
-+        // pixelrp: how this avatar is marked as your locked target - a line
-+        // round it (TargetOutlineFilter, put on the avatar's sprite in update)
-+        // or a ring on the floor (TargetRingAddition).
++        // pixelrp: how this avatar is marked as your locked target, and in what
++        // colour - a line round it or a tint (TargetOutlineFilter, put on the
++        // avatar's sprite in update), a ring on the floor (TargetRingAddition),
++        // both a line and a ring, or an arrow over the head (TargetArrowAddition).
 +        const targetHighlight = (model.getValue<string>(RoomObjectVariable.FIGURE_TARGET_HIGHLIGHT) || '');
++        const targetHighlightColour = (model.getValue<number>(RoomObjectVariable.FIGURE_TARGET_HIGHLIGHT_COLOR) ?? TARGET_DEFAULT_COLOUR);
 +
-+        if(targetHighlight !== this._targetHighlight)
++        if((targetHighlight !== this._targetHighlight) || (targetHighlightColour !== this._targetHighlightColour))
 +        {
 +            this._targetHighlight = targetHighlight;
++            this._targetHighlightColour = targetHighlightColour;
 +
-+            if(targetHighlight === TargetRingAddition.STYLE) this.addAddition(new TargetRingAddition(AvatarVisualization.TARGET_RING_ID, this));
-+            else this.removeAddition(AvatarVisualization.TARGET_RING_ID);
++            this.removeAddition(AvatarVisualization.TARGET_RING_ID);
++            this.removeAddition(AvatarVisualization.TARGET_ARROW_ID);
++
++            if((targetHighlight === 'ring') || (targetHighlight === 'linering')) this.addAddition(new TargetRingAddition(AvatarVisualization.TARGET_RING_ID, this, targetHighlightColour));
++
++            if(targetHighlight === 'arrow') this.addAddition(new TargetArrowAddition(AvatarVisualization.TARGET_ARROW_ID, this, targetHighlightColour));
 +
 +            needsUpdate = true;
 +        }
@@ -83,7 +94,7 @@ index ea9930c..1d75926 100644
          this.updateScale(scale);
  
          const gender = model.getValue<string>(RoomObjectVariable.GENDER);
-@@ -1235,6 +1256,12 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
+@@ -1235,6 +1266,12 @@ export class AvatarVisualization extends RoomObjectSpriteVisualization implement
          return this._posture;
      }
  
@@ -98,30 +109,35 @@ index ea9930c..1d75926 100644
          return this._angle;
 diff --git a/src/nitro/room/object/visualization/avatar/TargetOutlineFilter.ts b/src/nitro/room/object/visualization/avatar/TargetOutlineFilter.ts
 new file mode 100644
-index 0000000..51c4205
+index 0000000..6f7e8b8
 --- /dev/null
 +++ b/src/nitro/room/object/visualization/avatar/TargetOutlineFilter.ts
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,111 @@
 +import { Filter } from '@pixi/core';
 +
-+// pixelrp: the line round your locked target (Settings > UI > Target select,
-+// boards A-C of the "Target Lock Highlight" canvas). A pixel joins the line
-+// when a solid pixel of the avatar is within `line` pixels of it in any
-+// direction, diagonals too, so the line keeps the sprite's pixel-art steps;
-+// Glow adds a soft fade for a few pixels past it. It is drawn on the avatar's
-+// own sprite, so furni in front of the avatar hides it with them.
++// pixelrp: the line round your locked target, or its tint (Settings > UI >
++// Target select; boards A-C and E of the "Target Lock Highlight" canvas). A
++// pixel joins the line when a solid pixel of the avatar is within `line`
++// pixels of it in any direction, diagonals too, so the line keeps the
++// sprite's pixel-art steps; Glow adds a soft fade for a few pixels past it;
++// Tint mixes the player's colour into the avatar itself. It is drawn on the
++// avatar's own sprite, so furni in front of the avatar hides it with them.
 +
 +// The design system's danger red, the canvas's default.
-+const TARGET_RED = new Float32Array([ 224 / 255, 49 / 255, 49 / 255 ]);
++export const TARGET_DEFAULT_COLOUR = 0xE03131;
 +
++// inputSize is highp, as Pixi's filter vertex shader has it: a uniform that
++// both shaders declare must match in precision, or the program will not link
++// and the avatar is not drawn at all.
 +const fragment = (reach: number) => `
 +varying vec2 vTextureCoord;
 +uniform sampler2D uSampler;
-+uniform vec4 inputSize;
-+uniform vec4 inputClamp;
++uniform highp vec4 inputSize;
++uniform highp vec4 inputClamp;
 +uniform vec3 uColor;
 +uniform float uLine;
 +uniform float uGlow;
++uniform float uTint;
 +
 +const int REACH = ${ reach };
 +
@@ -129,7 +145,9 @@ index 0000000..51c4205
 +{
 +    vec4 own = texture2D(uSampler, vTextureCoord);
 +
-+    if(own.a >= 1.0)
++    own = vec4(mix(own.rgb, (uColor * own.a), uTint), own.a);
++
++    if((own.a >= 1.0) || (REACH == 0))
 +    {
 +        gl_FragColor = own;
 +        return;
@@ -161,59 +179,197 @@ index 0000000..51c4205
 +    gl_FragColor = (own + (vec4((uColor * edge), edge) * (1.0 - own.a)));
 +}`;
 +
++// Each style's line, glow and tint.
++const STYLES: Record<string, [ number, number, number ]> = {
++    thin: [ 1, 0, 0 ],
++    thick: [ 2, 0, 0 ],
++    glow: [ 1, 4, 0 ],
++    linering: [ 1, 0, 0 ],
++    tint: [ 0, 0, 0.45 ]
++};
++
 +export class TargetOutlineFilter extends Filter
 +{
-+    public static readonly THIN: string = 'thin';
-+    public static readonly THICK: string = 'thick';
-+    public static readonly GLOW: string = 'glow';
-+
 +    private static NONE: Filter[] = [];
-+    private static _byStyle: Map<string, Filter[]> = new Map();
++    private static _made: Map<string, Filter[]> = new Map();
 +
-+    constructor(line: number, glow: number)
++    constructor(line: number, glow: number, tint: number, colour: number)
 +    {
-+        super(undefined, fragment(line + glow), { uColor: TARGET_RED, uLine: line, uGlow: glow });
++        const rgb = new Float32Array([ (((colour >> 16) & 0xFF) / 255), (((colour >> 8) & 0xFF) / 255), ((colour & 0xFF) / 255) ]);
++
++        super(undefined, fragment(line + glow), { uColor: rgb, uLine: line, uGlow: glow, uTint: tint });
 +
 +        this.padding = (line + glow);
 +    }
 +
-+    /** The filters for a style, made once and shared by every avatar; none for any other style. */
-+    public static filtersFor(style: string): Filter[]
++    /** The filters for a style in a colour, made once and shared; none for a style drawn some other way. */
++    public static filtersFor(style: string, colour: number): Filter[]
 +    {
-+        const existing = TargetOutlineFilter._byStyle.get(style);
++        const shape = STYLES[style];
++
++        if(!shape) return TargetOutlineFilter.NONE;
++
++        const key = `${ style }:${ colour }`;
++        const existing = TargetOutlineFilter._made.get(key);
 +
 +        if(existing) return existing;
 +
-+        let filter: TargetOutlineFilter = null;
++        // Only the player's own choice is ever drawn, so a few are plenty.
++        if(TargetOutlineFilter._made.size >= 16) TargetOutlineFilter._made.clear();
 +
-+        switch(style)
-+        {
-+            case TargetOutlineFilter.THIN:
-+                filter = new TargetOutlineFilter(1, 0);
-+                break;
-+            case TargetOutlineFilter.THICK:
-+                filter = new TargetOutlineFilter(2, 0);
-+                break;
-+            case TargetOutlineFilter.GLOW:
-+                filter = new TargetOutlineFilter(1, 4);
-+                break;
-+            default:
-+                return TargetOutlineFilter.NONE;
-+        }
++        const filters = [ new TargetOutlineFilter(shape[0], shape[1], shape[2], colour) ];
 +
-+        const filters = [ filter ];
-+
-+        TargetOutlineFilter._byStyle.set(style, filters);
++        TargetOutlineFilter._made.set(key, filters);
 +
 +        return filters;
 +    }
 +}
+diff --git a/src/nitro/room/object/visualization/avatar/additions/TargetArrowAddition.ts b/src/nitro/room/object/visualization/avatar/additions/TargetArrowAddition.ts
+new file mode 100644
+index 0000000..3cf4c36
+--- /dev/null
++++ b/src/nitro/room/object/visualization/avatar/additions/TargetArrowAddition.ts
+@@ -0,0 +1,134 @@
++import { SCALE_MODES } from '@pixi/constants';
++import { BaseTexture, Resource, Texture } from '@pixi/core';
++import { AvatarAction, IRoomObjectSprite } from '../../../../../../api';
++import { AvatarVisualization } from '../AvatarVisualization';
++import { IAvatarAddition } from './IAvatarAddition';
++
++// pixelrp: the arrow over your locked target's head (Settings > UI > Target
++// select): a small pixel arrow in the player's colour, pointing down at them,
++// with a darker edge so it reads over a light floor or a dark wall. It floats
++// where the muted and typing bubbles do, and follows the avatar sitting or
++// lying down the same way.
++
++// Each row of the arrow at full size, from the top: the stem, then the head.
++// 'o' is the edge, 'x' the colour.
++const LARGE = [
++    '   ooooo   ',
++    '   oxxxo   ',
++    '   oxxxo   ',
++    'oooxxxxxooo',
++    ' oxxxxxxxo ',
++    '  oxxxxxo  ',
++    '   oxxxo   ',
++    '    oxo    ',
++    '     o     '
++];
++
++const SMALL = [
++    ' ooo ',
++    'ooxoo',
++    ' oxo ',
++    '  o  '
++];
++
++export class TargetArrowAddition implements IAvatarAddition
++{
++    // One texture per size and colour, drawn once.
++    private static _textures: Map<string, Texture<Resource>> = new Map();
++
++    private _id: number;
++    private _visualization: AvatarVisualization;
++    private _colour: number;
++    private _asset: Texture<Resource>;
++
++    constructor(id: number, visualization: AvatarVisualization, colour: number)
++    {
++        this._id = id;
++        this._visualization = visualization;
++        this._colour = colour;
++        this._asset = null;
++    }
++
++    private static arrowTexture(rows: string[], colour: number): Texture<Resource>
++    {
++        const key = `${ rows.length }:${ colour }`;
++        const existing = TargetArrowAddition._textures.get(key);
++
++        if(existing) return existing;
++
++        const width = rows[0].length;
++        const height = rows.length;
++        const pixels = new Uint8Array(width * height * 4);
++        const r = ((colour >> 16) & 0xFF);
++        const g = ((colour >> 8) & 0xFF);
++        const b = (colour & 0xFF);
++
++        for(let y = 0; y < height; y++)
++        {
++            for(let x = 0; x < width; x++)
++            {
++                const cell = rows[y][x];
++
++                if(cell === ' ') continue;
++
++                // The edge is the colour at 45% - dark enough to outline it on
++                // a light floor, still plainly the same colour.
++                const shade = ((cell === 'o') ? 0.45 : 1);
++                const at = (((y * width) + x) * 4);
++
++                pixels[at] = Math.round(r * shade);
++                pixels[at + 1] = Math.round(g * shade);
++                pixels[at + 2] = Math.round(b * shade);
++                pixels[at + 3] = 255;
++            }
++        }
++
++        if(TargetArrowAddition._textures.size >= 16) TargetArrowAddition._textures.clear();
++
++        const texture = new Texture(BaseTexture.fromBuffer(pixels, width, height, { scaleMode: SCALE_MODES.NEAREST }));
++
++        TargetArrowAddition._textures.set(key, texture);
++
++        return texture;
++    }
++
++    public dispose(): void
++    {
++        this._visualization = null;
++        this._asset = null;
++    }
++
++    public update(sprite: IRoomObjectSprite, scale: number): void
++    {
++        if(!sprite) return;
++
++        const small = (scale < 48);
++        const rows = (small ? SMALL : LARGE);
++        // Its point just over the top of the head.
++        let offsetY = ((small ? -50 : -95) - rows.length);
++
++        if(this._visualization.posture === AvatarAction.POSTURE_SIT) offsetY += ((small ? 32 : 64) / 2);
++        else if(this._visualization.posture === AvatarAction.POSTURE_LAY) offsetY += scale;
++
++        this._asset = TargetArrowAddition.arrowTexture(rows, this._colour);
++
++        sprite.visible = true;
++        sprite.texture = this._asset;
++        sprite.offsetX = -Math.floor(rows[0].length / 2);
++        sprite.offsetY = offsetY;
++        sprite.alpha = 255;
++        sprite.relativeDepth = -0.02;
++    }
++
++    public animate(sprite: IRoomObjectSprite): boolean
++    {
++        if(this._asset && sprite) sprite.texture = this._asset;
++
++        return false;
++    }
++
++    public get id(): number
++    {
++        return this._id;
++    }
++}
 diff --git a/src/nitro/room/object/visualization/avatar/additions/TargetRingAddition.ts b/src/nitro/room/object/visualization/avatar/additions/TargetRingAddition.ts
 new file mode 100644
-index 0000000..20ccce2
+index 0000000..1412859
 --- /dev/null
 +++ b/src/nitro/room/object/visualization/avatar/additions/TargetRingAddition.ts
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,112 @@
 +import { SCALE_MODES } from '@pixi/constants';
 +import { BaseTexture, Resource, Texture } from '@pixi/core';
 +import { AvatarAction, IRoomObjectSprite } from '../../../../../../api';
@@ -221,36 +377,36 @@ index 0000000..20ccce2
 +import { IAvatarAddition } from './IAvatarAddition';
 +
 +// pixelrp: the ring on the floor round your locked target's feet (Settings >
-+// UI > Target select, board D of the "Target Lock Highlight" canvas): a
-+// one-pixel red ellipse, flat on the tile, over a faint red fill. It sits where
-+// the avatar's shadow does, just in front of it and behind the avatar, so furni
-+// in front of the avatar hides it too.
++// UI > Target select, boards D and E of the "Target Lock Highlight" canvas): a
++// one-pixel ellipse in the player's colour, flat on the tile, over a faint
++// fill of it. It sits where the avatar's shadow does, just in front of it and
++// behind the avatar, so furni in front of the avatar hides it too.
 +
-+const RED = [ 224, 49, 49 ];
 +const FILL_ALPHA = 56;
 +
 +export class TargetRingAddition implements IAvatarAddition
 +{
-+    public static readonly STYLE: string = 'ring';
-+
-+    // One texture per room scale, drawn once.
-+    private static _textures: Map<number, Texture<Resource>> = new Map();
++    // One texture per room scale and colour, drawn once.
++    private static _textures: Map<string, Texture<Resource>> = new Map();
 +
 +    private _id: number;
 +    private _visualization: AvatarVisualization;
++    private _colour: number;
 +    private _asset: Texture<Resource>;
 +
-+    constructor(id: number, visualization: AvatarVisualization)
++    constructor(id: number, visualization: AvatarVisualization, colour: number)
 +    {
 +        this._id = id;
 +        this._visualization = visualization;
++        this._colour = colour;
 +        this._asset = null;
 +    }
 +
 +    // Half its width and height in pixels: two to one, as a floor tile is.
-+    private static ringTexture(radius: number): Texture<Resource>
++    private static ringTexture(radius: number, colour: number): Texture<Resource>
 +    {
-+        const existing = TargetRingAddition._textures.get(radius);
++        const key = `${ radius }:${ colour }`;
++        const existing = TargetRingAddition._textures.get(key);
 +
 +        if(existing) return existing;
 +
@@ -270,16 +426,18 @@ index 0000000..20ccce2
 +                const edge = (!inside((x - 1), y) || !inside((x + 1), y) || !inside(x, (y - 1)) || !inside(x, (y + 1)));
 +                const at = (((y * width) + x) * 4);
 +
-+                pixels[at] = RED[0];
-+                pixels[at + 1] = RED[1];
-+                pixels[at + 2] = RED[2];
++                pixels[at] = ((colour >> 16) & 0xFF);
++                pixels[at + 1] = ((colour >> 8) & 0xFF);
++                pixels[at + 2] = (colour & 0xFF);
 +                pixels[at + 3] = (edge ? 255 : FILL_ALPHA);
 +            }
 +        }
 +
++        if(TargetRingAddition._textures.size >= 16) TargetRingAddition._textures.clear();
++
 +        const texture = new Texture(BaseTexture.fromBuffer(pixels, width, height, { scaleMode: SCALE_MODES.NEAREST }));
 +
-+        TargetRingAddition._textures.set(radius, texture);
++        TargetRingAddition._textures.set(key, texture);
 +
 +        return texture;
 +    }
@@ -302,7 +460,7 @@ index 0000000..20ccce2
 +        const onFurni = ((this._visualization.posture === AvatarAction.POSTURE_SIT) && !this._visualization.canStandUp);
 +        const centreY = (onFurni ? 0 : (small ? 8 : 16));
 +
-+        this._asset = TargetRingAddition.ringTexture(radius);
++        this._asset = TargetRingAddition.ringTexture(radius, this._colour);
 +
 +        sprite.visible = true;
 +        sprite.texture = this._asset;
@@ -325,12 +483,13 @@ index 0000000..20ccce2
 +    }
 +}
 diff --git a/src/nitro/room/object/visualization/avatar/additions/index.ts b/src/nitro/room/object/visualization/avatar/additions/index.ts
-index 0a3fe7e..9b34c15 100644
+index 0a3fe7e..bc78f70 100644
 --- a/src/nitro/room/object/visualization/avatar/additions/index.ts
 +++ b/src/nitro/room/object/visualization/avatar/additions/index.ts
-@@ -9,4 +9,5 @@ export * from './IExpressionAddition';
+@@ -9,4 +9,6 @@ export * from './IExpressionAddition';
  export * from './MutedBubbleAddition';
  export * from './NumberBubbleAddition';
  export * from './SocialEffectAddition';
++export * from './TargetArrowAddition';
 +export * from './TargetRingAddition';
  export * from './TypingBubbleAddition';

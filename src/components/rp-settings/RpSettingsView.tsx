@@ -12,7 +12,7 @@ import { HUD_BAR_DEFAULTS, HUD_STYLES, HudBar, HudStyle, SetHudBarColour, SetHud
 import { DEFAULT_ICON_TINT, GetIconTint, ICON_TINT_NEUTRAL, SetIconTint, useIconTint } from '../../api/prefs/IconTintStore';
 import { CURSOR_STYLES, CursorStyle, DEFAULT_CURSOR_COLOUR, DEFAULT_CURSOR_STYLE, SetCursorColour, SetCursorStyle, useCursorPrefs } from '../../api/prefs/CursorStore';
 import { CursorPreview } from './CursorPreview';
-import { DEFAULT_TARGET_HIGHLIGHT, SetTargetHighlight, TARGET_HIGHLIGHT_STYLES, TargetHighlightStyle, useTargetHighlight } from '../../api/prefs/TargetHighlightStore';
+import { DEFAULT_TARGET_COLOUR, DEFAULT_TARGET_HIGHLIGHT, SetTargetColour, SetTargetHighlight, TARGET_HIGHLIGHT_STYLES, TargetHighlightStyle, useTargetHighlight } from '../../api/prefs/TargetHighlightStore';
 import { TargetHighlightPreview } from './TargetHighlightPreview';
 import { SetSlowComputerMode, useAutoFrameRate } from '../../api/prefs/AutoFrameRate';
 import { FPS_MAX, FPS_MIN, SetMaxFps, useFpsPref } from '../../api/prefs/FpsStore';
@@ -67,9 +67,9 @@ const HUD_STYLE_LABELS: Record<HudStyle, string> = { classic: 'Classic', light: 
 // UI > Colours: the account's colours first (saved on the server), then the
 // HUD's (this device). Each row is a reset button and a chip that opens the
 // colour picker. UI > Cursor's colour is one of these rows too.
-type ColourRowKey = 'headers' | 'interface' | 'icons' | 'cursor' | HudBar;
+type ColourRowKey = 'headers' | 'interface' | 'icons' | 'cursor' | 'target' | HudBar;
 
-const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', icons: 'Sidebar Icons', cursor: 'Colour', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
+const COLOUR_LABELS: Record<ColourRowKey, string> = { headers: 'Headers', interface: 'Interface', icons: 'Sidebar Icons', cursor: 'Colour', target: 'Colour', hp: 'HP Bar', energy: 'Energy Bar', aggro: 'Aggression' };
 
 // UI > Cursor > Style: the name under each tile, in CursorStore's order.
 const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = {
@@ -78,8 +78,11 @@ const CURSOR_STYLE_LABELS: Record<CursorStyle, string> = {
 };
 
 // UI > Target select: the name under each tile, in TargetHighlightStore's order
-// (boards A to D of the "Target Lock Highlight" canvas, then none).
-const TARGET_HIGHLIGHT_LABELS: Record<TargetHighlightStyle, string> = { thin: 'Thin line', thick: 'Thick line', glow: 'Line and glow', ring: 'Ring', off: 'Off' };
+// (none, boards A to E of the "Target Lock Highlight" canvas, then the arrow
+// and the tint).
+const TARGET_HIGHLIGHT_LABELS: Record<TargetHighlightStyle, string> = {
+    off: 'Off', thin: 'Thin line', thick: 'Thick line', glow: 'Line and glow', ring: 'Ring', linering: 'Line and ring', arrow: 'Arrow', tint: 'Tint'
+};
 
 // General > Drag the Room: the label on each choice, in RoomDragStore's order.
 const ROOM_DRAG_LABELS: Record<RoomDragButton, string> = { left: 'Left click', right: 'Right click', both: 'Either' };
@@ -159,7 +162,7 @@ export const RpSettingsView: FC<{}> = props =>
     const { hudStyle, hudBars } = useHudPrefs();
     const { iconTint } = useIconTint();
     const { style: cursorStyle, colour: cursorColour } = useCursorPrefs();
-    const targetHighlight = useTargetHighlight();
+    const { style: targetHighlight, colour: targetColour } = useTargetHighlight();
     // A drag in the picker changes the colour on every move; the server only
     // hears the colour it settles on.
     const uiSaveTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -1044,6 +1047,7 @@ export const RpSettingsView: FC<{}> = props =>
         interface: { colour: chromeColor.toLowerCase(), isDefault: (chromeColor.toLowerCase() === DEFAULT_CHROME_COLOR), pick: pickInterfaceColour, reset: () => selectChrome(DEFAULT_CHROME_COLOR) },
         icons: { colour: (iconTint || ICON_TINT_NEUTRAL), isDefault: (iconTint === DEFAULT_ICON_TINT), pick: selectIconColour, reset: () => selectIconColour(DEFAULT_ICON_TINT) },
         cursor: { colour: cursorColour, isDefault: (cursorColour === DEFAULT_CURSOR_COLOUR), pick: SetCursorColour, reset: () => SetCursorColour(DEFAULT_CURSOR_COLOUR) },
+        target: { colour: targetColour, isDefault: (targetColour === DEFAULT_TARGET_COLOUR), pick: SetTargetColour, reset: () => SetTargetColour(DEFAULT_TARGET_COLOUR) },
         hp: { colour: hudBars.hp, isDefault: (hudBars.hp === HUD_BAR_DEFAULTS.hp), pick: colour => SetHudBarColour('hp', colour), reset: () => SetHudBarColour('hp', HUD_BAR_DEFAULTS.hp) },
         energy: { colour: hudBars.energy, isDefault: (hudBars.energy === HUD_BAR_DEFAULTS.energy), pick: colour => SetHudBarColour('energy', colour), reset: () => SetHudBarColour('energy', HUD_BAR_DEFAULTS.energy) },
         aggro: { colour: hudBars.aggro, isDefault: (hudBars.aggro === HUD_BAR_DEFAULTS.aggro), pick: colour => SetHudBarColour('aggro', colour), reset: () => SetHudBarColour('aggro', HUD_BAR_DEFAULTS.aggro) }
@@ -1226,20 +1230,31 @@ export const RpSettingsView: FC<{}> = props =>
                                 </div> }
                             { (interfacePage === 'Target select') &&
                                 <div className="rp-settings-colours">
+                                    <section className="rp-settings-group" aria-labelledby="rp-settings-h-target-colour">
+                                        <div id="rp-settings-h-target-colour" className="rp-settings-group-head">Locked target</div>
+                                        <div className="rp-settings-panel">
+                                            { renderColourRow('target') }
+                                        </div>
+                                    </section>
                                     <section className="rp-settings-group" aria-labelledby="rp-settings-h-target">
-                                        <div id="rp-settings-h-target" className="rp-settings-group-head">Locked target</div>
+                                        <div id="rp-settings-h-target" className="rp-settings-group-head">Style</div>
                                         <div className="rp-settings-cursors is-targets" role="radiogroup" aria-labelledby="rp-settings-h-target">
                                             { TARGET_HIGHLIGHT_STYLES.map(highlight => (
                                                 <button key={ highlight } type="button" role="radio" aria-checked={ targetHighlight === highlight }
                                                     className={ `rp-settings-cursor ${ (targetHighlight === highlight) ? 'is-selected' : '' }` }
                                                     title={ (highlight === DEFAULT_TARGET_HIGHLIGHT) ? `${ TARGET_HIGHLIGHT_LABELS[highlight] } (default)` : TARGET_HIGHLIGHT_LABELS[highlight] }
                                                     onClick={ () => SetTargetHighlight(highlight) }>
-                                                    <TargetHighlightPreview highlight={ highlight } />
+                                                    <TargetHighlightPreview highlight={ highlight } colour={ targetColour } />
                                                     <span className="rp-settings-cursor-name">{ TARGET_HIGHLIGHT_LABELS[highlight] }</span>
                                                 </button>
                                             )) }
                                         </div>
                                     </section>
+                                    { (openColour === 'target') &&
+                                        <ColourPicker key="target" label="Locked target"
+                                            colour={ colourRows.target.colour }
+                                            onChange={ colourRows.target.pick }
+                                            onClose={ closeColourPicker } /> }
                                 </div> }
                             { (interfacePage === 'Weather') &&
                                 <>
