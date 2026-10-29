@@ -3,7 +3,7 @@
 // look - #f3f3f5 page, one white panel in a hairline - with a row per room.
 
 .nitro-hot-rooms {
-    width: 280px;
+    width: 360px;   // wide enough for a long room name (Twist, 2026-10-29)
 
     $ink: #12161c;
     $dim: #5f6773;
