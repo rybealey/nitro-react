@@ -72,6 +72,30 @@ const useChatWidgetState = () =>
     const { addChatEntry, addMention, addGangEntry, addCorpEntry, addStaffEntry } = ChatHistoryWriters;
     const isDisposed = useRef(false);
     const waitingPreviews = useRef<WaitingPreview[]>([]);
+    const arrivingLines = useRef<ChatBubbleMessage[]>([]);
+
+    // pixelrp (Twist, 2026-10-29): a line from the server is drawn before the
+    // game's next frame, as it was, but the lines that came in the same
+    // message are drawn together - one draw of the chat for a burst of five,
+    // not five in a row, each laying the chat out again. Drawn just after the
+    // message is read (a microtask), which is still before the next frame.
+    const showArrivingLine = (chatMessage: ChatBubbleMessage) =>
+    {
+        arrivingLines.current.push(chatMessage);
+
+        if(arrivingLines.current.length > 1) return;
+
+        queueMicrotask(() =>
+        {
+            const lines = arrivingLines.current;
+
+            arrivingLines.current = [];
+
+            if(isDisposed.current || !lines.length) return;
+
+            flushSync(() => setChatMessages(prevValue => [ ...prevValue, ...lines ].slice(-CHAT_BUBBLE_LIMIT)));
+        });
+    };
 
     const dropPreview = (preview: WaitingPreview) =>
     {
@@ -513,12 +537,12 @@ const useChatWidgetState = () =>
         }
         else if(!late)
         {
-            // pixelrp: drawn now, in the message that brought it. Left to
+            // pixelrp: drawn now, with the message that brought it. Left to
             // React, a line from the server (a fight line, someone else's
             // chat) was drawn in a turn of its own after the message, and the
             // game's next frame usually went out first - the bubble a frame
             // late, more while the room is busy drawing.
-            flushSync(() => setChatMessages(prevValue => [ ...prevValue.slice(-(CHAT_BUBBLE_LIMIT - 1)), chatMessage ]));
+            showArrivingLine(chatMessage);
         }
 
         const entry = { id: -1, webId: userData.webID, entityId: userData.roomIndex, name: username, imageUrl, style: styleId, chatType: chatType, entityType: userData.type, message: formattedText, text, timestamp: ChatHistoryCurrentDate(), type: ChatEntryType.TYPE_CHAT, roomId: roomSession.roomId, color, usernameColor, usernameIcon, usernameIconColor };
