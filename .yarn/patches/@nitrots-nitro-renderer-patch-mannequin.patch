@@ -1,23 +1,25 @@
 diff --git a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
-index db1630b..6cbc230 100644
+index db1630b..cccee1d 100644
 --- a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
 +++ b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
-@@ -6,6 +6,14 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+@@ -6,6 +6,16 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
  {
      private static AVATAR_IMAGE_SPRITE_TAG: string = 'avatar_image';
  
 +    // pixelrp: the body under the outfit is figure part hd-99999, in colour
 +    // 99998 (#FAFAFA) of renderer-config's avatar.default.figuredata. A
-+    // mannequin named here has its body in another colour from that palette
-+    // instead - only the body; the outfit goes on over it as on any other.
++    // mannequin named here has its body in another colour instead - only the
++    // body; the outfit goes on over it as on any other. A custom colour id
++    // (0x1000000 + RGB, the custom-colors patch), because renderer-config is
++    // kept on the server and a palette colour added to it would not deploy.
 +    private static BODY_COLORS: { [type: string]: number } = {
-+        'boutique_mannequin1_black': 99997 // #1F1D1D
++        'boutique_mannequin1_black': (0x1000000 + 0x1F1D1D)
 +    };
 +
      private _mannequinScale: number;
      private _figure: string;
      private _gender: string;
-@@ -60,12 +68,27 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+@@ -60,12 +70,27 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
  
          if(updateObject)
          {
@@ -51,7 +53,7 @@ index db1630b..6cbc230 100644
          }
  
          return updateObject;
-@@ -81,7 +104,9 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+@@ -81,7 +106,9 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
  
              if(figure)
              {

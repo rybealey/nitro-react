@@ -7,7 +7,7 @@ export class MannequinUtilities
     // pixelrp: as the renderer's FurnitureMannequinVisualization.BODY_COLORS -
     // a mannequin whose body is not the stock white
     public static MANNEQUIN_BODY_COLORS: { [type: string]: number } = {
-        'boutique_mannequin1_black': 99997 // #1F1D1D
+        'boutique_mannequin1_black': (0x1000000 + 0x1F1D1D)
     };
     public static MANNEQUIN_CLOTHING_PART_TYPES = [
         AvatarFigurePartType.CHEST_ACCESSORY,
