@@ -97,6 +97,7 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
     private _thumbContainer: NitroContainer;
     private _imageUrl: string;
     private _maxColorIndex: number;
+    private _paletteIndexes: number[];
     private _isValidFigure: boolean;
     private _isHC: boolean;
     private _isSellable: boolean;
@@ -119,6 +120,7 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
         this._thumbContainer = null;
         this._imageUrl = null;
         this._maxColorIndex = 0;
+        this._paletteIndexes = [];
         this._isValidFigure = false;
         this._isHC = false;
         this._isSellable = false;
@@ -133,6 +135,18 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
             const colors = partSet.parts;
 
             for(const color of colors) this._maxColorIndex = Math.max(this._maxColorIndex, color.colorLayerIndex);
+
+            // pixelrp: the palettes this piece takes a color from - a part's
+            // colorindex is 1-based and some pieces skip one (only a second
+            // color) or have none at all.
+            for(const color of colors)
+            {
+                const paletteIndex = (color.colorLayerIndex - 1);
+
+                if((paletteIndex >= 0) && (this._paletteIndexes.indexOf(paletteIndex) === -1)) this._paletteIndexes.push(paletteIndex);
+            }
+
+            this._paletteIndexes.sort((a, b) => (a - b));
 
             // Known without drawing, so a tile not yet drawn still shows them.
             this._isHC = (partSet.clubLevel > 0);
@@ -421,6 +435,11 @@ export class AvatarEditorGridPartItem implements IAvatarImageListener
     public get maxColorIndex(): number
     {
         return this._maxColorIndex;
+    }
+
+    public get paletteIndexes(): number[]
+    {
+        return this._paletteIndexes;
     }
 
     public get isHC(): boolean

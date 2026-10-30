@@ -9,6 +9,9 @@ export interface AvatarEditorPaletteSetViewProps
     category: CategoryData;
     paletteSet: AvatarEditorGridColorItem[];
     paletteIndex: number;
+    // pixelrp: "Color 1", "Color 2" ... over the palette of a piece with more
+    // than one color layer.
+    label?: string;
     // pixelrp: the Custom tile, first in the grid - it opens the color picker
     // (AvatarEditorCustomColorView). customVersion changes as a custom color
     // is dragged, so the tile shows the color being made.
@@ -21,7 +24,7 @@ export interface AvatarEditorPaletteSetViewProps
 
 export const AvatarEditorPaletteSetView: FC<AvatarEditorPaletteSetViewProps> = props =>
 {
-    const { model = null, category = null, paletteSet = [], paletteIndex = -1, customEnabled = false, customOpen = false, onCustomClick = null, registerCustomTile = null } = props;
+    const { model = null, category = null, paletteSet = [], paletteIndex = -1, label = null, customEnabled = false, customOpen = false, onCustomClick = null, registerCustomTile = null } = props;
     const elementRef = useRef<HTMLDivElement>(null);
     const customTileRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +53,7 @@ export const AvatarEditorPaletteSetView: FC<AvatarEditorPaletteSetViewProps> = p
     const customHex = (customColorId ? CustomColorHexFromId(customColorId) : null);
     const customLabel = (customHex ? `Custom color ${ customHex }, click to edit` : 'Pick a custom color');
 
-    return (
+    const grid = (
         <AutoGrid innerRef={ elementRef } gap={ 1 } columnCount={ 5 } columnMinWidth={ 30 }>
             { customEnabled &&
                 <LayoutGridItem innerRef={ customTileRef } itemHighlight itemActive={ (customOpen || !!customColorId) } itemColor={ customHex } classNames={ [ 'custom-color-tile', 'clear-bg', (customHex ? 'is-filled' : 'is-empty') ] }
@@ -61,5 +64,14 @@ export const AvatarEditorPaletteSetView: FC<AvatarEditorPaletteSetViewProps> = p
             { (paletteSet.length > 0) && paletteSet.map((item, index) =>
                 <AvatarEditorPaletteSetItem key={ index } colorItem={ item } onClick={ event => selectColor(item) } />) }
         </AutoGrid>
+    );
+
+    if(!label) return grid;
+
+    return (
+        <>
+            <span className="avatar-editor-palette-label">{ label }</span>
+            { grid }
+        </>
     );
 }

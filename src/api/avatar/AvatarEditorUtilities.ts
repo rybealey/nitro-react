@@ -9,7 +9,8 @@ import { FigureData } from './FigureData';
 
 export class AvatarEditorUtilities
 {
-    private static MAX_PALETTES: number = 2;
+    // pixelrp: 3 - a few pieces take a third color (sh-300363, he-3385 ...).
+    private static MAX_PALETTES: number = 3;
 
     public static CURRENT_FIGURE: FigureData = null;
     public static FIGURE_SET_IDS: number[] = [];

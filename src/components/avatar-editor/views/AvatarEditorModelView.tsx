@@ -16,7 +16,9 @@ export const AvatarEditorModelView: FC<AvatarEditorModelViewProps> = props =>
 {
     const { model = null, gender = null, setGender = null } = props;
     const [ activeCategory, setActiveCategory ] = useState<CategoryData>(null);
-    const [ maxPaletteCount, setMaxPaletteCount ] = useState(1);
+    // pixelrp: the palettes the worn piece takes a color from, one per color
+    // layer it has - none for a piece that takes no color.
+    const [ paletteIndexes, setPaletteIndexes ] = useState<number[]>([ 0 ]);
     // pixelrp: the custom color picker - which palette it is open on, and the
     // Custom tile of each palette it opens beside.
     const [ customPaletteIndex, setCustomPaletteIndex ] = useState(-1);
@@ -38,7 +40,7 @@ export const AvatarEditorModelView: FC<AvatarEditorModelViewProps> = props =>
         {
             if(!part || !part.isSelected) continue;
 
-            setMaxPaletteCount(part.maxColorIndex || 1);
+            setPaletteIndexes(part.paletteIndexes);
 
             break;
         }
@@ -110,17 +112,15 @@ export const AvatarEditorModelView: FC<AvatarEditorModelViewProps> = props =>
                 }) }
             </Column>
             <Column size={ 5 } overflow="hidden">
-                <AvatarEditorFigureSetView model={ model } category={ activeCategory } setMaxPaletteCount={ setMaxPaletteCount } />
+                <AvatarEditorFigureSetView model={ model } category={ activeCategory } setPaletteIndexes={ setPaletteIndexes } />
             </Column>
             <Column size={ 5 } overflow="hidden">
-                { (maxPaletteCount >= 1) &&
-                    <AvatarEditorPaletteSetView model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(0) } paletteIndex={ 0 }
-                        customEnabled={ customEnabled } customOpen={ (customPaletteIndex === 0) } customVersion={ customVersion } onCustomClick={ openCustomColor } registerCustomTile={ registerCustomTile } /> }
-                { (maxPaletteCount === 2) &&
-                    <AvatarEditorPaletteSetView model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(1) } paletteIndex={ 1 }
-                        customEnabled={ customEnabled } customOpen={ (customPaletteIndex === 1) } customVersion={ customVersion } onCustomClick={ openCustomColor } registerCustomTile={ registerCustomTile } /> }
-                { customEnabled && (customPaletteIndex >= 0) && (customPaletteIndex < maxPaletteCount) && customTiles.current[customPaletteIndex] &&
-                    <AvatarEditorCustomColorView key={ activeCategory.name } model={ model } category={ activeCategory } paletteIndex={ customPaletteIndex } paletteCount={ maxPaletteCount }
+                { paletteIndexes.map(paletteIndex =>
+                    <AvatarEditorPaletteSetView key={ paletteIndex } model={ model } category={ activeCategory } paletteSet={ activeCategory.getPalette(paletteIndex) } paletteIndex={ paletteIndex }
+                        label={ (paletteIndexes.length > 1) ? `Color ${ paletteIndex + 1 }` : null }
+                        customEnabled={ customEnabled } customOpen={ (customPaletteIndex === paletteIndex) } customVersion={ customVersion } onCustomClick={ openCustomColor } registerCustomTile={ registerCustomTile } />) }
+                { customEnabled && (paletteIndexes.indexOf(customPaletteIndex) >= 0) && customTiles.current[customPaletteIndex] &&
+                    <AvatarEditorCustomColorView key={ `${ activeCategory.name }:${ paletteIndexes.join() }` } model={ model } category={ activeCategory } paletteIndex={ customPaletteIndex } paletteIndexes={ paletteIndexes }
                         anchor={ customTiles.current[customPaletteIndex] } setPaletteIndex={ setCustomPaletteIndex } onChange={ onCustomChange } onClose={ closeCustomColor } /> }
             </Column>
         </Grid>

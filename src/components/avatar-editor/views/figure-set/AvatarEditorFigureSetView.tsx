@@ -7,7 +7,7 @@ export interface AvatarEditorFigureSetViewProps
 {
     model: IAvatarEditorCategoryModel;
     category: CategoryData;
-    setMaxPaletteCount: Dispatch<SetStateAction<number>>;
+    setPaletteIndexes: Dispatch<SetStateAction<number[]>>;
 }
 
 // pixelrp: a little ahead of the scroll, so tiles are drawn before they show.
@@ -30,7 +30,7 @@ const ScrollParent = (element: HTMLElement): HTMLElement =>
 
 export const AvatarEditorFigureSetView: FC<AvatarEditorFigureSetViewProps> = props =>
 {
-    const { model = null, category = null, setMaxPaletteCount = null } = props;
+    const { model = null, category = null, setPaletteIndexes = null } = props;
     const elementRef = useRef<HTMLDivElement>(null);
     // pixelrp: one observer for the grid, telling each part item whether its
     // tile is on screen - a thumbnail is only drawn while it is
@@ -76,8 +76,8 @@ export const AvatarEditorFigureSetView: FC<AvatarEditorFigureSetViewProps> = pro
 
         const partItem = category.getCurrentPart();
 
-        setMaxPaletteCount(partItem.maxColorIndex || 1);
-    }, [ model, category, setMaxPaletteCount ]);
+        setPaletteIndexes(partItem.paletteIndexes);
+    }, [ model, category, setPaletteIndexes ]);
 
     useEffect(() =>
     {

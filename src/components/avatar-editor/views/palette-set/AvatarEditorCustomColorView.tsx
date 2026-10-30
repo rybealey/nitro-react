@@ -14,7 +14,9 @@ export interface AvatarEditorCustomColorViewProps
     model: IAvatarEditorCategoryModel;
     category: CategoryData;
     paletteIndex: number;
-    paletteCount: number;
+    // The palettes the piece takes a color from - [ 0, 1, 2 ] for three colors,
+    // [ 1 ] for a piece with only a second color.
+    paletteIndexes: number[];
     anchor: HTMLElement;
     setPaletteIndex: (paletteIndex: number) => void;
     onChange: () => void;
@@ -52,8 +54,9 @@ const wornHex = (category: CategoryData, paletteIndex: number): string =>
 
 export const AvatarEditorCustomColorView: FC<AvatarEditorCustomColorViewProps> = props =>
 {
-    const { model = null, category = null, paletteIndex = 0, paletteCount = 1, anchor = null, setPaletteIndex = null, onChange = null, onClose = null } = props;
-    const [ worn ] = useState<string[]>(() => Array.from({ length: paletteCount }, (_, i) => wornHex(category, i)));
+    const { model = null, category = null, paletteIndex = 0, paletteIndexes = [ 0 ], anchor = null, setPaletteIndex = null, onChange = null, onClose = null } = props;
+    // Indexed by palette, so one past the last palette the piece uses.
+    const [ worn ] = useState<string[]>(() => Array.from({ length: (Math.max(...paletteIndexes) + 1) }, (_, i) => wornHex(category, i)));
     // What Cancel puts back: the piece's colors as worn when this opened.
     const [ wornColorIds ] = useState<number[]>(() => [ ...(AvatarEditorUtilities.CURRENT_FIGURE?.getColorIds(category.name) ?? []) ]);
     const [ drafts, setDrafts ] = useState<Hsv[]>(() => worn.map((wornColor, i) => HexToHsv(pendingDrafts.get(`${ category.name }:${ i }`) ?? wornColor)));
@@ -73,6 +76,7 @@ export const AvatarEditorCustomColorView: FC<AvatarEditorCustomColorViewProps> =
     const hex = HsvToHex(draft);
     const isDark = (draft.v < DARK_BRIGHTNESS);
     const key = (index: number) => `${ category.name }:${ index }`;
+    const isMulti = (paletteIndexes.length > 1);
 
     // Worn once a frame, however fast the pointer moves.
     const wear = useCallback(() =>
@@ -239,11 +243,11 @@ export const AvatarEditorCustomColorView: FC<AvatarEditorCustomColorViewProps> =
 
     const outfit: [ string, string ][] = [];
 
-    if(paletteCount > 1) drafts.forEach((value, index) => ((index !== paletteIndex) && outfit.push([ `Color ${ index + 1 }`, HsvToHex(value) ])));
+    if(isMulti) paletteIndexes.forEach(index => ((index !== paletteIndex) && outfit.push([ `Color ${ index + 1 }`, HsvToHex(drafts[index]) ])));
 
     for(const [ setType, name ] of OUTFIT_SET_TYPES)
     {
-        if((setType === category.name) || (outfit.length >= (paletteCount > 1 ? 4 : 3))) continue;
+        if((setType === category.name) || (outfit.length >= (isMulti ? 4 : 3))) continue;
 
         const colorIds = AvatarEditorUtilities.CURRENT_FIGURE?.getColorIds(setType);
         const colorHex = ((colorIds && colorIds.length) ? GetFigureColorHex(setType, colorIds[0]) : null);
@@ -260,13 +264,13 @@ export const AvatarEditorCustomColorView: FC<AvatarEditorCustomColorViewProps> =
             style={ position ? { left: position.left, top: position.top } : { visibility: 'hidden' } }>
             <span className="popover-arrow" style={ { top: (position?.arrow ?? 0) } } />
             <div className="popover-head">
-                <span className="popover-title">{ (paletteCount > 1) ? 'Custom' : 'Custom color' }</span>
-                { (paletteCount > 1) &&
+                <span className="popover-title">{ isMulti ? 'Custom' : 'Custom color' }</span>
+                { isMulti &&
                     <div className="popover-segments">
-                        { drafts.map((value, index) =>
+                        { paletteIndexes.map(index =>
                             <button key={ index } type="button" aria-label={ `Edit color ${ index + 1 }` } aria-pressed={ (index === paletteIndex) }
                                 className={ (index === paletteIndex) ? 'is-on' : '' } onClick={ () => setPaletteIndex(index) }>
-                                <span className="segment-dot" style={ { background: HsvToHex(value) } } />{ index + 1 }
+                                <span className="segment-dot" style={ { background: HsvToHex(drafts[index]) } } />{ index + 1 }
                             </button>) }
                     </div> }
                 <button type="button" className="popover-close" title="Close (Esc)" aria-label="Close without applying" onClick={ cancel } />
@@ -325,7 +329,7 @@ export const AvatarEditorCustomColorView: FC<AvatarEditorCustomColorViewProps> =
                 <div className="chip-group">
                     <span className="chip-label">Recent</span>
                     <div className="chip-row">
-                        { recents.slice(0, (paletteCount > 1) ? 4 : 5).map(colorHex =>
+                        { recents.slice(0, isMulti ? 4 : 5).map(colorHex =>
                             <button key={ colorHex } type="button" className="chip" title={ colorHex } aria-label={ `Use recent color ${ colorHex }` }
                                 style={ { background: colorHex } } onClick={ () => editHex(colorHex) } />) }
                         { !recents.length && <span className="chip-empty">None yet</span> }

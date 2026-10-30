@@ -744,3 +744,13 @@ $custom-color-hues: conic-gradient(#ff0000, #ffff00, #00ff00, #00ffff, #0000ff, 
         }
     }
 }
+
+// pixelrp: "Color 1", "Color 2" ... over each palette of a piece with more
+// than one color layer. Not nested, so the City Panel's uniforms get it too.
+.avatar-editor-palette-label {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    color: $gray-700;
+}

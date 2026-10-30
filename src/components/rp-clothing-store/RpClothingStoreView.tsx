@@ -72,13 +72,16 @@ const BuildSetIndex = (): Map<number, ResolvedPart> =>
     return index;
 }
 
+// colorindex is 1-based, so the highest is the count; a piece with none still
+// carries one color. Counting one extra sent a color too many, and the save
+// (ProcessFigure) drops every color of a part with more than it takes.
 const LayerCount = (partSet: IFigurePartSet) =>
 {
     let max = 0;
 
     for(const part of partSet.parts) max = Math.max(max, part.colorLayerIndex);
 
-    return (max + 1);
+    return Math.max(max, 1);
 }
 
 const PaletteFirstColor = (type: string) =>
