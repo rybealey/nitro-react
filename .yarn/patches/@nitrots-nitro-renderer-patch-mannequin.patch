@@ -1,8 +1,23 @@
 diff --git a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
-index db1630b..68ae028 100644
+index db1630b..6cbc230 100644
 --- a/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
 +++ b/src/nitro/room/object/visualization/furniture/FurnitureMannequinVisualization.ts
-@@ -60,12 +60,27 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+@@ -6,6 +6,14 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+ {
+     private static AVATAR_IMAGE_SPRITE_TAG: string = 'avatar_image';
+ 
++    // pixelrp: the body under the outfit is figure part hd-99999, in colour
++    // 99998 (#FAFAFA) of renderer-config's avatar.default.figuredata. A
++    // mannequin named here has its body in another colour from that palette
++    // instead - only the body; the outfit goes on over it as on any other.
++    private static BODY_COLORS: { [type: string]: number } = {
++        'boutique_mannequin1_black': 99997 // #1F1D1D
++    };
++
+     private _mannequinScale: number;
+     private _figure: string;
+     private _gender: string;
+@@ -60,12 +68,27 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
  
          if(updateObject)
          {
@@ -36,3 +51,28 @@ index db1630b..68ae028 100644
          }
  
          return updateObject;
+@@ -81,7 +104,9 @@ export class FurnitureMannequinVisualization extends FurnitureVisualization impl
+ 
+             if(figure)
+             {
+-                this._figure = (figure + '.' + this._placeHolderFigure);
++                const bodyColor = FurnitureMannequinVisualization.BODY_COLORS[this.object.type];
++
++                this._figure = (figure + '.' + (bodyColor ? ('hd-99999-' + bodyColor) : this._placeHolderFigure));
+                 this._gender = (this.object.model.getValue<string>(RoomObjectVariable.FURNITURE_MANNEQUIN_GENDER) || null);
+ 
+                 this.updateAvatar();
+diff --git a/src/nitro/room/utils/SpriteDataCollector.ts b/src/nitro/room/utils/SpriteDataCollector.ts
+index bb844b8..8b0bf91 100644
+--- a/src/nitro/room/utils/SpriteDataCollector.ts
++++ b/src/nitro/room/utils/SpriteDataCollector.ts
+@@ -23,7 +23,8 @@ export class SpriteDataCollector
+         {
+             if(!data) continue;
+ 
+-            if((data.type === 'boutique_mannequin1') && (data.name.indexOf('mannequin_') === 0))
++            // pixelrp: the Black Mannequin is drawn the same way
++            if(((data.type === 'boutique_mannequin1') || (data.type === 'boutique_mannequin1_black')) && (data.name.indexOf('mannequin_') === 0))
+             {
+                 const roomObject = _arg_2.getRoomObject(_arg_2.activeRoomId, data.objectId, RoomObjectCategory.FLOOR);
+ 

@@ -19,7 +19,7 @@ export const FurnitureMannequinView: FC<{}> = props =>
 {
     const [ renderedFigure, setRenderedFigure ] = useState<string>(null);
     const [ mode, setMode ] = useState(MODE_NONE);
-    const { objectId = -1, figure = null, gender = null, name = null, setName = null, saveFigure = null, wearFigure = null, saveName = null, onClose = null } = useFurnitureMannequinWidget();
+    const { objectId = -1, type = null, figure = null, gender = null, name = null, setName = null, saveFigure = null, wearFigure = null, saveName = null, onClose = null } = useFurnitureMannequinWidget();
 
     useEffect(() =>
     {
@@ -56,7 +56,7 @@ export const FurnitureMannequinView: FC<{}> = props =>
             case MODE_WRONG_GENDER: {
                 const figureContainer = GetAvatarRenderManager().createFigureContainer(figure);
 
-                MannequinUtilities.transformAsMannequinFigure(figureContainer);
+                MannequinUtilities.transformAsMannequinFigure(figureContainer, type);
 
                 setRenderedFigure(figureContainer.getFigureString());
                 break;
@@ -64,7 +64,7 @@ export const FurnitureMannequinView: FC<{}> = props =>
             case MODE_UPDATE: {
                 const figureContainer = GetAvatarRenderManager().createFigureContainer(GetSessionDataManager().figure);
 
-                MannequinUtilities.transformAsMannequinFigure(figureContainer);
+                MannequinUtilities.transformAsMannequinFigure(figureContainer, type);
 
                 setRenderedFigure(figureContainer.getFigureString());
                 break;
@@ -76,7 +76,7 @@ export const FurnitureMannequinView: FC<{}> = props =>
                 break;
             }
         }
-    }, [ mode, figure ]);
+    }, [ mode, figure, type ]);
 
     if(objectId === -1) return null;
 

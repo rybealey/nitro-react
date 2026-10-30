@@ -4,6 +4,11 @@ import { GetAvatarRenderManager } from '../../nitro';
 export class MannequinUtilities
 {
     public static MANNEQUIN_FIGURE = [ 'hd', 99999, [ 99998 ] ];
+    // pixelrp: as the renderer's FurnitureMannequinVisualization.BODY_COLORS -
+    // a mannequin whose body is not the stock white
+    public static MANNEQUIN_BODY_COLORS: { [type: string]: number } = {
+        'boutique_mannequin1_black': 99997 // #1F1D1D
+    };
     public static MANNEQUIN_CLOTHING_PART_TYPES = [
         AvatarFigurePartType.CHEST_ACCESSORY,
         AvatarFigurePartType.COAT_CHEST,
@@ -25,15 +30,17 @@ export class MannequinUtilities
         return figureContainer;
     }
 
-    public static transformAsMannequinFigure(figureContainer: IAvatarFigureContainer): void
+    public static transformAsMannequinFigure(figureContainer: IAvatarFigureContainer, type: string = null): void
     {
         for(const part of figureContainer.getPartTypeIds())
         {
             if(this.MANNEQUIN_CLOTHING_PART_TYPES.indexOf(part) >= 0) continue;
-                
+
             figureContainer.removePart(part);
         }
-        
-        figureContainer.updatePart((this.MANNEQUIN_FIGURE[0] as string), (this.MANNEQUIN_FIGURE[1] as number), (this.MANNEQUIN_FIGURE[2] as number[]));
+
+        const bodyColor = (type && this.MANNEQUIN_BODY_COLORS[type]);
+
+        figureContainer.updatePart((this.MANNEQUIN_FIGURE[0] as string), (this.MANNEQUIN_FIGURE[1] as number), (bodyColor ? [ bodyColor ] : (this.MANNEQUIN_FIGURE[2] as number[])));
     };
 }

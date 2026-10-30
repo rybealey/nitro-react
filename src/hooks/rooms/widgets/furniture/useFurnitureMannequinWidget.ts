@@ -8,6 +8,7 @@ const useFurnitureMannequinWidgetState = () =>
 {
     const [ objectId, setObjectId ] = useState(-1);
     const [ category, setCategory ] = useState(-1);
+    const [ type, setType ] = useState<string>(null);
     const [ figure, setFigure ] = useState(null);
     const [ gender, setGender ] = useState(null);
     const [ clubLevel, setClubLevel ] = useState(HabboClubLevelEnum.NO_CLUB);
@@ -17,6 +18,7 @@ const useFurnitureMannequinWidgetState = () =>
     {
         setObjectId(-1);
         setCategory(-1);
+        setType(null);
         setFigure(null);
         setGender(null);
         setName(null);
@@ -61,6 +63,7 @@ const useFurnitureMannequinWidgetState = () =>
 
         setObjectId(event.objectId);
         setCategory(event.category);
+        setType(roomObject.type);
         setFigure(figure);
         setGender(gender);
         setClubLevel(figureClubLevel);
@@ -74,7 +77,7 @@ const useFurnitureMannequinWidgetState = () =>
         onClose();
     });
 
-    return { objectId, figure, gender, clubLevel, name, setName, saveFigure, wearFigure, saveName, onClose };
+    return { objectId, type, figure, gender, clubLevel, name, setName, saveFigure, wearFigure, saveName, onClose };
 }
 
 export const useFurnitureMannequinWidget = useFurnitureMannequinWidgetState;
