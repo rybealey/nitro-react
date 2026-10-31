@@ -83,3 +83,46 @@ export const CorpPresence: FC<{ onDuty: boolean, online: boolean }> = props =>
 
     return <span className={ `corp-dot ${ onDuty ? 'is-duty' : (online ? 'is-online' : '') }` } title={ label } aria-label={ label } role="img" />;
 }
+
+const ukDayKey = (unixSeconds: number): string => ukDate(unixSeconds, { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+// When a record was made, in UK time: "Today, 9:14 PM", "Yesterday, 6:02 PM",
+// "Thu, 4:18 PM" within the week, "Oct 21" before that.
+export const RecordTime = (unixSeconds: number, nowMs: number): string =>
+{
+    if(!unixSeconds) return '';
+
+    const now = Math.floor(nowMs / 1000);
+    const time = ukDate(unixSeconds, { hour: 'numeric', minute: '2-digit' });
+
+    if(ukDayKey(unixSeconds) === ukDayKey(now)) return `Today, ${ time }`;
+    if(ukDayKey(unixSeconds) === ukDayKey(now - 86400)) return `Yesterday, ${ time }`;
+    if((now - unixSeconds) < (6 * 86400)) return `${ ukDate(unixSeconds, { weekday: 'short' }) }, ${ time }`;
+
+    return ukDate(unixSeconds, { month: 'short', day: 'numeric' });
+}
+
+// "Oct 21, 2026" for dates people read rather than compare.
+export const LongDate = (unixSeconds: number): string => (unixSeconds ? ukDate(unixSeconds, { month: 'short', day: 'numeric', year: 'numeric' }) : '');
+
+// Filled squares out of a limit: 2 of 3 warnings, 1 of 3 strikes.
+export const CorpPips: FC<{ count: number, of: number, tone: 'warn' | 'bad', size?: 'sm' | 'lg' }> = props =>
+{
+    const { count = 0, of = 3, tone = 'warn', size = 'sm' } = props;
+    const label = `${ count } of ${ of }`;
+
+    return (
+        <span className={ `corp-pips is-${ size }` } role="img" aria-label={ label } title={ label }>
+            { Array.from({ length: Math.max(of, count) }, (_, index) =>
+                <span key={ index } className={ `corp-pip ${ (index < count) ? `is-${ tone }` : '' }` } />) }
+        </span>
+    );
+}
+
+// A name that opens the employee's file.
+export const CorpName: FC<{ userId: number, name: string, onOpen: (userId: number) => void }> = props =>
+{
+    const { userId, name, onOpen } = props;
+
+    return <button type="button" className="corp-name-link" onClick={ () => onOpen(userId) }>{ name }</button>;
+}

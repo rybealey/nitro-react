@@ -3,7 +3,8 @@ import { SendMessageComposer } from '../../../api';
 import { RpRankTitle } from '../../../api/rp-employment/RpEmploymentRegistry';
 import { CorpPanelAction, CorpPanelContext, CorpPanelShiftRow, CorpPanelShifts, RpCorpPanelActionComposer, RpCorpPanelShiftsEvent } from '../../../api/rp-corps/RpCorpPanelMessages';
 import { useMessageEvent } from '../../../hooks';
-import { CorpHead, CorpPresence, CorpWeekSwitch, DAY_NAMES, ShiftsOf, UkDayIndex, WeekRange } from '../CorpPanelShared';
+import { CorpPanelLinks } from '../CorpPanelView';
+import { CorpHead, CorpName, CorpPresence, CorpWeekSwitch, DAY_NAMES, ShiftsOf, UkDayIndex, WeekRange } from '../CorpPanelShared';
 
 // The Corporation Panel's Weekly shifts: every employee's 10-minute shifts on
 // each UK day of the week, against the corporation's weekly quota
@@ -14,6 +15,7 @@ interface CorpShiftsViewProps
     context: CorpPanelContext;
     weeksAgo: number;
     onWeekChange: (weeksAgo: number) => void;
+    links: CorpPanelLinks;
 }
 
 type Filter = 'all' | 'short' | 'met';
@@ -38,7 +40,7 @@ const heatOf = (shifts: number): string => ((shifts <= 0) ? '' : `is-heat-${ Mat
 
 export const CorpShiftsView: FC<CorpShiftsViewProps> = props =>
 {
-    const { weeksAgo = 0, onWeekChange = null } = props;
+    const { weeksAgo = 0, onWeekChange = null, links = null } = props;
     const [ shifts, setShifts ] = useState<CorpPanelShifts>(null);
     const [ filter, setFilter ] = useState<Filter>('all');
     const [ search, setSearch ] = useState('');
@@ -126,7 +128,7 @@ export const CorpShiftsView: FC<CorpShiftsViewProps> = props =>
                         </thead>
                         <tbody>
                             { visible.map(({ row, total, standing }) =>
-                                <ShiftRow key={ row.userId } row={ row } total={ total } standing={ standing } quota={ quota } today={ today } />) }
+                                <ShiftRow key={ row.userId } row={ row } total={ total } standing={ standing } quota={ quota } today={ today } onOpen={ links.openEmployee } />) }
                         </tbody>
                     </table>
                     { (visible.length === 0) && <div className="mt-empty">{ rows.length ? 'Nobody matches.' : 'Nobody works here yet.' }</div> }
@@ -135,9 +137,9 @@ export const CorpShiftsView: FC<CorpShiftsViewProps> = props =>
     );
 }
 
-const ShiftRow: FC<{ row: CorpPanelShiftRow, total: number, standing: Standing, quota: number, today: number }> = props =>
+const ShiftRow: FC<{ row: CorpPanelShiftRow, total: number, standing: Standing, quota: number, today: number, onOpen: (userId: number) => void }> = props =>
 {
-    const { row, total, standing, quota, today } = props;
+    const { row, total, standing, quota, today, onOpen } = props;
 
     return (
         <tr>
@@ -145,7 +147,7 @@ const ShiftRow: FC<{ row: CorpPanelShiftRow, total: number, standing: Standing, 
                 <div className="corp-person">
                     <CorpHead look={ row.look } gender={ row.gender } />
                     <div className="corp-who">
-                        <b>{ row.username }</b>
+                        <CorpName userId={ row.userId } name={ row.username } onOpen={ onOpen } />
                         <span>{ RpRankTitle(row.rankName, row.tier) }</span>
                     </div>
                     <CorpPresence onDuty={ row.onDuty } online={ row.online } />

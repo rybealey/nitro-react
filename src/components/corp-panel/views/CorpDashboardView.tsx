@@ -2,8 +2,8 @@ import { FC, useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../../api';
 import { CorpPanelAction, CorpPanelContext, CorpPanelDashboard, RpCorpPanelActionComposer, RpCorpPanelDashboardEvent } from '../../../api/rp-corps/RpCorpPanelMessages';
 import { useMessageEvent } from '../../../hooks';
-import { CorpPanelPage } from '../CorpPanelView';
-import { CorpHead, CorpPresence, CorpWeekSwitch, DAY_NAMES, ShiftsOf, TimeUntil, UkDayIndex, WeekRange } from '../CorpPanelShared';
+import { CorpPanelLinks, CorpPanelPage } from '../CorpPanelView';
+import { CorpHead, CorpName, CorpPresence, CorpWeekSwitch, DAY_NAMES, ShiftsOf, TimeUntil, UkDayIndex, WeekRange } from '../CorpPanelShared';
 
 // The Corporation Panel's Dashboard: the week at a glance - how far through
 // it is, shifts worked and quotas met, headcount, shifts per day, and the
@@ -15,6 +15,7 @@ interface CorpDashboardViewProps
     weeksAgo: number;
     onWeekChange: (weeksAgo: number) => void;
     onOpen: (page: CorpPanelPage) => void;
+    links: CorpPanelLinks;
 }
 
 // This week's numbers move while you look; a minute matches the shift flush.
@@ -22,7 +23,7 @@ const REFRESH_MS = 60000;
 
 export const CorpDashboardView: FC<CorpDashboardViewProps> = props =>
 {
-    const { weeksAgo = 0, onWeekChange = null, onOpen = null } = props;
+    const { weeksAgo = 0, onWeekChange = null, onOpen = null, links = null } = props;
     const [ dashboard, setDashboard ] = useState<CorpPanelDashboard>(null);
     const [ now, setNow ] = useState(Date.now());
 
@@ -103,6 +104,16 @@ export const CorpDashboardView: FC<CorpDashboardViewProps> = props =>
                                     <span>Shifts per employee</span>
                                     <small>{ WeekRange(shown.weekStartedAt, shown.weekResetAt) }</small>
                                 </button>
+                                <button type="button" className="corp-stat" onClick={ () => onOpen('warnings') }>
+                                    <b>{ shown.warnings }</b>
+                                    <span>Warnings</span>
+                                    <small>{ isCurrent ? 'Clear at the weekly reset' : 'That week' }</small>
+                                </button>
+                                <button type="button" className={ `corp-stat ${ shown.reviews ? 'is-bad' : '' }` } onClick={ () => onOpen('strikes') }>
+                                    <b>{ shown.strikes }</b>
+                                    <span>Strikes</span>
+                                    <small>{ shown.reviews ? `${ shown.reviews } up for a dismissal review` : 'Nobody up for review' }</small>
+                                </button>
                             </div>
                             <section className="mt-card">
                                 <div className="corp-card-head">
@@ -137,7 +148,7 @@ export const CorpDashboardView: FC<CorpDashboardViewProps> = props =>
                                 <div key={ leader.userId } className="corp-row">
                                     <CorpHead look={ leader.look } gender={ leader.gender } />
                                     <div className="corp-who">
-                                        <b>{ leader.username }</b>
+                                        <CorpName userId={ leader.userId } name={ leader.username } onOpen={ links.openEmployee } />
                                         <span>{ leader.rankName }</span>
                                     </div>
                                     <CorpPresence onDuty={ leader.onDuty } online={ leader.online } />
