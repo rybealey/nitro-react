@@ -1056,4 +1056,147 @@ $corp-offline: #b0b0b0;
         display: inline-flex;
         gap: 6px;
     }
+
+    // ---- slice 4: LOA, dismissals, the blacklist --------------------------
+
+    .corp-chip.is-loa { background: #e3f0f8; color: #27648a; }
+    .corp-bar-fill.is-loa { background: #3f8fbf; }
+
+    .corp-legend {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        color: $corp-muted;
+    }
+
+    .corp-legend-swatch {
+        width: 14px;
+        height: 8px;
+        border-radius: 3px;
+    }
+
+    .corp-legend-swatch,
+    .corp-timeline-bar {
+        &.is-approved { background: #3f8fbf; }
+        &.is-ended { background: #9a9aa2; }
+        &.is-pending { background: repeating-linear-gradient(45deg, #e87332 0 5px, #d9672a 5px 10px); }
+    }
+
+    .corp-timeline-wrap {
+        overflow-x: auto;
+        padding: 8px 12px 10px;
+    }
+
+    .corp-timeline {
+        display: grid;
+        row-gap: 6px;
+        min-width: 620px;
+    }
+
+    .corp-timeline-day {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 4px;
+        border-bottom: 1px solid $corp-line;
+        border-radius: 4px 4px 0 0;
+        font-size: 10px;
+        color: $corp-muted;
+
+        b { font-size: 11px; color: #000000; }
+
+        &.is-today { background: #ffe9c9; }
+    }
+
+    .corp-timeline-who {
+        grid-column: 1;
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        padding-right: 8px;
+    }
+
+    .corp-timeline-bar {
+        align-self: center;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 24px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    }
+
+    .corp-field-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .corp-period {
+        width: auto;
+    }
+
+    .corp-inline-link {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: #0b5ed7;
+        font: inherit;
+        cursor: pointer;
+
+        &:hover { text-decoration: underline; }
+    }
+
+    .corp-check-card {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 12px;
+    }
+
+    .corp-check-result {
+        height: auto;
+        min-height: 22px;
+        padding: 3px 9px;
+        white-space: normal;
+    }
+
+    .corp-section-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .corp-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 8px;
+    }
+
+    .corp-black-card {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 12px;
+    }
+
+    .corp-row.is-plain {
+        padding: 0;
+        border-bottom: 0;
+    }
+
+    .corp-black-reason { font-size: 12px; }
+
+    .corp-black-foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: auto;
+    }
 }

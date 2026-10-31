@@ -1,15 +1,18 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
-import { LuAlertTriangle, LuCalendarDays, LuInbox, LuLayoutGrid, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { LuAlertTriangle, LuBan, LuCalendarDays, LuInbox, LuLayoutGrid, LuPlane, LuTrendingDown, LuTrendingUp, LuUserX, LuZap } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { DEFAULT_CORP_BADGE } from '../../api/rp-employment/RpEmploymentRegistry';
-import { CorpDisciplineKind, CorpPanelAction, CorpPanelContext, CorpPanelResult, RpCorpPanelActionComposer, RpCorpPanelEvent, RpCorpPanelResultEvent } from '../../api/rp-corps/RpCorpPanelMessages';
+import { CorpDisciplineKind, CorpPanelAction, CorpPanelContext, CorpPanelResult, CorpRecordAction, RECORD_RESULT_BASE, RpCorpPanelActionComposer, RpCorpPanelEvent, RpCorpPanelResultEvent } from '../../api/rp-corps/RpCorpPanelMessages';
 import { DraggableWindowPosition, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 import { useMessageEvent } from '../../hooks';
+import { CorpBlacklistView } from './views/CorpBlacklistView';
 import { CorpDashboardView } from './views/CorpDashboardView';
+import { CorpDismissalsView } from './views/CorpDismissalsView';
 import { CorpDisciplineView } from './views/CorpDisciplineView';
 import { CorpEmployeeFileView } from './views/CorpEmployeeFileView';
 import { CorpIssueView } from './views/CorpIssueView';
+import { CorpLoaView } from './views/CorpLoaView';
 import { CorpRankLogView } from './views/CorpRankLogView';
 import { CorpRequestsView } from './views/CorpRequestsView';
 import { CorpShiftsView } from './views/CorpShiftsView';
@@ -26,7 +29,7 @@ import { CorpShiftsView } from './views/CorpShiftsView';
 // Two layers sit over the pages: an employee's file (a drawer, opened from
 // any name) and the issue form for a warning or strike (a dialog).
 
-export type CorpPanelPage = 'dashboard' | 'shifts' | 'warnings' | 'strikes' | 'promoRequests' | 'demoRequests' | 'promotions' | 'demotions';
+export type CorpPanelPage = 'dashboard' | 'shifts' | 'warnings' | 'strikes' | 'loa' | 'dismissals' | 'blacklist' | 'promoRequests' | 'demoRequests' | 'promotions' | 'demotions';
 
 export interface CorpIssueRequest
 {
@@ -50,7 +53,7 @@ interface NavItem
     label: string;
     icon: ReactNode;
     // which of the context's counts shows beside it
-    count?: 'pendingPromotions' | 'pendingDemotions';
+    count?: 'pendingPromotions' | 'pendingDemotions' | 'pendingLoa';
 }
 
 const SECTIONS: { title: string, items: NavItem[] }[] = [
@@ -65,7 +68,10 @@ const SECTIONS: { title: string, items: NavItem[] }[] = [
         title: 'HR and records',
         items: [
             { page: 'warnings', label: 'Warnings', icon: <LuAlertTriangle /> },
-            { page: 'strikes', label: 'Strikes', icon: <LuZap /> }
+            { page: 'strikes', label: 'Strikes', icon: <LuZap /> },
+            { page: 'loa', label: 'LOA tracking', icon: <LuPlane />, count: 'pendingLoa' },
+            { page: 'dismissals', label: 'Dismissals', icon: <LuUserX /> },
+            { page: 'blacklist', label: 'Blacklist', icon: <LuBan /> }
         ]
     },
     {
@@ -108,6 +114,9 @@ export const CorpPanelView: FC<{}> = props =>
     useMessageEvent<RpCorpPanelResultEvent>(RpCorpPanelResultEvent, event =>
     {
         const result = event.getParser().result;
+
+        // A blacklist check changes nothing and answers in its own box.
+        if(result.action === (RECORD_RESULT_BASE + CorpRecordAction.BlacklistCheck)) return;
 
         if(result.ok) setRefreshKey(value => (value + 1));
 
@@ -231,6 +240,9 @@ export const CorpPanelView: FC<{}> = props =>
                             <CorpShiftsView context={ context } weeksAgo={ weeksAgo } onWeekChange={ setWeeksAgo } links={ links } /> }
                         { context && ((page === 'warnings') || (page === 'strikes')) &&
                             <CorpDisciplineView context={ context } kind={ (page === 'warnings') ? 'warning' : 'strike' } weeksAgo={ weeksAgo } onWeekChange={ setWeeksAgo } links={ links } /> }
+                        { context && (page === 'loa') && <CorpLoaView links={ links } /> }
+                        { context && (page === 'dismissals') && <CorpDismissalsView links={ links } onOpen={ openPage } /> }
+                        { context && (page === 'blacklist') && <CorpBlacklistView links={ links } /> }
                         { context && ((page === 'promoRequests') || (page === 'demoRequests')) &&
                             <CorpRequestsView direction={ (page === 'promoRequests') ? 'promotion' : 'demotion' } links={ links } /> }
                         { context && ((page === 'promotions') || (page === 'demotions')) &&

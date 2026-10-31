@@ -99,6 +99,11 @@ export const CorpDashboardView: FC<CorpDashboardViewProps> = props =>
                                     <span>Employees</span>
                                     <small>{ shown.onDuty } on duty now</small>
                                 </button>
+                                <button type="button" className={ `corp-stat ${ shown.pendingLoa ? 'is-warn' : '' }` } onClick={ () => onOpen('loa') }>
+                                    <b>{ shown.onLeave }</b>
+                                    <span>On LOA</span>
+                                    <small>{ shown.pendingLoa ? `${ shown.pendingLoa } waiting for a decision` : 'Nothing waiting' }</small>
+                                </button>
                                 <button type="button" className="corp-stat" onClick={ () => onOpen('shifts') }>
                                     <b>{ (shown.employees > 0) ? (ShiftsOf(shown.shiftSeconds) / shown.employees).toFixed(1) : '0' }</b>
                                     <span>Shifts per employee</span>

@@ -20,7 +20,8 @@ interface CorpShiftsViewProps
 
 type Filter = 'all' | 'short' | 'met';
 
-type Standing = 'met' | 'close' | 'short' | 'none';
+// loa = had approved leave that week, which counts as met
+type Standing = 'met' | 'loa' | 'close' | 'short' | 'none';
 
 const REFRESH_MS = 60000;
 
@@ -33,7 +34,7 @@ const standingOf = (shifts: number, quota: number): Standing =>
     return ((shifts >= Math.ceil(quota * 0.7)) ? 'close' : 'short');
 }
 
-const STANDING_LABEL: Record<Standing, string> = { met: 'Met', close: 'Close', short: 'Short', none: '' };
+const STANDING_LABEL: Record<Standing, string> = { met: 'Met', loa: 'On LOA', close: 'Close', short: 'Short', none: '' };
 
 // Heat for a day cell: none, one, two, three or more shifts.
 const heatOf = (shifts: number): string => ((shifts <= 0) ? '' : `is-heat-${ Math.min(3, shifts) }`);
@@ -69,17 +70,27 @@ export const CorpShiftsView: FC<CorpShiftsViewProps> = props =>
     const quota = (shown?.shiftQuota ?? 0);
     const today = ((shown && (weeksAgo === 0)) ? UkDayIndex(shown.weekStartedAt, now) : 7);
 
-    const rows = useMemo(() => (shown?.rows ?? []).map(row => ({ row, total: ShiftsOf(row.weekSeconds), standing: standingOf(ShiftsOf(row.weekSeconds), quota) })), [ shown, quota ]);
+    const rows = useMemo(() =>
+    {
+        const onLeave = new Set(shown?.onLeave ?? []);
+
+        return (shown?.rows ?? []).map(row =>
+        {
+            const standing = standingOf(ShiftsOf(row.weekSeconds), quota);
+
+            return { row, total: ShiftsOf(row.weekSeconds), standing: ((standing !== 'met') && (standing !== 'none') && onLeave.has(row.userId)) ? 'loa' as Standing : standing };
+        });
+    }, [ shown, quota ]);
     const counts = {
         all: rows.length,
         short: rows.filter(entry => ((entry.standing === 'short') || (entry.standing === 'close'))).length,
-        met: rows.filter(entry => (entry.standing === 'met')).length
+        met: rows.filter(entry => ((entry.standing === 'met') || (entry.standing === 'loa'))).length
     };
     const query = search.trim().toLowerCase();
     const visible = rows.filter(entry =>
     {
         if(query && !entry.row.username.toLowerCase().includes(query)) return false;
-        if(filter === 'met') return (entry.standing === 'met');
+        if(filter === 'met') return ((entry.standing === 'met') || (entry.standing === 'loa'));
         if(filter === 'short') return ((entry.standing === 'short') || (entry.standing === 'close'));
 
         return true;

@@ -92,6 +92,8 @@ export const CorpEmployeeFileView: FC<CorpEmployeeFileViewProps> = props =>
                                 <button type="button" className="mt-ghost mt-small" onClick={ () => links.openIssue({ kind: 'strike', userId: shown.userId }) }>Strike</button>
                             </div> }
                         <div className="corp-drawer-body">
+                            { shown.loaUntil &&
+                                <div className="corp-effect is-warn">On leave until { LongDate(Date.parse(`${ shown.loaUntil }T12:00:00Z`) / 1000) }. They can&apos;t clock in until then.</div> }
                             { (shown.strikes >= 2) &&
                                 <div className="corp-effect is-bad">{ (shown.strikes >= 3) ? 'Up for a dismissal review this week.' : 'One strike from a dismissal review.' }</div> }
                             <section className="mt-card corp-file-week">

@@ -16,6 +16,10 @@ const RP_CORP_PANEL_RESULT = 4250; // server -> client: how a change went
 const RP_CORP_PANEL_RANK_ACTION = 4251; // client -> server: request, approve, deny, withdraw
 const RP_CORP_PANEL_RANK_LOG = 4252; // server -> client: Promotions and Demotions
 const RP_CORP_PANEL_REQUESTS = 4253; // server -> client: Promo and Demotion requests
+const RP_CORP_PANEL_RECORD_ACTION = 4254; // client -> server: LOA and blacklist changes
+const RP_CORP_PANEL_LOA = 4255; // server -> client: LOA tracking
+const RP_CORP_PANEL_DISMISSALS = 4256; // server -> client: Dismissals
+const RP_CORP_PANEL_BLACKLIST = 4257; // server -> client: the Blacklist
 
 // CorpPanel.Action on the server.
 export const CorpPanelAction = {
@@ -26,8 +30,26 @@ export const CorpPanelAction = {
     // the int is the employee's user id
     Employee: 4,
     RankLog: 5,
-    Requests: 6
+    Requests: 6,
+    Loa: 7,
+    // the int is 30, 90 or 0 (all) days
+    Dismissals: 8,
+    Blacklist: 9
 } as const;
+
+// CorpPanel.RecordAction on the server; results come back as
+// RECORD_RESULT_BASE + this.
+export const CorpRecordAction = {
+    LogLoa: 0,
+    ApproveLoa: 1,
+    DenyLoa: 2,
+    EndLoa: 3,
+    BlacklistAdd: 4,
+    BlacklistRemove: 5,
+    BlacklistCheck: 6
+} as const;
+
+export const RECORD_RESULT_BASE = 20;
 
 // CorpPanel.RankAction on the server. Their results come back as action
 // RANK_RESULT_BASE + this.
@@ -70,6 +92,8 @@ export interface CorpPanelContext
     // slice 3: open requests, for the sidebar
     pendingPromotions: number;
     pendingDemotions: number;
+    // slice 4
+    pendingLoa: number;
 }
 
 export interface CorpPanelLeader
@@ -103,6 +127,9 @@ export interface CorpPanelDashboard
     // slice 3
     pendingPromotions: number;
     pendingDemotions: number;
+    // slice 4
+    onLeave: number;
+    pendingLoa: number;
 }
 
 export interface CorpDisciplineEntry
@@ -169,6 +196,79 @@ export interface CorpPanelEmployee
     record: CorpDisciplineEntry[];
     // slice 3
     rankChanges: CorpRankChange[];
+    // slice 4: the last day of the leave they're on now (UK yyyy-MM-dd), or ''
+    loaUntil: string;
+}
+
+export type CorpLoaStatus = 'pending' | 'approved' | 'denied' | 'cancelled' | 'ended';
+
+export interface CorpLoaEntry
+{
+    id: number;
+    userId: number;
+    username: string;
+    look: string;
+    gender: string;
+    rankTitle: string;
+    // UK days, yyyy-MM-dd, both included
+    startsOn: string;
+    endsOn: string;
+    reason: string;
+    status: CorpLoaStatus;
+    requestedByName: string;
+    askedThemselves: boolean;
+    decidedByName: string;
+    createdAt: number;
+}
+
+export interface CorpPanelLoa
+{
+    canApprove: boolean;
+    today: string;
+    monday: string;
+    entries: CorpLoaEntry[];
+    people: { userId: number, username: string, rankTitle: string, canLog: boolean }[];
+}
+
+export type CorpDismissalKind = 'fired' | 'quit' | 'staff';
+
+export interface CorpDismissal
+{
+    id: number;
+    userId: number;
+    username: string;
+    look: string;
+    gender: string;
+    rankTitle: string;
+    kind: CorpDismissalKind;
+    reason: string;
+    actorName: string;
+    hiredAt: number;
+    createdAt: number;
+    // 'eligible', 'until' (rehireAt) or 'never'
+    rehire: string;
+    rehireAt: number;
+}
+
+export interface CorpPanelDismissals
+{
+    days: number;
+    rows: CorpDismissal[];
+}
+
+export interface CorpBlacklistEntry
+{
+    id: number;
+    userId: number;
+    username: string;
+    look: string;
+    gender: string;
+    reason: string;
+    addedByName: string;
+    createdAt: number;
+    // 0 = for good
+    expiresAt: number;
+    canRemove: boolean;
 }
 
 export interface CorpRankChange
@@ -279,6 +379,8 @@ export interface CorpPanelShifts
     weekResetAt: number;
     shiftQuota: number;
     rows: CorpPanelShiftRow[];
+    // slice 4: who had leave that week (counts as quota met)
+    onLeave: number[];
 }
 
 const readDays = (wrapper: IMessageDataWrapper): number[] =>
@@ -315,7 +417,8 @@ export class RpCorpPanelParser implements IMessageParser
             weekStartedAt: wrapper.readInt(),
             weekResetAt: wrapper.readInt(),
             pendingPromotions: 0,
-            pendingDemotions: 0
+            pendingDemotions: 0,
+            pendingLoa: 0
         };
 
         if(wrapper.bytesAvailable)
@@ -323,6 +426,8 @@ export class RpCorpPanelParser implements IMessageParser
             this._context.pendingPromotions = wrapper.readInt();
             this._context.pendingDemotions = wrapper.readInt();
         }
+
+        this._context.pendingLoa = (wrapper.bytesAvailable ? wrapper.readInt() : 0);
 
         return true;
     }
@@ -380,8 +485,11 @@ export class RpCorpPanelDashboardParser implements IMessageParser
         const pending = (wrapper.bytesAvailable);
         const pendingPromotions = (pending ? wrapper.readInt() : 0);
         const pendingDemotions = (pending ? wrapper.readInt() : 0);
+        const loa = (wrapper.bytesAvailable);
+        const onLeave = (loa ? wrapper.readInt() : 0);
+        const pendingLoa = (loa ? wrapper.readInt() : 0);
 
-        this._dashboard = { weeksAgo, weekStartedAt, weekResetAt, employees, onDuty, shiftSeconds, quotaMet, shiftQuota, daySeconds, leaders, warnings, strikes, reviews, pendingPromotions, pendingDemotions };
+        this._dashboard = { weeksAgo, weekStartedAt, weekResetAt, employees, onDuty, shiftSeconds, quotaMet, shiftQuota, daySeconds, leaders, warnings, strikes, reviews, pendingPromotions, pendingDemotions, onLeave, pendingLoa };
 
         return true;
     }
@@ -430,7 +538,16 @@ export class RpCorpPanelShiftsParser implements IMessageParser
             daySeconds: readDays(wrapper)
         });
 
-        this._shifts = { weeksAgo, weekStartedAt, weekResetAt, shiftQuota, rows };
+        const onLeave: number[] = [];
+
+        if(wrapper.bytesAvailable)
+        {
+            count = wrapper.readInt();
+
+            while(count-- > 0) onLeave.push(wrapper.readInt());
+        }
+
+        this._shifts = { weeksAgo, weekStartedAt, weekResetAt, shiftQuota, rows, onLeave };
 
         return true;
     }
@@ -584,6 +701,188 @@ export class RpCorpPanelRequestsParser implements IMessageParser
     }
 }
 
+export class RpCorpPanelLoaParser implements IMessageParser
+{
+    private _loa: CorpPanelLoa = null;
+
+    public flush(): boolean
+    {
+        this._loa = null;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        const canApprove = wrapper.readBoolean();
+        const today = wrapper.readString();
+        const monday = wrapper.readString();
+        const entries: CorpLoaEntry[] = [];
+        const people: CorpPanelLoa['people'] = [];
+
+        let count = wrapper.readInt();
+
+        while(count-- > 0) entries.push({
+            id: wrapper.readInt(),
+            userId: wrapper.readInt(),
+            username: wrapper.readString(),
+            look: wrapper.readString(),
+            gender: wrapper.readString(),
+            rankTitle: wrapper.readString(),
+            startsOn: wrapper.readString(),
+            endsOn: wrapper.readString(),
+            reason: wrapper.readString(),
+            status: wrapper.readString() as CorpLoaStatus,
+            requestedByName: wrapper.readString(),
+            askedThemselves: wrapper.readBoolean(),
+            decidedByName: wrapper.readString(),
+            createdAt: wrapper.readInt()
+        });
+
+        count = wrapper.readInt();
+
+        while(count-- > 0) people.push({ userId: wrapper.readInt(), username: wrapper.readString(), rankTitle: wrapper.readString(), canLog: wrapper.readBoolean() });
+
+        this._loa = { canApprove, today, monday, entries, people };
+
+        return true;
+    }
+
+    public get loa(): CorpPanelLoa
+    {
+        return this._loa;
+    }
+}
+
+export class RpCorpPanelDismissalsParser implements IMessageParser
+{
+    private _dismissals: CorpPanelDismissals = null;
+
+    public flush(): boolean
+    {
+        this._dismissals = null;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        const days = wrapper.readInt();
+        const rows: CorpDismissal[] = [];
+
+        let count = wrapper.readInt();
+
+        while(count-- > 0) rows.push({
+            id: wrapper.readInt(),
+            userId: wrapper.readInt(),
+            username: wrapper.readString(),
+            look: wrapper.readString(),
+            gender: wrapper.readString(),
+            rankTitle: wrapper.readString(),
+            kind: wrapper.readString() as CorpDismissalKind,
+            reason: wrapper.readString(),
+            actorName: wrapper.readString(),
+            hiredAt: wrapper.readInt(),
+            createdAt: wrapper.readInt(),
+            rehire: wrapper.readString(),
+            rehireAt: wrapper.readInt()
+        });
+
+        this._dismissals = { days, rows };
+
+        return true;
+    }
+
+    public get dismissals(): CorpPanelDismissals
+    {
+        return this._dismissals;
+    }
+}
+
+export class RpCorpPanelBlacklistParser implements IMessageParser
+{
+    private _entries: CorpBlacklistEntry[] = null;
+
+    public flush(): boolean
+    {
+        this._entries = null;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        this._entries = [];
+
+        let count = wrapper.readInt();
+
+        while(count-- > 0) this._entries.push({
+            id: wrapper.readInt(),
+            userId: wrapper.readInt(),
+            username: wrapper.readString(),
+            look: wrapper.readString(),
+            gender: wrapper.readString(),
+            reason: wrapper.readString(),
+            addedByName: wrapper.readString(),
+            createdAt: wrapper.readInt(),
+            expiresAt: wrapper.readInt(),
+            canRemove: wrapper.readBoolean()
+        });
+
+        return true;
+    }
+
+    public get entries(): CorpBlacklistEntry[]
+    {
+        return this._entries;
+    }
+}
+
+export class RpCorpPanelLoaEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpCorpPanelLoaParser);
+    }
+
+    public getParser(): RpCorpPanelLoaParser
+    {
+        return this.parser as RpCorpPanelLoaParser;
+    }
+}
+
+export class RpCorpPanelDismissalsEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpCorpPanelDismissalsParser);
+    }
+
+    public getParser(): RpCorpPanelDismissalsParser
+    {
+        return this.parser as RpCorpPanelDismissalsParser;
+    }
+}
+
+export class RpCorpPanelBlacklistEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpCorpPanelBlacklistParser);
+    }
+
+    public getParser(): RpCorpPanelBlacklistParser
+    {
+        return this.parser as RpCorpPanelBlacklistParser;
+    }
+}
+
 export class RpCorpPanelRankLogEvent extends MessageEvent implements IMessageEvent
 {
     constructor(callBack: Function)
@@ -712,7 +1011,9 @@ export class RpCorpPanelEmployeeParser implements IMessageParser
             while(count-- > 0) rankChanges.push(readChange(wrapper));
         }
 
-        this._employee = { userId, username, look, gender, rankName, tier, hiredAt, lastOnline, onDuty, online, shiftQuota, warnings, strikes, canDiscipline, firstWeekStartedAt, weekSeconds, record, rankChanges };
+        const loaUntil = (wrapper.bytesAvailable ? wrapper.readString() : '');
+
+        this._employee = { userId, username, look, gender, rankName, tier, hiredAt, lastOnline, onDuty, online, shiftQuota, warnings, strikes, canDiscipline, firstWeekStartedAt, weekSeconds, record, rankChanges, loaUntil };
 
         return true;
     }
@@ -883,6 +1184,25 @@ export class RpCorpPanelRankComposer implements IMessageComposer<[ number, numbe
     { }
 }
 
+// LOA and blacklist changes (CorpRecordAction): id, two ints, two strings.
+export class RpCorpPanelRecordComposer implements IMessageComposer<[ number, number, number, number, string, string ]>
+{
+    private _data: [ number, number, number, number, string, string ];
+
+    constructor(action: number, id: number = 0, a: number = 0, b: number = 0, text1: string = '', text2: string = '')
+    {
+        this._data = [ action, id, a, b, text1, text2 ];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    { }
+}
+
 let registered = false;
 
 export const RegisterRpCorpPanelMessages = () =>
@@ -902,12 +1222,16 @@ export const RegisterRpCorpPanelMessages = () =>
             [ RP_CORP_PANEL_EMPLOYEE, RpCorpPanelEmployeeEvent ],
             [ RP_CORP_PANEL_RESULT, RpCorpPanelResultEvent ],
             [ RP_CORP_PANEL_RANK_LOG, RpCorpPanelRankLogEvent ],
-            [ RP_CORP_PANEL_REQUESTS, RpCorpPanelRequestsEvent ]
+            [ RP_CORP_PANEL_REQUESTS, RpCorpPanelRequestsEvent ],
+            [ RP_CORP_PANEL_LOA, RpCorpPanelLoaEvent ],
+            [ RP_CORP_PANEL_DISMISSALS, RpCorpPanelDismissalsEvent ],
+            [ RP_CORP_PANEL_BLACKLIST, RpCorpPanelBlacklistEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CORP_PANEL_ACTION, RpCorpPanelActionComposer ],
             [ RP_CORP_PANEL_DISCIPLINE_ACTION, RpCorpPanelDisciplineComposer ],
-            [ RP_CORP_PANEL_RANK_ACTION, RpCorpPanelRankComposer ]
+            [ RP_CORP_PANEL_RANK_ACTION, RpCorpPanelRankComposer ],
+            [ RP_CORP_PANEL_RECORD_ACTION, RpCorpPanelRecordComposer ]
         ])
     });
 
