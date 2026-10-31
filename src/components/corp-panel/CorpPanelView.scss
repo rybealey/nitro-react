@@ -946,4 +946,114 @@ $corp-offline: #b0b0b0;
             color: $corp-muted;
         }
     }
+
+    // ---- slice 3: requests, the logs, the sidebar's counts ----------------
+
+    .corp-nav-count {
+        flex: 0 0 auto !important;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 9px;
+        background: #ffe9c9;
+        color: #a3451c;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 18px;
+        text-align: center;
+    }
+
+    .corp-nav-item.is-active .corp-nav-count {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+    }
+
+    .corp-stats.is-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .corp-filter-seg.is-start { margin-left: 0; }
+
+    .corp-head.is-lg {
+        width: 44px;
+        height: 44px;
+
+        .avatar-image { left: -23px; top: -23px; }
+    }
+
+    .corp-pip.is-ok { background: $corp-ok; box-shadow: none; }
+
+    .corp-move {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .corp-rank {
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        padding: 0 7px;
+        border-radius: 5px;
+        background: $corp-well;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+
+        &.is-promotion { background: $corp-ok-soft; color: $corp-ok-ink; }
+        &.is-demotion { background: $corp-bad-soft; color: $corp-bad-ink; }
+    }
+
+    .corp-move-arrow {
+        font-weight: 700;
+
+        &.is-promotion { color: $corp-ok-ink; }
+        &.is-demotion { color: $corp-bad-ink; }
+    }
+
+    .corp-facts {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .corp-request-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 12px;
+    }
+
+    .corp-request-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .corp-request-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+
+        .corp-name-link { font-size: 13px; }
+    }
+
+    .corp-request-reason { font-size: 12px; }
+
+    .corp-request-foot {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border-top: 1px solid $corp-line;
+        background: #fafafb;
+        border-radius: 0 0 6px 6px;
+    }
+
+    .corp-request-actions {
+        display: inline-flex;
+        gap: 6px;
+    }
 }

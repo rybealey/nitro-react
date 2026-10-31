@@ -1,6 +1,6 @@
 import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
-import { LuCalendarDays, LuLayoutGrid, LuAlertTriangle, LuZap } from 'react-icons/lu';
+import { LuAlertTriangle, LuCalendarDays, LuInbox, LuLayoutGrid, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 import { DEFAULT_CORP_BADGE } from '../../api/rp-employment/RpEmploymentRegistry';
 import { CorpDisciplineKind, CorpPanelAction, CorpPanelContext, CorpPanelResult, RpCorpPanelActionComposer, RpCorpPanelEvent, RpCorpPanelResultEvent } from '../../api/rp-corps/RpCorpPanelMessages';
@@ -10,6 +10,8 @@ import { CorpDashboardView } from './views/CorpDashboardView';
 import { CorpDisciplineView } from './views/CorpDisciplineView';
 import { CorpEmployeeFileView } from './views/CorpEmployeeFileView';
 import { CorpIssueView } from './views/CorpIssueView';
+import { CorpRankLogView } from './views/CorpRankLogView';
+import { CorpRequestsView } from './views/CorpRequestsView';
 import { CorpShiftsView } from './views/CorpShiftsView';
 
 // PixelRP Corporation Panel - a corporation's own management window, for its
@@ -24,7 +26,7 @@ import { CorpShiftsView } from './views/CorpShiftsView';
 // Two layers sit over the pages: an employee's file (a drawer, opened from
 // any name) and the issue form for a warning or strike (a dialog).
 
-export type CorpPanelPage = 'dashboard' | 'shifts' | 'warnings' | 'strikes';
+export type CorpPanelPage = 'dashboard' | 'shifts' | 'warnings' | 'strikes' | 'promoRequests' | 'demoRequests' | 'promotions' | 'demotions';
 
 export interface CorpIssueRequest
 {
@@ -47,6 +49,8 @@ interface NavItem
     page: CorpPanelPage;
     label: string;
     icon: ReactNode;
+    // which of the context's counts shows beside it
+    count?: 'pendingPromotions' | 'pendingDemotions';
 }
 
 const SECTIONS: { title: string, items: NavItem[] }[] = [
@@ -62,6 +66,20 @@ const SECTIONS: { title: string, items: NavItem[] }[] = [
         items: [
             { page: 'warnings', label: 'Warnings', icon: <LuAlertTriangle /> },
             { page: 'strikes', label: 'Strikes', icon: <LuZap /> }
+        ]
+    },
+    {
+        title: 'Management',
+        items: [
+            { page: 'promoRequests', label: 'Promo requests', icon: <LuInbox />, count: 'pendingPromotions' },
+            { page: 'demoRequests', label: 'Demotion requests', icon: <LuInbox />, count: 'pendingDemotions' }
+        ]
+    },
+    {
+        title: 'Logs',
+        items: [
+            { page: 'promotions', label: 'Promotions', icon: <LuTrendingUp /> },
+            { page: 'demotions', label: 'Demotions', icon: <LuTrendingDown /> }
         ]
     }
 ];
@@ -152,6 +170,13 @@ export const CorpPanelView: FC<{}> = props =>
         setNotice(null);
     }, [ isVisible ]);
 
+    // After a change, ask who is looking again: the sidebar's request counts
+    // (and the viewer's own rank) may have moved.
+    useEffect(() =>
+    {
+        if(isVisible && (refreshKey > 0)) SendMessageComposer(new RpCorpPanelActionComposer(CorpPanelAction.Open));
+    }, [ refreshKey ]);
+
     const openEmployee = useCallback((userId: number) => setFileUserId(userId), []);
     const openIssue = useCallback((request: CorpIssueRequest) => setIssue(request), []);
 
@@ -191,6 +216,7 @@ export const CorpPanelView: FC<{}> = props =>
                                             aria-current={ (item.page === page) ? 'page' : undefined } onClick={ () => openPage(item.page) }>
                                             { item.icon }
                                             <span>{ item.label }</span>
+                                            { item.count && (context?.[item.count] > 0) && <span className="corp-nav-count">{ context[item.count] }</span> }
                                         </button>) }
                                 </div>) }
                         </nav>
@@ -205,6 +231,10 @@ export const CorpPanelView: FC<{}> = props =>
                             <CorpShiftsView context={ context } weeksAgo={ weeksAgo } onWeekChange={ setWeeksAgo } links={ links } /> }
                         { context && ((page === 'warnings') || (page === 'strikes')) &&
                             <CorpDisciplineView context={ context } kind={ (page === 'warnings') ? 'warning' : 'strike' } weeksAgo={ weeksAgo } onWeekChange={ setWeeksAgo } links={ links } /> }
+                        { context && ((page === 'promoRequests') || (page === 'demoRequests')) &&
+                            <CorpRequestsView direction={ (page === 'promoRequests') ? 'promotion' : 'demotion' } links={ links } /> }
+                        { context && ((page === 'promotions') || (page === 'demotions')) &&
+                            <CorpRankLogView direction={ (page === 'promotions') ? 'promotion' : 'demotion' } weeksAgo={ weeksAgo } onWeekChange={ setWeeksAgo } links={ links } /> }
                     </main>
                     { context && (fileUserId > 0) &&
                         <CorpEmployeeFileView userId={ fileUserId } links={ links } onClose={ () => setFileUserId(0) } /> }

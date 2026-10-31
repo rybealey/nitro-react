@@ -13,6 +13,9 @@ const RP_CORP_PANEL_DISCIPLINE_ACTION = 4247; // client -> server: issue or revo
 const RP_CORP_PANEL_DISCIPLINE = 4248; // server -> client: Warnings and Strikes
 const RP_CORP_PANEL_EMPLOYEE = 4249; // server -> client: one employee's file
 const RP_CORP_PANEL_RESULT = 4250; // server -> client: how a change went
+const RP_CORP_PANEL_RANK_ACTION = 4251; // client -> server: request, approve, deny, withdraw
+const RP_CORP_PANEL_RANK_LOG = 4252; // server -> client: Promotions and Demotions
+const RP_CORP_PANEL_REQUESTS = 4253; // server -> client: Promo and Demotion requests
 
 // CorpPanel.Action on the server.
 export const CorpPanelAction = {
@@ -21,8 +24,23 @@ export const CorpPanelAction = {
     Shifts: 2,
     Discipline: 3,
     // the int is the employee's user id
-    Employee: 4
+    Employee: 4,
+    RankLog: 5,
+    Requests: 6
 } as const;
+
+// CorpPanel.RankAction on the server. Their results come back as action
+// RANK_RESULT_BASE + this.
+export const CorpRankAction = {
+    Request: 0,
+    Approve: 1,
+    Deny: 2,
+    Withdraw: 3
+} as const;
+
+export const RANK_RESULT_BASE = 10;
+
+export type CorpRankDirection = 'promotion' | 'demotion';
 
 // CorpPanel.DisciplineAction on the server.
 export const CorpDisciplineAction = {
@@ -49,6 +67,9 @@ export interface CorpPanelContext
     shiftQuota: number;
     weekStartedAt: number;
     weekResetAt: number;
+    // slice 3: open requests, for the sidebar
+    pendingPromotions: number;
+    pendingDemotions: number;
 }
 
 export interface CorpPanelLeader
@@ -79,6 +100,9 @@ export interface CorpPanelDashboard
     warnings: number;
     strikes: number;
     reviews: number;
+    // slice 3
+    pendingPromotions: number;
+    pendingDemotions: number;
 }
 
 export interface CorpDisciplineEntry
@@ -143,6 +167,86 @@ export interface CorpPanelEmployee
     firstWeekStartedAt: number;
     weekSeconds: number[];
     record: CorpDisciplineEntry[];
+    // slice 3
+    rankChanges: CorpRankChange[];
+}
+
+export interface CorpRankChange
+{
+    id: number;
+    userId: number;
+    username: string;
+    look: string;
+    gender: string;
+    direction: CorpRankDirection;
+    fromTitle: string;
+    toTitle: string;
+    reason: string;
+    actorName: string;
+    // 'command' (:promote / :demote) or 'request' (approved in the panel)
+    source: string;
+    requestedByName: string;
+    shiftSecondsWeek: number;
+    warnings: number;
+    strikes: number;
+    createdAt: number;
+}
+
+export interface CorpPanelRankLog
+{
+    weeksAgo: number;
+    weekStartedAt: number;
+    weekResetAt: number;
+    changes: CorpRankChange[];
+}
+
+export type CorpRequestStatus = 'pending' | 'approved' | 'denied' | 'cancelled';
+
+export interface CorpRankRequest
+{
+    id: number;
+    userId: number;
+    username: string;
+    look: string;
+    gender: string;
+    direction: CorpRankDirection;
+    fromTitle: string;
+    toTitle: string;
+    reason: string;
+    requestedBy: number;
+    requestedByName: string;
+    status: CorpRequestStatus;
+    decidedByName: string;
+    decidedAt: number;
+    note: string;
+    createdAt: number;
+    // why this viewer can't approve it now; '' when they can
+    blocker: string;
+}
+
+export interface CorpRankPerson
+{
+    userId: number;
+    username: string;
+    look: string;
+    gender: string;
+    rankTitle: string;
+    upTitle: string;
+    downTitle: string;
+    canRequestUp: boolean;
+    canRequestDown: boolean;
+    weekSeconds: number;
+    warnings: number;
+    strikes: number;
+    inRankSince: number;
+}
+
+export interface CorpPanelRequests
+{
+    canApprove: boolean;
+    shiftQuota: number;
+    requests: CorpRankRequest[];
+    people: CorpRankPerson[];
 }
 
 export interface CorpPanelResult
@@ -209,8 +313,16 @@ export class RpCorpPanelParser implements IMessageParser
             capabilities: wrapper.readInt(),
             shiftQuota: wrapper.readInt(),
             weekStartedAt: wrapper.readInt(),
-            weekResetAt: wrapper.readInt()
+            weekResetAt: wrapper.readInt(),
+            pendingPromotions: 0,
+            pendingDemotions: 0
         };
+
+        if(wrapper.bytesAvailable)
+        {
+            this._context.pendingPromotions = wrapper.readInt();
+            this._context.pendingDemotions = wrapper.readInt();
+        }
 
         return true;
     }
@@ -265,8 +377,11 @@ export class RpCorpPanelDashboardParser implements IMessageParser
         const warnings = (more ? wrapper.readInt() : 0);
         const strikes = (more ? wrapper.readInt() : 0);
         const reviews = (more ? wrapper.readInt() : 0);
+        const pending = (wrapper.bytesAvailable);
+        const pendingPromotions = (pending ? wrapper.readInt() : 0);
+        const pendingDemotions = (pending ? wrapper.readInt() : 0);
 
-        this._dashboard = { weeksAgo, weekStartedAt, weekResetAt, employees, onDuty, shiftSeconds, quotaMet, shiftQuota, daySeconds, leaders, warnings, strikes, reviews };
+        this._dashboard = { weeksAgo, weekStartedAt, weekResetAt, employees, onDuty, shiftSeconds, quotaMet, shiftQuota, daySeconds, leaders, warnings, strikes, reviews, pendingPromotions, pendingDemotions };
 
         return true;
     }
@@ -343,6 +458,157 @@ const readEntry = (wrapper: IMessageDataWrapper): CorpDisciplineEntry => ({
     revokedByName: wrapper.readString(),
     revokedAt: wrapper.readInt()
 });
+
+const readChange = (wrapper: IMessageDataWrapper): CorpRankChange => ({
+    id: wrapper.readInt(),
+    userId: wrapper.readInt(),
+    username: wrapper.readString(),
+    look: wrapper.readString(),
+    gender: wrapper.readString(),
+    direction: wrapper.readString() as CorpRankDirection,
+    fromTitle: wrapper.readString(),
+    toTitle: wrapper.readString(),
+    reason: wrapper.readString(),
+    actorName: wrapper.readString(),
+    source: wrapper.readString(),
+    requestedByName: wrapper.readString(),
+    shiftSecondsWeek: wrapper.readInt(),
+    warnings: wrapper.readInt(),
+    strikes: wrapper.readInt(),
+    createdAt: wrapper.readInt()
+});
+
+export class RpCorpPanelRankLogParser implements IMessageParser
+{
+    private _log: CorpPanelRankLog = null;
+
+    public flush(): boolean
+    {
+        this._log = null;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        const weeksAgo = wrapper.readInt();
+        const weekStartedAt = wrapper.readInt();
+        const weekResetAt = wrapper.readInt();
+        const changes: CorpRankChange[] = [];
+
+        let count = wrapper.readInt();
+
+        while(count-- > 0) changes.push(readChange(wrapper));
+
+        this._log = { weeksAgo, weekStartedAt, weekResetAt, changes };
+
+        return true;
+    }
+
+    public get log(): CorpPanelRankLog
+    {
+        return this._log;
+    }
+}
+
+export class RpCorpPanelRequestsParser implements IMessageParser
+{
+    private _requests: CorpPanelRequests = null;
+
+    public flush(): boolean
+    {
+        this._requests = null;
+
+        return true;
+    }
+
+    public parse(wrapper: IMessageDataWrapper): boolean
+    {
+        if(!wrapper) return false;
+
+        const canApprove = wrapper.readBoolean();
+        const shiftQuota = wrapper.readInt();
+        const requests: CorpRankRequest[] = [];
+        const people: CorpRankPerson[] = [];
+
+        let count = wrapper.readInt();
+
+        while(count-- > 0) requests.push({
+            id: wrapper.readInt(),
+            userId: wrapper.readInt(),
+            username: wrapper.readString(),
+            look: wrapper.readString(),
+            gender: wrapper.readString(),
+            direction: wrapper.readString() as CorpRankDirection,
+            fromTitle: wrapper.readString(),
+            toTitle: wrapper.readString(),
+            reason: wrapper.readString(),
+            requestedBy: wrapper.readInt(),
+            requestedByName: wrapper.readString(),
+            status: wrapper.readString() as CorpRequestStatus,
+            decidedByName: wrapper.readString(),
+            decidedAt: wrapper.readInt(),
+            note: wrapper.readString(),
+            createdAt: wrapper.readInt(),
+            blocker: wrapper.readString()
+        });
+
+        count = wrapper.readInt();
+
+        while(count-- > 0) people.push({
+            userId: wrapper.readInt(),
+            username: wrapper.readString(),
+            look: wrapper.readString(),
+            gender: wrapper.readString(),
+            rankTitle: wrapper.readString(),
+            upTitle: wrapper.readString(),
+            downTitle: wrapper.readString(),
+            canRequestUp: wrapper.readBoolean(),
+            canRequestDown: wrapper.readBoolean(),
+            weekSeconds: wrapper.readInt(),
+            warnings: wrapper.readInt(),
+            strikes: wrapper.readInt(),
+            inRankSince: wrapper.readInt()
+        });
+
+        this._requests = { canApprove, shiftQuota, requests, people };
+
+        return true;
+    }
+
+    public get requests(): CorpPanelRequests
+    {
+        return this._requests;
+    }
+}
+
+export class RpCorpPanelRankLogEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpCorpPanelRankLogParser);
+    }
+
+    public getParser(): RpCorpPanelRankLogParser
+    {
+        return this.parser as RpCorpPanelRankLogParser;
+    }
+}
+
+export class RpCorpPanelRequestsEvent extends MessageEvent implements IMessageEvent
+{
+    constructor(callBack: Function)
+    {
+        super(callBack, RpCorpPanelRequestsParser);
+    }
+
+    public getParser(): RpCorpPanelRequestsParser
+    {
+        return this.parser as RpCorpPanelRequestsParser;
+    }
+}
 
 export class RpCorpPanelDisciplineParser implements IMessageParser
 {
@@ -437,7 +703,16 @@ export class RpCorpPanelEmployeeParser implements IMessageParser
 
         while(count-- > 0) record.push(readEntry(wrapper));
 
-        this._employee = { userId, username, look, gender, rankName, tier, hiredAt, lastOnline, onDuty, online, shiftQuota, warnings, strikes, canDiscipline, firstWeekStartedAt, weekSeconds, record };
+        const rankChanges: CorpRankChange[] = [];
+
+        if(wrapper.bytesAvailable)
+        {
+            count = wrapper.readInt();
+
+            while(count-- > 0) rankChanges.push(readChange(wrapper));
+        }
+
+        this._employee = { userId, username, look, gender, rankName, tier, hiredAt, lastOnline, onDuty, online, shiftQuota, warnings, strikes, canDiscipline, firstWeekStartedAt, weekSeconds, record, rankChanges };
 
         return true;
     }
@@ -589,6 +864,25 @@ export class RpCorpPanelDisciplineComposer implements IMessageComposer<[ number,
     { }
 }
 
+// Request (employee's user id), approve, deny or withdraw (request id).
+export class RpCorpPanelRankComposer implements IMessageComposer<[ number, number, string, string ]>
+{
+    private _data: [ number, number, string, string ];
+
+    constructor(action: number, id: number, direction: CorpRankDirection | '' = '', text: string = '')
+    {
+        this._data = [ action, id, direction, text ];
+    }
+
+    public getMessageArray()
+    {
+        return this._data;
+    }
+
+    public dispose(): void
+    { }
+}
+
 let registered = false;
 
 export const RegisterRpCorpPanelMessages = () =>
@@ -606,11 +900,14 @@ export const RegisterRpCorpPanelMessages = () =>
             [ RP_CORP_PANEL_SHIFTS, RpCorpPanelShiftsEvent ],
             [ RP_CORP_PANEL_DISCIPLINE, RpCorpPanelDisciplineEvent ],
             [ RP_CORP_PANEL_EMPLOYEE, RpCorpPanelEmployeeEvent ],
-            [ RP_CORP_PANEL_RESULT, RpCorpPanelResultEvent ]
+            [ RP_CORP_PANEL_RESULT, RpCorpPanelResultEvent ],
+            [ RP_CORP_PANEL_RANK_LOG, RpCorpPanelRankLogEvent ],
+            [ RP_CORP_PANEL_REQUESTS, RpCorpPanelRequestsEvent ]
         ]),
         composers: new Map<number, Function>([
             [ RP_CORP_PANEL_ACTION, RpCorpPanelActionComposer ],
-            [ RP_CORP_PANEL_DISCIPLINE_ACTION, RpCorpPanelDisciplineComposer ]
+            [ RP_CORP_PANEL_DISCIPLINE_ACTION, RpCorpPanelDisciplineComposer ],
+            [ RP_CORP_PANEL_RANK_ACTION, RpCorpPanelRankComposer ]
         ])
     });
 

@@ -1,7 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { SendMessageComposer } from '../../../api';
 import { RpRankTitle } from '../../../api/rp-employment/RpEmploymentRegistry';
-import { CorpPanelAction, CorpPanelEmployee, RpCorpPanelActionComposer, RpCorpPanelEmployeeEvent } from '../../../api/rp-corps/RpCorpPanelMessages';
+import { CorpDisciplineEntry, CorpPanelAction, CorpPanelEmployee, CorpRankChange, RpCorpPanelActionComposer, RpCorpPanelEmployeeEvent } from '../../../api/rp-corps/RpCorpPanelMessages';
 import { useMessageEvent } from '../../../hooks';
 import { CorpPanelLinks } from '../CorpPanelView';
 import { LongDate, RecordTime, ShiftsOf } from '../CorpPanelShared';
@@ -55,6 +55,11 @@ export const CorpEmployeeFileView: FC<CorpEmployeeFileViewProps> = props =>
     const shown = ((employee?.userId === userId) ? employee : null);
     const weekShifts = (shown ? ShiftsOf(shown.weekSeconds[shown.weekSeconds.length - 1] ?? 0) : 0);
     const maxWeek = (shown ? Math.max(1, shown.shiftQuota, ...shown.weekSeconds.map(ShiftsOf)) : 1);
+    // Warnings, strikes, promotions and demotions in one list, newest first.
+    const history: { at: number, entry?: CorpDisciplineEntry, change?: CorpRankChange }[] = (!shown ? [] : [
+        ...shown.record.map(entry => ({ at: entry.createdAt, entry })),
+        ...shown.rankChanges.map(change => ({ at: change.createdAt, change }))
+    ].sort((a, b) => (b.at - a.at)));
     const presence = (!shown ? '' : (shown.onDuty ? 'On duty now' : (shown.online ? 'Online now' : (shown.lastOnline ? `Last online ${ RecordTime(shown.lastOnline, now) }` : 'Offline'))));
 
     return (
@@ -127,19 +132,30 @@ export const CorpEmployeeFileView: FC<CorpEmployeeFileViewProps> = props =>
                             </section>
                             <section className="mt-card">
                                 <div className="corp-card-head"><h3>Record</h3><span className="mt-hint">Newest first</span></div>
-                                { shown.record.map(entry =>
-                                    <div key={ entry.id } className={ `corp-history ${ entry.revokedAt ? 'is-revoked' : '' }` }>
-                                        <span className={ `corp-pip is-${ (entry.kind === 'strike') ? 'bad' : 'warn' }` } aria-hidden="true" />
+                                { history.map(item => ((item.change)
+                                    ? <div key={ `r${ item.change.id }` } className="corp-history">
+                                        <span className={ `corp-pip is-${ (item.change.direction === 'promotion') ? 'ok' : 'bad' }` } aria-hidden="true" />
                                         <div className="corp-history-text">
-                                            <b>{ (entry.kind === 'strike') ? 'Strike' : 'Warning' }: { entry.reason }</b>
+                                            <b>{ (item.change.direction === 'promotion') ? 'Promoted' : 'Demoted' }: { item.change.fromTitle } → { item.change.toTitle }</b>
                                             <span>
-                                                { entry.details ? `${ entry.details } · ` : '' }
-                                                { entry.automatic ? 'added automatically' : `by ${ entry.issuedByName }` }
-                                                { entry.revokedAt ? ` · revoked by ${ entry.revokedByName }` : '' }
+                                                { item.change.reason ? `${ item.change.reason } · ` : '' }
+                                                by { item.change.actorName }{ (item.change.source === 'request') ? `, asked by ${ item.change.requestedByName }` : '' }
                                             </span>
                                         </div>
-                                        <span className="corp-time">{ RecordTime(entry.createdAt, now) }</span>
-                                    </div>) }
+                                        <span className="corp-time">{ RecordTime(item.change.createdAt, now) }</span>
+                                    </div>
+                                    : <div key={ `d${ item.entry.id }` } className={ `corp-history ${ item.entry.revokedAt ? 'is-revoked' : '' }` }>
+                                        <span className={ `corp-pip is-${ (item.entry.kind === 'strike') ? 'bad' : 'warn' }` } aria-hidden="true" />
+                                        <div className="corp-history-text">
+                                            <b>{ (item.entry.kind === 'strike') ? 'Strike' : 'Warning' }: { item.entry.reason }</b>
+                                            <span>
+                                                { item.entry.details ? `${ item.entry.details } · ` : '' }
+                                                { item.entry.automatic ? 'added automatically' : `by ${ item.entry.issuedByName }` }
+                                                { item.entry.revokedAt ? ` · revoked by ${ item.entry.revokedByName }` : '' }
+                                            </span>
+                                        </div>
+                                        <span className="corp-time">{ RecordTime(item.entry.createdAt, now) }</span>
+                                    </div>)) }
                                 { shown.hiredAt > 0 &&
                                     <div className="corp-history">
                                         <span className="corp-pip is-neutral" aria-hidden="true" />
@@ -149,7 +165,7 @@ export const CorpEmployeeFileView: FC<CorpEmployeeFileViewProps> = props =>
                                         </div>
                                         <span className="corp-time">{ LongDate(shown.hiredAt) }</span>
                                     </div> }
-                                { (shown.record.length === 0) && !shown.hiredAt && <div className="mt-empty">A clean record.</div> }
+                                { (history.length === 0) && !shown.hiredAt && <div className="mt-empty">A clean record.</div> }
                             </section>
                         </div>
                     </> }

@@ -114,6 +114,16 @@ export const CorpDashboardView: FC<CorpDashboardViewProps> = props =>
                                     <span>Strikes</span>
                                     <small>{ shown.reviews ? `${ shown.reviews } up for a dismissal review` : 'Nobody up for review' }</small>
                                 </button>
+                                <button type="button" className={ `corp-stat ${ shown.pendingPromotions ? 'is-warn' : '' }` } onClick={ () => onOpen('promoRequests') }>
+                                    <b>{ shown.pendingPromotions }</b>
+                                    <span>Promo queue</span>
+                                    <small>{ shown.pendingPromotions ? 'Waiting for a decision' : 'Nothing waiting' }</small>
+                                </button>
+                                <button type="button" className={ `corp-stat ${ shown.pendingDemotions ? 'is-warn' : '' }` } onClick={ () => onOpen('demoRequests') }>
+                                    <b>{ shown.pendingDemotions }</b>
+                                    <span>Demotion queue</span>
+                                    <small>{ shown.pendingDemotions ? 'Waiting for a decision' : 'Nothing waiting' }</small>
+                                </button>
                             </div>
                             <section className="mt-card">
                                 <div className="corp-card-head">

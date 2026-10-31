@@ -65,7 +65,7 @@ export const CorpWeekSwitch: FC<{ weeksAgo: number, onChange: (weeksAgo: number)
     );
 }
 
-export const CorpHead: FC<{ look: string, gender: string, size?: 'sm' | 'md' }> = props =>
+export const CorpHead: FC<{ look: string, gender: string, size?: 'sm' | 'md' | 'lg' }> = props =>
 {
     const { look = '', gender = 'M', size = 'md' } = props;
 
