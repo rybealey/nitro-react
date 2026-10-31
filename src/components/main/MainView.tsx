@@ -19,6 +19,7 @@ import { HotelView } from '../hotel-view/HotelView';
 import { InventoryView } from '../inventory/InventoryView';
 import { ModToolsView } from '../mod-tools/ModToolsView';
 import { CityPanelView } from '../city-panel/CityPanelView';
+import { CorpPanelView } from '../corp-panel/CorpPanelView';
 import { DepositBoxView } from '../rp-deposit-box/DepositBoxView';
 import { EmergencyCallsView } from '../rp-emergency-calls/EmergencyCallsView';
 import { MedicalCallsView } from '../rp-emergency-calls/MedicalCallsView';
@@ -112,6 +113,7 @@ export const MainView: FC<{}> = props =>
             <ToolbarView isInRoom={ !landingViewVisible } />
             <ModToolsView />
             <CityPanelView />
+            <CorpPanelView />
             <DepositBoxView />
             <EmergencyCallsView />
             <MedicalCallsView />

@@ -54,6 +54,7 @@ import { RegisterRpJamMessages } from './api/rp-phone/RpJamMessages';
 import { RegisterRpTunesMessages } from './api/rp-phone/RpTunesMessages';
 import { RegisterRpClothingMessages } from './api/rp-clothing/RpClothingMessages';
 import { RegisterRpCityMessages } from './api/rp-city/RpCityMessages';
+import { RegisterRpCorpPanelMessages } from './api/rp-corps/RpCorpPanelMessages';
 import { RegisterRpDepositBoxMessages } from './api/rp-bank/RpDepositBoxMessages';
 import { RegisterRpMarketMessages } from './api/rp-market/RpMarketMessages';
 import { RegisterRpApartmentMessages } from './api/rp-apartments/RpApartmentMessages';
@@ -330,6 +331,7 @@ export const App: FC<{}> = props =>
                 RegisterRpJamMessages();
                 RegisterRpClothingMessages();
                 RegisterRpCityMessages();
+                RegisterRpCorpPanelMessages();
                 RegisterRpDepositBoxMessages();
                 RegisterRpMarketMessages();
                 RegisterRpApartmentMessages();

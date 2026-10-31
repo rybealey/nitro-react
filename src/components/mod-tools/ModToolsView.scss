@@ -22,7 +22,8 @@ $mt-unsafe: #c9453a;
 .nitro-mod-tools-room,
 .nitro-mod-tools-user,
 .nitro-mod-tools-chatlog,
-.nitro-city-panel {
+.nitro-city-panel,
+.nitro-corp-panel {
     // Four classes deep so the pale page beats the slim theme's own
     // content-area rule whatever order the sheets load in.
     &.nitro-card.theme-primary-slim .content-area {

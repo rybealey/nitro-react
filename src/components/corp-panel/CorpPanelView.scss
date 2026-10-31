@@ -1,0 +1,562 @@
+// PixelRP Corporation Panel (CorpPanelView). The pale page, cards, labels,
+// segmented controls and chrome buttons are the shared mt-* parts
+// (ModToolsView.scss lists .nitro-corp-panel beside the City Panel); this
+// file is the sidebar layout and what the panel's pages add.
+
+$corp-line: rgba(0, 0, 0, 0.06);
+$corp-card-line: rgba(0, 0, 0, 0.08);
+$corp-well: #e6e6ea;
+$corp-muted: rgba(0, 0, 0, 0.6);
+// The window header's own orange (UiChrome HEADER_SCHEMES 'orange' face) for
+// the week's progress and today's bar.
+$corp-header: #f59436;
+$corp-ok: #2e9e4f;
+$corp-ok-ink: #1f7a35;
+$corp-ok-soft: #e2f7e6;
+$corp-warn: #f5c542;
+$corp-warn-ink: #7a5a00;
+$corp-warn-soft: #fdf3d1;
+$corp-bad: #e03131;
+$corp-bad-ink: #b42323;
+$corp-bad-soft: #fde3e3;
+$corp-duty: #2f7fd6;
+$corp-online: #2e9e4f;
+$corp-offline: #b0b0b0;
+
+.nitro-card.nitro-corp-panel {
+    // starting size; the corner grip writes inline width/height over these
+    width: 980px;
+    height: 640px;
+    min-width: 760px;
+    min-height: 460px;
+    max-width: 96vw;
+    max-height: 92vh;
+
+    .content-area {
+        padding: 0;
+    }
+
+    .corp-layout {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+    }
+
+    // ---- sidebar ---------------------------------------------------------
+
+    .corp-side {
+        width: 210px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        border-right: 1px solid $corp-card-line;
+        min-height: 0;
+    }
+
+    .corp-identity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border-bottom: 1px solid $corp-line;
+    }
+
+    .corp-badge {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: $corp-well;
+    }
+
+    .corp-identity-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+
+        b {
+            font-size: 13px;
+            line-height: 16px;
+        }
+
+        span {
+            font-size: 11px;
+            color: $corp-muted;
+        }
+    }
+
+    .corp-nav {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 4px 8px 10px;
+    }
+
+    .corp-nav-title {
+        padding: 10px 8px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .corp-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        height: 30px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #2f2f34;
+        font: 500 12px 'Ubuntu', sans-serif;
+        text-align: left;
+        cursor: pointer;
+
+        svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            color: rgba(0, 0, 0, 0.55);
+        }
+
+        span {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        &:hover { background: rgba(0, 0, 0, 0.045); }
+
+        // the active page follows the player's UI colour, as the chrome
+        // buttons do
+        &.is-active {
+            background: var(--prp-chrome-95);
+            color: #ffffff;
+
+            svg { color: #ffffff; }
+        }
+    }
+
+    // ---- page ------------------------------------------------------------
+
+    .corp-main {
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        padding: 12px 14px 16px;
+    }
+
+    .corp-page {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .corp-page-head {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .corp-page-title {
+        flex: 1;
+        min-width: 200px;
+
+        h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 2px 0 0;
+            font-size: 11px;
+            color: $corp-muted;
+        }
+    }
+
+    .corp-week-seg {
+        grid-template-columns: repeat(3, auto);
+
+        .mt-seg-button { padding: 0 10px; }
+    }
+
+    .corp-card-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid $corp-line;
+
+        h3 {
+            flex: 1;
+            margin: 0;
+            font-size: 12px;
+            font-weight: 700;
+        }
+    }
+
+    .corp-chip {
+        display: inline-flex;
+        align-items: center;
+        height: 18px;
+        padding: 0 7px;
+        border-radius: 9px;
+        background: $corp-well;
+        color: #333338;
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+
+        &.is-met { background: $corp-ok-soft; color: $corp-ok-ink; }
+        &.is-close { background: $corp-warn-soft; color: $corp-warn-ink; }
+        &.is-short { background: $corp-bad-soft; color: $corp-bad-ink; }
+    }
+
+    .corp-bar {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: $corp-well;
+        overflow: hidden;
+
+        &.is-tall { height: 8px; }
+    }
+
+    .corp-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--prp-chrome-95);
+
+        &.is-header { background: $corp-header; }
+        &.is-met { background: $corp-ok; }
+        &.is-close { background: $corp-warn; }
+        &.is-short { background: $corp-bad; }
+    }
+
+    // ---- stats -----------------------------------------------------------
+
+    .corp-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+
+        &.is-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    .corp-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1px;
+        padding: 8px 10px;
+        border: 1px solid $corp-card-line;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #000000;
+        font-family: 'Ubuntu', sans-serif;
+        text-align: left;
+
+        b {
+            font-size: 19px;
+            line-height: 22px;
+        }
+
+        span {
+            font-size: 11px;
+            font-weight: 500;
+            color: $corp-muted;
+        }
+
+        small {
+            font-size: 10px;
+            color: $corp-muted;
+        }
+
+        &.is-warn { border-color: #f0d68a; }
+    }
+
+    button.corp-stat {
+        cursor: pointer;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.25); }
+    }
+
+    // ---- dashboard -------------------------------------------------------
+
+    .corp-week-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .corp-week-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .corp-week-figures {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+
+        div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        b {
+            font-size: 16px;
+        }
+
+        span {
+            font-size: 11px;
+            color: $corp-muted;
+        }
+    }
+
+    .corp-dash-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 10px;
+        align-items: start;
+    }
+
+    .corp-dash-col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .corp-day-chart {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 8px;
+        align-items: end;
+        height: 120px;
+        padding: 8px 12px;
+    }
+
+    .corp-day {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 3px;
+        height: 100%;
+    }
+
+    .corp-day-n {
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .corp-day-bar {
+        width: 100%;
+        max-width: 32px;
+        border-radius: 4px 4px 2px 2px;
+        background: var(--prp-chrome-95);
+
+        &.is-today { background: $corp-header; }
+        &.is-future { background: $corp-well; }
+    }
+
+    // ---- people ----------------------------------------------------------
+
+    .corp-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-bottom: 1px solid $corp-line;
+
+        &:last-child { border-bottom: 0; }
+    }
+
+    .corp-row-n {
+        min-width: 22px;
+        text-align: right;
+    }
+
+    .corp-person {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .corp-who {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+
+        b {
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        span {
+            font-size: 11px;
+            color: $corp-muted;
+            white-space: nowrap;
+        }
+    }
+
+    // A head render in a well, placed by offset as the City Panel's are: the
+    // stock avatar box is 90x130 with the face's centre 45px down, so a
+    // well of W puts it at -(90 - W) / 2 across and -(45 - W / 2) down.
+    .corp-head {
+        position: relative;
+        flex-shrink: 0;
+        overflow: hidden;
+        border-radius: 5px;
+        background: $corp-well;
+
+        .avatar-image {
+            position: absolute;
+            image-rendering: pixelated;
+        }
+
+        &.is-md {
+            width: 36px;
+            height: 36px;
+
+            .avatar-image { left: -27px; top: -27px; }
+        }
+
+        &.is-sm {
+            width: 28px;
+            height: 28px;
+
+            .avatar-image { left: -31px; top: -31px; }
+        }
+    }
+
+    .corp-dot {
+        width: 8px;
+        height: 8px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: $corp-offline;
+
+        &.is-online { background: $corp-online; }
+        &.is-duty { background: $corp-duty; }
+    }
+
+    // ---- tables ----------------------------------------------------------
+
+    .corp-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .corp-search {
+        max-width: 220px;
+    }
+
+    .corp-filter-seg {
+        grid-template-columns: repeat(3, auto);
+        margin-left: auto;
+
+        .mt-seg-button { padding: 0 10px; }
+    }
+
+    .corp-seg-n {
+        padding: 0 5px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.08);
+        font-size: 10px;
+        line-height: 16px;
+    }
+
+    .corp-table-wrap {
+        overflow-x: auto;
+    }
+
+    .corp-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+
+        th {
+            padding: 7px 10px;
+            border-bottom: 1px solid $corp-line;
+            background: #fafafb;
+            color: $corp-muted;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 6px 10px;
+            border-bottom: 1px solid $corp-line;
+            vertical-align: middle;
+        }
+
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover td { background: #fafafb; }
+
+        .is-center { text-align: center; }
+    }
+
+    .corp-day-cell {
+        padding: 6px 3px !important;
+    }
+
+    .corp-heat {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 22px;
+        border-radius: 5px;
+        background: #f0f0f3;
+        color: rgba(0, 0, 0, 0.45);
+        font-size: 11px;
+        font-weight: 700;
+
+        &.is-heat-1 { background: #dcf2e2; color: #1f6b36; }
+        &.is-heat-2 { background: #a8dfb7; color: #14532d; }
+        &.is-heat-3 { background: $corp-ok; color: #ffffff; }
+        &.is-future { background: transparent; }
+    }
+
+    .corp-quota-col {
+        width: 140px;
+    }
+
+    .corp-quota {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        b {
+            min-width: 36px;
+            text-align: right;
+        }
+    }
+}
